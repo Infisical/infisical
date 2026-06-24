@@ -5,7 +5,8 @@ export enum CaType {
   AWS_PCA = "aws-pca",
   DIGICERT = "digicert",
   AWS_ACM_PUBLIC_CA = "aws-acm-public-ca",
-  VENAFI_TPP = "venafi-tpp"
+  VENAFI_TPP = "venafi-tpp",
+  GODADDY = "godaddy"
 }
 
 export enum InternalCaType {
@@ -47,4 +48,8 @@ export enum CaSigningConfigType {
   MANUAL = "manual",
   VENAFI = "venafi",
   AZURE_ADCS = "azure-ad-cs"
+}
+
+export enum GoDaddyProductType {
+  DV_SSL = "DV_SSL"
 }

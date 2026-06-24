@@ -18,7 +18,15 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } 
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric,
+  recordSsoConfigChangeMetric,
+  SsoConfigAction,
+  SsoProvider
+} from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
@@ -46,11 +54,13 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
+import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
   OIDCConfigurationType,
   TCreateOidcCfgDTO,
@@ -71,7 +81,7 @@ type TOidcConfigServiceFactoryDep = {
     | "find"
     | "transaction"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -216,7 +226,17 @@ export const oidcConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
+    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
+    // separate email-verification step (the email-domain ownership check above already proves the
+    // org owns this domain, and password signup is blocked for enforced domains).
+    const skipEmailVerification = Boolean(organization.authEnforced);
+
     let user: TUsers;
+    // A stale, still-unverified alias may point at another user's account. Don't mutate that
+    // account's org membership / group state until the IdP proves control of it (the
+    // email-verification fallback below issues no session). Resolved against the existing alias
+    // before any mutation; freshly created aliases are never stale.
+    let isStaleAlias = false;
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
@@ -226,6 +246,11 @@ export const oidcConfigServiceFactory = ({
           orgId,
           emailDomainDAL
         });
+        isStaleAlias = isStaleSsoAlias({ user: foundUser, userAlias, assertedEmail: sanitizedEmail });
+        if (isStaleAlias) {
+          return foundUser;
+        }
+
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -281,11 +306,15 @@ export const oidcConfigServiceFactory = ({
               username: sanitizedEmail,
               lastName,
               authMethods: [],
-              isGhost: false
+              isGhost: false,
+              isEmailVerified: skipEmailVerification,
+              isAccepted: skipEmailVerification
             },
             tx
           );
           isNewUser = true;
+        } else if (!newUser.firstName && firstName) {
+          newUser = await userDAL.updateById(newUser.id, { firstName, ...(lastName ? { lastName } : {}) }, tx);
         }
 
         userAlias = await userAliasDAL.create(
@@ -294,7 +323,8 @@ export const oidcConfigServiceFactory = ({
             aliasType: UserAliasType.OIDC,
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
-            orgId
+            orgId,
+            isEmailVerified: skipEmailVerification
           },
           tx
         );
@@ -351,13 +381,15 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    if (manageGroupMemberships) {
+    if (manageGroupMemberships && !isStaleAlias) {
       const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(user.id, orgId);
       const orgGroups = await groupDAL.findByOrgId(orgId);
 
-      const userGroupsNames = userGroups.map((membership) => membership.groupName);
-      const missingGroupsMemberships = groups.filter((groupName) => !userGroupsNames.includes(groupName));
-      const groupsToAddUserTo = orgGroups.filter((group) => missingGroupsMemberships.includes(group.name));
+      const { groupsToAddUserTo, groupsToRemoveUserFrom } = resolveOidcGroupMembershipChanges({
+        idpGroups: groups,
+        userGroupMemberships: userGroups,
+        orgGroups
+      });
 
       for await (const group of groupsToAddUserTo) {
         await addUsersToGroupByUserIds({
@@ -391,11 +423,6 @@ export const oidcConfigServiceFactory = ({
           }
         });
       }
-
-      const membershipsToRemove = userGroups
-        .filter((membership) => !groups.includes(membership.groupName))
-        .map((membership) => membership.groupId);
-      const groupsToRemoveUserFrom = orgGroups.filter((group) => membershipsToRemove.includes(group.id));
 
       for await (const group of groupsToRemoveUserFrom) {
         await removeUsersFromGroupByUserIds({
@@ -432,7 +459,18 @@ export const oidcConfigServiceFactory = ({
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    if (user.email && !userAlias.isEmailVerified) {
+    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
+    if (skipEmailVerification) {
+      ({ user, userAlias } = await ensureSsoAccountVerified({
+        user,
+        userAlias,
+        assertedEmail: sanitizedEmail,
+        userDAL,
+        userAliasDAL
+      }));
+    }
+
+    if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,
@@ -574,6 +612,7 @@ export const oidcConfigServiceFactory = ({
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
     await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
     return ssoConfig;
   };
 
@@ -662,6 +701,8 @@ export const oidcConfigServiceFactory = ({
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
     return oidcCfg;
   };
@@ -754,6 +795,7 @@ export const oidcConfigServiceFactory = ({
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {
+        const authMetricStartTime = performance.now();
         const claims = tokenSet.claims();
         if (!claims.email) {
           throw new BadRequestError({
@@ -789,6 +831,8 @@ export const oidcConfigServiceFactory = ({
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
           .then((loginResult) => {
+            cb(null, loginResult);
+
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
@@ -802,9 +846,14 @@ export const oidcConfigServiceFactory = ({
               });
             }
 
-            cb(null, loginResult);
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.OIDC,
+              result: AuthAttemptAuthResult.SUCCESS,
+              orgId: org.id
+            });
           })
-          .catch((error) => {
+          .catch((error: unknown) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
@@ -816,6 +865,14 @@ export const oidcConfigServiceFactory = ({
                 "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
+
+            recordAuthAttemptMetric({
+              startTime: authMetricStartTime,
+              method: AuthAttemptAuthMethod.OIDC,
+              result: AuthAttemptAuthResult.FAILURE,
+              orgId: org.id,
+              error
+            });
 
             cb(error);
           });

@@ -25,6 +25,10 @@ import {
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema
 } from "./cloudflare-custom-certificate-pki-sync-destination-schema";
 import {
+  F5BigIpPkiSyncDestinationSchema,
+  UpdateF5BigIpPkiSyncDestinationSchema
+} from "./f5-big-ip-pki-sync-destination-schema";
+import {
   NetScalerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema
 } from "./netscaler-pki-sync-destination-schema";
@@ -36,7 +40,8 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsSecretsManagerPkiSyncDestinationSchema,
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema,
-  NetScalerPkiSyncDestinationSchema
+  NetScalerPkiSyncDestinationSchema,
+  F5BigIpPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
@@ -46,7 +51,8 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
-  UpdateNetScalerPkiSyncDestinationSchema
+  UpdateNetScalerPkiSyncDestinationSchema,
+  UpdateF5BigIpPkiSyncDestinationSchema
 ]);
 
 export const PkiSyncFormSchema = PkiSyncUnionSchema;

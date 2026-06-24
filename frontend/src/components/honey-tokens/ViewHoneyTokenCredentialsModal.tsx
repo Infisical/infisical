@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { subject } from "@casl/ability";
 
 import {
   Dialog,
@@ -50,10 +51,15 @@ const ModalBody = ({
   isOpen: boolean;
 }) => {
   const { permission } = useProjectPermission();
-  const canReadCredentials = permission.can(
-    ProjectPermissionHoneyTokenActions.ReadCredentials,
-    ProjectPermissionSub.HoneyTokens
-  );
+  const canReadCredentials = honeyToken
+    ? permission.can(
+        ProjectPermissionHoneyTokenActions.ReadCredentials,
+        subject(ProjectPermissionSub.HoneyTokens, {
+          environment: honeyToken.environment.slug,
+          secretPath: honeyToken.folder.path
+        })
+      )
+    : false;
   const { data: credentials, isPending } = useGetHoneyTokenCredentials({
     honeyTokenId: honeyToken?.id ?? "",
     projectId,

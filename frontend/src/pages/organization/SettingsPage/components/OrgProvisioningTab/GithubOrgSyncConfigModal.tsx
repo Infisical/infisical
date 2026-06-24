@@ -1,9 +1,34 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, FormControl, Input } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import {
   useCreateGithubSyncOrgConfig,
   useDeleteGithubSyncOrgConfig,
@@ -93,65 +118,107 @@ export const GithubOrgSyncConfigModal = ({
 
   return (
     <>
-      <form onSubmit={handleSubmit(onFormSubmit)}>
-        <Controller
-          control={control}
-          defaultValue=""
-          name="githubOrgName"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="GitHub Organization Name"
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
-              <Input {...field} placeholder="example" />
-            </FormControl>
-          )}
-        />
-        <Controller
-          control={control}
-          name="githubOrgAccessToken"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="GitHub Access Token"
-              isError={Boolean(error)}
-              isOptional
-              errorText={error?.message}
-              helperText="Required for manual sync operations. The token must have 'read:org' permissions."
-            >
-              <Input {...field} type="password" placeholder="ghp_xxxxxxxxxxxx" />
-            </FormControl>
-          )}
-        />
-        <div className="flex gap-8 pt-4">
-          <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting}>
-            {isUpdate ? "Update" : "Configure"}
-          </Button>
-          <Button
-            variant="plain"
-            colorSchema="secondary"
-            onClick={() => handlePopUpToggle("githubOrgSyncConfig", false)}
-          >
-            Cancel
-          </Button>
-          <div className="grow" />
-          {isUpdate && (
-            <Button
-              onClick={() => handlePopUpOpen("deleteGithubOrgSyncConfig")}
-              colorSchema="danger"
-            >
-              Delete
-            </Button>
-          )}
-        </div>
-      </form>
-      <DeleteActionModal
-        isOpen={popUp.deleteGithubOrgSyncConfig.isOpen}
-        title="Are you sure you want to remove GitHub organization sync?"
-        onChange={(isOpen) => handlePopUpToggle("deleteGithubOrgSyncConfig", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onDelete}
-      />
+      <Dialog
+        open={popUp?.githubOrgSyncConfig?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("githubOrgSyncConfig", isOpen)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Manage GitHub Organization Sync</DialogTitle>
+            <DialogDescription>
+              Sync your GitHub teams to Infisical organization groups.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onFormSubmit)}>
+            <FieldGroup>
+              <Controller
+                control={control}
+                defaultValue=""
+                name="githubOrgName"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="github-org-name">GitHub Organization Name</FieldLabel>
+                    <Input
+                      id="github-org-name"
+                      placeholder="example"
+                      isError={Boolean(error)}
+                      {...field}
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="githubOrgAccessToken"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="github-org-token">
+                      GitHub Access Token (Optional)
+                    </FieldLabel>
+                    <Input
+                      id="github-org-token"
+                      type="password"
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      isError={Boolean(error)}
+                      {...field}
+                    />
+                    <FieldDescription>
+                      Required for manual sync operations. The token must have &apos;read:org&apos;
+                      permissions.
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+            <DialogFooter className="mt-6">
+              {isUpdate && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  className="mr-auto"
+                  onClick={() => handlePopUpOpen("deleteGithubOrgSyncConfig")}
+                >
+                  Delete
+                </Button>
+              )}
+              <DialogClose asChild>
+                <Button type="button" variant="ghost">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" variant="org" isPending={isSubmitting}>
+                {isUpdate ? "Update" : "Configure"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={popUp.deleteGithubOrgSyncConfig.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteGithubOrgSyncConfig", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Remove GitHub Organization Sync?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Organization members will no longer have their groups synced from GitHub teams.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={onDelete}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

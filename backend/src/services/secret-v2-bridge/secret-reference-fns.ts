@@ -10,6 +10,8 @@ import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
+export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REGEX.test(value);
+
 /**
  * Grabs and processes nested secret references from a string
  *
@@ -245,12 +247,10 @@ export const expandSecretReferencesFactory = ({
             stack.push({ ...node, visitedSecrets: newVisitedSecrets });
           }
 
-          if (referencedSecretValue) {
-            expandedValue = expandedValue.replaceAll(
-              interpolationSyntax,
-              () => referencedSecretValue // prevents special characters from triggering replacement patterns
-            );
-          }
+          expandedValue = expandedValue.replaceAll(
+            interpolationSyntax,
+            () => referencedSecretValue // prevents special characters from triggering replacement patterns
+          );
         }
       }
     }

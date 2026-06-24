@@ -86,7 +86,7 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession"
+    "create" | "updateById" | "countActiveWebSessions" | "endSessionById" | "activateSession" | "endExpiredWebSessions"
   >;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -120,6 +120,7 @@ type THandleWebSocketConnectionDTO = {
   actorIp: string;
   actorUserAgent: string;
   reason?: string | null;
+  grantExpiresAt?: string | null;
   preAuthMessages: TEarlyBufferedMsg[];
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
@@ -246,6 +247,9 @@ export const pamWebAccessServiceFactory = ({
       accountIdentity = `${domainConnectionDetails.domain}:${account.name}`;
     }
 
+    // Sessions that outlived their expiresAt may still show as active — end them so that they don't count against the session limit.
+    await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
+
     const activeWebSessionCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
     if (activeWebSessionCount >= MAX_WEB_SESSIONS_PER_USER) {
       throw new BadRequestError({
@@ -262,14 +266,14 @@ export const pamWebAccessServiceFactory = ({
       accountName: accountIdentity
     };
 
-    const hasApprovalGrant = await approvalPolicy.canAccess(
+    const approvalGrant = await approvalPolicy.canAccess(
       approvalRequestGrantsDAL,
       resource.projectId,
       actor.id,
       policyInputs
     );
 
-    if (!hasApprovalGrant) {
+    if (!approvalGrant) {
       const matchedPolicy = await approvalPolicy.matchPolicy(approvalPolicyDAL, resource.projectId, policyInputs);
 
       if (matchedPolicy) {
@@ -396,7 +400,8 @@ export const pamWebAccessServiceFactory = ({
         actorEmail,
         actorName,
         auditLogInfo,
-        reason: trimmedReason
+        reason: trimmedReason,
+        grantExpiresAt: approvalGrant?.expiresAt?.toISOString() ?? null
       })
     });
 
@@ -432,6 +437,7 @@ export const pamWebAccessServiceFactory = ({
     actorIp,
     actorUserAgent,
     reason: accessReason,
+    grantExpiresAt: grantExpiresAtIso,
     preAuthMessages,
     preAuthHandler
   }: THandleWebSocketConnectionDTO): Promise<void> => {
@@ -489,16 +495,33 @@ export const pamWebAccessServiceFactory = ({
       }
 
       if (session) {
+        const sessionId = session.id;
         try {
-          await pamSessionDAL.endSessionById(session.id);
+          const updated = await pamSessionDAL.endSessionById(sessionId);
+          if (updated) {
+            await auditLogService.createAuditLog({
+              ...auditLogInfo,
+              orgId,
+              projectId,
+              event: {
+                type: EventType.PAM_SESSION_END,
+                metadata: {
+                  sessionId,
+                  accountName
+                }
+              }
+            });
+          }
         } catch (err) {
-          logger.debug(err, "Error marking session ended in cleanup");
+          logger.error(err, `Failed to end session in DB [sessionId=${sessionId}]`);
         } finally {
           session = null;
         }
       }
 
-      // Best-effort: triggers gateway-side cleanup (fire-and-forget)
+      // Best-effort ALPN session cancellation (fire-and-forget).
+      // Triggers gateway-side cleanup: log upload, and session end via API.
+      // If this fails, the scheduled queue job will expire the session at expiresAt time.
       if (relayCerts) {
         const certs = relayCerts;
         relayCerts = null;
@@ -567,6 +590,9 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Gateway not configured for this resource" });
       }
 
+      // Sessions that outlived their expiresAt may still show as active — end them so that they don't count against the session limit.
+      await pamSessionDAL.endExpiredWebSessions(userId, projectId);
+
       // Check web session limit
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
       if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
@@ -594,7 +620,16 @@ export const pamWebAccessServiceFactory = ({
 
       // 3. CREATE SESSION
       const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
-      const expiresAt = new Date(Date.now() + DEFAULT_WEB_SESSION_DURATION_MS);
+      let sessionDurationMs = DEFAULT_WEB_SESSION_DURATION_MS;
+      if (grantExpiresAtIso) {
+        const grantRemainingMs = new Date(grantExpiresAtIso).getTime() - Date.now();
+        if (grantRemainingMs <= 0) {
+          sendSessionEndAndClose(socket, SessionEndReason.SessionGrantExpired);
+          return;
+        }
+        sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
+      }
+      const expiresAt = new Date(Date.now() + sessionDurationMs);
 
       const isDomainAccount = !account.resourceId;
 
@@ -627,7 +662,7 @@ export const pamWebAccessServiceFactory = ({
         resourceType: resource.resourceType as PamResource,
         host,
         port,
-        duration: DEFAULT_WEB_SESSION_DURATION_MS,
+        duration: sessionDurationMs,
         actorMetadata: {
           id: userId,
           type: ActorType.USER,
@@ -775,7 +810,7 @@ export const pamWebAccessServiceFactory = ({
           void cleanup();
           sendSessionEndAndClose(socket, SessionEndReason.SessionCompleted);
         }
-      }, DEFAULT_WEB_SESSION_DURATION_MS);
+      }, sessionDurationMs);
 
       // WebSocket close/error
       socket.on("close", () => {

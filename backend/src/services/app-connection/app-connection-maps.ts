@@ -31,6 +31,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Render]: "Render",
   [AppConnection.LaravelForge]: "Laravel Forge",
   [AppConnection.Flyio]: "Fly.io",
+  [AppConnection.TriggerDev]: "Trigger.dev",
   [AppConnection.GitLab]: "GitLab",
   [AppConnection.Cloudflare]: "Cloudflare",
   [AppConnection.DNSMadeEasy]: "DNS Made Easy",
@@ -66,7 +67,10 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.TravisCI]: "Travis CI",
   [AppConnection.Salesforce]: "Salesforce",
   [AppConnection.Snowflake]: "Snowflake",
-  [AppConnection.Datadog]: "Datadog"
+  [AppConnection.Datadog]: "Datadog",
+  [AppConnection.F5BigIp]: "F5 BIG-IP",
+  [AppConnection.GoDaddy]: "GoDaddy",
+  [AppConnection.Convex]: "Convex"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -100,6 +104,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Render]: AppConnectionPlanType.Regular,
   [AppConnection.LaravelForge]: AppConnectionPlanType.Regular,
   [AppConnection.Flyio]: AppConnectionPlanType.Regular,
+  [AppConnection.TriggerDev]: AppConnectionPlanType.Regular,
   [AppConnection.GitLab]: AppConnectionPlanType.Regular,
   [AppConnection.Cloudflare]: AppConnectionPlanType.Regular,
   [AppConnection.DNSMadeEasy]: AppConnectionPlanType.Regular,
@@ -135,5 +140,8 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.TravisCI]: AppConnectionPlanType.Regular,
   [AppConnection.Salesforce]: AppConnectionPlanType.Regular,
   [AppConnection.Snowflake]: AppConnectionPlanType.Regular,
-  [AppConnection.Datadog]: AppConnectionPlanType.Regular
+  [AppConnection.Datadog]: AppConnectionPlanType.Regular,
+  [AppConnection.F5BigIp]: AppConnectionPlanType.Regular,
+  [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
+  [AppConnection.Convex]: AppConnectionPlanType.Regular
 };

@@ -227,10 +227,14 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
+          // Match the privilege against the request's actor literal, not against
+          // Membership.actor*Id. Group-derived memberships have actorUserId/actorIdentityId
+          // NULL, so the column-to-column predicate dropped privileges for any user
+          // whose only project access is via a group.
           if (actorType === ActorType.IDENTITY) {
-            qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`);
+            qb.on(`${TableName.AdditionalPrivilege}.actorIdentityId`, db.raw("?", [actorId]));
           } else {
-            qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`);
+            qb.on(`${TableName.AdditionalPrivilege}.actorUserId`, db.raw("?", [actorId]));
           }
 
           if (scopeData.scope === AccessScope.Organization) {
@@ -966,15 +970,14 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          const memberActorCol =
-            actorType === ActorType.IDENTITY
-              ? `${TableName.Membership}.actorIdentityId`
-              : `${TableName.Membership}.actorUserId`;
+          // Match by literal actor id, not Membership.actor*Id — see getPermission for the
+          // group-derived membership rationale. Read and fingerprint must stay aligned, or
+          // the cache will think nothing changed and serve stale abilities.
           const privActorCol =
             actorType === ActorType.IDENTITY
               ? `${TableName.AdditionalPrivilege}.actorIdentityId`
               : `${TableName.AdditionalPrivilege}.actorUserId`;
-          qb.on(memberActorCol, privActorCol).andOn(
+          qb.on(privActorCol, db.raw("?", [actorId])).andOn(
             `${TableName.Membership}.scopeProjectId`,
             `${TableName.AdditionalPrivilege}.projectId`
           );
@@ -988,6 +991,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
           }
         })
+        .leftJoin(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where((scopeQb) => {
           void scopeQb
@@ -1012,7 +1016,13 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         })
         .select(
           db.ref("id").withSchema(TableName.Membership).as("mId"),
-          db.ref("updatedAt").withSchema(TableName.Membership).as("mUp"),
+          // Track isActive/status rather than updatedAt: every login bumps Membership.updatedAt
+          // (lastLoginTime/lastLoginAuthMethod), which would needlessly bust the fingerprint/ETag on
+          // every auth. isActive/status are the membership columns that actually gate permissions.
+          db.ref("isActive").withSchema(TableName.Membership).as("mActive"),
+          db.ref("status").withSchema(TableName.Membership).as("mStatus"),
+          // project soft-delete state — flips the fingerprint when the project is soft-deleted
+          db.ref("deleteAfter").withSchema(TableName.Project).as("pDel"),
           db.ref("id").withSchema(TableName.MembershipRole).as("rId"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("rUp"),
           db.ref("updatedAt").withSchema(TableName.Role).as("crUp"),
@@ -1026,7 +1036,15 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.raw(
             `CASE WHEN "${TableName.AdditionalPrivilege}"."isTemporary" AND NOW() >= "${TableName.AdditionalPrivilege}"."temporaryAccessEndTime" THEN true ELSE false END AS "pExp"`
           )
-        );
+        )
+        // deterministic row order — Postgres doesn't guarantee ordering without it, and an unstable
+        // order would flip the hashed fingerprint between calls, silently breaking ETag/cache hits.
+        .orderBy([
+          { column: `${TableName.Membership}.id` },
+          { column: `${TableName.MembershipRole}.id` },
+          { column: `${TableName.AdditionalPrivilege}.id` },
+          { column: `${TableName.IdentityMetadata}.id` }
+        ]);
 
       return generateCacheKeyFromData(rows);
     } catch (error) {

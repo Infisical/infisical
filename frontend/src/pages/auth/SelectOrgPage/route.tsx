@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
@@ -22,7 +23,10 @@ export const SelectOrganizationPageQueryParams = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
   is_admin_login: z.boolean().optional().catch(false),
   force: z.boolean().optional(),
-  mfa_method: z.string().optional().catch(undefined)
+  mfa_method: z.string().optional().catch(undefined),
+  // set by the provider-verified OAuth signup redirect so this page can fire the GTM conversion
+  // event that the bypassed signup page would have pushed
+  signup_completed: z.boolean().optional().catch(false)
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/login/select-organization")({
@@ -39,6 +43,23 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
     ]
   },
   beforeLoad: async ({ context, search }) => {
+    // Provider-verified OAuth signups complete server-side and land here directly, bypassing the
+    // signup page that normally pushes this conversion event. Fire it before any auto-select
+    // redirect so the common single-org case is still counted (cloud only).
+    if (search.signup_completed) {
+      if (isInfisicalCloud()) {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ event: "signup_completed" });
+      }
+      // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
+      // (search middlewares never run on the initial document load, so it must be stripped here).
+      throw redirect({
+        to: "/login/select-organization",
+        search: { ...search, signup_completed: undefined },
+        replace: true
+      });
+    }
+
     // Skip auto-select for MFA pending or force flag
     if (search.mfa_method || search.force) return;
 

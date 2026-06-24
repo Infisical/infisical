@@ -10,13 +10,20 @@ import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretSqlDBSchema,
+  PasswordRequirements,
+  SqlProviders,
+  TDynamicProviderCreateMetadata,
+  TDynamicProviderFns
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
@@ -287,8 +294,9 @@ export const SqlDatabaseProvider = ({
     usernameTemplate?: string | null;
     identity: ActorIdentityAttributes;
     dynamicSecret: TDynamicSecrets;
+    metadata?: TDynamicProviderCreateMetadata;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret, metadata } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
     const { database } = providerInputs;
@@ -298,7 +306,11 @@ export const SqlDatabaseProvider = ({
       identity
     });
 
-    const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
+    // When a secret validation rule covers this provider/scope, it fully
+    // replaces the user-configured password requirements.
+    const password = metadata?.passwordValidation?.constraints?.length
+      ? generatePasswordWithConstraints(metadata.passwordValidation.constraints)
+      : generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
       const db = await $getClient({
         ...providerInputs,

@@ -62,7 +62,7 @@ export const CodeSigningPolicyTab = () => {
       <CardHeader>
         <CardTitle>
           Signing Policies
-          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signingPolicies} />
+          <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.policy} />
         </CardTitle>
         <CardDescription>
           Define policies that require approval before signing operations.

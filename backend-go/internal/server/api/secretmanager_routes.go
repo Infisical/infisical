@@ -5,9 +5,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/infisical/api/internal/ee/services/ratelimit"
 	"github.com/infisical/api/internal/server/api/secretmanager/secret"
 	"github.com/infisical/api/internal/server/api/shared"
-	"github.com/infisical/api/internal/server/middlewares"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
 // RegisterSecretManagerRoutes initializes secret manager handlers and registers their routes.
@@ -15,12 +16,11 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 	l := logger.With(slog.String("product", "secretmanager"))
 
 	secretsHandler := secret.NewHandler(&secret.Deps{
-		Logger:        l,
-		Authenticator: platform.Authenticator,
-		Permission:    platform.Permission,
-		Project:       platform.Project,
-		AuditLog:      platform.AuditLog,
-		Secrets:       svc.Secret,
+		Logger:     l,
+		Permission: platform.Permission,
+		Project:    platform.Project,
+		AuditLog:   platform.AuditLog,
+		Secrets:    svc.Secret,
 	})
 
 	// Create adapter with shared error handler
@@ -28,10 +28,10 @@ func RegisterSecretManagerRoutes(router chi.Router, logger *slog.Logger, platfor
 
 	// Secrets routes - all require authentication
 	router.Group(func(r chi.Router) {
-		r.Use(middlewares.RequireAuth(
-			platform.Authenticator,
-			middlewares.WithAuthModes(middlewares.JWTAuth, middlewares.IdentityAccessTokenAuth, middlewares.ServiceTokenAuth),
+		r.Use(platform.ApiAuthenticator.RequireAuth(
+			apiauth.WithAuthModes(apiauth.JWTAuth, apiauth.IdentityAccessTokenAuth, apiauth.ServiceTokenAuth),
 		))
+		r.Use(platform.RateLimit.Middleware(ratelimit.PresetSecrets))
 
 		// V4 endpoints
 		r.Get("/api/v4/secrets", secretsAdapter.ListSecretsV4)

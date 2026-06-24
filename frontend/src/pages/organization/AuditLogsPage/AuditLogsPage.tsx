@@ -1,14 +1,44 @@
 import { Helmet } from "react-helmet";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
+import { AuditLogStreamsTab } from "./components/AuditLogStreamTab";
 import { LogsSection } from "./components";
 
+enum AuditLogsPageTabs {
+  AuditLogs = "audit-logs",
+  Streams = "streams"
+}
+
+const AuditLogsTab = () => <LogsSection pageView />;
+
 export const AuditLogsPage = () => {
+  const navigate = useNavigate();
   const { isSubOrganization, currentOrg } = useOrganization();
+  const { selectedTab } = useSearch({
+    from: ROUTE_PATHS.Organization.AuditLogsPage.id
+  });
+
+  const tabs = [
+    { key: AuditLogsPageTabs.AuditLogs, label: "Audit Logs", component: AuditLogsTab },
+    { key: AuditLogsPageTabs.Streams, label: "External Log Streams", component: AuditLogStreamsTab }
+  ];
+
+  const activeTab = tabs.some((tab) => tab.key === selectedTab)
+    ? selectedTab
+    : AuditLogsPageTabs.AuditLogs;
+
+  const updateSelectedTab = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/audit-logs",
+      params: { orgId: currentOrg.id },
+      search: { selectedTab: tab }
+    });
+  };
 
   return (
     <div className="h-full bg-bunker-800">
@@ -36,7 +66,24 @@ export const AuditLogsPage = () => {
               </Link>
             )}
           </PageHeader>
-          <LogsSection pageView />
+          <Tabs value={activeTab} onValueChange={updateSelectedTab}>
+            <TabList>
+              {tabs.map(({ key, label }) => (
+                <Tab
+                  variant={isSubOrganization ? "namespace" : "org"}
+                  value={key}
+                  key={`tab-${key}`}
+                >
+                  {label}
+                </Tab>
+              ))}
+            </TabList>
+            {tabs.map(({ key, component: Component }) => (
+              <TabPanel value={key} key={`tab-panel-${key}`}>
+                <Component />
+              </TabPanel>
+            ))}
+          </Tabs>
         </div>
       </div>
     </div>

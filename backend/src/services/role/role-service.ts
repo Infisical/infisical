@@ -23,6 +23,7 @@ import { TRoleDALFactory } from "./role-dal";
 import {
   TCreateRoleDTO,
   TDeleteRoleDTO,
+  TGetProjectRoleByIdDTO,
   TGetRoleByIdDTO,
   TGetRoleBySlugDTO,
   TGetUserPermissionDTO,
@@ -103,7 +104,8 @@ export const roleServiceFactory = ({
     if (existingRole) throw new BadRequestError({ message: `Role with ${data.slug} already exists` });
 
     validateHandlebarTemplate("Role Creation", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
+      allowedExpressions: (val) => val.includes("identity."),
+      allowedHelpers: ["stripPrefix"]
     });
 
     const role = await roleDAL.create({
@@ -148,7 +150,8 @@ export const roleServiceFactory = ({
     }
 
     validateHandlebarTemplate("Role Update", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
+      allowedExpressions: (val) => val.includes("identity."),
+      allowedHelpers: ["stripPrefix"]
     });
 
     const role = await roleDAL.updateById(existingRole.id, {
@@ -241,6 +244,38 @@ export const roleServiceFactory = ({
     return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
+  const getProjectRoleById = async (dto: TGetProjectRoleByIdDTO) => {
+    const { permission, selector } = dto;
+
+    const [role] = await roleDAL.find({ id: selector.id, $notNull: ["projectId"] }, { limit: 1 });
+    if (!role) {
+      throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
+    }
+
+    if (!role.projectId) {
+      throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
+    }
+
+    const project = await projectDAL.findById(role.projectId);
+    if (!project || project.orgId !== permission.orgId) {
+      throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
+    }
+
+    const scopeData = {
+      scope: AccessScope.Project,
+      orgId: permission.orgId,
+      projectId: role.projectId
+    } as const;
+
+    const roleResult = await getRoleById({
+      permission,
+      scopeData,
+      selector: { id: role.id }
+    });
+
+    return { ...roleResult, projectId: scopeData.projectId };
+  };
+
   const getRoleBySlug = async (dto: TGetRoleBySlugDTO) => {
     const { scopeData, selector } = dto;
     const factory = scopeFactory[scopeData.scope];
@@ -317,7 +352,7 @@ export const roleServiceFactory = ({
         );
         if (!userDetails)
           throw new NotFoundError({ message: `User with ID ${assumedPrivilegeDetails.actorId} not found` });
-        assumedPrivilegeDetails.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
+        assumedPrivilegeDetails.actorName = `${userDetails?.firstName ?? ""} ${userDetails?.lastName ?? ""}`.trim();
         assumedPrivilegeDetails.actorEmail = userDetails?.email || "";
       }
 
@@ -337,6 +372,7 @@ export const roleServiceFactory = ({
     deleteRole,
     listRoles,
     getRoleById,
+    getProjectRoleById,
     getRoleBySlug,
     getUserPermission
   };

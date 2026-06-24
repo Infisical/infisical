@@ -6,6 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
+import { recordTokenRenewalMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -370,7 +371,7 @@ export const identityAccessTokenServiceFactory = ({
     };
   };
 
-  const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
+  const renewAccessTokenInner = async ({ accessToken }: TRenewAccessTokenDTO) => {
     const appCfg = getConfig();
     const decodedToken = assertMinimalRenewClaims(verifyAccessTokenJwt(accessToken));
 
@@ -472,6 +473,17 @@ export const identityAccessTokenServiceFactory = ({
       expiresIn: ttl,
       accessTokenMaxTTL: source.accessTokenMaxTTL
     };
+  };
+
+  const renewAccessToken = async (dto: TRenewAccessTokenDTO) => {
+    try {
+      const result = await renewAccessTokenInner(dto);
+      recordTokenRenewalMetric({ outcome: "success" });
+      return result;
+    } catch (error) {
+      recordTokenRenewalMetric({ outcome: "failure", error });
+      throw error;
+    }
   };
 
   const revokeAccessToken = async (accessToken: string) => {

@@ -166,7 +166,8 @@ export const processDigiCertPendingValidationRequest = async (
       digicertOrderId: parsed.digicert.orderId,
       encryptedPrivateKey: request.encryptedPrivateKey ?? undefined,
       isRenewal: parsed.digicert.isRenewal,
-      originalCertificateId: parsed.digicert.originalCertificateId
+      originalCertificateId: parsed.digicert.originalCertificateId,
+      applicationId: request.applicationId
     });
 
     await deps.certificateRequestService.attachCertificateToRequest({

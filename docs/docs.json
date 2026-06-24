@@ -68,6 +68,7 @@
                   "documentation/platform/identities/machine-identities"
                 ]
               },
+              "documentation/platform/oauth-applications",
               {
                 "group": "Access Control",
                 "pages": [
@@ -122,6 +123,7 @@
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/datadog",
                       "integrations/app-connections/dbt",
@@ -130,11 +132,13 @@
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
+                      "integrations/app-connections/f5-big-ip",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
                       "integrations/app-connections/github-radar",
                       "integrations/app-connections/gitlab",
+                      "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
@@ -165,6 +169,7 @@
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/travis-ci",
+                      "integrations/app-connections/trigger-dev",
                       "integrations/app-connections/venafi",
                       "integrations/app-connections/venafi-tpp",
                       "integrations/app-connections/vercel",
@@ -279,6 +284,7 @@
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
                       "documentation/platform/scim/pingone",
+                      "documentation/platform/scim/pingfederate",
                       "documentation/platform/scim/group-mappings"
                     ]
                   },
@@ -479,6 +485,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/convex-access-key",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/datadog-application-key-secret",
                       "documentation/platform/secret-rotation/dbt-service-token",
@@ -514,6 +521,7 @@
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/ibm-api-connect",
                       "documentation/platform/dynamic-secrets/ldap",
                       "documentation/platform/dynamic-secrets/milvus",
                       "documentation/platform/dynamic-secrets/mongo-atlas",
@@ -653,6 +661,7 @@
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
                       "integrations/secret-syncs/travis-ci",
+                      "integrations/secret-syncs/trigger-dev",
                       "integrations/secret-syncs/vercel",
                       "integrations/secret-syncs/windmill",
                       "integrations/secret-syncs/zabbix"
@@ -830,6 +839,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
+                          "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler"
                         ]
                       }
@@ -840,10 +850,9 @@
                     "pages": [
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
-                      "documentation/platform/pki/code-signing/signing-policies",
-                      "documentation/platform/pki/code-signing/signing-requests",
-                      "documentation/platform/pki/code-signing/grants",
-                      "documentation/platform/pki/code-signing/pkcs11-module"
+                      "documentation/platform/pki/code-signing/approvals",
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      "documentation/platform/pki/code-signing/windows-ksp"
                     ]
                   },
                   {
@@ -873,6 +882,7 @@
                           "documentation/platform/pki/ca/lets-encrypt",
                           "documentation/platform/pki/ca/digicert",
                           "documentation/platform/pki/ca/digicert-direct",
+                          "documentation/platform/pki/ca/godaddy",
                           "documentation/platform/pki/ca/sectigo",
                           "documentation/platform/pki/ca/azure-adcs",
                           "documentation/platform/pki/ca/aws-pca",
@@ -884,11 +894,18 @@
                     ]
                   },
                   {
-                    "group": "Certificate Settings",
+                    "group": "Settings",
                     "pages": [
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
-                      "documentation/platform/pki/settings/certificate-cleanup"
+                      "documentation/platform/pki/settings/certificate-cleanup",
+                      {
+                        "group": "HSM",
+                        "pages": [
+                          "documentation/platform/pki/settings/hsm-connectors",
+                          "documentation/platform/pki/settings/hsm-connectors-fortanix-dsm"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -911,7 +928,13 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip",
+                  {
+                    "group": "KMIP Integration",
+                    "pages": [
+                      "documentation/platform/kms/kmip",
+                      "documentation/platform/kms/kmip-dell-poweredge"
+                    ]
+                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
@@ -1030,7 +1053,8 @@
               },
               "cli/scanning-overview",
               "cli/project-config",
-              "cli/faq"
+              "cli/faq",
+              "cli/cloudsmith-migration"
             ]
           }
         ]
@@ -1187,6 +1211,7 @@
                   "api-reference/endpoints/project-users/remove-member-from-project",
                   "api-reference/endpoints/project-users/memberships",
                   "api-reference/endpoints/project-users/get-by-username",
+                  "api-reference/endpoints/project-users/get-by-user-id",
                   "api-reference/endpoints/project-users/update-membership",
                   {
                     "group": "Legacy",
@@ -1267,6 +1292,7 @@
                   "api-reference/endpoints/project-roles/update",
                   "api-reference/endpoints/project-roles/delete",
                   "api-reference/endpoints/project-roles/get-by-slug",
+                  "api-reference/endpoints/project-roles/get-by-id",
                   "api-reference/endpoints/project-roles/list",
                   {
                     "group": "Legacy",
@@ -1572,6 +1598,18 @@
                     ]
                   },
                   {
+                    "group": "F5 BIG-IP",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/f5-big-ip/list",
+                      "api-reference/endpoints/app-connections/f5-big-ip/available",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-id",
+                      "api-reference/endpoints/app-connections/f5-big-ip/get-by-name",
+                      "api-reference/endpoints/app-connections/f5-big-ip/create",
+                      "api-reference/endpoints/app-connections/f5-big-ip/update",
+                      "api-reference/endpoints/app-connections/f5-big-ip/delete"
+                    ]
+                  },
+                  {
                     "group": "Fly.io",
                     "pages": [
                       "api-reference/endpoints/app-connections/flyio/list",
@@ -1581,6 +1619,18 @@
                       "api-reference/endpoints/app-connections/flyio/create",
                       "api-reference/endpoints/app-connections/flyio/update",
                       "api-reference/endpoints/app-connections/flyio/delete"
+                    ]
+                  },
+                  {
+                    "group": "Trigger.dev",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/trigger-dev/list",
+                      "api-reference/endpoints/app-connections/trigger-dev/available",
+                      "api-reference/endpoints/app-connections/trigger-dev/get-by-id",
+                      "api-reference/endpoints/app-connections/trigger-dev/get-by-name",
+                      "api-reference/endpoints/app-connections/trigger-dev/create",
+                      "api-reference/endpoints/app-connections/trigger-dev/update",
+                      "api-reference/endpoints/app-connections/trigger-dev/delete"
                     ]
                   },
                   {
@@ -2772,6 +2822,19 @@
                     ]
                   },
                   {
+                    "group": "Trigger.dev",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/trigger-dev/list",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/get-by-id",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/get-by-name",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/create",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/update",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/delete",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "GCP Secret Manager",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
@@ -3176,6 +3239,18 @@
                         ]
                       },
                       {
+                        "group": "F5 BIG-IP",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/list",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/get-by-id",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/create",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/update",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/delete",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/f5-big-ip/remove-certificates"
+                        ]
+                      },
+                      {
                         "group": "NetScaler",
                         "pages": [
                           "api-reference/endpoints/pki/syncs/netscaler/list",
@@ -3303,7 +3378,45 @@
                 ]
               },
               {
-                "group": "Certificate Settings",
+                "group": "Code Signing",
+                "pages": [
+                  {
+                    "group": "Signers",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/list",
+                      "api-reference/endpoints/code-signing/signers/create",
+                      "api-reference/endpoints/code-signing/signers/read",
+                      "api-reference/endpoints/code-signing/signers/update",
+                      "api-reference/endpoints/code-signing/signers/delete",
+                      "api-reference/endpoints/code-signing/signers/sign",
+                      "api-reference/endpoints/code-signing/signers/public-key",
+                      "api-reference/endpoints/code-signing/signers/export-certificate",
+                      "api-reference/endpoints/code-signing/signers/enable",
+                      "api-reference/endpoints/code-signing/signers/disable",
+                      "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                      "api-reference/endpoints/code-signing/signers/list-operations"
+                    ]
+                  },
+                  {
+                    "group": "Approval Policy",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/get-policy",
+                      "api-reference/endpoints/code-signing/signers/update-policy"
+                    ]
+                  },
+                  {
+                    "group": "Signing Requests",
+                    "pages": [
+                      "api-reference/endpoints/code-signing/signers/list-requests",
+                      "api-reference/endpoints/code-signing/signers/request-to-sign",
+                      "api-reference/endpoints/code-signing/signers/pre-approve",
+                      "api-reference/endpoints/code-signing/signers/revoke-request"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Settings",
                 "pages": [
                   {
                     "group": "Certificate Policies",
@@ -3429,6 +3542,7 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
+                  "api-reference/endpoints/kms/keys/rotate",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
                   "api-reference/endpoints/kms/keys/private-key",
@@ -3450,6 +3564,19 @@
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }
+            ]
+          },
+          {
+            "group": "KMIP Servers",
+            "pages": [
+              "api-reference/endpoints/kmip-servers/list",
+              "api-reference/endpoints/kmip-servers/get",
+              "api-reference/endpoints/kmip-servers/create",
+              "api-reference/endpoints/kmip-servers/update",
+              "api-reference/endpoints/kmip-servers/delete",
+              "api-reference/endpoints/kmip-servers/generate-enrollment-token",
+              "api-reference/endpoints/kmip-servers/revoke",
+              "api-reference/endpoints/kmip-servers/login"
             ]
           },
           {
@@ -3744,15 +3871,15 @@
     },
     {
       "source": "/documentation/platform/pki/certificates",
-      "destination": "/documentation/platform/pki/certificates/certificates"
+      "destination": "/documentation/platform/pki/applications/certificates"
     },
     {
       "source": "/documentation/platform/pki/est",
-      "destination": "/documentation/platform/pki/enrollment-methods/est"
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
     },
     {
       "source": "/documentation/platform/pki/alerting",
-      "destination": "/documentation/platform/pki/alerting/overview"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",
@@ -3938,6 +4065,94 @@
       "source": "/changelog/:slug*",
       "destination": "/documentation/getting-started/overview",
       "permanent": true
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/overview",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-secrets-manager",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/azure-key-vault",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/azure-key-vault"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/chef",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/chef"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/netscaler",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/netscaler"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/overview",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/pagerduty-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/pagerduty-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/slack-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/slack-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/webhook-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/webhook-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/approvals",
+      "destination": "/documentation/platform/pki/applications/approvals"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/certificates",
+      "destination": "/documentation/platform/pki/applications/certificates"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/policies",
+      "destination": "/documentation/platform/pki/settings/policies"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/profiles",
+      "destination": "/documentation/platform/pki/settings/profiles"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/overview",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/api",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/api"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/est",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/acme",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/acme"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/scep",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/scep"
     }
   ]
 }

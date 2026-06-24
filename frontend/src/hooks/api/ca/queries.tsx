@@ -85,7 +85,8 @@ export const useListExternalCasByProjectId = () => {
         awsPcaResponse,
         digicertResponse,
         awsAcmPublicCaResponse,
-        venafiTppResponse
+        venafiTppResponse,
+        godaddyResponse
       ] = await Promise.allSettled([
         apiRequest.get<TUnifiedCertificateAuthority[]>(`/api/v1/cert-manager/ca/${CaType.ACME}`),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
@@ -100,7 +101,8 @@ export const useListExternalCasByProjectId = () => {
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.VENAFI_TPP}`
-        )
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(`/api/v1/cert-manager/ca/${CaType.GODADDY}`)
       ]);
 
       const allCas: TUnifiedCertificateAuthority[] = [];
@@ -127,6 +129,10 @@ export const useListExternalCasByProjectId = () => {
 
       if (venafiTppResponse.status === "fulfilled") {
         allCas.push(...venafiTppResponse.value.data);
+      }
+
+      if (godaddyResponse.status === "fulfilled") {
+        allCas.push(...godaddyResponse.value.data);
       }
 
       return allCas;

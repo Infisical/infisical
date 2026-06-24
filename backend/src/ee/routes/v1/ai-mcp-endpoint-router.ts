@@ -21,9 +21,9 @@ const sendWwwAuthenticate = (reply: FastifyReply, endpointId: string, descriptio
 };
 
 // Custom onRequest hook to enforce auth while returning proper WWW-Authenticate hint for MCP clients
-const requireMcpAuthHook = (
-  req: FastifyRequest,
-  reply: FastifyReply,
+const requireMcpAuthHook = <TReq extends FastifyRequest, TRes extends FastifyReply>(
+  req: TReq,
+  reply: TRes,
   done: HookHandlerDoneFunction,
   endpointId: string
 ) => {
@@ -60,7 +60,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       })
     },
     url: "/:endpointId/connect",
-    onRequest: (req, reply, done) => requireMcpAuthHook(req, reply, done, req.params.endpointId),
+    onRequest: (req, reply, done) =>
+      requireMcpAuthHook(req, reply, done, (req.params as { endpointId: string }).endpointId),
     handler: async (req, res) => {
       await res.hijack(); // allow manual control of the underlying res
 
@@ -127,7 +128,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         endpointId: z.string().uuid().trim().min(1)
       })
     },
-    onRequest: (req, reply, done) => requireMcpAuthHook(req, reply, done, req.params.endpointId),
+    onRequest: (req, reply, done) =>
+      requireMcpAuthHook(req, reply, done, (req.params as { endpointId: string }).endpointId),
     handler: async (_req, res) => {
       void res
         .status(405)

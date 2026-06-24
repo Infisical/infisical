@@ -34,6 +34,8 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { MaxActiveCerts } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -129,6 +131,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof internalCertificateAuthorityServiceFactory>;
@@ -149,7 +152,8 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService,
   licenseService,
-  caSigningConfigDAL
+  caSigningConfigDAL,
+  usageMeteringService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
@@ -2091,6 +2095,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
+    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+
     return {
       certificate: leafCert.toString("pem"),
       certificateChain: certificateChainPem,
@@ -2248,12 +2254,12 @@ export const internalCertificateAuthorityServiceFactory = ({
       $checkSignature(ca.internalCa.keyAlgorithm, $getSignatureKeyFamily(signatureAlgorithm), signatureAlgorithm);
     }
 
-    const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
+    const caKeyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
 
     const alg =
       isPqcAlgorithm(ca.internalCa.keyAlgorithm) || !signatureAlgorithm
-        ? keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm)
-        : signatureAlgorithmToAlgCfg(signatureAlgorithm, effectiveKeyAlgorithm);
+        ? keyAlgorithmToAlgCfg(caKeyAlgorithm)
+        : signatureAlgorithmToAlgCfg(signatureAlgorithm, caKeyAlgorithm);
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
@@ -2549,6 +2555,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     } else {
       cert = await certificateDAL.transaction(createSignedCert);
     }
+
+    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
 
     return {
       certificate: leafCert,

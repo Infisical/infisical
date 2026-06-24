@@ -16,6 +16,10 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
   - **ACM:** `acm:ListCertificates`, `acm:DescribeCertificate`, `acm:ImportCertificate`, `acm:DeleteCertificate`, `acm:ListTagsForCertificate`
   - **ELB:** `elasticloadbalancing:DescribeLoadBalancers`, `elasticloadbalancing:DescribeListeners`, `elasticloadbalancing:DescribeListenerCertificates`, `elasticloadbalancing:AddListenerCertificates`, `elasticloadbalancing:RemoveListenerCertificates`, `elasticloadbalancing:ModifyListener`
 
+<Tip>
+  If your AWS Connection uses the **Assume Role** method and is created within Certificate Manager, use your **Organization ID** as the External ID in your AWS IAM role trust policy. You can find the Organization ID in your organization settings. See the [AWS Connection docs](/integrations/app-connections/aws) for more details.
+</Tip>
+
 ## Create an ELB Sync
 
 <Tabs>
@@ -34,7 +38,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from listeners and ACM when no longer active.
             - **Preserve ARN on Renewal**: Keep the same ARN when renewing instead of creating a new certificate.
             - **Include Root CA**: Include the Root CA certificate in the chain.
-            - **Certificate Name Schema**: Customize ACM tags using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize ACM tags using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:

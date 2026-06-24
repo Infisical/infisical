@@ -39,7 +39,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;

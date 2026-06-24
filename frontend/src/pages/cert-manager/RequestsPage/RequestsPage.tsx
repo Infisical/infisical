@@ -95,15 +95,13 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
   );
 };
 
-const isCodeSigningData = (data: unknown): data is { requestData: CodeSigningRequestData } => {
-  return Boolean(
-    data &&
-      typeof data === "object" &&
-      "requestData" in data &&
-      data.requestData &&
-      typeof data.requestData === "object" &&
-      "signerName" in (data.requestData as object)
-  );
+const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
+  if (!data || typeof data !== "object") return null;
+  const wrapped = (data as { requestData?: unknown }).requestData;
+  if (wrapped && typeof wrapped === "object" && "signerName" in (wrapped as object)) {
+    return wrapped as CodeSigningRequestData;
+  }
+  return null;
 };
 
 export const RequestsPage = () => {
@@ -163,12 +161,25 @@ export const RequestsPage = () => {
     })
   );
 
-  const { data: apps = [] } = useListPkiApplications();
+  // resolve names only for the applications actually referenced by the visible
+  // requests, rather than loading the project's entire application list
+  const referencedAppIds = useMemo(() => {
+    const ids = new Set<string>();
+    (requests as TApprovalRequest[]).forEach((r) => {
+      if (r.scopeType === ApprovalPolicyScope.PkiApplication && r.scopeId) ids.add(r.scopeId);
+    });
+    return Array.from(ids);
+  }, [requests]);
+
+  const { data: appsResponse } = useListPkiApplications(
+    { applicationIds: referencedAppIds, limit: 100 },
+    { enabled: referencedAppIds.length > 0 }
+  );
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
-    apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
+    (appsResponse?.applications ?? []).forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
     return map;
-  }, [apps]);
+  }, [appsResponse]);
 
   const filtered = useMemo(() => {
     const norm = debouncedSearch.trim().toLowerCase();
@@ -205,9 +216,7 @@ export const RequestsPage = () => {
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
-        const signerName = isCodeSigningData(r.requestData)
-          ? (r.requestData.requestData.signerName ?? "")
-          : "";
+        const signerName = getCodeSigningData(r.requestData)?.signerName ?? "";
         const requester = `${r.requesterName} ${r.requesterEmail}`;
         return signerName.toLowerCase().includes(norm) || requester.toLowerCase().includes(norm);
       });
@@ -484,9 +493,7 @@ export const RequestsPage = () => {
                         </TableHeader>
                         <TableBody>
                           {filteredSigning.map((r) => {
-                            const signingData = isCodeSigningData(r.requestData)
-                              ? r.requestData.requestData
-                              : null;
+                            const signingData = getCodeSigningData(r.requestData);
                             const signerName = signingData?.signerName ?? "—";
                             const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
                               label: r.status,

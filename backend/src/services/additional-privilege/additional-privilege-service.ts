@@ -69,7 +69,8 @@ export const additionalPrivilegeServiceFactory = ({
     if (existingSlug) throw new BadRequestError({ message: `Additional privilege with name ${data.name} exists` });
 
     validateHandlebarTemplate("Additional Privilege Create", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
+      allowedExpressions: (val) => val.includes("identity."),
+      allowedHelpers: ["stripPrefix"]
     });
 
     if (!data.isTemporary) {
@@ -132,7 +133,8 @@ export const additionalPrivilegeServiceFactory = ({
       throw new NotFoundError({ message: `Additional privilege with id ${dto.selector.id} doesn't exist` });
 
     validateHandlebarTemplate("Additional Privilege Create", JSON.stringify(data.permissions || []), {
-      allowedExpressions: (val) => val.includes("identity.")
+      allowedExpressions: (val) => val.includes("identity."),
+      allowedHelpers: ["stripPrefix"]
     });
 
     const updatedData = { ...existingPrivilege, ...data };

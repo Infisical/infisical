@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { EditIcon, FolderIcon, InfoIcon, TrashIcon, Undo2Icon } from "lucide-react";
+import {
+  EditIcon,
+  FolderIcon,
+  FolderInputIcon,
+  InfoIcon,
+  TrashIcon,
+  Undo2Icon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -25,6 +32,7 @@ type Props = {
   isSelected: boolean;
   onToggleFolderSelect: (folderName: string) => void;
   onToggleFolderEdit: (name: string) => void;
+  onToggleFolderMove: (name: string) => void;
   onToggleFolderDelete: (name: string) => void;
   pendingAction?: PendingAction;
   onBatchRevert?: (folderName: string) => void;
@@ -39,6 +47,7 @@ export const FolderTableRow = ({
   isSelected,
   onToggleFolderSelect,
   onToggleFolderEdit,
+  onToggleFolderMove,
   onToggleFolderDelete,
   onClick,
   pendingAction,
@@ -128,6 +137,24 @@ export const FolderTableRow = ({
               : "top-1/2 right-[3px] -translate-y-1/2"
           )}
         >
+          {pendingAction !== PendingAction.Delete && (
+            <Tooltip disableHoverableContent>
+              <TooltipTrigger>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  onClick={(e) => {
+                    onToggleFolderMove(folderName);
+                    e.stopPropagation();
+                  }}
+                >
+                  <FolderInputIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Move Folder</TooltipContent>
+            </Tooltip>
+          )}
           {pendingAction !== PendingAction.Delete && (
             <Tooltip disableHoverableContent>
               <TooltipTrigger>

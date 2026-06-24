@@ -21,7 +21,16 @@ const InventoryViewFiltersSchema = z
     caIds: z.array(z.string().uuid()).max(50).optional(),
     profileIds: z.array(z.string().uuid()).max(50).optional(),
     applicationIds: z.array(z.string().uuid()).max(50).optional(),
-    source: z.union([z.string().max(64), z.array(z.string().max(64)).max(10)]).optional()
+    source: z.union([z.string().max(64), z.array(z.string().max(64)).max(10)]).optional(),
+    metadata: z
+      .array(
+        z.object({
+          key: z.string().trim().min(1).max(255),
+          value: z.string().trim().max(1020).optional()
+        })
+      )
+      .max(20)
+      .optional()
   })
   .strict();
 

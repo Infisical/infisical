@@ -31,6 +31,7 @@ Supported events:
 
 - **Secret Modified** (`secrets.modified`) — triggered when secrets in the configured scope are created, updated, or deleted.
 - **Secret Rotation Failed** (`secrets.rotation-failed`) — triggered when a secret rotation in the configured scope fails.
+- **Honey Token Triggered** (`honey-token.triggered`) — triggered when a honey token is activated.
 
 ### Webhook Payload Format
 
@@ -40,7 +41,7 @@ Supported events:
 	"project": {
 		"workspaceId": "the workspace id",
 		"environment": "project environment (slug)",
-		"environmentName": "project environment (name)"
+		"environmentName": "project environment (name)",
 		"secretPath": "project folder path",
 		"changedBy": "Actor that changed the secret",
 		"changedByActorType": "The actor type that triggered the change. Possible values: `service`, `user`, `identity`."
@@ -57,12 +58,31 @@ Supported events:
 		"projectId": "the project id",
 		"projectName": "the project name",
 		"environment": "project environment",
-		"environmentName": "project environment (name)"
+		"environmentName": "project environment (name)",
 		"secretPath": "project folder path",
 		"rotationName": "name of the failed rotation",
 		"errorMessage": "error details",
 		"triggeredManually": false
 	},
 	"timestamp": ""
+}
+```
+
+```json
+{
+	"event": "honey-token.triggered",
+	"project": {
+		"projectId": "the project id",
+		"projectName": "the project name",
+		"environment": "project environment (slug)",
+		"environmentName": "project environment (name)",
+		"secretPath": "project folder path"
+	},
+	"honeyToken": {
+		"name": "name of the honey token",
+		"eventName": "the AWS event that triggered the honey token",
+		"sourceIp": "IP address of the caller",
+		"awsRegion": "AWS region where the event occurred"
+	}
 }
 ```

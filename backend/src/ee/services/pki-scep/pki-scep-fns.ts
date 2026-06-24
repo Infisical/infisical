@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -60,6 +61,7 @@ export const generateRaCertificate = async (
 
 export const isSignerCertIssuedByCa = async ({
   signerCertDer,
+  signerCert: providedSignerCert,
   caId,
   certificateDAL,
   certificateAuthorityCertDAL,
@@ -68,6 +70,7 @@ export const isSignerCertIssuedByCa = async ({
   kmsService
 }: {
   signerCertDer: Buffer;
+  signerCert?: x509.X509Certificate;
   caId: string;
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
@@ -76,7 +79,7 @@ export const isSignerCertIssuedByCa = async ({
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 }): Promise<boolean> => {
   try {
-    const signerCert = new x509.X509Certificate(signerCertDer);
+    const signerCert = providedSignerCert ?? new x509.X509Certificate(signerCertDer);
 
     if (new Date() > signerCert.notAfter) {
       return false;
@@ -126,6 +129,82 @@ export const isSignerCertIssuedByCa = async ({
   } catch {
     return false;
   }
+};
+
+export enum ScepRenewalDenyReason {
+  InvalidSigner = "invalid-signer",
+  WrongProfile = "wrong-profile",
+  IdentityMismatch = "identity-mismatch"
+}
+
+export type TScepRenewalAuthResult = { authorized: true } | { authorized: false; reason: ScepRenewalDenyReason };
+
+const DN_WHITESPACE_RE = new RE2("\\s+", "g");
+
+const normalizeX500Name = (name: x509.Name): string => {
+  const rdns = name.toJSON();
+
+  const canonicalRdns = rdns.map((rdn) => {
+    const pairs: string[] = [];
+    for (const [type, values] of Object.entries(rdn)) {
+      const normalizedType = type.toLowerCase();
+      for (const value of values) {
+        const normalizedValue = value.normalize("NFC").replace(DN_WHITESPACE_RE, " ").trim().toLowerCase();
+        pairs.push(`${normalizedType}=${normalizedValue}`);
+      }
+    }
+    return pairs.sort().join("+");
+  });
+
+  return canonicalRdns.join(",");
+};
+
+// SANs are an unordered set in RFC 5280; normalize each entry and sort for comparison.
+const normalizeSubjectAltNames = (ext: x509.SubjectAlternativeNameExtension | null | undefined): string => {
+  if (!ext) return "";
+  const pairs: string[] = [];
+  for (const item of ext.names.items) {
+    const type = String(item.type).toLowerCase();
+    const raw = String(item.value).normalize("NFC").trim();
+    const value = type === "dns" ? raw.toLowerCase() : raw;
+    pairs.push(`${type}:${value}`);
+  }
+  return pairs.sort().join(",");
+};
+
+export const evaluateScepRenewalAuthorization = ({
+  isValidSigner,
+  storedSignerCert,
+  profileId,
+  csrSubjectName,
+  signerCertSubjectName,
+  csrSubjectAltNames,
+  signerCertSubjectAltNames
+}: {
+  isValidSigner: boolean;
+  storedSignerCert?: { profileId?: string | null } | null;
+  profileId: string;
+  csrSubjectName: x509.Name;
+  signerCertSubjectName: x509.Name;
+  csrSubjectAltNames?: x509.SubjectAlternativeNameExtension | null;
+  signerCertSubjectAltNames?: x509.SubjectAlternativeNameExtension | null;
+}): TScepRenewalAuthResult => {
+  if (!isValidSigner) {
+    return { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
+  }
+
+  if (!storedSignerCert || storedSignerCert.profileId !== profileId) {
+    return { authorized: false, reason: ScepRenewalDenyReason.WrongProfile };
+  }
+
+  if (
+    normalizeX500Name(csrSubjectName) !== normalizeX500Name(signerCertSubjectName) ||
+    normalizeSubjectAltNames(csrSubjectAltNames) !== normalizeSubjectAltNames(signerCertSubjectAltNames)
+  ) {
+    return { authorized: false, reason: ScepRenewalDenyReason.IdentityMismatch };
+  }
+
+  return { authorized: true };
 };
 
 export const getScepCapabilities = ({ allowCertBasedRenewal }: { allowCertBasedRenewal: boolean }): string => {

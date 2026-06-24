@@ -42,6 +42,15 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Convex Access Key",
+      slug: "convex-access-key",
+      path: "/documentation/platform/secret-rotation/convex-access-key",
+      description:
+        "Learn how to automatically rotate Convex access keys.",
+      category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Auth0 Client Secret",
       slug: "auth0-client-secret",
       path: "/documentation/platform/secret-rotation/auth0-client-secret",

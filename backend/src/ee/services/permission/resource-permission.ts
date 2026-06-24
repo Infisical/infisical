@@ -4,7 +4,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
-  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
@@ -21,7 +20,22 @@ export enum ResourcePermissionSub {
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   Member = "member",
-  Role = "role"
+  Signer = "pki-signer"
+}
+
+export enum ResourcePermissionSignerActions {
+  Read = "read",
+  Edit = "edit",
+  Delete = "delete",
+  ManageStatus = "manage-status",
+  ManageMembers = "manage-members",
+  ManagePolicy = "manage-policy",
+  Sign = "sign",
+  RequestSign = "request-sign",
+  PreApprove = "pre-approve",
+  RevokeRequest = "revoke-request",
+  ReissueCertificate = "reissue-certificate",
+  ExportCertificate = "export-certificate"
 }
 
 export enum ResourcePermissionApplicationActions {
@@ -78,8 +92,7 @@ export type ResourcePermissionSet =
   | [ProjectPermissionApprovalRequestActions, ResourcePermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ResourcePermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionMemberActions, ResourcePermissionSub.Member]
-  | [ProjectPermissionActions, ResourcePermissionSub.Role]
-  | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles]
-  | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs];
+  | [ResourcePermissionSignerActions, ResourcePermissionSub.Signer]
+  | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles];
 
 export type TResourceAbility = MongoAbility<ResourcePermissionSet>;

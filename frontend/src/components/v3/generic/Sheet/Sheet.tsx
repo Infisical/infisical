@@ -55,7 +55,7 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         onPointerDownOutside={(e) => {
-          if ((e.target as HTMLElement)?.closest?.(".Toastify")) {
+          if ((e.target as HTMLElement)?.closest?.("[data-sonner-toast]")) {
             e.preventDefault();
           }
           onPointerDownOutside?.(e);

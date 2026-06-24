@@ -54,7 +54,7 @@ const handleMfaVerification = async (
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
 
-  server.decorateRequest("mfa", null);
+  server.decorateRequest("mfa");
   server.addHook("preValidation", async (req, res) => {
     const authorizationHeader = req.headers.authorization;
 

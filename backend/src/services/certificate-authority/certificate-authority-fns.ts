@@ -7,7 +7,14 @@ import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey }
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CertStatus,
+  TAltNameType
+} from "../certificate/certificate-types";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -74,6 +81,53 @@ export const extractDnParts = (name: x509.Name): TDNParts => ({
   commonName: getNameField(name, "CN"),
   locality: getNameField(name, "L")
 });
+
+/**
+ * Extract the common name, SANs, key usages, and extended key usages from an issued X.509
+ * certificate. Used by external CAs (DigiCert, GoDaddy, ...) to populate the local certificate
+ * record from a downloaded leaf certificate.
+ */
+export const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
+  const subject = extractDnParts(certObj.subjectName);
+  const commonName = subject.commonName ?? "";
+
+  const sanExt = certObj.getExtension("2.5.29.17");
+  const altNames: string[] = [];
+  if (sanExt) {
+    const sanNames = new x509.GeneralNames(sanExt.value);
+    for (const item of sanNames.items) {
+      if (
+        item.type === TAltNameType.DNS ||
+        item.type === TAltNameType.IP ||
+        item.type === TAltNameType.EMAIL ||
+        item.type === TAltNameType.URL
+      ) {
+        altNames.push(item.value);
+      }
+    }
+  }
+
+  const keyUsages: CertKeyUsage[] = [];
+  const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
+  if (keyUsagesExt) {
+    for (const keyUsage of Object.values(CertKeyUsage)) {
+      if ((x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0) {
+        keyUsages.push(keyUsage);
+      }
+    }
+  }
+
+  const extendedKeyUsages: CertExtendedKeyUsage[] = [];
+  const ekuExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
+  if (ekuExt) {
+    for (const oid of ekuExt.usages) {
+      const mapped = CertExtendedKeyUsageOIDToName[oid as string];
+      if (mapped) extendedKeyUsages.push(mapped);
+    }
+  }
+
+  return { commonName, altNames, keyUsages, extendedKeyUsages };
+};
 
 /**
  * Parse a DN string into its component parts.

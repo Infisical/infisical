@@ -20,7 +20,12 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -46,7 +51,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
-  server.decorateRequest("ssoConfig", null);
+  server.decorateRequest("ssoConfig");
   passport.use(
     new MultiSamlStrategy(
       {
@@ -97,8 +102,19 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               // Setting wantAuthnResponseSigned to false allows both "Sign SAML assertion" and
               // "Sign SAML response and assertion" configurations to work.
               samlConfig.wantAuthnResponseSigned = false;
-              if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
-                samlConfig.audience = `spn:${ssoConfig.issuer}`;
+              // RelayState is attacker-controlled — wrap the JSON.parse so a malformed value
+              // doesn't crash the auth flow with a 500. Mirrors the defensive shape used
+              // for callbackPort parsing below (1KB cap + try/catch + log-and-fall-through).
+              const relayState =
+                typeof req?.body === "object" ? (req.body as { RelayState?: string })?.RelayState : undefined;
+              if (relayState && Buffer.byteLength(relayState) <= 1024) {
+                try {
+                  if ((JSON.parse(relayState) as { spInitiated?: boolean })?.spInitiated) {
+                    samlConfig.audience = `spn:${ssoConfig.issuer}`;
+                  }
+                } catch (err) {
+                  logger.error(err, "RelayState parsing failed in SAML config");
+                }
               }
             }
             if (
@@ -118,6 +134,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       },
       // eslint-disable-next-line
       async (req, profile, cb) => {
+        const authMetricStartTime = performance.now();
         if (!profile) throw new BadRequestError({ message: "Missing profile" });
 
         const email =
@@ -184,6 +201,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             metadata: userMetadata
           });
 
+          cb(null, loginResult);
+
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
               "infisical.user.email": email.toLowerCase(),
@@ -197,7 +216,12 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             });
           }
 
-          cb(null, loginResult);
+          recordAuthAttemptMetric({
+            startTime: authMetricStartTime,
+            method: AuthAttemptAuthMethod.SAML,
+            result: AuthAttemptAuthResult.SUCCESS,
+            orgId: loginResult.orgId
+          });
         } catch (error) {
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
@@ -208,6 +232,13 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
             });
           }
+
+          recordAuthAttemptMetric({
+            startTime: authMetricStartTime,
+            method: AuthAttemptAuthMethod.SAML,
+            result: AuthAttemptAuthResult.FAILURE,
+            error
+          });
 
           logger.error(error);
           cb(error as Error);
@@ -231,18 +262,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         callback_port: z.string().optional()
       })
     },
-    preValidation: (req, res) =>
-      (
+    preValidation: (req, res) => {
+      const query = req.query as { callback_port?: string };
+      return (
         passport.authenticate("saml", {
           failureRedirect: "/",
           additionalParams: {
             RelayState: JSON.stringify({
               spInitiated: true,
-              callbackPort: req.query.callback_port ?? ""
+              callbackPort: query.callback_port ?? ""
             })
           }
         } as AuthenticateOptions) as any
-      )(req, res),
+      )(req, res);
+    },
     handler: () => {}
   });
 
@@ -260,18 +293,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         callback_port: z.string().optional()
       })
     },
-    preValidation: (req, res) =>
-      (
+    preValidation: (req, res) => {
+      const query = req.query as { callback_port?: string };
+      return (
         passport.authenticate("saml", {
           failureRedirect: "/",
           additionalParams: {
             RelayState: JSON.stringify({
               spInitiated: true,
-              callbackPort: req.query.callback_port ?? ""
+              callbackPort: query.callback_port ?? ""
             })
           }
         } as AuthenticateOptions) as any
-      )(req, res),
+      )(req, res);
+    },
     handler: () => {}
   });
 
@@ -289,18 +324,20 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         callback_port: z.string().optional()
       })
     },
-    preValidation: (req, res) =>
-      (
+    preValidation: (req, res) => {
+      const query = req.query as { callback_port?: string };
+      return (
         passport.authenticate("saml", {
           failureRedirect: "/",
           additionalParams: {
             RelayState: JSON.stringify({
               spInitiated: true,
-              callbackPort: req.query.callback_port ?? ""
+              callbackPort: query.callback_port ?? ""
             })
           }
         } as AuthenticateOptions) as any
-      )(req, res),
+      )(req, res);
+    },
     handler: () => {}
   });
 

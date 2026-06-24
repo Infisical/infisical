@@ -477,9 +477,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <span>
           No certificate profiles exist yet. Create one in{" "}
           <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+            to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
             params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-            search={{ selectedTab: "certificate-profiles" }}
             className="text-primary underline hover:text-primary/80"
           >
             Certificate Profiles
@@ -590,7 +589,20 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   const hasMethods = methods.length > 0;
                   return (
                     <TableRow key={p.profileId}>
-                      <TableCell className="font-mono">{p.profileSlug}</TableCell>
+                      <TableCell className="font-mono">
+                        <Link
+                          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                          params={{
+                            orgId: orgId ?? "",
+                            projectId: projectId ?? "",
+                            profileId: p.profileId
+                          }}
+                          search={{ from: "application", applicationName: application.name }}
+                          className="hover:underline"
+                        >
+                          {p.profileSlug}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         {/* eslint-disable-next-line no-nested-ternary */}
                         {canConfigureEnrollment ? (

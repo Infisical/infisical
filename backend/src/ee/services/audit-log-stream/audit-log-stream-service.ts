@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
-import { isAxiosError } from "axios";
 
-import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -9,7 +8,6 @@ import {
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -17,7 +15,7 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
-import { LogProvider } from "./audit-log-stream-enums";
+import { LogProvider, StreamMode } from "./audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
@@ -37,7 +35,7 @@ export const auditLogStreamServiceFactory = ({
   licenseService,
   kmsService
 }: TAuditLogStreamServiceFactoryDep) => {
-  const create = async ({ provider, credentials }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
+  const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
@@ -75,14 +73,19 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.create({
       orgId: actor.orgId,
       provider,
-      encryptedCredentials
+      encryptedCredentials,
+      // All new streams use batch delivery. "single" is reachable only by existing
+      // custom/cribl streams that were migrated, and only as a one-way upgrade away from it.
+      streamMode: StreamMode.Batch,
+      // null when unset -> stream all products.
+      filters: filters ?? null
     });
 
     return { ...logStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
   const updateById = async (
-    { logStreamId, provider, credentials }: TUpdateAuditLogStreamDTO,
+    { logStreamId, provider, credentials, streamMode, filters }: TUpdateAuditLogStreamDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -105,6 +108,15 @@ export const auditLogStreamServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
+    // Stream mode can only be upgraded from "single" to "batch" — never the reverse.
+    // This covers every case: new/vendor streams are already "batch", so any attempt to
+    // set "single" on them is a forbidden downgrade.
+    if (streamMode === StreamMode.Single && logStream.streamMode === StreamMode.Batch) {
+      throw new BadRequestError({
+        message: "Audit Log Stream cannot be switched from batch delivery back to single delivery"
+      });
+    }
 
     const finalCredentials = { ...credentials };
 
@@ -152,7 +164,11 @@ export const auditLogStreamServiceFactory = ({
     });
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
-      encryptedCredentials
+      encryptedCredentials,
+      // Only persist a mode change when provided (the validated single -> batch upgrade).
+      ...(streamMode ? { streamMode } : {}),
+      // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).
+      ...(filters !== undefined ? { filters } : {})
     });
 
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;
@@ -225,44 +241,12 @@ export const auditLogStreamServiceFactory = ({
     return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsService)));
   };
 
-  const streamLog = async (orgId: string, auditLog: TAuditLogs) => {
-    const logStreams = await auditLogStreamDAL.find({ orgId });
-    await Promise.allSettled(
-      logStreams.map(async (logStream) => {
-        const { provider, encryptedCredentials } = logStream;
-        const credentials = await decryptLogStreamCredentials({
-          encryptedCredentials,
-          orgId,
-          kmsService
-        });
-
-        const factory = LOG_STREAM_FACTORY_MAP[provider as LogProvider]();
-
-        try {
-          await factory.streamLog({ credentials, auditLog });
-        } catch (error) {
-          if (isAxiosError(error)) {
-            logger.error(
-              `audit-log-queue: Failed to stream audit log due to request error [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}] [message=${error?.message}] [response=${JSON.stringify(error?.response?.data)}]`
-            );
-          } else {
-            logger.error(
-              error,
-              `audit-log-queue: Failed to stream audit log [auditLogId=${auditLog.id}] [event=${auditLog.eventType}] [provider=${provider}] [orgId=${orgId}] [projectId=${auditLog.projectId}]: ${(error as Error)?.message}`
-            );
-          }
-        }
-      })
-    );
-  };
-
   return {
     create,
     updateById,
     deleteById,
     getById,
     list,
-    listProviderOptions,
-    streamLog
+    listProviderOptions
   };
 };

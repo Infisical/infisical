@@ -2,11 +2,20 @@
 import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EllipsisVerticalIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import {
+  EllipsisVerticalIcon,
+  InfoIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { GlobPatternTooltip, ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -15,6 +24,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -32,6 +42,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  FilterableSelect,
   IconButton,
   Input,
   Select,
@@ -74,11 +85,62 @@ import {
   CONSTRAINT_OPTIONS,
   ConstraintTarget,
   ConstraintType,
+  DYNAMIC_SECRET_PROVIDER_OPTIONS,
+  DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS,
+  DynamicSecretRuleProvider,
   RULE_TYPE_LABELS,
   ruleFormSchema,
   RuleType,
+  SECRET_ROTATION_PROVIDER_OPTIONS,
+  SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS,
+  SecretRotationRuleProvider,
+  TProviderOption,
   TRuleForm
 } from "./SecretValidationRulesSection.utils";
+
+const ProviderMultiSelect = <T extends string>({
+  label,
+  options,
+  control,
+  error
+}: {
+  label: string;
+  options: TProviderOption<T>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: any;
+  error?: string;
+}) => {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-muted">{label}</label>
+      <Controller
+        control={control}
+        name="enforcement.inputs.providers"
+        render={({ field }) => {
+          const selected = options.filter((opt) =>
+            (field.value as T[] | undefined)?.includes(opt.value)
+          );
+          return (
+            <FilterableSelect
+              isMulti
+              placeholder="Select provider(s)..."
+              value={selected}
+              onChange={(next) => {
+                const arr = (next as TProviderOption<T>[] | null) ?? [];
+                field.onChange(arr.map((o) => o.value));
+              }}
+              options={options}
+              getOptionValue={(o) => (o as TProviderOption<T>).value}
+              getOptionLabel={(o) => (o as TProviderOption<T>).label}
+              isError={Boolean(error)}
+            />
+          );
+        }}
+      />
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+    </div>
+  );
+};
 
 const RuleFormContent = ({
   defaultValues,
@@ -119,18 +181,38 @@ const RuleFormContent = ({
     formState: { errors }
   } = form;
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "enforcement.inputs.constraints"
   });
 
   const watchedConstraints = form.watch("enforcement.inputs.constraints");
+  const watchedRuleType = form.watch("enforcement.type");
+  const isGeneratedCredentialRule =
+    watchedRuleType === RuleType.DynamicSecrets || watchedRuleType === RuleType.SecretRotations;
+  const disallowedConstraintTypes = (() => {
+    if (watchedRuleType === RuleType.DynamicSecrets)
+      return DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS;
+    if (watchedRuleType === RuleType.SecretRotations)
+      return SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS;
+    return [] as ConstraintType[];
+  })();
   const usedConstraintPairs = new Set(watchedConstraints?.map((c) => `${c.type}:${c.appliesTo}`));
+  // Regex generation uses RandExp on the produced string and cannot honor
+  // separate min/max length constraints — the regex pattern dictates the
+  // output length. Warn when both are configured.
+  const hasRegexLengthConflict = (() => {
+    const hasRegex = watchedConstraints?.some((c) => c.type === ConstraintType.RegexPattern);
+    const hasLength = watchedConstraints?.some(
+      (c) => c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength
+    );
+    return Boolean(hasRegex && hasLength);
+  })();
   const availableConstraintOptions = CONSTRAINT_OPTIONS.filter((opt) => {
-    const targets = opt.allowedTargets || [
-      ConstraintTarget.SecretKey,
-      ConstraintTarget.SecretValue
-    ];
+    if (disallowedConstraintTypes.includes(opt.type)) return false;
+    const targets = isGeneratedCredentialRule
+      ? [ConstraintTarget.GeneratedPassword]
+      : opt.allowedTargets || [ConstraintTarget.SecretKey, ConstraintTarget.SecretValue];
     return targets.some((target) => !usedConstraintPairs.has(`${opt.type}:${target}`));
   });
 
@@ -181,25 +263,64 @@ const RuleFormContent = ({
             </div>
           </div>
 
-          {/* Enforcement Type */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">Rule Type</label>
-            <Controller
-              control={control}
-              name="enforcement.type"
-              render={({ field: { value, onChange } }) => (
-                <Select value={value} onValueChange={onChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value={RuleType.StaticSecrets}>
-                      {RULE_TYPE_LABELS[RuleType.StaticSecrets]}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
+          {/* Enforcement Type + Providers */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Rule Type</label>
+              <Controller
+                control={control}
+                name="enforcement.type"
+                render={({ field: { value, onChange } }) => (
+                  <Select
+                    value={value}
+                    onValueChange={(next) => {
+                      onChange(next);
+                      replace([]);
+                      if (next !== RuleType.StaticSecrets) {
+                        form.setValue("enforcement.inputs.providers" as never, [] as never, {
+                          shouldDirty: true,
+                          shouldValidate: false
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {(Object.values(RuleType) as RuleType[]).map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {RULE_TYPE_LABELS[t]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            {watchedRuleType === RuleType.DynamicSecrets && (
+              <ProviderMultiSelect<DynamicSecretRuleProvider>
+                label="Dynamic Secret Providers"
+                options={DYNAMIC_SECRET_PROVIDER_OPTIONS}
+                control={control}
+                error={
+                  // discriminated form types: providers only exists on this arm
+                  (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
+                    ?.providers?.message
+                }
+              />
+            )}
+            {watchedRuleType === RuleType.SecretRotations && (
+              <ProviderMultiSelect<SecretRotationRuleProvider>
+                label="Rotation Providers"
+                options={SECRET_ROTATION_PROVIDER_OPTIONS}
+                control={control}
+                error={
+                  (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
+                    ?.providers?.message
+                }
+              />
+            )}
           </div>
 
           {/* Scope */}
@@ -261,6 +382,23 @@ const RuleFormContent = ({
             </div>
           </div>
 
+          {hasRegexLengthConflict && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Regex pattern takes precedence over length constraints</AlertTitle>
+              <AlertDescription>
+                <p>
+                  When a regex pattern is set, generated values are produced directly from the
+                  pattern and the min/max length constraints are ignored. Define the length
+                  requirement inside the regex pattern itself
+                  <br /> (e.g.{" "}
+                  <code className="rounded-md bg-mineshaft-700 px-1 py-0.5">{"[A-Z]{12,20}"}</code>
+                  ).
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Constraints */}
           <div>
             <div className="mb-3 flex items-center justify-between">
@@ -275,10 +413,12 @@ const RuleFormContent = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {availableConstraintOptions.map((opt) => {
-                      const targets = opt.allowedTargets || [
-                        ConstraintTarget.SecretValue,
-                        ConstraintTarget.SecretKey
-                      ];
+                      const targets = isGeneratedCredentialRule
+                        ? [ConstraintTarget.GeneratedPassword]
+                        : opt.allowedTargets || [
+                            ConstraintTarget.SecretValue,
+                            ConstraintTarget.SecretKey
+                          ];
                       const defaultTarget =
                         targets.find((t) => !usedConstraintPairs.has(`${opt.type}:${t}`)) ??
                         targets[0];
@@ -431,8 +571,8 @@ export const SecretValidationRulesSection = () => {
       ? rules.find((r) => r.id === sheetState.ruleId)
       : undefined;
 
-  const editingDefaults = editingRule
-    ? {
+  const editingDefaults: Partial<TRuleForm> | undefined = editingRule
+    ? ({
         name: editingRule.name,
         description: editingRule.description ?? undefined,
         environment: resolveEnvSlug(editingRule.envId),
@@ -441,7 +581,7 @@ export const SecretValidationRulesSection = () => {
           type: editingRule.type as string as RuleType,
           inputs: editingRule.inputs
         }
-      }
+      } as Partial<TRuleForm>)
     : undefined;
 
   const isEditing = sheetState.open && sheetState.mode === "edit";
@@ -450,7 +590,10 @@ export const SecretValidationRulesSection = () => {
     <Card className="mb-6">
       <CardHeader>
         <CardTitle>Secret Validation Rules</CardTitle>
-        <CardDescription>Define validation constraints for secret keys and values</CardDescription>
+        <CardDescription>
+          Define constraints applied to static secret keys and values on write, and to the passwords
+          generated for dynamic secrets and secret rotations.
+        </CardDescription>
         <CardAction>
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
             {(isAllowed) => (

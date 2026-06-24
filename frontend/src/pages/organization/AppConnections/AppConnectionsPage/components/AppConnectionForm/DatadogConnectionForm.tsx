@@ -1,14 +1,25 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   DatadogConnectionMethod,
   TDatadogConnection
 } from "@app/hooks/api/appConnections/types/datadog-connection";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -47,11 +58,7 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -63,15 +70,26 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Datadog URL"
-              tooltipClassName="max-w-sm"
-              tooltipText="The Datadog site URL to connect to (e.g., https://api.datadoghq.com)."
-            >
-              <Input {...field} placeholder="https://api.datadoghq.com" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="url">
+                Datadog URL
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Datadog site URL to connect to (e.g., https://api.datadoghq.com).
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="url"
+                {...field}
+                placeholder="https://api.datadoghq.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -79,17 +97,11 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="API Key"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="api-key">API Key</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -97,36 +109,16 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Application Key"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="application-key">Application Key</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Datadog"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Datadog"}
+        />
       </form>
     </FormProvider>
   );

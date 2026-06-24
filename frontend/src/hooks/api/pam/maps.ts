@@ -23,3 +23,11 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
   [PamResourceType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" },
   [PamResourceType.Windows]: { name: "Windows Server", image: "Windows.png" }
 };
+
+const PAM_ROTATION_SUPPORTED_RESOURCE_TYPES = new Set([
+  PamResourceType.Postgres,
+  PamResourceType.Windows
+]);
+
+export const isPamRotationSupported = (resourceType: PamResourceType) =>
+  PAM_ROTATION_SUPPORTED_RESOURCE_TYPES.has(resourceType);

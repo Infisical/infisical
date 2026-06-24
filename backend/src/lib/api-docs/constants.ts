@@ -71,6 +71,7 @@ export enum ApiDocsTags {
   CertManagerInstance = "Certificate Manager Instance",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
+  HsmConnectors = "HSM Connectors",
   PkiDiscovery = "PKI Discovery",
   PkiInstallations = "PKI Installations",
   PkiSigners = "PKI Signers",
@@ -91,7 +92,8 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  GatewaysV3 = "Gateways"
+  GatewaysV3 = "Gateways",
+  KmipServers = "KMIP Servers"
 }
 
 export const GROUPS = {
@@ -416,6 +418,8 @@ export const TLS_CERT_AUTH = {
     identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    allowedSubjectAltNames:
+      "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -426,6 +430,8 @@ export const TLS_CERT_AUTH = {
     identityId: "The ID of the machine identity to update the auth method for.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    allowedSubjectAltNames:
+      "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
@@ -1098,6 +1104,10 @@ export const PROJECT_USERS = {
     projectId: "The ID of the project to get memberships from.",
     membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
+  },
+  GET_USER_MEMBERSHIP_BY_USER_ID: {
+    projectId: "The ID of the project to get the membership from.",
+    userId: "The ID of the user to get the project membership of."
   },
   UPDATE_USER_MEMBERSHIP: {
     projectId: "The ID of the project to update the membership for.",
@@ -2207,7 +2217,7 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
-    id: "The ID of the certificate to revoke.",
+    id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
@@ -2443,6 +2453,9 @@ export const PROJECT_ROLE = {
     projectId: "The ID of the project.",
     roleSlug: "The slug of the role to get details."
   },
+  GET_ROLE_BY_ID: {
+    roleId: "The ID of the role to get."
+  },
   LIST: {
     projectSlug: "The slug of the project to list the roles of.",
     projectId: "The ID of the project."
@@ -2481,13 +2494,18 @@ export const KMS = {
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
     encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
-    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key."
+    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
+    isExportable:
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key."
+  },
+  ROTATE_KEY: {
+    keyId: "The ID of the key to be rotated."
   },
   DELETE_KEY: {
     keyId: "The ID of the key to be deleted."
@@ -2541,7 +2559,7 @@ export const KMS = {
   },
   VERIFY: {
     keyId: "The ID of the key to verify the data with.",
-    data: "The data in string format to be verified (base64 encoded). For data larger than 4096 bytes you must first create a digest of the data and then pass the digest in the data parameter.",
+    data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
   }
@@ -2663,6 +2681,7 @@ export const AppConnections = {
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       projectId: `The ID of the project to create the ${appName} Connection in.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
@@ -2677,6 +2696,7 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
       rotation: `The updated credential rotation configuration for the ${appName} Connection.`
@@ -2722,6 +2742,10 @@ export const AppConnections = {
     DIGICERT: {
       apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
       region: "The CertCentral region the API key belongs to (us or eu)."
+    },
+    GODADDY: {
+      apiKey: "The GoDaddy API Key used to authenticate with the GoDaddy API.",
+      apiSecret: "The GoDaddy API Secret used to authenticate with the GoDaddy API."
     },
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."
@@ -2786,6 +2810,10 @@ export const AppConnections = {
     },
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
+    },
+    TRIGGER_DEV: {
+      apiKey: "The Personal Access Token (tr_pat_...) used to authenticate with Trigger.dev.",
+      instanceUrl: "The URL of the Trigger.dev instance to connect to. Defaults to https://api.trigger.dev."
     },
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
@@ -2882,6 +2910,10 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    CONVEX: {
+      accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
+      instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
     },
     OVH: {
       privateKey:
@@ -2991,6 +3023,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
+    },
+    TRIGGER_DEV: {
+      markAsSecret:
+        "Whether synced variables should be marked as secret (redacted) environment variables in Trigger.dev."
     },
     AZURE_KEY_VAULT: {
       disableCertificateImport:
@@ -3136,6 +3172,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    TRIGGER_DEV: {
+      projectRef: "The reference of the Trigger.dev project to sync secrets to.",
+      environment: "The Trigger.dev environment to sync secrets to."
     },
     DEVIN: {
       orgId: "The Devin organization ID to sync secrets to."
@@ -3385,6 +3425,9 @@ export const SecretRotations = {
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
+    },
+    CONVEX_ACCESS_KEY: {
+      namePrefix: "A prefix to use when naming the generated Convex access key."
     }
   },
   SECRETS_MAPPING: {
@@ -3456,6 +3499,9 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    CONVEX_ACCESS_KEY: {
+      accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
     }
   }
 };

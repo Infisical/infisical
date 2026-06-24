@@ -3,11 +3,25 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
+import { Building2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -50,6 +64,8 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
 
   const { mutateAsync, isPending } = useUpdateSubOrganization();
 
+  const cannotEdit = permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
   const onFormSubmit = async ({ name, slug }: FormData) => {
     await mutateAsync({
       name,
@@ -71,71 +87,74 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
-      <div className="mb-4">
-        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Display Name</h2>
-        <Controller
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message} className="max-w-md">
-              <Input
-                isDisabled={permission.cannot(
-                  OrgPermissionActions.Edit,
-                  OrgPermissionSubjects.Settings
-                )}
-                placeholder="Acme Corp"
-                {...field}
-              />
-            </FormControl>
-          )}
-          control={control}
-          name="name"
-        />
-      </div>
-      <div className="mb-4">
-        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization ID</h2>
-        <FormControl className="max-w-md">
-          <Input isDisabled value={currentOrg.id} />
-        </FormControl>
-      </div>
-      <div className="mb-4">
-        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Slug</h2>
-        <Controller
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              helperText="Must be slug-friendly (lowercase letters, numbers, and hyphens only)"
-              className="max-w-md"
-            >
-              <Input
-                isDisabled={permission.cannot(
-                  OrgPermissionActions.Edit,
-                  OrgPermissionSubjects.Settings
-                )}
-                placeholder="acme-corp"
-                {...field}
-              />
-            </FormControl>
-          )}
-          control={control}
-          name="slug"
-        />
-      </div>
-      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-        {(isAllowed) => (
-          <Button
-            isLoading={isPending}
-            isDisabled={!isAllowed}
-            colorSchema="primary"
-            variant="outline_bg"
-            type="submit"
-          >
-            Save
-          </Button>
-        )}
-      </OrgPermissionCan>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Building2 className="size-4 text-accent" />
+          Sub-Organization Details
+        </CardTitle>
+        <CardDescription>
+          Update your sub-organization&apos;s display name and slug.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
+          <FieldGroup>
+            <Controller
+              defaultValue=""
+              control={control}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="sub-org-name">Sub-Organization Display Name</FieldLabel>
+                  <Input
+                    id="sub-org-name"
+                    placeholder="Acme Corp"
+                    isError={Boolean(error)}
+                    disabled={cannotEdit}
+                    {...field}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Field>
+              <FieldLabel htmlFor="sub-org-id">Sub-Organization ID</FieldLabel>
+              <Input id="sub-org-id" value={currentOrg.id} disabled />
+            </Field>
+            <Controller
+              defaultValue=""
+              control={control}
+              name="slug"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="sub-org-slug">Sub-Organization Slug</FieldLabel>
+                  <Input
+                    id="sub-org-slug"
+                    placeholder="acme-corp"
+                    isError={Boolean(error)}
+                    disabled={cannotEdit}
+                    {...field}
+                  />
+                  <FieldDescription>
+                    Must be slug-friendly (lowercase letters, numbers, and hyphens only).
+                  </FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+          <div className="mt-6 flex justify-end">
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+              {(isAllowed) => (
+                <Button variant="org" type="submit" isPending={isPending} isDisabled={!isAllowed}>
+                  Save
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };

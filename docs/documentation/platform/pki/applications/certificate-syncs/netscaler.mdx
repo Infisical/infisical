@@ -31,7 +31,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
         4. Configure the **Sync Options**:
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
             - **Preserve Certificate on Renewal**: Update the existing certkey object in place, preserving name and vServer bindings.
-            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize `sslcertkey` names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:
@@ -70,7 +70,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "preserveItemOnRenewal": true,
-                "certificateNameSchema": "myapp-{{certificateId}}"
+                "certificateNameSchema": "{{commonName}}-{{certificateId}}"
             },
             "destinationConfig": {
                 "vserverName": "vs-ssl-prod"
@@ -94,7 +94,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
                 "syncOptions": {
                     "canRemoveCertificates": true,
                     "preserveItemOnRenewal": true,
-                    "certificateNameSchema": "myapp-{{certificateId}}"
+                    "certificateNameSchema": "{{commonName}}-{{certificateId}}"
                 },
                 "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connectionId": "550e8400-e29b-41d4-a716-446655440000",
@@ -105,6 +105,10 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
         ```
     </Tab>
 </Tabs>
+
+<Note>
+  NetScaler caps `sslcertkey` names at **63 characters**. Since `{{certificateId}}` is required and each UUID placeholder (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) resolves to 32 characters, combining two of them exceeds the limit and the schema is rejected when you save the sync. For NetScaler, pair `{{certificateId}}` with a short prefix or `{{commonName}}` (kept under the limit).
+</Note>
 
 ## Certificate Management
 

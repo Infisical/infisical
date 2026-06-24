@@ -70,6 +70,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -89,6 +90,7 @@ type TSecretSyncQueueFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -153,6 +155,7 @@ export const secretSyncQueueFactory = ({
   cronJob,
   kmsService,
   appConnectionDAL,
+  gitHubAppDAL,
   keyStore,
   folderDAL,
   secretV2BridgeDAL,
@@ -424,6 +427,7 @@ export const secretSyncQueueFactory = ({
 
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
+      gitHubAppDAL,
       kmsService,
       gatewayService,
       gatewayV2Service,
@@ -571,6 +575,7 @@ export const secretSyncQueueFactory = ({
 
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
         appConnectionDAL,
+        gitHubAppDAL,
         kmsService,
         gatewayService,
         gatewayV2Service,
@@ -835,6 +840,7 @@ export const secretSyncQueueFactory = ({
         secretMap,
         {
           appConnectionDAL,
+          gitHubAppDAL,
           kmsService,
           gatewayService,
           gatewayV2Service,
@@ -1165,7 +1171,11 @@ export const secretSyncQueueFactory = ({
 
     const secretSync = await secretSyncDAL.findById(syncId);
 
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+    if (!secretSync) {
+      // skip rather than throw, so it doesn't retry-storm when a sync is deleted.
+      logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found (deleted?), skipping`);
+      return;
+    }
 
     const { connectionId } = secretSync;
 

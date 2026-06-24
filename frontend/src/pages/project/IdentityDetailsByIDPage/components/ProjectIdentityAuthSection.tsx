@@ -21,7 +21,7 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/con
 import { IdentityAuthMethod, TProjectIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
-import { ViewIdentityAuth } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth";
+import { IdentityAuthMethodsTable } from "@app/views/IdentityAuthMethods";
 
 type Props = {
   identity: TProjectIdentity;
@@ -31,8 +31,7 @@ type Props = {
 export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
     "identityAuthMethod",
-    "upgradePlan",
-    "revokeAuthMethod"
+    "upgradePlan"
   ]);
 
   const hasAuthMethods = Boolean(identity.authMethods.length);
@@ -78,11 +77,12 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         </CardHeader>
         <CardContent>
           {identity.authMethods.length > 0 ? (
-            <ViewIdentityAuth
-              authMethods={identity.authMethods}
+            <IdentityAuthMethodsTable
               identityId={identity.id}
-              onResetAllLockouts={refetchIdentity}
+              identityName={identity.name}
+              authMethods={identity.authMethods}
               activeLockoutAuthMethods={identity.activeLockoutAuthMethods}
+              onMutated={refetchIdentity}
             />
           ) : (
             <Empty className="border">

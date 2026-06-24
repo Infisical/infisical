@@ -17,6 +17,7 @@ import {
   AuthTokenType,
   MfaMethod,
   TGatewayAccessTokenJwtPayload,
+  TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
@@ -24,7 +25,7 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
-      authMode: AuthMode.JWT | AuthMode.MCP_JWT;
+      authMode: AuthMode.JWT | AuthMode.MCP_JWT | AuthMode.OAUTH;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
@@ -35,6 +36,7 @@ export type TAuthMode =
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
+      oauthClientId?: string;
       token: AuthModeJwtTokenPayload;
     }
   | {
@@ -99,6 +101,16 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TRelayAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN;
+      actor: ActorType.KMIP_SERVER;
+      kmipServerId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TKmipServerAccessTokenJwtPayload;
     };
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -125,6 +137,14 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
       if (decodedToken?.mcp) {
         return {
           authMode: AuthMode.MCP_JWT,
+          token: decodedToken as AuthModeJwtTokenPayload,
+          actor: ActorType.USER
+        } as const;
+      }
+
+      if (decodedToken?.oauthClientId) {
+        return {
+          authMode: AuthMode.OAUTH,
           token: decodedToken as AuthModeJwtTokenPayload,
           actor: ActorType.USER
         } as const;
@@ -163,6 +183,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         token: decodedToken as TRelayAccessTokenJwtPayload,
         actor: ActorType.RELAY
       } as const;
+    case AuthTokenType.KMIP_SERVER_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
+        token: decodedToken as TKmipServerAccessTokenJwtPayload,
+        actor: ActorType.KMIP_SERVER
+      } as const;
     default:
       return { authMode: null, token: null } as const;
   }
@@ -171,7 +197,7 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 // ! Important: You can only 100% count on the `req.permission.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
 export const injectIdentity = fp(
   async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
-    server.decorateRequest("auth", null);
+    server.decorateRequest("auth");
     server.decorateRequest("shouldForwardWritesToPrimaryInstance", Boolean(opt.shouldForwardWritesToPrimaryInstance));
 
     // Hoisted outside onRequest hook to avoid per-request function allocation on this hot path
@@ -209,6 +235,10 @@ export const injectIdentity = fp(
       }
 
       if (pathname === "/api/v1/ai/mcp/servers/oauth/callback") {
+        return;
+      }
+
+      if (pathname === "/api/v1/oauth/token") {
         return;
       }
 
@@ -282,6 +312,33 @@ export const injectIdentity = fp(
             parentOrgId,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
+            token
+          };
+          fireIdentifyForUser(user);
+          break;
+        }
+        case AuthMode.OAUTH: {
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+            await server.services.authToken.fnValidateJwtIdentity(token);
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          // Always set (even as []) so permission-service can distinguish a delegated OAuth request
+          // that must be scope-narrowed from a first-party session that must not be.
+          requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
+          req.auth = {
+            authMode: AuthMode.OAUTH,
+            user,
+            userId: user.id,
+            tokenVersionId,
+            actor,
+            orgId,
+            rootOrgId,
+            parentOrgId,
+            authMethod: token.authMethod,
+            isMfaVerified: token.isMfaVerified,
+            mfaMethod: token.mfaMethod,
+            oauthClientId: token.oauthClientId,
             token
           };
           fireIdentifyForUser(user);
@@ -413,6 +470,30 @@ export const injectIdentity = fp(
             authMode: AuthMode.RELAY_ACCESS_TOKEN,
             actor,
             relayId: token.relayId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.KMIP_SERVER_ACCESS_TOKEN: {
+          const kmipServer = await server.services.kmipServer.getOrgKmipServer({
+            kmipServerId: token.kmipServerId,
+            orgId: token.orgId
+          });
+
+          if (kmipServer.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({ message: "KMIP server token has been revoked" });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
+            actor,
+            kmipServerId: token.kmipServerId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { AuditLogStreamFiltersSchema } from "@app/ee/services/audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -22,9 +23,16 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
   }>;
   updateSchema: z.ZodType<{
     credentials: T["credentials"];
+    streamMode?: StreamMode;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
+  // Product scoping is common to every provider, so it's merged onto each provider's body schema
+  // here rather than duplicated across all five provider schemas.
+  const FiltersBodySchema = z.object({
+    filters: AuditLogStreamFiltersSchema.nullish()
+  });
+
   server.route({
     method: "GET",
     url: "/:logStreamId",
@@ -58,7 +66,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       rateLimit: writeLimit
     },
     schema: {
-      body: createSchema,
+      body: createSchema.and(FiltersBodySchema),
       response: {
         200: z.object({
           auditLogStream: sanitizedResponseSchema
@@ -67,12 +75,13 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials } = req.body;
+      const { credentials, filters } = req.body;
 
       const auditLogStream = await server.services.auditLogStream.create(
         {
           provider,
-          credentials
+          credentials,
+          filters
         },
         req.permission
       );
@@ -100,7 +109,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       params: z.object({
         logStreamId: z.string().uuid()
       }),
-      body: updateSchema,
+      body: updateSchema.and(FiltersBodySchema),
       response: {
         200: z.object({
           auditLogStream: sanitizedResponseSchema
@@ -110,13 +119,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { logStreamId } = req.params;
-      const { credentials } = req.body;
+      const { credentials, streamMode, filters } = req.body;
 
       const auditLogStream = await server.services.auditLogStream.updateById(
         {
           logStreamId,
           provider,
-          credentials
+          credentials,
+          streamMode,
+          filters
         },
         req.permission
       );

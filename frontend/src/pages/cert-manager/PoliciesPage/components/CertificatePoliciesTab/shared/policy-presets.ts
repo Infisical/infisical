@@ -36,7 +36,7 @@ export const CERTIFICATE_POLICY_PRESETS: CertificatePolicyPreset[] = [
       },
       extendedKeyUsages: {
         requiredUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
-        optionalUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+        optionalUsages: [CertExtendedKeyUsageType.SERVER_AUTH, CertExtendedKeyUsageType.CLIENT_AUTH]
       },
       validity: {
         maxDuration: {
@@ -64,10 +64,13 @@ export const CERTIFICATE_POLICY_PRESETS: CertificatePolicyPreset[] = [
         }
       ],
       signatureAlgorithm: {
-        allowedAlgorithms: [...ALGORITHM_FAMILIES.ECDSA.signature]
+        allowedAlgorithms: [
+          ...ALGORITHM_FAMILIES.ECDSA.signature,
+          ...ALGORITHM_FAMILIES.RSA.signature
+        ]
       },
       keyAlgorithm: {
-        allowedKeyTypes: [...ALGORITHM_FAMILIES.ECDSA.key]
+        allowedKeyTypes: [...ALGORITHM_FAMILIES.ECDSA.key, ...ALGORITHM_FAMILIES.RSA.key]
       }
     }
   },

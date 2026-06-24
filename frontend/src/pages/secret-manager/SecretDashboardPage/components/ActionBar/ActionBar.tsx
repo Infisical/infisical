@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { TypeOptions } from "react-toastify";
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
@@ -30,7 +29,7 @@ import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification } from "@app/components/notifications";
+import { createNotification, type NotificationType } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
@@ -376,7 +375,7 @@ export const ActionBar = ({
       });
 
       let notificationMessage = "";
-      let notificationType: TypeOptions = "info";
+      let notificationType: NotificationType = "info";
 
       if (isDestinationUpdated && isSourceUpdated) {
         notificationMessage = "Successfully moved selected secrets";

@@ -1,0 +1,203 @@
+---
+title: "F5 BIG-IP"
+sidebarTitle: "F5 BIG-IP"
+description: "Deploy certificates to F5 BIG-IP appliances."
+---
+
+Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically attached to Client SSL or Server SSL profiles, so the BIG-IP starts serving them right after each sync.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificates to sync, then configure the F5 BIG-IP destination.
+</Info>
+
+## Prerequisites
+
+- An [F5 BIG-IP Connection](/integrations/app-connections/f5-big-ip) with access to your BIG-IP appliance
+- The BIG-IP must be reachable over HTTPS from Infisical (directly or via an [Infisical Gateway](/documentation/platform/gateways/overview))
+- User account with permissions to manage certificates in the target partition, and to update SSL profiles when profile binding is used
+
+## Create an F5 BIG-IP Sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+        2. Select the **F5 BIG-IP** option.
+
+        3. Configure the **Destination**:
+            - **F5 BIG-IP Connection**: The F5 BIG-IP Connection to authenticate with.
+            - **Partition** (Optional): The F5 partition where certificates will be stored. Defaults to `Common`.
+            - **Profile Binding** (Optional): Attach each certificate to a Client SSL or Server SSL profile so the BIG-IP starts using it right away. Choose **None** to just upload certificates without attaching them.
+            - **Profile Name** (Conditional): Required when **Profile Binding** is set. The name of the SSL profile inside the partition.
+            - **Create profile if missing** (Optional): Create the SSL profile on the BIG-IP if it doesn't exist yet.
+            - **Parent Profile** (Optional): The existing F5 profile to copy settings from when creating the new one. Defaults to `/Common/clientssl` (Client SSL) or `/Common/serverssl` (Server SSL).
+
+        4. Configure the **Sync Options**:
+            - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the BIG-IP when they're no longer active in Infisical.
+            - **Include Root CA in Certificate Chain**: Include the root CA in the chain uploaded to the BIG-IP. Most setups don't need the root, since clients already trust it.
+            - **Preserve Certificate on Renewal**: When on, renewed certificates keep the same name on the BIG-IP, so any profile or virtual server using them keeps working without changes. When off, the renewed certificate is uploaded with a new name and the original stays on the BIG-IP.
+            - **Certificate Name Schema** (Optional): Customize the name used on the BIG-IP using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. The certificate chain follows the same name with `-chain` added. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur (including auto-renewals).
+
+        5. Configure the **Details**:
+            - **Name**: The name of your sync.
+            - **Description**: Optional description.
+
+        6. Select which certificates should be synced.
+
+        7. Review and click **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create an **F5 BIG-IP Certificate Sync**, make an API request to the [Create F5 BIG-IP PKI Sync](/api-reference/endpoints/pki/syncs/f5-big-ip/create) endpoint.
+
+        ### Sample request
+
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/f5-big-ip \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-f5-big-ip-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "destination": "f5-big-ip",
+            "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000"
+            ],
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "includeRootCa": false,
+                "preserveItemOnRenewal": true,
+                "certificateNameSchema": "myapp-{{certificateId}}"
+            },
+            "destinationConfig": {
+                "partition": "Common",
+                "profileType": "client-ssl",
+                "profileName": "clientssl-prod",
+                "createProfileIfMissing": true,
+                "parentProfile": "/Common/clientssl"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-f5-big-ip-cert-sync",
+                "description": "an example certificate sync",
+                "destination": "f5-big-ip",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "partition": "Common",
+                    "profileType": "client-ssl",
+                    "profileName": "clientssl-prod",
+                    "createProfileIfMissing": true,
+                    "parentProfile": "/Common/clientssl"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "includeRootCa": false,
+                    "preserveItemOnRenewal": true,
+                    "certificateNameSchema": "myapp-{{certificateId}}"
+                },
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+                "createdAt": "2026-05-01T00:00:00.000Z",
+                "updatedAt": "2026-05-01T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## Certificate Management
+
+The F5 BIG-IP Certificate Sync provides:
+
+- **Automatic Deployment**: Deploy certificates from Infisical PKI to the BIG-IP.
+- **In-Place Renewals**: Renewed certificates keep the same name on the BIG-IP, so any profile or virtual server using them keeps working without changes.
+- **Profile Binding**: Attach each certificate to a Client SSL or Server SSL profile. Each certificate gets its own slot on the profile.
+- **Profile Auto-Creation**: Create the SSL profile on first sync if it doesn't exist yet.
+- **Expiration Handling**: Remove expired or revoked certificates from the BIG-IP when they're no longer active in Infisical.
+- **Configuration Persistence**: Automatically save the running configuration after each sync, so changes survive reboots.
+
+<Note>
+  F5 BIG-IP Certificate Syncs support both automatic and manual synchronization
+  modes. When auto-sync is enabled, certificates are automatically deployed as
+  they're issued or renewed.
+</Note>
+
+## Certificate Renewal Behavior
+
+When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
+
+- **Preserve enabled**: The renewed certificate keeps the same name on the BIG-IP. Any profile or virtual server already using that certificate keeps working without any change.
+- **Preserve disabled**: The renewed certificate is uploaded with a new name and the original stays on the BIG-IP. Both certificates coexist until the original is revoked or removed.
+
+## Manual Certificate Sync
+
+You can manually trigger a sync to F5 BIG-IP. This is useful for:
+
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## FAQ
+
+<Accordion title="Does the SSL profile have to exist on the BIG-IP already?">
+  By default, yes. Either create the profile on the BIG-IP first, or turn on
+  **Create profile if missing** and Infisical will create it for you using the
+  **Parent Profile** as the template.
+</Accordion>
+
+<Accordion title="Can I attach more than one certificate to the same SSL profile?">
+  **Client SSL profiles**: F5 only accepts one certificate per algorithm type
+  on a profile. So a single Client SSL profile can hold at most one RSA, one
+  ECDSA, and one DSA certificate at a time. Trying to attach a second RSA
+  certificate to the same profile will fail. If you
+  need multiple certificates of the same type (for example two RSA
+  certificates for different hostnames), put each one on a separate Client SSL
+  profile and attach the profiles to your virtual server.
+
+  **Server SSL profiles**: only one certificate at a time. Adding a second
+  certificate replaces the first one on the profile.
+</Accordion>
+
+<Accordion title="Will Infisical overwrite other certificates already attached to the profile?">
+  On Client SSL profiles, no, as long as the new and existing certificates are
+  different algorithm types (RSA / ECDSA / DSA). Each type gets its own slot,
+  and certificates added by other tools or by hand stay untouched. On Server
+  SSL profiles, the profile holds a single certificate, so syncing a new one
+  replaces what was there.
+</Accordion>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
+    Deploy certificates to Citrix NetScaler ADC appliances.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

@@ -1,47 +1,80 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import {
+  HelpCircleIcon,
+  InfoIcon,
+  PlusIcon,
+  TriangleAlertIcon,
+  UserRoundCheckIcon,
+  UsersRoundIcon,
+  XIcon
+} from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
-  FormControl,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
   IconButton,
   Input,
+  RadioGroup,
+  RadioGroupItem,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
+  SelectTrigger,
+  SelectValue,
   Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { getObjectFromSeconds, SECONDS_PER_DAY } from "@app/helpers/datetime";
-import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
+import {
+  accessTokenTtlSchema,
+  DEFAULT_TRUSTED_IPS,
+  mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
+  trustedIpsSchema
+} from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import {
   MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
   useGetIdentityLdapAuth,
   useUpdateIdentityLdapAuth
 } from "@app/hooks/api";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LOCKOUT_DEFAULT_VALUES } from "./lockout/constants";
 import { LockoutTab } from "./lockout/LockoutTab";
 import { superRefineLockout } from "./lockout/super-refine";
-import { IdentityFormTab } from "./types";
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
+import { TrustedIpsField } from "./shared/TrustedIpsField";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) =>
   z
@@ -57,6 +90,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
         .string()
         .optional()
         .transform((val) => val || undefined),
+      userAccess: z.enum(["restricted", "all"]),
       allowedFields: z
         .object({
           key: z.string().trim(),
@@ -71,13 +105,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
       accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
       accessTokenNumUsesLimit: z.string(),
-      accessTokenTrustedIps: z
-        .array(
-          z.object({
-            ipAddress: z.string().max(50)
-          })
-        )
-        .min(1),
+      accessTokenTrustedIps: trustedIpsSchema,
 
       lockoutEnabled: z.boolean().default(true),
       lockoutThreshold: z
@@ -98,6 +126,33 @@ const buildSchema = (maxAccessTokenTTL: number) =>
     .required()
     .superRefine((data, ctx) => {
       superRefineLockout(data, ctx);
+
+      if (data.userAccess === "restricted") {
+        if (!data.allowedFields || data.allowedFields.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Add at least one required attribute, or allow any directory user",
+            path: ["allowedFields"]
+          });
+        }
+
+        data.allowedFields?.forEach((field, index) => {
+          if (!field.key) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Attribute key is required",
+              path: ["allowedFields", index, "key"]
+            });
+          }
+          if (!field.value) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Attribute value is required",
+              path: ["allowedFields", index, "value"]
+            });
+          }
+        });
+      }
 
       // Validation based on scope
       if (data.scope === "template") {
@@ -141,7 +196,8 @@ const buildSchema = (maxAccessTokenTTL: number) =>
           });
         }
       }
-    });
+    })
+    .superRefine(superRefineAccessTokenTtl);
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -157,6 +213,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentityLdapAuthForm = ({
@@ -164,7 +221,8 @@ export const IdentityLdapAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -172,6 +230,7 @@ export const IdentityLdapAuthForm = ({
   const { projectId } = useParams({
     strict: false
   });
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityLdapAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -195,6 +254,7 @@ export const IdentityLdapAuthForm = ({
     reset,
     watch,
     setValue,
+    trigger,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver,
@@ -206,16 +266,13 @@ export const IdentityLdapAuthForm = ({
       bindPass: "",
       searchBase: "",
       searchFilter: "(uid={{username}})",
+      userAccess: "restricted",
+      allowedFields: [{ key: "", value: "" }],
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      lockoutEnabled: true,
-      lockoutThreshold: "3",
-      lockoutDurationValue: "5",
-      lockoutDurationUnit: "m",
-      lockoutCounterResetValue: "30",
-      lockoutCounterResetUnit: "s"
+      accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
+      ...LOCKOUT_DEFAULT_VALUES
     }
   });
 
@@ -229,16 +286,13 @@ export const IdentityLdapAuthForm = ({
   const lockoutCounterResetUnitWatch = watch("lockoutCounterResetUnit");
 
   const {
-    fields: accessTokenTrustedIpsFields,
-    append: appendAccessTokenTrustedIp,
-    remove: removeAccessTokenTrustedIp
-  } = useFieldArray({ control, name: "accessTokenTrustedIps" });
-
-  const {
     fields: allowedFieldsFields,
     append: appendAllowedField,
-    remove: removeAllowedField
+    remove: removeAllowedField,
+    replace: replaceAllowedFields
   } = useFieldArray({ control, name: "allowedFields" });
+
+  const userAccess = watch("userAccess");
 
   // Helper function to determine scope based on existing data
   const determineScope = (authData: any) => {
@@ -266,19 +320,14 @@ export const IdentityLdapAuthForm = ({
         searchBase: data.searchBase || "",
         searchFilter: data.searchFilter,
         ldapCaCertificate: data.ldapCaCertificate || undefined,
+        userAccess: data.allowedFields && data.allowedFields.length > 0 ? "restricted" : "all",
         allowedFields: data.allowedFields || [],
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
           ? String(data.accessTokenNumUsesLimit)
           : "",
-        accessTokenTrustedIps: data.accessTokenTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        ),
+        accessTokenTrustedIps: mapTrustedIpsFromServer(data.accessTokenTrustedIps),
         lockoutEnabled: data.lockoutEnabled,
         lockoutThreshold: String(data.lockoutThreshold),
         lockoutDurationValue: String(lockoutDurationObj.value),
@@ -298,19 +347,19 @@ export const IdentityLdapAuthForm = ({
       searchBase: "",
       searchFilter: "(uid={{username}})",
       ldapCaCertificate: undefined,
-      allowedFields: [],
+      userAccess: "restricted",
+      allowedFields: [{ key: "", value: "" }],
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      lockoutEnabled: true,
-      lockoutThreshold: "3",
-      lockoutDurationValue: "5",
-      lockoutDurationUnit: "m",
-      lockoutCounterResetValue: "30",
-      lockoutCounterResetUnit: "s"
+      accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
+      ...LOCKOUT_DEFAULT_VALUES
     });
   }, [data, reset]);
+
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
 
   useEffect(() => {
     if (!subscription?.ldap) {
@@ -334,6 +383,7 @@ export const IdentityLdapAuthForm = ({
       searchBase: submissionSearchBase,
       searchFilter,
       ldapCaCertificate,
+      userAccess: submissionUserAccess,
       allowedFields,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -351,12 +401,15 @@ export const IdentityLdapAuthForm = ({
     const lockoutCounterResetSeconds =
       ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
+    // "Allow any directory user" clears the attribute restriction entirely.
+    const submissionAllowedFields = submissionUserAccess === "all" ? [] : allowedFields;
+
     const basePayload = {
       ...(projectId ? { projectId } : { organizationId: orgId }),
       identityId,
       searchFilter,
       ldapCaCertificate,
-      allowedFields,
+      allowedFields: submissionAllowedFields,
       accessTokenTTL: Number(accessTokenTTL),
       accessTokenMaxTTL: Number(accessTokenMaxTTL),
       accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
@@ -395,8 +448,13 @@ export const IdentityLdapAuthForm = ({
     reset();
   };
 
+  const templateTooltipText =
+    scope === "template" ? "This field cannot be modified when using a template" : null;
+  const templateDisabledClass = scope === "template" ? "opacity-55" : "";
+
   return (
     <form
+      id={IDENTITY_AUTH_FORM_ID}
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         const firstErrorField = Object.keys(fields)[0];
         let tab = IdentityFormTab.Advanced;
@@ -434,355 +492,389 @@ export const IdentityLdapAuthForm = ({
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Lockout}>Lockout</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          {canAttachTemplates && (
-            <Controller
-              control={control}
-              name="scope"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Configuration Type"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Select
-                    value={value}
-                    onValueChange={(val) => {
-                      onChange(val);
-                      setValue("templateId", data?.templateId || "");
-                      setValue("url", data?.url || "");
-                      setValue("bindDN", data?.bindDN || "");
-                      setValue("bindPass", data?.bindPass || "");
-                      setValue("searchBase", data?.searchBase || "");
-                      setValue("ldapCaCertificate", data?.ldapCaCertificate || "");
-                    }}
-                    className="w-full"
-                    position="popper"
-                    dropdownContainerClassName="max-w-none"
-                  >
-                    <SelectItem value="template">Use Template</SelectItem>
-                    <SelectItem value="custom">Custom Configuration</SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-          )}
-
-          {scope === "template" && (
-            <Controller
-              control={control}
-              name="templateId"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Template"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Select
-                    value={value}
-                    onValueChange={(val) => {
-                      onChange(val);
-                      const tmp = templates?.find((t) => t.id === val);
-                      if (!tmp) return;
-                      setValue("url", tmp.templateFields.url);
-                      setValue("bindDN", tmp.templateFields.bindDN);
-                      setValue("bindPass", tmp.templateFields.bindPass);
-                      setValue("searchBase", tmp.templateFields.searchBase);
-                      setValue("ldapCaCertificate", tmp.templateFields.ldapCaCertificate);
-                    }}
-                    className="w-full"
-                    position="popper"
-                    dropdownContainerClassName="max-w-none"
-                    placeholder="Select a template"
-                  >
-                    {templates?.map((template) => {
-                      return (
-                        <SelectItem value={template.id} key={template.id}>
-                          {template.name}
-                        </SelectItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-              )}
-            />
-          )}
-
-          <Controller
-            control={control}
-            name="url"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="LDAP URL"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText={
-                  scope === "template"
-                    ? "This field cannot be modified when using a template"
-                    : undefined
-                }
-                isRequired
-              >
-                <Input
-                  {...field}
-                  placeholder="ldaps://domain-or-ip:636"
-                  type="text"
-                  isDisabled={scope === "template"}
-                  containerClassName={scope === "template" ? "opacity-55" : ""}
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="bindDN"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Bind DN"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText={
-                  scope === "template"
-                    ? "This field cannot be modified when using a template"
-                    : undefined
-                }
-              >
-                <Input
-                  {...field}
-                  containerClassName={scope === "template" ? "opacity-55" : ""}
-                  placeholder="cn=infisical,ou=Users,dc=example,dc=com"
-                  isDisabled={scope === "template"}
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="bindPass"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Bind Pass"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText={
-                  scope === "template"
-                    ? "This field cannot be modified when using a template"
-                    : undefined
-                }
-              >
-                <Input
-                  {...field}
-                  placeholder="********"
-                  type="password"
-                  containerClassName={scope === "template" ? "opacity-55" : ""}
-                  isDisabled={scope === "template"}
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="searchBase"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Search Base / DN"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText={
-                  scope === "template"
-                    ? "This field cannot be modified when using a template"
-                    : undefined
-                }
-              >
-                <Input
-                  {...field}
-                  placeholder="ou=machines,dc=acme,dc=com"
-                  containerClassName={scope === "template" ? "opacity-55" : ""}
-                  isDisabled={scope === "template"}
-                />
-              </FormControl>
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="searchFilter"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                isRequired
-                label="Search Filter"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="(uid={{username}})" />
-              </FormControl>
-            )}
-          />
-
-          {allowedFieldsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Lockout}>Lockout</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
+            {canAttachTemplates && (
               <Controller
                 control={control}
-                name={`allowedFields.${index}.key`}
-                render={({ field, fieldState: { error } }) => {
-                  const isFirstField = index === 0;
+                name="scope"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="ldap-scope">Configuration Type</FieldLabel>
+                    <Select
+                      value={value}
+                      onValueChange={(val) => {
+                        onChange(val);
+                        setValue("templateId", data?.templateId || "");
+                        setValue("url", data?.url || "");
+                        setValue("bindDN", data?.bindDN || "");
+                        setValue("bindPass", data?.bindPass || "");
+                        setValue("searchBase", data?.searchBase || "");
+                        setValue("ldapCaCertificate", data?.ldapCaCertificate || "");
+                      }}
+                    >
+                      <SelectTrigger id="ldap-scope" className="w-full" isError={Boolean(error)}>
+                        <SelectValue placeholder="Select configuration type" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value="template">Use Template</SelectItem>
+                        <SelectItem value="custom">Custom Configuration</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
 
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={isFirstField ? "Required Attributes" : undefined}
-                      icon={
-                        isFirstField ? (
-                          <Tooltip
-                            className="max-w-[420px]"
-                            content={
-                              <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
-                                <p>
-                                  Specify the fields that the user must contain in their LDAP entry
-                                  in order to authenticate with this identity. If nothing is
-                                  specified, all users in the configured LDAP directory will be able
-                                  to authenticate.
-                                  <p className="mt-2">
-                                    You can specify multiple required attributes by separating them
-                                    with a comma.
-                                  </p>
-                                </p>
-                                <div className="space-y-2">
-                                  <p>Example:</p>
-                                  <p className="text-xs text-gray-400">
-                                    &apos;uid&apos; → &apos;user1,user2,user3&apos;
-                                    <br />
-                                    &apos;mail&apos; → &apos;user@example.com&apos;
-                                  </p>
-                                </div>
+            {scope === "template" && (
+              <Controller
+                control={control}
+                name="templateId"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="ldap-template">Template</FieldLabel>
+                    <Select
+                      value={value}
+                      onValueChange={(val) => {
+                        onChange(val);
+                        const tmp = templates?.find((t) => t.id === val);
+                        if (!tmp) return;
+                        setValue("url", tmp.templateFields.url);
+                        setValue("bindDN", tmp.templateFields.bindDN);
+                        setValue("bindPass", tmp.templateFields.bindPass);
+                        setValue("searchBase", tmp.templateFields.searchBase);
+                        setValue("ldapCaCertificate", tmp.templateFields.ldapCaCertificate);
+                      }}
+                    >
+                      <SelectTrigger id="ldap-template" className="w-full" isError={Boolean(error)}>
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {templates?.map((template) => {
+                          return (
+                            <SelectItem value={template.id} key={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
 
-                                <p>
-                                  The above example would allow users with the UID user1, user2, or
-                                  user3 to authenticate but only if their emails also match
-                                  user@example.com
-                                </p>
-                              </div>
-                            }
-                          >
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                          </Tooltip>
-                        ) : undefined
+            <Controller
+              control={control}
+              name="url"
+              render={({ field, fieldState: { error } }) => (
+                <Field className={templateDisabledClass}>
+                  <FieldLabel htmlFor="url" className="inline-flex items-center gap-1.5">
+                    LDAP URL
+                    {templateTooltipText && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="url"
+                    placeholder="ldaps://domain-or-ip:636"
+                    type="text"
+                    disabled={scope === "template"}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="bindDN"
+              render={({ field, fieldState: { error } }) => (
+                <Field className={templateDisabledClass}>
+                  <FieldLabel htmlFor="bindDN" className="inline-flex items-center gap-1.5">
+                    Bind DN
+                    {templateTooltipText && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="bindDN"
+                    placeholder="cn=infisical,ou=Users,dc=example,dc=com"
+                    disabled={scope === "template"}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="bindPass"
+              render={({ field, fieldState: { error } }) => (
+                <Field className={templateDisabledClass}>
+                  <FieldLabel htmlFor="bindPass" className="inline-flex items-center gap-1.5">
+                    Bind Pass
+                    {templateTooltipText && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="bindPass"
+                    placeholder="********"
+                    type="password"
+                    disabled={scope === "template"}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="searchBase"
+              render={({ field, fieldState: { error } }) => (
+                <Field className={templateDisabledClass}>
+                  <FieldLabel htmlFor="searchBase" className="inline-flex items-center gap-1.5">
+                    Search Base / DN
+                    {templateTooltipText && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">{templateTooltipText}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="searchBase"
+                    placeholder="ou=machines,dc=acme,dc=com"
+                    disabled={scope === "template"}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="searchFilter"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="searchFilter">Search Filter</FieldLabel>
+                  <Input
+                    {...field}
+                    id="searchFilter"
+                    placeholder="(uid={{username}})"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="userAccess"
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel className="inline-flex items-center gap-1.5">
+                    User access
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircleIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-sm">
+                        Choose whether only directory users matching the required attributes may
+                        authenticate as this identity, or any user who can bind to the directory.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldDescription>
+                    Choose which directory users may assume this identity.
+                  </FieldDescription>
+                  <RadioGroup
+                    className="grid grid-cols-2 gap-3"
+                    value={value}
+                    onValueChange={(next) => {
+                      onChange(next);
+                      if (next === "restricted" && allowedFieldsFields.length === 0) {
+                        replaceAllowedFields([{ key: "", value: "" }]);
                       }
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="uid"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <Controller
-                control={control}
-                name={`allowedFields.${index}.value`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="userid1,userid2,userid3"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
-                onClick={() => removeAllowedField(index)}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() =>
-                appendAllowedField({
-                  key: "",
-                  value: ""
-                })
-              }
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add Required Attribute
-            </Button>
-          </div>
+                    }}
+                  >
+                    <FieldLabel htmlFor="user-access-restricted" variant={scopeVariant}>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>
+                            <UserRoundCheckIcon />
+                            Restrict
+                          </FieldTitle>
+                          <FieldDescription>Match on the attributes</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem value="restricted" id="user-access-restricted" />
+                      </Field>
+                    </FieldLabel>
+                    <FieldLabel htmlFor="user-access-all" variant={scopeVariant}>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>
+                            <UsersRoundIcon />
+                            Allow any
+                          </FieldTitle>
+                          <FieldDescription>Anyone who can bind</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem value="all" id="user-access-all" />
+                      </Field>
+                    </FieldLabel>
+                  </RadioGroup>
+                </Field>
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
+            {userAccess === "all" ? (
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertTitle>All directory users can authenticate</AlertTitle>
+                <AlertDescription>
+                  Every user in the configured LDAP directory who can bind will be able to
+                  authenticate as this identity. Switch to &quot;Restrict&quot; to limit access.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <FieldLabel className="inline-flex items-center gap-1.5">
+                  Authorized user attributes
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircleIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      <div className="max-h-[300px] space-y-4 overflow-y-auto text-sm">
+                        <p>
+                          Only directory users whose LDAP entry matches every attribute below are
+                          authorized to authenticate as this identity.
+                        </p>
+                        <p>
+                          You can allow multiple values for an attribute by separating them with a
+                          comma.
+                        </p>
+                        <div className="space-y-2">
+                          <p>Example:</p>
+                          <p className="text-xs font-bold">
+                            &apos;uid&apos; → &apos;user1,user2,user3&apos;
+                            <br />
+                            &apos;mail&apos; → &apos;user@example.com&apos;
+                          </p>
+                        </div>
+                        <p>
+                          The above example would allow users with the UID user1, user2, or user3 to
+                          authenticate but only if their emails also match user@example.com
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                {allowedFieldsFields.map(({ id }, index) => (
+                  <div className="flex items-start gap-2" key={id}>
+                    <Controller
+                      control={control}
+                      name={`allowedFields.${index}.key`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field className="flex-1">
+                          <Input
+                            id={`allowedField-key-${index}`}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e)}
+                            placeholder="uid"
+                            isError={Boolean(error)}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name={`allowedFields.${index}.value`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field className="flex-1">
+                          <Input
+                            id={`allowedField-value-${index}`}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e)}
+                            placeholder="userid1,userid2,userid3"
+                            isError={Boolean(error)}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <IconButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Remove required attribute"
+                      className="mt-0.5"
+                      onClick={() => removeAllowedField(index)}
+                    >
+                      <XIcon />
+                    </IconButton>
+                  </div>
+                ))}
+                {allowedFieldsFields.length === 0 && (
+                  <FieldError>Add at least one attribute, or allow any directory user.</FieldError>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="w-fit"
+                  onClick={() =>
+                    appendAllowedField({
+                      key: "",
+                      value: ""
+                    })
+                  }
+                >
+                  <PlusIcon />
+                  Add attribute
+                </Button>
+              </div>
             )}
-          />
-          <Controller
-            control={control}
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum lifetime for an access token in seconds. This value will be referenced at renewal time."
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
+
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
+            <AccessTokenNumUsesLimitField control={control} />
+          </FieldGroup>
+        </TabsContent>
         <LockoutTab
           control={control}
+          trigger={trigger}
           lockoutEnabled={lockoutEnabledWatch}
           lockoutThreshold={lockoutThresholdWatch}
           lockoutDurationValue={lockoutDurationValueWatch}
@@ -790,128 +882,53 @@ export const IdentityLdapAuthForm = ({
           lockoutCounterResetValue={lockoutCounterResetValueWatch}
           lockoutCounterResetUnit={lockoutCounterResetUnitWatch}
         />
-        <TabPanel value={IdentityFormTab.Advanced}>
-          <Controller
-            control={control}
-            name="ldapCaCertificate"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                isOptional
-                errorText={error?.message}
-                isError={Boolean(error)}
-                tooltipText={
-                  scope === "template"
-                    ? "This field cannot be modified when using a template"
-                    : "An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
-                }
-              >
-                <TextArea
-                  {...field}
-                  placeholder="-----BEGIN CERTIFICATE----- ..."
-                  className={scope === "template" ? "opacity-55" : ""}
-                  isDisabled={scope === "template"}
-                />
-              </FormControl>
-            )}
-          />
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <Controller
+              control={control}
+              name="ldapCaCertificate"
+              render={({ field, fieldState: { error } }) => (
+                <Field className={templateDisabledClass}>
+                  <FieldLabel
+                    htmlFor="ldapCaCertificate"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    CA Certificate (optional)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        {templateTooltipText ||
+                          "An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."}
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <TextArea
+                    {...field}
+                    id="ldapCaCertificate"
+                    placeholder="-----BEGIN CERTIFICATE----- ..."
+                    disabled={scope === "template"}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
 
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      tooltipText="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
-                onClick={() => {
-                  if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
-                    return;
-                  }
-
-                  handlePopUpOpen("upgradePlan", {
-                    featureName: "IP allowlisting"
-                  });
-                }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+            <TrustedIpsField
+              control={control}
+              name="accessTokenTrustedIps"
+              label="Access Token Trusted IPs"
+              isAllowed={Boolean(subscription?.ipAllowlisting)}
+              onUpgradeRequired={() =>
+                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+              }
+              tooltip="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
+            />
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Add"}
-        </Button>
-
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };

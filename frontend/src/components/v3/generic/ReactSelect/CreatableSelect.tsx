@@ -8,6 +8,7 @@ export const CreatableSelect = <T,>({
   isMulti,
   closeMenuOnSelect,
   isError,
+  components,
   ...props
 }: CreatableProps<T, boolean, GroupBase<T>> & { isError?: boolean }) => {
   return (
@@ -18,7 +19,7 @@ export const CreatableSelect = <T,>({
       unstyled
       data-slot="creatable-select"
       styles={selectStyles as any}
-      components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option }}
+      components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option, ...components }}
       classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}
       {...props}
     />

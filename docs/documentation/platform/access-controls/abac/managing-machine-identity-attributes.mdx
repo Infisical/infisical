@@ -94,3 +94,25 @@ For methods like OIDC, these come as claims in the token and can be made availab
     At the moment we only support OIDC claims, Kubernetes attributes, and AWS attributes. Payloads on other authentication methods are not yet accessible.
   </Tab>
 </Tabs>
+
+#### Template Helper Functions
+
+In addition to referencing attributes directly, you can use the `stripPrefix` helper function to transform attribute values within your policy templates.
+
+**stripPrefix**
+
+Removes a prefix from the beginning of a string. If the string does not start with the given prefix, it is returned unchanged.
+
+**Examples:**
+
+Given `identity.auth.kubernetes.namespace` = `production-us-east`:
+
+```handlebars
+{{ stripPrefix identity.auth.kubernetes.namespace 'production-' }}  ->  us-east
+```
+
+Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
+
+```handlebars
+{{ stripPrefix identity.auth.aws.arn 'arn:aws:iam::123456789012:' }}  ->  user/example-user
+```

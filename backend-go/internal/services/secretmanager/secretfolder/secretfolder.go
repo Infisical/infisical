@@ -53,6 +53,7 @@ func (s *Service) getFolders(ctx context.Context, projectID string, envIDs []uui
 
 	where := qb.NewWhere().
 		Add(`env."projectId" = @projectID`).
+		Add(`env."deleteAfter" IS NULL`).
 		AddIf(len(envIDs) > 0, `folder."envId" = ANY(@envIDs)`)
 
 	if len(envIDs) > 0 {

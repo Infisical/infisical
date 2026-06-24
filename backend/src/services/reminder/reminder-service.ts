@@ -300,14 +300,13 @@ export const reminderServiceFactory = ({
         fromDate: fromDateInput
       }) => {
         let nextReminderDate;
-        let fromDate;
+        const fromDate = fromDateInput ? new Date(fromDateInput) : undefined;
         if (nextReminderDateInput) {
           nextReminderDate = new Date(nextReminderDateInput);
         }
 
         if (repeatDays && !nextReminderDate) {
-          if (fromDateInput) {
-            fromDate = new Date(fromDateInput);
+          if (fromDate) {
             nextReminderDate = fromDate;
           } else {
             nextReminderDate = $addDays(repeatDays);

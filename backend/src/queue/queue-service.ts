@@ -1,6 +1,8 @@
+import opentelemetry from "@opentelemetry/api";
 import {
   Job,
   JobSchedulerJson,
+  MetricsTime,
   Queue,
   QueueOptions,
   RepeatOptions,
@@ -11,6 +13,7 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -28,7 +31,15 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
+import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
+import {
+  queueJobCounter,
+  queueJobDurationHistogram,
+  queueJobFailureCounter,
+  queueJobWaitHistogram,
+  queueStalledCounter
+} from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
@@ -98,8 +109,13 @@ export enum QueueName {
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
+  AuditLogStreamOutbox = "audit-log-stream-outbox",
   PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal"
+  CaAutoRenewal = "ca-auto-renewal",
+  ProjectHardDelete = "project-hard-delete",
+  SignerAutoRenewal = "signer-auto-renewal",
+  SecretBlindIndexMigration = "secret-blind-index-migration",
+  UsageEvent = "usage-event"
 }
 
 export enum QueueJobs {
@@ -164,6 +180,7 @@ export enum QueueJobs {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
+  AuditLogStreamFlush = "audit-log-stream-flush",
   PamDiscoverySourceRunScan = "pam-discovery-run-scan",
   PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
@@ -171,13 +188,25 @@ export enum QueueJobs {
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
-  DigiCertOrderPolling = "digicert-order-polling-job"
+  DigiCertOrderPolling = "digicert-order-polling-job",
+  GoDaddyOrderPolling = "godaddy-order-polling-job",
+  ProjectHardDelete = "project-hard-delete-job",
+  SignerDailyAutoRenewal = "signer-daily-auto-renewal",
+  SecretBlindIndexMigration = "secret-blind-index-migration",
+  UsageEvent = "usage-event-job"
+}
+
+export enum JobState {
+  NotFound = "not-found",
+  Pending = "pending",
+  Completed = "completed",
+  Failed = "failed"
 }
 
 export type TQueueOptions = {
   jobId: string;
-  removeOnComplete?: boolean | { count: number };
-  removeOnFail?: boolean | { count: number };
+  removeOnComplete?: boolean | { count: number } | { age: number };
+  removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
   delay?: number;
   backoff?: {
@@ -463,6 +492,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
   };
+  [QueueName.AuditLogStreamOutbox]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
   [QueueName.PamDiscoveryScan]:
     | {
         name: QueueJobs.PamDiscoverySourceRunScan;
@@ -485,6 +518,22 @@ export type TQueueJobTypes = {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
+  [QueueName.ProjectHardDelete]: {
+    name: QueueJobs.ProjectHardDelete;
+    payload: { projectId: string };
+  };
+  [QueueName.SignerAutoRenewal]: {
+    name: QueueJobs.SignerDailyAutoRenewal;
+    payload: undefined;
+  };
+  [QueueName.SecretBlindIndexMigration]: {
+    name: QueueJobs.SecretBlindIndexMigration;
+    payload: { projectId: string };
+  };
+  [QueueName.UsageEvent]: {
+    name: QueueJobs.UsageEvent;
+    payload: { orgId: string; featureKey: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -517,7 +566,7 @@ export type TQueueServiceFactory = {
       token?: string,
       signal?: AbortSignal
     ) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency">
+    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency" | "limiter">
   ) => void;
   listen: <
     T extends QueueName,
@@ -575,6 +624,10 @@ export type TQueueServiceFactory = {
   ) => Promise<void>;
   removeJobScheduler: <T extends QueueName>(name: T, schedulerId: string) => Promise<void>;
   getJobSchedulers: (name: QueueName, start?: number, end?: number) => Promise<JobSchedulerJson[]>;
+  getJob: <T extends QueueName>(
+    name: T,
+    jobId: string
+  ) => Promise<Job<TQueueJobTypes[T]["payload"], void, string> | undefined>;
 };
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {
@@ -585,6 +638,35 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   const workerContainer: Partial<
     Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
   > = {};
+
+  // Observable gauge for queue depth. The SDK invokes the callback on each export (every 30s for OTLP
+  // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
+  // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
+  const QUEUE_DEPTH_STATES = ["waiting", "active", "delayed", "failed"] as const;
+  const queueDepthGauge = opentelemetry.metrics
+    .getMeter("InfisicalCore")
+    .createObservableGauge("infisical.queue.depth", {
+      description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
+      unit: "{job}"
+    });
+
+  queueDepthGauge.addCallback(async (observableResult) => {
+    if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+    await Promise.allSettled(
+      Object.entries(queueContainer).map(async ([name, q]) => {
+        if (!q) return;
+        try {
+          const counts = await q.getJobCounts(...QUEUE_DEPTH_STATES);
+          Object.entries(counts).forEach(([state, count]) => {
+            if (typeof count !== "number") return;
+            observableResult.observe(count, { "queue.name": name, "queue.state": state });
+          });
+        } catch (err) {
+          logger.warn({ err, queue: name }, `queue.depth gauge: getJobCounts failed [queue=${name}]`);
+        }
+      })
+    );
+  });
 
   // Remove orphaned job schedulers left in Redis by deleted queues.
   // Queues migrated to the cronJob system (cron-job.ts) are listed here so their
@@ -688,12 +770,62 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       return;
     }
 
-    workerContainer[name] = new Worker(name, jobFn, {
+    const worker = new Worker(name, jobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...fipsSettings,
       ...queueSettings,
+      // Enable BullMQ's built-in per-minute completion/failure tracking in Redis. Survives pod restarts
+      // (OTel cumulative counters reset), useful as a fallback when Prometheus retention is short.
+      metrics: { maxDataPoints: MetricsTime.ONE_WEEK * 2 },
       connection
     });
+
+    // Cross-cutting metric emission for every queue. Single registration covers all ~30 named queues
+    // since BullMQ Worker is an EventEmitter and we attach the listeners here.
+    worker.on("completed", (job) => {
+      const baseAttrs = { "queue.name": name, "job.name": job.name } as Record<string, string>;
+      queueJobCounter.add(1, { ...baseAttrs, outcome: "completed" });
+
+      if (typeof job.processedOn === "number" && typeof job.timestamp === "number") {
+        const durationMs = Date.now() - job.processedOn;
+        queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "completed" });
+
+        // Wait = (worker pickup) - (enqueue time + intentional delay). Subtracting opts.delay is what
+        // makes this measure queue contention, not scheduling
+        const intentionalDelayMs = job.opts.delay ?? 0;
+        const waitMs = Math.max(0, job.processedOn - job.timestamp - intentionalDelayMs);
+        queueJobWaitHistogram.record(waitMs / 1000, baseAttrs);
+      }
+    });
+
+    worker.on("failed", (job, err) => {
+      const baseAttrs = {
+        "queue.name": name,
+        "job.name": job?.name ?? "unknown"
+      } as Record<string, string>;
+      queueJobCounter.add(1, { ...baseAttrs, outcome: "failed" });
+
+      // Skip duration on framework-level failures (job hydration failed before start). Emitting 0
+      // would pollute the histogram with phantom zero-duration points.
+      if (job && typeof job.processedOn === "number") {
+        const durationMs = Date.now() - job.processedOn;
+        queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "failed" });
+      }
+
+      const errorType = classifyError(err);
+      const attemptsExhausted = !!(job?.opts.attempts && job.attemptsMade && job.attemptsMade >= job.opts.attempts);
+      queueJobFailureCounter.add(1, {
+        ...baseAttrs,
+        "error.type": errorType,
+        "attempts.exhausted": attemptsExhausted ? "true" : "false"
+      });
+    });
+
+    worker.on("stalled", () => {
+      queueStalledCounter.add(1, { "queue.name": name });
+    });
+
+    workerContainer[name] = worker;
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
@@ -878,6 +1010,13 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return q.getJobSchedulers(startOffset, endOffset);
   };
 
+  const getJob: TQueueServiceFactory["getJob"] = async (name, jobId) => {
+    const q = queueContainer[name];
+    if (!q) return undefined;
+    const job = await q.getJob(jobId);
+    return job ?? undefined;
+  };
+
   return {
     start,
     listen,
@@ -893,6 +1032,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     getDelayedJobs,
     upsertJobScheduler,
     removeJobScheduler,
-    getJobSchedulers
+    getJobSchedulers,
+    getJob
   };
 };

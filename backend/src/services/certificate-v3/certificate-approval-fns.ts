@@ -19,7 +19,12 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -31,7 +36,11 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertPolicyState
+} from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   extractCertificateFromBuffer,
@@ -362,10 +371,54 @@ export const certificateApprovalServiceFactory = (
 
     validateCaSupport(ca, "CSR signing");
 
+    const certPolicy = await certificatePolicyService.getPolicyById({
+      actor: undefined,
+      actorId: undefined,
+      actorAuthMethod: undefined,
+      actorOrgId: undefined,
+      policyId: profile.certificatePolicyId,
+      internal: true
+    });
+
+    if (!certPolicy) {
+      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+    }
+
+    validateAlgorithmCompatibility(ca, certPolicy);
+
+    const csrBasicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | undefined;
+    const policyIsCAState: CertPolicyState =
+      (certPolicy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (csrBasicConstraints?.isCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by the current policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
+      });
+    }
+
+    let effectiveBasicConstraints = csrBasicConstraints;
+    const storedPathLength = csrBasicConstraints?.pathLength;
+    let effectivePathLength = storedPathLength !== undefined && storedPathLength >= 0 ? storedPathLength : undefined;
+
+    if (csrBasicConstraints?.isCA && policyIsCAState !== CertPolicyState.DENIED) {
+      const policyMaxPathLength = certPolicy.basicConstraints?.maxPathLength;
+      effectiveBasicConstraints = {
+        isCA: true,
+        pathLength: policyMaxPathLength
+      };
+      if (
+        policyMaxPathLength !== undefined &&
+        policyMaxPathLength !== null &&
+        policyMaxPathLength !== -1 &&
+        (csrBasicConstraints.pathLength === undefined || csrBasicConstraints.pathLength === null)
+      ) {
+        effectivePathLength = policyMaxPathLength;
+      }
+    }
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =
       await certificateDAL.transaction(async (tx) => {
-        const csrBasicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | undefined;
-
         const certResult = await internalCaService.signCertFromCa({
           isInternal: true,
           caId: ca.id,
@@ -377,8 +430,8 @@ export const certificateApprovalServiceFactory = (
           signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
           keyAlgorithm: certRequest.keyAlgorithm || undefined,
           isFromProfile: true,
-          basicConstraints: csrBasicConstraints,
-          pathLength: csrBasicConstraints?.pathLength,
+          basicConstraints: effectiveBasicConstraints,
+          pathLength: effectivePathLength,
           tx
         });
 
@@ -470,7 +523,8 @@ export const certificateApprovalServiceFactory = (
       caType !== CaType.AZURE_AD_CS &&
       caType !== CaType.AWS_PCA &&
       caType !== CaType.AWS_ACM_PUBLIC_CA &&
-      caType !== CaType.VENAFI_TPP
+      caType !== CaType.VENAFI_TPP &&
+      caType !== CaType.GODADDY
     ) {
       return null;
     }
@@ -488,6 +542,19 @@ export const certificateApprovalServiceFactory = (
         country: certRequest.country || undefined,
         state: certRequest.state || undefined,
         locality: certRequest.locality || undefined
+      });
+    }
+
+    if (caType === CaType.GODADDY) {
+      // Validate the CSR's actual contents when one is present, so an approved BYO CSR can't carry a
+      // non-RSA key or extra SANs the GoDaddy guard never saw.
+      const csrDerived = certRequest.csr ? extractCertificateRequestFromCSR(certRequest.csr) : undefined;
+      validateGoDaddyIssuanceInputs({
+        keyAlgorithm: certRequest.csr
+          ? extractAlgorithmsFromCSR(certRequest.csr).keyAlgorithm
+          : certRequest.keyAlgorithm || undefined,
+        altNames: csrDerived?.subjectAlternativeNames ?? altNames ?? undefined,
+        commonName: csrDerived?.commonName ?? certRequest.commonName ?? undefined
       });
     }
 

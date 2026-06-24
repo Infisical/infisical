@@ -18,6 +18,24 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
+const projectUserMembershipRoleSchema = z.object({
+  id: z.string(),
+  role: z.string(),
+  customRoleId: z.string().optional().nullable(),
+  customRoleName: z.string().optional().nullable(),
+  customRoleSlug: z.string().optional().nullable(),
+  isTemporary: z.boolean(),
+  temporaryMode: z.string().optional().nullable(),
+  temporaryRange: z.string().nullable().optional(),
+  temporaryAccessStartTime: z.date().nullable().optional(),
+  temporaryAccessEndTime: z.date().nullable().optional()
+});
+
+const projectUserMembershipSchema = ProjectMembershipsSchema.extend({
+  user: SanitizedUserSchema,
+  roles: z.array(projectUserMembershipRoleSchema)
+});
+
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -39,25 +57,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          memberships: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          })
-            .omit({ updatedAt: true })
-            .array()
+          memberships: projectUserMembershipSchema.omit({ updatedAt: true }).array()
         })
       }
     },
@@ -103,23 +103,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          }).omit({ updatedAt: true })
+          membership: projectUserMembershipSchema.omit({ updatedAt: true })
         })
       }
     },
@@ -146,6 +130,55 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         membership: {
           ...membership,
           userId,
+          projectId: req.params.projectId
+        }
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/user/:userId/membership",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getProjectMembershipByUserId",
+      tags: [ApiDocsTags.ProjectUsers],
+      description: "Return a project user's membership by user ID",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().min(1).uuid().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP_BY_USER_ID.projectId),
+        userId: z.string().min(1).uuid().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP_BY_USER_ID.userId)
+      }),
+      response: {
+        200: z.object({
+          membership: projectUserMembershipSchema.omit({ updatedAt: true })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const membership = await server.services.membershipUser.getMembershipByUserId({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          userId: req.params.userId
+        }
+      });
+
+      return {
+        membership: {
+          ...membership,
+          userId: req.params.userId,
           projectId: req.params.projectId
         }
       };
@@ -240,23 +273,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema.extend({
-            user: SanitizedUserSchema,
-            roles: z.array(
-              z.object({
-                id: z.string(),
-                role: z.string(),
-                customRoleId: z.string().optional().nullable(),
-                customRoleName: z.string().optional().nullable(),
-                customRoleSlug: z.string().optional().nullable(),
-                isTemporary: z.boolean(),
-                temporaryMode: z.string().optional().nullable(),
-                temporaryRange: z.string().nullable().optional(),
-                temporaryAccessStartTime: z.date().nullable().optional(),
-                temporaryAccessEndTime: z.date().nullable().optional()
-              })
-            )
-          }).omit({ createdAt: true, updatedAt: true })
+          membership: projectUserMembershipSchema.omit({ createdAt: true, updatedAt: true })
         })
       }
     },

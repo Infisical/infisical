@@ -10,7 +10,8 @@ export enum SessionEndReason {
   ConnectionLost = "Connection lost",
   SetupFailed = "Failed to establish connection",
   IdleTimeout = "Session closed due to inactivity",
-  SessionLimitReached = "Maximum concurrent sessions reached"
+  SessionLimitReached = "Maximum concurrent sessions reached",
+  SessionGrantExpired = "Approval grant has expired"
 }
 
 export enum TerminalServerMessageType {

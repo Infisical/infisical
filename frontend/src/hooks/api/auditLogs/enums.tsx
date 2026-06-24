@@ -154,6 +154,7 @@ export enum EventType {
   READ_SHARED_SECRET = "read-shared-secret",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
+  ROTATE_CMEK = "rotate-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   GET_CMEK = "get-cmek",
@@ -179,6 +180,8 @@ export enum EventType {
   DELETE_APP_CONNECTION = "delete-app-connection",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
+  CREATE_GITHUB_APP = "create-github-app",
+  DELETE_GITHUB_APP = "delete-github-app",
   GET_SECRET_SYNCS = "get-secret-syncs",
   GET_SECRET_SYNC = "get-secret-sync",
   CREATE_SECRET_SYNC = "create-secret-sync",
@@ -275,6 +278,8 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
+  VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -445,5 +450,9 @@ export enum EventType {
   RELAY_CREATE = "relay-create",
   RELAY_UPDATE = "relay-update",
   RELAY_DELETE = "relay-delete",
-  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create"
+  RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
+  KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_UPDATE = "kmip-server-update",
+  KMIP_SERVER_DELETE = "kmip-server-delete",
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create"
 }

@@ -17,6 +17,9 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TDualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
+import { projectV2ToFeatureSet } from "@app/services/license-client/dual-read/entitlement-projection";
+import { TLicenseClientFactory } from "@app/services/license-client/license-client";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -51,13 +54,21 @@ import {
 type TLicenseServiceFactoryDep = {
   envConfig: Pick<
     TEnvConfig,
-    "LICENSE_SERVER_URL" | "LICENSE_SERVER_KEY" | "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "INTERNAL_REGION" | "SITE_URL"
+    | "LICENSE_SERVER_URL"
+    | "LICENSE_SERVER_KEY"
+    | "LICENSE_KEY"
+    | "LICENSE_KEY_OFFLINE"
+    | "INTERNAL_REGION"
+    | "SITE_URL"
+    | "LICENSE_SERVER_V2_MODE"
   >;
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   projectDAL: TProjectDALFactory;
+  licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription">;
+  licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -71,7 +82,9 @@ export const licenseServiceFactory = ({
   licenseDAL,
   keyStore,
   projectDAL,
-  envConfig
+  envConfig,
+  licenseClient,
+  licenseDualRead
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
@@ -103,7 +116,7 @@ export const licenseServiceFactory = ({
         data: { currentPlan }
       } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
 
-      const workspacesUsed = await projectDAL.countOfOrgProjects(null);
+      const workspacesUsed = await projectDAL.countOfBillableOrgProjects(null);
       currentPlan.workspacesUsed = workspacesUsed;
 
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
@@ -210,19 +223,55 @@ export const licenseServiceFactory = ({
         if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
         const rootOrgId = org.id;
 
-        const {
-          data: { currentPlan }
-        } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
-        );
-        const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
-        currentPlan.workspacesUsed = workspacesUsed;
+        let currentPlan: TFeatureSet;
+        if (envConfig.LICENSE_SERVER_V2_MODE === "on") {
+          // Serve from License Server v2, projected into the v1 plan shape so getPlan callers are unchanged.
+          if (!licenseClient) {
+            throw new BadRequestError({ message: "License Server v2 client is not configured" });
+          }
+          const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
+          if (!entitlements) {
+            throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
+          }
+          currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+
+          // The entitlement projection only carries feature flags, so set the plan slug from the
+          // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
+          // it non-fatal so a subscription read failure doesn't drop the org to the free fallback.
+          try {
+            const subscription = await licenseClient.getSubscription(rootOrgId);
+            const paidTiers = (subscription?.items ?? [])
+              .map((item) => item.plan.toLowerCase())
+              .filter((tier) => tier !== "free");
+            if (paidTiers.some((tier) => tier.includes("enterprise"))) {
+              currentPlan.slug = "enterprise";
+            } else if (paidTiers.length > 0) {
+              currentPlan.slug = "pro";
+            }
+          } catch (error) {
+            logger.error(error, `getPlan: failed to resolve plan tier from subscription [orgId=${rootOrgId}]`);
+          }
+        } else {
+          const {
+            data: { currentPlan: v1Plan }
+          } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
+            `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
+          );
+          currentPlan = v1Plan;
+        }
+
+        currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
 
         const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
         currentPlan.membersUsed = membersUsed;
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
 
-        if (currentPlan?.identitiesUsed && currentPlan.identitiesUsed !== identityUsed) {
+        // Seat sync targets the v1 license server only; v2 derives usage from registered counters.
+        if (
+          envConfig.LICENSE_SERVER_V2_MODE !== "on" &&
+          currentPlan?.identitiesUsed &&
+          currentPlan.identitiesUsed !== identityUsed
+        ) {
           try {
             await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
               quantity: membersUsed,
@@ -242,6 +291,11 @@ export const licenseServiceFactory = ({
           KeyStoreTtls.LicenseCloudPlanInSeconds,
           JSON.stringify(currentPlan)
         );
+
+        // read-compare bake: serve v1 but shadow-compare against v2 in the background ahead of the cutover.
+        if (envConfig.LICENSE_SERVER_V2_MODE === "read-compare") {
+          licenseDualRead?.compareInBackground(rootOrgId, currentPlan);
+        }
 
         return currentPlan;
       }
@@ -475,7 +529,7 @@ export const licenseServiceFactory = ({
     const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
       orgDAL.countAllOrgMembers(orgId),
       licenseDAL.countOfOrgIdentities(orgId),
-      projectDAL.countOfOrgProjects(orgId)
+      projectDAL.countOfBillableOrgProjects(orgId)
     ]);
 
     return {

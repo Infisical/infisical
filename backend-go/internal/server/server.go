@@ -4,12 +4,14 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
 	"github.com/infisical/api/internal/server/middlewares"
@@ -18,12 +20,13 @@ import (
 // Server is the HTTP server for the Infisical API.
 type Server struct {
 	services *api.Services
+	config   *config.Config
 	logger   *slog.Logger
 	router   chi.Router
 }
 
 // NewServer creates a new HTTP server with chi routing.
-func NewServer(services *api.Services, logger *slog.Logger) *Server {
+func NewServer(services *api.Services, cfg *config.Config, logger *slog.Logger) *Server {
 	router := chi.NewRouter()
 
 	// Register domain routes
@@ -32,6 +35,7 @@ func NewServer(services *api.Services, logger *slog.Logger) *Server {
 
 	return &Server{
 		services: services,
+		config:   cfg,
 		logger:   logger,
 		router:   router,
 	}
@@ -42,9 +46,13 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	var handler http.Handler = s.router
 
 	// Middleware stack (applied in reverse order - last wraps first)
+	// Inner middlewares (closest to handler) first, outer middlewares last
 	handler = requestLogger(handler, s.logger)
-	handler = middlewares.HTTPInfoMiddleware(handler)
 	handler = chimw.StripSlashes(handler)
+	handler = middlewares.Timeout(100 * time.Second)(handler) // Match Node.js connectionTimeout
+	handler = middlewares.CORS(s.buildCORSConfig())(handler)
+	handler = middlewares.SecurityHeaders(handler)
+	handler = middlewares.Recoverer(s.logger)(handler)
 	handler = requestid.Middleware(handler)
 
 	srv := &http.Server{
@@ -71,16 +79,67 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	})
 }
 
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.statusCode = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
 func requestLogger(next http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
-		logger.InfoContext(r.Context(), "request",
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+		logger.InfoContext(r.Context(), "request completed",
 			slog.String("reqId", requestid.FromContext(r.Context())),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
+			slog.Int("statusCode", recorder.statusCode),
 			slog.String("duration", time.Since(start).String()),
 			slog.String("remote", r.RemoteAddr),
 		)
 	})
+}
+
+// buildCORSConfig creates CORS config from server configuration.
+// Matches the Node.js @fastify/cors configuration.
+func (s *Server) buildCORSConfig() *middlewares.CORSConfig {
+	cfg := &middlewares.CORSConfig{
+		AllowCredentials: true,
+	}
+
+	// Parse comma-separated allowed headers
+	if s.config.CORSAllowedHeaders != "" {
+		for h := range strings.SplitSeq(s.config.CORSAllowedHeaders, ",") {
+			if h = strings.TrimSpace(h); h != "" {
+				cfg.AllowedHeaders = append(cfg.AllowedHeaders, h)
+			}
+		}
+	}
+
+	// Parse comma-separated allowed origins
+	if s.config.CORSAllowedOrigins != "" {
+		for o := range strings.SplitSeq(s.config.CORSAllowedOrigins, ",") {
+			if o = strings.TrimSpace(o); o != "" {
+				cfg.AllowedOrigins = append(cfg.AllowedOrigins, o)
+			}
+		}
+	}
+
+	// Add site URL to allowed origins
+	if s.config.SiteURL != "" {
+		cfg.AllowedOrigins = append(cfg.AllowedOrigins, s.config.SiteURL)
+	}
+
+	// If no origins configured, allow all (matches Node.js behavior)
+	if len(cfg.AllowedOrigins) == 0 {
+		cfg.AllowedOrigins = []string{"*"}
+		cfg.AllowCredentials = false // Can't use credentials with wildcard
+	}
+
+	return cfg
 }

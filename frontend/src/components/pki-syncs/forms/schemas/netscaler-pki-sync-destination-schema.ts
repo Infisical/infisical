@@ -15,7 +15,11 @@ const NetScalerSyncOptionsSchema = z.object({
       (val) => {
         if (!val) return true;
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
+        const allowedOptionalPlaceholders = [
+          "{{profileId}}",
+          "{{applicationId}}",
+          "{{commonName}}"
+        ];
 
         const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
@@ -26,17 +30,26 @@ const NetScalerSyncOptionsSchema = z.object({
         );
         const contentIsValid = allowedContentRegex.test(val);
 
+        // NetScaler caps certkey names at 63 chars. UUID placeholders resolve to 32 chars each,
+        // so check the realistic compiled length to reject over-limit schemas before sync time.
+        const compiledLength = val
+          .replace(/\{\{certificateId\}\}/g, "0".repeat(32))
+          .replace(/\{\{profileId\}\}/g, "0".repeat(32))
+          .replace(/\{\{applicationId\}\}/g, "0".repeat(32))
+          .replace(/\{\{commonName\}\}/g, "common-name").length;
+        const lengthIsValid = compiledLength <= 63;
+
         if (val.trim()) {
           const certificateIdRegex = /\{\{certificateId\}\}/;
           const certificateIdIsPresent = certificateIdRegex.test(val);
-          return contentIsValid && certificateIdIsPresent;
+          return contentIsValid && certificateIdIsPresent && lengthIsValid;
         }
 
         return contentIsValid;
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and periods (.) are allowed besides the placeholders."
+          "Certificate name schema must include the {{certificateId}} placeholder and compile to at most 63 characters for NetScaler (each UUID placeholder counts as 32 characters). It can also include {{profileId}}, {{applicationId}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and periods (.) are allowed besides the placeholders."
       }
     )
 });

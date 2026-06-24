@@ -14,7 +14,14 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
+  Switch
+} from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
@@ -32,7 +39,8 @@ const formSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional(),
   encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
-  keyUsage: z.nativeEnum(KmsKeyUsage)
+  keyUsage: z.nativeEnum(KmsKeyUsage),
+  isExportable: z.boolean()
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -68,7 +76,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
       name: cmek?.name,
       description: cmek?.description,
       encryptionAlgorithm: SymmetricKeyAlgorithm.AES_GCM_256,
-      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+      isExportable: cmek?.isExportable ?? true
     }
   });
 
@@ -76,7 +85,8 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     encryptionAlgorithm,
     name,
     description,
-    keyUsage
+    keyUsage,
+    isExportable
   }: FormData) => {
     const mutation = isUpdate
       ? updateCmek.mutateAsync({ keyId: cmek.id, projectId, name, description })
@@ -85,7 +95,10 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           name,
           description,
           keyUsage,
-          encryptionAlgorithm: encryptionAlgorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm
+          encryptionAlgorithm: encryptionAlgorithm as
+            | AsymmetricKeyAlgorithm
+            | SymmetricKeyAlgorithm,
+          isExportable
         });
 
     await mutation;
@@ -220,6 +233,29 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           {...register("description")}
         />
       </FormControl>
+      {!isUpdate && (
+        <Controller
+          control={control}
+          name="isExportable"
+          render={({ field: { onChange, value } }) => (
+            <Field orientation="horizontal" className="mb-6">
+              <FieldContent>
+                <FieldTitle>Allow Export</FieldTitle>
+                <FieldDescription>
+                  Allow users with the export permission to export this key&apos;s material. This
+                  cannot be changed after the key is created.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="is-exportable"
+                variant="project"
+                checked={value}
+                onCheckedChange={onChange}
+              />
+            </Field>
+          )}
+        />
+      )}
       <div className="flex items-center">
         <Button
           className="mr-4"

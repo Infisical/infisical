@@ -49,12 +49,10 @@
   font-family: var(--font-inter);
   --foreground: oklch(0.985 0 0);
   --background: oklch(0.145 0 0);
-
-  --toastify-color-dark: var(--color-mineshaft-700);
 }
 
 @theme {
-  --breakpoint-dashboard: 1100px;
+  --breakpoint-dashboard: 1400px;
 
   /* Fonts */
   --font-inter: "Inter", sans-serif;
@@ -465,18 +463,6 @@
   .type-reverse {
     animation: type 1.8s ease-out 0s infinite alternate-reverse both;
   }
-}
-
-.Toastify__toast {
-  @apply rounded-md;
-}
-
-.Toastify__toast-body {
-  @apply items-start;
-}
-
-.Toastify__toast-icon {
-  @apply w-4 pt-1;
 }
 
 .tags-conic-bg {

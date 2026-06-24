@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -24,6 +24,7 @@ import {
 } from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -48,12 +49,26 @@ const Page = () => {
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
   });
   const { caId } = params as { caId: string };
+  const search = useSearch({
+    from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
+  }) as {
+    from?: "settings" | "profile";
+    profileId?: string;
+    profileFrom?: "settings" | "application";
+    profileApplicationName?: string;
+  };
   const { data } = useGetCa({
     caId,
     type: CaType.INTERNAL
   }) as { data: TInternalCertificateAuthority };
 
   const projectId = currentProject?.id || "";
+
+  const cameFromProfile = search.from === "profile" && Boolean(search.profileId);
+
+  const { data: sourceProfile } = useGetCertificateProfileById({
+    profileId: cameFromProfile && search.profileId ? search.profileId : ""
+  });
 
   const { mutateAsync: deleteCa } = useDeleteCa();
 
@@ -80,12 +95,11 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
       params: {
         orgId: currentOrg.id,
         projectId
-      },
-      search: { selectedTab: "certificate-authorities" }
+      }
     });
   };
 
@@ -101,18 +115,36 @@ const Page = () => {
           {(isAllowed) =>
             isAllowed ? (
               <div className="mx-auto mb-6 w-full max-w-8xl">
-                <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId
-                  }}
-                  search={{ selectedTab: "certificate-authorities" }}
-                  className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                >
-                  <FontAwesomeIcon icon={faChevronLeft} />
-                  Certificate Authorities
-                </Link>
+                {cameFromProfile && search.profileId ? (
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId,
+                      profileId: search.profileId
+                    }}
+                    search={{
+                      from: search.profileFrom,
+                      applicationName: search.profileApplicationName
+                    }}
+                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+                  >
+                    <FontAwesomeIcon icon={faChevronLeft} />
+                    {sourceProfile?.slug || "Certificate Profile"}
+                  </Link>
+                ) : (
+                  <Link
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId
+                    }}
+                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+                  >
+                    <FontAwesomeIcon icon={faChevronLeft} />
+                    Certificate Authorities
+                  </Link>
+                )}
                 <PageHeader
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate authority"

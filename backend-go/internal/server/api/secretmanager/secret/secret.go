@@ -12,7 +12,6 @@ import (
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
-	"github.com/infisical/api/internal/services/auth/apiauth"
 	"github.com/infisical/api/internal/services/permission"
 	secretsvc "github.com/infisical/api/internal/services/secretmanager/secret"
 )
@@ -50,7 +49,6 @@ type SecretsService interface {
 
 // Handler provides HTTP handlers for secrets endpoints.
 type Handler struct {
-	apiauth.Authenticator
 	logger     *slog.Logger
 	permission PermissionService
 	project    ProjectService
@@ -60,23 +58,21 @@ type Handler struct {
 
 // Deps holds the dependencies for the secrets handler.
 type Deps struct {
-	Logger        *slog.Logger
-	Authenticator apiauth.Authenticator
-	Permission    PermissionService
-	Project       ProjectService
-	AuditLog      AuditLogService
-	Secrets       SecretsService
+	Logger     *slog.Logger
+	Permission PermissionService
+	Project    ProjectService
+	AuditLog   AuditLogService
+	Secrets    SecretsService
 }
 
 // NewHandler creates a new secrets handler.
 func NewHandler(deps *Deps) *Handler {
 	return &Handler{
-		Authenticator: deps.Authenticator,
-		logger:        deps.Logger.With(slog.String("handler", "secrets")),
-		permission:    deps.Permission,
-		project:       deps.Project,
-		auditLog:      deps.AuditLog,
-		secrets:       deps.Secrets,
+		logger:     deps.Logger.With(slog.String("handler", "secrets")),
+		permission: deps.Permission,
+		project:    deps.Project,
+		auditLog:   deps.AuditLog,
+		secrets:    deps.Secrets,
 	}
 }
 
@@ -167,10 +163,11 @@ func getSecretType(identity *auth.Identity, requestedType string) string {
 }
 
 // createGetSecretsAuditLog creates an audit log entry for listing secrets.
-func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) error {
-	identity, _ := auth.IdentityFromContext(ctx)
-	if identity == nil {
-		return nil
+// TODO: Re-enable once Go backend is primary - currently disabled to avoid duplicate logs with Node.js
+func (h *Handler) CreateGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) error {
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil {
+		return errutil.NotFound("Identity not found in context").WithErr(err)
 	}
 
 	info := auditlog.BuildAuditLogInfo(identity)

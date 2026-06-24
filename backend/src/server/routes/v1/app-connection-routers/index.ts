@@ -19,6 +19,7 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
+import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
@@ -28,11 +29,13 @@ import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
 import { registerDopplerConnectionRouter } from "./doppler-connection-router";
 import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
+import { registerF5BigIpConnectionRouter } from "./f5-big-ip-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
+import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
@@ -61,6 +64,7 @@ import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
+import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -101,6 +105,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Render]: registerRenderConnectionRouter,
     [AppConnection.LaravelForge]: registerLaravelForgeConnectionRouter,
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
+    [AppConnection.TriggerDev]: registerTriggerDevConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
@@ -133,8 +138,11 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Devin]: registerDevinConnectionRouter,
     [AppConnection.Ona]: registerOnaConnectionRouter,
     [AppConnection.DigiCert]: registerDigiCertConnectionRouter,
+    [AppConnection.GoDaddy]: registerGoDaddyConnectionRouter,
     [AppConnection.TravisCI]: registerTravisCIConnectionRouter,
     [AppConnection.Salesforce]: registerSalesforceConnectionRouter,
     [AppConnection.Snowflake]: registerSnowflakeConnectionRouter,
-    [AppConnection.Datadog]: registerDatadogConnectionRouter
+    [AppConnection.Datadog]: registerDatadogConnectionRouter,
+    [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
+    [AppConnection.Convex]: registerConvexConnectionRouter
   };

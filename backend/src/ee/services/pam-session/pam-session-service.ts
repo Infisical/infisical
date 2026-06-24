@@ -247,14 +247,16 @@ export const pamSessionServiceFactory = ({
     }
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
-    if (!updatedSession) {
-      if (session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
-        throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
-      }
-      return { session, projectId: session.projectId, alreadyEnded: true };
+
+    if (
+      !updatedSession &&
+      session.status !== PamSessionStatus.Ended &&
+      session.status !== PamSessionStatus.Terminated
+    ) {
+      throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
     }
 
-    // Fire-and-forget AI summarization
+    // Always queue — the gateway calling end means logs are uploaded.
     void (async () => {
       try {
         await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
@@ -263,7 +265,7 @@ export const pamSessionServiceFactory = ({
       }
     })();
 
-    return { session: updatedSession, projectId: session.projectId, alreadyEnded: false };
+    return { session: updatedSession ?? session, projectId: session.projectId, alreadyEnded: !updatedSession };
   };
 
   const terminateSessionById = async (sessionId: string, actor: OrgServiceActor) => {

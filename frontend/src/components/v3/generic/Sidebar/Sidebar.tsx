@@ -508,6 +508,7 @@ function SidebarCollapsibleGroup({
   label,
   collapsedLabel,
   defaultOpen = true,
+  collapsible = true,
   children,
   className
 }: {
@@ -515,6 +516,8 @@ function SidebarCollapsibleGroup({
   /** Short label shown when the sidebar is collapsed. Defaults to initials of the label. */
   collapsedLabel?: string;
   defaultOpen?: boolean;
+  /** When false, the group is always expanded and renders a static (non-clickable) label. */
+  collapsible?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -524,8 +527,11 @@ function SidebarCollapsibleGroup({
   const contentRef = React.useRef<HTMLDivElement>(null);
   const previousHasActiveChildRef = React.useRef<boolean | undefined>(undefined);
 
+  // A non-collapsible group is always open.
+  const open = collapsible ? isOpen : true;
+
   React.useEffect(() => {
-    if (isCollapsed) return;
+    if (isCollapsed || !collapsible) return;
     const hasActiveChild = !!contentRef.current?.querySelector('[data-active="true"]');
     const previous = previousHasActiveChildRef.current;
     if (hasActiveChild && previous !== true && !isOpen) {
@@ -540,6 +546,24 @@ function SidebarCollapsibleGroup({
       .split(" ")
       .map((w) => w[0])
       .join("");
+
+  const expandedHeader = collapsible ? (
+    <button
+      type="button"
+      aria-expanded={isOpen}
+      onClick={() => setIsOpen((prev) => !prev)}
+      className="flex h-7 shrink-0 cursor-pointer items-center gap-1 px-4 text-xs font-medium tracking-wide text-muted outline-hidden transition-colors select-none hover:text-muted focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+    >
+      <span className="truncate">{label}</span>
+      <ChevronDown
+        className={cn("size-3 shrink-0 transition-transform duration-200", !isOpen && "-rotate-90")}
+      />
+    </button>
+  ) : (
+    <div className="flex h-7 shrink-0 items-center gap-1 px-4 text-xs font-medium tracking-wide text-muted select-none">
+      <span className="truncate">{label}</span>
+    </div>
+  );
 
   return (
     <SidebarGroup className={cn(isCollapsed ? "mt-1" : "mt-3", className)}>
@@ -561,27 +585,14 @@ function SidebarCollapsibleGroup({
           </TooltipContent>
         </Tooltip>
       ) : (
-        <button
-          type="button"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="flex h-7 shrink-0 cursor-pointer items-center gap-1 px-4 text-[0.65rem] font-semibold tracking-wide text-muted/60 outline-hidden transition-colors select-none hover:text-muted focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-        >
-          <span className="truncate uppercase">{label}</span>
-          <ChevronDown
-            className={cn(
-              "size-3 shrink-0 transition-transform duration-200",
-              !isOpen && "-rotate-90"
-            )}
-          />
-        </button>
+        expandedHeader
       )}
       <div
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...(!isCollapsed && !isOpen ? { inert: "" as any } : {})}
+        {...(!isCollapsed && !open ? { inert: "" as any } : {})}
         className={cn(
           "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
-          isCollapsed || isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          isCollapsed || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         )}
       >
         <div ref={contentRef} className="overflow-hidden">
