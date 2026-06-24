@@ -26,7 +26,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   TextArea
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
@@ -431,9 +430,7 @@ const SettingsTab = ({
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const recordingConnectionId = watch("recordingConnectionId");
   const policies = watch("policies");
-  const showRecording = accountTypeRequiresRecording(template.type);
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
     (p) => POLICY_EDITORS[p.key]
   );

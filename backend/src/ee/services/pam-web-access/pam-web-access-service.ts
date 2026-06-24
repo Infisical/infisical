@@ -8,7 +8,6 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
-import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

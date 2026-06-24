@@ -11,7 +11,6 @@ import {
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import {
   PamAccountSettingsOverridesSchema,
-  PamTemplateAccessPolicySchema,
   PamTemplateSettingsSchema
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";

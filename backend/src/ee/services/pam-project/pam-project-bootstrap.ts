@@ -152,7 +152,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "active-directory",
     type: PamAccountType.ActiveDirectory,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.AwsS3,

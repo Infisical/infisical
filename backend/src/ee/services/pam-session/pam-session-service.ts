@@ -37,10 +37,7 @@ import {
   parseInternalMetadata,
   validateConnectionDetails
 } from "../pam-account/pam-account-schemas";
-import {
-  PamTemplateAccessPolicySchema,
-  PamTemplateSettingsSchema
-} from "../pam-account-template/pam-account-template-schemas";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
