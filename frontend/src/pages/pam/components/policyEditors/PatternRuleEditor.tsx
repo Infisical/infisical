@@ -3,7 +3,7 @@ import { Field, FieldContent, FieldDescription, FieldLabel, TextArea } from "@ap
 import { PolicyEditorProps } from "./types";
 
 const RE2_SYNTAX_URL = "https://github.com/google/re2/wiki/Syntax";
-const DEFAULT_PLACEHOLDER = "pattern-one.*\nanother\\s+pattern\n\\b\\d{3}-\\d{2}-\\d{4}\\b";
+const DEFAULT_PLACEHOLDER = "rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b";
 
 export const PatternRuleEditor = ({ label, description, value, onChange }: PolicyEditorProps) => {
   const text = typeof value === "string" ? value : "";
