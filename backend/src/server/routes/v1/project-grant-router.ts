@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectFolderGrantsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -63,6 +64,22 @@ export const registerProjectGrantRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: grant.sourceProjectId,
+        event: {
+          type: EventType.CREATE_PROJECT_GRANT,
+          metadata: {
+            grantId: grant.id,
+            sourceProjectId: grant.sourceProjectId,
+            targetProjectId: grant.targetProjectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath
+          }
+        }
+      });
+
       return { grant };
     }
   });
@@ -92,6 +109,20 @@ export const registerProjectGrantRouter = async (server: FastifyZodProvider) => 
         grantId: req.params.grantId,
         sourceProjectId: req.query.sourceProjectId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: grant.sourceProjectId,
+        event: {
+          type: EventType.DELETE_PROJECT_GRANT,
+          metadata: {
+            grantId: grant.id,
+            sourceProjectId: grant.sourceProjectId,
+            targetProjectId: grant.targetProjectId
+          }
+        }
+      });
+
       return { grant };
     }
   });

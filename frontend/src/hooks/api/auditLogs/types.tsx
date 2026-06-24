@@ -955,6 +955,26 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface CreateProjectGrantEvent {
+  type: EventType.CREATE_PROJECT_GRANT;
+  metadata: {
+    grantId: string;
+    sourceProjectId: string;
+    targetProjectId: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProjectGrantEvent {
+  type: EventType.DELETE_PROJECT_GRANT;
+  metadata: {
+    grantId: string;
+    sourceProjectId: string;
+    targetProjectId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1044,7 +1064,9 @@ export type Event =
   | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
-  | PamAccessPolicyBypassedEvent;
+  | PamAccessPolicyBypassedEvent
+  | CreateProjectGrantEvent
+  | DeleteProjectGrantEvent;
 
 export type AuditLog = {
   id: string;

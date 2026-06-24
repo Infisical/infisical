@@ -937,7 +937,11 @@ export enum EventType {
   CREATE_HONEY_TOKEN = "create-honey-token",
   UPDATE_HONEY_TOKEN = "update-honey-token",
   REVOKE_HONEY_TOKEN = "revoke-honey-token",
-  TRIGGER_HONEY_TOKEN = "trigger-honey-token"
+  TRIGGER_HONEY_TOKEN = "trigger-honey-token",
+
+  // Project Grants
+  CREATE_PROJECT_GRANT = "create-project-grant",
+  DELETE_PROJECT_GRANT = "delete-project-grant"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7557,6 +7561,26 @@ interface TriggerHoneyTokenEvent {
   };
 }
 
+interface CreateProjectGrantEvent {
+  type: EventType.CREATE_PROJECT_GRANT;
+  metadata: {
+    grantId: string;
+    sourceProjectId: string;
+    targetProjectId: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProjectGrantEvent {
+  type: EventType.DELETE_PROJECT_GRANT;
+  metadata: {
+    grantId: string;
+    sourceProjectId: string;
+    targetProjectId: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -8238,4 +8262,6 @@ export type Event =
   | RemoveIdentityFromGroupEvent
   | AddGroupToProjectEvent
   | UpdateGroupProjectMembershipEvent
-  | RemoveGroupFromProjectEvent;
+  | RemoveGroupFromProjectEvent
+  | CreateProjectGrantEvent
+  | DeleteProjectGrantEvent;
