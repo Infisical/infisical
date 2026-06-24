@@ -595,6 +595,21 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOneByNameAndOrgScope = async (name: string, orgId: string, tx?: Knex): Promise<TGroups | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.Groups)
+        .join(TableName.Membership, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Groups}.name`, name)
+        .select(selectAllTableCols(TableName.Groups))
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOneByNameAndOrgScope" });
+    }
+  };
+
   // Check if a group is linked by any sub-orgs (used to prevent deletion of groups still in use)
   const getGroupsReferencingGroup = async (groupId: string, tx?: Knex) => {
     try {
@@ -626,6 +641,7 @@ export const groupDALFactory = (db: TDbClient) => {
     findGroupsByProjectId,
     findById,
     findOne,
+    findOneByNameAndOrgScope,
     getGroupsReferencingGroup
   };
 };
