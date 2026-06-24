@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
+import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
 
 describe("splitMysqlStatements", () => {
   test("single statement without semicolon", () => {
@@ -53,6 +53,13 @@ describe("splitMysqlStatements", () => {
     ]);
   });
 
+  test("semicolon inside hash comment", () => {
+    expect(splitMysqlStatements("SELECT 1 # ; not a split\n; SELECT 2")).toEqual([
+      "SELECT 1 # ; not a split",
+      "SELECT 2"
+    ]);
+  });
+
   test("semicolon inside block comment", () => {
     expect(splitMysqlStatements("SELECT 1 /* ; still one */ ; SELECT 2")).toEqual([
       "SELECT 1 /* ; still one */",
@@ -88,5 +95,43 @@ describe("splitMysqlStatements", () => {
       "SELECT \"a;b\", 'c;d', `e;f`",
       "SELECT 2"
     ]);
+  });
+});
+
+describe("extractCommand", () => {
+  test("simple SELECT", () => {
+    expect(extractCommand("SELECT 1")).toBe("SELECT");
+  });
+
+  test("leading whitespace", () => {
+    expect(extractCommand("  \n  INSERT INTO t VALUES (1)")).toBe("INSERT");
+  });
+
+  test("leading line comment", () => {
+    expect(extractCommand("-- comment\nBEGIN")).toBe("BEGIN");
+  });
+
+  test("leading hash comment", () => {
+    expect(extractCommand("# comment\nCOMMIT")).toBe("COMMIT");
+  });
+
+  test("leading block comment", () => {
+    expect(extractCommand("/* note */ ROLLBACK")).toBe("ROLLBACK");
+  });
+
+  test("multiple leading comments", () => {
+    expect(extractCommand("-- first\n/* second */ # third\nDELETE FROM t")).toBe("DELETE");
+  });
+
+  test("START TRANSACTION", () => {
+    expect(extractCommand("START TRANSACTION")).toBe("START");
+  });
+
+  test("empty input", () => {
+    expect(extractCommand("")).toBe("");
+  });
+
+  test("only comments", () => {
+    expect(extractCommand("-- just a comment\n")).toBe("");
   });
 });

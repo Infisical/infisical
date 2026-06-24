@@ -39,13 +39,13 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
               ELSE NULL
             END
           )
+          ORDER BY c.ORDINAL_POSITION
         )
         FROM information_schema.COLUMNS c
         WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ?
-        ORDER BY c.ORDINAL_POSITION
       ), JSON_ARRAY()),
       'primaryKeys', COALESCE((
-        SELECT JSON_ARRAYAGG(kcu.COLUMN_NAME)
+        SELECT JSON_ARRAYAGG(kcu.COLUMN_NAME ORDER BY kcu.ORDINAL_POSITION)
         FROM information_schema.KEY_COLUMN_USAGE kcu
         JOIN information_schema.TABLE_CONSTRAINTS tc
           ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
@@ -53,7 +53,6 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
           AND tc.TABLE_NAME = kcu.TABLE_NAME
         WHERE kcu.TABLE_SCHEMA = ? AND kcu.TABLE_NAME = ?
           AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
-        ORDER BY kcu.ORDINAL_POSITION
       ), JSON_ARRAY()),
       'foreignKeys', COALESCE((
         SELECT JSON_ARRAYAGG(

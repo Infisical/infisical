@@ -188,16 +188,9 @@ export const DataExplorerGrid = ({
 }: DataExplorerGridProps) => {
   const executeStatements = useCallback(
     async (statements: string[]) => {
-      if (dialect === "mysql") {
-        await statements.reduce(
-          (chain, stmt) => chain.then(() => executeQuery(connectionId, stmt)),
-          Promise.resolve() as Promise<unknown>
-        );
-      } else {
-        await executeQuery(connectionId, wrapInTransaction(statements));
-      }
+      await executeQuery(connectionId, wrapInTransaction(statements));
     },
-    [dialect, executeQuery, connectionId]
+    [executeQuery, connectionId]
   );
 
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);

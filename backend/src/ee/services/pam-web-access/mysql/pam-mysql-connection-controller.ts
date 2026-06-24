@@ -53,6 +53,8 @@ export const createMysqlConnectionController = async (params: ControllerParams):
   const [pidRows] = await conn.execute<mysql.RowDataPacket[]>("SELECT CONNECTION_ID() AS pid");
   const backendPid = (pidRows[0]?.pid as number) ?? null;
 
+  await conn.execute("SET SESSION max_execution_time = 30000, sql_select_limit = ?", [MAX_ROWS + 1]);
+
   let isInTransaction = false;
   let disposing = false;
 
@@ -89,6 +91,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
         password: "",
         connectTimeout: 5_000
       });
+      cancelConn.on("error" as never, () => {});
       await cancelConn.execute("KILL QUERY ?", [backendPid]);
     } catch (err) {
       logger.debug(err, `Failed to cancel MySQL query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
@@ -237,6 +240,12 @@ export const createMysqlConnectionController = async (params: ControllerParams):
     logger.error(err, `MySQL tab connection error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     disposing = true;
     onUnexpectedTermination(err.message || "Database connection error");
+  });
+
+  conn.on("end" as never, () => {
+    if (disposing) return;
+    disposing = true;
+    onUnexpectedTermination("Database connection ended");
   });
 
   const dispose = () => {

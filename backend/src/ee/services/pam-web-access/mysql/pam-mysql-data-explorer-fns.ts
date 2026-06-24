@@ -12,6 +12,12 @@ const skipLineComment = (sql: string, pos: number): number => {
   return i;
 };
 
+const skipHashComment = (sql: string, pos: number): number => {
+  let i = pos + 1;
+  while (i < sql.length && sql[i] !== "\n") i += 1;
+  return i;
+};
+
 const skipBlockComment = (sql: string, pos: number): number => {
   let i = pos + 2;
   while (i + 1 < sql.length && !(sql[i] === "*" && sql[i + 1] === "/")) i += 1;
@@ -35,6 +41,8 @@ export const splitMysqlStatements = (sql: string): string[] => {
       pos = skipQuoted(sql, pos, ch);
     } else if (isLineComment(sql, pos)) {
       pos = skipLineComment(sql, pos);
+    } else if (ch === "#") {
+      pos = skipHashComment(sql, pos);
     } else if (isBlockComment(sql, pos)) {
       pos = skipBlockComment(sql, pos);
     } else if (ch === ";") {
@@ -54,10 +62,34 @@ export const splitMysqlStatements = (sql: string): string[] => {
 };
 
 export const extractCommand = (sql: string): string => {
-  const trimmed = sql.trimStart();
-  let i = 0;
-  while (i < trimmed.length && trimmed[i] !== " " && trimmed[i] !== "\t" && trimmed[i] !== "\n" && trimmed[i] !== "\r") {
-    i += 1;
+  let pos = 0;
+  const len = sql.length;
+
+  // Skip leading whitespace and comments
+  while (pos < len) {
+    // Skip whitespace
+    if (sql[pos] === " " || sql[pos] === "\t" || sql[pos] === "\n" || sql[pos] === "\r") {
+      pos += 1;
+    } else if (isLineComment(sql, pos)) {
+      pos += 2;
+      while (pos < len && sql[pos] !== "\n") pos += 1;
+      if (pos < len) pos += 1;
+    } else if (sql[pos] === "#") {
+      pos += 1;
+      while (pos < len && sql[pos] !== "\n") pos += 1;
+      if (pos < len) pos += 1;
+    } else if (isBlockComment(sql, pos)) {
+      pos += 2;
+      while (pos + 1 < len && !(sql[pos] === "*" && sql[pos + 1] === "/")) pos += 1;
+      pos += 2;
+    } else {
+      break;
+    }
   }
-  return trimmed.slice(0, i).toUpperCase();
+
+  const start = pos;
+  while (pos < len && sql[pos] !== " " && sql[pos] !== "\t" && sql[pos] !== "\n" && sql[pos] !== "\r") {
+    pos += 1;
+  }
+  return sql.slice(start, pos).toUpperCase();
 };

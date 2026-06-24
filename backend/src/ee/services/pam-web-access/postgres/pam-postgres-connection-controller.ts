@@ -16,7 +16,7 @@ import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
 type ControllerParams = {
   relayPort: number;
   username: string;
-  database: string;
+  database?: string;
   sessionId: string;
   connectionId: string;
   sendResponse: (msg: TDataExplorerServerMessage) => void;

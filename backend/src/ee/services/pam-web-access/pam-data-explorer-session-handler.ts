@@ -19,7 +19,7 @@ import {
 
 const MAX_CONNECTIONS_PER_WS = 20;
 
-type OneShotOptions = {
+export type OneShotOptions = {
   relayPort: number;
   username: string;
   database?: string;

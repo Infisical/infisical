@@ -2,13 +2,8 @@ import mysql from "mysql2/promise";
 
 import { logger } from "@app/lib/logger";
 
+import { type OneShotOptions } from "../pam-data-explorer-session-handler";
 import { getSchemasQuery, getTablesQuery } from "./pam-mysql-data-explorer-metadata";
-
-type OneShotOptions = {
-  relayPort: number;
-  username: string;
-  database?: string;
-};
 
 const buildConnection = async ({ relayPort, username, database }: OneShotOptions): Promise<mysql.Connection> => {
   const conn = await mysql.createConnection({
