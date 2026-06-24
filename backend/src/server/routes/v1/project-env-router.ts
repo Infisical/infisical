@@ -82,7 +82,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       ],
       params: z.object({
         projectId: z.string().trim().uuid().describe(ENVIRONMENTS.GET_BY_SLUG.projectId),
-        envSlug: z.string().trim().describe(ENVIRONMENTS.GET_BY_SLUG.slug)
+        envSlug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.GET_BY_SLUG.slug)
       }),
       response: {
         200: z.object({
