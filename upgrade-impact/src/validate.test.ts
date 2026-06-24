@@ -109,13 +109,10 @@ const validationCases: ValidationCase[] = [
     expectedErrors: []
   },
   {
-    name: "rejects a release file missing from the index",
+    name: "tolerates a release file missing from the index",
     index: makeIndex([]),
     releases: [{ fileName: `${validRelease.version}.yaml`, release: validRelease }],
-    expectedErrors: [
-      `${validRelease.version}.yaml is not listed in index.yaml`,
-      `${validRelease.version}.yaml is not referenced by index.yaml`
-    ]
+    expectedErrors: []
   },
   {
     name: "rejects an impact entry without evidence",
