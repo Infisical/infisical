@@ -3616,9 +3616,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://a767-190-31-36-34.ngrok-free.app/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://a767-190-31-36-34.ngrok-free.app"]
+      "server": ["https://app.infisical.com"]
     }
   },
   "appearance": {
