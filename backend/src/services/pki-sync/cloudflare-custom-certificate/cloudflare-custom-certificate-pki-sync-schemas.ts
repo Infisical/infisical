@@ -22,7 +22,7 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
       (schema) => {
         if (!schema) return true;
 
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -36,7 +36,7 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });

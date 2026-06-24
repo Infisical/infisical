@@ -18,6 +18,7 @@ type PkiSyncFindFilter = Parameters<typeof buildFindFilter<TPkiSyncs>>[0];
 const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncFindFilter; tx?: Knex }) => {
   const query = (tx || db.replicaNode())(TableName.PkiSync)
     .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
+    .leftJoin(TableName.PkiApplication, `${TableName.PkiSync}.applicationId`, `${TableName.PkiApplication}.id`)
     .select(selectAllTableCols(TableName.PkiSync))
     .select(
       // app connection fields
@@ -36,7 +37,8 @@ const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncF
       db
         .ref("isPlatformManagedCredentials")
         .withSchema(TableName.AppConnection)
-        .as("appConnectionIsPlatformManagedCredentials")
+        .as("appConnectionIsPlatformManagedCredentials"),
+      db.ref("name").withSchema(TableName.PkiApplication).as("applicationName")
     );
 
   if (filter) {
@@ -61,6 +63,7 @@ const basePkiSyncWithSubscriberQuery = ({
   let query = (tx || db.replicaNode())(TableName.PkiSync)
     .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
     .leftJoin(TableName.PkiSubscriber, `${TableName.PkiSync}.subscriberId`, `${TableName.PkiSubscriber}.id`)
+    .leftJoin(TableName.PkiApplication, `${TableName.PkiSync}.applicationId`, `${TableName.PkiApplication}.id`)
     .select(selectAllTableCols(TableName.PkiSync))
     .select(
       // app connection fields
@@ -80,6 +83,7 @@ const basePkiSyncWithSubscriberQuery = ({
         .ref("isPlatformManagedCredentials")
         .withSchema(TableName.AppConnection)
         .as("appConnectionIsPlatformManagedCredentials"),
+      db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"),
       // pki subscriber fields
       db.ref("id").withSchema(TableName.PkiSubscriber).as("pkiSubscriberId"),
       db.ref("name").withSchema(TableName.PkiSubscriber).as("subscriberName")

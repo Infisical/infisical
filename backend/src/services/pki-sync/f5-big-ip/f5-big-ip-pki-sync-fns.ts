@@ -20,7 +20,9 @@ import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 import {
   buildManagedCertificateNameRegexSource,
   certificateNameSchemaHasFreeTextPlaceholder,
-  compileCertificateNameSchema
+  compileCertificateNameSchema,
+  SHORT_UUID_NAME_REGEX_FRAGMENT,
+  UUID_NAME_REGEX_FRAGMENT
 } from "../pki-sync-certificate-name-fns";
 import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
@@ -98,11 +100,13 @@ export const buildManagedCertNamePattern = (certificateNameSchema: string | unde
     return new RE2(`^${F5_BIG_IP_DEFAULT_CERT_NAME_PREFIX}[0-9a-f]{32}(-[a-zA-Z0-9]*)?$`);
   }
 
-  // {{certificateId}}, {{profileId}}, and {{applicationId}} resolve to dash-stripped UUIDs (32 hex chars).
-  // {{commonName}} is arbitrary, so match any run of BIG-IP-safe characters.
+  // {{certificateId}}, {{profileId}}, and {{applicationId}} resolve to 32-char dash-stripped UUIDs;
+  // {{shortCertificateId}} resolves to a 22-char base62 string.
+  // {{commonName}} and {{applicationName}} are arbitrary, so match any run of BIG-IP-safe characters.
   const pattern = buildManagedCertificateNameRegexSource(certificateNameSchema, {
-    uuid: "[0-9a-f]{32}",
-    commonName: "[a-zA-Z0-9._-]*"
+    uuid: UUID_NAME_REGEX_FRAGMENT,
+    shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
+    freeText: "[a-zA-Z0-9._-]*"
   });
 
   return new RE2(`^${pattern}$`);
@@ -841,6 +845,7 @@ export const f5BigIpPkiSyncFactory = ({
                       certificateId,
                       profileId: certData.profileId,
                       applicationId: pkiSync.applicationId,
+                      applicationName: pkiSync.applicationName,
                       commonName: certData.commonName
                     },
                     PkiSync.F5BigIp

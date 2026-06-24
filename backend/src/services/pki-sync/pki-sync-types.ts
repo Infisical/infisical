@@ -19,6 +19,7 @@ export type TPkiSync = {
   syncOptions: Record<string, unknown>;
   projectId: string;
   applicationId?: string | null;
+  applicationName?: string | null;
   subscriberId?: string;
   connectionId: string;
   createdAt: Date;

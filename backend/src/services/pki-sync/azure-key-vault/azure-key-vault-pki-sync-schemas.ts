@@ -24,7 +24,7 @@ export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       (schema) => {
         if (!schema) return true;
 
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -38,7 +38,7 @@ export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });

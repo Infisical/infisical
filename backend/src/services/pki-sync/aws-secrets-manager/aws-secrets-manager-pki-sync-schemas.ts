@@ -33,7 +33,7 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
       (schema) => {
         if (!schema) return true;
 
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -52,7 +52,7 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-512 characters long for AWS Secrets Manager."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-512 characters long for AWS Secrets Manager."
       }
     ),
   fieldMappings: AwsSecretsManagerFieldMappingsSchema.optional().default({

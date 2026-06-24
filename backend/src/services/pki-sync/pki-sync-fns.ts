@@ -26,7 +26,11 @@ import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-c
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
-import { buildManagedCertificateNameRegexSource, UUID_NAME_REGEX_FRAGMENT } from "./pki-sync-certificate-name-fns";
+import {
+  buildManagedCertificateNameRegexSource,
+  SHORT_UUID_NAME_REGEX_FRAGMENT,
+  UUID_NAME_REGEX_FRAGMENT
+} from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -95,7 +99,8 @@ export const matchesCertificateNameSchema = (name: string, schema?: string): boo
 
   const pattern = buildManagedCertificateNameRegexSource(schema, {
     uuid: UUID_NAME_REGEX_FRAGMENT,
-    commonName: "[a-zA-Z0-9._-]*"
+    shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
+    freeText: "[a-zA-Z0-9._-]*"
   });
 
   return new RE2(`^${pattern}$`).test(name);

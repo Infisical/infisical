@@ -40,7 +40,7 @@ const ChefPkiSyncOptionsSchema = z.object({
       (schema) => {
         if (!schema) return true;
 
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -59,7 +59,7 @@ const ChefPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate item name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-255 characters long for Chef data bag items."
+          "Certificate item name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-255 characters long for Chef data bag items."
       }
     ),
   fieldMappings: ChefFieldMappingsSchema.optional().default({

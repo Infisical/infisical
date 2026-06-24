@@ -25,7 +25,7 @@ const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
         if (!schema) return true;
 
         // Validate that {{certificateId}} placeholder is present
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -44,7 +44,7 @@ const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, spaces, hyphens, and underscores and be 1-256 characters long when compiled for AWS Certificate Manager. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, spaces, hyphens, and underscores and be 1-256 characters long when compiled for AWS Certificate Manager. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
