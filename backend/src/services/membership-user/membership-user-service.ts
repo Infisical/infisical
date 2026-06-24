@@ -42,7 +42,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
-import { assertWillRetainAdmin } from "./membership-user-fns";
+import { assertWillRetainOrgAdmin } from "./membership-user-fns";
 import {
   TCreateMembershipUserDTO,
   TDeleteMembershipUserDTO,
@@ -423,11 +423,9 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      if (!newRolesHavePermanentAdmin) {
-        await assertWillRetainAdmin({
-          scope: scopeData.scope,
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
+        await assertWillRetainOrgAdmin({
           scopeOrgId: scopeData.orgId,
-          scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
           excludeMembershipIds: [existingMembership.id],
           dal: membershipUserDAL,
           tx
@@ -531,15 +529,6 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
-        await assertWillRetainAdmin({
-          scope: AccessScope.Project,
-          scopeOrgId: scopeData.orgId,
-          scopeProjectId: dto.scopeData.projectId,
-          excludeMembershipIds: [existingMembership.id],
-          dal: membershipUserDAL,
-          tx
-        });
-
         await additionalPrivilegeDAL.delete(
           {
             actorUserId: dto.selector.userId,
