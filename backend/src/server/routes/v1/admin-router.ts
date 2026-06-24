@@ -55,6 +55,7 @@ const SanitizedSuperAdminSchema = z.object({
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
+  isCrossProjectSecretSharingEnabled: z.boolean().optional(),
   // Always returned
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
@@ -84,6 +85,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
+      const orgId = req.auth?.orgId ?? '';
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -101,7 +103,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
-            licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on"
+            licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
+            isCrossProjectSecretSharingEnabled: serverEnvs.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(orgId),
           }
         };
       }
@@ -116,7 +119,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
-          isOfflineUsageReportsEnabled: hasOfflineLicense
+          isOfflineUsageReportsEnabled: hasOfflineLicense,
+          isCrossProjectSecretSharingEnabled: serverEnvs.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(orgId),
         }
       };
     }

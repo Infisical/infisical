@@ -4,8 +4,9 @@ import { z } from "zod";
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
-import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSub, ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -54,7 +55,13 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
+      const appCfg = getConfig();
+      const isCrossProjectEnabled = appCfg.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(req.permission.orgId);
+      const permissions = isCrossProjectEnabled
+        ? req.body.permissions
+        : req.body.permissions.filter((p) => p.subject !== ProjectPermissionSub.ProjectGrant);
+
+      const stringifiedPermissions = JSON.stringify(packRules(permissions));
 
       const role = await server.services.role.createRole({
         permission: req.permission,
@@ -143,7 +150,15 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
+      const appCfg = getConfig();
+      const isCrossProjectEnabled = appCfg.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(req.permission.orgId);
+      const filteredPermissions = req.body.permissions
+        ? isCrossProjectEnabled
+          ? req.body.permissions
+          : req.body.permissions.filter((p) => p.subject !== ProjectPermissionSub.ProjectGrant)
+        : undefined;
+
+      const stringifiedPermissions = filteredPermissions ? JSON.stringify(packRules(filteredPermissions)) : undefined;
       const role = await server.services.role.updateRole({
         permission: req.permission,
         scopeData: {
