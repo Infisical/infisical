@@ -122,8 +122,6 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
 
         setAuthToken(result.token);
 
-        context.queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-        context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
         await context.queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
         await context.queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
