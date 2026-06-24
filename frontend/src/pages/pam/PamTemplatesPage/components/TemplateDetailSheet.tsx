@@ -33,6 +33,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { formatDetailDate, PamDetailSheet } from "../../components/PamDetailSheet";
 import { PAM_TEMPLATE_TABS } from "../../components/pamResourceTabs";
 import { POLICY_EDITORS } from "../../components/policyEditors";
+import { PatternRuleEditor } from "../../components/policyEditors/PatternRuleEditor";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { RecordingConnectionPicker } from "../../PamAccountsPage/components/RecordingConnectionPicker";
@@ -316,32 +317,14 @@ const SettingsTab = ({
             </Field>
           )}
 
-          <Field>
-            <FieldLabel>Session Log Masking</FieldLabel>
-            <FieldContent>
-              <TextArea
-                rows={5}
-                placeholder={
-                  "password\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b\nsecret_key\\s*[:=]\\s*\\S+"
-                }
-                value={watch("sessionLogMaskingPatterns") ?? ""}
-                onChange={(e) =>
-                  setValue("sessionLogMaskingPatterns", e.target.value, { shouldDirty: true })
-                }
-              />
-              <FieldDescription>
-                Matching content in session recordings will be masked (one RE2 regex per line).{" "}
-                <a
-                  href="https://github.com/google/re2/wiki/Syntax"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  Syntax reference
-                </a>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+          <PatternRuleEditor
+            label="Session Log Masking"
+            description="Matching content in session recordings will be masked (one RE2 regex per line)."
+            value={watch("sessionLogMaskingPatterns") ?? ""}
+            onChange={(val) =>
+              setValue("sessionLogMaskingPatterns", (val as string) ?? "", { shouldDirty: true })
+            }
+          />
         </CardContent>
       </Card>
 
