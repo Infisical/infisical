@@ -139,7 +139,14 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
               projectId: z.string(),
               sessionId: z.string()
             })
+            .nullable(),
+          policyRules: z
+            .object({
+              "command-blocking": z.object({ patterns: z.array(z.string()) }).optional(),
+              "session-log-masking": z.object({ patterns: z.array(z.string()) }).optional()
+            })
             .nullable()
+            .optional()
         })
       }
     },
@@ -177,7 +184,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 
       return {
         credentials: result.credentials,
-        recording: result.recording
+        recording: result.recording,
+        policyRules: result.policyRules ?? null
       };
     }
   });

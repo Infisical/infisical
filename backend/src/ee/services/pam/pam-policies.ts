@@ -5,8 +5,21 @@ import { PamAccountType } from "./pam-enums";
 export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
-  MaxSessionDuration = "max-session-duration"
+  MaxSessionDuration = "max-session-duration",
+  CommandBlocking = "command-blocking"
 }
+
+export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =>
+  z
+    .string()
+    .max(maxPatterns * (maxPatternLength + 1))
+    .refine(
+      (val) => {
+        const patterns = val.split(/\r?\n/).filter((line) => line.trim().length > 0);
+        return patterns.length <= maxPatterns && patterns.every((p) => p.trim().length <= maxPatternLength);
+      },
+      { message: `Maximum ${maxPatterns} patterns, each up to ${maxPatternLength} characters` }
+    );
 
 type TPamPolicyDefinition = {
   label: string;
@@ -33,6 +46,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     description: "Maximum session length in seconds (60 to 86400).",
     appliesTo: "all",
     schema: z.number().int().min(60).max(86400)
+  },
+  [PamPolicyType.CommandBlocking]: {
+    label: "Command Blocking",
+    description:
+      "Block commands matching these regex patterns in SSH sessions. Matched commands are rejected. One pattern per line.",
+    appliesTo: [PamAccountType.SSH],
+    schema: patternsStringSchema()
   }
 };
 
@@ -92,7 +112,7 @@ export const validatePolicyValues = (
   return { ok: true, data };
 };
 
-const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknown => {
+export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknown => {
   if (!policyMap || typeof policyMap !== "object") return null;
   const parsed = PAM_POLICY_DEFINITIONS[policy].schema.safeParse((policyMap as Record<string, unknown>)[policy]);
   return parsed.success ? parsed.data : null;

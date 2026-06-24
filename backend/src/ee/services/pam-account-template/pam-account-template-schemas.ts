@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { patternsStringSchema } from "../pam/pam-policies";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 export const PamPasswordConstraintsSchema = z.object({
@@ -22,7 +23,7 @@ export const PamTemplateSettingsSchema = z.object({
   recordingStorageBackend: z.nativeEnum(PamRecordingStorageBackend).default(PamRecordingStorageBackend.Postgres),
   recordingS3Config: PamRecordingS3ConfigSchema.optional(),
   passwordConstraints: PamPasswordConstraintsSchema.optional(),
-  sessionLogMaskingPatterns: z.array(z.string().min(1).max(500)).max(20).optional()
+  sessionLogMaskingPatterns: patternsStringSchema().optional()
 });
 
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;

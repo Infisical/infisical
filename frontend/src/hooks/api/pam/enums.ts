@@ -15,7 +15,8 @@ export enum PamAccountType {
 export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
-  MaxSessionDuration = "max-session-duration"
+  MaxSessionDuration = "max-session-duration",
+  CommandBlocking = "command-blocking"
 }
 
 export enum SessionChannelType {

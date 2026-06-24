@@ -54,7 +54,11 @@ const getLogText = (log: TPamSessionLog): string => {
     return [log.input, log.output].filter(Boolean).join(" ");
   }
   if ("data" in log) {
-    return log.data;
+    try {
+      return atob(log.data);
+    } catch {
+      return log.data;
+    }
   }
   if ("method" in log) {
     return `${log.method} ${log.url}`;

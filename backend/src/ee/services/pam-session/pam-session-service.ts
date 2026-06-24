@@ -25,9 +25,10 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { resolveAccessControls } from "../pam/pam-policies";
+import { PamPolicyType, resolveAccessControls, resolvePolicy } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
@@ -205,9 +206,37 @@ export const pamSessionServiceFactory = ({
       };
     }
 
+    const splitPatterns = (raw: unknown): string[] | null => {
+      if (typeof raw !== "string" || !raw.trim()) return null;
+      const patterns = raw
+        .split(/\r?\n/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      return patterns.length > 0 ? patterns : null;
+    };
+
+    const commandBlockingPatterns =
+      account.accountType === PamAccountType.SSH
+        ? splitPatterns(resolvePolicy(account.templatePolicies, PamPolicyType.CommandBlocking))
+        : null;
+
+    const parsedSettings = PamTemplateSettingsSchema.safeParse(account.templateSettings ?? {});
+    const maskingPatterns = parsedSettings.success
+      ? splitPatterns(parsedSettings.data.sessionLogMaskingPatterns)
+      : null;
+
+    const policyRules =
+      commandBlockingPatterns || maskingPatterns
+        ? {
+            ...(commandBlockingPatterns ? { "command-blocking": { patterns: commandBlockingPatterns } } : {}),
+            ...(maskingPatterns ? { "session-log-masking": { patterns: maskingPatterns } } : {})
+          }
+        : null;
+
     return {
       credentials: { ...connectionDetails, ...credentials },
       recording,
+      policyRules,
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,

@@ -10,6 +10,17 @@ describe("getApplicablePolicies", () => {
     expect(keys).toContain(PamPolicyType.RequireReason);
     expect(keys).toContain(PamPolicyType.MaxSessionDuration);
   });
+
+  test("returns command blocking only for SSH", () => {
+    const sshKeys = getApplicablePolicies(PamAccountType.SSH).map((p) => p.key);
+    expect(sshKeys).toContain(PamPolicyType.CommandBlocking);
+
+    const pgKeys = getApplicablePolicies(PamAccountType.Postgres).map((p) => p.key);
+    expect(pgKeys).not.toContain(PamPolicyType.CommandBlocking);
+
+    const mysqlKeys = getApplicablePolicies(PamAccountType.MySQL).map((p) => p.key);
+    expect(mysqlKeys).not.toContain(PamPolicyType.CommandBlocking);
+  });
 });
 
 describe("validatePolicyValues", () => {
@@ -37,6 +48,35 @@ describe("validatePolicyValues", () => {
   test("rejects an invalid value shape", () => {
     expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.RequireMfa]: "nope" }).ok).toBe(false);
     expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.MaxSessionDuration]: 10 }).ok).toBe(false);
+  });
+
+  test("accepts valid command blocking patterns for SSH", () => {
+    const result = validatePolicyValues(PamAccountType.SSH, {
+      [PamPolicyType.CommandBlocking]: "rm -rf.*\nsudo su\nshutdown"
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  test("rejects command blocking for non-SSH types", () => {
+    const result = validatePolicyValues(PamAccountType.Postgres, {
+      [PamPolicyType.CommandBlocking]: "rm -rf.*"
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  test("rejects non-string command blocking values", () => {
+    expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: ["rm"] }).ok).toBe(false);
+    expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: true }).ok).toBe(false);
+  });
+
+  test("rejects command blocking with too many patterns", () => {
+    const tooMany = Array.from({ length: 21 }, (_, i) => `pattern${i}`).join("\n");
+    expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: tooMany }).ok).toBe(false);
+  });
+
+  test("rejects command blocking with a pattern exceeding 500 chars", () => {
+    const longPattern = "a".repeat(501);
+    expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: longPattern }).ok).toBe(false);
   });
 });
 

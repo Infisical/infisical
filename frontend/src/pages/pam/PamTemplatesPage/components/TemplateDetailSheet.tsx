@@ -48,7 +48,8 @@ const settingsSchema = z.object({
   gatewayId: z.string().nullable(),
   gatewayPoolId: z.string().nullable(),
   recordingConnectionId: z.string().nullable(),
-  policies: z.record(z.unknown())
+  policies: z.record(z.unknown()),
+  sessionLogMaskingPatterns: z.string().optional()
 });
 
 type SettingsForm = z.infer<typeof settingsSchema>;
@@ -176,7 +177,8 @@ const SettingsTab = ({
       gatewayId: null,
       gatewayPoolId: null,
       recordingConnectionId: null,
-      policies: {}
+      policies: {},
+      sessionLogMaskingPatterns: ""
     }
   });
 
@@ -193,7 +195,10 @@ const SettingsTab = ({
         gatewayId: template.gatewayId ?? null,
         gatewayPoolId: template.gatewayPoolId ?? null,
         recordingConnectionId: template.recordingConnectionId ?? null,
-        policies: (template.policies as Record<string, unknown>) ?? {}
+        policies: (template.policies as Record<string, unknown>) ?? {},
+        sessionLogMaskingPatterns:
+          ((template.settings as Record<string, unknown> | null)
+            ?.sessionLogMaskingPatterns as string) ?? ""
       });
     }
   }, [template, reset]);
@@ -226,7 +231,11 @@ const SettingsTab = ({
         policies: data.policies,
         gatewayId: data.gatewayId,
         gatewayPoolId: data.gatewayPoolId,
-        ...(showRecording ? { recordingConnectionId: data.recordingConnectionId } : {})
+        ...(showRecording ? { recordingConnectionId: data.recordingConnectionId } : {}),
+        settings: {
+          ...((template?.settings as Record<string, unknown>) ?? {}),
+          sessionLogMaskingPatterns: data.sessionLogMaskingPatterns?.trim() || undefined
+        }
       },
       {
         onSuccess: () => createNotification({ type: "success", text: "Template updated" })
@@ -306,6 +315,24 @@ const SettingsTab = ({
               </FieldContent>
             </Field>
           )}
+
+          <Field>
+            <FieldLabel>Session Log Masking</FieldLabel>
+            <FieldContent>
+              <TextArea
+                rows={5}
+                placeholder="Enter one regex pattern per line"
+                value={watch("sessionLogMaskingPatterns") ?? ""}
+                onChange={(e) =>
+                  setValue("sessionLogMaskingPatterns", e.target.value, { shouldDirty: true })
+                }
+              />
+              <FieldDescription>
+                Mask content matching these regex patterns in session recordings. Masked content
+                appears as [MASKED]. One pattern per line.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
         </CardContent>
       </Card>
 
