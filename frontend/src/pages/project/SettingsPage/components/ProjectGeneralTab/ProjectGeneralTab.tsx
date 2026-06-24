@@ -1,10 +1,10 @@
 import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
+import { useServerConfig } from "@app/context";
 
 import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
 import { CrossProjectSharingSection } from "../CrossProjectSharingSection";
 import { DeleteProjectProtection } from "../DeleteProjectProtection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
-import { useServerConfig } from "@app/context";
 
 export const ProjectGeneralTab = () => {
   const { config } = useServerConfig();

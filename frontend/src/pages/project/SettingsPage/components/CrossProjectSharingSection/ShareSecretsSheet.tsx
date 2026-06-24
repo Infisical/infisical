@@ -89,7 +89,9 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
 
         <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
           <FieldGroup>
-            <p className="text-xs font-semibold tracking-widest text-muted uppercase">From This Project</p>
+            <p className="text-xs font-semibold tracking-widest text-muted uppercase">
+              From This Project
+            </p>
 
             <Field>
               <FieldLabel>Environment</FieldLabel>
@@ -131,7 +133,9 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
             )}
 
             <div className="rounded-md border border-border p-4">
-              <p className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">To Another Project</p>
+              <p className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
+                To Another Project
+              </p>
 
               <Field>
                 <FieldLabel>Target project</FieldLabel>

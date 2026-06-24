@@ -155,6 +155,7 @@ import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-tem
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { TProjectGrantServiceFactory } from "@app/services/project-grant/project-grant-service";
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
@@ -163,7 +164,6 @@ import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { TProjectGrantServiceFactory } from "@app/services/project-grant/project-grant-service";
 import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";

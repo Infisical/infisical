@@ -153,9 +153,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       const appCfg = getConfig();
       const isCrossProjectEnabled = appCfg.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(req.permission.orgId);
       const filteredPermissions = req.body.permissions
-        ? isCrossProjectEnabled
-          ? req.body.permissions
-          : req.body.permissions.filter((p) => p.subject !== ProjectPermissionSub.ProjectGrant)
+        ? req.body.permissions.filter((p) => isCrossProjectEnabled || p.subject !== ProjectPermissionSub.ProjectGrant)
         : undefined;
 
       const stringifiedPermissions = filteredPermissions ? JSON.stringify(packRules(filteredPermissions)) : undefined;
