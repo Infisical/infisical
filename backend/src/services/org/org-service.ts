@@ -867,7 +867,6 @@ export const orgServiceFactory = ({
     const membership = await orgDAL.transaction(async (tx) => {
       if (!updatesToActiveAdmin && !noRoleOrActivationChange) {
         await assertWillRetainOrgAdmin({
-          scope: AccessScope.Organization,
           scopeOrgId: orgId,
           excludeMembershipIds: [membershipId],
           dal: membershipUserDAL,
