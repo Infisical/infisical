@@ -452,27 +452,6 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findFirstOrgMemberEmail = async (orgId: string): Promise<string | null> => {
-    try {
-      const row = await db
-        .replicaNode()(TableName.Membership)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
-        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .where({ isGhost: false })
-        .whereNotNull(`${TableName.Users}.email`)
-        .select(db.ref("email").withSchema(TableName.Users))
-        .orderBy(`${TableName.Membership}.createdAt`, "asc")
-        .first();
-
-      return row?.email ?? null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindFirstOrgMemberEmail" });
-    }
-  };
-
   // special query
   const findAllOrgMembers = async (orgId: string) => {
     try {
@@ -955,7 +934,6 @@ export const orgDALFactory = (db: TDbClient) => {
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
-    findFirstOrgMemberEmail,
     findAllOrgMembers,
     countAllOrgMembers,
     listSubOrganizations,

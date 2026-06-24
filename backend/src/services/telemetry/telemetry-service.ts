@@ -1,6 +1,8 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -38,27 +40,6 @@ const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string
   [PostHogEventTypes.PkiSyncExecuted]: ["destination"]
 };
 
-// Common free/personal email providers excluded from org domain derivation
-const FREE_EMAIL_PROVIDERS = new Set([
-  "gmail.com",
-  "googlemail.com",
-  "outlook.com",
-  "hotmail.com",
-  "live.com",
-  "yahoo.com",
-  "icloud.com",
-  "me.com",
-  "mac.com",
-  "aol.com",
-  "protonmail.com",
-  "proton.me",
-  "mail.com",
-  "zoho.com",
-  "yandex.com",
-  "gmx.com",
-  "gmx.net"
-]);
-
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
 const TELEMETRY_BUCKET_NAMES = Array.from(
@@ -82,7 +63,8 @@ export type TTelemetryServiceFactoryDep = {
     "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "setItemWithExpiryNX" | "getKeysByPattern" | "getItems"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findFirstOrgMemberEmail">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -128,7 +110,12 @@ const getDeploymentType = (
   return DeploymentType.SelfHosted;
 };
 
-export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({
+  keyStore,
+  licenseService,
+  orgDAL,
+  emailDomainDAL
+}: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
@@ -262,12 +249,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const email = await orgDAL.findFirstOrgMemberEmail(orgId);
-      if (email) {
-        const domain = email.split("@")[1]?.toLowerCase();
-        if (domain && !FREE_EMAIL_PROVIDERS.has(domain)) {
-          properties.domain = domain;
-        }
+      const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+      if (verifiedDomains.length > 0) {
+        properties.domain = verifiedDomains[0].domain;
       }
     } catch (error) {
       logger.error(error, "Failed to fetch org domain for PostHog group properties");

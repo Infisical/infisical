@@ -1039,7 +1039,8 @@ export const registerRoutes = async (
   const telemetryService = telemetryServiceFactory({
     keyStore,
     licenseService,
-    orgDAL
+    orgDAL,
+    emailDomainDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
