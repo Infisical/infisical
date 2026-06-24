@@ -55,7 +55,8 @@ const getLogText = (log: TPamSessionLog): string => {
   }
   if ("data" in log) {
     try {
-      return atob(log.data);
+      const bytes = Uint8Array.from(atob(log.data), (c) => c.charCodeAt(0));
+      return new TextDecoder("utf-8").decode(bytes);
     } catch {
       return log.data;
     }
