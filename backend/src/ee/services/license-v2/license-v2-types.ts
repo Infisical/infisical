@@ -117,3 +117,45 @@ export type TAddBillingV2PaymentMethodDTO = {
   actor: OrgServiceActor;
   returnPath?: string;
 };
+
+export type BillingV2PreviewLine = {
+  description: string;
+  amount: number;
+  proration: boolean;
+};
+
+export type BillingV2Preview = {
+  currency: string;
+  prorationAmount: number;
+  nextInvoiceTotal: number;
+  nextRecurringTotal: number;
+  prorationDate: number;
+  lines: BillingV2PreviewLine[];
+};
+
+export type TPreviewBillingV2ChangeDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  addProductId?: string;
+  cadence?: "monthly" | "annual";
+  removeProductId?: string;
+};
+
+export type TAddBillingV2ProductDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  productId: string;
+  cadence?: "monthly" | "annual";
+};
+
+export type TRemoveBillingV2ProductDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  productId: string;
+  prorationDate?: number;
+};
+
+export type TBillingV2SubscriptionLifecycleDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+};

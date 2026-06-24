@@ -6,10 +6,12 @@ import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
+  TAddSubscriptionItemsPayload,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
-  TLicenseClientBackend
+  TLicenseClientBackend,
+  TSubscriptionPreviewPayload
 } from "./license-client-types";
 
 type TLicenseClientFactoryDep = {
@@ -108,6 +110,41 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.createPortalSession(orgId, payload);
   };
 
+  const previewSubscriptionChange = async (orgId: string, payload: TSubscriptionPreviewPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.previewSubscriptionChange(orgId, payload);
+  };
+
+  const addSubscriptionItems = async (orgId: string, payload: TAddSubscriptionItemsPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.addSubscriptionItems(orgId, payload);
+  };
+
+  const removeSubscriptionItem = async (orgId: string, productId: string, prorationDate?: number) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.removeSubscriptionItem(orgId, productId, prorationDate);
+  };
+
+  const cancelSubscription = async (orgId: string) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.cancelSubscription(orgId);
+  };
+
+  const resumeSubscription = async (orgId: string) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.resumeSubscription(orgId);
+  };
+
   return {
     ...featureReaderFactory({ getEntitlements }),
     getEntitlements,
@@ -116,6 +153,11 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     getCloudPlan,
     getBillingProfile,
     createCheckout,
-    createPortal
+    createPortal,
+    previewSubscriptionChange,
+    addSubscriptionItems,
+    removeSubscriptionItem,
+    cancelSubscription,
+    resumeSubscription
   };
 };

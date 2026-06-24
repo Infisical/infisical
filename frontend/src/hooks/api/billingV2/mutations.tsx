@@ -1,12 +1,19 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { billingV2Keys } from "./queries";
 import {
   BillingV2CheckoutResult,
+  BillingV2MutationResult,
+  BillingV2Preview,
   TAddBillingV2PaymentMethodDTO,
+  TAddBillingV2ProductDTO,
+  TBillingV2LifecycleDTO,
   TCreateBillingV2CheckoutSessionDTO,
-  TCreateBillingV2PortalSessionDTO
+  TCreateBillingV2PortalSessionDTO,
+  TPreviewBillingV2ChangeDTO,
+  TRemoveBillingV2ProductDTO
 } from "./types";
 
 export const useCreateBillingV2PortalSession = () => {
@@ -54,6 +61,89 @@ export const useAddBillingV2PaymentMethod = () => {
       );
 
       return url;
+    }
+  });
+};
+
+// Preview-only: never mutates, so it does not invalidate the overview. The caller shows the result
+// in a confirmation dialog before committing the add/remove.
+export const usePreviewBillingV2Change = () => {
+  return useMutation({
+    mutationFn: async ({ orgId, addProductId, cadence, removeProductId }: TPreviewBillingV2ChangeDTO) => {
+      const {
+        data: { preview }
+      } = await apiRequest.post<{ preview: BillingV2Preview }>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/preview`,
+        { addProductId, cadence, removeProductId }
+      );
+
+      return preview;
+    }
+  });
+};
+
+export const useAddBillingV2Product = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId, cadence }: TAddBillingV2ProductDTO) => {
+      const { data } = await apiRequest.post<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/items`,
+        { productId, cadence }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+export const useRemoveBillingV2Product = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId, prorationDate }: TRemoveBillingV2ProductDTO) => {
+      const params = prorationDate === undefined ? "" : `?prorationDate=${prorationDate}`;
+      const { data } = await apiRequest.delete<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/items/${encodeURIComponent(productId)}${params}`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+export const useCancelBillingV2Subscription = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId }: TBillingV2LifecycleDTO) => {
+      const { data } = await apiRequest.post<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/cancel`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+export const useResumeBillingV2Subscription = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId }: TBillingV2LifecycleDTO) => {
+      const { data } = await apiRequest.post<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/resume`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
     }
   });
 };

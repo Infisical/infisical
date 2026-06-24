@@ -119,6 +119,28 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
+// Proration preview for an add/remove against an existing subscription. prorationAmount is signed:
+// positive is charged now (an add), negative is a credit toward the next invoice (a removal).
+// prorationDate is echoed so the follow-up change can reproduce the same numbers.
+const subscriptionPreviewLineSchema = z
+  .object({
+    description: z.string(),
+    amount: z.number(),
+    proration: z.boolean()
+  })
+  .passthrough();
+
+export const subscriptionPreviewResponseSchema = z
+  .object({
+    currency: z.string(),
+    prorationAmount: z.number(),
+    nextInvoiceTotal: z.number(),
+    nextRecurringTotal: z.number(),
+    prorationDate: z.number(),
+    lines: z.array(subscriptionPreviewLineSchema).default([])
+  })
+  .passthrough();
+
 // The cloud-plan FeatureSet carries plan caps; the server nulls a limit when it is effectively
 // unlimited. Used counts come back zeroed and are overlaid by this app, so we ignore them.
 export const cloudPlanResponseSchema = z
@@ -182,12 +204,22 @@ export type TSessionResponse = z.infer<typeof sessionResponseSchema>;
 export type TCheckoutResult = z.infer<typeof checkoutResultSchema>;
 export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
 export type TBillingProfileResponse = z.infer<typeof billingProfileResponseSchema>;
+export type TSubscriptionPreview = z.infer<typeof subscriptionPreviewResponseSchema>;
 
 export type TCheckoutLineItem = {
   productId: string;
   plan: string;
   cadence: string;
   quantities: Record<string, number>;
+};
+
+export type TSubscriptionPreviewPayload = {
+  add?: TCheckoutLineItem[];
+  remove?: string[];
+};
+
+export type TAddSubscriptionItemsPayload = {
+  items: TCheckoutLineItem[];
 };
 
 export type TCreateCheckoutPayload = {
@@ -208,4 +240,9 @@ export type TLicenseClientBackend = {
   fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
   createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TCheckoutResult>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
+  previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
+  addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
+  removeSubscriptionItem: (orgId: string, productId: string, prorationDate?: number) => Promise<TCheckoutResult>;
+  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };

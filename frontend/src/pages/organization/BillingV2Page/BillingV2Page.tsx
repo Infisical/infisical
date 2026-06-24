@@ -22,6 +22,7 @@ import {
 
 import { BillingV2RenderState, Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
+import { RemoveProductModal } from "./components/RemoveProductModal";
 import { catalogById, intervalToCadence } from "./billing-v2-data";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
@@ -47,6 +48,7 @@ export const BillingV2Page = () => {
   const addPaymentMethod = useAddBillingV2PaymentMethod();
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
+  const [removeProdId, setRemoveProdId] = useState<string | null>(null);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -77,6 +79,7 @@ export const BillingV2Page = () => {
   }
 
   const cadence = intervalToCadence(overview?.interval ?? null);
+  const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
 
   const close = () => setFlow(null);
 
@@ -195,6 +198,7 @@ export const BillingV2Page = () => {
               subState={subState}
               onManageSubscription={onManageSubscription}
               onUpgrade={onUpgrade}
+              onRemove={setRemoveProdId}
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
@@ -218,6 +222,14 @@ export const BillingV2Page = () => {
             close();
             onContact();
           }}
+        />
+      )}
+
+      {removeProd && (
+        <RemoveProductModal
+          orgId={orgId}
+          product={removeProd}
+          onClose={() => setRemoveProdId(null)}
         />
       )}
     </div>
