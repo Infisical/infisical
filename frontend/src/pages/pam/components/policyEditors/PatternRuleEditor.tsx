@@ -23,12 +23,7 @@ export const PatternRuleEditor = ({ label, description, value, onChange }: Polic
         />
         <FieldDescription>
           {description}{" "}
-          <a
-            href={RE2_SYNTAX_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
+          <a href={RE2_SYNTAX_URL} target="_blank" rel="noopener noreferrer" className="underline">
             Syntax reference
           </a>
         </FieldDescription>
