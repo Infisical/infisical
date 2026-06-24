@@ -328,8 +328,8 @@ const SettingsTab = ({
                 }
               />
               <FieldDescription>
-                Mask content matching these RE2 regex patterns in session recordings.
-                Masked content appears as [MASKED]. One pattern per line.
+                Mask content matching these RE2 regex patterns in session recordings. Masked content
+                appears as [MASKED]. One pattern per line.
               </FieldDescription>
             </FieldContent>
           </Field>
