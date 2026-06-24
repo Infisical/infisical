@@ -172,6 +172,8 @@ export const billingProfileResponseSchema = z
 
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
+
+export type TEntitlementOrg = { id: string; name?: string | null; slug?: string | null };
 export type TCatalogProduct = z.infer<typeof catalogProductSchema>;
 export type TCatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type TSubscriptionItem = z.infer<typeof subscriptionItemSchema>;
@@ -199,7 +201,7 @@ export type TCreatePortalPayload = {
 };
 
 export type TLicenseClientBackend = {
-  fetchEntitlements: (orgId: string) => Promise<TEntitlementsResponse>;
+  fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
   fetchCatalog: () => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;

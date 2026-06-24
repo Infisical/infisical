@@ -4,6 +4,7 @@ import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 
@@ -37,13 +38,13 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
     try {
       tokenResponse = await impersonatedCredentials.getAccessToken();
     } catch (error) {
-      let message = "Unable to validate connection";
-      if (error instanceof gaxios.GaxiosError) {
-        message = error.message;
-      }
+      logger.error(
+        { err: error },
+        `Failed to obtain GCP impersonated access token [serviceAccountEmail=${serviceAccountEmail}]`
+      );
 
       throw new BadRequestError({
-        message
+        message: error instanceof gaxios.GaxiosError ? error.message : "Unable to validate connection"
       });
     }
 

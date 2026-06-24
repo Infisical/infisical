@@ -21,11 +21,12 @@ export const PkiDocsUrls = {
     pqcAlgorithms: `${PKI_DOCS_BASE_URL}/reference/pqc-algorithms`
   },
 
-  // Settings (policies, profiles, cleanup)
+  // Settings (policies, profiles, cleanup, HSM connectors)
   settings: {
     policies: `${PKI_DOCS_BASE_URL}/settings/policies`,
     profiles: `${PKI_DOCS_BASE_URL}/settings/profiles`,
-    certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`
+    certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`,
+    hsmConnectors: `${PKI_DOCS_BASE_URL}/settings/hsm-connectors`
   },
 
   // Applications

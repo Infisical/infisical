@@ -1,9 +1,12 @@
-import { ExternalAccountClient, gaxios, Impersonated, JWT } from "google-auth-library";
+import { STSClient } from "@aws-sdk/client-sts";
+import { AwsClient, ExternalAccountClient, gaxios, Impersonated, JWT } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
+import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -27,16 +30,79 @@ export const getGcpConnectionListItem = () => {
   };
 };
 
+type TGcpCredentialJson = {
+  type?: string;
+  client_email?: string;
+  private_key?: string;
+  subject_token_type?: string;
+  credential_source?: { environment_id?: string };
+};
+
+const AWS_ENV_ID_REGEX = new RE2(/^aws\d+$/i);
+
+// Lazily initialized so the SDK doesn't probe for AWS metadata on non-AWS instances at startup.
+// Shared across calls so the SDK's internal credential cache persists.
+let sharedStsClient: STSClient | undefined;
+const getStsClient = () => {
+  if (!sharedStsClient) {
+    sharedStsClient = new STSClient({});
+  }
+  return sharedStsClient;
+};
+
+// AWS federation configs default `credential_source` to the EC2 metadata endpoint, which
+// is absent on Fargate/Lambda/EKS. Detect them so we can source creds via the AWS SDK chain instead.
+const isAwsExternalAccount = (credJson: TGcpCredentialJson) =>
+  credJson.subject_token_type === "urn:ietf:params:aws:token-type:aws4_request" ||
+  AWS_ENV_ID_REGEX.test(credJson.credential_source?.environment_id ?? "");
+
+const buildGcpAwsExternalAccountClient = (credJson: TGcpCredentialJson, scopes: string[]) => {
+  const stsClient = getStsClient();
+
+  const awsSecurityCredentialsSupplier = {
+    getAwsRegion: async () => {
+      try {
+        return await stsClient.config.region();
+      } catch {
+        return "us-east-1";
+      }
+    },
+    getAwsSecurityCredentials: async () => {
+      let credentials;
+      try {
+        credentials = await stsClient.config.credentials();
+      } catch (error) {
+        logger.error({ err: error }, "Failed to resolve AWS credentials for GCP workload identity federation");
+        throw new InternalServerError({
+          message:
+            "Failed to resolve AWS credentials for GCP workload identity federation. Verify the instance has valid AWS credentials available (task role, instance profile, or environment variables)."
+        });
+      }
+      return {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        token: credentials.sessionToken
+      };
+    }
+  };
+
+  // credential_source and aws_security_credentials_supplier are mutually exclusive; drop the metadata source.
+  const awsClientOptions = { ...credJson, scopes, aws_security_credentials_supplier: awsSecurityCredentialsSupplier };
+  delete awsClientOptions.credential_source;
+
+  return new AwsClient(awsClientOptions as unknown as ConstructorParameters<typeof AwsClient>[0]);
+};
+
 export const buildGcpSourceCredential = (credentialJson: string) => {
   const scopes = ["https://www.googleapis.com/auth/cloud-platform"];
 
-  const credJson = JSON.parse(credentialJson) as {
-    type?: string;
-    client_email?: string;
-    private_key?: string;
-  };
+  const credJson = JSON.parse(credentialJson) as TGcpCredentialJson;
 
   if (credJson.type === "external_account") {
+    if (isAwsExternalAccount(credJson)) {
+      return buildGcpAwsExternalAccountClient(credJson, scopes);
+    }
+
     const externalClient = ExternalAccountClient.fromJSON({
       ...credJson,
       scopes
@@ -83,13 +149,13 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
   try {
     tokenResponse = await impersonatedCredentials.getAccessToken();
   } catch (error) {
-    let message = "Unable to validate connection";
-    if (error instanceof gaxios.GaxiosError) {
-      message = error.message;
-    }
+    logger.error(
+      { err: error },
+      `Failed to obtain GCP impersonated access token [serviceAccountEmail=${appConnection.credentials.serviceAccountEmail}]`
+    );
 
     throw new BadRequestError({
-      message
+      message: error instanceof gaxios.GaxiosError ? error.message : "Unable to validate connection"
     });
   }
 

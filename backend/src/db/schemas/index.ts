@@ -71,6 +71,7 @@ export * from "./honey-token-configs";
 export * from "./honey-token-events";
 export * from "./honey-token-secret-mappings";
 export * from "./honey-tokens";
+export * from "./hsm-connectors";
 export * from "./identities";
 export * from "./identity-access-token-revocations";
 export * from "./identity-access-tokens";

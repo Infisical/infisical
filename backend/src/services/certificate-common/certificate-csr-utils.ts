@@ -20,19 +20,24 @@ import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from
  * Extracts certificate request data from a CSR string
  * @param csr - The CSR in PEM format
  * @returns TCertificateRequest object with parsed CSR data
+ *
+ * Note: Only includes keys for fields that are actually present in the CSR.
+ * This allows applyProfileDefaults to correctly apply defaults for missing fields
+ * (e.g., ACME clients like CertBot often omit CN, putting domain only in SAN).
  */
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
   const csrObj = new x509.Pkcs10CertificateRequest(csr);
   const subject = extractDnParts(csrObj.subjectName);
 
-  const certificateRequest: TCertificateRequest = {
-    commonName: subject.commonName,
-    organization: subject.organization,
-    organizationalUnit: subject.ou,
-    locality: subject.locality,
-    state: subject.province,
-    country: subject.country
-  };
+  // Only include keys for fields that have values, so applyProfileDefaults
+  // can distinguish "absent" (use default) from "explicitly set".
+  const certificateRequest: TCertificateRequest = {};
+  if (subject.commonName) certificateRequest.commonName = subject.commonName;
+  if (subject.organization) certificateRequest.organization = subject.organization;
+  if (subject.ou) certificateRequest.organizationalUnit = subject.ou;
+  if (subject.locality) certificateRequest.locality = subject.locality;
+  if (subject.province) certificateRequest.state = subject.province;
+  if (subject.country) certificateRequest.country = subject.country;
 
   const csrKeyUsageExtension = csrObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
   if (csrKeyUsageExtension) {

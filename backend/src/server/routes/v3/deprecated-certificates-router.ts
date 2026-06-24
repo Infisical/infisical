@@ -387,7 +387,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         keyAlgorithm: req.body.keyAlgorithm
       };
 
-      const data = await server.services.certificateV3.orderCertificateFromProfile({
+      const data = await server.services.certificateV3.orderCertificate({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

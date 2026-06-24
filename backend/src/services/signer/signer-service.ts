@@ -23,8 +23,10 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
+import { ecdsaRawRsToDer, mapSigningAlgorithmToPkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 
 import {
   TApprovalPolicyDALFactory,
@@ -54,9 +56,14 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TSignerDALFactory } from "./signer-dal";
-import { SignerStatus, SigningOperationStatus } from "./signer-enums";
+import { CertKeySource, HsmKeyAlgorithm, SignerStatus, SigningOperationStatus } from "./signer-enums";
 import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
-import { issueSignerCertificate } from "./signer-issuance-fns";
+import {
+  issueHsmBackedSignerCertificate,
+  issueSignerCertificate,
+  mapCertKeyAlgorithmToHsmKeyAlgorithm,
+  renewHsmBackedSignerCertificate
+} from "./signer-issuance-fns";
 import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import {
   TCreateSignerDTO,
@@ -106,7 +113,11 @@ const computeEffectiveStatus = (signer: {
 type TSignerServiceFactoryDep = {
   signerDAL: TSignerDALFactory;
   signingOperationDAL: TSigningOperationDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  hsmConnectorService: Pick<
+    THsmConnectorServiceFactory,
+    "sign" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
+  >;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -172,6 +183,58 @@ const validateSigningAlgorithmForKey = (signingAlgorithm: SigningAlgorithm, keyA
   }
 };
 
+type TResolvedHsmReissue = {
+  isHsm: true;
+  switchingKeySource: boolean;
+  keyAlgorithm: CertKeyAlgorithm;
+  hsmConnectorId: string;
+  hsmKeyAlgorithm: HsmKeyAlgorithm;
+};
+type TResolvedInfisicalReissue = {
+  isHsm: false;
+  switchingKeySource: boolean;
+  keyAlgorithm: CertKeyAlgorithm;
+};
+type TResolvedReissueTarget = TResolvedHsmReissue | TResolvedInfisicalReissue;
+
+export const resolveReissueTarget = ({
+  dto,
+  signer,
+  currentCert
+}: {
+  dto: TReissueCertificateDTO;
+  signer: { keyAlgorithm?: string | null };
+  currentCert: {
+    keySource?: string | null;
+    keyAlgorithm?: string | null;
+    hsmConnectorId?: string | null;
+  } | null;
+}): TResolvedReissueTarget => {
+  const currentIsHsm =
+    currentCert?.keySource === CertKeySource.Hsm &&
+    Boolean(currentCert.hsmConnectorId) &&
+    Boolean(currentCert.keyAlgorithm);
+  const overrideKeySource = dto.certificate?.keySource;
+  const switchingKeySource = overrideKeySource !== undefined && overrideKeySource !== currentCert?.keySource;
+  const targetIsHsm = overrideKeySource ? overrideKeySource === CertKeySource.Hsm : currentIsHsm;
+
+  if (targetIsHsm) {
+    const hsmConnectorId = dto.certificate?.hsmConnectorId ?? currentCert?.hsmConnectorId ?? null;
+    const keyAlgorithm =
+      dto.keyAlgorithm ?? (currentCert?.keyAlgorithm as CertKeyAlgorithm | undefined) ?? CertKeyAlgorithm.RSA_2048;
+    const hsmKeyAlgorithm = mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm);
+    if (!hsmConnectorId) {
+      throw new BadRequestError({
+        message: "hsmConnectorId is required to (re)issue with an HSM key source."
+      });
+    }
+    return { isHsm: true, switchingKeySource, keyAlgorithm, hsmConnectorId, hsmKeyAlgorithm };
+  }
+
+  const keyAlgorithm = dto.keyAlgorithm ?? (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
+  return { isHsm: false, switchingKeySource, keyAlgorithm };
+};
+
 export const signerServiceFactory = ({
   signerDAL,
   signingOperationDAL,
@@ -190,7 +253,8 @@ export const signerServiceFactory = ({
   approvalRequestDAL,
   approvalRequestGrantsDAL,
   membershipDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  hsmConnectorService
 }: TSignerServiceFactoryDep) => {
   const $loadSignerResourcePermission = async (
     signerId: string,
@@ -288,28 +352,74 @@ export const signerServiceFactory = ({
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
+    if (resolvedCaType === CaType.AZURE_AD_CS && dto.certificate?.keySource === CertKeySource.Hsm) {
+      throw new BadRequestError({
+        message:
+          "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical-managed."
+      });
+    }
+
     const keyAlgorithm: CertKeyAlgorithm = (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 
     let issuedCertificateId: string | null = null;
     if (usingCa && resolvedCaId && !isExternalCa) {
-      const { certificateId } = await issueSignerCertificate(
-        {
-          certificateAuthorityDAL,
-          internalCertificateAuthorityService,
-          certificateBodyDAL,
-          certificateSecretDAL,
-          projectDAL,
-          kmsService
-        },
-        {
-          caId: resolvedCaId,
-          projectId: dto.projectId,
-          commonName: dto.commonName as string,
-          certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-          keyAlgorithm
+      const certificateInput = dto.certificate;
+      if (certificateInput?.keySource === CertKeySource.Hsm) {
+        if (!certificateInput.hsmConnectorId) {
+          throw new BadRequestError({
+            message: "hsmConnectorId is required when certificate.keySource = 'hsm'."
+          });
         }
-      );
-      issuedCertificateId = certificateId;
+        await hsmConnectorService.assertAttachPermission(
+          {
+            type: dto.actor,
+            id: dto.actorId,
+            authMethod: dto.actorAuthMethod,
+            orgId: dto.actorOrgId
+          },
+          certificateInput.hsmConnectorId,
+          dto.projectId
+        );
+        const { certificateId } = await issueHsmBackedSignerCertificate(
+          {
+            certificateAuthorityDAL,
+            internalCertificateAuthorityService,
+            certificateBodyDAL,
+            certificateDAL,
+            hsmConnectorService,
+            projectDAL,
+            kmsService
+          },
+          {
+            caId: resolvedCaId,
+            projectId: dto.projectId,
+            commonName: dto.commonName as string,
+            certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+            hsmConnectorId: certificateInput.hsmConnectorId,
+            hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm)
+          }
+        );
+        issuedCertificateId = certificateId;
+      } else {
+        const { certificateId } = await issueSignerCertificate(
+          {
+            certificateAuthorityDAL,
+            internalCertificateAuthorityService,
+            certificateBodyDAL,
+            certificateSecretDAL,
+            projectDAL,
+            kmsService
+          },
+          {
+            caId: resolvedCaId,
+            projectId: dto.projectId,
+            commonName: dto.commonName as string,
+            certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+            keyAlgorithm
+          }
+        );
+        issuedCertificateId = certificateId;
+      }
     }
 
     const finalCertificateId = usingExistingCert ? (dto.certificateId as string) : issuedCertificateId;
@@ -551,13 +661,27 @@ export const signerServiceFactory = ({
 
       if (usingCa && resolvedCaId && isExternalCa && resolvedCaType) {
         try {
+          const certificateInput = dto.certificate;
           await signerIssuanceService.requestIssuance({
             signerId: result.id,
             projectId: dto.projectId,
             caId: resolvedCaId,
             commonName: dto.commonName as string,
             certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-            keyAlgorithm
+            keyAlgorithm,
+            hsm:
+              certificateInput?.keySource === CertKeySource.Hsm && certificateInput.hsmConnectorId
+                ? {
+                    hsmConnectorId: certificateInput.hsmConnectorId,
+                    hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm),
+                    actor: {
+                      type: dto.actor,
+                      id: dto.actorId,
+                      authMethod: dto.actorAuthMethod,
+                      orgId: dto.actorOrgId
+                    }
+                  }
+                : undefined
           });
         } catch (queueErr) {
           logger.error(
@@ -869,16 +993,52 @@ export const signerServiceFactory = ({
       });
     }
 
+    const reissueCurrentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+    const target = resolveReissueTarget({
+      dto,
+      signer,
+      currentCert: reissueCurrentCert
+    });
+
+    if (reissueCaType === CaType.AZURE_AD_CS && target.isHsm) {
+      throw new BadRequestError({
+        message:
+          "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical."
+      });
+    }
+
+    if (target.isHsm) {
+      await hsmConnectorService.assertAttachPermission(
+        { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
+        target.hsmConnectorId,
+        signer.projectId
+      );
+    }
+
+    const { isHsm: targetIsHsm, switchingKeySource, keyAlgorithm: targetKeyAlgorithm } = target;
+
     await signerDAL.updateById(dto.signerId, {
       caId: dto.caId,
       commonName: nextCommonName,
-      certificateTtlDays: effectiveTtl
+      certificateTtlDays: effectiveTtl,
+      keyAlgorithm: targetKeyAlgorithm
     });
 
-    const reissueKeyAlgorithm: CertKeyAlgorithm =
-      (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
-
     if (reissueIsExternal) {
+      const reissueHsm = targetIsHsm
+        ? {
+            hsmConnectorId: target.hsmConnectorId,
+            hsmKeyAlgorithm: target.hsmKeyAlgorithm,
+            hsmKeyLabel: switchingKeySource ? undefined : (reissueCurrentCert?.hsmKeyLabel ?? undefined),
+            hsmPublicKeySpki: switchingKeySource ? undefined : (reissueCurrentCert?.hsmPublicKeySpki ?? undefined),
+            actor: {
+              type: dto.actor,
+              id: dto.actorId,
+              authMethod: dto.actorAuthMethod,
+              orgId: dto.actorOrgId
+            }
+          }
+        : undefined;
       await signerDAL.updateById(dto.signerId, {
         status: SignerStatus.Pending,
         certificateFailureReason: null
@@ -890,7 +1050,8 @@ export const signerServiceFactory = ({
           caId: dto.caId,
           commonName: nextCommonName,
           certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-          keyAlgorithm: reissueKeyAlgorithm
+          keyAlgorithm: targetKeyAlgorithm,
+          hsm: reissueHsm
         });
         return await signerDAL.findById(dto.signerId);
       } catch (queueErr) {
@@ -906,23 +1067,73 @@ export const signerServiceFactory = ({
     }
 
     try {
-      const { certificateId } = await issueSignerCertificate(
-        {
-          certificateAuthorityDAL,
-          internalCertificateAuthorityService,
-          certificateBodyDAL,
-          certificateSecretDAL,
-          projectDAL,
-          kmsService
-        },
-        {
-          caId: dto.caId,
-          projectId: signer.projectId,
-          commonName: nextCommonName,
-          certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
-          keyAlgorithm: reissueKeyAlgorithm
+      let certificateId: string;
+      if (targetIsHsm) {
+        if (switchingKeySource || !reissueCurrentCert?.hsmKeyLabel) {
+          const result = await issueHsmBackedSignerCertificate(
+            {
+              certificateAuthorityDAL,
+              internalCertificateAuthorityService,
+              certificateBodyDAL,
+              certificateDAL,
+              hsmConnectorService,
+              projectDAL,
+              kmsService
+            },
+            {
+              caId: dto.caId,
+              projectId: signer.projectId,
+              commonName: nextCommonName,
+              certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+              hsmConnectorId: target.hsmConnectorId,
+              hsmKeyAlgorithm: target.hsmKeyAlgorithm
+            }
+          );
+          certificateId = result.certificateId;
+        } else {
+          const result = await renewHsmBackedSignerCertificate(
+            {
+              certificateAuthorityDAL,
+              internalCertificateAuthorityService,
+              certificateBodyDAL,
+              certificateDAL,
+              hsmConnectorService,
+              projectDAL,
+              kmsService
+            },
+            {
+              caId: dto.caId,
+              projectId: signer.projectId,
+              commonName: nextCommonName,
+              certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+              hsmConnectorId: target.hsmConnectorId,
+              hsmKeyLabel: reissueCurrentCert.hsmKeyLabel,
+              expectedPublicKeySpkiDer: reissueCurrentCert.hsmPublicKeySpki ?? undefined,
+              hsmKeyAlgorithm: target.hsmKeyAlgorithm
+            }
+          );
+          certificateId = result.certificateId;
         }
-      );
+      } else {
+        const result = await issueSignerCertificate(
+          {
+            certificateAuthorityDAL,
+            internalCertificateAuthorityService,
+            certificateBodyDAL,
+            certificateSecretDAL,
+            projectDAL,
+            kmsService
+          },
+          {
+            caId: dto.caId,
+            projectId: signer.projectId,
+            commonName: nextCommonName,
+            certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
+            keyAlgorithm: targetKeyAlgorithm
+          }
+        );
+        certificateId = result.certificateId;
+      }
 
       return await signerDAL.updateById(dto.signerId, {
         certificateId,
@@ -1036,30 +1247,49 @@ export const signerServiceFactory = ({
 
     const dataHash = crypto.nativeCrypto.createHash("sha256").update(dataBuffer).digest("hex");
 
-    const { certPrivateKey } = await getCertificateCredentials({
-      certId: signer.certificateId,
-      projectId,
-      certificateSecretDAL,
-      projectDAL,
-      kmsService
-    });
+    const certificate = await certificateDAL.findById(signer.certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: `Signer certificate ${signer.certificateId} not found` });
+    }
+    const isHsmBacked = certificate.keySource === CertKeySource.Hsm;
 
-    const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
-      key: certPrivateKey,
-      format: "pem",
-      type: "pkcs8"
-    });
+    let certPrivateKey: Buffer | undefined;
+    let keyAlgorithm: AsymmetricKeyAlgorithm;
 
-    const keyAlgorithm = getKeyAlgorithmFamily(privateKeyObject);
+    if (isHsmBacked) {
+      if (!certificate.keyAlgorithm) {
+        throw new BadRequestError({
+          message: "HSM-backed certificate is missing keyAlgorithm; re-issue the certificate."
+        });
+      }
+      keyAlgorithm = certificate.keyAlgorithm as AsymmetricKeyAlgorithm;
+    } else {
+      const creds = await getCertificateCredentials({
+        certId: signer.certificateId,
+        projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+      certPrivateKey = Buffer.from(creds.certPrivateKey);
+      const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
+        key: creds.certPrivateKey,
+        format: "pem",
+        type: "pkcs8"
+      });
+      keyAlgorithm = getKeyAlgorithmFamily(privateKeyObject);
+    }
+
     validateSigningAlgorithmForKey(dto.signingAlgorithm, keyAlgorithm);
 
     const requiresApproval = signer.approvalPolicyId ? (await $countPolicySteps(signer.approvalPolicyId)) > 0 : false;
 
-    const result = await projectDAL.transaction(async (tx) => {
-      let grantId: string | null = null;
-      let matchedGrantAttrs: TCodeSigningGrantAttributes | null = null;
+    let grantId: string | null = null;
+    let matchedGrantAttrs: TCodeSigningGrantAttributes | null = null;
+    let pendingOperationId: string | null = null;
 
-      if (requiresApproval) {
+    if (requiresApproval) {
+      ({ grantId, matchedGrantAttrs, pendingOperationId } = await projectDAL.transaction(async (tx) => {
         const [userGrants, identityGrants] = await Promise.all([
           approvalRequestGrantsDAL.find(
             {
@@ -1140,22 +1370,61 @@ export const signerServiceFactory = ({
           });
         }
 
-        grantId = matchingGrant.id;
-        matchedGrantAttrs = matchingGrant.attributes as TCodeSigningGrantAttributes | null;
-      }
+        const pendingOp = await signingOperationDAL.create(
+          {
+            signerId: dto.signerId,
+            projectId,
+            status: SigningOperationStatus.Pending,
+            signingAlgorithm: dto.signingAlgorithm,
+            dataHash,
+            actorType: dto.actor,
+            actorId: dto.actorId,
+            actorName: dto.actorName ?? null,
+            approvalGrantId: matchingGrant.id,
+            clientMetadata: dto.clientMetadata ?? null
+          },
+          tx
+        );
 
-      let signatureBuffer: Buffer;
+        return {
+          grantId: matchingGrant.id,
+          matchedGrantAttrs: matchingGrant.attributes as TCodeSigningGrantAttributes | null,
+          pendingOperationId: pendingOp.id
+        };
+      }));
+    }
 
-      try {
-        const privateKeyPem = Buffer.from(certPrivateKey);
+    let signatureBuffer: Buffer;
+    try {
+      if (isHsmBacked) {
+        // ECDSA signatures arrive as raw r||s; convert to ASN.1 DER for X.509 / JCE consumers.
+        const mech = mapSigningAlgorithmToPkcs11Mechanism(dto.signingAlgorithm, dto.isDigest);
+        let raw = await hsmConnectorService.sign({
+          connectorId: certificate.hsmConnectorId as string,
+          projectId,
+          keyLabel: certificate.hsmKeyLabel as string,
+          mechanism: mech.mechanism,
+          data: dataBuffer,
+          isDigest: dto.isDigest
+        });
+        if (mech.isEcdsa) raw = ecdsaRawRsToDer(raw);
+        signatureBuffer = raw;
+      } else {
+        const privateKeyPem = certPrivateKey as Buffer;
         const svc = signingService(keyAlgorithm);
         signatureBuffer = await svc.sign(dataBuffer, privateKeyPem, dto.signingAlgorithm, dto.isDigest);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown signing error";
-        logger.error(error, `Code signing failed for signer '${signer.name}'`);
-
-        await signingOperationDAL.create(
-          {
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown signing error";
+      logger.error(error, `Code signing failed for signer '${signer.name}'`);
+      try {
+        if (pendingOperationId) {
+          await signingOperationDAL.updateById(pendingOperationId, {
+            status: SigningOperationStatus.Failed,
+            errorMessage: errorMessage.substring(0, 255)
+          });
+        } else {
+          await signingOperationDAL.create({
             signerId: dto.signerId,
             projectId,
             status: SigningOperationStatus.Failed,
@@ -1167,28 +1436,34 @@ export const signerServiceFactory = ({
             approvalGrantId: grantId,
             clientMetadata: dto.clientMetadata ?? null,
             errorMessage: errorMessage.substring(0, 255)
+          });
+        }
+      } catch (writeErr) {
+        logger.warn(writeErr, "Failed to record signing-operation failure row");
+      }
+      throw error;
+    }
+
+    await projectDAL.transaction(async (tx) => {
+      if (pendingOperationId) {
+        await signingOperationDAL.updateById(pendingOperationId, { status: SigningOperationStatus.Success }, tx);
+      } else {
+        await signingOperationDAL.create(
+          {
+            signerId: dto.signerId,
+            projectId,
+            status: SigningOperationStatus.Success,
+            signingAlgorithm: dto.signingAlgorithm,
+            dataHash,
+            actorType: dto.actor,
+            actorId: dto.actorId,
+            actorName: dto.actorName ?? null,
+            approvalGrantId: grantId,
+            clientMetadata: dto.clientMetadata ?? null
           },
           tx
         );
-
-        throw error;
       }
-
-      await signingOperationDAL.create(
-        {
-          signerId: dto.signerId,
-          projectId,
-          status: SigningOperationStatus.Success,
-          signingAlgorithm: dto.signingAlgorithm,
-          dataHash,
-          actorType: dto.actor,
-          actorId: dto.actorId,
-          actorName: dto.actorName ?? null,
-          approvalGrantId: grantId,
-          clientMetadata: dto.clientMetadata ?? null
-        },
-        tx
-      );
 
       if (grantId && matchedGrantAttrs?.maxSignings) {
         const newCount = await signingOperationDAL.countByGrantId(grantId, tx);
@@ -1198,17 +1473,15 @@ export const signerServiceFactory = ({
       }
 
       await signerDAL.updateById(dto.signerId, { lastSignedAt: new Date() }, tx);
-
-      return {
-        signature: signatureBuffer.toString("base64"),
-        signingAlgorithm: dto.signingAlgorithm,
-        signerId: dto.signerId,
-        signerName: signer.name,
-        projectId
-      };
     });
 
-    return result;
+    return {
+      signature: signatureBuffer.toString("base64"),
+      signingAlgorithm: dto.signingAlgorithm,
+      signerId: dto.signerId,
+      signerName: signer.name,
+      projectId
+    };
   };
 
   const getPublicKey = async (dto: TGetPublicKeyDTO) => {
@@ -1233,26 +1506,48 @@ export const signerServiceFactory = ({
       throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate attached yet.` });
     }
 
-    const { certPublicKey } = await getCertificateCredentials({
-      certId: signer.certificateId,
-      projectId,
-      certificateSecretDAL,
-      projectDAL,
-      kmsService
-    });
-
-    if (!certPublicKey) {
-      throw new BadRequestError({
-        message:
-          "Public key derivation is not supported for this certificate's key type. PQC certificates cannot be used as code signers."
-      });
+    const certificate = await certificateDAL.findById(signer.certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: `Signer certificate ${signer.certificateId} not found` });
     }
 
-    const publicKeyObject = crypto.nativeCrypto.createPublicKey({
-      key: certPublicKey,
-      format: "pem",
-      type: "spki"
-    });
+    let publicKeyObject: ReturnType<typeof crypto.nativeCrypto.createPublicKey>;
+    if (certificate.keySource === CertKeySource.Hsm) {
+      const certBody = await certificateBodyDAL.findOne({ certId: signer.certificateId });
+      if (!certBody?.encryptedCertificate) {
+        throw new BadRequestError({ message: `Certificate body not found for signer '${signer.name}'.` });
+      }
+      const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+      const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
+      const cert = new x509.X509Certificate(decryptedCert);
+      publicKeyObject = crypto.nativeCrypto.createPublicKey({
+        key: Buffer.from(cert.publicKey.rawData),
+        format: "der",
+        type: "spki"
+      });
+    } else {
+      const { certPublicKey } = await getCertificateCredentials({
+        certId: signer.certificateId,
+        projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+
+      if (!certPublicKey) {
+        throw new BadRequestError({
+          message:
+            "Public key derivation is not supported for this certificate's key type. PQC certificates cannot be used as code signers."
+        });
+      }
+
+      publicKeyObject = crypto.nativeCrypto.createPublicKey({
+        key: certPublicKey,
+        format: "pem",
+        type: "spki"
+      });
+    }
 
     const publicKeyDer = publicKeyObject.export({ format: "der", type: "spki" });
 
@@ -1371,6 +1666,16 @@ export const signerServiceFactory = ({
     const renewKeyAlgorithm: CertKeyAlgorithm = (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 
     if (isExternal) {
+      const autoRenewCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+      const autoRenewHsm =
+        autoRenewCert?.keySource === CertKeySource.Hsm && autoRenewCert.hsmConnectorId && autoRenewCert.keyAlgorithm
+          ? {
+              hsmConnectorId: autoRenewCert.hsmConnectorId,
+              hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(autoRenewCert.keyAlgorithm),
+              hsmKeyLabel: autoRenewCert.hsmKeyLabel ?? undefined,
+              hsmPublicKeySpki: autoRenewCert.hsmPublicKeySpki ?? undefined
+            }
+          : undefined;
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Pending,
         certificateFailureReason: null
@@ -1382,7 +1687,8 @@ export const signerServiceFactory = ({
           caId: signer.caId,
           commonName: signer.commonName,
           certificateTtlDays: ttlDays,
-          keyAlgorithm: renewKeyAlgorithm
+          keyAlgorithm: renewKeyAlgorithm,
+          hsm: autoRenewHsm
         });
       } catch (err) {
         await signerDAL.updateById(signer.id, {
@@ -1398,23 +1704,52 @@ export const signerServiceFactory = ({
     }
 
     try {
-      const { certificateId } = await issueSignerCertificate(
-        {
-          certificateAuthorityDAL,
-          internalCertificateAuthorityService,
-          certificateBodyDAL,
-          certificateSecretDAL,
-          projectDAL,
-          kmsService
-        },
-        {
-          caId: signer.caId,
-          projectId: signer.projectId,
-          commonName: signer.commonName,
-          certificateTtlDays: ttlDays,
-          keyAlgorithm: renewKeyAlgorithm
-        }
-      );
+      const existingCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+      const renewIsHsm = existingCert?.keySource === CertKeySource.Hsm;
+      let certificateId: string;
+      if (renewIsHsm && existingCert?.hsmConnectorId && existingCert.hsmKeyLabel && existingCert.keyAlgorithm) {
+        const result = await renewHsmBackedSignerCertificate(
+          {
+            certificateAuthorityDAL,
+            internalCertificateAuthorityService,
+            certificateBodyDAL,
+            certificateDAL,
+            hsmConnectorService,
+            projectDAL,
+            kmsService
+          },
+          {
+            caId: signer.caId,
+            projectId: signer.projectId,
+            commonName: signer.commonName,
+            certificateTtlDays: ttlDays,
+            hsmConnectorId: existingCert.hsmConnectorId,
+            hsmKeyLabel: existingCert.hsmKeyLabel,
+            expectedPublicKeySpkiDer: existingCert.hsmPublicKeySpki ?? undefined,
+            hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(existingCert.keyAlgorithm)
+          }
+        );
+        certificateId = result.certificateId;
+      } else {
+        const result = await issueSignerCertificate(
+          {
+            certificateAuthorityDAL,
+            internalCertificateAuthorityService,
+            certificateBodyDAL,
+            certificateSecretDAL,
+            projectDAL,
+            kmsService
+          },
+          {
+            caId: signer.caId,
+            projectId: signer.projectId,
+            commonName: signer.commonName,
+            certificateTtlDays: ttlDays,
+            keyAlgorithm: renewKeyAlgorithm
+          }
+        );
+        certificateId = result.certificateId;
+      }
       await signerDAL.updateById(signer.id, {
         certificateId,
         status: SignerStatus.Active,

@@ -2612,7 +2612,6 @@ const OverviewPageContent = () => {
                 />
                 {userAvailableEnvs.length > 0 && (
                   <AddResourceButtons
-                    requiresApproval={isProtectedBranch}
                     onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
                     onAddFolder={() => {
                       handlePopUpOpen("addFolder");

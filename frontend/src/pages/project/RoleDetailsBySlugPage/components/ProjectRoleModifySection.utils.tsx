@@ -21,6 +21,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
+  ProjectPermissionHsmConnectorActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
@@ -192,6 +193,15 @@ const AppConnectionPolicyActionSchema = z.object({
   [ProjectPermissionAppConnectionActions.Delete]: z.boolean().optional(),
   [ProjectPermissionAppConnectionActions.Connect]: z.boolean().optional(),
   [ProjectPermissionAppConnectionActions.RotateCredentials]: z.boolean().optional()
+});
+
+const HsmConnectorPolicyActionSchema = z.object({
+  [ProjectPermissionHsmConnectorActions.Read]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Create]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Test]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Attach]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -694,6 +704,7 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.HsmConnectors]: HsmConnectorPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiSyncs]: PkiSyncPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1094,6 +1105,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEventSubscriptions,
         ProjectPermissionSub.AppConnections,
+        ProjectPermissionSub.HsmConnectors,
         ProjectPermissionSub.PamFolders,
         ProjectPermissionSub.PamResources,
         ProjectPermissionSub.PamDomains,
@@ -1511,6 +1523,25 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.HsmConnectors) {
+      const canRead = action.includes(ProjectPermissionHsmConnectorActions.Read);
+      const canCreate = action.includes(ProjectPermissionHsmConnectorActions.Create);
+      const canEdit = action.includes(ProjectPermissionHsmConnectorActions.Edit);
+      const canDelete = action.includes(ProjectPermissionHsmConnectorActions.Delete);
+      const canTest = action.includes(ProjectPermissionHsmConnectorActions.Test);
+      const canAttach = action.includes(ProjectPermissionHsmConnectorActions.Attach);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Delete] = true;
+      if (canTest) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Test] = true;
+      if (canAttach) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Attach] = true;
       return;
     }
 
@@ -3252,6 +3283,43 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.HsmConnectors]: {
+    title: "HSM Connectors",
+    description: "Manage HSM Connectors that bridge Infisical to your HSM",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionHsmConnectorActions.Read,
+        description: "View HSM Connectors and their configuration (PIN is never returned)"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionHsmConnectorActions.Create,
+        description: "Create a new HSM Connector"
+      },
+      {
+        label: "Update",
+        value: ProjectPermissionHsmConnectorActions.Edit,
+        description: "Edit name, description, key name prefix, routing, or rotate the PIN"
+      },
+      {
+        label: "Delete",
+        value: ProjectPermissionHsmConnectorActions.Delete,
+        description: "Delete an HSM Connector (blocked if any certificate references it)"
+      },
+      {
+        label: "Verify",
+        value: ProjectPermissionHsmConnectorActions.Test,
+        description: "Verify the connector reaches the HSM through the gateway"
+      },
+      {
+        label: "Attach",
+        value: ProjectPermissionHsmConnectorActions.Attach,
+        description:
+          "Attach an HSM Connector when issuing a certificate (mints a fresh keypair on the HSM)"
+      }
+    ]
+  },
   [ProjectPermissionSub.PamFolders]: {
     title: "Folders",
     description: "Organize PAM resources into folders",
@@ -3592,7 +3660,8 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Certificates]: enabled,
   [ProjectPermissionSub.PkiDiscovery]: enabled,
   [ProjectPermissionSub.PkiCertificateInstallations]: enabled,
-  [ProjectPermissionSub.CodeSigners]: enabled
+  [ProjectPermissionSub.CodeSigners]: enabled,
+  [ProjectPermissionSub.HsmConnectors]: enabled
 });
 
 const SshPermissionSubjects = (enabled = false) => ({

@@ -286,7 +286,7 @@ const getAcmeChallengeRecord = async (
   return { recordName, recordValue };
 };
 
-export const orderCertificate = async (
+export const executeAcmeOrder = async (
   {
     caId,
     profileId,
@@ -332,7 +332,7 @@ export const orderCertificate = async (
     try {
       await onProgress(message);
     } catch (err) {
-      logger.warn(err, `ACME orderCertificate onProgress callback failed [caId=${caId}]`);
+      logger.warn(err, `ACME executeAcmeOrder onProgress callback failed [caId=${caId}]`);
     }
   };
   const {
@@ -932,7 +932,7 @@ export const AcmeCertificateAuthorityFns = ({
       skLeaf
     );
 
-    await orderCertificate(
+    await executeAcmeOrder(
       {
         caId: subscriber.caId,
         subscriberId: subscriber.id,
@@ -957,7 +957,7 @@ export const AcmeCertificateAuthorityFns = ({
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -992,7 +992,7 @@ export const AcmeCertificateAuthorityFns = ({
     isCancelled?: () => Promise<boolean>;
     abortSignal?: AbortSignal;
   }) => {
-    return orderCertificate(
+    return executeAcmeOrder(
       {
         caId,
         profileId,
@@ -1031,6 +1031,6 @@ export const AcmeCertificateAuthorityFns = ({
     updateCertificateAuthority,
     listCertificateAuthorities,
     orderSubscriberCertificate,
-    orderCertificateFromProfile
+    orderCertificate
   };
 };
