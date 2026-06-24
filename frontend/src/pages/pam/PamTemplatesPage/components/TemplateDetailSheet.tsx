@@ -328,7 +328,16 @@ const SettingsTab = ({
                 }
               />
               <FieldDescription>
-                Matching content in session recordings will be masked (one pattern per line).
+                Matching content in session recordings will be masked (one RE2 regex per
+                line).{" "}
+                <a
+                  href="https://github.com/google/re2/wiki/Syntax"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Syntax reference
+                </a>
               </FieldDescription>
             </FieldContent>
           </Field>

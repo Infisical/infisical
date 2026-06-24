@@ -49,7 +49,8 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   },
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
-    description: "Matching commands in SSH sessions will be rejected (one pattern per line).",
+    description:
+      "Matching commands in SSH sessions will be rejected (one RE2 regex per line). https://github.com/google/re2/wiki/Syntax",
     appliesTo: [PamAccountType.SSH],
     schema: patternsStringSchema()
   }
