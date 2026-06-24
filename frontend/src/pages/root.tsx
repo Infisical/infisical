@@ -27,13 +27,11 @@ const RootPage = () => {
 export const Route = createRootRouteWithContext<TRouterContext>()({
   component: RootPage,
   beforeLoad: async ({ context }) => {
-    // Seed the in-memory access token from the refresh cookie before any
-    // boot-time API calls, so /admin/config goes out with the Bearer header if present
     await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,
         queryFn: fetchAuthToken,
-        staleTime: 0
+        staleTime: Infinity
       })
       .catch(() => {
         // No valid refresh cookie — boot continues unauthenticated.
