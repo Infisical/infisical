@@ -16,7 +16,7 @@ export const TextAreaPolicyEditor = ({
       <FieldContent>
         <TextArea
           rows={5}
-          placeholder="One pattern per line, e.g. rm\s+-rf"
+          placeholder={"rm\\s+-rf.*\nsudo\\s+su\nshutdown"}
           value={text}
           onChange={(e) => {
             const val = e.target.value;

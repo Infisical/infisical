@@ -321,14 +321,14 @@ const SettingsTab = ({
             <FieldContent>
               <TextArea
                 rows={5}
-                placeholder="One pattern per line, e.g. password\s*=\s*\S+"
+                placeholder={"password\\s*=\\s*\\S+\nsecret_key\\s*[:=]\\s*\\S+"}
                 value={watch("sessionLogMaskingPatterns") ?? ""}
                 onChange={(e) =>
                   setValue("sessionLogMaskingPatterns", e.target.value, { shouldDirty: true })
                 }
               />
               <FieldDescription>
-                Matching content in session recordings will be masked.
+                Matching content in session recordings will be masked (one pattern per line).
               </FieldDescription>
             </FieldContent>
           </Field>
