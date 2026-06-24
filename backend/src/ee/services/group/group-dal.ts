@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, TableName, TGroups } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
@@ -597,15 +597,23 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findOneByNameAndOrgScope = async (name: string, orgId: string, tx?: Knex): Promise<TGroups | undefined> => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.Groups)
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
         .join(TableName.Membership, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Groups}.name`, name)
-        .select(selectAllTableCols(TableName.Groups))
-        .first();
-      return doc;
+        .distinctOn(`${TableName.Groups}.id`)
+        .select(selectAllTableCols(TableName.Groups));
+
+      if (docs.length > 1) {
+        throw new BadRequestError({
+          message: `Multiple groups with name '${name}' are visible in this organization. Use the group ID instead.`
+        });
+      }
+
+      return docs[0];
     } catch (error) {
+      if (error instanceof BadRequestError) throw error;
       throw new DatabaseError({ error, name: "FindOneByNameAndOrgScope" });
     }
   };
