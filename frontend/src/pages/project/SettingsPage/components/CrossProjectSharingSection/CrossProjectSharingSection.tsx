@@ -84,7 +84,7 @@ export const CrossProjectSharingSection = () => {
         Grant another project read access to a slice of this project&apos;s secrets. The target
         project can then import them, or reference them inline with{" "}
         <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono text-xs text-yellow-200">
-          {"${@project-a.SECRET}"}
+          ${"{@project-a.SECRET}"}
         </code>
         .
       </p>
