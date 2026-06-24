@@ -484,6 +484,8 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { projectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
+import { projectGrantServiceFactory } from "@app/services/project-grant/project-grant-service";
 import { secretReminderRecipientsDALFactory } from "@app/services/secret-reminder-recipients/secret-reminder-recipients-dal";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
@@ -614,6 +616,7 @@ export const registerRoutes = async (
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
+  const projectGrantDAL = projectGrantDALFactory(db);
   const secretVersionDAL = secretVersionDALFactory(db);
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
@@ -1984,6 +1987,12 @@ export const registerRoutes = async (
     secretQueueService,
     secretV2BridgeDAL,
     kmsService
+  });
+  const projectGrantService = projectGrantServiceFactory({
+    projectGrantDAL,
+    folderDAL,
+    projectDAL,
+    permissionService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -3805,6 +3814,7 @@ export const registerRoutes = async (
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
+    projectGrant: projectGrantService,
     projectBot: projectBotService,
     integration: integrationService,
     integrationAuth: integrationAuthService,

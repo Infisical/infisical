@@ -548,6 +548,9 @@ import {
   TSecretFolderVersions,
   TSecretFolderVersionsInsert,
   TSecretFolderVersionsUpdate,
+  TProjectFolderGrants,
+  TProjectFolderGrantsInsert,
+  TProjectFolderGrantsUpdate,
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
@@ -1181,6 +1184,11 @@ declare module "knex/types/tables" {
       TSecretImports,
       TSecretImportsInsert,
       TSecretImportsUpdate
+    >;
+    [TableName.ProjectFolderGrant]: KnexOriginal.CompositeTableType<
+      TProjectFolderGrants,
+      TProjectFolderGrantsInsert,
+      TProjectFolderGrantsUpdate
     >;
     [TableName.Integration]: KnexOriginal.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
     [TableName.Webhook]: KnexOriginal.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;

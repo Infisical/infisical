@@ -81,6 +81,7 @@ import { registerProjectGroupMembershipsRouter } from "./project-group-membershi
 import { registerProjectIdentityRouter } from "./project-identity-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
+import { registerProjectGrantRouter } from "./project-grant-router";
 import { registerProjectRouter } from "./project-router";
 import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
@@ -140,6 +141,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerDeprecatedSecretImportRouter, { prefix: "/secret-imports" });
+  await server.register(registerProjectGrantRouter, { prefix: "/project-grants" });
   await server.register(registerDeprecatedSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(

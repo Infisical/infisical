@@ -217,6 +217,7 @@ export * from "./secret-blind-indexes";
 export * from "./secret-folder-versions";
 export * from "./secret-folders";
 export * from "./secret-imports";
+export * from "./project-folder-grants";
 export * from "./secret-references";
 export * from "./secret-references-v2";
 export * from "./secret-rotation-v2-secret-mappings";
