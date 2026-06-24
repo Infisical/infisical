@@ -2553,6 +2553,8 @@ export const certificateV3ServiceFactory = ({
             signatureAlgorithm: originalSignatureAlgorithm,
             keyAlgorithm: originalKeyAlgorithm,
             isFromProfile: true,
+            basicConstraints: originalCert.isCA ? { isCA: true, pathLength: originalCert.pathLength } : undefined,
+            pathLength: originalCert.pathLength ?? undefined,
             organization: originalCert.subjectOrganization || undefined,
             ou: originalCert.subjectOrganizationalUnit || undefined,
             country: originalCert.subjectCountry || undefined,
