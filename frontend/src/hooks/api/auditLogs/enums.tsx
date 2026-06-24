@@ -454,5 +454,9 @@ export enum EventType {
   KMIP_SERVER_CREATE = "kmip-server-create",
   KMIP_SERVER_UPDATE = "kmip-server-update",
   KMIP_SERVER_DELETE = "kmip-server-delete",
-  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create"
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create",
+
+  // Project Grants
+  CREATE_PROJECT_GRANT = "create-project-grant",
+  DELETE_PROJECT_GRANT = "delete-project-grant"
 }
