@@ -5,6 +5,7 @@ import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
+import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { queryClient } from "@app/hooks/api/reactQuery";
 
 type TRouterContext = {
@@ -26,6 +27,19 @@ const RootPage = () => {
 export const Route = createRootRouteWithContext<TRouterContext>()({
   component: RootPage,
   beforeLoad: async ({ context }) => {
+    // Seed the in-memory access token from the refresh cookie before any
+    // boot-time API calls, so /admin/config goes out with the Bearer header if present
+    await context.queryClient
+      .fetchQuery({
+        queryKey: authKeys.getAuthToken,
+        queryFn: fetchAuthToken,
+        staleTime: 0
+      })
+      .catch(() => {
+        // No valid refresh cookie — boot continues unauthenticated.
+        // Downstream middlewares handle redirects for protected routes.
+      });
+
     const serverConfig = await context.queryClient.ensureQueryData({
       queryKey: adminQueryKeys.serverConfig(),
       queryFn: fetchServerConfig

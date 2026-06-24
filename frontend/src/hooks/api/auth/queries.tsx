@@ -32,6 +32,7 @@ import {
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
 } from "./types";
+import { adminQueryKeys } from "../admin";
 
 export const authKeys = {
   getAuthToken: ["token"] as const
@@ -103,6 +104,7 @@ export const useSelectOrganization = () => {
       queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.serverConfig() });
     }
   });
 };

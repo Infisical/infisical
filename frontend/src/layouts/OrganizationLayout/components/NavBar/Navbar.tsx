@@ -73,6 +73,7 @@ import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/ty
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
+  adminQueryKeys,
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
@@ -221,10 +222,12 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
+    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
     await navigateUserToOrg({ navigate, organizationId, navigateTo });
     queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
