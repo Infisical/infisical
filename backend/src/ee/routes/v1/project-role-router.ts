@@ -6,13 +6,13 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSub, ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
-import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { canUseCrossProjectSecretSharing } from "@app/services/project-grant/project-grant-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
@@ -55,8 +55,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const appCfg = getConfig();
-      const isCrossProjectEnabled = appCfg.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(req.permission.orgId);
+      const isCrossProjectEnabled = canUseCrossProjectSecretSharing(req.permission.orgId);
       const permissions = isCrossProjectEnabled
         ? req.body.permissions
         : req.body.permissions.filter((p) => p.subject !== ProjectPermissionSub.ProjectGrant);
@@ -150,8 +149,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const appCfg = getConfig();
-      const isCrossProjectEnabled = appCfg.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(req.permission.orgId);
+      const isCrossProjectEnabled = canUseCrossProjectSecretSharing(req.permission.orgId);
       const filteredPermissions = req.body.permissions
         ? req.body.permissions.filter((p) => isCrossProjectEnabled || p.subject !== ProjectPermissionSub.ProjectGrant)
         : undefined;
