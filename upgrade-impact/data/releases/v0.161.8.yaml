@@ -11,10 +11,12 @@ breakingChanges: []
 dbSchemaChanges:
   - title: Shared secret key uniqueness
     description: Startup deletes older duplicate shared secrets within the same
-      folder, then adds a unique partial index on shared secret key and folder.
-    action: No manual action required; Infisical runs this migration during startup.
-      If startup fails during migration, keep the previous version running and
-      inspect migration logs before retrying.
+      folder and key (keeps the most recently updated row), then adds a unique
+      partial index on shared secret key and folder.
+    action: Back up the database before upgrading if you have duplicate shared secrets. Startup deletes older duplicate
+      shared secrets within the same folder automatically; this deletion is
+      irreversible. If startup fails during migration, keep the previous version
+      running and inspect migration logs before retrying.
     confidence: high
     evidence:
       - type: file
