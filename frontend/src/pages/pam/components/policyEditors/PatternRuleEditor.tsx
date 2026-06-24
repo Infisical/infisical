@@ -8,8 +8,9 @@ export const PatternRuleEditor = ({
   label,
   description,
   value,
-  onChange
-}: PolicyEditorProps) => {
+  onChange,
+  placeholder
+}: PolicyEditorProps & { placeholder?: string }) => {
   const text = typeof value === "string" ? value : "";
 
   return (
@@ -18,6 +19,7 @@ export const PatternRuleEditor = ({
       <FieldContent>
         <TextArea
           rows={5}
+          placeholder={placeholder}
           value={text}
           onChange={(e) => {
             const val = e.target.value;
