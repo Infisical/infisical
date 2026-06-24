@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { SecretType, TableName } from "../schemas";
 
-const MIGRATION_TIMEOUT = 60 * 1000; // 1 minute
+const MIGRATION_TIMEOUT = 60 * 3000; // 3 minutes
 
 export async function up(knex: Knex): Promise<void> {
   await knex.raw(`SET LOCAL statement_timeout = ${MIGRATION_TIMEOUT}`);

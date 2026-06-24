@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 const MIGRATION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
-const DROP_TIMEOUT = 60 * 1000; // 1 minute
+const DROP_TIMEOUT = 60 * 3000; // 3 minute
 
 const INDEX_NAME = "uq_secrets_v2_key_folder_id_shared";
 
