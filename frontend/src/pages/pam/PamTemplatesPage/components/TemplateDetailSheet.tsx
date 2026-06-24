@@ -328,7 +328,7 @@ const SettingsTab = ({
                 }
               />
               <FieldDescription>
-                Matching content in session recordings is replaced with [MASKED].
+                Matching content in session recordings will be masked.
               </FieldDescription>
             </FieldContent>
           </Field>
