@@ -29,6 +29,7 @@ import {
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
+import { TCertificateRequest } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -88,6 +89,76 @@ export type TIssueCertificateFromApprovedRequestDeps = {
 
 export type TCertificateApprovalService = {
   issueCertificate: (certificateRequestId: string) => Promise<TCertificateIssuanceResponse>;
+};
+
+const buildRevalidationRequest = ({
+  csr,
+  commonName,
+  organization,
+  organizationalUnit,
+  country,
+  state,
+  locality,
+  keyUsages,
+  extendedKeyUsages,
+  keyAlgorithm,
+  signatureAlgorithm,
+  notBefore,
+  notAfter,
+  altNames,
+  profileDefaults,
+  ttl
+}: {
+  csr?: string | null;
+  commonName?: string | null;
+  organization?: string | null;
+  organizationalUnit?: string | null;
+  country?: string | null;
+  state?: string | null;
+  locality?: string | null;
+  keyUsages?: string[] | null;
+  extendedKeyUsages?: string[] | null;
+  keyAlgorithm?: string | null;
+  signatureAlgorithm?: string | null;
+  notBefore?: Date | null;
+  notAfter?: Date | null;
+  altNames?: TAltNameEntry[] | null;
+  profileDefaults: Parameters<typeof applyProfileDefaults>[1];
+  ttl: string;
+}): TCertificateRequest => {
+  const reconstructedRequest: TCertificateRequest = csr
+    ? applyProfileDefaults(extractCertificateRequestFromCSR(csr), profileDefaults)
+    : applyProfileDefaults(
+        {
+          commonName: commonName || undefined,
+          organization: organization || undefined,
+          organizationalUnit: organizationalUnit || undefined,
+          country: country || undefined,
+          state: state || undefined,
+          locality: locality || undefined,
+          keyUsages: (keyUsages as CertKeyUsageType[] | null) || undefined,
+          extendedKeyUsages: (extendedKeyUsages as CertExtendedKeyUsageType[] | null) || undefined,
+          subjectAlternativeNames: altNames ?? undefined,
+          keyAlgorithm: keyAlgorithm || undefined,
+          signatureAlgorithm: signatureAlgorithm || undefined
+        },
+        profileDefaults
+      );
+
+  const mappedRequest = mapEnumsForValidation(reconstructedRequest);
+  if (csr) {
+    const { keyAlgorithm: csrKeyAlg, signatureAlgorithm: csrSigAlg } = extractAlgorithmsFromCSR(csr);
+    mappedRequest.keyAlgorithm = csrKeyAlg;
+    mappedRequest.signatureAlgorithm = csrSigAlg;
+  }
+  if (notAfter) {
+    mappedRequest.notBefore = notBefore || undefined;
+    mappedRequest.notAfter = notAfter;
+  } else {
+    mappedRequest.validity = { ttl };
+  }
+
+  return mappedRequest;
 };
 
 export const certificateApprovalServiceFactory = (
@@ -602,6 +673,35 @@ export const certificateApprovalServiceFactory = (
           : certRequest.keyAlgorithm || undefined,
         altNames: csrDerived?.subjectAlternativeNames ?? altNames ?? undefined,
         commonName: csrDerived?.commonName ?? certRequest.commonName ?? undefined
+      });
+    }
+
+    const mappedReconstructedRequest = buildRevalidationRequest({
+      csr: certRequest.csr,
+      commonName: certRequest.commonName,
+      organization: certRequest.organization,
+      organizationalUnit: certRequest.organizationalUnit,
+      country: certRequest.country,
+      state: certRequest.state,
+      locality: certRequest.locality,
+      keyUsages: certRequest.keyUsages,
+      extendedKeyUsages: certRequest.extendedKeyUsages,
+      keyAlgorithm: certRequest.keyAlgorithm,
+      signatureAlgorithm: certRequest.signatureAlgorithm,
+      notBefore: certRequest.notBefore,
+      notAfter: certRequest.notAfter,
+      altNames,
+      profileDefaults: profile.defaults,
+      ttl
+    });
+
+    const revalidationResult = await certificatePolicyService.validateCertificateRequest(
+      profile.certificatePolicyId,
+      mappedReconstructedRequest
+    );
+    if (!revalidationResult.isValid) {
+      throw new BadRequestError({
+        message: `Certificate request validation failed: ${revalidationResult.errors.join(", ")}`
       });
     }
 
