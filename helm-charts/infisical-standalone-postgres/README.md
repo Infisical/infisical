@@ -49,6 +49,7 @@ A helm chart to deploy Infisical
 | ingress.enabled | bool | `true` | Enable or disable ingress configuration |
 | ingress.hostName | string | `""` | Hostname for ingress access, e.g., app.example.com |
 | ingress.ingressClassName | string | `""` | Specifies the ingress class. Defaults to "infisical-nginx" when bundled ingress-nginx is enabled, or "nginx" otherwise |
+| ingress.labels | object | `{}` | Custom labels for ingress resource |
 | ingress.nginx.enabled | bool | `true` | Enable NGINX-specific settings, if using NGINX ingress controller |
 | ingress.tls | list | `[]` | TLS settings for HTTPS access |
 | nameOverride | string | `""` | Overrides the default release name |

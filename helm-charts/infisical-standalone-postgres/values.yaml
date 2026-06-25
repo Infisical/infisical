@@ -154,6 +154,8 @@ ingress:
 
   # -- Custom annotations for ingress resource
   annotations: {}
+  # -- Custom labels for ingress resource
+  labels: {}
   # -- TLS settings for HTTPS access
   tls: []
     # -- TLS secret name for HTTPS
