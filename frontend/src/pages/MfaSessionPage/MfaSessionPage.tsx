@@ -94,10 +94,19 @@ export const MfaSessionPage = () => {
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
-  const handleVerifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleVerifyMfa = async (
+    event?: React.FormEvent<HTMLFormElement>,
+    codeToVerify?: string
+  ) => {
+    if (event) event.preventDefault();
 
-    if (!mfaCode.trim() || !isCodeComplete || !sessionStatus?.mfaMethod) return;
+    const finalCode = codeToVerify ?? mfaCode;
+    if (
+      !finalCode.trim() ||
+      finalCode.length !== getExpectedCodeLength() ||
+      !sessionStatus?.mfaMethod
+    )
+      return;
 
     setIsLoading(true);
     setError(null);
@@ -105,7 +114,7 @@ export const MfaSessionPage = () => {
     try {
       await verifyMfaSession.mutateAsync({
         mfaSessionId,
-        mfaToken: mfaCode.trim(),
+        mfaToken: finalCode.trim(),
         mfaMethod: sessionStatus.mfaMethod
       });
 
@@ -123,6 +132,13 @@ export const MfaSessionPage = () => {
       setMfaCode("");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCodeChange = (value: string) => {
+    setMfaCode(value);
+    if (value.length === getExpectedCodeLength() && !isLoading) {
+      handleVerifyMfa(undefined, value);
     }
   };
 
@@ -267,7 +283,7 @@ export const MfaSessionPage = () => {
                   inputMode="tel"
                   type="text"
                   fields={getExpectedCodeLength()}
-                  onChange={setMfaCode}
+                  onChange={handleCodeChange}
                   value={mfaCode}
                   className="mb-2"
                   {...codeInputProps}
@@ -281,7 +297,7 @@ export const MfaSessionPage = () => {
                   inputMode="tel"
                   type="text"
                   fields={getExpectedCodeLength()}
-                  onChange={setMfaCode}
+                  onChange={handleCodeChange}
                   value={mfaCode}
                   className="mb-2"
                   {...codeInputPropsPhone}
