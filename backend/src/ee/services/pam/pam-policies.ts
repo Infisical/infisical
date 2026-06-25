@@ -38,6 +38,7 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
         const patterns = splitPatternString(val);
         return patterns.every((p) => {
           try {
+            // eslint-disable-next-line no-new
             new RE2(p);
             return true;
           } catch {
