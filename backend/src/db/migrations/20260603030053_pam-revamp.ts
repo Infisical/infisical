@@ -402,6 +402,7 @@ export async function up(knex: Knex): Promise<void> {
     t.binary("encryptedConnectionDetails").notNullable().alter();
     t.jsonb("settingsOverrides").nullable();
     t.unique(["folderId", "name"]);
+    // Make retained old columns nullable so new accounts can be created without them
     t.string("projectId", 36).nullable().alter();
     t.uuid("resourceId").nullable().alter();
     t.uuid("domainId").nullable().alter();

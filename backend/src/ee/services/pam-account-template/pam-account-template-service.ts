@@ -16,7 +16,7 @@ import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
-import { PamRecordingS3ConfigSchema, PamTemplateSettingsSchema } from "./pam-account-template-schemas";
+import { PamRecordingS3ConfigSchema, TPamTemplateSettings } from "./pam-account-template-schemas";
 import {
   TCreatePamAccountTemplateDTO,
   TDeletePamAccountTemplateDTO,
@@ -56,16 +56,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   const validateTemplateRecordingS3Config = async (
     recordingConnectionId: string | null | undefined,
-    settings: unknown,
+    settings: TPamTemplateSettings,
     ctx: TActorContext
   ): Promise<TPamRecordingResolvedConfig | null> => {
-    const settingsParsed = settings ? PamTemplateSettingsSchema.safeParse(settings) : null;
-    const isS3Backend =
-      settingsParsed?.success && settingsParsed.data.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
+    const isS3Backend = settings.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
 
     let resolvedS3Config = null;
     if (recordingConnectionId && settings) {
-      const s3Parsed = PamRecordingS3ConfigSchema.safeParse((settings as Record<string, unknown>).recordingS3Config);
+      const s3Parsed = PamRecordingS3ConfigSchema.safeParse(settings.recordingS3Config);
       if (s3Parsed.success) {
         resolvedS3Config = await validateRecordingS3Config(deps, recordingConnectionId, s3Parsed.data, ctx);
       }
@@ -166,7 +164,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
 
     const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
-    const resolvedSettings = settings !== undefined ? settings : existing.settings;
+    const resolvedSettings = (settings !== undefined ? settings : existing.settings) as TPamTemplateSettings;
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(resolvedConnId, resolvedSettings, ctx);
 

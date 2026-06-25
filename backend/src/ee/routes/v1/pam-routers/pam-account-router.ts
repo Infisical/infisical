@@ -104,8 +104,7 @@ const registerPerTypeEndpoints = (
         gatewayId: z.string().uuid().optional().describe("The ID of the gateway to use"),
         gatewayPoolId: z.string().uuid().optional().describe("The ID of the gateway pool to use"),
         recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use"),
-        settingsOverrides: PamAccountSettingsOverridesSchema.nullable()
-          .optional()
+        settingsOverrides: PamAccountSettingsOverridesSchema.optional()
           .describe("Account-level template settings overrides")
       }),
       response: {
@@ -189,8 +188,7 @@ const registerPerTypeEndpoints = (
           .nullable()
           .optional()
           .describe("The ID of the recording connection to use"),
-        settingsOverrides: PamAccountSettingsOverridesSchema.nullable()
-          .optional()
+        settingsOverrides: PamAccountSettingsOverridesSchema.optional()
           .describe("Account-level template settings overrides")
       }),
       response: {

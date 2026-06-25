@@ -168,22 +168,6 @@ export const pamWebAccessServiceFactory = ({
 
     enforceRecordingConfig(account);
 
-    const trimmedReason = reason?.trim() || null;
-
-    const policy = resolveAccessControls(account.templatePolicies);
-
-    if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({ message: "A reason is required to access this account" });
-    }
-
-    if (policy.requireMfa) {
-      throw new BadRequestError({ message: "MFA verification is required to access this account" });
-    }
-
-    const maxSessionDurationMs = policy.maxSessionDurationSeconds
-      ? policy.maxSessionDurationSeconds * 1000
-      : DEFAULT_WEB_SESSION_DURATION_MS;
-
     await checkAccountAccess(
       permissionService,
       accountId,
