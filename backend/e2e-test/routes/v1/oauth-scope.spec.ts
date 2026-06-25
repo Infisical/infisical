@@ -50,6 +50,13 @@ const createFolder = async (token: string, name: string) =>
     }
   });
 
+const getEncryptedProjectKey = async (token: string) =>
+  testServer.inject({
+    method: "GET",
+    url: `/api/v2/workspace/${seedData1.project.id}/encrypted-key`,
+    headers: { authorization: `Bearer ${token}` }
+  });
+
 describe("OAuth delegated token scope enforcement", async () => {
   // Control: a first-party session JWT (no oauthClientId) is never scope-narrowed, so the org admin
   // can read secrets. This is the baseline the scoped cases are compared against.
@@ -85,6 +92,17 @@ describe("OAuth delegated token scope enforcement", async () => {
     const token = signOauthToken(["secrets:read"]);
     const res = await createFolder(token, "oauth-scope-write-denied");
     expect(res.statusCode).toBe(403);
+  });
+
+  test("a delegated token cannot reach the deprecated project-key route", async () => {
+    const token = signOauthToken(["secrets:read"]);
+    const res = await getEncryptedProjectKey(token);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("a first-party session JWT can reach the deprecated project-key route", async () => {
+    const res = await getEncryptedProjectKey(jwtAuthToken);
+    expect(res.statusCode).toBe(200);
   });
 
   // Security regression: account-management routes (TOTP, MFA, sessions, password) authenticate on
