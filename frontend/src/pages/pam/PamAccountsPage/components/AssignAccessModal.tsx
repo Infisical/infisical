@@ -116,7 +116,7 @@ type Props = {
   resourceId: string;
   existingUserIds: Set<string>;
   existingGroupIds: Set<string>;
-  existingIdentityIds?: Set<string>;
+  existingIdentityIds: Set<string>;
   editMember?: EditMemberTarget | null;
 };
 

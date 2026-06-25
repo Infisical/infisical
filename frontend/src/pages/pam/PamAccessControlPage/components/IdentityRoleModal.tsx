@@ -42,9 +42,10 @@ export const IdentityRoleModal = ({ identity, identityName, isOpen, onOpenChange
   const hasChanges = selectedRole !== currentRole;
 
   const handleSave = () => {
+    if (!identity.identityId) return;
     updateRole.mutate(
       {
-        identityId: identity.identityId!,
+        identityId: identity.identityId,
         role: selectedRole
       },
       {

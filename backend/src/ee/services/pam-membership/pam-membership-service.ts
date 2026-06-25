@@ -412,6 +412,14 @@ export const pamMembershipServiceFactory = ({
   const updateProductMemberRole = async ({ projectId, role, ...dto }: TUpdatePamProductMemberDTO & TActorContext) => {
     await checkProductAdmin(projectId, dto);
 
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
     if (!VALID_PRODUCT_ROLES.includes(role)) {
       throw new BadRequestError({
         message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
@@ -451,6 +459,14 @@ export const pamMembershipServiceFactory = ({
 
   const removeProductMember = async ({ projectId, ...dto }: TRemovePamProductMemberDTO & TActorContext) => {
     await checkProductAdmin(projectId, dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
 
     const { column, id, kind } = resolveActorColumn(dto);
 

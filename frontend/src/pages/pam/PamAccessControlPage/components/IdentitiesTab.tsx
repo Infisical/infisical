@@ -89,7 +89,8 @@ export const IdentitiesTab = () => {
 
   const handleDeleteIdentity = async () => {
     if (!identityToRemove) return;
-    await removeIdentity.mutateAsync({ identityId: identityToRemove.identityId! });
+    if (!identityToRemove.identityId) return;
+    await removeIdentity.mutateAsync({ identityId: identityToRemove.identityId });
     createNotification({ text: "Identity removed", type: "success" });
     setIdentityToRemove(null);
   };
