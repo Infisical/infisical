@@ -189,6 +189,8 @@ export const createMysqlConnectionController = async (params: ControllerParams):
 
               for (const stmtSql of stmts) {
                 // eslint-disable-next-line no-await-in-loop
+                await conn.query(`SET SESSION sql_select_limit = ${MAX_ROWS + 1}`);
+                // eslint-disable-next-line no-await-in-loop
                 const [result, fields] = await queryWithTimeout(() => conn.query(stmtSql));
 
                 if (Array.isArray(result)) {
