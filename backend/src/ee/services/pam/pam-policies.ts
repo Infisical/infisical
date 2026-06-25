@@ -123,6 +123,16 @@ export type TPamAccessControls = {
   maxSessionDurationSeconds: number | null;
 };
 
+const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
+
+export const PamPolicyRulesSchema = z
+  .object({
+    "command-blocking": PamPolicyRulePatternSchema.optional(),
+    "session-log-masking": PamPolicyRulePatternSchema.optional()
+  })
+  .nullable()
+  .optional();
+
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   return {
