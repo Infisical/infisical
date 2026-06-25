@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -142,6 +142,13 @@ export const SecretApprovalRequestChanges = ({
   const [comment, setComment] = useState("");
   const [willMerge, setWillMerge] = useState(false);
   const [isEditingReview, setIsEditingReview] = useState(false);
+
+  // Reset the review draft whenever the request changes (or the sheet closes, which
+  // sets approvalRequestId to "") so state never carries over to a different request.
+  useEffect(() => {
+    setComment("");
+    setIsEditingReview(false);
+  }, [approvalRequestId]);
 
   const { data: secretApprovalRequestDetails, isPending: isLoading } =
     useGetSecretApprovalRequestDetails({

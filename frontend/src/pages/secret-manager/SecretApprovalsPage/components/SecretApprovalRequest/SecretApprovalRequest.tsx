@@ -111,7 +111,13 @@ const FilterMenu = ({
   const selectedOption = options.find((option) => option.value === value);
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) setInputValue("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
