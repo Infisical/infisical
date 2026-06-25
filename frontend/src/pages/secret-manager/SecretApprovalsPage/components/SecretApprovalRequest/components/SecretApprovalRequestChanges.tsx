@@ -1,40 +1,61 @@
 /* eslint-disable no-nested-ternary */
-import { ReactNode, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import {
-  faAngleDown,
-  faArrowLeft,
-  faBan,
-  faCheck,
-  faCodeBranch,
-  faComment,
-  faFolder,
-  faHourglass,
-  faUserSlash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { RadioGroup, RadioGroupIndicator, RadioGroupItem } from "@radix-ui/react-radio-group";
+import { Fragment, useState } from "react";
 import { format } from "date-fns";
-import { twMerge } from "tailwind-merge";
-import z from "zod";
+import {
+  BanIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  GitMergeIcon,
+  GitPullRequestClosedIcon,
+  GitPullRequestIcon,
+  HourglassIcon,
+  InfoIcon,
+  KeyRoundIcon,
+  MessageSquareIcon,
+  UserXIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertTitle,
+  Badge,
   Button,
-  ContentLoader,
+  ButtonGroup,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
-  FormControl,
-  GenericFieldLabel,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Field,
+  FieldLabel,
   IconButton,
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemGroup,
+  ItemSeparator,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Skeleton,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useProject, useUser } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import {
   useGetSecretApprovalRequestDetails,
   useGetSecretImports,
@@ -49,78 +70,93 @@ import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeIt
 
 export const generateCommitText = (commits: { op: CommitType }[] = [], isReplicated = false) => {
   if (isReplicated) {
-    return <span>{commits.length} secret pending import</span>;
+    return (
+      <span className="flex items-center">
+        <Badge variant="info">
+          {commits.length} Secret{commits.length > 1 ? "s" : ""} Pending Import
+        </Badge>
+      </span>
+    );
   }
 
   const score: Record<string, number> = {};
   commits.forEach(({ op }) => {
     score[op] = (score?.[op] || 0) + 1;
   });
-  const text: ReactNode[] = [];
-  if (score[CommitType.CREATE])
-    text.push(
-      <span key="created-commit">
-        {score[CommitType.CREATE]} Secret{score[CommitType.CREATE] !== 1 && "s"}
-        <span className="text-green-600"> Created</span>
-      </span>
-    );
-  if (score[CommitType.UPDATE])
-    text.push(
-      <span key="updated-commit">
-        {Boolean(text.length) && ", "}
-        {score[CommitType.UPDATE]} Secret{score[CommitType.UPDATE] !== 1 && "s"}
-        <span className="text-yellow-600"> Updated</span>
-      </span>
-    );
-  if (score[CommitType.DELETE])
-    text.push(
-      <span className="deleted-commit">
-        {Boolean(text.length) && " and "}
-        {score[CommitType.DELETE]} Secret{score[CommitType.DELETE] !== 1 && "s"}
-        <span className="text-red-600"> Deleted</span>
-      </span>
-    );
-  return text;
+
+  const changeBadges = (
+    [
+      { count: score[CommitType.CREATE] ?? 0, label: "Add", variant: "success" },
+      { count: score[CommitType.UPDATE] ?? 0, label: "Update", variant: "warning" },
+      { count: score[CommitType.DELETE] ?? 0, label: "Delete", variant: "danger" }
+    ] as const
+  ).filter(({ count }) => count > 0);
+
+  return (
+    <span className="flex items-center gap-1.5">
+      {changeBadges.map(({ label, count, variant }) => (
+        <Badge key={label} variant={variant}>
+          {count} {label}
+        </Badge>
+      ))}
+    </span>
+  );
 };
 
-const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
+const getReviewStatusBadge = (status?: ApprovalStatus) => {
   if (status === ApprovalStatus.APPROVED)
-    return <FontAwesomeIcon icon={faCheck} size="xs" className="text-green" />;
+    return (
+      <Badge variant="success">
+        <CheckIcon />
+        Approved
+      </Badge>
+    );
   if (status === ApprovalStatus.REJECTED)
-    return <FontAwesomeIcon icon={faBan} size="xs" className="text-red" />;
-
-  return <FontAwesomeIcon icon={faHourglass} size="xs" className="text-yellow" />;
+    return (
+      <Badge variant="danger">
+        <BanIcon />
+        Rejected
+      </Badge>
+    );
+  return (
+    <Badge variant="warning">
+      <HourglassIcon />
+      Pending
+    </Badge>
+  );
 };
 
 type Props = {
   approvalRequestId: string;
-  onGoBack: () => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
-const reviewFormSchema = z.object({
-  comment: z.string().trim().optional().default(""),
-  status: z.nativeEnum(ApprovalStatus)
-});
-
-type TReviewFormSchema = z.infer<typeof reviewFormSchema>;
-
-export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Props) => {
+export const SecretApprovalRequestChanges = ({
+  approvalRequestId,
+  isOpen,
+  onOpenChange
+}: Props) => {
   const { user: userSession } = useUser();
-  const { projectId } = useProject();
-  const {
-    data: secretApprovalRequestDetails,
-    isSuccess: isSecretApprovalRequestSuccess,
-    isPending: isSecretApprovalRequestLoading
-  } = useGetSecretApprovalRequestDetails({
-    id: approvalRequestId
-  });
+  const { currentProject, projectId } = useProject();
+  const [comment, setComment] = useState("");
+  const [willMerge, setWillMerge] = useState(false);
+  const [isEditingReview, setIsEditingReview] = useState(false);
+
+  const { data: secretApprovalRequestDetails, isPending: isLoading } =
+    useGetSecretApprovalRequestDetails({
+      id: approvalRequestId,
+      options: { enabled: isOpen }
+    });
+
   const approvalSecretPath = parsePathFromReplicatedPath(
     secretApprovalRequestDetails?.secretPath || ""
   );
   const { data: secretImports } = useGetSecretImports({
     environment: secretApprovalRequestDetails?.environment || "",
     projectId,
-    path: approvalSecretPath
+    path: approvalSecretPath,
+    options: { enabled: isOpen && Boolean(secretApprovalRequestDetails?.environment) }
   });
 
   const replicatedImport = secretApprovalRequestDetails?.isReplicated
@@ -135,36 +171,36 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
     variables
   } = useUpdateSecretApprovalReviewStatus();
 
-  const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
-    usePerformSecretApprovalRequestMerge();
+  const { mutateAsync: performSecretApprovalMerge } = usePerformSecretApprovalRequestMerge();
 
-  const [willMerge, setWillMerge] = useState(false);
+  const handleReview = async (status: ApprovalStatus) => {
+    if (!secretApprovalRequestDetails) return;
+    await updateSecretApprovalRequestStatus({
+      id: approvalRequestId,
+      status,
+      comment,
+      projectId
+    });
+    createNotification({
+      type: "success",
+      text: `Successfully ${status} the request`
+    });
+    setComment("");
+    setIsEditingReview(false);
+  };
 
-  const { popUp, handlePopUpToggle } = usePopUp(["reviewChanges"] as const);
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-    watch
-  } = useForm<TReviewFormSchema>({
-    resolver: zodResolver(reviewFormSchema)
-  });
-  const isCommitter = secretApprovalRequestDetails?.committerUserId === userSession.id;
-  const shouldBlockSelfReview =
-    secretApprovalRequestDetails?.policy?.allowedSelfApprovals === false && isCommitter;
-  const isApproving = variables?.status === ApprovalStatus.APPROVED && isUpdatingRequestStatus;
-  const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
-
-  // membership of present user
-  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.some(
-    ({ userId }) => userId === userSession.id
-  );
-
-  const isBypasser =
-    !secretApprovalRequestDetails?.policy?.bypassers ||
-    !secretApprovalRequestDetails.policy.bypassers.length ||
-    secretApprovalRequestDetails.policy.bypassers.some(({ userId }) => userId === userSession.id);
+  const handleApproveAndMerge = async () => {
+    if (!secretApprovalRequestDetails) return;
+    try {
+      setWillMerge(true);
+      await handleReview(ApprovalStatus.APPROVED);
+      await performSecretApprovalMerge({ projectId, id: secretApprovalRequestDetails.id });
+    } catch {
+      // Approval or merge failed, error already shown via mutation
+    } finally {
+      setWillMerge(false);
+    }
+  };
 
   const reviewedUsers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<
@@ -184,532 +220,407 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
     {}
   );
 
-  const handleSecretApprovalStatusUpdate = async (status: ApprovalStatus, comment: string) => {
-    await updateSecretApprovalRequestStatus({
-      id: approvalRequestId,
-      status,
-      comment,
-      projectId
-    });
-    createNotification({
-      type: "success",
-      text: `Successfully ${status} the request`
-    });
+  const isCommitter = secretApprovalRequestDetails?.committerUserId === userSession.id;
+  const shouldBlockSelfReview =
+    secretApprovalRequestDetails?.policy?.allowedSelfApprovals === false && isCommitter;
+  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.some(
+    ({ userId }) => userId === userSession.id
+  );
+  const isBypasser =
+    !secretApprovalRequestDetails?.policy?.bypassers ||
+    !secretApprovalRequestDetails.policy.bypassers.length ||
+    secretApprovalRequestDetails.policy.bypassers.some(({ userId }) => userId === userSession.id);
 
-    handlePopUpToggle("reviewChanges", false);
-    reset({
-      comment: "",
-      status: ApprovalStatus.APPROVED
-    });
-  };
-
-  const handleSubmitReview = async (data: TReviewFormSchema) => {
-    await handleSecretApprovalStatusUpdate(data.status, data.comment);
-  };
-
-  if (isSecretApprovalRequestLoading) {
-    return (
-      <div>
-        <ContentLoader />
-      </div>
-    );
-  }
-
-  if (!isSecretApprovalRequestSuccess)
-    return (
-      <div>
-        <EmptyState title="Failed to load approvals" />
-      </div>
-    );
-
-  const isMergable =
-    secretApprovalRequestDetails?.policy?.approvals <=
-    secretApprovalRequestDetails?.policy?.approvers?.filter(
-      ({ userId }) => reviewedUsers?.[userId]?.status === ApprovalStatus.APPROVED
-    ).length;
   const hasMerged = secretApprovalRequestDetails?.hasMerged;
+  const approvalsRequired = secretApprovalRequestDetails?.policy?.approvals ?? 0;
+  const isMergable =
+    approvalsRequired <=
+    (secretApprovalRequestDetails?.policy?.approvers?.filter(
+      ({ userId }) => reviewedUsers?.[userId]?.status === ApprovalStatus.APPROVED
+    ).length ?? 0);
   const isMergableUponApprove =
-    secretApprovalRequestDetails?.policy?.approvals <=
-      secretApprovalRequestDetails?.policy?.approvers?.filter(
-        ({ userId }) =>
-          userId === userSession.id || reviewedUsers?.[userId]?.status === ApprovalStatus.APPROVED
-      ).length && watch("status") !== ApprovalStatus.REJECTED;
+    approvalsRequired <=
+    (secretApprovalRequestDetails?.policy?.approvers?.filter(
+      ({ userId }) =>
+        userId === userSession.id || reviewedUsers?.[userId]?.status === ApprovalStatus.APPROVED
+    ).length ?? 0);
 
-  const isPending = isApproving || isRejecting || isSubmitting || isMerging;
+  const isApproving = variables?.status === ApprovalStatus.APPROVED && isUpdatingRequestStatus;
+  const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
+  const actionInFlight = isUpdatingRequestStatus || willMerge;
+
+  const myReview = reviewedUsers?.[userSession.id];
+  const showReviewForm = !myReview || isEditingReview;
+
+  const canReview = Boolean(
+    secretApprovalRequestDetails &&
+      !hasMerged &&
+      secretApprovalRequestDetails.status === "open" &&
+      !shouldBlockSelfReview &&
+      canApprove
+  );
+
+  const committerUser = secretApprovalRequestDetails?.committerUser;
+  const environmentName = secretApprovalRequestDetails
+    ? (currentProject?.environments.find(
+        (env) => env.slug === secretApprovalRequestDetails.environment
+      )?.name ?? secretApprovalRequestDetails.environment)
+    : "";
+
+  // Build the reviewer list: required approvers first, then any extra reviewers.
+  const reviewerRows = secretApprovalRequestDetails
+    ? [
+        ...secretApprovalRequestDetails.policy.approvers
+          .filter((approver) => !(shouldBlockSelfReview && approver.userId === userSession.id))
+          .map((approver) => ({
+            userId: approver.userId,
+            firstName: approver.firstName,
+            lastName: approver.lastName,
+            email: approver.email,
+            isOrgMembershipActive: approver.isOrgMembershipActive,
+            isRequired: true
+          })),
+        ...secretApprovalRequestDetails.reviewers
+          .filter(
+            (reviewer) =>
+              !secretApprovalRequestDetails.policy.approvers.some(
+                ({ userId }) => userId === reviewer.userId
+              )
+          )
+          .map((reviewer) => ({
+            userId: reviewer.userId,
+            firstName: reviewer.firstName,
+            lastName: reviewer.lastName,
+            email: reviewer.email,
+            isOrgMembershipActive: reviewer.isOrgMembershipActive,
+            isRequired: false
+          }))
+      ]
+    : [];
+
+  const reviewControls = canReview ? (
+    <div className="-mx-4 mt-auto flex shrink-0 flex-col gap-3 border-t border-border px-4 pt-4">
+      {showReviewForm ? (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-foreground">
+              {myReview ? "Update your review" : "Your review"}
+            </span>
+            {myReview && (
+              <Button
+                variant="ghost"
+                size="xs"
+                isDisabled={actionInFlight}
+                onClick={() => {
+                  setComment("");
+                  setIsEditingReview(false);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+          <Field>
+            <FieldLabel htmlFor="review-comment">Comment (optional)</FieldLabel>
+            <TextArea
+              id="review-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Leave a comment..."
+              rows={3}
+            />
+          </Field>
+          <div className="flex gap-2">
+            <ButtonGroup>
+              <Button
+                variant="project"
+                size="sm"
+                isPending={isApproving && !willMerge}
+                isDisabled={actionInFlight}
+                onClick={() => handleReview(ApprovalStatus.APPROVED)}
+              >
+                <CheckIcon />
+                Approve
+              </Button>
+              {isMergableUponApprove && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      variant="project"
+                      size="sm"
+                      aria-label="More approval options"
+                      isDisabled={actionInFlight}
+                    >
+                      <ChevronDownIcon />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleApproveAndMerge}>
+                      <GitMergeIcon />
+                      Approve & Merge
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </ButtonGroup>
+            <Button
+              variant="danger"
+              size="sm"
+              isPending={isRejecting}
+              isDisabled={actionInFlight}
+              onClick={() => handleReview(ApprovalStatus.REJECTED)}
+            >
+              <BanIcon />
+              Reject
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="text-sm font-medium text-foreground">Your review</span>
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-foreground/5 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-2">
+                {getReviewStatusBadge(myReview?.status)}
+                {myReview?.createdAt && (
+                  <span className="text-xs text-muted">
+                    {format(new Date(myReview.createdAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="xs"
+                isDisabled={actionInFlight}
+                onClick={() => {
+                  setComment(myReview?.comment ?? "");
+                  setIsEditingReview(true);
+                }}
+              >
+                Change review
+              </Button>
+            </div>
+            {myReview?.comment && (
+              <p className="text-sm whitespace-pre-wrap text-foreground/75">{myReview.comment}</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null;
 
   return (
-    <div className="flex flex-col space-x-6 lg:flex-row">
-      <div className="flex-1 lg:max-w-[calc(100%-17rem)]">
-        <div className="sticky -top-10 z-20 flex items-center space-x-4 bg-bunker-800 pt-2 pb-6">
-          <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
-            <FontAwesomeIcon icon={faArrowLeft} />
-          </IconButton>
-          <div
-            className={twMerge(
-              "flex items-center space-x-2 rounded-3xl px-4 py-2 text-white",
-              secretApprovalRequestDetails.status === "close" ? "bg-red-600" : "bg-green-600"
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
+        <SheetHeader className="border-b">
+          <SheetTitle className="flex items-center gap-2 pr-8">
+            Change Request
+            {secretApprovalRequestDetails && (
+              <span className="text-sm font-normal text-muted">
+                #{secretApprovalRequestDetails.slug}
+              </span>
             )}
-          >
-            <FontAwesomeIcon icon={faCodeBranch} size="sm" />
-            <span className="capitalize">
-              {secretApprovalRequestDetails.status === "close"
-                ? "closed"
-                : secretApprovalRequestDetails.status}
-            </span>
-          </div>
-          <div className="-mt-0.5 w-[calc(100%-20rem)] grow flex-col">
-            <div className="text-xl">
+          </SheetTitle>
+          {secretApprovalRequestDetails && (
+            <div className="flex flex-wrap items-center gap-2">
               {generateCommitText(
                 secretApprovalRequestDetails.commits,
                 secretApprovalRequestDetails.isReplicated
               )}
+              <SheetDescription>
+                Opened by{" "}
+                {committerUser ? (
+                  <>
+                    {committerUser.firstName} ({committerUser.email})
+                  </>
+                ) : (
+                  "Deleted User"
+                )}
+              </SheetDescription>
             </div>
-            <p className="-mt-1 truncate text-sm text-gray-400">
-              By{" "}
-              {secretApprovalRequestDetails?.committerUser ? (
-                <>
-                  {secretApprovalRequestDetails?.committerUser?.firstName} (
-                  {secretApprovalRequestDetails?.committerUser?.email})
-                </>
-              ) : (
-                <span className="text-gray-500">Deleted User</span>
-              )}
-            </p>
-          </div>
-          {!hasMerged &&
-            secretApprovalRequestDetails.status === "open" &&
-            !shouldBlockSelfReview &&
-            canApprove && (
-              <DropdownMenu
-                open={popUp.reviewChanges.isOpen}
-                onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    colorSchema="secondary"
-                    rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
-                  >
-                    Review
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" asChild className="mt-3">
-                  <form onSubmit={handleSubmit(handleSubmitReview)}>
-                    <div className="flex w-[500px] flex-col space-y-2 p-5">
-                      <div className="text-md font-medium">Finish your review</div>
-                      <Controller
-                        control={control}
-                        name="comment"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl errorText={error?.message} isError={Boolean(error)}>
-                            <TextArea
-                              {...field}
-                              placeholder="Leave a comment..."
-                              reSize="none"
-                              className="text-md mt-2 h-40 border border-mineshaft-600 bg-mineshaft-800 placeholder:text-mineshaft-400"
-                            />
-                          </FormControl>
-                        )}
-                      />
-                      <div className="flex justify-between">
-                        <Controller
-                          control={control}
-                          name="status"
-                          defaultValue={ApprovalStatus.APPROVED}
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              className="mb-0"
-                              errorText={error?.message}
-                              isError={Boolean(error)}
-                            >
-                              <RadioGroup
-                                value={field.value}
-                                onValueChange={field.onChange}
-                                className="space-y-2"
-                                aria-label="Status"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <RadioGroupItem
-                                    id="approve"
-                                    className="h-4 w-4 rounded-full border border-gray-400 text-green focus:ring-2 focus:ring-mineshaft-500"
-                                    value={ApprovalStatus.APPROVED}
-                                    aria-labelledby="approve-label"
-                                  >
-                                    <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
-                                  </RadioGroupItem>
-                                  <span
-                                    id="approve-label"
-                                    className="cursor-pointer"
-                                    onClick={() => field.onChange(ApprovalStatus.APPROVED)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        field.onChange(ApprovalStatus.APPROVED);
-                                      }
-                                    }}
-                                    tabIndex={0}
-                                    role="button"
-                                  >
-                                    Approve
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <RadioGroupItem
-                                    id="reject"
-                                    className="h-4 w-4 rounded-full border border-gray-400 text-red focus:ring-2 focus:ring-mineshaft-500"
-                                    value={ApprovalStatus.REJECTED}
-                                    aria-labelledby="reject-label"
-                                  >
-                                    <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
-                                  </RadioGroupItem>
-                                  <span
-                                    id="reject-label"
-                                    className="cursor-pointer"
-                                    onClick={() => field.onChange(ApprovalStatus.REJECTED)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        field.onChange(ApprovalStatus.REJECTED);
-                                      }
-                                    }}
-                                    tabIndex={0}
-                                    role="button"
-                                  >
-                                    Reject
-                                  </span>
-                                </div>
-                              </RadioGroup>
-                            </FormControl>
-                          )}
-                        />
-                        <div className="flex">
-                          <Button
-                            type="submit"
-                            isLoading={isPending && !willMerge}
-                            isDisabled={isPending}
-                            variant="outline_bg"
-                            className="mt-auto h-min"
-                          >
-                            Submit Review
-                          </Button>
-                          {isMergableUponApprove && (
-                            <Button
-                              onClick={async () => {
-                                try {
-                                  setWillMerge(true);
-                                  await handleSubmit(handleSubmitReview)();
-                                  await performSecretApprovalMerge({
-                                    projectId,
-                                    id: secretApprovalRequestDetails.id
-                                  });
-                                } catch {
-                                  // Approval or merge failed, error already shown via mutation
-                                } finally {
-                                  setWillMerge(false);
-                                }
-                              }}
-                              variant="solid"
-                              className="mt-auto ml-2 h-min"
-                              isLoading={isPending && willMerge}
-                              isDisabled={isPending}
-                            >
-                              Approve and Merge
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-        </div>
-        <div className="mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
-          <div>
-            {secretApprovalRequestDetails.isReplicated ? (
-              <div className="text-sm text-bunker-300">
-                A secret import in
-                <p
-                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
-                  style={{ padding: "2px 4px" }}
-                >
-                  {secretApprovalRequestDetails?.environment}
-                </p>
-                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
-                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
-                    <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
-                  </p>
-                  <Tooltip content={approvalSecretPath}>
-                    <p
-                      className="cursor-default truncate pb-0.5 pl-2 text-sm"
-                      style={{ maxWidth: "15rem" }}
-                    >
-                      {approvalSecretPath}
-                    </p>
-                  </Tooltip>
-                </div>
-                has pending changes to be accepted from its source at{" "}
-                <p
-                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
-                  style={{ padding: "2px 4px" }}
-                >
-                  {replicatedImport?.importEnv?.slug}
-                </p>
-                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
-                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
-                    <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
-                  </p>
-                  <Tooltip content={replicatedImport?.importPath}>
-                    <p
-                      className="cursor-default truncate pb-0.5 pl-2 text-sm"
-                      style={{ maxWidth: "15rem" }}
-                    >
-                      {replicatedImport?.importPath}
-                    </p>
-                  </Tooltip>
-                </div>
-                . Approving these changes will add them to that import.
-              </div>
-            ) : (
-              <div className="text-sm text-bunker-300">
-                <p className="inline">Secret(s) in</p>
-                <p
-                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
-                  style={{ padding: "2px 4px" }}
-                >
-                  {secretApprovalRequestDetails?.environment}
-                </p>
-                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
-                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
-                    <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
-                  </p>
-                  <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
-                    <p
-                      className="cursor-default truncate pb-0.5 pl-2 text-sm"
-                      style={{ maxWidth: "20rem" }}
-                    >
-                      {formatReservedPaths(secretApprovalRequestDetails.secretPath)}
-                    </p>
-                  </Tooltip>
-                </div>
-                <p className="inline">
-                  have pending changes. Approving these changes will add them to that environment
-                  and path.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col space-y-4">
-          {secretApprovalRequestDetails.commits.map(
-            ({ op, secretVersion, secret, ...newVersion }, index) => (
-              <SecretApprovalRequestChangeItem
-                op={op}
-                conflicts={secretApprovalRequestDetails.conflicts}
-                hasMerged={hasMerged}
-                secretVersion={secretVersion}
-                presentSecretVersionNumber={secret?.version || 0}
-                newVersion={newVersion}
-                key={`${op}-${index + 1}-${secretVersion?.id}`}
-              />
-            )
           )}
-        </div>
-        <div className="my-4 flex flex-col items-center rounded-lg border border-mineshaft-600">
-          {secretApprovalRequestDetails?.policy?.approvers
-            .filter((requiredApprover) => reviewedUsers?.[requiredApprover.userId])
-            .map((requiredApprover) => {
-              const reviewer = reviewedUsers?.[requiredApprover.userId];
-              return (
-                <div
-                  className="flex w-full flex-col rounded-md bg-mineshaft-800 p-4 text-sm text-mineshaft-100"
-                  key={`required-approver-${requiredApprover.userId}`}
-                >
-                  <div>
-                    <span className="ml-1">
-                      {`${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`} (
-                      {requiredApprover?.email}) has{" "}
-                    </span>
-                    <span
-                      className={`${reviewer?.status === ApprovalStatus.APPROVED ? "text-green-500" : "text-red-500"}`}
-                    >
-                      {reviewer?.status === ApprovalStatus.APPROVED ? "approved" : "rejected"}
-                    </span>{" "}
-                    the request on{" "}
-                    {format(
-                      new Date(reviewer ? reviewer.createdAt : new Date()),
-                      "MM/dd/yyyy h:mm:ss aa"
+        </SheetHeader>
+
+        {isLoading ? (
+          <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : !secretApprovalRequestDetails ? (
+          <div className="flex flex-1 items-center justify-center p-4">
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Failed to load change request</EmptyTitle>
+                <EmptyDescription>Please close this panel and try again.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <div className="flex w-96 shrink-0 flex-col gap-6 overflow-hidden border-r border-border p-4">
+              <DetailGroup className="shrink-0">
+                <Detail>
+                  <DetailLabel>Status</DetailLabel>
+                  <DetailValue>
+                    {" "}
+                    {hasMerged ? (
+                      <Badge variant="success">
+                        <GitMergeIcon />
+                        Merged
+                      </Badge>
+                    ) : secretApprovalRequestDetails.status === "close" ? (
+                      <Badge variant="danger">
+                        <GitPullRequestClosedIcon />
+                        Closed
+                      </Badge>
+                    ) : (
+                      <Badge variant="info">
+                        <GitPullRequestIcon />
+                        Open
+                      </Badge>
                     )}
-                    .
-                  </div>
-                  {reviewer?.comment && (
-                    <GenericFieldLabel label="Comment" className="mt-2 max-w-4xl break-words">
-                      {reviewer?.comment && reviewer.comment}
-                    </GenericFieldLabel>
+                  </DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Environment</DetailLabel>
+                  <DetailValue>{environmentName}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Secret Path</DetailLabel>
+                  <DetailValue className="truncate">
+                    {secretApprovalRequestDetails.isReplicated
+                      ? approvalSecretPath
+                      : formatReservedPaths(secretApprovalRequestDetails.secretPath)}
+                  </DetailValue>
+                </Detail>
+              </DetailGroup>
+
+              {reviewerRows.length > 0 && (
+                <div className="flex min-h-0 flex-col gap-2">
+                  <span className="shrink-0 text-sm font-medium text-foreground">Reviewers</span>
+                  <ItemGroup className="min-h-0 thin-scrollbar gap-0 overflow-y-auto rounded-lg border border-border bg-container">
+                    {reviewerRows.map((row, index) => {
+                      const reviewer = reviewedUsers?.[row.userId];
+                      const displayName =
+                        [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email;
+                      return (
+                        <Fragment key={`reviewer-${row.userId}`}>
+                          {index > 0 && <ItemSeparator className="m-0" />}
+                          <Item className="rounded-none border-0">
+                            <ItemContent className="min-w-0">
+                              <div
+                                className={cn(
+                                  "flex items-center gap-1.5 text-sm",
+                                  !row.isOrgMembershipActive && "opacity-50"
+                                )}
+                              >
+                                <span className="truncate text-foreground">{displayName}</span>
+                                {row.isRequired && <span className="text-danger">*</span>}
+                                {!row.isOrgMembershipActive && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <UserXIcon className="size-3.5 shrink-0 text-muted" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      This user has been deactivated and no longer has an active
+                                      organization membership.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            </ItemContent>
+                            <ItemActions>
+                              {reviewer?.comment && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <MessageSquareIcon className="size-3.5 text-muted" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-sm break-words">
+                                    {reviewer.comment}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {reviewer ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span>{getReviewStatusBadge(reviewer.status)}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Reviewed{" "}
+                                    {format(new Date(reviewer.createdAt), "MMM d, yyyy h:mm aa")}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                getReviewStatusBadge(undefined)
+                              )}
+                            </ItemActions>
+                          </Item>
+                        </Fragment>
+                      );
+                    })}
+                  </ItemGroup>
+                </div>
+              )}
+              {reviewControls}
+            </div>
+
+            <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertTitle>
+                  {secretApprovalRequestDetails.isReplicated
+                    ? `A secret import in this environment has pending changes from its source at ${
+                        replicatedImport?.importEnv?.slug ?? ""
+                      } ${replicatedImport?.importPath ?? ""}. Approving will add them to that import.`
+                    : "These secret changes are pending approval. Approving will apply them to the target environment and path."}
+                </AlertTitle>
+              </Alert>
+              <div>
+                <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                  <KeyRoundIcon className="size-4 text-accent" />
+                  <span className="flex-1 text-xs font-semibold tracking-wider text-accent uppercase">
+                    Secrets
+                  </span>
+                  <Badge variant="neutral">{secretApprovalRequestDetails.commits.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {secretApprovalRequestDetails.commits.map(
+                    ({ op, secretVersion, secret, ...newVersion }, index) => (
+                      <SecretApprovalRequestChangeItem
+                        op={op}
+                        conflicts={secretApprovalRequestDetails.conflicts}
+                        hasMerged={hasMerged}
+                        secretVersion={secretVersion}
+                        presentSecretVersionNumber={secret?.version || 0}
+                        newVersion={newVersion}
+                        key={`${op}-${index + 1}-${secretVersion?.id}`}
+                      />
+                    )
                   )}
                 </div>
-              );
-            })}
-        </div>
-        <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
-          <SecretApprovalRequestAction
-            canApprove={canApprove}
-            isCommitter={isCommitter}
-            isBypasser={isBypasser === undefined ? true : isBypasser}
-            approvalRequestId={secretApprovalRequestDetails.id}
-            hasMerged={hasMerged}
-            approvals={secretApprovalRequestDetails.policy.approvals || 0}
-            status={secretApprovalRequestDetails.status}
-            isMergable={isMergable}
-            statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
-            enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
-          />
-        </div>
-      </div>
-      <div className="sticky top-0 z-51 w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
-        <div className="text-sm text-bunker-300">Reviewers</div>
-        <div className="mt-2 flex flex-col space-y-2 text-sm">
-          {secretApprovalRequestDetails?.policy?.approvers
-            .filter(
-              (requiredApprover) =>
-                !(shouldBlockSelfReview && requiredApprover.userId === userSession.id)
-            )
-            .map((requiredApprover) => {
-              const reviewer = reviewedUsers?.[requiredApprover.userId];
-              const { isOrgMembershipActive } = requiredApprover;
+              </div>
+            </div>
+          </div>
+        )}
 
-              return (
-                <div
-                  className="flex flex-nowrap items-center justify-between space-x-2 rounded-sm border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
-                  key={`required-approver-${requiredApprover.userId}`}
-                >
-                  <div
-                    className={twMerge(
-                      "flex items-center gap-1 text-sm",
-                      !isOrgMembershipActive && "opacity-40"
-                    )}
-                  >
-                    <Tooltip
-                      content={
-                        !isOrgMembershipActive
-                          ? "This user has been deactivated and no longer has an active organization membership."
-                          : requiredApprover.firstName
-                            ? `${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`
-                            : undefined
-                      }
-                      position="left"
-                      sideOffset={10}
-                    >
-                      <div className="flex items-center">
-                        <div className="max-w-[200px] truncate">{requiredApprover?.email}</div>
-                        <span className="text-red">*</span>
-                        {!isOrgMembershipActive && (
-                          <FontAwesomeIcon
-                            icon={faUserSlash}
-                            size="xs"
-                            className="ml-1 text-mineshaft-300"
-                          />
-                        )}
-                      </div>
-                    </Tooltip>
-                  </div>
-                  <div className="flex items-center">
-                    {reviewer?.comment && (
-                      <Tooltip className="max-w-lg break-words" content={reviewer.comment}>
-                        <FontAwesomeIcon
-                          icon={faComment}
-                          size="xs"
-                          className="mr-1.5 text-mineshaft-300"
-                        />
-                      </Tooltip>
-                    )}
-                    <div className="flex gap-2">
-                      <Tooltip
-                        className="relative z-500!"
-                        content={
-                          <span className="text-sm">
-                            Status:{" "}
-                            <span className="capitalize">
-                              {reviewer?.status || ApprovalStatus.PENDING}
-                            </span>
-                          </span>
-                        }
-                      >
-                        {getReviewedStatusSymbol(reviewer?.status)}
-                      </Tooltip>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          {secretApprovalRequestDetails?.reviewers
-            .filter(
-              (reviewer) =>
-                !secretApprovalRequestDetails?.policy?.approvers?.some(
-                  ({ userId }) => userId === reviewer.userId
-                )
-            )
-            .map((reviewer) => {
-              const status = reviewedUsers?.[reviewer.userId].status;
-              const { isOrgMembershipActive } = reviewer;
-              return (
-                <div
-                  className="flex flex-nowrap items-center justify-between space-x-2 rounded-sm bg-mineshaft-800 px-2 py-1"
-                  key={`required-approver-${reviewer.userId}`}
-                >
-                  <div
-                    className={twMerge(
-                      "flex items-center gap-1 text-sm",
-                      !isOrgMembershipActive && "opacity-40"
-                    )}
-                  >
-                    <Tooltip
-                      className="relative z-500!"
-                      content={
-                        !isOrgMembershipActive
-                          ? "This user has been deactivated and no longer has an active organization membership."
-                          : `${reviewer.firstName || ""} ${reviewer.lastName || ""}`
-                      }
-                    >
-                      <div className="flex items-center">
-                        <span className="max-w-[200px] truncate">{reviewer?.email}</span>
-                        {!isOrgMembershipActive && (
-                          <FontAwesomeIcon
-                            icon={faUserSlash}
-                            size="xs"
-                            className="ml-1 text-mineshaft-300"
-                          />
-                        )}
-                      </div>
-                    </Tooltip>
-                  </div>
-
-                  <div>
-                    {reviewer.comment && (
-                      <Tooltip className="relative z-500!" content={reviewer.comment}>
-                        <FontAwesomeIcon
-                          icon={faComment}
-                          size="xs"
-                          className="mr-1 text-mineshaft-300"
-                        />
-                      </Tooltip>
-                    )}
-                    <Tooltip
-                      className="relative z-500!"
-                      content={
-                        <span className="text-sm">
-                          Status:{" "}
-                          <span className="capitalize">{status || ApprovalStatus.PENDING}</span>
-                        </span>
-                      }
-                    >
-                      {getReviewedStatusSymbol(status)}
-                    </Tooltip>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      </div>
-    </div>
+        {secretApprovalRequestDetails && (
+          <SheetFooter className="flex-col border-t">
+            <SecretApprovalRequestAction
+              canApprove={canApprove}
+              isCommitter={isCommitter}
+              isBypasser={isBypasser}
+              approvalRequestId={secretApprovalRequestDetails.id}
+              hasMerged={hasMerged}
+              approvals={secretApprovalRequestDetails.policy.approvals || 0}
+              status={secretApprovalRequestDetails.status}
+              isMergable={isMergable}
+              statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
+              enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
+            />
+          </SheetFooter>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };

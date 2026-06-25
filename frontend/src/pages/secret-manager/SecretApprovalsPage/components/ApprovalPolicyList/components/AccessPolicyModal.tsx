@@ -65,7 +65,6 @@ import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
-import { PolicyMemberOption } from "./PolicyMemberOption";
 
 type Props = {
   isOpen?: boolean;
@@ -461,6 +460,33 @@ const Form = ({
       })),
     [groups]
   );
+
+  const bypasserOptions = useMemo<ApproverOptionData[]>(
+    () => [...bypasserMemberOptions, ...(bypasserGroupOptions ?? [])],
+    [bypasserMemberOptions, bypasserGroupOptions]
+  );
+
+  const getBypasserLabel = (option: ApproverOptionData) => {
+    if (option.type === BypasserType.Group) {
+      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
+    }
+    const member = members?.find((m) => m.user.id === option.id);
+    if (!member) return option.name || option.id;
+    return getMemberLabel(member);
+  };
+
+  const splitSelectedBypassers = (selected: readonly ApproverOptionData[]) => ({
+    users: selected
+      .filter((option) => option.type === BypasserType.User)
+      .map((option) => ({
+        type: BypasserType.User as const,
+        id: option.id,
+        isOrgMembershipActive: option.isOrgMembershipActive
+      })),
+    groups: selected
+      .filter((option) => option.type === BypasserType.Group)
+      .map((option) => ({ type: BypasserType.Group as const, id: option.id }))
+  });
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -904,64 +930,33 @@ const Form = ({
         />
         {enforcementLevel === EnforcementLevel.Soft && (
           <>
-            <div className="flex flex-col gap-4">
-              <Controller
-                control={control}
-                name="userBypassers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel>User Bypassers</FieldLabel>
-                    <FieldContent>
-                      <FilterableSelect
-                        menuPlacement="top"
-                        isMulti
-                        placeholder="Select members..."
-                        components={{ Option: PolicyMemberOption }}
-                        options={bypasserMemberOptions}
-                        getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) => {
-                          const member = members?.find((m) => m.user.id === option.id);
-
-                          if (!member) return option.id;
-
-                          return getMemberLabel(member);
-                        }}
-                        value={value}
-                        onChange={onChange}
-                        isError={Boolean(error)}
-                      />
-                      <FieldError errors={[error]} />
-                    </FieldContent>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="groupBypassers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel>Group Bypassers</FieldLabel>
-                    <FieldContent>
-                      <FilterableSelect
-                        menuPlacement="top"
-                        isMulti
-                        placeholder="Select groups..."
-                        options={bypasserGroupOptions}
-                        getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) =>
-                          groups?.find(({ group }) => group.id === option.id)?.group.name ??
-                          option.id
-                        }
-                        value={value}
-                        onChange={onChange}
-                        isError={Boolean(error)}
-                      />
-                      <FieldError errors={[error]} />
-                    </FieldContent>
-                  </Field>
-                )}
-              />
-            </div>
+            <Field>
+              <FieldLabel>Bypassers</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  menuPlacement="top"
+                  isMulti
+                  placeholder="Select members or groups..."
+                  options={bypasserOptions}
+                  components={{
+                    Option: ApproverOption,
+                    MultiValueLabel: ApproverMultiValueLabel
+                  }}
+                  getOptionValue={(option) => `${option.type}-${option.id}`}
+                  getOptionLabel={getBypasserLabel}
+                  value={[...(formUserBypassers ?? []), ...(formGroupBypassers ?? [])]}
+                  onChange={(newValue) => {
+                    const { users, groups: selectedGroups } = splitSelectedBypassers(
+                      newValue as ApproverOptionData[]
+                    );
+                    setValue("userBypassers", users, { shouldValidate: true });
+                    setValue("groupBypassers", selectedGroups, { shouldValidate: true });
+                  }}
+                  isError={Boolean(errors.userBypassers || errors.groupBypassers)}
+                />
+                <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
+              </FieldContent>
+            </Field>
 
             {bypasserCount <= 0 && (
               <Alert variant="warning">
