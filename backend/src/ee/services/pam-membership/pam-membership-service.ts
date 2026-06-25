@@ -181,6 +181,9 @@ export const pamMembershipServiceFactory = ({
     } else {
       const identity = await identityDAL.findById(id);
       if (!identity) throw new NotFoundError({ message: `Identity with ID '${id}' not found` });
+      if (identity.projectId) {
+        throw new BadRequestError({ message: "Project-scoped identities cannot be added as PAM members" });
+      }
 
       const orgMemberships = await membershipDAL.find({
         scope: AccessScope.Organization,

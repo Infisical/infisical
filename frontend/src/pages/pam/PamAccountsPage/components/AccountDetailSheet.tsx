@@ -309,7 +309,7 @@ const PermissionsTab = ({
             <Badge variant="pam">{directMembers.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Users and groups granted access directly on this account.
+            Users, groups, and identities granted access directly on this account.
           </CardDescription>
           <CardAction>
             <Button size="sm" variant="pam" onClick={() => setIsAssignOpen(true)}>

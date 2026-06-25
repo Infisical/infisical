@@ -12,6 +12,7 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
+import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Badge,
   Button,
@@ -88,9 +89,13 @@ export const IdentitiesTab = () => {
   const handleDeleteIdentity = async () => {
     if (!identityToRemove) return;
     if (!identityToRemove.identityId) return;
-    await removeIdentity.mutateAsync({ identityId: identityToRemove.identityId });
-    createNotification({ text: "Identity removed", type: "success" });
-    setIdentityToRemove(null);
+    try {
+      await removeIdentity.mutateAsync({ identityId: identityToRemove.identityId });
+      createNotification({ text: "Identity removed", type: "success" });
+      setIdentityToRemove(null);
+    } catch {
+      createNotification({ text: "Failed to remove identity", type: "error" });
+    }
   };
 
   const selectedIdentityName = selectedIdentity ? getIdentityName(selectedIdentity) : undefined;
@@ -174,7 +179,9 @@ export const IdentitiesTab = () => {
                 const primaryRole = member.role ?? ProjectMembershipRole.Member;
                 return (
                   <TableRow key={member.membershipId}>
-                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell className="font-medium">
+                      <HighlightText text={name} highlight={search} />
+                    </TableCell>
                     <TableCell>
                       <button type="button" onClick={() => setSelectedIdentity(member)}>
                         <Badge

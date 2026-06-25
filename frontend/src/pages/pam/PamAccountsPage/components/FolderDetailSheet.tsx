@@ -326,7 +326,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
             <Badge variant="pam">{resolvedMembers.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Users and groups with access to this folder and its accounts.
+            Users, groups, and identities with access to this folder and its accounts.
           </CardDescription>
           <CardAction>
             <Button size="sm" variant="pam" onClick={() => setIsAssignOpen(true)}>
