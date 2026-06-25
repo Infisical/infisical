@@ -25,7 +25,13 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { PamPolicyType, resolveAccessControls, resolvePolicy, splitPatternString } from "../pam/pam-policies";
+import {
+  PAM_SESSION_LOG_MASKING_KEY,
+  PamPolicyType,
+  resolveAccessControls,
+  resolvePolicy,
+  splitPatternString
+} from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
@@ -219,8 +225,10 @@ export const pamSessionServiceFactory = ({
     const policyRules =
       commandBlockingPatterns.length > 0 || maskingPatterns.length > 0
         ? {
-            ...(commandBlockingPatterns.length > 0 ? { "command-blocking": { patterns: commandBlockingPatterns } } : {}),
-            ...(maskingPatterns.length > 0 ? { "session-log-masking": { patterns: maskingPatterns } } : {})
+            ...(commandBlockingPatterns.length > 0
+              ? { [PamPolicyType.CommandBlocking]: { patterns: commandBlockingPatterns } }
+              : {}),
+            ...(maskingPatterns.length > 0 ? { [PAM_SESSION_LOG_MASKING_KEY]: { patterns: maskingPatterns } } : {})
           }
         : null;
 

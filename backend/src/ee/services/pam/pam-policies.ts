@@ -146,12 +146,14 @@ export type TPamAccessControls = {
   maxSessionDurationSeconds: number | null;
 };
 
+export const PAM_SESSION_LOG_MASKING_KEY = "session-log-masking";
+
 const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
 
 export const PamPolicyRulesSchema = z
   .object({
-    "command-blocking": PamPolicyRulePatternSchema.optional(),
-    "session-log-masking": PamPolicyRulePatternSchema.optional()
+    [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
+    [PAM_SESSION_LOG_MASKING_KEY]: PamPolicyRulePatternSchema.optional()
   })
   .nullable()
   .optional();
