@@ -79,6 +79,7 @@ type UseRdpSessionOptions = {
   accountId: string;
   accountName: string;
   reason?: string;
+  mfaSessionId?: string;
   onSessionEnd?: () => void;
 };
 
@@ -86,6 +87,7 @@ export const useRdpSession = ({
   accountId,
   accountName,
   reason,
+  mfaSessionId,
   onSessionEnd
 }: UseRdpSessionOptions) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -136,7 +138,7 @@ export const useRdpSession = ({
 
     const { data } = await apiRequest.post<{ ticket: string }>(
       `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-      { reason }
+      { reason, mfaSessionId }
     );
     if (!isCurrent()) return;
     const proxyAddress = buildProxyAddress(data.ticket);
@@ -198,7 +200,7 @@ export const useRdpSession = ({
 
     containerRef.current.appendChild(el);
     elementRef.current = el;
-  }, [accountId, accountName, reason, buildProxyAddress, teardown]);
+  }, [accountId, accountName, reason, mfaSessionId, buildProxyAddress, teardown]);
 
   const handleConnectError = useCallback((err: unknown) => {
     let message = "Failed to start RDP session";

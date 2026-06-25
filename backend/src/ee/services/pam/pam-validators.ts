@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
@@ -9,10 +9,6 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -21,6 +17,7 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording/pam-recording-storage-factory";
 import { normalizeKeyPrefix, TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
@@ -86,36 +83,21 @@ const enforceAppConnectionConnect = async (
     throw new BadRequestError({ message: "Recording connection must be an AWS connection" });
   }
 
-  if (conn.projectId) {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId: conn.projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAppConnectionActions.Connect,
-      subject(ProjectPermissionSub.AppConnections, { connectionId })
-    );
-  } else {
-    if (conn.orgId !== ctx.actorOrgId) {
-      throw new NotFoundError({ message: "Recording connection not found" });
-    }
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: ctx.actorId,
-      actor: ctx.actor,
-      orgId: conn.orgId,
-      actorOrgId: ctx.actorOrgId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionAppConnectionActions.Connect,
-      subject(OrgPermissionSubjects.AppConnections, { connectionId })
-    );
+  if (conn.orgId !== ctx.actorOrgId) {
+    throw new NotFoundError({ message: "Recording connection not found" });
   }
+  const { permission: orgPermission } = await permissionService.getOrgPermission({
+    actorId: ctx.actorId,
+    actor: ctx.actor,
+    orgId: conn.orgId,
+    actorOrgId: ctx.actorOrgId,
+    actorAuthMethod: ctx.actorAuthMethod,
+    scope: OrganizationActionScope.Any
+  });
+  ForbiddenError.from(orgPermission).throwUnlessCan(
+    OrgPermissionAppConnectionActions.Connect,
+    subject(OrgPermissionSubjects.AppConnections, { connectionId })
+  );
 
   return conn;
 };
@@ -156,6 +138,23 @@ export const validateRecordingS3Config = async (
   await provider.validateConfig({ config: resolvedConfig });
 
   return resolvedConfig;
+};
+
+export const resolveOverridesS3Config = async (
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
+  settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
+  effectiveConnectionId: string | null | undefined,
+  ctx: TActorContext
+): Promise<TPamRecordingResolvedConfig | null> => {
+  if (!settingsOverrides?.recordingS3Config) return null;
+
+  if (!effectiveConnectionId) {
+    throw new BadRequestError({
+      message: "S3 recording config requires an AWS connection on the account or template"
+    });
+  }
+
+  return validateRecordingS3Config(deps, effectiveConnectionId, settingsOverrides.recordingS3Config, ctx);
 };
 
 export const mintCorsProbeUrl = async (resolvedConfig: TPamRecordingResolvedConfig): Promise<string | null> => {

@@ -56,10 +56,10 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   const validateTemplateRecordingS3Config = async (
     recordingConnectionId: string | null | undefined,
-    settings: TPamTemplateSettings,
+    settings: TPamTemplateSettings | undefined,
     ctx: TActorContext
   ): Promise<TPamRecordingResolvedConfig | null> => {
-    const isS3Backend = settings.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
+    const isS3Backend = settings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
 
     let resolvedS3Config = null;
     if (recordingConnectionId && settings) {

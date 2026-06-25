@@ -150,8 +150,8 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
-    name: "active-directory",
-    type: PamAccountType.ActiveDirectory,
+    name: "windows",
+    type: PamAccountType.Windows,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
@@ -166,8 +166,8 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
-    name: "windows",
-    type: PamAccountType.Windows,
+    name: "active-directory",
+    type: PamAccountType.ActiveDirectory,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.AwsS3,

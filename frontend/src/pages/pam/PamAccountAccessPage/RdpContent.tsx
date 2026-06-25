@@ -12,15 +12,17 @@ import { WebAccessStatusCard } from "./WebAccessStatusCard";
 type RdpContentProps = {
   account: TPamAccount;
   reason?: string;
+  mfaSessionId?: string;
 };
 
-export const RdpContent = ({ account, reason }: RdpContentProps) => {
+export const RdpContent = ({ account, reason, mfaSessionId }: RdpContentProps) => {
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, error, disconnect, reconnect } = useRdpSession({
     accountId: account.id,
     accountName: account.name,
     reason,
+    mfaSessionId,
     onSessionEnd: () => setSessionEnded(true)
   });
 

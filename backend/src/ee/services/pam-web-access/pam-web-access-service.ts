@@ -27,9 +27,9 @@ import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
-  accountTypeRequiresRecording,
   extractGatewayTarget,
-  hasPamAccountRecordingConfig
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue
 } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
@@ -132,14 +132,9 @@ export const pamWebAccessServiceFactory = ({
     socket.close();
   };
 
-  const enforceRecordingConfig = (account: {
-    accountType: string;
-    recordingConnectionId?: string | null;
-    templateRecordingConnectionId: string | null;
-    settingsOverrides?: unknown;
-    templateSettings: unknown;
-  }) => {
-    if (accountTypeRequiresRecording(account.accountType as PamAccountType) && !hasPamAccountRecordingConfig(account)) {
+  const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
+    const issues = getAccountAccessibilityIssues(account);
+    if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
       throw new BadRequestError({
         message: "S3 recording must be configured before launching this account"
       });

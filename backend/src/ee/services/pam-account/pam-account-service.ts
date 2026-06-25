@@ -31,16 +31,15 @@ import {
 } from "../pam/pam-permission";
 import {
   mintCorsProbeUrl,
+  resolveOverridesS3Config,
   validateGatewayAttachment,
-  validateRecordingConnection,
-  validateRecordingS3Config
+  validateRecordingConnection
 } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
-  hasPamAccountRecordingConfig,
   isCredentialConfigured,
   parseInternalMetadata,
   sanitizeCredentials,
@@ -111,12 +110,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     templateSettings: unknown;
     credentialConfigured: boolean;
   }) => {
-    const accessibilityIssues = getAccountAccessibilityIssues({
-      accountType: a.accountType as PamAccountType,
-      hasGateway: Boolean(a.gatewayId || a.gatewayPoolId || a.templateGatewayId || a.templateGatewayPoolId),
-      hasRecordingConfig: hasPamAccountRecordingConfig(a),
-      credentialConfigured: a.credentialConfigured
-    });
+    const accessibilityIssues = getAccountAccessibilityIssues(a);
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
   };
 
@@ -248,16 +242,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
-    let resolvedS3Config = null;
-    if (settingsOverrides?.recordingS3Config) {
-      const connId = recordingConnectionId ?? template.recordingConnectionId;
-      if (!connId) {
-        throw new BadRequestError({
-          message: "S3 recording config requires an AWS connection on the account or template"
-        });
-      }
-      resolvedS3Config = await validateRecordingS3Config(deps, connId, settingsOverrides.recordingS3Config, ctx);
-    }
+    const resolvedS3Config = await resolveOverridesS3Config(
+      deps,
+      settingsOverrides,
+      recordingConnectionId ?? template.recordingConnectionId,
+      ctx
+    );
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
@@ -369,18 +359,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
-    let resolvedS3Config = null;
-    if (settingsOverrides?.recordingS3Config) {
-      const connId =
-        (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
-        existing.templateRecordingConnectionId;
-      if (!connId) {
-        throw new BadRequestError({
-          message: "S3 recording config requires an AWS connection on the account or template"
-        });
-      }
-      resolvedS3Config = await validateRecordingS3Config(deps, connId, settingsOverrides.recordingS3Config, ctx);
-    }
+    const resolvedS3Config = await resolveOverridesS3Config(
+      deps,
+      settingsOverrides,
+      (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
+        existing.templateRecordingConnectionId,
+      ctx
+    );
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;

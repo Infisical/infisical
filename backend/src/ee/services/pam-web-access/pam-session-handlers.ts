@@ -28,6 +28,7 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
     gatewayAccountType: PamAccountType.Windows,
     handler: handleRdpSession
   },
+  // AD accounts use RDP through the Windows gateway protocol
   [PamAccountType.ActiveDirectory]: {
     gatewayAccountType: PamAccountType.Windows,
     handler: handleRdpSession
