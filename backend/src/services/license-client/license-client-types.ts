@@ -144,14 +144,18 @@ const billingProfilePaymentSchema = z
   })
   .passthrough();
 
+// Stripe leaves any unfilled field null (line2/state are absent for most customers) and older
+// license servers may omit them, so every sub-field is nullish. A strict z.string() would throw on
+// a partial address; because the whole profile is parsed in one shot, that failure silently drops
+// the customer's payment method and invoices too, not just the address.
 const billingProfileAddressSchema = z
   .object({
-    line1: z.string(),
-    line2: z.string(),
-    city: z.string(),
-    state: z.string(),
-    postalCode: z.string(),
-    country: z.string()
+    line1: z.string().nullish(),
+    line2: z.string().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    postalCode: z.string().nullish(),
+    country: z.string().nullish()
   })
   .passthrough();
 

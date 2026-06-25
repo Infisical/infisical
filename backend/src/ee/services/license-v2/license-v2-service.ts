@@ -284,22 +284,28 @@ export const licenseV2ServiceFactory = ({
 
     if (subscription) {
       subscription.items.forEach((item) => {
-        const quantityValues = Object.values(item.quantities);
+        // Surface one dimension's used count, limit, and noun together so the rendered
+        // "{used} / {limit} {unit}" always describes the same thing. "Most constraining" = the
+        // highest utilization (closest to, or furthest past, its cap), i.e. the limit the customer
+        // is likeliest to hit. Each limit is paired with its OWN quantity; taking Math.max across all
+        // quantities could otherwise report a different dimension's count than the resolved unit.
         let used = 0;
-        if (quantityValues.length > 0) {
-          used = Math.max(...quantityValues);
-        }
-
-        // Surface the most constraining dimension and resolve that same dimension's noun, so the
-        // count and its unit always describe the same thing.
         let limit: number | null = null;
         let limitKey: string | null = null;
+        let highestUtilization = -1;
         // Plain for-of (not forEach): assignments inside a closure don't refine the outer
         // variable's type, so after a forEach TS still sees limitKey as null and the `limitKey ?`
         // branch below collapses to `never`. A same-scope loop lets control-flow keep it string|null.
-        for (const [key, value] of Object.entries(item.limits)) {
-          if (limit === null || value > limit) {
-            limit = value;
+        for (const [key, dimensionLimit] of Object.entries(item.limits)) {
+          const dimensionUsed = item.quantities[key] ?? 0;
+          // An unlimited (<= 0) cap can't be "hit"; only a positive cap yields a real ratio.
+          const utilization =
+            // eslint-disable-next-line no-nested-ternary
+            dimensionLimit > 0 ? dimensionUsed / dimensionLimit : dimensionUsed > 0 ? Infinity : 0;
+          if (limitKey === null || utilization > highestUtilization) {
+            highestUtilization = utilization;
+            used = dimensionUsed;
+            limit = dimensionLimit;
             limitKey = key;
           }
         }
@@ -401,25 +407,11 @@ export const licenseV2ServiceFactory = ({
       const profile = await licenseClient.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
+        // name/email/address/taxIds pass straight through (address keeps its nullable sub-fields;
+        // the UI drops blank lines). The ?? null just normalizes an absent address to null, and any
+        // extra license-server keys the spread carries are stripped by the response schema.
         billingDetails = profile.billingDetails
-          ? {
-              name: profile.billingDetails.name,
-              email: profile.billingDetails.email,
-              address: profile.billingDetails.address
-                ? {
-                    line1: profile.billingDetails.address.line1,
-                    line2: profile.billingDetails.address.line2,
-                    city: profile.billingDetails.address.city,
-                    state: profile.billingDetails.address.state,
-                    postalCode: profile.billingDetails.address.postalCode,
-                    country: profile.billingDetails.address.country
-                  }
-                : null,
-              taxIds: profile.billingDetails.taxIds.map((taxId) => ({
-                type: taxId.type,
-                value: taxId.value
-              }))
-            }
+          ? { ...profile.billingDetails, address: profile.billingDetails.address ?? null }
           : null;
         invoices = profile.invoices.map((invoice) => ({
           id: invoice.id,

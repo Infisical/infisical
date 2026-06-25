@@ -1,39 +1,8 @@
-import { Award, Box, LucideIcon, ScanLine, Shield, Zap } from "lucide-react";
+import { Box } from "lucide-react";
+import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
 import { Badge, Label } from "@app/components/v3";
-import { getProjectLucideIcon } from "@app/helpers/project";
 import { BillingV2CatalogProduct } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
-
-// Catalog products carry a free-form icon token (license-server presentation metadata), not a
-// project type. Tokens that name one of our products resolve through the shared project icon helper
-// so billing stays in sync with the rest of the app; add-on / generic tokens keep a direct glyph,
-// and anything unrecognized falls back to Box.
-const TOKEN_PROJECT_TYPE: Record<string, ProjectType> = {
-  vault: ProjectType.SecretManager,
-  key: ProjectType.SecretManager,
-  file_key: ProjectType.CertificateManager,
-  lock: ProjectType.KMS,
-  scan_search: ProjectType.SecretScanning,
-  radar: ProjectType.SecretScanning,
-  users: ProjectType.PAM,
-  terminal: ProjectType.SSH
-};
-
-const ADDON_ICON_BY_TOKEN: Record<string, LucideIcon> = {
-  shield: Shield,
-  award: Award,
-  scan_line: ScanLine,
-  zap: Zap
-};
-
-const iconForToken = (token: string): LucideIcon => {
-  const projectType = TOKEN_PROJECT_TYPE[token];
-  if (projectType) {
-    return getProjectLucideIcon(projectType);
-  }
-  return ADDON_ICON_BY_TOKEN[token] ?? Box;
-};
 
 type MeterTone = "ok" | "near" | "full";
 
@@ -42,13 +11,23 @@ type ProductIconProps = {
   size?: number;
 };
 
-// Tinted product icon tile. The tint is per-product brand metadata from the API, so it stays inline.
+// Shown while a product's icon chunk loads and for any token lucide doesn't recognize. Sized to half
+// the tile via CSS so it matches the resolved glyph at any tile size.
+const ProductIconFallback = () => <Box className="h-1/2 w-1/2" />;
+
+// Tinted product icon tile. Both the icon token and the tint are per-product presentation metadata
+// from the license-server catalog (the source of truth), so we render the glyph straight from the
+// token rather than mapping it to an app concept. Catalog tokens are snake_case while lucide icon
+// names are kebab-case, so we only normalize the separator before handing the name to lucide's
+// dynamic icon. Unknown or still-loading tokens fall back to a generic box glyph (the catalog's own
+// default is "box").
 export const ProductIcon = ({ product, size = 36 }: ProductIconProps) => {
-  const Glyph = iconForToken(product.icon);
   const { color } = product;
+  const glyphSize = Math.round(size * 0.5);
+  const iconName = product.icon.replace(/_/g, "-") as IconName;
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-sm border transition-colors duration-200"
+      className="flex shrink-0 items-center justify-center rounded-md border transition-colors duration-200"
       style={{
         width: size,
         height: size,
@@ -57,7 +36,7 @@ export const ProductIcon = ({ product, size = 36 }: ProductIconProps) => {
         color
       }}
     >
-      <Glyph size={Math.round(size * 0.5)} />
+      <DynamicIcon name={iconName} size={glyphSize} fallback={ProductIconFallback} />
     </div>
   );
 };

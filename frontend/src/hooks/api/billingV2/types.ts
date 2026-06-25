@@ -88,12 +88,12 @@ export type BillingV2Overview = {
     name: string;
     email: string;
     address: {
-      line1: string;
-      line2: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      country: string;
+      line1?: string | null;
+      line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      postalCode?: string | null;
+      country?: string | null;
     } | null;
     taxIds: { type: string; value: string }[];
   } | null;

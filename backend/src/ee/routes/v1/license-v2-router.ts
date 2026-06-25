@@ -92,12 +92,13 @@ const BillingV2OverviewSchema = z.object({
       email: z.string(),
       address: z
         .object({
-          line1: z.string(),
-          line2: z.string(),
-          city: z.string(),
-          state: z.string(),
-          postalCode: z.string(),
-          country: z.string()
+          // Each sub-field is nullish: Stripe/older license servers omit or null any unfilled line.
+          line1: z.string().nullish(),
+          line2: z.string().nullish(),
+          city: z.string().nullish(),
+          state: z.string().nullish(),
+          postalCode: z.string().nullish(),
+          country: z.string().nullish()
         })
         .nullable(),
       taxIds: z.object({ type: z.string(), value: z.string() }).array()

@@ -1,24 +1,20 @@
 import { ReactNode } from "react";
 import {
-  faCircleExclamation,
-  faCircleInfo,
-  faCreditCard,
-  faRotate,
-  faTriangleExclamation,
-  faUpRightFromSquare,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
   ArrowBigUpDashIcon,
   Building2,
   Calendar,
+  CircleAlert,
   CreditCard,
+  ExternalLink,
   GaugeIcon,
+  Info,
+  type LucideIcon,
   Package,
   ReceiptText,
+  RefreshCw,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  TriangleAlert
 } from "lucide-react";
 
 import {
@@ -76,7 +72,7 @@ type BannerProps = {
 
 type Dunning = {
   variant: "warning" | "danger";
-  icon: IconDefinition;
+  icon: LucideIcon;
   title: string;
   body: string;
 };
@@ -84,13 +80,13 @@ type Dunning = {
 const DUNNING: Partial<Record<BillingV2RenderState, Dunning>> = {
   "past-due": {
     variant: "warning",
-    icon: faTriangleExclamation,
+    icon: TriangleAlert,
     title: "We couldn't process your last payment",
     body: "Update your payment method to avoid losing access. Your products are still active while we retry."
   },
   suspended: {
     variant: "danger",
-    icon: faCircleExclamation,
+    icon: CircleAlert,
     title: "Your subscription is suspended",
     body: "A payment kept failing and access is paused. Complete payment to restore access to your products."
   }
@@ -106,7 +102,7 @@ const Banner = ({
   if (mode === "managed") {
     return (
       <Alert variant="info">
-        <FontAwesomeIcon icon={faCircleInfo} />
+        <Info />
         <AlertTitle>Your plan is managed by your account team</AlertTitle>
         <AlertDescription>
           Products and limits on this organization are set by contract. Contact your account manager
@@ -121,16 +117,17 @@ const Banner = ({
     return null;
   }
 
+  const DunningIcon = dunning.icon;
   return (
     <Alert variant={dunning.variant}>
-      <FontAwesomeIcon icon={dunning.icon} />
+      <DunningIcon />
       <AlertTitle>{dunning.title}</AlertTitle>
       <AlertDescription>
         {dunning.body}
         {canManage && (
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant={dunning.variant} size="sm" onClick={onUpdatePayment}>
-              <FontAwesomeIcon icon={faCreditCard} />
+              <CreditCard />
               Update payment method
             </Button>
             <Button variant="outline" size="sm" onClick={onManageSubscription}>
@@ -209,7 +206,7 @@ type ErrorPanelProps = {
 const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
   <Card>
     <div className="flex flex-col items-center gap-3 px-7 py-10 text-center">
-      <FontAwesomeIcon icon={faCircleExclamation} className="text-3xl text-danger" />
+      <CircleAlert className="size-8 text-danger" />
       <div className="text-base font-semibold text-foreground">
         Couldn&apos;t load your subscription
       </div>
@@ -217,7 +214,7 @@ const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
         There was a problem reaching the billing service. Your products are unaffected.
       </div>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        <FontAwesomeIcon icon={faRotate} />
+        <RefreshCw />
         Try again
       </Button>
     </div>
@@ -544,7 +541,8 @@ const formatAddressLines = (address: BillingAddress): string[] => {
     address.line2,
     regionLine,
     address.country ? countryName(address.country) : ""
-  ].filter(Boolean);
+    // type-guard predicate (not bare Boolean) so the nullable sub-fields narrow to string[].
+  ].filter((line): line is string => Boolean(line));
 };
 
 // Friendly labels for common Stripe tax-id types; falls back to the upper-cased raw type.
@@ -695,7 +693,7 @@ const InvoicesCard = ({ invoices }: InvoicesCardProps) => (
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <FontAwesomeIcon icon={faUpRightFromSquare} />
+                      <ExternalLink className="size-3.5" />
                       PDF
                     </a>
                   ) : (
