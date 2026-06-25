@@ -37,7 +37,7 @@ type TSignerMembershipServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
-  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
+  userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;

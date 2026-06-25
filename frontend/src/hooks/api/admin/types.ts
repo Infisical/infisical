@@ -65,6 +65,7 @@ export type TServerConfig = {
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;
+  licenseServerV2Enabled?: boolean;
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
   trustSamlEmails?: boolean;

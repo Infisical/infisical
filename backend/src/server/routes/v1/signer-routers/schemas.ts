@@ -18,6 +18,13 @@ export const SignerKeyAlgorithm = {
   }
 } as const;
 
+export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly CertKeyAlgorithm[] = [
+  CertKeyAlgorithm.RSA_2048,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384
+];
+
 export const ApprovalPolicyBodySchema = z
   .object({
     steps: z.array(

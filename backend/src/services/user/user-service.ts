@@ -390,6 +390,24 @@ export const userServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
+    // If the deleting user is the only remaining server admin, block self-deletion.
+    // The super_admin table's `initialized` flag is not reset on user delete, so
+    // letting the last super admin self-delete leaves /admin/signup permanently
+    // redirecting to /login — the instance becomes unrecoverable without direct
+    // DB intervention (#6091). The super-admin-service.deleteUser path enforces
+    // the same guard for admin-initiated deletes; this mirrors it for self-delete.
+    const userToDelete = await userDAL.findById(userId);
+
+    if (userToDelete?.superAdmin) {
+      const superAdmins = await userDAL.find({ superAdmin: true });
+      if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+        throw new BadRequestError({
+          message:
+            "Cannot delete the only server admin on this instance. Promote another user to server admin before deleting this account."
+        });
+      }
+    }
+
     const user = await userDAL.deleteById(userId);
 
     try {

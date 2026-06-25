@@ -242,6 +242,11 @@ import {
   TravisCIConnectionMethod,
   validateTravisCIConnectionCredentials
 } from "./travis-ci";
+import {
+  getTriggerDevConnectionListItem,
+  TriggerDevConnectionMethod,
+  validateTriggerDevConnectionCredentials
+} from "./trigger-dev";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import {
   getVenafiTppConnectionListItem,
@@ -319,6 +324,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getLaravelForgeConnectionListItem(),
     getOctopusDeployConnectionListItem(),
     getFlyioConnectionListItem(),
+    getTriggerDevConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
     getDNSMadeEasyConnectionListItem(),
@@ -520,9 +526,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
       validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
         gitHubAppDAL: deps.gitHubAppDAL,
-        kmsService: deps.kmsService,
-        keyStore: deps.keyStore,
-        actorId: deps.actorId
+        kmsService: deps.kmsService
       })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -552,6 +556,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LaravelForge]: validateLaravelForgeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TriggerDev]: validateTriggerDevConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -695,6 +700,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DigiCertConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
+    case TriggerDevConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -800,6 +806,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
+  [AppConnection.TriggerDev]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,

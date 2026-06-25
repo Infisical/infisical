@@ -928,10 +928,9 @@ export const superAdminServiceFactory = ({
             inviterFirstName: serverAdmin?.firstName,
             inviterUsername: serverAdmin?.email,
             organizationName: organization.name,
-            email: user.email,
-            organizationId: organization.id,
-            token,
-            callback_url: `${appCfg.SITE_URL}/signupinvite`
+            callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
+              user.email
+            )}&organization_id=${organization.id}`
           }
         });
       })
@@ -1073,10 +1072,9 @@ export const superAdminServiceFactory = ({
         inviterFirstName: serverAdmin?.firstName,
         inviterUsername: serverAdmin?.email,
         organizationName: org?.name,
-        email: orgMembership.inviteEmail,
-        organizationId: orgMembership.scopeOrgId,
-        token,
-        callback_url: `${appCfg.SITE_URL}/signupinvite`
+        callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
+          orgMembership.inviteEmail
+        )}&organization_id=${orgMembership.scopeOrgId}`
       }
     });
 

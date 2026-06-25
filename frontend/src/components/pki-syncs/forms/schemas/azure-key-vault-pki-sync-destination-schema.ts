@@ -16,7 +16,11 @@ const AzureKeyVaultSyncOptionsSchema = z.object({
       (val) => {
         if (!val) return true;
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
+        const allowedOptionalPlaceholders = [
+          "{{profileId}}",
+          "{{applicationId}}",
+          "{{commonName}}"
+        ];
 
         const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
@@ -37,7 +41,7 @@ const AzureKeyVaultSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+          "Certificate name schema must include the {{certificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
       }
     )
 });

@@ -44,6 +44,7 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
 
@@ -241,6 +242,15 @@ export enum ProjectPermissionAppConnectionActions {
   RotateCredentials = "rotate-credentials"
 }
 
+export enum ProjectPermissionHsmConnectorActions {
+  Read = "read-hsm-connectors",
+  Create = "create-hsm-connectors",
+  Edit = "edit-hsm-connectors",
+  Delete = "delete-hsm-connectors",
+  Test = "test-hsm-connectors",
+  Attach = "attach-hsm-connectors"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -416,6 +426,7 @@ export enum ProjectPermissionSub {
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
+  HsmConnectors = "hsm-connectors",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
@@ -681,6 +692,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ]
+  | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]

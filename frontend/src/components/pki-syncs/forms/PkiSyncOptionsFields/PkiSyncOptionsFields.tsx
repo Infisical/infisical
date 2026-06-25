@@ -434,7 +434,24 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                     <li>
                       <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
                     </li>
+                    <li>
+                      <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
+                    </li>
+                    <li>
+                      <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to the
+                      certificate ID when none is set)
+                    </li>
+                    <li>
+                      <code>{"{{applicationId}}"}</code> - The ID of the application the sync
+                      belongs to
+                    </li>
                   </ul>
+                  <span className="mt-1 text-xs text-bunker-300">
+                    The schema must include <code>{"{{certificateId}}"}</code> so each certificate
+                    gets a unique name. The template itself can only contain letters, numbers, and
+                    the separators allowed by the destination. When placeholders resolve, any
+                    characters the destination doesn&apos;t support are replaced with hyphens.
+                  </span>
                 </div>
                 {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
                   <div className="flex flex-col">
@@ -457,7 +474,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
           >
             <Input
               value={value || ""}
-              onChange={(e) => onChange(e.target.value || undefined)}
+              onChange={(e) => onChange(e.target.value)}
               placeholder={
                 syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
               }

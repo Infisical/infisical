@@ -8,9 +8,12 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -39,7 +42,7 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
-import { assertWillRetainAdmin } from "./membership-user-fns";
+import { assertWillRetainOrgAdmin } from "./membership-user-fns";
 import {
   TCreateMembershipUserDTO,
   TDeleteMembershipUserDTO,
@@ -78,6 +81,9 @@ type TMembershipUserServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -99,7 +105,10 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  emailDomainDAL,
+  oidcConfigDAL,
+  samlConfigDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -110,7 +119,10 @@ export const membershipUserServiceFactory = ({
       tokenService,
       userDAL,
       userGroupMembershipDAL,
-      membershipUserDAL
+      membershipUserDAL,
+      emailDomainDAL,
+      oidcConfigDAL,
+      samlConfigDAL
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,
@@ -411,11 +423,9 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      if (!newRolesHavePermanentAdmin) {
-        await assertWillRetainAdmin({
-          scope: scopeData.scope,
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
+        await assertWillRetainOrgAdmin({
           scopeOrgId: scopeData.orgId,
-          scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
           excludeMembershipIds: [existingMembership.id],
           dal: membershipUserDAL,
           tx
@@ -519,15 +529,6 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
-        await assertWillRetainAdmin({
-          scope: AccessScope.Project,
-          scopeOrgId: scopeData.orgId,
-          scopeProjectId: dto.scopeData.projectId,
-          excludeMembershipIds: [existingMembership.id],
-          dal: membershipUserDAL,
-          tx
-        });
-
         await additionalPrivilegeDAL.delete(
           {
             actorUserId: dto.selector.userId,

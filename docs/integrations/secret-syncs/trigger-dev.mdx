@@ -1,0 +1,170 @@
+---
+title: "Trigger.dev Sync"
+description: "Learn how to configure a Trigger.dev Sync for Infisical."
+---
+
+**Prerequisites:**
+- Create a [Trigger.dev Connection](/integrations/app-connections/trigger-dev)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+            </Step>
+            <Step title="Select 'Trigger.dev'">
+                Select the **Trigger.dev** option from the list of available secret syncs.
+
+                ![Select Trigger.dev](/images/secret-syncs/trigger-dev/step-1-trigger-provider.png)
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+                ![Configure Source](/images/secret-syncs/trigger-dev/step-2-select-source.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then click **Next**.
+
+                ![Configure Destination](/images/secret-syncs/trigger-dev/step-3-select-destination.png)
+
+                - **Trigger.dev Connection**: The Trigger.dev Connection to authenticate with.
+                - **Project**: The Trigger.dev project to sync secrets to, selected from the dropdown of projects available to the connection.
+                - **Environment**: The Trigger.dev environment to sync secrets to (one of **Production**, **Staging**, **Development**, or **Preview**).
+            </Step>
+            <Step title="Configure initial sync behavior">
+                Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then click **Next**.
+
+                <Note>
+                    Trigger.dev does not support importing secrets because it redacts secret values when they are read back. Only the overwrite behavior is available.
+                </Note>
+
+                ![Configure Initial Sync Behavior](/images/secret-syncs/trigger-dev/step-4-initial-sync.png)
+
+            </Step>
+            <Step title="Configure sync options">
+                Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+
+                ![Configure Options](/images/secret-syncs/trigger-dev/step-5-sync-options.png)
+
+                - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+                - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+                <Note>
+                    We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+                - **Mark Variables as Secret**: If enabled, synced variables are marked as secret (redacted) environment variables in Trigger.dev.
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your Trigger.dev Sync, then click **Next**.
+
+                ![Configure Details](/images/secret-syncs/trigger-dev/step-6-details.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review configuration">
+                Review your Trigger.dev Sync configuration, then click **Create Sync**.
+
+                ![Confirm Configuration](/images/secret-syncs/trigger-dev/step-7-review.png)
+
+                A confirmation dialog will appear reminding you that Infisical is the source of truth for the destination. Click **I Understand** to proceed.
+
+                ![Confirm Sync Behavior](/images/secret-syncs/trigger-dev/step-8-confirm.png)
+            </Step>
+            <Step title="Sync created">
+                If enabled, your Trigger.dev Sync will begin syncing your secrets to the destination endpoint.
+
+                ![Sync Secrets](/images/secret-syncs/trigger-dev/step-9-listed-sync.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a **Trigger.dev Sync**, make an API request to the [Create Trigger.dev Sync](/api-reference/endpoints/secret-syncs/trigger-dev/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/trigger-dev \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-trigger-dev-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/my-secrets",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination"
+                    },
+                    "destinationConfig": {
+                        "projectRef": "proj_...",
+                        "environment": "prod"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-trigger-dev-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "trigger-dev",
+                    "name": "my-trigger-dev-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "trigger-dev",
+                "destinationConfig": {
+                  "projectRef": "proj_...",
+                  "environment": "prod"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

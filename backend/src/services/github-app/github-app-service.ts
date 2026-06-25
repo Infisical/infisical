@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -30,18 +30,12 @@ import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   assertPlatformGitHubHostAllowed,
   buildGitHubAppJwtHeaders,
-  exchangeGitHubOAuthCode,
   getGitHubGatewayConnectionDetails,
   getGitHubInstanceApiUrl,
-  GithubTokenRespData,
-  isGithubErrorResponse,
-  listGitHubUserInstallations,
   requestWithGitHubGateway,
   resolveGitHubAppCredentials,
   sanitizeGitHubAxiosError,
-  signGitHubAppInstallationsToken,
-  signGitHubAppJwt,
-  TGitHubUserInstallation
+  signGitHubAppJwt
 } from "@app/services/app-connection/github/github-connection-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -51,13 +45,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGitHubAppDALFactory } from "./github-app-dal";
 import {
   TDeleteGitHubAppDTO,
-  TGitHubAppInstallation,
   TGitHubAppManifestResponse,
   TGitHubManifestStatePayload,
   THandleManifestCallbackDTO,
   TInitiateGitHubManifestDTO,
   TListGitHubAppsDTO,
-  TResolveGitHubAppInstallationsDTO,
   TSanitizedGitHubApp
 } from "./github-app-types";
 
@@ -134,9 +126,8 @@ export const gitHubAppServiceFactory = ({
   };
 
   // Validates that the actor may attach the given gateway and that it exists for the org.
-  // Mirrors the gateway checks in resolveUserInstallations so the manifest exchange can route
-  // through a gateway when the GitHub host (e.g. a private GitHub Enterprise Server) isn't
-  // directly reachable from the Infisical backend.
+  // Lets the manifest exchange route through a gateway when the GitHub host (e.g. a private
+  // GitHub Enterprise Server) isn't directly reachable from the Infisical backend.
   const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
     const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.gateway) {
@@ -725,178 +716,10 @@ export const gitHubAppServiceFactory = ({
     return { redirectUrl: callbackUrl.toString() };
   };
 
-  const resolveUserInstallations = async ({
-    code,
-    gitHubAppId,
-    instanceType,
-    gatewayId,
-    gatewayPoolId,
-    projectId,
-    orgPermission
-  }: TResolveGitHubAppInstallationsDTO): Promise<{
-    installations: TGitHubAppInstallation[];
-    installationsToken: string;
-  }> => {
-    const { permission: orgScopedPermission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-
-    if (projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: orgPermission.type,
-        actorId: orgPermission.id,
-        projectId,
-        actorAuthMethod: orgPermission.authMethod,
-        actorOrgId: orgPermission.orgId,
-        actionProjectType: ActionProjectType.Any
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Create,
-        ProjectPermissionSub.AppConnections
-      );
-
-      if (gitHubAppId) {
-        const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId: orgPermission.orgId });
-        if (app && !app.projectId) {
-          ForbiddenError.from(orgScopedPermission).throwUnlessCan(
-            OrgPermissionAppConnectionActions.Connect,
-            OrgPermissionSubjects.AppConnections
-          );
-        }
-      }
-    } else {
-      ForbiddenError.from(orgScopedPermission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Create,
-        OrgPermissionSubjects.AppConnections
-      );
-    }
-
-    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, orgPermission);
-
-    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId });
-
-    const { SITE_URL } = getConfig();
-    if (!SITE_URL) {
-      throw new BadRequestError({ message: "SITE_URL is not configured." });
-    }
-
-    const {
-      appId,
-      clientId,
-      clientSecret,
-      host: appHost,
-      instanceType: appInstanceType
-    } = await resolveGitHubAppCredentials(
-      { gitHubAppId: gitHubAppId ?? null, orgId: orgPermission.orgId, projectId: projectId ?? null },
-      {
-        gitHubAppDAL,
-        kmsService
-      }
-    );
-
-    // For the shared/instance-default app, appHost is always derived from the
-    // server-side INF_APP_CONNECTION_GITHUB_APP_HOST env var (null = github.com).
-    // Never trust the caller-supplied host for the shared app — the client secret
-    // would otherwise be sent to an attacker-controlled server.
-    const effectiveHost = appHost ?? undefined;
-    const effectiveInstanceType: "cloud" | "server" = gitHubAppId
-      ? (appInstanceType ?? "cloud")
-      : (instanceType ?? "cloud");
-
-    assertPlatformGitHubHostAllowed(effectiveHost);
-
-    const oauthHost = effectiveHost ?? "github.com";
-
-    const sendGitHubRequest = async <T>(
-      requestConfig: AxiosRequestConfig & { url: string },
-      gatewayConnectionDetails?: Awaited<ReturnType<typeof getGitHubGatewayConnectionDetails>>
-    ): Promise<AxiosResponse<T>> =>
-      effectiveGatewayId
-        ? requestWithGitHubGateway<T>(
-            { gatewayId: effectiveGatewayId },
-            gatewayService,
-            gatewayV2Service,
-            requestConfig,
-            gatewayConnectionDetails
-          )
-        : safeRequest.request<T>(requestConfig);
-
-    const oauthGatewayConnectionDetails = effectiveGatewayId
-      ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, oauthHost, gatewayV2Service)
-      : undefined;
-
-    let tokenData: GithubTokenRespData;
-    try {
-      const { data } = await exchangeGitHubOAuthCode({
-        host: oauthHost,
-        clientId,
-        clientSecret,
-        code,
-        requestFn: (requestConfig) =>
-          sendGitHubRequest<GithubTokenRespData>(requestConfig, oauthGatewayConnectionDetails)
-      });
-      tokenData = data;
-    } catch (err) {
-      logger.error(
-        sanitizeGitHubAxiosError(err),
-        `Failed to exchange GitHub OAuth code [gitHubAppId=${gitHubAppId ?? "shared"}]`
-      );
-      throw new BadRequestError({
-        message: "Unable to authorize with GitHub. The code may be expired or invalid. Please try again."
-      });
-    }
-
-    if (isGithubErrorResponse(tokenData) || !tokenData.access_token) {
-      throw new BadRequestError({
-        message: "Unable to authorize with GitHub. The code may be expired or invalid. Please try again."
-      });
-    }
-
-    const apiBaseUrl = await getGitHubInstanceApiUrl({
-      credentials: { host: effectiveHost, instanceType: effectiveInstanceType }
-    });
-
-    const apiGatewayConnectionDetails = effectiveGatewayId
-      ? await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)
-      : undefined;
-
-    const installations = await listGitHubUserInstallations(apiBaseUrl, tokenData.access_token, (requestConfig) =>
-      sendGitHubRequest<{ installations: TGitHubUserInstallation[] }>(requestConfig, apiGatewayConnectionDetails)
-    );
-
-    const appInstallations = installations.filter((installation) => String(installation.app_id) === appId);
-
-    const installationsToken = signGitHubAppInstallationsToken({
-      jti: crypto.nativeCrypto.randomUUID(),
-      orgId: orgPermission.orgId,
-      actorId: orgPermission.id,
-      gitHubAppId: gitHubAppId ?? null,
-      host: effectiveHost ?? "",
-      instanceType: effectiveInstanceType,
-      installationIds: appInstallations.map((installation) => String(installation.id))
-    });
-
-    return {
-      installations: appInstallations.map((installation) => ({
-        id: String(installation.id),
-        accountLogin: installation.account.login,
-        accountType: installation.account.type
-      })),
-      installationsToken
-    };
-  };
-
   return {
     initiateManifestCreation,
     handleManifestCallback,
     listGitHubApps,
-    deleteGitHubApp,
-    resolveUserInstallations
+    deleteGitHubApp
   };
 };

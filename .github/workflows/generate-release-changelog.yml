@@ -8,7 +8,7 @@ on:
         required: false
   push:
     tags:
-      - "v*.*.*"
+      - "v0.*.*"
       - "!*nightly*"
 
 jobs:

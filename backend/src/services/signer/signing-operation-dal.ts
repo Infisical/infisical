@@ -114,10 +114,17 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     }
   };
 
+  const PENDING_RESERVATION_WINDOW_MS = 5 * 60 * 1000;
   const countByGrantId = async (approvalGrantId: string, tx?: Knex) => {
     try {
+      const cutoff = new Date(Date.now() - PENDING_RESERVATION_WINDOW_MS);
       const [result] = await (tx || db)(TableName.PkiSigningOperations)
-        .where({ approvalGrantId, status: SigningOperationStatus.Success })
+        .where({ approvalGrantId })
+        .andWhere((qb) => {
+          void qb.where({ status: SigningOperationStatus.Success }).orWhere((p) => {
+            void p.where({ status: SigningOperationStatus.Pending }).andWhere("createdAt", ">=", cutoff);
+          });
+        })
         .count("* as count");
       return Number((result as unknown as { count: string | number }).count);
     } catch (error) {

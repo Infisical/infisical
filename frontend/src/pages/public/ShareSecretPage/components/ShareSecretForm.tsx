@@ -300,7 +300,7 @@ export const ShareSecretForm = ({
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <Field orientation="horizontal">
                 <Switch
-                  variant="org"
+                  variant="project"
                   checked={
                     field.value === SecretSharingAccessType.Organization ||
                     !allowSecretSharingOutsideOrganization
@@ -444,7 +444,7 @@ export const ShareSecretForm = ({
                       }) => (
                         <Field orientation="horizontal">
                           <Switch
-                            variant="org"
+                            variant="project"
                             checked={isOrgAccess ? false : (isChecked ?? false)}
                             onCheckedChange={onChange}
                             disabled={isOrgAccess}
@@ -498,7 +498,7 @@ export const ShareSecretForm = ({
           )}
           <Button
             size="md"
-            variant={isPublic ? "project" : "org"}
+            variant="project"
             type="submit"
             isPending={isSubmitting}
             isDisabled={isSubmitting}
@@ -516,12 +516,7 @@ export const ShareSecretForm = ({
           <Check className="mr-2 size-4 text-success" />
           <span>Shared secret link has been emailed to select users.</span>
         </div>
-        <Button
-          className="w-full"
-          variant={isPublic ? "project" : "org"}
-          size="lg"
-          onClick={() => setSecretLink(null)}
-        >
+        <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
           Share Another Secret
           <ForwardIcon />
         </Button>
@@ -545,12 +540,7 @@ export const ShareSecretForm = ({
           {isCopyingSecret ? <ClipboardCheck className="size-4" /> : <Copy className="size-4" />}
         </IconButton>
       </div>
-      <Button
-        className="w-full"
-        variant={isPublic ? "project" : "org"}
-        size="lg"
-        onClick={() => setSecretLink(null)}
-      >
+      <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
         Share Another Secret
         <ForwardIcon />
       </Button>

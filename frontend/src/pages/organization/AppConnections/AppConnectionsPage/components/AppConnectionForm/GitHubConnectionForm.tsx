@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -12,14 +13,21 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { apiRequest } from "@app/config/request";
 import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
@@ -39,6 +47,7 @@ import {
   useGetAppConnectionOauthReturnUrl
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import {
   GitHubConnectionMethod,
   TGitHubConnection,
@@ -50,6 +59,7 @@ import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -112,6 +122,8 @@ type FormData = z.infer<typeof formSchema>;
 
 export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
+  const scopeVariant = useScopeVariant();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isEnterpriseEnabled, setIsEnterpriseEnabled] = useState(() =>
     Boolean(
@@ -352,13 +364,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
 
         storeConnectionFormData(formData, installState, targetApp?.id ?? undefined, slug);
 
-        if (targetApp?.clientId) {
-          window.location.assign(
-            `${githubHost}/login/oauth/authorize?client_id=${targetApp.clientId}&state=${installState}&redirect_uri=${window.location.origin}/organization/app-connections/github/oauth/callback`
-          );
-          break;
-        }
-
+        // Always use GitHub's install flow: the user selects the account + repos on GitHub's own UI,
         window.location.assign(
           buildGitHubAppInstallUrl(
             slug ?? "",
@@ -438,20 +444,22 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
         <Accordion
           type="single"
           collapsible
+          variant="ghost"
           className="mb-4 w-full"
           value={isEnterpriseEnabled ? "enterprise-options" : ""}
           onValueChange={(value) => setIsEnterpriseEnabled(value === "enterprise-options")}
         >
-          <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
+          <AccordionItem value="enterprise-options">
             <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-              <div className="order-1 ml-3">GitHub Enterprise Options</div>
+              GitHub Enterprise Options
             </AccordionTrigger>
-            <AccordionContent childrenClassName="px-0">
+            <AccordionContent className="px-0">
               <Controller
                 name="credentials.instanceType"
                 control={control}
                 render={({ field }) => (
-                  <FormControl label="Instance Type">
+                  <Field className="mb-4">
+                    <FieldLabel>Instance Type</FieldLabel>
                     <Select
                       value={field.value}
                       onValueChange={(e) => {
@@ -461,16 +469,16 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                           setValue("gatewayPoolId", null);
                         }
                       }}
-                      containerClassName="w-full"
-                      className="w-full border border-mineshaft-500"
-                      dropdownContainerClassName="max-w-none"
-                      placeholder="Enterprise Cloud"
-                      position="popper"
                     >
-                      <SelectItem value="cloud">Enterprise Cloud</SelectItem>
-                      <SelectItem value="server">Enterprise Server</SelectItem>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Enterprise Cloud" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value="cloud">Enterprise Cloud</SelectItem>
+                        <SelectItem value="server">Enterprise Server</SelectItem>
+                      </SelectContent>
                     </Select>
-                  </FormControl>
+                  </Field>
                 )}
               />
               <Controller
@@ -478,15 +486,19 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                 control={control}
                 shouldUnregister
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Instance Hostname"
-                    isOptional={instanceType === "cloud"}
-                    isRequired={instanceType === "server"}
-                  >
-                    <Input {...field} placeholder="github.mycompany.com" />
-                  </FormControl>
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="github-host">
+                      Instance Hostname
+                      {instanceType === "cloud" && <span className="text-muted"> (optional)</span>}
+                    </FieldLabel>
+                    <Input
+                      id="github-host"
+                      {...field}
+                      placeholder="github.mycompany.com"
+                      isError={Boolean(error?.message)}
+                    />
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
               />
               {subscription.gateway && instanceType === "server" && (
@@ -495,26 +507,32 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                   a={OrgPermissionSubjects.Gateway}
                 >
                   {(isAllowed) => (
-                    <FormControl label="Gateway">
-                      <Tooltip
-                        isDisabled={isAllowed}
-                        content="Restricted access. You don't have permission to attach gateways to resources."
-                      >
-                        <div>
-                          <GatewayPicker
-                            isDisabled={!isAllowed}
-                            value={{
-                              gatewayId: gatewayId ?? null,
-                              gatewayPoolId: gatewayPoolId ?? null
-                            }}
-                            onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                              setValue("gatewayId", newGwId, { shouldDirty: true });
-                              setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                            }}
-                          />
-                        </div>
+                    <Field className="mb-4">
+                      <FieldLabel>Gateway</FieldLabel>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <GatewayPicker
+                              isDisabled={!isAllowed}
+                              value={{
+                                gatewayId: gatewayId ?? null,
+                                gatewayPoolId: gatewayPoolId ?? null
+                              }}
+                              onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                                setValue("gatewayId", newGwId, { shouldDirty: true });
+                                setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                              }}
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        {!isAllowed && (
+                          <TooltipContent>
+                            Restricted access. You don&apos;t have permission to attach gateways to
+                            resources.
+                          </TooltipContent>
+                        )}
                       </Tooltip>
-                    </FormControl>
+                    </Field>
                   )}
                 </OrgPermissionCan>
               )}
@@ -525,47 +543,62 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.GitHub].name
-              }. This field cannot be changed after creation.`}
-              errorText={getMethodErrorText(error)}
-              isError={Boolean(error?.message) || isMissingConfig || isCloudCustomHostUnsupported}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                containerClassName="w-full"
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(GitHubConnectionMethod).map((method) => {
-                  return (
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.GitHub].name}. This field cannot be changed
+                    after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger
+                  className="w-full"
+                  isError={
+                    Boolean(error?.message) || isMissingConfig || isCloudCustomHostUnsupported
+                  }
+                >
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitHubConnectionMethod).map((method) => (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}{" "}
                       {method === GitHubConnectionMethod.App ? " (Recommended)" : ""}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError>{getMethodErrorText(error)}</FieldError>
+            </Field>
           )}
         />
         {selectedMethod === GitHubConnectionMethod.App && !isUpdate && (
-          <FormControl
-            label="GitHub App"
-            tooltipText={`Reuse an existing GitHub App from ${
-              // eslint-disable-next-line no-nested-ternary
-              projectId
-                ? canSeeOrgApps
-                  ? "this project or your organization"
-                  : "this project"
-                : "your organization"
-            }, or create a new one. Apps can be shared across multiple connections.`}
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              GitHub App
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Reuse an existing GitHub App from{" "}
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  {projectId
+                    ? canSeeOrgApps
+                      ? "this project or your organization"
+                      : "this project"
+                    : "your organization"}
+                  , or create a new one. Apps can be shared across multiple connections.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <GitHubAppSelector
               apps={gitHubApps}
               isLoading={isGitHubAppsLoading}
@@ -578,7 +611,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
               isCreating={isRedirecting}
               projectId={projectId}
             />
-          </FormControl>
+          </Field>
         )}
         {selectedMethod === GitHubConnectionMethod.Pat && (
           <Controller
@@ -586,27 +619,19 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             control={control}
             shouldUnregister
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Personal Access Token"
-              >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel>Personal Access Token</FieldLabel>
+                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
         )}
-        <div className="mt-8 flex items-center">
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting || isRedirecting}
+            variant={scopeVariant}
+            isPending={isSubmitting || isRedirecting}
             isDisabled={
               (!isUpdate && !isDirty && !isResumed) ||
               isSubmitting ||
@@ -618,12 +643,15 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
           >
             {getButtonText()}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            isDisabled={isSubmitting || isRedirecting}
+          >
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

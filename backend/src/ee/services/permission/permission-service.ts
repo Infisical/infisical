@@ -237,7 +237,7 @@ const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?
   !role.isTemporary ||
   Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
 
-const flattenActiveRolesFromMemberships = <T extends string>(
+export const flattenActiveRolesFromMemberships = <T extends string>(
   memberships: MembershipWithRoles[],
   customRoleValue: T
 ): { role: string; permissions?: unknown }[] => {

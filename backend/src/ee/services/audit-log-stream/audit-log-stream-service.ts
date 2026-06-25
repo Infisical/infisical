@@ -35,7 +35,7 @@ export const auditLogStreamServiceFactory = ({
   licenseService,
   kmsService
 }: TAuditLogStreamServiceFactoryDep) => {
-  const create = async ({ provider, credentials }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
+  const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
@@ -76,14 +76,16 @@ export const auditLogStreamServiceFactory = ({
       encryptedCredentials,
       // All new streams use batch delivery. "single" is reachable only by existing
       // custom/cribl streams that were migrated, and only as a one-way upgrade away from it.
-      streamMode: StreamMode.Batch
+      streamMode: StreamMode.Batch,
+      // null when unset -> stream all products.
+      filters: filters ?? null
     });
 
     return { ...logStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
   const updateById = async (
-    { logStreamId, provider, credentials, streamMode }: TUpdateAuditLogStreamDTO,
+    { logStreamId, provider, credentials, streamMode, filters }: TUpdateAuditLogStreamDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -164,7 +166,9 @@ export const auditLogStreamServiceFactory = ({
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
       encryptedCredentials,
       // Only persist a mode change when provided (the validated single -> batch upgrade).
-      ...(streamMode ? { streamMode } : {})
+      ...(streamMode ? { streamMode } : {}),
+      // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).
+      ...(filters !== undefined ? { filters } : {})
     });
 
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;

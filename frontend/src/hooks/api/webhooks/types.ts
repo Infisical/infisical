@@ -6,7 +6,8 @@ export enum WebhookType {
 
 export enum WebhookEvent {
   SecretModified = "secrets.modified",
-  SecretRotationFailed = "secrets.rotation-failed"
+  SecretRotationFailed = "secrets.rotation-failed",
+  HoneyTokenTriggered = "honey-token.triggered"
 }
 
 export type TWebhookEventMetadata = {
@@ -24,6 +25,10 @@ export const WEBHOOK_EVENT_METADATA: Record<WebhookEvent, TWebhookEventMetadata>
   [WebhookEvent.SecretModified]: {
     label: "Secret Modified",
     description: "Triggered when secrets are modified"
+  },
+  [WebhookEvent.HoneyTokenTriggered]: {
+    label: "Honey Token Triggered",
+    description: "Triggered when a honey token is activated"
   }
 };
 

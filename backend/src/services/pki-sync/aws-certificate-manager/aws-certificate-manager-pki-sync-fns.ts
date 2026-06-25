@@ -140,10 +140,7 @@ const generateCertificateName = (certificateName: string, pkiSync: TPkiSyncWithC
       throw new Error(`Certificate ID cannot be empty after processing certificate name: ${certificateName}`);
     }
 
-    const environment = "global";
-    const generatedName = certificateNameSchema
-      .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId)
-      .replace(new RE2("\\{\\{environment\\}\\}", "g"), environment);
+    const generatedName = certificateNameSchema.replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId);
 
     if (generatedName.length > 256 || generatedName.length < 1) {
       throw new Error(

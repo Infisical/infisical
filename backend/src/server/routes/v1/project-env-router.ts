@@ -65,6 +65,58 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:projectId/environments/slug/:envSlug",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getEnvironmentBySlug",
+      tags: [ApiDocsTags.Environments],
+      description: "Get Environment by slug",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().uuid().describe(ENVIRONMENTS.GET_BY_SLUG.projectId),
+        envSlug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.GET_BY_SLUG.slug)
+      }),
+      response: {
+        200: z.object({
+          environment: ProjectEnvironmentsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const environment = await server.services.projectEnv.getEnvironmentBySlug({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.projectId,
+        slug: req.params.envSlug
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: environment.projectId,
+        event: {
+          type: EventType.GET_ENVIRONMENT,
+          metadata: {
+            id: environment.id
+          }
+        }
+      });
+
+      return { environment };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:projectId/environments",
     config: {
