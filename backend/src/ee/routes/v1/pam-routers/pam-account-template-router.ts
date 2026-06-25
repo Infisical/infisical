@@ -45,7 +45,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const templates = await server.services.pamAccountTemplate.list({
         projectId: req.internalPamProjectId,
@@ -79,7 +79,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.getById({
         templateId: req.params.templateId,
@@ -115,7 +115,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.create({
         ...req.body,
@@ -180,7 +180,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.update({
         templateId: req.params.templateId,
@@ -236,7 +236,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.deleteTemplate({
         templateId: req.params.templateId,

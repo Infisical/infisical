@@ -35,6 +35,7 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
+import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   TPamFolderWithCount,
@@ -43,6 +44,7 @@ import {
   useListPamResourceRoles,
   usePamFolderActions,
   useRemoveFolderGroupMember,
+  useRemoveFolderIdentityMember,
   useRemoveFolderMember,
   useUpdatePamFolder
 } from "@app/hooks/api/pam";
@@ -178,8 +180,18 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
     [orgGroups]
   );
 
+  const { data: orgIdentities } = useGetIdentityMembershipOrgs({ organizationId: currentOrg.id });
+  const identityNameMap = useMemo(
+    () =>
+      new Map(
+        (orgIdentities?.identityMemberships ?? []).map((im) => [im.identity.id, im.identity.name])
+      ),
+    [orgIdentities]
+  );
+
   const removeUser = useRemoveFolderMember();
   const removeGroup = useRemoveFolderGroupMember();
+  const removeIdentity = useRemoveFolderIdentityMember();
 
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EditMemberTarget | null>(null);
@@ -200,6 +212,15 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
         (folderMembers?.groups ?? [])
           .filter((m) => m.groupId && !isMembershipExpired(m.expiresAt))
           .map((m) => m.groupId) as string[]
+      ),
+    [folderMembers]
+  );
+  const existingIdentityIdSet = useMemo(
+    () =>
+      new Set(
+        (folderMembers?.identities ?? [])
+          .filter((m) => m.identityId && !isMembershipExpired(m.expiresAt))
+          .map((m) => m.identityId) as string[]
       ),
     [folderMembers]
   );
@@ -236,8 +257,17 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
       subtitle: "Group",
       kind: PamMemberKind.Group
     }));
-    return [...users, ...groups];
-  }, [folderMembers, userMap, groupMap]);
+    const identities: ResolvedMember[] = (folderMembers?.identities ?? []).map((m) => ({
+      member: m,
+      displayName:
+        (m.identityId ? identityNameMap.get(m.identityId) : undefined) ??
+        m.identityId ??
+        "Unknown identity",
+      subtitle: "Machine Identity",
+      kind: PamMemberKind.Identity
+    }));
+    return [...users, ...groups, ...identities];
+  }, [folderMembers, userMap, groupMap, identityNameMap]);
 
   const handleRemove = (rm: ResolvedMember) => {
     const opts = {
@@ -247,6 +277,8 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
       removeUser.mutate({ folderId, userId: rm.member.userId }, opts);
     } else if (rm.kind === PamMemberKind.Group && rm.member.groupId) {
       removeGroup.mutate({ folderId, groupId: rm.member.groupId }, opts);
+    } else if (rm.kind === PamMemberKind.Identity && rm.member.identityId) {
+      removeIdentity.mutate({ folderId, identityId: rm.member.identityId }, opts);
     }
   };
 
@@ -273,6 +305,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
         resourceId={folderId}
         existingUserIds={existingUserIdSet}
         existingGroupIds={existingGroupIdSet}
+        existingIdentityIds={existingIdentityIdSet}
         editMember={editTarget}
       />
       <RemoveMemberConfirm
@@ -354,17 +387,19 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem
-                                onClick={() =>
+                                onClick={() => {
+                                  const idMap: Record<PamMemberKind, string | null | undefined> = {
+                                    [PamMemberKind.User]: rm.member.userId,
+                                    [PamMemberKind.Group]: rm.member.groupId,
+                                    [PamMemberKind.Identity]: rm.member.identityId
+                                  };
                                   setEditTarget({
                                     kind: rm.kind,
-                                    id:
-                                      (rm.kind === PamMemberKind.User
-                                        ? rm.member.userId
-                                        : rm.member.groupId) ?? "",
+                                    id: idMap[rm.kind] ?? "",
                                     label: rm.displayName,
                                     role: rm.member.role
-                                  })
-                                }
+                                  });
+                                }}
                               >
                                 <Pencil />
                                 Edit

@@ -221,7 +221,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pamSessionChunk.getSessionPlayback(req.params.sessionId, req.permission);
       return {
@@ -247,7 +247,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         chunkIndex: z.coerce.number().int().nonnegative().max(999999).describe("The chunk index to retrieve")
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       const { ciphertext } = await server.services.pamSessionChunk.getChunkCiphertext(
         req.params.sessionId,
@@ -274,7 +274,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async () => ({
       backends: Object.values(PamRecordingStorageBackend)
     })

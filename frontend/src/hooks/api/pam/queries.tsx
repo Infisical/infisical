@@ -59,6 +59,7 @@ export const pamKeys = {
   folderMembers: (folderId: string) => [...pamKeys.all, "folder-members", folderId] as const,
   productMembers: () => [...pamKeys.all, "product-members"] as const,
   productGroups: () => [...pamKeys.all, "product-groups"] as const,
+  productIdentities: () => [...pamKeys.all, "product-identities"] as const,
   resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
   accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
   accountTypes: () => [...pamKeys.all, "account-types"] as const
@@ -310,11 +311,16 @@ export const useListAccountMembers = (accountId: string) => {
   return useQuery({
     queryKey: pamKeys.accountMembers(accountId),
     queryFn: async (): Promise<TPamMembersData> => {
-      const [usersRes, groupsRes] = await Promise.all([
+      const [usersRes, groupsRes, identitiesRes] = await Promise.all([
         apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/users`),
-        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/groups`)
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/groups`),
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/identities`)
       ]);
-      return { users: usersRes.data.members, groups: groupsRes.data.members };
+      return {
+        users: usersRes.data.members,
+        groups: groupsRes.data.members,
+        identities: identitiesRes.data.members
+      };
     },
     enabled: !!accountId
   });
@@ -324,11 +330,16 @@ export const useListFolderMembers = (folderId: string) => {
   return useQuery({
     queryKey: pamKeys.folderMembers(folderId),
     queryFn: async (): Promise<TPamMembersData> => {
-      const [usersRes, groupsRes] = await Promise.all([
+      const [usersRes, groupsRes, identitiesRes] = await Promise.all([
         apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/users`),
-        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/groups`)
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/groups`),
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/identities`)
       ]);
-      return { users: usersRes.data.members, groups: groupsRes.data.members };
+      return {
+        users: usersRes.data.members,
+        groups: groupsRes.data.members,
+        identities: identitiesRes.data.members
+      };
     },
     enabled: !!folderId
   });
@@ -352,6 +363,18 @@ export const useListPamProductGroups = () => {
     queryFn: async () => {
       const { data } = await apiRequest.get<{ members: TPamMember[] }>(
         "/api/v1/pam/memberships/groups"
+      );
+      return data.members;
+    }
+  });
+};
+
+export const useListPamProductIdentities = () => {
+  return useQuery({
+    queryKey: pamKeys.productIdentities(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+        "/api/v1/pam/memberships/identities"
       );
       return data.members;
     }
