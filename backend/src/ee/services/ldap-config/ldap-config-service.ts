@@ -498,7 +498,8 @@ export const ldapConfigServiceFactory = ({
     // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
     // separate email-verification step (the email-domain ownership check above already proves the
     // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // Also skip when the instance admin has enabled "Trust LDAP Emails" in the server admin console.
+    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the
