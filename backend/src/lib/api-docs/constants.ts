@@ -1239,6 +1239,10 @@ export const ENVIRONMENTS = {
   GET: {
     projectId: "The ID of the project the environment belongs to.",
     id: "The ID of the environment to fetch."
+  },
+  GET_BY_SLUG: {
+    projectId: "The ID of the project the environment belongs to.",
+    slug: "The slug of the environment to fetch."
   }
 } as const;
 

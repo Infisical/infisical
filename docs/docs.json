@@ -2206,6 +2206,7 @@
                 "group": "Environments",
                 "pages": [
                   "api-reference/endpoints/environments/create",
+                  "api-reference/endpoints/environments/get",
                   "api-reference/endpoints/environments/update",
                   "api-reference/endpoints/environments/delete",
                   "api-reference/endpoints/environments/restore",
