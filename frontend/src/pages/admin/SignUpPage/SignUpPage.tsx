@@ -71,7 +71,7 @@ export const SignUpPage = () => {
   }
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <div className="flex min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -79,7 +79,7 @@ export const SignUpPage = () => {
         <meta property="og:title" content={t("signup.og-title") ?? ""} />
         <meta name="og:description" content={t("signup.og-description") ?? ""} />
       </Helmet>
-      <div className="flex items-center justify-center">
+      <div className="my-auto flex items-center justify-center py-8">
         <AnimatePresence mode="wait">
           <motion.div
             className="text-mineshaft-200"
