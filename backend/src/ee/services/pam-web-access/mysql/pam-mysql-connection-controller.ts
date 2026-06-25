@@ -25,6 +25,9 @@ export const createMysqlConnectionController = async (params: ControllerParams):
     password: "",
     connectTimeout: 30_000,
     multipleStatements: false,
+    supportBigNumbers: true,
+    bigNumberStrings: true,
+    dateStrings: true,
     typeCast: (field, next) => {
       if (field.type === "JSON") {
         return field.string();
