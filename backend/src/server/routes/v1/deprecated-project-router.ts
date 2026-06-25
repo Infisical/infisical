@@ -601,7 +601,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     method: "PUT",
     url: "/:workspaceId/workflow-integration",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       params: z.object({

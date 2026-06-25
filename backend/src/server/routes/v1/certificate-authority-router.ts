@@ -203,7 +203,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:caId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
