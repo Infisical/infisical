@@ -222,9 +222,14 @@ export const AccessApprovalRequest = ({
     {}
   );
 
-  const environmentNamesBySlug = (currentProject?.environments ?? []).reduce<
-    Record<string, string>
-  >((prev, curr) => ({ ...prev, [curr.slug]: curr.name }), {});
+  const environmentNamesBySlug = useMemo(
+    () =>
+      (currentProject?.environments ?? []).reduce<Record<string, string>>(
+        (prev, curr) => ({ ...prev, [curr.slug]: curr.name }),
+        {}
+      ),
+    [currentProject?.environments]
+  );
 
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [requestedByFilter, setRequestedByFilter] = useState<string | undefined>(undefined);
@@ -295,18 +300,29 @@ export const AccessApprovalRequest = ({
     return (
       accessRequests?.filter((request) => {
         const { environmentName, requestedByUser } = request;
+        const environmentDisplayName = environmentNamesBySlug[environmentName] ?? environmentName;
 
         const searchValue = search.trim().toLowerCase();
 
         return (
           environmentName?.toLowerCase().includes(searchValue) ||
+          environmentDisplayName?.toLowerCase().includes(searchValue) ||
           `${requestedByUser?.email ?? ""} ${requestedByUser?.firstName ?? ""} ${requestedByUser?.lastName ?? ""}`
             .toLowerCase()
             .includes(searchValue)
         );
       }) ?? []
     );
-  }, [requests, statusFilter, requestedByFilter, envFilter, search, isRequestExpired, showExpired]);
+  }, [
+    requests,
+    statusFilter,
+    requestedByFilter,
+    envFilter,
+    search,
+    isRequestExpired,
+    showExpired,
+    environmentNamesBySlug
+  ]);
 
   useResetPageHelper({
     totalCount: filteredRequests.length,
