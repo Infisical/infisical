@@ -1,13 +1,24 @@
 import { TDynamicSecretLeases } from "@app/db/schemas";
 import { TDynamicSecretWithMetadata, TProjectPermission } from "@app/lib/types";
 
+import { TDynamicSecretLeaseResult } from "../dynamic-secret/providers/models";
+import {
+  ActorIdentityAttributes,
+  TDynamicSecretKubernetesLeaseConfig,
+  TDynamicSecretLeaseConfig,
+  TDynamicSecretSshLeaseConfig
+} from "./dynamic-secret-lease-config-types";
+
+export type {
+  ActorIdentityAttributes,
+  TDynamicSecretKubernetesLeaseConfig,
+  TDynamicSecretLeaseConfig,
+  TDynamicSecretSshLeaseConfig
+};
+
 export enum DynamicSecretLeaseStatus {
   FailedDeletion = "Failed to delete"
 }
-
-export type ActorIdentityAttributes = {
-  name: string;
-};
 
 export type TCreateDynamicSecretLeaseDTO = {
   name: string;
@@ -48,25 +59,16 @@ export type TRenewDynamicSecretLeaseDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TDynamicSecretKubernetesLeaseConfig = {
-  namespace?: string;
-};
-
-export type TDynamicSecretSshLeaseConfig = {
-  principals?: string[];
-};
-
-export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig & TDynamicSecretSshLeaseConfig;
-
 export type TDynamicSecretLeaseServiceFactory = {
-  create: (arg: TCreateDynamicSecretLeaseDTO) => Promise<{
-    lease: TDynamicSecretLeases;
-    dynamicSecret: TDynamicSecretWithMetadata;
-    data: unknown;
-    projectId: string;
-    environment: string;
-    secretPath: string;
-  }>;
+  create: (arg: TCreateDynamicSecretLeaseDTO) => Promise<
+    TDynamicSecretLeaseResult & {
+      lease: TDynamicSecretLeases;
+      dynamicSecret: TDynamicSecretWithMetadata;
+      projectId: string;
+      environment: string;
+      secretPath: string;
+    }
+  >;
   listLeases: (arg: TListDynamicSecretLeasesDTO) => Promise<{
     leases: TDynamicSecretLeases[];
     dynamicSecret: TDynamicSecretWithMetadata;

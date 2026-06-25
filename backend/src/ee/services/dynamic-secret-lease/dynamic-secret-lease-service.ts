@@ -26,7 +26,11 @@ import { SecretValidationRuleType } from "@app/services/secret-validation-rule/s
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
-import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
+import {
+  DynamicSecretLeaseResultSchema,
+  DynamicSecretProviders,
+  TDynamicProviderFns
+} from "../dynamic-secret/providers/models";
 import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
@@ -208,10 +212,13 @@ export const dynamicSecretLeaseServiceFactory = ({
     });
 
     await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
+
+    const leaseResult = DynamicSecretLeaseResultSchema.parse({ type: dynamicSecretCfg.type, data });
+
     return {
+      ...leaseResult,
       lease: dynamicSecretLease,
       dynamicSecret: dynamicSecretCfg,
-      data,
       projectId,
       environment: environmentSlug,
       secretPath: path

@@ -22,7 +22,8 @@ import {
   PasswordRequirements,
   SqlProviders,
   TDynamicProviderCreateMetadata,
-  TDynamicProviderFns
+  TDynamicProviderFns,
+  TSqlDatabaseLeaseData
 } from "./models";
 import { generateUsername } from "./templateUtils";
 
@@ -129,7 +130,7 @@ export const SqlDatabaseProvider = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService
-}: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
+}: TSqlDatabaseProviderDTO): TDynamicProviderFns<TSqlDatabaseLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 

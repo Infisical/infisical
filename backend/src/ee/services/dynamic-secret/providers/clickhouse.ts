@@ -15,7 +15,12 @@ import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretClickhouseSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretClickhouseSchema,
+  PasswordRequirements,
+  TClickhouseLeaseData,
+  TDynamicProviderFns
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
@@ -108,7 +113,7 @@ export const ClickhouseProvider = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService
-}: TClickhouseProviderDTO): TDynamicProviderFns => {
+}: TClickhouseProviderDTO): TDynamicProviderFns<TClickhouseLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretClickhouseSchema.parseAsync(inputs);
 

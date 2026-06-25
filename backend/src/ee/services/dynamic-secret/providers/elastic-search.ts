@@ -8,7 +8,12 @@ import { sanitizeString } from "@app/lib/fn";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretElasticSearchSchema, ElasticSearchAuthTypes, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretElasticSearchSchema,
+  ElasticSearchAuthTypes,
+  TDynamicProviderFns,
+  TElasticSearchLeaseData
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
@@ -16,7 +21,7 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-export const ElasticSearchProvider = (): TDynamicProviderFns => {
+export const ElasticSearchProvider = (): TDynamicProviderFns<TElasticSearchLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
     await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });

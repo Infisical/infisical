@@ -8,7 +8,7 @@ import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
-import { DynamicSecretGithubSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretGithubSchema, TDynamicProviderFns, TGithubLeaseData } from "./models";
 
 interface GitHubInstallationTokenResponse {
   token: string;
@@ -23,7 +23,7 @@ interface TGithubProviderInputs {
   privateKey: string;
 }
 
-export const GithubProvider = (): TDynamicProviderFns => {
+export const GithubProvider = (): TDynamicProviderFns<TGithubLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretGithubSchema.parseAsync(inputs);
     return providerInputs;

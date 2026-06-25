@@ -12,7 +12,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { LdapCredentialType, LdapSchema, TDynamicProviderFns } from "./models";
+import { LdapCredentialType, LdapSchema, TDynamicProviderFns, TLdapLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
@@ -48,7 +48,7 @@ const generateLDIF = ({
   return renderedLdif;
 };
 
-export const LdapProvider = (): TDynamicProviderFns => {
+export const LdapProvider = (): TDynamicProviderFns<TLdapLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await LdapSchema.parseAsync(inputs);
 

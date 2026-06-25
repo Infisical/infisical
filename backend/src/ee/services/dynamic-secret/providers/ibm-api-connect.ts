@@ -3,7 +3,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
-import { DynamicSecretIbmApiConnectSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretIbmApiConnectSchema, TDynamicProviderFns, TIbmApiConnectLeaseData } from "./models";
 
 export type TIbmApiConnectBaseCredentials = {
   clientId: string;
@@ -248,7 +248,7 @@ const $revokeApplicationCredential = async (
   }
 };
 
-export const IbmApiConnectProvider = (): TDynamicProviderFns & {
+export const IbmApiConnectProvider = (): TDynamicProviderFns<TIbmApiConnectLeaseData> & {
   fetchOrganizations: (inputs: TIbmApiConnectBaseCredentials) => Promise<TApiConnectResource[]>;
   fetchOrganizationCatalogs: (inputs: TIbmApiConnectBaseCredentials, orgId: string) => Promise<TApiConnectResource[]>;
   fetchOrganizationApps: (

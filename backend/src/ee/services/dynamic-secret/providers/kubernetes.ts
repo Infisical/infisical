@@ -22,7 +22,8 @@ import {
   KubernetesAuthMethod,
   KubernetesCredentialType,
   KubernetesRoleType,
-  TDynamicProviderFns
+  TDynamicProviderFns,
+  TKubernetesLeaseData
 } from "./models";
 import { generateUsername } from "./templateUtils";
 
@@ -41,7 +42,7 @@ export const KubernetesProvider = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService
-}: TKubernetesProviderDTO): TDynamicProviderFns => {
+}: TKubernetesProviderDTO): TDynamicProviderFns<TKubernetesLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKubernetesSchema.parseAsync(inputs);
     if (!providerInputs.gatewayId && !providerInputs.gatewayPoolId && providerInputs.url) {

@@ -10,7 +10,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretCouchbaseSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
+import { DynamicSecretCouchbaseSchema, PasswordRequirements, TCouchbaseLeaseData, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
 type TCreateCouchbaseUser = {
@@ -183,7 +183,7 @@ const couchbaseApiRequest = async (
   }
 };
 
-export const CouchbaseProvider = (): TDynamicProviderFns => {
+export const CouchbaseProvider = (): TDynamicProviderFns<TCouchbaseLeaseData> => {
   const validateProviderInputs = async (inputs: object) => {
     const providerInputs = DynamicSecretCouchbaseSchema.parse(inputs);
 
