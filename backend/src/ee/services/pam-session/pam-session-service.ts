@@ -26,8 +26,8 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import {
-  PAM_SESSION_LOG_MASKING_KEY,
   PamPolicyType,
+  PamSettingType,
   resolveAccessControls,
   resolvePolicy,
   splitPatternString
@@ -228,7 +228,7 @@ export const pamSessionServiceFactory = ({
             ...(commandBlockingPatterns.length > 0
               ? { [PamPolicyType.CommandBlocking]: { patterns: commandBlockingPatterns } }
               : {}),
-            ...(maskingPatterns.length > 0 ? { [PAM_SESSION_LOG_MASKING_KEY]: { patterns: maskingPatterns } } : {})
+            ...(maskingPatterns.length > 0 ? { [PamSettingType.SessionLogMasking]: { patterns: maskingPatterns } } : {})
           }
         : null;
 
