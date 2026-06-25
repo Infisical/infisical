@@ -69,7 +69,12 @@ export const useAddBillingV2PaymentMethod = () => {
 // in a confirmation dialog before committing the add/remove.
 export const usePreviewBillingV2Change = () => {
   return useMutation({
-    mutationFn: async ({ orgId, addProductId, cadence, removeProductId }: TPreviewBillingV2ChangeDTO) => {
+    mutationFn: async ({
+      orgId,
+      addProductId,
+      cadence,
+      removeProductId
+    }: TPreviewBillingV2ChangeDTO) => {
       const {
         data: { preview }
       } = await apiRequest.post<{ preview: BillingV2Preview }>(
@@ -94,7 +99,7 @@ export const useAddBillingV2Product = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
     }
   });
 };
@@ -110,7 +115,7 @@ export const useRemoveBillingV2Product = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
     }
   });
 };
@@ -126,7 +131,7 @@ export const useCancelBillingV2Subscription = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
     }
   });
 };
@@ -142,7 +147,7 @@ export const useResumeBillingV2Subscription = () => {
       return data;
     },
     onSuccess: (_data, { orgId }) => {
-      void queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
     }
   });
 };

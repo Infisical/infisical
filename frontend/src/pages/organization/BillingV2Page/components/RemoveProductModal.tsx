@@ -72,8 +72,8 @@ export const RemoveProductModal = ({ orgId, product, onClose }: Props) => {
           </AlertDialogMedia>
           <AlertDialogTitle>Remove {product.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            {product.name} is removed right away. The unused time you already paid for is credited to
-            your next invoice, and your other products are unaffected.
+            {product.name} is removed right away. The unused time you already paid for is credited
+            to your next invoice, and your other products are unaffected.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="rounded-md border border-border bg-mineshaft-700/40 px-4 py-3 text-sm">

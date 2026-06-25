@@ -280,7 +280,14 @@ type ProductRowProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductRow = ({ prod, entitlement, readOnly, onManage, onRemove, onContact }: ProductRowProps) => {
+const ProductRow = ({
+  prod,
+  entitlement,
+  readOnly,
+  onManage,
+  onRemove,
+  onContact
+}: ProductRowProps) => {
   const entitled = Boolean(entitlement?.entitled);
   let limitNote: string | null = null;
   if (entitled && entitlement && entitlement.limit !== null && entitlement.limit !== undefined) {
