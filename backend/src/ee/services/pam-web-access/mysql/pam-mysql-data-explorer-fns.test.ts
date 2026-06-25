@@ -115,6 +115,36 @@ describe("splitMysqlStatements", () => {
     ]);
   });
 
+  test("double-dash without trailing space is not a line comment", () => {
+    expect(splitMysqlStatements("SELECT 1--1; SELECT 2")).toEqual(["SELECT 1--1", "SELECT 2"]);
+  });
+
+  test("double-dash with trailing space is a line comment", () => {
+    expect(splitMysqlStatements("SELECT 1 -- comment\n; SELECT 2")).toEqual([
+      "SELECT 1 -- comment",
+      "SELECT 2"
+    ]);
+  });
+
+  test("double-dash at end of input is a line comment", () => {
+    expect(splitMysqlStatements("SELECT 1 --")).toEqual(["SELECT 1 --"]);
+  });
+
+  test("double-dash with tab is a line comment", () => {
+    expect(splitMysqlStatements("SELECT 1 --\tcomment\n; SELECT 2")).toEqual([
+      "SELECT 1 --\tcomment",
+      "SELECT 2"
+    ]);
+  });
+
+  test("backtick identifier with backslash is not escaped", () => {
+    expect(splitMysqlStatements("SELECT `col\\`; SELECT 2")).toEqual(["SELECT `col\\`", "SELECT 2"]);
+  });
+
+  test("backslash in single-quoted string still escapes", () => {
+    expect(splitMysqlStatements("SELECT 'a\\';b'; SELECT 2")).toEqual(["SELECT 'a\\';b'", "SELECT 2"]);
+  });
+
   test("unterminated single-quoted string", () => {
     expect(splitMysqlStatements("SELECT 'abc")).toEqual(["SELECT 'abc"]);
   });
@@ -147,6 +177,10 @@ describe("extractCommand", () => {
 
   test("multiple leading comments", () => {
     expect(extractCommand("-- first\n/* second */ # third\nDELETE FROM t")).toBe("DELETE");
+  });
+
+  test("double-dash without space is not a comment in extractCommand", () => {
+    expect(extractCommand("--nospc")).toBe("--NOSPC");
   });
 
   test("START TRANSACTION", () => {

@@ -21,6 +21,7 @@ const buildConnection = async ({ relayPort, username, database }: OneShotOptions
 const withConnection = async <T>(opts: OneShotOptions, fn: (conn: mysql.Connection) => Promise<T>): Promise<T> => {
   const conn = await buildConnection(opts);
   try {
+    await conn.query("SET SESSION max_execution_time = 30000");
     return await fn(conn);
   } finally {
     await conn.end().catch((err) => {

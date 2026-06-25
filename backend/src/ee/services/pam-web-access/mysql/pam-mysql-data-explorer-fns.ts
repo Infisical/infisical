@@ -1,7 +1,8 @@
 const skipQuoted = (sql: string, pos: number, quote: string): number => {
   let i = pos + 1;
+  const backslashEscape = quote !== "`";
   while (i < sql.length) {
-    if (sql[i] === "\\") {
+    if (backslashEscape && sql[i] === "\\") {
       i += 2;
     } else if (sql[i] === quote) {
       if (i + 1 < sql.length && sql[i + 1] === quote) {
@@ -34,7 +35,10 @@ const skipBlockComment = (sql: string, pos: number): number => {
   return Math.min(i + 2, sql.length);
 };
 
-const isLineComment = (sql: string, pos: number) => sql[pos] === "-" && sql[pos + 1] === "-";
+const isLineComment = (sql: string, pos: number) =>
+  sql[pos] === "-" &&
+  sql[pos + 1] === "-" &&
+  (pos + 2 >= sql.length || sql[pos + 2] === " " || sql[pos + 2] === "\t" || sql[pos + 2] === "\n");
 
 const isBlockComment = (sql: string, pos: number) => sql[pos] === "/" && sql[pos + 1] === "*";
 
