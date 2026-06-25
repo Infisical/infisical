@@ -138,7 +138,7 @@ const ErrorResponseSchema = CorrelatedBaseSchema.extend({
 const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.ConnectionOpened),
   connectionId: z.string().uuid(),
-  backendPid: z.number().nullable()
+  nativeConnectionId: z.number().nullable()
 });
 
 const ConnectionOpenFailedResponseSchema = CorrelatedBaseSchema.extend({
@@ -175,7 +175,7 @@ export type TTabScopedMessage = Extract<
 
 export type TConnectionController = {
   connectionId: string;
-  backendPid: number | null;
+  nativeConnectionId: number | null;
   handleMessage: (msg: TTabScopedMessage) => void;
   dispose: () => void;
   isDisposing: () => boolean;

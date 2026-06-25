@@ -45,7 +45,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
   });
 
   const [pidRows] = await conn.execute<mysql.RowDataPacket[]>("SELECT CONNECTION_ID() AS pid");
-  const backendPid = (pidRows[0]?.pid as number) ?? null;
+  const nativeConnectionId = (pidRows[0]?.pid as number) ?? null;
 
   await conn.query(`SET SESSION max_execution_time = 30000, sql_select_limit = ${MAX_ROWS + 1}`);
 
@@ -84,7 +84,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
   };
 
   const cancelRunningQuery = async () => {
-    if (!backendPid) return;
+    if (!nativeConnectionId) return;
     let cancelConn: mysql.Connection | null = null;
     try {
       cancelConn = await mysql.createConnection({
@@ -96,7 +96,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
         connectTimeout: 5_000
       });
       cancelConn.on("error" as never, () => {});
-      await cancelConn.execute("KILL QUERY ?", [backendPid]);
+      await cancelConn.execute("KILL QUERY ?", [nativeConnectionId]);
     } catch (err) {
       logger.debug(err, `Failed to cancel MySQL query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     } finally {
@@ -275,7 +275,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
 
   return {
     connectionId,
-    backendPid,
+    nativeConnectionId,
     handleMessage,
     dispose,
     isDisposing: () => disposing

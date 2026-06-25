@@ -42,7 +42,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
   await pgClient.connect();
 
   const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const backendPid = pidRows[0]?.pid ?? null;
+  const nativeConnectionId = pidRows[0]?.pid ?? null;
 
   let isInTransaction = false;
   let disposing = false;
@@ -70,7 +70,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
   };
 
   const cancelRunningQuery = async () => {
-    if (!backendPid) return;
+    if (!nativeConnectionId) return;
     const cancelClient = new pg.Client({
       host: "localhost",
       port: relayPort,
@@ -85,7 +85,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
     });
     try {
       await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [backendPid]);
+      await cancelClient.query("SELECT pg_cancel_backend($1)", [nativeConnectionId]);
     } catch (err) {
       logger.debug(err, `Failed to cancel backend query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     } finally {
@@ -248,7 +248,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   return {
     connectionId,
-    backendPid,
+    nativeConnectionId,
     handleMessage,
     dispose,
     isDisposing: () => disposing

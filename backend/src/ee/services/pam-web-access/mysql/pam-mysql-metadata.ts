@@ -15,6 +15,9 @@ const buildConnection = async ({ relayPort, username, database }: OneShotOptions
     connectTimeout: 10_000,
     multipleStatements: false
   });
+  conn.on("error" as never, (err: Error) => {
+    logger.debug(err, "one-shot mysql connection error");
+  });
   return conn;
 };
 

@@ -123,7 +123,7 @@ export const createDataExplorerSessionHandler = (config: TDataExplorerDialectCon
           type: DataExplorerServerMessageType.ConnectionOpened,
           id: requestId,
           connectionId,
-          backendPid: controller.backendPid
+          nativeConnectionId: controller.nativeConnectionId
         });
       } catch (err) {
         controllers.delete(connectionId);
