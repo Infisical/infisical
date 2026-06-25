@@ -25,7 +25,7 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { PamPolicyType, resolveAccessControls, resolvePolicy } from "../pam/pam-policies";
+import { PamPolicyType, resolveAccessControls, resolvePolicy, splitPatternString } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
@@ -206,30 +206,21 @@ export const pamSessionServiceFactory = ({
       };
     }
 
-    const splitPatterns = (raw: unknown): string[] | null => {
-      if (typeof raw !== "string" || !raw.trim()) return null;
-      const patterns = raw
-        .split(/\r?\n/)
-        .map((p) => p.trim())
-        .filter(Boolean);
-      return patterns.length > 0 ? patterns : null;
-    };
-
     const commandBlockingPatterns =
       account.accountType === PamAccountType.SSH
-        ? splitPatterns(resolvePolicy(account.templatePolicies, PamPolicyType.CommandBlocking))
-        : null;
+        ? splitPatternString(resolvePolicy(account.templatePolicies, PamPolicyType.CommandBlocking))
+        : [];
 
     const parsedSettings = PamTemplateSettingsSchema.safeParse(account.templateSettings ?? {});
     const maskingPatterns = parsedSettings.success
-      ? splitPatterns(parsedSettings.data.sessionLogMaskingPatterns)
-      : null;
+      ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns)
+      : [];
 
     const policyRules =
-      commandBlockingPatterns || maskingPatterns
+      commandBlockingPatterns.length > 0 || maskingPatterns.length > 0
         ? {
-            ...(commandBlockingPatterns ? { "command-blocking": { patterns: commandBlockingPatterns } } : {}),
-            ...(maskingPatterns ? { "session-log-masking": { patterns: maskingPatterns } } : {})
+            ...(commandBlockingPatterns.length > 0 ? { "command-blocking": { patterns: commandBlockingPatterns } } : {}),
+            ...(maskingPatterns.length > 0 ? { "session-log-masking": { patterns: maskingPatterns } } : {})
           }
         : null;
 

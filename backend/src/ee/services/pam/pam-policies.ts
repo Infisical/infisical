@@ -9,14 +9,22 @@ export enum PamPolicyType {
   CommandBlocking = "command-blocking"
 }
 
+export const splitPatternString = (raw: unknown): string[] => {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  return raw
+    .split(/\r?\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+};
+
 export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =>
   z
     .string()
     .max(maxPatterns * (maxPatternLength + 1))
     .refine(
       (val) => {
-        const patterns = val.split(/\r?\n/).filter((line) => line.trim().length > 0);
-        return patterns.length <= maxPatterns && patterns.every((p) => p.trim().length <= maxPatternLength);
+        const patterns = splitPatternString(val);
+        return patterns.length <= maxPatterns && patterns.every((p) => p.length <= maxPatternLength);
       },
       { message: `Maximum ${maxPatterns} patterns, each up to ${maxPatternLength} characters` }
     );
