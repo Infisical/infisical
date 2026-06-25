@@ -7,7 +7,8 @@ import { DurationPolicyEditor } from "./DurationPolicyEditor";
 import { TextAreaPolicyEditor } from "./TextAreaPolicyEditor";
 import { PolicyEditorProps } from "./types";
 
-const DEFAULT_PATTERN_PLACEHOLDER = "rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b";
+const DEFAULT_PATTERN_PLACEHOLDER =
+  "rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b";
 
 const CommandBlockingEditor = (props: PolicyEditorProps) => (
   <TextAreaPolicyEditor {...props} placeholder={DEFAULT_PATTERN_PLACEHOLDER} />
