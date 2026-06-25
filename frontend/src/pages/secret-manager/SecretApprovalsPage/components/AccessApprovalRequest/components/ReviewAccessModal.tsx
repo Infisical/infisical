@@ -596,6 +596,11 @@ export const ReviewAccessRequestModal = ({
     return null;
   };
 
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
+
   const renderApproverMembers = (approver: ApproverChain) => (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       {approver.user.map((el) => {
@@ -603,10 +608,47 @@ export const ReviewAccessRequestModal = ({
 
         if (!member) {
           const policyApprover = request.policy.approvers.find((a) => a.userId === el.id);
+          const approverName = policyApprover?.email || policyApprover?.username || el.id;
+
+          // We can only assert an approver was removed when we can read project members.
+          // A viewer without member:read (e.g. a NoAccess requester viewing their own
+          // request) gets an empty members list, so absence here means "not visible to me",
+          // not "removed". Fall back to the identity carried on the request and surface only
+          // org-level status, which the request payload does include.
+          if (!canReadMembers) {
+            if (policyApprover && !policyApprover.isOrgMembershipActive) {
+              return (
+                <span className="flex items-center gap-1.5 opacity-40" key={el.id}>
+                  <UserIcon className="size-3.5 shrink-0 text-muted" />
+                  {approverName}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="neutral">
+                        <BanIcon />
+                        Inactive
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      This user has been deactivated and no longer has an active organization
+                      membership.
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              );
+            }
+
+            return (
+              <span className="flex items-center gap-1.5" key={el.id}>
+                <UserIcon className="size-3.5 shrink-0 text-muted" />
+                {approverName}
+              </span>
+            );
+          }
+
           return (
             <span className="flex items-center gap-1.5 opacity-40" key={el.id}>
               <UserIcon className="size-3.5 shrink-0 text-muted" />
-              {policyApprover?.email || policyApprover?.username || el.id}
+              {approverName}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge variant="neutral">
