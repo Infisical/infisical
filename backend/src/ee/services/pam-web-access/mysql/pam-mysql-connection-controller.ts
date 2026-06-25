@@ -102,6 +102,18 @@ export const createMysqlConnectionController = async (params: ControllerParams):
     }
   };
 
+  // max_execution_time only covers SELECTs; this guards DML/DDL with KILL QUERY on a timer
+  const queryWithTimeout = async <T>(fn: () => Promise<T>, timeoutMs = 30_000): Promise<T> => {
+    const timer = setTimeout(() => {
+      void cancelRunningQuery();
+    }, timeoutMs);
+    try {
+      return await fn();
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   let processingPromise: Promise<void> = Promise.resolve();
 
   const handleMessage = (message: TTabScopedMessage) => {
@@ -179,7 +191,9 @@ export const createMysqlConnectionController = async (params: ControllerParams):
               // eslint-disable-next-line no-restricted-syntax
               for (const stmtSql of stmtTexts) {
                 // eslint-disable-next-line no-await-in-loop
-                const [rawRows, rawFields] = await conn.query<mysql.RowDataPacket[] | mysql.ResultSetHeader>(stmtSql);
+                const [rawRows, rawFields] = await queryWithTimeout(() =>
+                  conn.query<mysql.RowDataPacket[] | mysql.ResultSetHeader>(stmtSql)
+                );
 
                 const cmd = extractCommand(stmtSql);
                 if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
