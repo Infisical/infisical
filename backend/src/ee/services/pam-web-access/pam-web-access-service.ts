@@ -377,7 +377,7 @@ export const pamWebAccessServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-      const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+      const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);

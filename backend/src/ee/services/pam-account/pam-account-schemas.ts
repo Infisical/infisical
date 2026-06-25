@@ -1,9 +1,16 @@
 /* eslint-disable no-underscore-dangle */
+import dns from "dns";
+import ConnectionString from "mongodb-connection-string-url";
 import RE2 from "re2";
+import { promisify } from "util";
 import { z } from "zod";
+
+import { BadRequestError } from "@app/lib/errors";
 
 import { PamAccountType } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
+
+const resolveSrv = promisify(dns.resolveSrv);
 
 enum PamFieldWidget {
   Text = "text",
@@ -84,6 +91,199 @@ export const ACCOUNT_TYPE_CONFIGS = {
     sanitizedCredentials: z.object({ username: z.string().optional() }),
     ui: {
       port: { defaultValue: 3306 },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.MsSQL]: {
+    name: "Microsoft SQL Server",
+    icon: "MsSql.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      database: z.string().trim().min(1).max(255),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.discriminatedUnion("authMethod", [
+      z.object({
+        authMethod: z.literal("sql-login"),
+        username: z.string().trim().min(1).max(63),
+        password: z
+          .string()
+          .trim()
+          .max(256)
+          .transform((v) => v || undefined)
+          .optional()
+      }),
+      z.object({
+        authMethod: z.literal("ntlm"),
+        username: z.string().trim().min(1).max(63),
+        password: z
+          .string()
+          .trim()
+          .max(256)
+          .transform((v) => v || undefined)
+          .optional(),
+        domain: z.string().trim().min(1).max(255)
+      }),
+      z.object({
+        authMethod: z.literal("kerberos"),
+        username: z.string().trim().min(1).max(63),
+        password: z
+          .string()
+          .trim()
+          .max(256)
+          .transform((v) => v || undefined)
+          .optional(),
+        realm: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .regex(new RE2(/^[A-Za-z0-9._-]+$/))
+          .transform((v) => v.toUpperCase()),
+        kdcAddress: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(new RE2(/^[A-Za-z0-9._:-]*$/))
+          .transform((v) => v || undefined)
+          .optional(),
+        spn: z
+          .string()
+          .trim()
+          .min(1)
+          .max(500)
+          .regex(new RE2(/^[A-Za-z0-9._:/-]+$/))
+      })
+    ]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string().optional(),
+      username: z.string().optional(),
+      domain: z.string().optional(),
+      realm: z.string().optional(),
+      kdcAddress: z.string().optional(),
+      spn: z.string().optional()
+    }),
+    ui: {
+      port: { defaultValue: 1433 },
+      database: { defaultValue: "master" },
+      authMethod: {
+        label: "Auth Method",
+        defaultValue: "sql-login",
+        options: [
+          { label: "SQL Server Authentication", value: "sql-login" },
+          { label: "Windows Authentication (NTLM)", value: "ntlm" },
+          { label: "Windows Authentication (Kerberos)", value: "kerberos" }
+        ]
+      },
+      domain: { label: "Domain" },
+      realm: { label: "Realm" },
+      kdcAddress: { label: "KDC Address" },
+      spn: { label: "SPN" },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.MongoDB]: {
+    name: "MongoDB",
+    icon: "MongoDB.png",
+    connectionDetails: z.object({
+      connectionString: z
+        .string()
+        .trim()
+        .min(1)
+        .max(1024)
+        .transform((val, ctx) => {
+          let cs: ConnectionString;
+          try {
+            cs = new ConnectionString(val);
+          } catch {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
+            });
+            return z.NEVER;
+          }
+
+          if (cs.username || cs.password) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                "Credentials should not be included in the connection string. Use the Username and Password fields instead"
+            });
+            return z.NEVER;
+          }
+
+          if (cs.pathname && cs.pathname !== "/") {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Database should not be included in the connection string. Use the Database field instead"
+            });
+            return z.NEVER;
+          }
+
+          return cs.toString();
+        }),
+      database: z
+        .string()
+        .trim()
+        .min(1)
+        .max(64)
+        .refine((val) => new RE2("^[a-zA-Z0-9_-]+$").test(val), {
+          message: "Database name can only contain letters, numbers, underscores, and hyphens"
+        }),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z
+        .string()
+        .trim()
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string().optional() }),
+    ui: {
+      connectionString: {
+        label: "Connection String",
+        widget: PamFieldWidget.Textarea,
+        tooltip: "Supports mongodb:// and mongodb+srv:// URIs. Do not include credentials or database in the URI."
+      },
+      database: { defaultValue: "admin" },
       sslEnabled: { label: "SSL Enabled" },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
@@ -199,6 +399,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
           secret?: boolean;
           defaultValue?: string | number | boolean;
           showWhen?: { field: string; equals: string | boolean };
+          tooltip?: string;
+          options?: { label: string; value: string }[];
         }
       >;
       internalMetadata?: z.ZodTypeAny;
@@ -236,16 +438,17 @@ export const sanitizeCredentials = (accountType: PamAccountType, data: unknown) 
 
 export type TGatewayTarget = { host: string; port?: number };
 
-export const extractGatewayTarget = (
+export const extractGatewayTarget = async (
   accountType: PamAccountType,
   rawConnectionDetails: Record<string, unknown>
-): TGatewayTarget => {
+): Promise<TGatewayTarget> => {
   const validated = validateConnectionDetails(accountType, rawConnectionDetails);
 
   switch (accountType) {
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
+    case PamAccountType.MsSQL:
       return {
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
@@ -254,6 +457,31 @@ export const extractGatewayTarget = (
       const { url } = validated as { url: string };
       const parsed = new URL(url);
       return { host: parsed.hostname };
+    }
+    case PamAccountType.MongoDB: {
+      const { connectionString } = validated as { connectionString: string };
+      const cs = new ConnectionString(connectionString);
+      const [firstHost] = cs.hosts;
+
+      if (cs.isSRV) {
+        const records = await resolveSrv(`_mongodb._tcp.${firstHost}`);
+        if (records.length === 0) {
+          throw new BadRequestError({
+            message: `Unable to resolve SRV record for MongoDB host "${firstHost}". Ensure the host is a valid SRV domain.`
+          });
+        }
+        const record = records[Math.floor(Math.random() * records.length)];
+        return { host: record.name, port: record.port };
+      }
+
+      const colonIdx = firstHost.lastIndexOf(":");
+      if (colonIdx !== -1) {
+        return {
+          host: firstHost.slice(0, colonIdx),
+          port: parseInt(firstHost.slice(colonIdx + 1), 10)
+        };
+      }
+      return { host: firstHost, port: 27017 };
     }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
@@ -315,7 +543,10 @@ export const PamFieldDescriptorSchema = z.object({
   defaultValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
 
   // Only render when the referenced field equals this value
-  showWhen: z.object({ field: z.string(), equals: z.union([z.string(), z.boolean()]) }).optional()
+  showWhen: z.object({ field: z.string(), equals: z.union([z.string(), z.boolean()]) }).optional(),
+
+  // Info tooltip shown next to the label
+  tooltip: z.string().optional()
 });
 
 type PamFieldDescriptor = z.infer<typeof PamFieldDescriptorSchema>;
@@ -338,6 +569,8 @@ type TFieldUiHint = {
   secret?: boolean;
   defaultValue?: string | number | boolean;
   showWhen?: PamFieldDescriptor["showWhen"];
+  tooltip?: string;
+  options?: { label: string; value: string }[];
 };
 
 const humanizeKey = (key: string) => {
@@ -400,7 +633,8 @@ const describeField = (
       ? { options: enumValues.map((v) => ({ label: humanizeKey(v), value: v })) }
       : {}),
     ...(hint.defaultValue !== undefined ? { defaultValue: hint.defaultValue } : {}),
-    ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {})
+    ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {}),
+    ...(hint.tooltip ? { tooltip: hint.tooltip } : {})
   };
 };
 
@@ -438,7 +672,7 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
         widget: PamFieldWidget.Select,
         required: true,
         secret: false,
-        options: discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
+        options: ui[discriminator]?.options ?? discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
       }
     ];
 
