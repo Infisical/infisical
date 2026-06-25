@@ -15,6 +15,7 @@ import {
 import type { ColumnInfo } from "../data-explorer-types";
 import type { FilterCondition, FilterOperator, SqlDialect } from "../sql-generation";
 
+// TODO: split by dialect when we add more DB engines
 function getFilterPlaceholder(columnType: string, operator: FilterOperator): string {
   switch (operator) {
     case "LIKE":

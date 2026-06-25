@@ -3,12 +3,12 @@
 
 export type SqlDialect = "postgres" | "mysql";
 
-export function quoteIdent(name: string, dialect: SqlDialect = "postgres"): string {
+function quoteIdent(name: string, dialect: SqlDialect = "postgres"): string {
   if (dialect === "mysql") return `\`${name.replace(/`/g, "``")}\``;
   return `"${name.replace(/"/g, '""')}"`;
 }
 
-export function quoteLiteral(value: unknown, dialect: SqlDialect = "postgres"): string {
+function quoteLiteral(value: unknown, dialect: SqlDialect = "postgres"): string {
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return "NULL";
