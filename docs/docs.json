@@ -1029,7 +1029,6 @@
                   "cli/commands/run",
                   "cli/commands/secrets",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/ssh",
                   "cli/commands/pam",
                   "cli/commands/gateway",
                   "cli/commands/kmip",
