@@ -32,7 +32,7 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
+import { extractCertificateFields, getCertificateCredentials } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -2837,6 +2837,34 @@ export const certificateV3ServiceFactory = ({
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
     }
 
+    let privateKeyForResponse: string | undefined;
+    if (!internal) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: renewalResult.originalCert.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      const canReadPrivateKey = permission.can(
+        ProjectPermissionCertificateActions.ReadPrivateKey,
+        ProjectPermissionSub.Certificates
+      );
+
+      if (canReadPrivateKey) {
+        const { certPrivateKey } = await getCertificateCredentials({
+          certId: renewalResult.newCert.id,
+          projectId: renewalResult.originalCert.projectId,
+          certificateSecretDAL,
+          projectDAL,
+          kmsService
+        });
+        privateKeyForResponse = certPrivateKey;
+      }
+    }
+
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
         certificateId: renewalResult.newCert.id,
@@ -2853,6 +2881,7 @@ export const certificateV3ServiceFactory = ({
       certificate: renewalResult.certificate,
       issuingCaCertificate: renewalResult.issuingCaCertificate,
       certificateChain: finalCertificateChain,
+      privateKey: privateKeyForResponse,
       serialNumber: renewalResult.serialNumber,
       certificateId: renewalResult.newCert.id,
       certificateRequestId,
