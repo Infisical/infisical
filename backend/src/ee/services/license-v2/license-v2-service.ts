@@ -45,6 +45,7 @@ type TLicenseV2ServiceFactoryDep = {
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
+    | "invalidateEntitlements"
     | "getCatalog"
     | "getSubscription"
     | "getCloudPlan"
@@ -546,6 +547,7 @@ export const licenseV2ServiceFactory = ({
     await ensureManageBilling(orgId, actor);
     const items = await resolveAddItems(productId, cadence);
     const result = await licenseClient.addSubscriptionItems(orgId, { items });
+    await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 
@@ -554,18 +556,21 @@ export const licenseV2ServiceFactory = ({
   const removeProduct = async ({ orgId, actor, productId, prorationDate }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.removeSubscriptionItem(orgId, productId, prorationDate);
+    await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 
   const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.cancelSubscription(orgId);
+    await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 
   const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.resumeSubscription(orgId);
+    await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 

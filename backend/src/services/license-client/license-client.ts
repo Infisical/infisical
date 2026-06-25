@@ -19,7 +19,7 @@ type TLicenseClientFactoryDep = {
     TEnvConfig,
     "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY" | "INTERNAL_REGION"
   >;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
@@ -66,6 +66,13 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
       return null;
     }
     return resolver.getEntitlements(org);
+  };
+
+  const invalidateEntitlements = async (orgId: string) => {
+    if (!resolver) {
+      return;
+    }
+    await resolver.invalidateEntitlements(orgId);
   };
 
   const getCatalog = async () => {
@@ -148,6 +155,7 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
   return {
     ...featureReaderFactory({ getEntitlements }),
     getEntitlements,
+    invalidateEntitlements,
     getCatalog,
     getSubscription,
     getCloudPlan,
