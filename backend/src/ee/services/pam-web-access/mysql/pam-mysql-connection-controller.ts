@@ -22,8 +22,7 @@ const IMPLICIT_COMMIT_COMMANDS = new Set([
   "RENAME",
   "GRANT",
   "REVOKE",
-  "LOCK",
-  "UNLOCK"
+  "LOCK"
 ]);
 
 export const createMysqlConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
@@ -36,6 +35,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
     database: database || undefined,
     password: "",
     connectTimeout: 30_000,
+    multipleStatements: false,
     typeCast: (field, next) => {
       if (field.type === "JSON") {
         return field.string();
