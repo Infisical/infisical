@@ -87,7 +87,7 @@ export const expandSecretReferencesFactory = ({
   canExpandValue,
   userId
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
+  const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
   const fetchSecret = async (
@@ -99,7 +99,7 @@ export const expandSecretReferencesFactory = ({
 
     if (secretCache?.[cacheKey]) {
       const cachedSecret = secretCache[cacheKey][secretKey];
-      if (cachedSecret) return { ...cachedSecret, exists: true };
+      if (cachedSecret) return { ...cachedSecret };
       return { value: "", tags: [], exists: false };
     }
 
@@ -110,26 +110,30 @@ export const expandSecretReferencesFactory = ({
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
 
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
-        // When userId is set, personal overrides (userId !== null) should take precedence
-        // over shared secrets for the same key. We skip overwriting if a personal override
-        // is already stored and the current secret is a shared one.
-        if (userId && prev[secret.key] && !secret.userId) {
-          return prev;
-        }
+      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
+        (prev, secret) => {
+          // When userId is set, personal overrides (userId !== null) should take precedence
+          // over shared secrets for the same key. We skip overwriting if a personal override
+          // is already stored and the current secret is a shared one.
+          if (userId && prev[secret.key] && !secret.userId) {
+            return prev;
+          }
 
-        // eslint-disable-next-line no-param-reassign
-        prev[secret.key] = {
-          value: decryptSecret(secret.encryptedValue) || "",
-          tags: secret.tags?.map((el) => el.slug)
-        };
-        return prev;
-      }, {});
+          // eslint-disable-next-line no-param-reassign
+          prev[secret.key] = {
+            value: decryptSecret(secret.encryptedValue) || "",
+            tags: secret.tags?.map((el) => el.slug),
+            exists: true
+          };
+          return prev;
+        },
+        {}
+      );
 
       secretCache[cacheKey] = decryptedSecret;
 
       const fetchedSecret = secretCache[cacheKey][secretKey];
-      if (fetchedSecret) return { ...fetchedSecret, exists: true };
+      if (fetchedSecret) return { ...fetchedSecret };
       return { value: "", tags: [], exists: false };
     } catch (error) {
       secretCache[cacheKey] = {};
