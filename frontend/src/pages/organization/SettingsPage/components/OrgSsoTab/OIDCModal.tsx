@@ -65,7 +65,9 @@ const schema = z
     clientId: z.string().min(1, "Client ID is required"),
     clientSecret: z.string().min(1, "Client Secret is required"),
     allowedEmailDomains: z.string().optional(),
-    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional()
+    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional(),
+    claimEmailPath: z.string().optional(),
+    claimNamePath: z.string().optional()
   })
   .superRefine((data, ctx) => {
     if (data.configurationType === ConfigurationType.CUSTOM) {
@@ -171,6 +173,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       setValue("allowedEmailDomains", data.allowedEmailDomains);
       setValue("configurationType", data.configurationType);
       setValue("jwtSignatureAlgorithm", data.jwtSignatureAlgorithm);
+      setValue("claimEmailPath", data.claimEmailPath ?? "");
+      setValue("claimNamePath", data.claimNamePath ?? "");
     }
   }, [data]);
 
@@ -185,7 +189,9 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     discoveryURL,
     clientId,
     clientSecret,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    claimEmailPath,
+    claimNamePath
   }: OIDCFormData) => {
     if (!currentOrg) return;
 
@@ -202,7 +208,9 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       clientSecret,
       isActive: true,
       organizationId: currentOrg.id,
-      jwtSignatureAlgorithm
+      jwtSignatureAlgorithm,
+      claimEmailPath: claimEmailPath || null,
+      claimNamePath: claimNamePath || null
     };
 
     if (!data) {
@@ -429,6 +437,59 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                       />
                       <FieldDescription>
                         Defaults to any. Supports wildcards (e.g. *.example.com).
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="claimEmailPath"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel
+                        htmlFor="oidc-claim-email-path"
+                        className="inline-flex flex-wrap items-baseline gap-1.5"
+                      >
+                        Email Claim Path (optional)
+                      </FieldLabel>
+                      <Input
+                        id="oidc-claim-email-path"
+                        placeholder="email"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldDescription>
+                        The OIDC token claim to use as the user&apos;s email identifier. Defaults to
+                        &quot;email&quot;. Use &quot;sub&quot; or &quot;upn&quot; for environments
+                        where the email claim is not the desired identifier.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="claimNamePath"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel
+                        htmlFor="oidc-claim-name-path"
+                        className="inline-flex flex-wrap items-baseline gap-1.5"
+                      >
+                        Name Claim Path (optional)
+                      </FieldLabel>
+                      <Input
+                        id="oidc-claim-name-path"
+                        placeholder="given_name"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldDescription>
+                        The OIDC token claim to use as the user&apos;s display name. Defaults to
+                        &quot;given_name&quot; or &quot;name&quot;.
                       </FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </Field>

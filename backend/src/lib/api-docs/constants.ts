@@ -3624,7 +3624,11 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    claimEmailPath:
+      "The claim name in the OIDC token to use as the user's email identifier. Defaults to 'email' if not specified. Use 'sub' or 'upn' for environments where the email claim is not the desired identifier.",
+    claimNamePath:
+      "The claim name in the OIDC token to use as the user's display name. Defaults to 'given_name' or 'name' if not specified."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the OIDC config for.",
@@ -3644,7 +3648,11 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    claimEmailPath:
+      "The claim name in the OIDC token to use as the user's email identifier. Defaults to 'email' if not specified. Use 'sub' or 'upn' for environments where the email claim is not the desired identifier.",
+    claimNamePath:
+      "The claim name in the OIDC token to use as the user's display name. Defaults to 'given_name' or 'name' if not specified."
   }
 };
 
