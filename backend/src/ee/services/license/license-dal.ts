@@ -20,6 +20,7 @@ export const licenseDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .where(`${TableName.Users}.isGhost`, false)
         .where(`${TableName.Users}.isAccepted`, true)
+        .where(`${TableName.Membership}.isActive`, true)
         .whereNull(`${TableName.Organization}.rootOrgId`)
         .count();
       return Number(doc?.[0]?.count ?? 0);
@@ -55,6 +56,7 @@ export const licenseDALFactory = (db: TDbClient) => {
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .where({ scope: AccessScope.Organization })
         .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.isActive`, true)
         .andWhere((bd) => {
           if (orgId) {
             void bd.where(`${TableName.Membership}.scopeOrgId`, orgId);
