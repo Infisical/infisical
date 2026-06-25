@@ -90,6 +90,25 @@ const BillingV2OverviewSchema = z.object({
   entitlements: z.record(BillingV2EntitlementSchema)
 });
 
+const BillingV2PreviewLineSchema = z.object({
+  description: z.string(),
+  amount: z.number(),
+  proration: z.boolean()
+});
+
+const BillingV2PreviewSchema = z.object({
+  currency: z.string(),
+  prorationAmount: z.number(),
+  nextInvoiceTotal: z.number(),
+  nextRecurringTotal: z.number(),
+  prorationDate: z.number(),
+  lines: BillingV2PreviewLineSchema.array()
+});
+
+// Subscription mutations mirror the checkout result: the change applies in place and the affected
+// subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
+const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
+
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
   // Every route is gated on LICENSE_SERVER_V2_MODE="on"; the billing surface is invisible until full v2 cutover.
   server.addHook("onRequest", async () => {
@@ -226,6 +245,130 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         returnPath: req.body.returnPath
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/subscription/preview",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z
+        .object({
+          addProductId: z.string().trim().optional(),
+          cadence: z.enum(["monthly", "annual"]).optional(),
+          removeProductId: z.string().trim().optional()
+        })
+        .refine((b) => Boolean(b.addProductId) || Boolean(b.removeProductId), {
+          message: "provide a product to add or remove"
+        }),
+      response: {
+        200: z.object({ preview: BillingV2PreviewSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.previewChange({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        addProductId: req.body.addProductId,
+        cadence: req.body.cadence,
+        removeProductId: req.body.removeProductId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/subscription/items",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z.object({
+        productId: z.string().trim(),
+        cadence: z.enum(["monthly", "annual"]).optional()
+      }),
+      response: {
+        200: BillingV2MutationResultSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.addProduct({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        productId: req.body.productId,
+        cadence: req.body.cadence
+      });
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:organizationId/billing/v2/subscription/items/:productId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim(), productId: z.string().trim() }),
+      response: {
+        200: BillingV2MutationResultSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.removeProduct({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        productId: req.params.productId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/subscription/cancel",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      response: {
+        200: BillingV2MutationResultSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.cancelSubscription({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission)
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/subscription/resume",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      response: {
+        200: BillingV2MutationResultSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.resumeSubscription({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission)
       });
     }
   });

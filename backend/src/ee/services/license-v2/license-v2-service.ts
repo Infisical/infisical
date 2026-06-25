@@ -10,6 +10,7 @@ import {
   TCatalogProduct,
   TCheckoutLineItem,
   TEntitlementOrg,
+  TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -23,12 +24,17 @@ import {
   BillingV2Entitlement,
   BillingV2Model,
   BillingV2Overview,
+  BillingV2Preview,
   BillingV2SubState,
   TAddBillingV2PaymentMethodDTO,
+  TAddBillingV2ProductDTO,
+  TBillingV2SubscriptionLifecycleDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
   TGetBillingV2CatalogDTO,
-  TGetBillingV2OverviewDTO
+  TGetBillingV2OverviewDTO,
+  TPreviewBillingV2ChangeDTO,
+  TRemoveBillingV2ProductDTO
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
@@ -39,12 +45,18 @@ type TLicenseV2ServiceFactoryDep = {
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
+    | "invalidateEntitlements"
     | "getCatalog"
     | "getSubscription"
     | "getCloudPlan"
     | "getBillingProfile"
     | "createCheckout"
     | "createPortal"
+    | "previewSubscriptionChange"
+    | "addSubscriptionItems"
+    | "removeSubscriptionItem"
+    | "cancelSubscription"
+    | "resumeSubscription"
   >;
 };
 
@@ -475,6 +487,93 @@ export const licenseV2ServiceFactory = ({
     return openPortal(orgId, returnPath);
   };
 
+  // Resolve a catalog product id + cadence into the license-server line items, shared by the
+  // preview and add paths so both price the same way checkout does.
+  const resolveAddItems = async (productId: string, cadence?: "monthly" | "annual"): Promise<TCheckoutLineItem[]> => {
+    const catalog = await licenseClient.getCatalog();
+    const product = catalog?.products.find((candidate) => candidate.id === productId);
+    if (!product) {
+      throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
+    }
+    const items = buildCheckoutItems(product, normalizeCadence(cadence));
+    if (!items) {
+      throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
+    }
+    return items;
+  };
+
+  // Preview the proration impact of adding or removing a product before it is committed, so the UI
+  // can show an explicit confirmation. Amounts come back as dollars (cents / 100) to match overview.
+  const previewChange = async ({
+    orgId,
+    actor,
+    addProductId,
+    cadence,
+    removeProductId
+  }: TPreviewBillingV2ChangeDTO): Promise<{ preview: BillingV2Preview }> => {
+    await ensureManageBilling(orgId, actor);
+    if (!addProductId && !removeProductId) {
+      throw new BadRequestError({ message: "Provide a product to add or remove" });
+    }
+
+    const payload: TSubscriptionPreviewPayload = {};
+    if (addProductId) {
+      payload.add = await resolveAddItems(addProductId, cadence);
+    }
+    if (removeProductId) {
+      payload.remove = [removeProductId];
+    }
+
+    const preview = await licenseClient.previewSubscriptionChange(orgId, payload);
+    return {
+      preview: {
+        currency: preview.currency,
+        prorationAmount: centsToDollars(preview.prorationAmount),
+        nextInvoiceTotal: centsToDollars(preview.nextInvoiceTotal),
+        nextRecurringTotal: centsToDollars(preview.nextRecurringTotal),
+        prorationDate: preview.prorationDate,
+        lines: preview.lines.map((line) => ({
+          description: line.description,
+          amount: centsToDollars(line.amount),
+          proration: line.proration
+        }))
+      }
+    };
+  };
+
+  // Add a product to an existing active subscription (clears any scheduled cancel server-side). The
+  // first-purchase / no-subscription path stays on checkoutSession, which opens Stripe Checkout.
+  const addProduct = async ({ orgId, actor, productId, cadence }: TAddBillingV2ProductDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const items = await resolveAddItems(productId, cadence);
+    const result = await licenseClient.addSubscriptionItems(orgId, { items });
+    await licenseClient.invalidateEntitlements(orgId);
+    return { subscriptionId: result.subscriptionId };
+  };
+
+  // Remove a single product from a multi-product subscription, the operation the Stripe Customer
+  // Portal cannot do. The license server prorates at commit time (Stripe default = now).
+  const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.removeSubscriptionItem(orgId, productId);
+    await licenseClient.invalidateEntitlements(orgId);
+    return { subscriptionId: result.subscriptionId };
+  };
+
+  const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.cancelSubscription(orgId);
+    await licenseClient.invalidateEntitlements(orgId);
+    return { subscriptionId: result.subscriptionId };
+  };
+
+  const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.resumeSubscription(orgId);
+    await licenseClient.invalidateEntitlements(orgId);
+    return { subscriptionId: result.subscriptionId };
+  };
+
   return {
     // Billing surface (portal, checkout, overview) goes live only at full v2 cutover, not during read-compare.
     isEnabled: () => envConfig.LICENSE_SERVER_V2_MODE === "on",
@@ -482,6 +581,11 @@ export const licenseV2ServiceFactory = ({
     getCatalog,
     portalSession,
     checkoutSession,
-    addPaymentMethod
+    addPaymentMethod,
+    previewChange,
+    addProduct,
+    removeProduct,
+    cancelSubscription,
+    resumeSubscription
   };
 };

@@ -7,7 +7,9 @@ import {
   cloudPlanResponseSchema,
   entitlementsResponseSchema,
   sessionResponseSchema,
+  subscriptionPreviewResponseSchema,
   subscriptionResponseSchema,
+  TAddSubscriptionItemsPayload,
   TBillingProfileResponse,
   TCatalogResponse,
   TCheckoutResult,
@@ -18,6 +20,8 @@ import {
   TEntitlementsResponse,
   TLicenseClientBackend,
   TSessionResponse,
+  TSubscriptionPreview,
+  TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "./license-client-types";
 
@@ -28,6 +32,10 @@ const CLOUD_PLAN_PATH = "/v1/cloud-plan";
 const BILLING_PROFILE_PATH = "/v1/billing/profile";
 const CHECKOUT_SESSION_PATH = "/v1/billing/checkout-session";
 const PORTAL_SESSION_PATH = "/v1/billing/portal-session";
+const SUBSCRIPTION_PREVIEW_PATH = "/v1/billing/subscription/preview";
+const SUBSCRIPTION_ITEMS_PATH = "/v1/billing/subscription/items";
+const SUBSCRIPTION_CANCEL_PATH = "/v1/billing/subscription/cancel";
+const SUBSCRIPTION_RESUME_PATH = "/v1/billing/subscription/resume";
 
 // Issuer/audience/subject match the license server's in-code constants (it validates iss/aud against
 // them). They are public claims, not per-deployment config, so they live here rather than in env.
@@ -188,5 +196,85 @@ export const licenseServerBackend = (
     }
     const body: unknown = await res.json();
     return sessionResponseSchema.parse(body);
+  },
+
+  previewSubscriptionChange: async (
+    orgId: string,
+    payload: TSubscriptionPreviewPayload
+  ): Promise<TSubscriptionPreview> => {
+    const url = new URL(SUBSCRIPTION_PREVIEW_PATH, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "manual"
+    });
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return subscriptionPreviewResponseSchema.parse(body);
+  },
+
+  addSubscriptionItems: async (orgId: string, payload: TAddSubscriptionItemsPayload): Promise<TCheckoutResult> => {
+    const url = new URL(SUBSCRIPTION_ITEMS_PATH, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "manual"
+    });
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return checkoutResultSchema.parse(body);
+  },
+
+  removeSubscriptionItem: async (orgId: string, productId: string): Promise<TCheckoutResult> => {
+    const url = new URL(`${SUBSCRIPTION_ITEMS_PATH}/${encodeURIComponent(productId)}`, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return checkoutResultSchema.parse(body);
+  },
+
+  cancelSubscription: async (orgId: string): Promise<TCheckoutResult> => {
+    const url = new URL(SUBSCRIPTION_CANCEL_PATH, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return checkoutResultSchema.parse(body);
+  },
+
+  resumeSubscription: async (orgId: string): Promise<TCheckoutResult> => {
+    const url = new URL(SUBSCRIPTION_RESUME_PATH, serverUrl);
+    url.searchParams.set("org_id", orgId);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    if (!res.ok) {
+      throw new Error(`license server responded with ${res.status}`);
+    }
+    const body: unknown = await res.json();
+    return checkoutResultSchema.parse(body);
   }
 });

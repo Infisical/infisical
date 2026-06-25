@@ -110,3 +110,46 @@ export type TAddBillingV2PaymentMethodDTO = {
   orgId: string;
   returnPath?: string;
 };
+
+export type BillingV2PreviewLine = {
+  description: string;
+  amount: number;
+  proration: boolean;
+};
+
+// prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
+// invoice (a removal). prorationDate is the timestamp the preview was computed at, for display only.
+export type BillingV2Preview = {
+  currency: string;
+  prorationAmount: number;
+  nextInvoiceTotal: number;
+  nextRecurringTotal: number;
+  prorationDate: number;
+  lines: BillingV2PreviewLine[];
+};
+
+export type BillingV2MutationResult = {
+  subscriptionId?: string;
+};
+
+export type TPreviewBillingV2ChangeDTO = {
+  orgId: string;
+  addProductId?: string;
+  cadence?: BillingV2Cadence;
+  removeProductId?: string;
+};
+
+export type TAddBillingV2ProductDTO = {
+  orgId: string;
+  productId: string;
+  cadence?: BillingV2Cadence;
+};
+
+export type TRemoveBillingV2ProductDTO = {
+  orgId: string;
+  productId: string;
+};
+
+export type TBillingV2LifecycleDTO = {
+  orgId: string;
+};

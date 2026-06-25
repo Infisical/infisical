@@ -6,10 +6,12 @@ import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
+  TAddSubscriptionItemsPayload,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
-  TLicenseClientBackend
+  TLicenseClientBackend,
+  TSubscriptionPreviewPayload
 } from "./license-client-types";
 
 type TLicenseClientFactoryDep = {
@@ -17,7 +19,7 @@ type TLicenseClientFactoryDep = {
     TEnvConfig,
     "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY" | "INTERNAL_REGION"
   >;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
@@ -66,6 +68,13 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return resolver.getEntitlements(org);
   };
 
+  const invalidateEntitlements = async (orgId: string) => {
+    if (!resolver) {
+      return;
+    }
+    await resolver.invalidateEntitlements(orgId);
+  };
+
   const getCatalog = async () => {
     if (!backend) {
       return null;
@@ -108,14 +117,55 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.createPortalSession(orgId, payload);
   };
 
+  const previewSubscriptionChange = async (orgId: string, payload: TSubscriptionPreviewPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.previewSubscriptionChange(orgId, payload);
+  };
+
+  const addSubscriptionItems = async (orgId: string, payload: TAddSubscriptionItemsPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.addSubscriptionItems(orgId, payload);
+  };
+
+  const removeSubscriptionItem = async (orgId: string, productId: string) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.removeSubscriptionItem(orgId, productId);
+  };
+
+  const cancelSubscription = async (orgId: string) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.cancelSubscription(orgId);
+  };
+
+  const resumeSubscription = async (orgId: string) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.resumeSubscription(orgId);
+  };
+
   return {
     ...featureReaderFactory({ getEntitlements }),
     getEntitlements,
+    invalidateEntitlements,
     getCatalog,
     getSubscription,
     getCloudPlan,
     getBillingProfile,
     createCheckout,
-    createPortal
+    createPortal,
+    previewSubscriptionChange,
+    addSubscriptionItems,
+    removeSubscriptionItem,
+    cancelSubscription,
+    resumeSubscription
   };
 };
