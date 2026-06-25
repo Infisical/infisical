@@ -258,6 +258,7 @@ const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
         await makeRequestWithRetry(() =>
           request.request({
             ...req,
+            method: "POST",
             url: `/services/${link.id}/deploys`,
             data: {}
           })
