@@ -190,6 +190,10 @@ infisical export --template=<path to template>
     export API_KEY='it'\''s a secret'
     ```
 
+    <Warning>
+      The POSIX single-quoting only escapes secret **values**. Secret **names** (keys) are emitted as-is and are not escaped, so `eval`/`source` is only safe when every secret name is a valid shell identifier (letters, digits, and underscores, not starting with a digit). Avoid running `eval`/`source` on this format if your secret names may contain shell metacharacters.
+    </Warning>
+
   </Accordion>
 
   <Accordion title="--secret-overriding">
