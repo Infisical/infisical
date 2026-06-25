@@ -46,7 +46,12 @@ export type DataExplorerServerMessage =
       detail?: string;
       hint?: string;
     }
-  | { type: "connection-opened"; id: string; connectionId: string; nativeConnectionId: number | null }
+  | {
+      type: "connection-opened";
+      id: string;
+      connectionId: string;
+      nativeConnectionId: number | null;
+    }
   | { type: "connection-open-failed"; id: string; error: string }
   | { type: "connection-closed"; connectionId: string; reason: string }
   | { type: "ready" }
