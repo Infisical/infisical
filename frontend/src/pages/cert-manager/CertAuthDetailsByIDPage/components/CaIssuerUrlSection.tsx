@@ -1,5 +1,4 @@
-import FileSaver from "file-saver";
-import { ClipboardListIcon, DownloadIcon, EllipsisIcon } from "lucide-react";
+import { ClipboardListIcon, EllipsisIcon } from "lucide-react";
 
 import {
   Card,
@@ -13,7 +12,7 @@ import {
   DropdownMenuTrigger,
   IconButton
 } from "@app/components/v3";
-import { CaType, useGetCa, useGetCaCert } from "@app/hooks/api";
+import { CaType, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 
 type Props = {
@@ -24,18 +23,11 @@ export const CaIssuerUrlSection = ({ caId }: Props) => {
   const { data } = useGetCa({ caId, type: CaType.INTERNAL });
   const ca = data as TInternalCertificateAuthority | undefined;
 
-  const { data: caCert } = useGetCaCert(ca?.configuration.activeCaCertId ? caId : "");
-
   if (!ca?.configuration.activeCaCertId) {
     return null;
   }
 
   const caIssuerUrl = `${window.origin}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${ca.configuration.activeCaCertId}/der`;
-
-  const downloadCertFile = (filename: string, content: string) => {
-    const blob = new Blob([content], { type: "application/x-pem-file" });
-    FileSaver.saveAs(blob, filename);
-  };
 
   return (
     <Card className="w-full">
@@ -66,17 +58,6 @@ export const CaIssuerUrlSection = ({ caId }: Props) => {
                   <ClipboardListIcon />
                   Copy CA URL
                 </DropdownMenuItem>
-                {caCert?.certificate && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      downloadCertFile("ca-certificate.pem", caCert.certificate);
-                    }}
-                  >
-                    <DownloadIcon />
-                    Download CA Certificate
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
