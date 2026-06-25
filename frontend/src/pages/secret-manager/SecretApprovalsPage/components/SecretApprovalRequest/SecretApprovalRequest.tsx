@@ -120,7 +120,7 @@ export const SecretApprovalRequest = () => {
   const isSecretApprovalScreen = Boolean(requestId);
 
   const handleGoBackSecretRequestDetail = () => {
-    navigate({ search: { requestId: "" } });
+    navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
     refetch();
   };
 
@@ -287,9 +287,12 @@ export const SecretApprovalRequest = () => {
               className="flex border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
               role="button"
               tabIndex={0}
-              onClick={() => navigate({ search: { requestId: secretApproval.id } })}
+              onClick={() =>
+                navigate({ search: (prev) => ({ ...prev, requestId: secretApproval.id }) })
+              }
               onKeyDown={(evt) => {
-                if (evt.key === "Enter") navigate({ search: { requestId: secretApproval.id } });
+                if (evt.key === "Enter")
+                  navigate({ search: (prev) => ({ ...prev, requestId: secretApproval.id }) });
               }}
             >
               <div className="flex flex-col">
