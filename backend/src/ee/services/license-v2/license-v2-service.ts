@@ -277,21 +277,54 @@ export const licenseV2ServiceFactory = ({
   const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
+    // Dimension nouns (the unit a limit counts, e.g. "certificate") live on the catalog, keyed by
+    // dimension. Only fetch it when a subscription item actually carries a limit to name.
+    const nounByDimension = new Map<string, string>();
+    const hasLimits = Boolean(subscription?.items.some((item) => Object.keys(item.limits).length > 0));
+    if (hasLimits) {
+      try {
+        const catalog = await licenseClient.getCatalog();
+        catalog?.products.forEach((product) => {
+          product.dimensions.forEach((dimension) => {
+            nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
+          });
+        });
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read catalog for entitlement units [orgId=${org.id}]`);
+      }
+    }
+
     if (subscription) {
       subscription.items.forEach((item) => {
-        const quantityValues = Object.values(item.quantities);
+        // Surface one dimension's used count, limit, and noun together so the rendered
+        // "{used} / {limit} {unit}" always describes the same thing. "Most constraining" = the
+        // highest utilization (closest to, or furthest past, its cap), i.e. the limit the customer
+        // is likeliest to hit. Each limit is paired with its OWN quantity; taking Math.max across all
+        // quantities could otherwise report a different dimension's count than the resolved unit.
         let used = 0;
-        if (quantityValues.length > 0) {
-          used = Math.max(...quantityValues);
-        }
-
-        const limitValues = Object.values(item.limits);
         let limit: number | null = null;
-        if (limitValues.length > 0) {
-          limit = Math.max(...limitValues);
+        let limitKey: string | null = null;
+        let highestUtilization = -1;
+        // Plain for-of (not forEach): assignments inside a closure don't refine the outer
+        // variable's type, so after a forEach TS still sees limitKey as null and the `limitKey ?`
+        // branch below collapses to `never`. A same-scope loop lets control-flow keep it string|null.
+        for (const [key, dimensionLimit] of Object.entries(item.limits)) {
+          const dimensionUsed = item.quantities[key] ?? 0;
+          // An unlimited (<= 0) cap can't be "hit"; only a positive cap yields a real ratio.
+          const utilization =
+            // eslint-disable-next-line no-nested-ternary
+            dimensionLimit > 0 ? dimensionUsed / dimensionLimit : dimensionUsed > 0 ? Infinity : 0;
+          if (limitKey === null || utilization > highestUtilization) {
+            highestUtilization = utilization;
+            used = dimensionUsed;
+            limit = dimensionLimit;
+            limitKey = key;
+          }
         }
 
-        entitlements[item.productId] = { entitled: true, used, limit };
+        const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
+
+        entitlements[item.productId] = { entitled: true, used, limit, unit };
       });
     }
 
@@ -386,7 +419,12 @@ export const licenseV2ServiceFactory = ({
       const profile = await licenseClient.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
-        billingDetails = profile.billingDetails;
+        // name/email/address/taxIds pass straight through (address keeps its nullable sub-fields;
+        // the UI drops blank lines). The ?? null just normalizes an absent address to null, and any
+        // extra license-server keys the spread carries are stripped by the response schema.
+        billingDetails = profile.billingDetails
+          ? { ...profile.billingDetails, address: profile.billingDetails.address ?? null }
+          : null;
         invoices = profile.invoices.map((invoice) => ({
           id: invoice.id,
           number: invoice.number,

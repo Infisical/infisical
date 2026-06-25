@@ -1,5 +1,4 @@
-import { faArrowRight, faCheck, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ArrowRight, Check, ExternalLink, ShoppingCart } from "lucide-react";
 
 import {
   Badge,
@@ -45,10 +44,10 @@ const proPriceParts = (prod: BillingV2CatalogProduct, cadence: BillingV2Cadence)
 
 const renderCompareCell = (value: string | boolean) => {
   if (value === true) {
-    return <FontAwesomeIcon icon={faCheck} className="text-success" />;
+    return <Check className="mx-auto size-3.5 text-success" />;
   }
   if (value === false) {
-    return <span className="text-mineshaft-500">—</span>;
+    return <span className="text-muted">—</span>;
   }
   return value;
 };
@@ -70,10 +69,10 @@ const EntitlementSummary = ({ entitlement }: EntitlementSummaryProps) => {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-mineshaft-300">Your plan</span>
+        <span className="text-xs font-medium text-foreground">Your Plan</span>
         {entitled ? <ActiveBadge /> : <Badge variant="neutral">Inactive</Badge>}
       </div>
-      <div className="text-xs text-mineshaft-300">{detail}</div>
+      <div className="text-xs text-accent">{detail}</div>
     </div>
   );
 };
@@ -98,50 +97,48 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
       <div className={`grid gap-3.5 ${hasEnterprise ? "sm:grid-cols-2" : "grid-cols-1"}`}>
         <div
           className={`flex flex-col gap-3.5 rounded-xl border p-[18px] ${
-            entitled ? "border-mineshaft-500 bg-mineshaft-700/40" : "border-org/40 bg-org/5"
+            entitled ? "border-success/40 bg-success/5" : "border-org/40 bg-org/5"
           }`}
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-[15px] font-semibold text-foreground">Pro</span>
             {entitled ? (
-              <Badge variant="outline">
-                <FontAwesomeIcon icon={faCheck} className="text-success" />
-                Current plan
+              <Badge variant="success">
+                <Check className="text-success" />
+                Current Plan
               </Badge>
             ) : (
-              <Badge variant="org">Self-serve</Badge>
+              <Badge variant="neutral">Self-Checkout</Badge>
             )}
           </div>
           {priceParts && (
             <div className="flex flex-wrap items-baseline gap-1.5">
               <span className="text-2xl font-semibold text-foreground">{priceParts.amount}</span>
-              <span className="text-xs text-mineshaft-400">{priceParts.unit}</span>
+              <span className="text-xs text-muted">{priceParts.unit}</span>
             </div>
           )}
-          {prod.pro?.proFeature && (
-            <div className="text-xs text-mineshaft-300">{prod.pro.proFeature}</div>
-          )}
+          {prod.pro?.proFeature && <div className="text-xs text-accent">{prod.pro.proFeature}</div>}
         </div>
 
         {hasEnterprise && prod.enterprise && (
           <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[15px] font-semibold text-foreground">Enterprise</span>
-              <Badge variant="info">Sales-led</Badge>
+              <Badge variant="neutral">Talk to Us</Badge>
             </div>
             <div className="flex items-baseline">
               <span className="text-2xl font-semibold text-foreground">Custom</span>
             </div>
-            <div className="text-xs text-mineshaft-300">{prod.enterprise.feature}</div>
+            <div className="text-xs text-accent">{prod.enterprise.feature}</div>
             {selfServe && (
               <Button
-                variant="info"
+                variant="org"
                 size="sm"
                 className="mt-auto self-start"
                 onClick={() => onContact(prod)}
               >
                 Contact sales
-                <FontAwesomeIcon icon={faArrowRight} />
+                <ArrowRight />
               </Button>
             )}
           </div>
@@ -150,21 +147,19 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
 
       {hasEnterprise && prod.compare && (
         <div>
-          <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
-            Compare plans
-          </div>
+          <div className="mb-3 text-xs font-semibold text-muted">Compare Plans</div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead aria-label="Feature" />
-                <TableHead className="text-center text-org">Pro</TableHead>
-                <TableHead className="text-center text-info">Enterprise</TableHead>
+                <TableHead className="text-center">Pro</TableHead>
+                <TableHead className="text-center">Enterprise</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {prod.compare.map((row) => (
                 <TableRow key={row.label}>
-                  <TableCell className="text-mineshaft-200">{row.label}</TableCell>
+                  <TableCell className="text-accent">{row.label}</TableCell>
                   <TableCell className="text-center">{renderCompareCell(row.pro)}</TableCell>
                   <TableCell className="text-center">{renderCompareCell(row.ent)}</TableCell>
                 </TableRow>
@@ -176,13 +171,13 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
 
       {!(hasEnterprise && prod.compare) && prod.includes && (
         <div>
-          <div className="mb-3 text-xs font-semibold tracking-wide text-mineshaft-400 uppercase">
+          <div className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
             What&apos;s included
           </div>
           <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">
             {prod.includes.map((f) => (
-              <div className="flex items-start gap-2 text-xs text-mineshaft-200" key={f}>
-                <FontAwesomeIcon icon={faCheck} className="mt-0.5 shrink-0 text-success" />
+              <div className="flex items-start gap-2 text-xs text-accent" key={f}>
+                <Check className="mt-0.5 size-3 shrink-0 text-success" />
                 {f}
               </div>
             ))}
@@ -226,20 +221,21 @@ export const ProductSheet = ({
     primaryCta = (
       <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
         Manage in Stripe
-        <FontAwesomeIcon icon={faUpRightFromSquare} />
+        <ExternalLink />
       </Button>
     );
   } else if (selfServe) {
     primaryCta = (
       <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
+        <ShoppingCart />
         Continue to Checkout
       </Button>
     );
   } else if (prod.enterprise) {
     primaryCta = (
-      <Button variant="info" onClick={() => onContact(prod)}>
+      <Button variant="org" onClick={() => onContact(prod)}>
         Contact sales
-        <FontAwesomeIcon icon={faArrowRight} />
+        <ArrowRight />
       </Button>
     );
   }
@@ -267,12 +263,11 @@ export const ProductSheet = ({
           }
         }}
       >
-        <SheetHeader className="flex-row items-start gap-3.5 border-b pr-12">
+        <SheetHeader className="flex-row items-center gap-3.5 border-b pr-12">
           <ProductIcon product={prod} size={40} />
           <div className="min-w-0 flex-1">
             <SheetTitle className="flex flex-wrap items-center gap-2 text-base">
               {prod.name}
-              {entitled && <ActiveBadge />}
               {prod.addon && <Badge variant="neutral">Add-on</Badge>}
             </SheetTitle>
             <SheetDescription className="mt-1">{prod.tagline || prod.desc}</SheetDescription>
@@ -288,11 +283,11 @@ export const ProductSheet = ({
           />
         </div>
 
-        <SheetFooter className="flex-row justify-end border-t">
+        <SheetFooter className="flex-row justify-start border-t">
+          {primaryCta}
           <Button variant="outline" onClick={onClose} isDisabled={redirecting}>
             Close
           </Button>
-          {primaryCta}
         </SheetFooter>
       </SheetContent>
     </Sheet>

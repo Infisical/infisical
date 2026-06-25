@@ -1,11 +1,11 @@
 import {
   FileKeyIcon,
+  KeyIcon,
   LockIcon,
   LucideIcon,
-  ScanSearchIcon,
+  RadarIcon,
   TerminalIcon,
-  UsersIcon,
-  VaultIcon
+  UsersIcon
 } from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
@@ -199,14 +199,14 @@ export const getProjectLottieIcon = (type: ProjectType) => {
 
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
   const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
-    [ProjectType.SecretManager]: VaultIcon,
+    [ProjectType.SecretManager]: KeyIcon,
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SSH]: TerminalIcon,
-    [ProjectType.SecretScanning]: ScanSearchIcon,
+    [ProjectType.SecretScanning]: RadarIcon,
     [ProjectType.PAM]: UsersIcon
   };
-  return iconConvert[type] || VaultIcon;
+  return iconConvert[type] || KeyIcon;
 };
 
 export type ProjectTileStyle = {

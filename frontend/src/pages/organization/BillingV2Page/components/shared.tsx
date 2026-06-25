@@ -1,29 +1,8 @@
-import {
-  faAward,
-  faBolt,
-  faBox,
-  faKey,
-  faLock,
-  faMagnifyingGlass,
-  faShieldHalved,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Box } from "lucide-react";
+import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
-import { Badge } from "@app/components/v3";
+import { Badge, Label } from "@app/components/v3";
 import { BillingV2CatalogProduct } from "@app/hooks/api";
-
-// Maps the catalog icon token (license-server presentation metadata) to a FontAwesome glyph.
-// Tokens mirror the license server's icon vocabulary; unknown tokens fall back to faBox.
-const ICON_BY_NAME: Record<string, IconDefinition> = {
-  lock: faLock,
-  shield: faShieldHalved,
-  award: faAward,
-  scan_line: faMagnifyingGlass,
-  zap: faBolt,
-  key: faKey,
-  box: faBox
-};
 
 type MeterTone = "ok" | "near" | "full";
 
@@ -32,32 +11,37 @@ type ProductIconProps = {
   size?: number;
 };
 
-// Tinted product icon tile. The tint is per-product brand metadata from the API, so it stays inline.
-export const ProductIcon = ({ product, size = 38 }: ProductIconProps) => {
-  const glyph = ICON_BY_NAME[product.icon] ?? faBox;
+// Shown while a product's icon chunk loads and for any token lucide doesn't recognize. Sized to half
+// the tile via CSS so it matches the resolved glyph at any tile size.
+const ProductIconFallback = () => <Box className="h-1/2 w-1/2" />;
+
+// Tinted product icon tile. Both the icon token and the tint are per-product presentation metadata
+// from the license-server catalog (the source of truth), so we render the glyph straight from the
+// token rather than mapping it to an app concept. Catalog tokens are snake_case while lucide icon
+// names are kebab-case, so we only normalize the separator before handing the name to lucide's
+// dynamic icon. Unknown or still-loading tokens fall back to a generic box glyph (the catalog's own
+// default is "box").
+export const ProductIcon = ({ product, size = 36 }: ProductIconProps) => {
   const { color } = product;
+  const glyphSize = Math.round(size * 0.5);
+  const iconName = product.icon.replace(/_/g, "-") as IconName;
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-lg border"
+      className="flex shrink-0 items-center justify-center rounded-md border transition-colors duration-200"
       style={{
         width: size,
         height: size,
-        background: `color-mix(in srgb, ${color} 14%, transparent)`,
+        background: `linear-gradient(to bottom right, color-mix(in srgb, ${color} 20%, transparent), color-mix(in srgb, ${color} 5%, transparent))`,
         borderColor: `color-mix(in srgb, ${color} 30%, transparent)`,
         color
       }}
     >
-      <FontAwesomeIcon icon={glyph} style={{ fontSize: Math.round(size * 0.45) }} />
+      <DynamicIcon name={iconName} size={glyphSize} fallback={ProductIconFallback} />
     </div>
   );
 };
 
-export const ActiveBadge = () => (
-  <Badge variant="success">
-    <span className="size-1.5 rounded-full bg-current" />
-    Active
-  </Badge>
-);
+export const ActiveBadge = () => <Badge variant="success">Active</Badge>;
 
 // A null limit is unlimited (no bar, no alarm).
 const meterTone = (used: number, limit: number | null): MeterTone => {
@@ -101,18 +85,18 @@ export const LimitMeter = ({ label, used, limit }: LimitMeterProps) => {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2.5">
-        <span className="text-xs text-mineshaft-300">{label}</span>
-        <span className={`text-xs tabular-nums ${COUNT_TONE[tone]}`}>
+        <Label>{label}</Label>
+        <span className={`text-sm tabular-nums ${COUNT_TONE[tone]}`}>
           {used.toLocaleString()}
           {limit === null ? (
-            <span className="text-mineshaft-400"> / Unlimited</span>
+            <span className="text-muted"> / Unlimited</span>
           ) : (
-            <span className="text-mineshaft-400"> / {limit.toLocaleString()}</span>
+            <span className="text-muted"> / {limit.toLocaleString()}</span>
           )}
         </span>
       </div>
       {limit !== null && limit > 0 && (
-        <div className="h-1.5 overflow-hidden rounded-full bg-mineshaft-600">
+        <div className="h-1.5 overflow-hidden rounded-full bg-border">
           <div
             className={`h-full rounded-full transition-all ${FILL_TONE[tone]}`}
             style={{ width: `${pct}%` }}
