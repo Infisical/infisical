@@ -32,8 +32,8 @@ export const CaIssuerUrlSection = ({ caId }: Props) => {
 
   const caIssuerUrl = `${window.origin}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${ca.configuration.activeCaCertId}/der`;
 
-  const downloadTxtFile = (filename: string, content: string) => {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const downloadCertFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: "application/x-pem-file" });
     FileSaver.saveAs(blob, filename);
   };
 
@@ -70,7 +70,7 @@ export const CaIssuerUrlSection = ({ caId }: Props) => {
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
-                      downloadTxtFile("ca-certificate.pem", caCert.certificate);
+                      downloadCertFile("ca-certificate.pem", caCert.certificate);
                     }}
                   >
                     <DownloadIcon />
