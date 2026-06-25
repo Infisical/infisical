@@ -131,6 +131,7 @@ export const telemetryDALFactory = (db: TDbClient) => {
       });
 
       // Count active gateways from both legacy (Gateway) and V2 (GatewayV2) tables.
+      // Legacy gateways heartbeat every ~3 minutes; use a 5-minute window to avoid undercounting.
       const legacyActiveResult = (
         await db(TableName.Gateway)
           .whereNotNull("heartbeat")
