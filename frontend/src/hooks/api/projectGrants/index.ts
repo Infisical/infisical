@@ -1,3 +1,3 @@
 export { useCreateProjectGrant, useDeleteProjectGrant } from "./mutations";
-export { useListProjectGrants } from "./queries";
-export type { TCreateProjectGrantDTO, TDeleteProjectGrantDTO, TProjectGrant } from "./types";
+export { useListProjectGrants, useListProjectGrantsReceived } from "./queries";
+export type { TCreateProjectGrantDTO, TDeleteProjectGrantDTO, TProjectGrant, TProjectGrantReceived } from "./types";

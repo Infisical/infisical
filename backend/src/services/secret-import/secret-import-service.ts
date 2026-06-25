@@ -16,7 +16,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -29,6 +29,7 @@ import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 import {
@@ -49,6 +50,7 @@ type TSecretImportServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
+  projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -62,6 +64,7 @@ export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceF
 export const secretImportServiceFactory = ({
   secretImportDAL,
   projectEnvDAL,
+  projectGrantDAL,
   permissionService,
   folderDAL,
   projectDAL,
@@ -98,11 +101,30 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
-    // check if user has permission to import from target path
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment: data.environment,
-      secretPath: data.path
-    });
+    const sourceProjectId = data.sourceProjectId ?? projectId;
+    const isCrossProjectImport = sourceProjectId !== projectId;
+
+    if (isCrossProjectImport) {
+      const importFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
+      if (!importFolder) {
+        throw new NotFoundError({
+          message: `Folder with path '${data.path}' in environment '${data.environment}' not found in source project`
+        });
+      }
+
+      const grant = await projectGrantDAL.findOne({ sourceFolderId: importFolder.id, targetProjectId: projectId });
+      if (!grant) {
+        throw new ForbiddenRequestError({
+          message: "No project grant found allowing this cross-project import"
+        });
+      }
+    } else {
+      // check if user has permission to import from target path
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: data.environment,
+        secretPath: data.path
+      });
+    }
 
     if (isReplication) {
       const plan = await licenseService.getPlan(actorOrgId);
@@ -121,18 +143,18 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
+    const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
     if (!importEnv) {
       throw new NotFoundError({
-        error: `Imported environment with slug '${data.environment}' in project with ID '${projectId}' not found`
+        error: `Imported environment with slug '${data.environment}' in project with ID '${sourceProjectId}' not found`
       });
     }
 
-    if (environment === data.environment && secretPath === data.path) {
+    if (!isCrossProjectImport && environment === data.environment && secretPath === data.path) {
       throw new BadRequestError({ message: "Cyclic import not allowed" });
     }
 
-    const sourceFolder = await folderDAL.findBySecretPath(projectId, data.environment, data.path);
+    const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
     if (sourceFolder) {
       const existingImport = await secretImportDAL.findOne({
         folderId: sourceFolder.id,
@@ -181,6 +203,7 @@ export const secretImportServiceFactory = ({
         actor
       });
     } else {
+      // TODO: check if I need to change anything here.
       await secretQueueService.syncSecrets({
         secretPath,
         orgId: actorOrgId,
@@ -791,7 +814,16 @@ export const secretImportServiceFactory = ({
             secretPath: expandSecretPath,
             secretName: expandSecretKey,
             secretTags: expandSecretTags
-          })
+          }),
+        projectId,
+        projectGrantDAL,
+        getProjectDecryptor: async (sourceProjectId: string) => {
+          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: sourceProjectId
+          });
+          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+        }
       });
 
       return importedSecrets;

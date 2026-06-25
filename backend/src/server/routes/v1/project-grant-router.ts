@@ -41,6 +41,39 @@ export const registerProjectGrantRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    method: "GET",
+    url: "/received",
+    config: { rateLimit: readLimit },
+    schema: {
+      querystring: z.object({
+        targetProjectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          grants: ProjectFolderGrantsSchema.extend({
+            folderName: z.string(),
+            environmentName: z.string(),
+            environmentSlug: z.string(),
+            sourceProjectName: z.string(),
+            secretCount: z.number()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const grants = await server.services.projectGrant.listGrantsForTargetProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        targetProjectId: req.query.targetProjectId
+      });
+      return { grants };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },

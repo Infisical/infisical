@@ -39,5 +39,35 @@ export const projectGrantDALFactory = (db: TDbClient) => {
     })[];
   };
 
-  return { ...orm, listBySourceProject };
+  const listByTargetProject = async (targetProjectId: string, tx?: Knex) => {
+    const rows = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
+      .where(`${TableName.ProjectFolderGrant}.targetProjectId`, targetProjectId)
+      .join(TableName.SecretFolder, `${TableName.ProjectFolderGrant}.sourceFolderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(
+        `${TableName.Project} as sourceProject`,
+        `${TableName.ProjectFolderGrant}.sourceProjectId`,
+        `sourceProject.id`
+      )
+      .select(
+        `${TableName.ProjectFolderGrant}.*`,
+        `${TableName.SecretFolder}.name as folderName`,
+        `${TableName.Environment}.name as environmentName`,
+        `${TableName.Environment}.slug as environmentSlug`,
+        `sourceProject.name as sourceProjectName`,
+        db.raw(
+          `(SELECT COUNT(*)::integer FROM "${TableName.SecretV2}" WHERE "folderId" = "${TableName.ProjectFolderGrant}"."sourceFolderId" AND "type" = 'shared') as "secretCount"`
+        )
+      );
+
+    return rows as unknown[] as (TProjectFolderGrants & {
+      folderName: string;
+      environmentName: string;
+      environmentSlug: string;
+      sourceProjectName: string;
+      secretCount: number;
+    })[];
+  };
+
+  return { ...orm, listBySourceProject, listByTargetProject };
 };
