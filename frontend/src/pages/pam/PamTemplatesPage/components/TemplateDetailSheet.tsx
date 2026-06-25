@@ -319,7 +319,7 @@ const SettingsTab = ({
 
           <PatternRuleEditor
             label="Session Log Masking"
-            description="Matching content in session recordings will be masked (one RE2 regex per line)."
+            description="Matching content in session recordings will be masked (one regex per line)."
             value={watch("sessionLogMaskingPatterns") ?? ""}
             onChange={(val) =>
               setValue("sessionLogMaskingPatterns", (val as string) ?? "", { shouldDirty: true })

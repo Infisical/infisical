@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { PamAccountType } from "./pam-enums";
@@ -27,6 +28,20 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
         return patterns.length <= maxPatterns && patterns.every((p) => p.length <= maxPatternLength);
       },
       { message: `Maximum ${maxPatterns} patterns, each up to ${maxPatternLength} characters` }
+    )
+    .refine(
+      (val) => {
+        const patterns = splitPatternString(val);
+        return patterns.every((p) => {
+          try {
+            new RE2(p);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+      },
+      { message: "One or more patterns are not valid regular expressions" }
     );
 
 type TPamPolicyDefinition = {
@@ -57,7 +72,7 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   },
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
-    description: "Matching commands will be rejected (one RE2 regex per line).",
+    description: "Matching commands will be rejected (one regex per line).",
     appliesTo: [PamAccountType.SSH],
     schema: patternsStringSchema()
   }

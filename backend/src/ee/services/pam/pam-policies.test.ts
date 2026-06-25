@@ -78,6 +78,11 @@ describe("validatePolicyValues", () => {
     const longPattern = "a".repeat(501);
     expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: longPattern }).ok).toBe(false);
   });
+
+  test("rejects invalid regex patterns", () => {
+    expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: "[unclosed" }).ok).toBe(false);
+    expect(validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.CommandBlocking]: "(unmatched" }).ok).toBe(false);
+  });
 });
 
 describe("resolveAccessControls", () => {
