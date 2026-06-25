@@ -6,7 +6,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -316,6 +316,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Account access requires JWT authentication" });
+      }
+
       const result = await server.services.pamSession.access({
         path: req.body.path,
         projectId: req.internalPamProjectId,
@@ -398,6 +402,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Web access requires JWT authentication" });
+      }
+
       const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
