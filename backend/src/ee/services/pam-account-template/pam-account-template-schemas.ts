@@ -32,4 +32,5 @@ export const PamTemplateSettingsSchema = z.object({
 });
 
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
+export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
 export type TPamPasswordConstraints = z.infer<typeof PamPasswordConstraintsSchema>;

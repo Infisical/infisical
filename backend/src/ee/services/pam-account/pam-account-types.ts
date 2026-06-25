@@ -1,4 +1,5 @@
 import { PamAccountType } from "../pam/pam-enums";
+import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
 
 export type TCreatePamAccountDTO = {
   projectId: string;
@@ -12,7 +13,7 @@ export type TCreatePamAccountDTO = {
   gatewayId?: string;
   gatewayPoolId?: string;
   recordingConnectionId?: string;
-  settingsOverrides?: { recordingS3Config?: { bucket: string; region: string; keyPrefix?: string } } | null;
+  settingsOverrides?: TPamAccountSettingsOverrides;
 };
 
 export type TUpdatePamAccountDTO = {
@@ -28,7 +29,7 @@ export type TUpdatePamAccountDTO = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   recordingConnectionId?: string | null;
-  settingsOverrides?: { recordingS3Config?: { bucket: string; region: string; keyPrefix?: string } } | null;
+  settingsOverrides?: TPamAccountSettingsOverrides;
 };
 
 export type TDeletePamAccountDTO = {
