@@ -170,6 +170,7 @@ export const useUpdateOrg = () => {
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
+      allowCrossProjectSecretSharing,
       secretShareBrandConfig
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
@@ -193,6 +194,7 @@ export const useUpdateOrg = () => {
         maxSharedSecretLifetime,
         maxSharedSecretViewLimit,
         blockDuplicateSecretSyncDestinations,
+        allowCrossProjectSecretSharing,
         secretShareBrandConfig
       });
     },
