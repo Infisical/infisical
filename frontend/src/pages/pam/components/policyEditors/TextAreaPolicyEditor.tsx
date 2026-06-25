@@ -6,8 +6,9 @@ export const TextAreaPolicyEditor = ({
   label,
   description,
   value,
-  onChange
-}: PolicyEditorProps) => {
+  onChange,
+  placeholder
+}: PolicyEditorProps & { placeholder?: string }) => {
   const text = typeof value === "string" ? value : "";
 
   return (
@@ -16,6 +17,7 @@ export const TextAreaPolicyEditor = ({
       <FieldContent>
         <TextArea
           rows={5}
+          placeholder={placeholder}
           value={text}
           onChange={(e) => {
             const val = e.target.value;

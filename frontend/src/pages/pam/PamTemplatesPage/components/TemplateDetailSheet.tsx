@@ -33,7 +33,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { formatDetailDate, PamDetailSheet } from "../../components/PamDetailSheet";
 import { PAM_TEMPLATE_TABS } from "../../components/pamResourceTabs";
 import { POLICY_EDITORS } from "../../components/policyEditors";
-import { PatternRuleEditor } from "../../components/policyEditors/PatternRuleEditor";
+import { TextAreaPolicyEditor } from "../../components/policyEditors/TextAreaPolicyEditor";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { RecordingConnectionPicker } from "../../PamAccountsPage/components/RecordingConnectionPicker";
@@ -317,9 +317,10 @@ const SettingsTab = ({
             </Field>
           )}
 
-          <PatternRuleEditor
+          <TextAreaPolicyEditor
             label="Session Log Masking"
             description="Matching content in session recordings will be masked (one regex per line)."
+            placeholder={"rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b"}
             value={watch("sessionLogMaskingPatterns") ?? ""}
             onChange={(val) =>
               setValue("sessionLogMaskingPatterns", (val as string) ?? "", { shouldDirty: true })
