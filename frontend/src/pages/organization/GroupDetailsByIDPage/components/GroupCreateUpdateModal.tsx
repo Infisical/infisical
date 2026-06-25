@@ -54,10 +54,11 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
       name: string;
       slug: string;
       role: string;
-      customRole: {
+      customRole?: {
         name: string;
         slug: string;
       };
+      customRoleSlug?: string | null;
     };
 
     if (!roles?.length) return;
@@ -66,7 +67,10 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
       reset({
         name: group.name,
         slug: group.slug,
-        role: group?.customRole ?? findOrgMembershipRole(roles, group.role)
+        role:
+          group?.customRole ??
+          (group.customRoleSlug ? roles.find((r) => r.slug === group.customRoleSlug) : undefined) ??
+          findOrgMembershipRole(roles, group.role)
       });
     } else {
       reset({
