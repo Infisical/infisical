@@ -14,8 +14,6 @@ import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 
 const MAX_ROWS = 1000;
 
-const IMPLICIT_COMMIT_COMMANDS = new Set(["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "GRANT", "REVOKE", "LOCK"]);
-
 export const createMysqlConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
@@ -51,6 +49,16 @@ export const createMysqlConnectionController = async (params: ControllerParams):
   let isInTransaction = false;
   let disposing = false;
 
+  const queryTransactionState = async () => {
+    try {
+      const [result] = await conn.query<mysql.ResultSetHeader>("DO 0");
+      // eslint-disable-next-line no-bitwise
+      isInTransaction = (result.serverStatus & 1) === 1;
+    } catch {
+      isInTransaction = false;
+    }
+  };
+
   const sendQueryError = async (id: string, err: unknown) => {
     const mysqlErr = err as { message?: string; sqlMessage?: string; code?: string };
 
@@ -60,13 +68,13 @@ export const createMysqlConnectionController = async (params: ControllerParams):
       // ROLLBACK fails if there was no active transaction
     }
 
-    isInTransaction = false;
+    await queryTransactionState();
 
     sendResponse({
       type: DataExplorerServerMessageType.Error,
       id,
       connectionId,
-      transactionOpen: false,
+      transactionOpen: isInTransaction,
       error: mysqlErr.sqlMessage ?? mysqlErr.message ?? "Query execution failed",
       detail: mysqlErr.code
     });
@@ -171,7 +179,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
             try {
               const startTime = performance.now();
 
-              const stmtTexts = splitMysqlStatements(message.sql);
+              const stmts = splitMysqlStatements(message.sql);
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];
@@ -179,32 +187,29 @@ export const createMysqlConnectionController = async (params: ControllerParams):
               let lastCommand = "";
               let lastIsTruncated = false;
 
-              // eslint-disable-next-line no-restricted-syntax
-              for (const stmtSql of stmtTexts) {
+              for (const stmtSql of stmts) {
                 // eslint-disable-next-line no-await-in-loop
-                const [rawRows, rawFields] = await queryWithTimeout(() =>
-                  conn.query<mysql.RowDataPacket[] | mysql.ResultSetHeader>(stmtSql)
-                );
+                const [result, fields] = await queryWithTimeout(() => conn.query(stmtSql));
 
-                const cmd = extractCommand(stmtSql);
-                if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
-                else if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
-                else if (IMPLICIT_COMMIT_COMMANDS.has(cmd)) isInTransaction = false;
-
-                if (Array.isArray(rawRows)) {
-                  lastIsTruncated = rawRows.length > MAX_ROWS;
-                  lastRows = lastIsTruncated ? rawRows.slice(0, MAX_ROWS) : rawRows;
-                  lastFields = rawFields.map((f) => ({ name: f.name }));
-                  lastRowCount = rawRows.length;
+                if (Array.isArray(result)) {
+                  const rows = result as mysql.RowDataPacket[];
+                  lastIsTruncated = rows.length > MAX_ROWS;
+                  lastRows = lastIsTruncated ? rows.slice(0, MAX_ROWS) : rows;
+                  lastFields = (fields ?? []).map((f) => ({ name: f.name }));
+                  lastRowCount = rows.length;
                   lastCommand = "SELECT";
                 } else {
-                  lastRowCount = (rawRows as unknown as mysql.ResultSetHeader).affectedRows;
-                  lastCommand = cmd;
+                  const header = result as mysql.ResultSetHeader;
+                  lastRowCount = header.affectedRows;
+                  lastCommand = extractCommand(stmtSql);
                   lastRows = [];
                   lastFields = [];
                   lastIsTruncated = false;
                 }
               }
+
+              // eslint-disable-next-line no-await-in-loop
+              await queryTransactionState();
 
               const safeRows = lastRows.map((row) => {
                 const out: Record<string, unknown> = {};
