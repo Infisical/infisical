@@ -39,11 +39,7 @@ export const RemoveProductModal = ({ orgId, product, onClose }: Props) => {
 
   const handleRemove = async () => {
     try {
-      await removeProduct.mutateAsync({
-        orgId,
-        productId: product.id,
-        prorationDate: preview.data?.prorationDate
-      });
+      await removeProduct.mutateAsync({ orgId, productId: product.id });
       createNotification({
         type: "success",
         text: `${product.name} will be removed. It may take a moment to update here.`
@@ -55,6 +51,10 @@ export const RemoveProductModal = ({ orgId, product, onClose }: Props) => {
   };
 
   const credit = preview.data ? Math.abs(preview.data.prorationAmount) : 0;
+
+  // Block while the credit preview is still in flight; a failed preview keeps the graceful
+  // fallback enabled because a removal only ever credits the customer.
+  const previewLoading = !preview.data && !preview.isError;
 
   return (
     <AlertDialog
@@ -104,7 +104,11 @@ export const RemoveProductModal = ({ orgId, product, onClose }: Props) => {
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel>Keep product</AlertDialogCancel>
-          <AlertDialogAction variant="danger" isDisabled={removeProduct.isPending} onClick={handleRemove}>
+          <AlertDialogAction
+            variant="danger"
+            isDisabled={removeProduct.isPending || previewLoading}
+            onClick={handleRemove}
+          >
             Remove {product.name}
           </AlertDialogAction>
         </AlertDialogFooter>

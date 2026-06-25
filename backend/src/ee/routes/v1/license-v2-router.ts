@@ -317,7 +317,6 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({ organizationId: z.string().trim(), productId: z.string().trim() }),
-      querystring: z.object({ prorationDate: z.coerce.number().optional() }),
       response: {
         200: BillingV2MutationResultSchema
       }
@@ -327,8 +326,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       return server.services.licenseV2.removeProduct({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
-        productId: req.params.productId,
-        prorationDate: req.query.prorationDate
+        productId: req.params.productId
       });
     }
   });

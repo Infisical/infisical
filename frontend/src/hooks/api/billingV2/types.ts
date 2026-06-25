@@ -118,7 +118,7 @@ export type BillingV2PreviewLine = {
 };
 
 // prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
-// invoice (a removal). prorationDate is echoed so the follow-up change reproduces the same numbers.
+// invoice (a removal). prorationDate is the timestamp the preview was computed at, for display only.
 export type BillingV2Preview = {
   currency: string;
   prorationAmount: number;
@@ -148,7 +148,6 @@ export type TAddBillingV2ProductDTO = {
 export type TRemoveBillingV2ProductDTO = {
   orgId: string;
   productId: string;
-  prorationDate?: number;
 };
 
 export type TBillingV2LifecycleDTO = {

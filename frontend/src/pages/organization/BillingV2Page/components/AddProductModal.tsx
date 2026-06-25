@@ -54,6 +54,10 @@ export const AddProductModal = ({ orgId, product, cadence, onClose }: Props) => 
 
   const dueToday = preview.data ? Math.max(preview.data.prorationAmount, 0) : 0;
 
+  // Only let the user commit a charge once the prorated cost has rendered; a still-loading or
+  // failed preview keeps the confirm disabled so nobody pays without seeing the amount.
+  const canConfirm = Boolean(preview.data);
+
   return (
     <AlertDialog
       open
@@ -103,7 +107,11 @@ export const AddProductModal = ({ orgId, product, cadence, onClose }: Props) => 
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="org" isDisabled={addProduct.isPending} onClick={handleAdd}>
+          <AlertDialogAction
+            variant="org"
+            isDisabled={addProduct.isPending || !canConfirm}
+            onClick={handleAdd}
+          >
             Add {product.name}
           </AlertDialogAction>
         </AlertDialogFooter>

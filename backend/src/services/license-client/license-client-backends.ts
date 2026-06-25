@@ -233,16 +233,9 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  removeSubscriptionItem: async (
-    orgId: string,
-    productId: string,
-    prorationDate?: number
-  ): Promise<TCheckoutResult> => {
+  removeSubscriptionItem: async (orgId: string, productId: string): Promise<TCheckoutResult> => {
     const url = new URL(`${SUBSCRIPTION_ITEMS_PATH}/${encodeURIComponent(productId)}`, serverUrl);
     url.searchParams.set("org_id", orgId);
-    if (prorationDate !== undefined) {
-      url.searchParams.set("prorationDate", String(prorationDate));
-    }
     const res = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },

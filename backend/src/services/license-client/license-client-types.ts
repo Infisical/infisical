@@ -121,7 +121,7 @@ export const checkoutResultSchema = z
 
 // Proration preview for an add/remove against an existing subscription. prorationAmount is signed:
 // positive is charged now (an add), negative is a credit toward the next invoice (a removal).
-// prorationDate is echoed so the follow-up change can reproduce the same numbers.
+// prorationDate is the timestamp the preview was computed at.
 const subscriptionPreviewLineSchema = z
   .object({
     description: z.string(),
@@ -242,7 +242,7 @@ export type TLicenseClientBackend = {
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
   addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
-  removeSubscriptionItem: (orgId: string, productId: string, prorationDate?: number) => Promise<TCheckoutResult>;
+  removeSubscriptionItem: (orgId: string, productId: string) => Promise<TCheckoutResult>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };

@@ -152,7 +152,6 @@ export type TRemoveBillingV2ProductDTO = {
   orgId: string;
   actor: OrgServiceActor;
   productId: string;
-  prorationDate?: number;
 };
 
 export type TBillingV2SubscriptionLifecycleDTO = {

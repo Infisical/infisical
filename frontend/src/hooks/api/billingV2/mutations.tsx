@@ -102,10 +102,9 @@ export const useAddBillingV2Product = () => {
 export const useRemoveBillingV2Product = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, productId, prorationDate }: TRemoveBillingV2ProductDTO) => {
-      const params = prorationDate === undefined ? "" : `?prorationDate=${prorationDate}`;
+    mutationFn: async ({ orgId, productId }: TRemoveBillingV2ProductDTO) => {
       const { data } = await apiRequest.delete<BillingV2MutationResult>(
-        `/api/v1/organizations/${orgId}/billing/v2/subscription/items/${encodeURIComponent(productId)}${params}`
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/items/${encodeURIComponent(productId)}`
       );
 
       return data;

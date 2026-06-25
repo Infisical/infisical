@@ -552,10 +552,10 @@ export const licenseV2ServiceFactory = ({
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer
-  // Portal cannot do. prorationDate pins the proration to the previewed value when provided.
-  const removeProduct = async ({ orgId, actor, productId, prorationDate }: TRemoveBillingV2ProductDTO) => {
+  // Portal cannot do. The license server prorates at commit time (Stripe default = now).
+  const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.removeSubscriptionItem(orgId, productId, prorationDate);
+    const result = await licenseClient.removeSubscriptionItem(orgId, productId);
     await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
   };
