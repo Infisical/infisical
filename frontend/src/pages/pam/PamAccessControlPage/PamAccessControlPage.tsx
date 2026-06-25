@@ -7,14 +7,17 @@ import { PageHeader } from "@app/components/v2";
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
+import { useListPamProductIdentities } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupsTab } from "./components/GroupsTab";
+import { IdentitiesTab } from "./components/IdentitiesTab";
 import { MembersTab } from "./components/MembersTab";
 
 export enum PamAccessControlTab {
   Members = "members",
-  Groups = "groups"
+  Groups = "groups",
+  Identities = "identities"
 }
 
 export const PamAccessControlPage = () => {
@@ -31,6 +34,7 @@ export const PamAccessControlPage = () => {
 
   const { data: members = [] } = useGetWorkspaceUsers(currentProject.id);
   const { data: groups = [] } = useListWorkspaceGroups(currentProject.id);
+  const { data: identities = [] } = useListPamProductIdentities();
 
   const updateTab = (tab: string) => {
     navigate({
@@ -61,12 +65,19 @@ export const PamAccessControlPage = () => {
             Groups
             <Badge variant="pam">{groups.length}</Badge>
           </TabsTrigger>
+          <TabsTrigger value={PamAccessControlTab.Identities}>
+            Identities
+            <Badge variant="pam">{identities.length}</Badge>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value={PamAccessControlTab.Members}>
           <MembersTab />
         </TabsContent>
         <TabsContent value={PamAccessControlTab.Groups}>
           <GroupsTab />
+        </TabsContent>
+        <TabsContent value={PamAccessControlTab.Identities}>
+          <IdentitiesTab />
         </TabsContent>
       </Tabs>
     </div>

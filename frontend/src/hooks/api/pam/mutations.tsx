@@ -5,9 +5,12 @@ import { apiRequest } from "@app/config/request";
 import { pamKeys } from "./queries";
 import {
   TAddAccountGroupMemberDTO,
+  TAddAccountIdentityMemberDTO,
   TAddAccountUserMemberDTO,
   TAddFolderGroupMemberDTO,
+  TAddFolderIdentityMemberDTO,
   TAddFolderUserMemberDTO,
+  TAddPamProductIdentityMemberDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
   TCreatePamFolderDTO,
@@ -18,16 +21,22 @@ import {
   TPamFolder,
   TPamSession,
   TRemoveAccountGroupMemberDTO,
+  TRemoveAccountIdentityMemberDTO,
   TRemoveAccountMemberDTO,
   TRemoveFolderGroupMemberDTO,
+  TRemoveFolderIdentityMemberDTO,
   TRemoveFolderMemberDTO,
+  TRemovePamProductIdentityMemberDTO,
   TUpdateAccountGroupMemberRoleDTO,
+  TUpdateAccountIdentityMemberRoleDTO,
   TUpdateAccountMemberRoleDTO,
   TUpdateFolderGroupMemberRoleDTO,
+  TUpdateFolderIdentityMemberRoleDTO,
   TUpdateFolderMemberRoleDTO,
   TUpdatePamAccountDTO,
   TUpdatePamAccountTemplateDTO,
-  TUpdatePamFolderDTO
+  TUpdatePamFolderDTO,
+  TUpdatePamProductIdentityMemberDTO
 } from "./types";
 
 // Folders
@@ -369,6 +378,147 @@ export const useRemoveFolderGroupMember = () => {
   return useMutation({
     mutationFn: async ({ folderId, groupId }: TRemoveFolderGroupMemberDTO) => {
       const { data } = await apiRequest.delete(`/api/v1/pam/folders/${folderId}/groups/${groupId}`);
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+    }
+  });
+};
+
+export const useAddPamProductIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ identityId, role }: TAddPamProductIdentityMemberDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/memberships/identities/${identityId}`,
+        { role }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+    }
+  });
+};
+
+export const useUpdatePamProductIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ identityId, role }: TUpdatePamProductIdentityMemberDTO) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/pam/memberships/identities/${identityId}`,
+        { role }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+    }
+  });
+};
+
+export const useRemovePamProductIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ identityId }: TRemovePamProductIdentityMemberDTO) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/pam/memberships/identities/${identityId}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+    }
+  });
+};
+
+export const useAddAccountIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, identityId, role, expiry }: TAddAccountIdentityMemberDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/accounts/${accountId}/identities/${identityId}`,
+        { role, expiry }
+      );
+      return data;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountMembers(accountId) });
+    }
+  });
+};
+
+export const useUpdateAccountIdentityMemberRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, identityId, role }: TUpdateAccountIdentityMemberRoleDTO) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/pam/accounts/${accountId}/identities/${identityId}`,
+        { role }
+      );
+      return data;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountMembers(accountId) });
+    }
+  });
+};
+
+export const useRemoveAccountIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, identityId }: TRemoveAccountIdentityMemberDTO) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/pam/accounts/${accountId}/identities/${identityId}`
+      );
+      return data;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountMembers(accountId) });
+    }
+  });
+};
+
+export const useAddFolderIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId, identityId, role, expiry }: TAddFolderIdentityMemberDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/folders/${folderId}/identities/${identityId}`,
+        { role, expiry }
+      );
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+    }
+  });
+};
+
+export const useUpdateFolderIdentityMemberRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId, identityId, role }: TUpdateFolderIdentityMemberRoleDTO) => {
+      const { data } = await apiRequest.patch(
+        `/api/v1/pam/folders/${folderId}/identities/${identityId}`,
+        { role }
+      );
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+    }
+  });
+};
+
+export const useRemoveFolderIdentityMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId, identityId }: TRemoveFolderIdentityMemberDTO) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/pam/folders/${folderId}/identities/${identityId}`
+      );
       return data;
     },
     onSuccess: (_, { folderId }) => {
