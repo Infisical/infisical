@@ -120,10 +120,7 @@ describe("splitMysqlStatements", () => {
   });
 
   test("double-dash with trailing space is a line comment", () => {
-    expect(splitMysqlStatements("SELECT 1 -- comment\n; SELECT 2")).toEqual([
-      "SELECT 1 -- comment",
-      "SELECT 2"
-    ]);
+    expect(splitMysqlStatements("SELECT 1 -- comment\n; SELECT 2")).toEqual(["SELECT 1 -- comment", "SELECT 2"]);
   });
 
   test("double-dash at end of input is a line comment", () => {
@@ -131,10 +128,7 @@ describe("splitMysqlStatements", () => {
   });
 
   test("double-dash with tab is a line comment", () => {
-    expect(splitMysqlStatements("SELECT 1 --\tcomment\n; SELECT 2")).toEqual([
-      "SELECT 1 --\tcomment",
-      "SELECT 2"
-    ]);
+    expect(splitMysqlStatements("SELECT 1 --\tcomment\n; SELECT 2")).toEqual(["SELECT 1 --\tcomment", "SELECT 2"]);
   });
 
   test("backtick identifier with backslash is not escaped", () => {

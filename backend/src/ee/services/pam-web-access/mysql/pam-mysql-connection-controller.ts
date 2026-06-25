@@ -14,16 +14,7 @@ import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 
 const MAX_ROWS = 1000;
 
-const IMPLICIT_COMMIT_COMMANDS = new Set([
-  "CREATE",
-  "ALTER",
-  "DROP",
-  "TRUNCATE",
-  "RENAME",
-  "GRANT",
-  "REVOKE",
-  "LOCK"
-]);
+const IMPLICIT_COMMIT_COMMANDS = new Set(["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "GRANT", "REVOKE", "LOCK"]);
 
 export const createMysqlConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
