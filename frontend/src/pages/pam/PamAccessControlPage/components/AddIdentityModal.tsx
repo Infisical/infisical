@@ -17,11 +17,8 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
-import {
-  useAddPamProductIdentityMember,
-  useListPamProductIdentities
-} from "@app/hooks/api/pam";
 import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
+import { useAddPamProductIdentityMember, useListPamProductIdentities } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";

@@ -10,9 +10,9 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
@@ -196,7 +196,10 @@ export const pamMembershipServiceFactory = ({
     return { column, id, kind };
   };
 
-  const validateProductMember = async (projectId: string, dto: { userId?: string; groupId?: string; identityId?: string }) => {
+  const validateProductMember = async (
+    projectId: string,
+    dto: { userId?: string; groupId?: string; identityId?: string }
+  ) => {
     const { column, id } = resolveActorColumn(dto);
     const memberships = await membershipDAL.find({
       scope: AccessScope.Project,

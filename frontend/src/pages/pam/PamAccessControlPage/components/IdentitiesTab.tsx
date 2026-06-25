@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { BotIcon, MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
+import {
+  BotIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Plus,
+  SearchIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -31,17 +38,10 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
-import {
-  useListPamProductIdentities,
-  useRemovePamProductIdentityMember
-} from "@app/hooks/api/pam";
+import { useListPamProductIdentities, useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { TPamMember } from "@app/hooks/api/pam/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -65,11 +65,9 @@ export const IdentitiesTab = () => {
 
   const identityNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (orgIdentitiesData?.identityMemberships) {
-      for (const m of orgIdentitiesData.identityMemberships) {
-        map.set(m.identity.id, m.identity.name);
-      }
-    }
+    orgIdentitiesData?.identityMemberships?.forEach((m) => {
+      map.set(m.identity.id, m.identity.name);
+    });
     return map;
   }, [orgIdentitiesData]);
 
@@ -187,9 +185,7 @@ export const IdentitiesTab = () => {
                       </button>
                     </TableCell>
                     <TableCell className="text-sm text-muted">
-                      {member.createdAt
-                        ? format(new Date(member.createdAt), "MMM d, yyyy")
-                        : "—"}
+                      {member.createdAt ? format(new Date(member.createdAt), "MMM d, yyyy") : "—"}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

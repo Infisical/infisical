@@ -390,10 +390,9 @@ export const useAddPamProductIdentityMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ identityId, role }: TAddPamProductIdentityMemberDTO) => {
-      const { data } = await apiRequest.post(
-        `/api/v1/pam/memberships/identities/${identityId}`,
-        { role }
-      );
+      const { data } = await apiRequest.post(`/api/v1/pam/memberships/identities/${identityId}`, {
+        role
+      });
       return data;
     },
     onSuccess: () => {
@@ -406,10 +405,9 @@ export const useUpdatePamProductIdentityMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ identityId, role }: TUpdatePamProductIdentityMemberDTO) => {
-      const { data } = await apiRequest.patch(
-        `/api/v1/pam/memberships/identities/${identityId}`,
-        { role }
-      );
+      const { data } = await apiRequest.patch(`/api/v1/pam/memberships/identities/${identityId}`, {
+        role
+      });
       return data;
     },
     onSuccess: () => {
@@ -422,9 +420,7 @@ export const useRemovePamProductIdentityMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ identityId }: TRemovePamProductIdentityMemberDTO) => {
-      const { data } = await apiRequest.delete(
-        `/api/v1/pam/memberships/identities/${identityId}`
-      );
+      const { data } = await apiRequest.delete(`/api/v1/pam/memberships/identities/${identityId}`);
       return data;
     },
     onSuccess: () => {
