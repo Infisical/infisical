@@ -99,7 +99,8 @@ export const expandSecretReferencesFactory = ({
 
     try {
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { value: "", tags: [] };
+      // Return null (not empty) to signal "environment not found" vs "key has empty value"
+      if (!folder) return null;
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
@@ -179,7 +180,7 @@ export const expandSecretReferencesFactory = ({
             const [secretKey] = entities;
 
             // eslint-disable-next-line no-continue,no-await-in-loop
-            const referredValue = await fetchSecret(environment, secretPath, secretKey);
+            const referredValue = (await fetchSecret(environment, secretPath, secretKey)) ?? { value: "", tags: [] };
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
                 message: `You do not have permission to read secret '${secretKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
@@ -200,19 +201,42 @@ export const expandSecretReferencesFactory = ({
 
             // eslint-disable-next-line no-await-in-loop
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
-              throw new ForbiddenRequestError({
-                message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
-              });
 
-            const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
-            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
-            secretCache[cacheKey][secretReferenceKey] = referedValue;
+            if (referedValue === null) {
+              // The environment segment was not found — the reference key likely contains a dot
+              // (e.g. ${MY.SECRET} where MY.SECRET is a local key, not env=MY key=SECRET).
+              // Fall back to resolving the full interpolation key as a local key.
+              const fullKey = interpolationKey.trim();
+              // eslint-disable-next-line no-await-in-loop
+              const localValue = (await fetchSecret(environment, secretPath, fullKey)) ?? { value: "", tags: [] };
+              if (!canExpandValue(environment, secretPath, fullKey, localValue.tags))
+                throw new ForbiddenRequestError({
+                  message: `You do not have permission to read secret '${fullKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+                });
 
-            referencedSecretValue = referedValue.value;
-            referencedSecretKey = secretReferenceKey;
-            referencedSecretPath = secretReferencePath;
-            referencedSecretEnvironmentSlug = secretReferenceEnvironment;
+              const cacheKey = getCacheUniqueKey(environment, secretPath);
+              if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
+              secretCache[cacheKey][fullKey] = localValue;
+
+              referencedSecretValue = localValue.value;
+              referencedSecretKey = fullKey;
+              referencedSecretPath = secretPath;
+              referencedSecretEnvironmentSlug = environment;
+            } else {
+              if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
+                throw new ForbiddenRequestError({
+                  message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+                });
+
+              const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+              if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
+              secretCache[cacheKey][secretReferenceKey] = referedValue;
+
+              referencedSecretValue = referedValue.value;
+              referencedSecretKey = secretReferenceKey;
+              referencedSecretPath = secretReferencePath;
+              referencedSecretEnvironmentSlug = secretReferenceEnvironment;
+            }
           }
 
           const node = {

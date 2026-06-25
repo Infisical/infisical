@@ -269,7 +269,9 @@ export const identityV2ServiceFactory = ({
     const identities = await identityDAL.listIdentities(dto.scopeData, {
       search: dto.data.search,
       offset: dto.data.offset,
-      limit: dto.data.limit
+      limit: dto.data.limit,
+      orderBy: dto.data.orderBy,
+      orderDirection: dto.data.orderDirection
     });
 
     return { ...identities, docs: identities.docs.filter((el) => isIdentityAccessible({ identityId: el.id })) };

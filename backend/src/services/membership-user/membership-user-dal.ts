@@ -167,9 +167,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         });
 
-      if (filter.limit) void paginatedUsers.limit(filter.limit);
-      if (filter.offset) void paginatedUsers.offset(filter.offset);
-
+      // Apply search/role filters before cloning for count so the total reflects the filtered set
       if (filter.username || filter.role) {
         buildKnexFilterForSearchResource(
           paginatedUsers,
@@ -190,7 +188,17 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         );
       }
 
-      const docs = await (tx || db.replicaNode())(TableName.Membership)
+      // Count distinct memberships BEFORE applying pagination.
+      // Wrapping in a subquery avoids inflated counts from the MembershipRole JOIN
+      // (each user with N roles would otherwise be counted N times).
+      const countQuery = (tx || db.replicaNode())
+        .count("* as total")
+        .from(paginatedUsers.clone().as("filteredMemberships"));
+
+      if (filter.limit) void paginatedUsers.limit(filter.limit);
+      if (filter.offset) void paginatedUsers.offset(filter.offset);
+
+      const docsQuery = (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -223,12 +231,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("id").withSchema(TableName.Users).as("userId")
-        )
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
         );
+
+      const [countResult, docs] = await Promise.all([countQuery, docsQuery]);
 
       const data = sqlNestRelationships({
         data: docs,
@@ -277,7 +282,8 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((data?.[0] as unknown as { total: number })?.total ?? 0) };
+      const totalCount = Number((countResult as { total: string | number }[])?.[0]?.total ?? 0);
+      return { data, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindUser" });
     }
