@@ -90,16 +90,22 @@ export const expandSecretReferencesFactory = ({
   const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
-  const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
+  const fetchSecret = async (
+    environment: string,
+    secretPath: string,
+    secretKey: string
+  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
 
     if (secretCache?.[cacheKey]) {
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+      const cachedSecret = secretCache[cacheKey][secretKey];
+      if (cachedSecret) return { ...cachedSecret, exists: true };
+      return { value: "", tags: [], exists: false };
     }
 
     try {
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { value: "", tags: [] };
+      if (!folder) return { value: "", tags: [], exists: false };
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
@@ -122,10 +128,12 @@ export const expandSecretReferencesFactory = ({
 
       secretCache[cacheKey] = decryptedSecret;
 
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+      const fetchedSecret = secretCache[cacheKey][secretKey];
+      if (fetchedSecret) return { ...fetchedSecret, exists: true };
+      return { value: "", tags: [], exists: false };
     } catch (error) {
       secretCache[cacheKey] = {};
-      return { value: "", tags: [] };
+      return { value: "", tags: [], exists: false };
     }
   };
 
@@ -174,6 +182,7 @@ export const expandSecretReferencesFactory = ({
           let referencedSecretKey = "";
           let referencedSecretEnvironmentSlug = "";
           let referencedSecretValue = "";
+          let referencedSecretExists = false;
 
           if (entities.length === 1) {
             const [secretKey] = entities;
@@ -190,6 +199,7 @@ export const expandSecretReferencesFactory = ({
             secretCache[cacheKey][secretKey] = referredValue;
 
             referencedSecretValue = referredValue.value;
+            referencedSecretExists = referredValue.exists;
             referencedSecretKey = secretKey;
             referencedSecretPath = secretPath;
             referencedSecretEnvironmentSlug = environment;
@@ -210,6 +220,7 @@ export const expandSecretReferencesFactory = ({
             secretCache[cacheKey][secretReferenceKey] = referedValue;
 
             referencedSecretValue = referedValue.value;
+            referencedSecretExists = referedValue.exists;
             referencedSecretKey = secretReferenceKey;
             referencedSecretPath = secretReferencePath;
             referencedSecretEnvironmentSlug = secretReferenceEnvironment;
@@ -247,10 +258,13 @@ export const expandSecretReferencesFactory = ({
             stack.push({ ...node, visitedSecrets: newVisitedSecrets });
           }
 
-          expandedValue = expandedValue.replaceAll(
-            interpolationSyntax,
-            () => referencedSecretValue // prevents special characters from triggering replacement patterns
-          );
+          if (referencedSecretExists) {
+            expandedValue = expandedValue.replaceAll(
+              interpolationSyntax,
+              () => referencedSecretValue // prevents special characters from triggering replacement patterns
+            );
+          }
+          // when the referenced secret does not exist, leave the literal ${REF} untouched
         }
       }
     }
