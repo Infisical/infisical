@@ -22,3 +22,7 @@ export type TDeleteProjectGrantDTO = TBaseActor & {
 export type TListProjectGrantsDTO = TBaseActor & {
   sourceProjectId: string;
 };
+
+export type TListProjectGrantsForTargetDTO = TBaseActor & {
+  targetProjectId: string;
+};

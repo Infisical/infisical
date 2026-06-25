@@ -96,7 +96,8 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId")
         )
         .orderBy("position", "asc");
 
@@ -106,9 +107,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
       const docs = await query;
 
-      return docs.map(({ envId, slug, name, ...el }) => ({
+      return docs.map(({ envId, envProjectId, slug, name, ...el }) => ({
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
@@ -125,7 +126,8 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId")
         )
         .first();
 
@@ -133,11 +135,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
         return null;
       }
 
-      const { envId, slug, name, ...el } = doc;
+      const { envId, envProjectId, slug, name, ...el } = doc;
 
       return {
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId }
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
@@ -154,12 +156,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId")
         );
 
-      return docs.map(({ envId, slug, name, ...el }) => ({
+      return docs.map(({ envId, envProjectId, slug, name, ...el }) => ({
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports by ids" });
@@ -221,12 +224,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId")
         )
         .orderBy("position", "asc");
-      return docs.map(({ envId, slug, name, ...el }) => ({
+      return docs.map(({ envId, envProjectId, slug, name, ...el }) => ({
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });

@@ -60,6 +60,7 @@ export type TCreateSecretImportDTO = {
   environment: string;
   path?: string;
   import: {
+    sourceProjectId?: string;
     environment: string;
     path: string;
   };

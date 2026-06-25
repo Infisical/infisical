@@ -1978,6 +1978,7 @@ export const registerRoutes = async (
   const secretImportService = secretImportServiceFactory({
     licenseService,
     projectBotService,
+    projectGrantDAL,
     projectEnvDAL,
     folderDAL,
     permissionService,

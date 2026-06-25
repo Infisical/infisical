@@ -12,6 +12,20 @@ export type TProjectGrant = {
   secretCount: number;
 };
 
+export type TProjectGrantReceived = {
+  id: string;
+  sourceProjectId: string;
+  sourceFolderId: string;
+  targetProjectId: string;
+  createdAt: string;
+  updatedAt: string;
+  folderName: string;
+  environmentName: string;
+  environmentSlug: string;
+  sourceProjectName: string;
+  secretCount: number;
+};
+
 export type TCreateProjectGrantDTO = {
   sourceProjectId: string;
   environment: string;

@@ -11,7 +11,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TProjectGrantDALFactory } from "./project-grant-dal";
-import { TCreateProjectGrantDTO, TDeleteProjectGrantDTO, TListProjectGrantsDTO } from "./project-grant-types";
+import {
+  TCreateProjectGrantDTO,
+  TDeleteProjectGrantDTO,
+  TListProjectGrantsDTO,
+  TListProjectGrantsForTargetDTO
+} from "./project-grant-types";
 
 export type TProjectGrantServiceFactory = ReturnType<typeof projectGrantServiceFactory>;
 
@@ -130,5 +135,24 @@ export const projectGrantServiceFactory = ({
     return projectGrantDAL.listBySourceProject(sourceProjectId);
   };
 
-  return { createGrant, deleteGrant, listGrantsByProject };
+  const listGrantsForTargetProject = async ({
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    targetProjectId
+  }: TListProjectGrantsForTargetDTO) => {
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId: targetProjectId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    return projectGrantDAL.listByTargetProject(targetProjectId);
+  };
+
+  return { createGrant, deleteGrant, listGrantsByProject, listGrantsForTargetProject };
 };
