@@ -265,6 +265,23 @@ export const licenseV2ServiceFactory = ({
   const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
+    // Dimension nouns (the unit a limit counts, e.g. "certificate") live on the catalog, keyed by
+    // dimension. Only fetch it when a subscription item actually carries a limit to name.
+    const nounByDimension = new Map<string, string>();
+    const hasLimits = Boolean(subscription?.items.some((item) => Object.keys(item.limits).length > 0));
+    if (hasLimits) {
+      try {
+        const catalog = await licenseClient.getCatalog();
+        catalog?.products.forEach((product) => {
+          product.dimensions.forEach((dimension) => {
+            nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
+          });
+        });
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read catalog for entitlement units [orgId=${org.id}]`);
+      }
+    }
+
     if (subscription) {
       subscription.items.forEach((item) => {
         const quantityValues = Object.values(item.quantities);
@@ -273,13 +290,23 @@ export const licenseV2ServiceFactory = ({
           used = Math.max(...quantityValues);
         }
 
-        const limitValues = Object.values(item.limits);
+        // Surface the most constraining dimension and resolve that same dimension's noun, so the
+        // count and its unit always describe the same thing.
         let limit: number | null = null;
-        if (limitValues.length > 0) {
-          limit = Math.max(...limitValues);
+        let limitKey: string | null = null;
+        // Plain for-of (not forEach): assignments inside a closure don't refine the outer
+        // variable's type, so after a forEach TS still sees limitKey as null and the `limitKey ?`
+        // branch below collapses to `never`. A same-scope loop lets control-flow keep it string|null.
+        for (const [key, value] of Object.entries(item.limits)) {
+          if (limit === null || value > limit) {
+            limit = value;
+            limitKey = key;
+          }
         }
 
-        entitlements[item.productId] = { entitled: true, used, limit };
+        const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
+
+        entitlements[item.productId] = { entitled: true, used, limit, unit };
       });
     }
 
@@ -374,7 +401,26 @@ export const licenseV2ServiceFactory = ({
       const profile = await licenseClient.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
-        billingDetails = profile.billingDetails;
+        billingDetails = profile.billingDetails
+          ? {
+              name: profile.billingDetails.name,
+              email: profile.billingDetails.email,
+              address: profile.billingDetails.address
+                ? {
+                    line1: profile.billingDetails.address.line1,
+                    line2: profile.billingDetails.address.line2,
+                    city: profile.billingDetails.address.city,
+                    state: profile.billingDetails.address.state,
+                    postalCode: profile.billingDetails.address.postalCode,
+                    country: profile.billingDetails.address.country
+                  }
+                : null,
+              taxIds: profile.billingDetails.taxIds.map((taxId) => ({
+                type: taxId.type,
+                value: taxId.value
+              }))
+            }
+          : null;
         invoices = profile.invoices.map((invoice) => ({
           id: invoice.id,
           number: invoice.number,

@@ -63,6 +63,9 @@ export type BillingV2Entitlement = {
   entitled: boolean;
   limit?: number | null;
   used?: number;
+  // Singular noun for the limited dimension (e.g. "certificate"), resolved from the catalog so the
+  // UI can render the unit beside the count ("0 / 100 certificates").
+  unit?: string | null;
 };
 
 export type BillingV2Usage = {
@@ -82,7 +85,19 @@ export type BillingV2Overview = {
   interval: "month" | "year" | null;
   usage: BillingV2Usage;
   payment: BillingV2PaymentMethod;
-  billingDetails: { name: string; email: string } | null;
+  billingDetails: {
+    name: string;
+    email: string;
+    address: {
+      line1: string;
+      line2: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    } | null;
+    taxIds: { type: string; value: string }[];
+  } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
 };

@@ -109,7 +109,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-mineshaft-200 [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
+        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
         className
       )}

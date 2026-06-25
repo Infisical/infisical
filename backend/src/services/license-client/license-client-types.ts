@@ -144,10 +144,27 @@ const billingProfilePaymentSchema = z
   })
   .passthrough();
 
+const billingProfileAddressSchema = z
+  .object({
+    line1: z.string(),
+    line2: z.string(),
+    city: z.string(),
+    state: z.string(),
+    postalCode: z.string(),
+    country: z.string()
+  })
+  .passthrough();
+
+const billingProfileTaxIdSchema = z.object({ type: z.string(), value: z.string() }).passthrough();
+
 const billingProfileDetailsSchema = z
   .object({
     name: z.string(),
-    email: z.string()
+    email: z.string(),
+    // Absent on older license servers that predate these fields; address is null when the customer
+    // has none, taxIds defaults to [] so callers can map it without a null check.
+    address: billingProfileAddressSchema.nullish(),
+    taxIds: z.array(billingProfileTaxIdSchema).default([])
   })
   .passthrough();
 

@@ -93,35 +93,31 @@ export const BillingV2Page = () => {
   };
 
   const redirectToCheckout = async (productId: string) => {
-    try {
-      const result = await createCheckoutSession.mutateAsync({
-        orgId,
-        productId,
-        cadence,
-        email: billingEmail,
-        returnPath: window.location.pathname
+    const result = await createCheckoutSession.mutateAsync({
+      orgId,
+      productId,
+      cadence,
+      email: billingEmail,
+      returnPath: window.location.pathname
+    });
+
+    // The product was added straight to the existing subscription; no Stripe redirect needed.
+    if (result.outcome === "subscription_updated") {
+      close();
+      createNotification({
+        type: "success",
+        text: "Product added to your subscription. It may take a moment to appear here."
       });
-
-      // The product was added straight to the existing subscription; no Stripe redirect needed.
-      if (result.outcome === "subscription_updated") {
-        close();
-        createNotification({
-          type: "success",
-          text: "Product added to your subscription. It may take a moment to appear here."
-        });
-        refetch();
-        return;
-      }
-
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-
-      createNotification({ type: "error", text: "Failed to start checkout." });
-    } catch {
-      createNotification({ type: "error", text: "Failed to start checkout." });
+      refetch();
+      return;
     }
+
+    if (result.checkoutUrl) {
+      window.location.href = result.checkoutUrl;
+      return;
+    }
+
+    createNotification({ type: "error", text: "Failed to start checkout." });
   };
 
   const onManageSubscription = () => {
@@ -178,7 +174,7 @@ export const BillingV2Page = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-5xl">
+        <div className="w-full max-w-8xl">
           <PageHeader
             scope="org"
             title={t("billing.title")}

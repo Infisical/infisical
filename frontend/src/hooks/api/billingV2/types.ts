@@ -65,6 +65,8 @@ export type BillingV2Entitlement = {
   entitled: boolean;
   limit?: number | null;
   used?: number;
+  // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
+  unit?: string | null;
 };
 
 export type BillingV2Overview = {
@@ -82,7 +84,19 @@ export type BillingV2Overview = {
     identityLimit: number | null;
   };
   payment: BillingV2PaymentMethod;
-  billingDetails: { name: string; email: string } | null;
+  billingDetails: {
+    name: string;
+    email: string;
+    address: {
+      line1: string;
+      line2: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    } | null;
+    taxIds: { type: string; value: string }[];
+  } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
 };

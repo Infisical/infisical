@@ -67,7 +67,8 @@ const BillingV2InvoiceSchema = z.object({
 const BillingV2EntitlementSchema = z.object({
   entitled: z.boolean(),
   limit: z.number().nullable().optional(),
-  used: z.number().optional()
+  used: z.number().optional(),
+  unit: z.string().nullable().optional()
 });
 
 const BillingV2OverviewSchema = z.object({
@@ -85,7 +86,23 @@ const BillingV2OverviewSchema = z.object({
     identityLimit: z.number().nullable()
   }),
   payment: z.object({ brand: z.string(), last4: z.string(), expMonth: z.number(), expYear: z.number() }).nullable(),
-  billingDetails: z.object({ name: z.string(), email: z.string() }).nullable(),
+  billingDetails: z
+    .object({
+      name: z.string(),
+      email: z.string(),
+      address: z
+        .object({
+          line1: z.string(),
+          line2: z.string(),
+          city: z.string(),
+          state: z.string(),
+          postalCode: z.string(),
+          country: z.string()
+        })
+        .nullable(),
+      taxIds: z.object({ type: z.string(), value: z.string() }).array()
+    })
+    .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema)
 });
