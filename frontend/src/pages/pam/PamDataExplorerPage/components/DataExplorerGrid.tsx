@@ -42,7 +42,7 @@ type DataExplorerGridProps = {
   }>;
   isLoading: boolean;
   onRefresh?: () => Promise<void>;
-  dialect?: SqlDialect;
+  dialect: SqlDialect;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -184,7 +184,7 @@ export const DataExplorerGrid = ({
   executeQuery,
   isLoading,
   onRefresh,
-  dialect = "postgres"
+  dialect
 }: DataExplorerGridProps) => {
   const executeStatements = useCallback(
     async (statements: string[]) => {

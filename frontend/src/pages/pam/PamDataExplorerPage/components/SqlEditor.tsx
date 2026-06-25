@@ -6,6 +6,8 @@ import { EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, keymap, placeholder, type ViewUpdate } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
+import type { SqlDialect } from "../sql-generation";
+
 const infisicalTheme = EditorView.theme({
   "&": { height: "100%", fontSize: "13px", backgroundColor: "#16181a" },
   "&.cm-editor": { backgroundColor: "#16181a" },
@@ -69,7 +71,7 @@ type Props = {
   onExecute: (sql: string) => void;
   onSelectionChange: (hasSelection: boolean) => void;
   onSqlToRunChange: (sql: string) => void;
-  sqlDialect?: "postgres" | "mysql";
+  sqlDialect: SqlDialect;
 };
 
 export function SqlEditor({
@@ -78,7 +80,7 @@ export function SqlEditor({
   onExecute,
   onSelectionChange,
   onSqlToRunChange,
-  sqlDialect = "postgres"
+  sqlDialect
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);

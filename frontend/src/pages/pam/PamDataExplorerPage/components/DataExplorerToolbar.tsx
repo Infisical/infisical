@@ -46,7 +46,7 @@ type DataExplorerToolbarProps = {
   onExport: (format: ExportFormat) => void;
   onCopy: (format: ExportFormat) => void;
   hasData: boolean;
-  dialect?: SqlDialect;
+  dialect: SqlDialect;
 };
 
 export const DataExplorerToolbar = ({
@@ -75,7 +75,7 @@ export const DataExplorerToolbar = ({
   onExport,
   onCopy,
   hasData,
-  dialect = "postgres"
+  dialect
 }: DataExplorerToolbarProps) => {
   const rangeStart = totalCount === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + pageSize, totalCount);

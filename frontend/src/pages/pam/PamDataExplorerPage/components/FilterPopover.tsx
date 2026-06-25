@@ -112,14 +112,14 @@ type FilterPopoverProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
   onFiltersChange: (filters: FilterCondition[]) => Promise<boolean>;
-  dialect?: SqlDialect;
+  dialect: SqlDialect;
 };
 
 export const FilterPopover = ({
   columns,
   filters,
   onFiltersChange,
-  dialect = "postgres"
+  dialect
 }: FilterPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FilterCondition[]>(filters);
