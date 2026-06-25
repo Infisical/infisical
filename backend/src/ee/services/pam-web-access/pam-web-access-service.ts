@@ -6,6 +6,7 @@ import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/servic
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
@@ -18,6 +19,8 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
@@ -54,6 +57,11 @@ type TPamWebAccessServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
@@ -85,7 +93,9 @@ export const pamWebAccessServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   kmsService,
-  userDAL
+  userDAL,
+  mfaSessionService,
+  orgDAL
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -126,7 +136,8 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     auditLogInfo,
-    reason
+    reason,
+    mfaSessionId
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -136,22 +147,6 @@ export const pamWebAccessServiceFactory = ({
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
-
-    const trimmedReason = reason?.trim() || null;
-
-    const policy = resolveAccessControls(account.templatePolicies);
-
-    if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({ message: "A reason is required to access this account" });
-    }
-
-    if (policy.requireMfa) {
-      throw new BadRequestError({ message: "MFA verification is required to access this account" });
-    }
-
-    const maxSessionDurationMs = policy.maxSessionDurationSeconds
-      ? policy.maxSessionDurationSeconds * 1000
-      : DEFAULT_WEB_SESSION_DURATION_MS;
 
     await checkAccountAccess(
       permissionService,
@@ -166,6 +161,28 @@ export const pamWebAccessServiceFactory = ({
         actorAuthMethod: actor.authMethod
       }
     );
+
+    const trimmedReason = reason?.trim() || null;
+
+    const policy = resolveAccessControls(account.templatePolicies);
+
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
+    }
+
+    if (policy.requireMfa) {
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        { userId: actor.id, orgId: actor.orgId, actorEmail, accountId: account.id, mfaSessionId }
+      );
+    }
+
+    const maxSessionDurationMs = policy.maxSessionDurationSeconds
+      ? policy.maxSessionDurationSeconds * 1000
+      : DEFAULT_WEB_SESSION_DURATION_MS;
 
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
     const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
