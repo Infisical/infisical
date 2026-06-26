@@ -1245,21 +1245,25 @@ export const secretApprovalRequestServiceFactory = ({
         }))
       );
 
-      await smtpService.sendMail({
-        recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
-        subjectLine: "Infisical Secret Change Policy Bypassed",
+      const recipients = approverUsers.filter((approver) => approver.email).map((approver) => approver.email!);
 
-        substitutions: {
-          projectName: project.name,
-          requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
-          requesterEmail: requestedByUser.email,
-          bypassReason,
-          secretPath: policy.secretPath,
-          environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
-        },
-        template: SmtpTemplates.AccessSecretRequestBypassed
-      });
+      if (recipients?.length) {
+        await smtpService.sendMail({
+          recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
+          subjectLine: "Infisical Secret Change Policy Bypassed",
+
+          substitutions: {
+            projectName: project.name,
+            requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
+            requesterEmail: requestedByUser.email,
+            bypassReason,
+            secretPath: policy.secretPath,
+            environment: env.name,
+            approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
+          },
+          template: SmtpTemplates.AccessSecretRequestBypassed
+        });
+      }
     }
 
     const { created, updated, deleted } = mergeStatus.secrets;
