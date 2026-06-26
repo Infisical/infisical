@@ -2,33 +2,42 @@ import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { FileInput, Key, Share2 } from "lucide-react";
+import { InfoIcon, Key } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretPathInput } from "@app/components/v3";
 import {
   Button,
-  Card,
-  CardDescription,
-  CardTitle,
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
@@ -90,8 +99,7 @@ export const CreateSecretImportForm = ({
 
   const showSourceStep = receivedGrants.length > 0;
 
-  const [step, setStep] = useState<1 | 2>(1);
-  const [importSource, setImportSource] = useState<ImportSource | null>(null);
+  const [importSource, setImportSource] = useState<ImportSource>("this-project");
 
   const [selectedSourceProjectId, setSelectedSourceProjectId] = useState<string | null>(null);
   const [selectedEnvironmentSlug, setSelectedEnvironmentSlug] = useState<string | null>(null);
@@ -132,8 +140,7 @@ export const CreateSecretImportForm = ({
 
   const handleClose = () => {
     reset();
-    setStep(1);
-    setImportSource(null);
+    setImportSource("this-project");
     setSelectedSourceProjectId(null);
     setSelectedEnvironmentSlug(null);
     setSelectedFolderName(null);
@@ -143,19 +150,6 @@ export const CreateSecretImportForm = ({
   const handleToggle = (open: boolean) => {
     if (!open) handleClose();
     else onTogglePopUp(open);
-  };
-
-  const handleSourceSelect = (source: ImportSource) => {
-    setImportSource(source);
-    setStep(2);
-  };
-
-  const handleBack = () => {
-    setStep(1);
-    setImportSource(null);
-    setSelectedSourceProjectId(null);
-    setSelectedEnvironmentSlug(null);
-    setSelectedFolderName(null);
   };
 
   const handleFormSubmit = async ({
@@ -195,57 +189,6 @@ export const CreateSecretImportForm = ({
       }
     }
   };
-
-  const effectiveStep = showSourceStep ? step : 2;
-  const effectiveImportSource: ImportSource = showSourceStep
-    ? (importSource ?? "this-project")
-    : "this-project";
-
-  const renderStep1 = () => (
-    <>
-      <DialogDescription>
-        Choose where to bring secrets in from. Imports stay in sync with their source.
-      </DialogDescription>
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          type="button"
-          onClick={() => handleSourceSelect("this-project")}
-          className="block w-full text-left"
-        >
-          <Card className="gap-3 transition-colors hover:bg-mineshaft-700">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-900/40">
-              <FileInput className="size-5 text-blue-400" />
-            </div>
-            <div>
-              <CardTitle className="text-base">This Project</CardTitle>
-              <CardDescription className="mt-1">
-                Inherit secrets from another environment or folder within{" "}
-                {currentProject?.name ?? "this project"}.
-              </CardDescription>
-            </div>
-          </Card>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSourceSelect("another-project")}
-          className="block w-full text-left"
-        >
-          <Card className="gap-3 transition-colors hover:bg-mineshaft-700">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-900/40">
-              <Share2 className="size-5 text-yellow-400" />
-            </div>
-            <div>
-              <CardTitle className="text-base">Another Project</CardTitle>
-              <CardDescription className="mt-1">
-                Import secrets that a different project has shared with this one.
-              </CardDescription>
-            </div>
-          </Card>
-        </button>
-      </div>
-    </>
-  );
 
   const renderThisProjectForm = () => (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
@@ -318,8 +261,8 @@ export const CreateSecretImportForm = ({
         )}
       />
       <DialogFooter>
-        <Button type="button" variant="ghost" onClick={showSourceStep ? handleBack : handleClose}>
-          {showSourceStep ? "Back" : "Cancel"}
+        <Button type="button" variant="ghost" onClick={handleClose}>
+          Cancel
         </Button>
         <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
           Create Import
@@ -346,10 +289,6 @@ export const CreateSecretImportForm = ({
 
     return (
       <div className="space-y-4">
-        <DialogDescription>
-          Other projects have made these secret sets available to{" "}
-          {currentProject?.name ?? "this project"}. Select one to import.
-        </DialogDescription>
 
         <Field>
           <FieldLabel>Project</FieldLabel>
@@ -420,26 +359,26 @@ export const CreateSecretImportForm = ({
         </Field>
 
         {selectedGrant && (
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-popover p-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-mineshaft-700">
+          <Item variant="outline">
+            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
               <Key className="size-4 text-yellow-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>
                 <span className="text-yellow-400">{selectedGrant.secretCount} secrets</span> will be
                 imported
-              </p>
-              <p className="mt-0.5 text-xs text-accent">
+              </ItemTitle>
+              <ItemDescription>
                 {selectedGrant.sourceProjectName} &middot; {selectedGrant.environmentName} &middot;{" "}
                 {selectedGrant.folderName === "root" ? "/" : `/${selectedGrant.folderName}`}
-              </p>
-            </div>
-          </div>
+              </ItemDescription>
+            </ItemContent>
+          </Item>
         )}
 
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={handleBack}>
-            Back
+          <Button type="button" variant="ghost" onClick={handleClose}>
+            Cancel
           </Button>
           <Button
             type="button"
@@ -486,12 +425,62 @@ export const CreateSecretImportForm = ({
       <DialogContent className="max-w-lg overflow-visible">
         <DialogHeader>
           <DialogTitle>Add Secret Import</DialogTitle>
+          <DialogDescription>
+            Import secrets from this project or from another project that has granted you access.
+          </DialogDescription>
         </DialogHeader>
-        {effectiveStep === 1 && renderStep1()}
-        {effectiveStep === 2 && effectiveImportSource === "this-project" && renderThisProjectForm()}
-        {effectiveStep === 2 &&
-          effectiveImportSource === "another-project" &&
-          renderAnotherProjectForm()}
+        {showSourceStep ? (
+          <Tabs
+            value={importSource}
+            onValueChange={(val) => {
+              setImportSource(val as ImportSource);
+              setSelectedSourceProjectId(null);
+              setSelectedEnvironmentSlug(null);
+              setSelectedFolderName(null);
+            }}
+          >
+            <div className="mx-auto flex items-center gap-2">
+              <TabsList className="w-fit">
+                <TabsTrigger value="this-project">This Project</TabsTrigger>
+                <TabsTrigger value="another-project">Another Project</TabsTrigger>
+              </TabsList>
+              <Tooltip>
+                <TooltipTrigger>
+                  <InfoIcon size={16} className="text-mineshaft-400" />
+                </TooltipTrigger>
+                <TooltipContent side="right" align="start" className="max-w-sm">
+                  <p className="mb-2 text-mineshaft-300">
+                    You can import secrets into your project in one of two ways:
+                  </p>
+                  <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
+                    <li className="text-mineshaft-200">
+                      <strong className="font-medium text-mineshaft-100">This Project</strong> —
+                      Inherit secrets from another environment or folder within{" "}
+                      <strong className="font-medium text-mineshaft-100">{currentProject?.name ?? "this project"}</strong>.
+                      <p className="mt-2">
+                        Recommended when you want to reuse secrets across environments or folders
+                        in the same project.
+                      </p>
+                    </li>
+                    <li className="text-mineshaft-200">
+                      <strong className="font-medium text-mineshaft-100">Another Project</strong> —
+                      Import a folder or environment from a different project that has granted
+                      access to this one.
+                      <p className="mt-2">
+                        Recommended when secrets are managed centrally and shared across multiple
+                        projects.
+                      </p>
+                    </li>
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <TabsContent value="this-project">{renderThisProjectForm()}</TabsContent>
+            <TabsContent value="another-project">{renderAnotherProjectForm()}</TabsContent>
+          </Tabs>
+        ) : (
+          renderThisProjectForm()
+        )}
       </DialogContent>
     </Dialog>
   );
