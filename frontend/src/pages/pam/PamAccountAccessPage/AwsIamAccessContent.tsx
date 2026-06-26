@@ -11,8 +11,7 @@ import { WebAccessStatusCard } from "./WebAccessStatusCard";
 const resolvePolicy = (account: TPamAccount) => {
   const policies = (account.templatePolicies ?? {}) as Record<string, unknown>;
   return {
-    requireReason: policies[PamPolicyType.RequireReason] === true,
-    requireMfa: policies[PamPolicyType.RequireMfa] === true
+    requireReason: policies[PamPolicyType.RequireReason] === true
   };
 };
 

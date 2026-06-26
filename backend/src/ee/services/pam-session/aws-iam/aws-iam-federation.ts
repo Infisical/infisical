@@ -7,7 +7,6 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 export const AWS_STS_MIN_DURATION_SECONDS = 900;
-export const AWS_STS_MAX_DURATION_ROLE_CHAINING_SECONDS = 3600;
 
 const AWS_STS_DEFAULT_REGION = "us-east-1";
 
