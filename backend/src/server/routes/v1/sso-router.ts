@@ -40,11 +40,41 @@ const passport = new Authenticator({ key: "sso", userProperty: "passportUser" })
 
 let serverInstance: FastifyZodProvider | null = null;
 
+// Build a set of trusted hosts from SITE_URL and CORS_ALLOWED_ORIGINS to prevent
+// open-redirect attacks via Host header injection on OAuth callback endpoints.
+const getTrustedHosts = (): Set<string> => {
+  const appCfg = getConfig();
+  const hosts = new Set<string>();
+  if (appCfg.SITE_URL) {
+    try {
+      hosts.add(new URL(appCfg.SITE_URL).host);
+    } catch {
+      // ignore malformed SITE_URL
+    }
+  }
+  if (appCfg.CORS_ALLOWED_ORIGINS) {
+    for (const origin of appCfg.CORS_ALLOWED_ORIGINS) {
+      try {
+        hosts.add(new URL(origin).host);
+      } catch {
+        // ignore malformed origins
+      }
+    }
+  }
+  return hosts;
+};
+
 // Derive the OAuth callback URL from the incoming request so that the session cookie domain
-// matches the callback domain. This prevents session loss when the user starts on one domain
-// (e.g. us.infisical.com) but SITE_URL points to another (e.g. app.infisical.com).
-const getOAuthCallbackUrl = (req: { protocol: string; hostname: string }, path: string) =>
-  `${req.protocol}://${req.hostname}${path}`;
+// matches the callback domain. Uses req.host (includes port) to support non-default ports.
+// Returns null if the request host is not in the trusted set, allowing callers to fall back
+// to SITE_URL.
+const getOAuthCallbackUrl = (req: { protocol: string; host: string }, path: string): string | null => {
+  const trustedHosts = getTrustedHosts();
+  if (!req.host || !trustedHosts.has(req.host)) {
+    return null;
+  }
+  return `${req.protocol}://${req.host}${path}`;
+};
 
 export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
   serverInstance = server;
@@ -446,7 +476,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         return (
           passport.authenticate("google", {
             scope: ["profile", "email"],
-            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/google"),
+            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/google") || `${appCfg.SITE_URL}/api/v1/sso/google`,
             authInfo: false
             // this is due to zod type difference
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -463,7 +493,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     await req.session.destroy();
     const passportResult = req.passportUser;
     const cbPort = passportResult.callbackPort;
-    const reqOrigin = getOAuthCallbackUrl(req, "");
+    const reqOrigin = getOAuthCallbackUrl(req, "") || appCfg.SITE_URL;
 
     if (passportResult.result === ProviderAuthResult.SESSION) {
       // This login completed the user's signup (provider-verified email), so it never goes
@@ -503,7 +533,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
       addAuthOriginDomainCookie(res);
-      const sessionUrl = new URL("/login/select-organization", reqOrigin || appCfg.SITE_URL);
+      const sessionUrl = new URL("/login/select-organization", reqOrigin);
       if (isAdminLogin) sessionUrl.searchParams.set("isAdminLogin", isAdminLogin);
       if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
       // Provider-verified signups never render the signup page that pushes the GTM conversion event,
@@ -514,7 +544,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
       const serverCfg = await getServerCfg();
-      const signupUrl = new URL("/signup/sso", reqOrigin || appCfg.SITE_URL);
+      const signupUrl = new URL("/signup/sso", reqOrigin);
       signupUrl.searchParams.set("token", passportResult.signupToken);
       if (serverCfg.defaultAuthOrgId && !appCfg.isCloud) signupUrl.searchParams.set("defaultOrgAllowed", "true");
       if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
@@ -533,7 +563,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           passport.authenticate("google", {
             session: false,
             failureRedirect: "/login/provider/error",
-            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/google"),
+            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/google") || `${appCfg.SITE_URL}/api/v1/sso/google`,
             authInfo: false
           } as any) as any
         )(req, res);
@@ -574,7 +604,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         return (
           passport.authenticate("github", {
             session: false,
-            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/github"),
+            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/github") || `${appCfg.SITE_URL}/api/v1/sso/github`,
             authInfo: false
             // this is due to zod type difference
           } as any) as any
@@ -632,7 +662,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           passport.authenticate("github", {
             session: false,
             failureRedirect: "/login/provider/error",
-            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/github"),
+            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/github") || `${appCfg.SITE_URL}/api/v1/sso/github`,
             authInfo: false
           } as any) as any
         )(req, res);
@@ -684,7 +714,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         return (
           passport.authenticate("gitlab", {
             session: false,
-            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/gitlab"),
+            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/gitlab") || `${appCfg.SITE_URL}/api/v1/sso/gitlab`,
             authInfo: false
             // this is due to zod type difference
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -704,7 +734,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           passport.authenticate("gitlab", {
             session: false,
             failureRedirect: "/login/provider/error",
-            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/gitlab"),
+            callbackURL: getOAuthCallbackUrl(req, "/api/v1/sso/gitlab") || `${appCfg.SITE_URL}/api/v1/sso/gitlab`,
             authInfo: false
           } as any) as any
         )(req, res);
