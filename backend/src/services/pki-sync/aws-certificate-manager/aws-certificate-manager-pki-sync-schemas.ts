@@ -19,11 +19,10 @@ const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
   preserveArn: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
-
         // Validate that {{certificateId}} placeholder is present
         if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;

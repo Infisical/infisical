@@ -480,7 +480,11 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
             isOptional={currentDestination === PkiSync.AwsElasticLoadBalancer}
             errorText={error?.message}
             label="Certificate Name Schema"
-            helperText="Infisical strongly advises setting a Certificate Name Schema to ensure that Infisical only manages the specific certificates you intend to manage, keeping everything else untouched."
+            helperText={
+              currentDestination === PkiSync.AwsElasticLoadBalancer
+                ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+                : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+            }
           >
             <Input
               value={value || ""}

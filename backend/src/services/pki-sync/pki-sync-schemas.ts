@@ -10,11 +10,10 @@ export const PkiSyncOptionsSchema = z.object({
   includeRootCa: z.boolean().optional().default(false),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (val) => {
-        if (!val) return true;
-
         const allowedPlaceholdersRegexPart = [
           "{{certificateId}}",
           "{{shortCertificateId}}",

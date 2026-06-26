@@ -37,7 +37,8 @@ describe("NetScaler certificateNameSchema validation", () => {
     expect(parseSchema("{{applicationId}}-{{certificateId}}")).toBe(false);
   });
 
-  test("allows an empty/undefined schema (optional)", () => {
-    expect(NetScalerPkiSyncOptionsSchema.safeParse({}).success).toBe(true);
+  test("requires a schema (rejects empty/undefined)", () => {
+    expect(NetScalerPkiSyncOptionsSchema.safeParse({}).success).toBe(false);
+    expect(parseSchema("")).toBe(false);
   });
 });
