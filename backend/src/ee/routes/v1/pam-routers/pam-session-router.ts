@@ -310,7 +310,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "Console URL generation requires JWT authentication" });
       }
 
-      const { consoleUrl } = await server.services.pamSession.getAwsIamConsoleUrl({
+      const result = await server.services.pamSession.getAwsIamConsoleUrl({
         sessionId: req.params.sessionId,
         accessKeyId: req.body.accessKeyId,
         secretAccessKey: req.body.secretAccessKey,
@@ -323,7 +323,21 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { consoleUrl };
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED,
+          metadata: {
+            sessionId: req.params.sessionId,
+            accountId: result.accountId ?? "",
+            accountName: result.accountName ?? ""
+          }
+        }
+      });
+
+      return { consoleUrl: result.consoleUrl };
     }
   });
 };

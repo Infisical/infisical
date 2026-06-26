@@ -736,7 +736,12 @@ export const pamSessionServiceFactory = ({
       sessionToken
     });
 
-    return { consoleUrl };
+    return {
+      consoleUrl,
+      accountId: session.accountId,
+      accountName: session.accountName,
+      projectId: session.projectId
+    };
   };
 
   return {
