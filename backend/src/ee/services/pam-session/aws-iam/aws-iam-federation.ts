@@ -1,5 +1,4 @@
 import { AssumeRoleCommand, Credentials, STSClient, STSClientConfig } from "@aws-sdk/client-sts";
-
 import axios from "axios";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
