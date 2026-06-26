@@ -4,7 +4,6 @@ import { AxiosResponse } from "axios";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { request } from "@app/lib/config/request";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { QoverySyncScope, QoveryVariableType } from "./qovery-sync-enums";
@@ -22,16 +21,17 @@ vi.mock("@app/lib/config/request", () => ({
   }
 }));
 
-vi.mock("@app/lib/validator", () => ({
-  blockLocalAndPrivateIpAddresses: vi.fn()
-}));
-
-// Resolve the base URL without the SSRF/DNS check the real helper performs.
+// Resolve the base URL without the SSRF/DNS check the real helper performs, and reuse the real
+// auth-header builder that the sync now imports from the connection module.
 vi.mock("@app/services/app-connection/qovery", () => ({
   getQoveryInstanceUrl: vi.fn(
     async (connection: { credentials: { instanceUrl?: string } }) =>
       connection.credentials.instanceUrl ?? "https://api.qovery.com"
-  )
+  ),
+  getQoveryAuthHeaders: (accessToken: string) => ({
+    Authorization: `Token ${accessToken}`,
+    Accept: "application/json"
+  })
 }));
 
 // keySchema filtering is exercised elsewhere; here every key is considered a match.
@@ -84,52 +84,52 @@ beforeEach(() => {
 describe("getQoveryResourceUrl", () => {
   const instanceUrl = "https://api.qovery.com";
 
-  test("secret + project scope", async () => {
-    await expect(
+  test("secret + project scope", () => {
+    expect(
       getQoveryResourceUrl({
         instanceUrl,
         scope: QoverySyncScope.Project,
         scopeId: "proj-1",
         variableType: QoveryVariableType.Secret
       })
-    ).resolves.toBe("https://api.qovery.com/project/proj-1/secret");
+    ).toBe("https://api.qovery.com/project/proj-1/secret");
   });
 
-  test("variable + project scope", async () => {
-    await expect(
+  test("variable + project scope", () => {
+    expect(
       getQoveryResourceUrl({
         instanceUrl,
         scope: QoverySyncScope.Project,
         scopeId: "proj-1",
         variableType: QoveryVariableType.Variable
       })
-    ).resolves.toBe("https://api.qovery.com/project/proj-1/environmentVariable");
+    ).toBe("https://api.qovery.com/project/proj-1/environmentVariable");
   });
 
-  test("variable + environment scope", async () => {
-    await expect(
+  test("variable + environment scope", () => {
+    expect(
       getQoveryResourceUrl({
         instanceUrl,
         scope: QoverySyncScope.Environment,
         scopeId: "env-1",
         variableType: QoveryVariableType.Variable
       })
-    ).resolves.toBe("https://api.qovery.com/environment/env-1/environmentVariable");
+    ).toBe("https://api.qovery.com/environment/env-1/environmentVariable");
   });
 
-  test("secret + environment scope", async () => {
-    await expect(
+  test("secret + environment scope", () => {
+    expect(
       getQoveryResourceUrl({
         instanceUrl,
         scope: QoverySyncScope.Environment,
         scopeId: "env-1",
         variableType: QoveryVariableType.Secret
       })
-    ).resolves.toBe("https://api.qovery.com/environment/env-1/secret");
+    ).toBe("https://api.qovery.com/environment/env-1/secret");
   });
 
-  test("appends the resource id when provided", async () => {
-    await expect(
+  test("appends the resource id when provided", () => {
+    expect(
       getQoveryResourceUrl({
         instanceUrl,
         scope: QoverySyncScope.Project,
@@ -137,29 +137,18 @@ describe("getQoveryResourceUrl", () => {
         variableType: QoveryVariableType.Secret,
         resourceId: "sec-1"
       })
-    ).resolves.toBe("https://api.qovery.com/project/proj-1/secret/sec-1");
+    ).toBe("https://api.qovery.com/project/proj-1/secret/sec-1");
   });
 
-  test("normalizes a trailing slash on the instance URL", async () => {
-    await expect(
+  test("normalizes a trailing slash on the instance URL", () => {
+    expect(
       getQoveryResourceUrl({
         instanceUrl: "https://qovery.self-hosted.io/",
         scope: QoverySyncScope.Project,
         scopeId: "proj-1",
         variableType: QoveryVariableType.Secret
       })
-    ).resolves.toBe("https://qovery.self-hosted.io/project/proj-1/secret");
-  });
-
-  test("validates the constructed URL against local and private IP addresses", async () => {
-    const url = await getQoveryResourceUrl({
-      instanceUrl,
-      scope: QoverySyncScope.Project,
-      scopeId: "proj-1",
-      variableType: QoveryVariableType.Secret
-    });
-
-    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith(url);
+    ).toBe("https://qovery.self-hosted.io/project/proj-1/secret");
   });
 });
 

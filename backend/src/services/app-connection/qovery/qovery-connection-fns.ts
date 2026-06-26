@@ -23,7 +23,7 @@ export const getQoveryInstanceUrl = async (connection: { credentials: { instance
   return instanceUrl;
 };
 
-const getQoveryAuthHeaders = (accessToken: string) => ({
+export const getQoveryAuthHeaders = (accessToken: string) => ({
   Authorization: `Token ${accessToken}`,
   Accept: "application/json"
 });

@@ -1,7 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { getQoveryInstanceUrl } from "@app/services/app-connection/qovery";
+import { getQoveryAuthHeaders, getQoveryInstanceUrl } from "@app/services/app-connection/qovery";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -10,15 +9,17 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { QoverySyncScope, QoveryVariableType } from "./qovery-sync-enums";
 import { TQoveryApiVariable, TQoverySyncWithCredentials } from "./qovery-sync-types";
 
-const QOVERY_SCOPE = {
-  [QoverySyncScope.Project]: { pathSegment: QoverySyncScope.Project, apiScope: "PROJECT" },
-  [QoverySyncScope.Environment]: { pathSegment: QoverySyncScope.Environment, apiScope: "ENVIRONMENT" }
-} as const;
+// The scope path segment is the enum value itself ("project" / "environment"); this map only carries
+// the scope value Qovery reports back, used to identify the entries we manage.
+const QOVERY_API_SCOPE: Record<QoverySyncScope, string> = {
+  [QoverySyncScope.Project]: "PROJECT",
+  [QoverySyncScope.Environment]: "ENVIRONMENT"
+};
 
-const QOVERY_VARIABLE_TYPE = {
-  [QoveryVariableType.Secret]: { pathSegment: "secret" },
-  [QoveryVariableType.Variable]: { pathSegment: "environmentVariable" }
-} as const;
+const QOVERY_VARIABLE_TYPE_PATH_SEGMENT: Record<QoveryVariableType, string> = {
+  [QoveryVariableType.Secret]: "secret",
+  [QoveryVariableType.Variable]: "environmentVariable"
+};
 
 // Qovery returns inherited, built-in, alias, and override entries alongside the ones defined at the
 // requested level. We only manage entries defined at the matching scope with a plain value type so we
@@ -44,45 +45,35 @@ export const resolveQoverySyncTarget = (
   return { scope: QoverySyncScope.Project, scopeId: projectId, variableType };
 };
 
-// Pure, verifiable URL construction: {instanceUrl}/{scopeSegment}/{scopeId}/{variableTypeSegment}[/{resourceId}]
-export const getQoveryResourceUrl = async ({
+// Pure, verifiable URL construction: {instanceUrl}/{scope}/{scopeId}/{variableTypeSegment}[/{resourceId}].
+// SSRF validation of the host happens once in getQoveryInstanceUrl; the segments appended here are
+// resource ids, not hosts, so they cannot change the host that was already validated.
+export const getQoveryResourceUrl = ({
   instanceUrl,
   scope,
   scopeId,
   variableType,
   resourceId
 }: TQoverySyncTarget & { instanceUrl: string; resourceId?: string }) => {
-  const segments = [
-    removeTrailingSlash(instanceUrl),
-    QOVERY_SCOPE[scope].pathSegment,
-    scopeId,
-    QOVERY_VARIABLE_TYPE[variableType].pathSegment
-  ];
+  const segments = [removeTrailingSlash(instanceUrl), scope, scopeId, QOVERY_VARIABLE_TYPE_PATH_SEGMENT[variableType]];
   if (resourceId) segments.push(resourceId);
 
-  const fullUrl = segments.join("/");
-  await blockLocalAndPrivateIpAddresses(fullUrl);
-  return fullUrl;
+  return segments.join("/");
 };
-
-const getQoveryAuthHeaders = (accessToken: string) => ({
-  Authorization: `Token ${accessToken}`,
-  Accept: "application/json"
-});
 
 const listManagedQoveryVariables = async (
   instanceUrl: string,
   accessToken: string,
   target: TQoverySyncTarget
 ): Promise<TQoveryApiVariable[]> => {
-  const url = await getQoveryResourceUrl({ instanceUrl, ...target });
+  const url = getQoveryResourceUrl({ instanceUrl, ...target });
   const { data } = await request.get<{ results?: TQoveryApiVariable[] }>(url, {
     headers: getQoveryAuthHeaders(accessToken)
   });
 
   return (data.results ?? []).filter(
     (variable) =>
-      variable.scope === QOVERY_SCOPE[target.scope].apiScope &&
+      variable.scope === QOVERY_API_SCOPE[target.scope] &&
       (!variable.variable_type || variable.variable_type === QOVERY_MANAGED_VARIABLE_TYPE)
   );
 };
@@ -94,7 +85,7 @@ const createQoveryVariable = async (
   key: string,
   value: string
 ) => {
-  const url = await getQoveryResourceUrl({ instanceUrl, ...target });
+  const url = getQoveryResourceUrl({ instanceUrl, ...target });
   await request.post(url, { key, value }, { headers: getQoveryAuthHeaders(accessToken) });
 };
 
@@ -106,7 +97,7 @@ const updateQoveryVariable = async (
   key: string,
   value: string
 ) => {
-  const url = await getQoveryResourceUrl({ instanceUrl, ...target, resourceId });
+  const url = getQoveryResourceUrl({ instanceUrl, ...target, resourceId });
   await request.put(url, { key, value }, { headers: getQoveryAuthHeaders(accessToken) });
 };
 
@@ -116,7 +107,7 @@ const deleteQoveryVariable = async (
   target: TQoverySyncTarget,
   resourceId: string
 ) => {
-  const url = await getQoveryResourceUrl({ instanceUrl, ...target, resourceId });
+  const url = getQoveryResourceUrl({ instanceUrl, ...target, resourceId });
   await request.delete(url, { headers: getQoveryAuthHeaders(accessToken) });
 };
 
@@ -144,8 +135,8 @@ export const QoverySyncFns = {
 
         // Secrets never return their value, so they cannot be diffed and are always overwritten.
         // Variables expose their value, so we skip the update when it is already up to date.
-        const isSecretScope = target.variableType === QoveryVariableType.Secret;
-        if (isSecretScope || existingVariable.value !== value) {
+        const isSecretVariableType = target.variableType === QoveryVariableType.Secret;
+        if (isSecretVariableType || existingVariable.value !== value) {
           await updateQoveryVariable(instanceUrl, accessToken, target, existingVariable.id, key, value);
         }
       } catch (error) {
