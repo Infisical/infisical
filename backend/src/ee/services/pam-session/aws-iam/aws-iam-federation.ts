@@ -162,7 +162,7 @@ export const exchangeCredentialsForConsoleUrl = async (
   const federationEndpoint = "https://signin.aws.amazon.com/federation";
   const signinTokenUrl = `${federationEndpoint}?Action=getSigninToken&Session=${encodeURIComponent(sessionJson)}`;
 
-  const tokenResponse = await axios.get<{ SigninToken?: string }>(signinTokenUrl);
+  const tokenResponse = await axios.get<{ SigninToken?: string }>(signinTokenUrl, { timeout: 10000 });
 
   if (!tokenResponse.data.SigninToken) {
     throw new InternalServerError({
