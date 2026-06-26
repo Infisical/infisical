@@ -401,6 +401,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: z.string()
     }),
     ui: {
+      port: { defaultValue: 3389 },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   },
