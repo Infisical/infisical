@@ -116,7 +116,7 @@ using the Universal Auth authentication method.
     - Max Number of Uses (default is `0`): The maximum number of times that the **Client Secret** can be used together with the **Client ID** to get back an access token; a value of `0` implies infinite number of uses.
 
     <Info>
-      When **Max Number of Uses** is set to `0` (unlimited), the usage count and last-used timestamp displayed for a **Client Secret** are approximate. To avoid database contention under high login volume, at most one use is recorded per Client Secret in each short interval — additional logins within that interval are not added to the stored count. Under sustained high-volume usage the recorded count can therefore be significantly lower than the true number of uses, and it does not catch up later, so it should not be relied on for auditing or capacity decisions. Client Secrets configured with a finite **Max Number of Uses** are always counted exactly, since the limit is enforced.
+      When **Max Number of Uses** is unlimited (`0`), the displayed usage count is approximate. Client Secrets with a finite limit are always counted exactly.
     </Info>
 
   </Step>
