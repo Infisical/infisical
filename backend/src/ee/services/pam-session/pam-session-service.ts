@@ -456,6 +456,7 @@ export const pamSessionServiceFactory = ({
         status: PamSessionStatus.Active,
         accessMethod,
         expiresAt,
+        startedAt: new Date(),
         accountName: account.name,
         accountType: account.accountType,
         actorEmail,
