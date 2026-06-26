@@ -31,6 +31,7 @@ import {
 import {
   PamPolicyType,
   PamSettingType,
+  policyAppliesTo,
   resolveAccessControls,
   resolvePolicy,
   splitPatternString
@@ -250,10 +251,12 @@ export const pamSessionServiceFactory = ({
       };
     }
 
-    const commandBlockingPatterns =
-      account.accountType === PamAccountType.SSH
-        ? splitPatternString(resolvePolicy(account.templatePolicies, PamPolicyType.CommandBlocking))
-        : [];
+    const commandBlockingPatterns = policyAppliesTo(
+      PamPolicyType.CommandBlocking,
+      account.accountType as PamAccountType
+    )
+      ? splitPatternString(resolvePolicy(account.templatePolicies, PamPolicyType.CommandBlocking))
+      : [];
 
     const parsedSettings = PamTemplateSettingsSchema.safeParse(account.templateSettings ?? {});
     const maskingPatterns = parsedSettings.success
