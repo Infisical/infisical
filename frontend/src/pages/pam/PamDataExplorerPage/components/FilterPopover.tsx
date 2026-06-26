@@ -213,7 +213,7 @@ export const FilterPopover = ({
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {columns.map((col) => (
                         <SelectItem key={col.name} value={col.name}>
                           {col.name}
@@ -231,7 +231,7 @@ export const FilterPopover = ({
                     <SelectTrigger size="sm" className="w-28 text-xs text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {OPERATORS.filter((op) => dialect !== "mysql" || op.value !== "ILIKE").map(
                         (op) => (
                           <SelectItem key={op.value} value={op.value}>

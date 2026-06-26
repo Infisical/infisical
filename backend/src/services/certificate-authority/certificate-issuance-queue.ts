@@ -459,7 +459,7 @@ export const certificateIssuanceQueueFactory = ({
           acmeResult = await runWithAcmeCancellation(signal, () =>
             runWithAcmeOrderTimeout(
               (timeoutSignal) =>
-                acmeFns.orderCertificateFromProfile({
+                acmeFns.orderCertificate({
                   caId,
                   profileId,
                   commonName: commonName || "",
@@ -573,8 +573,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const azureResult = await azureAdCsFns.orderCertificateFromProfile(
-          azureParams as Parameters<typeof azureAdCsFns.orderCertificateFromProfile>[0]
+        const azureResult = await azureAdCsFns.orderCertificate(
+          azureParams as Parameters<typeof azureAdCsFns.orderCertificate>[0]
         );
 
         if (await isCancelled()) {
@@ -643,8 +643,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(
-          acmParams as Parameters<typeof awsAcmPublicCaFns.orderCertificateFromProfile>[0]
+        const acmResult = await awsAcmPublicCaFns.orderCertificate(
+          acmParams as Parameters<typeof awsAcmPublicCaFns.orderCertificate>[0]
         );
 
         if (await isCancelled()) {
@@ -712,8 +712,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(
-          awsPcaParams as Parameters<typeof awsPcaFns.orderCertificateFromProfile>[0]
+        const awsPcaResult = await awsPcaFns.orderCertificate(
+          awsPcaParams as Parameters<typeof awsPcaFns.orderCertificate>[0]
         );
 
         if (await isCancelled()) {
@@ -780,7 +780,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const digicertResult = await digicertFns.orderCertificateFromProfile({
+        const digicertResult = await digicertFns.orderCertificate({
           caId,
           commonName: commonName || "",
           altNames: altNames?.map((san) => san.value) || [],
@@ -904,7 +904,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const godaddyResult = await godaddyFns.orderCertificateFromProfile({
+        const godaddyResult = await godaddyFns.orderCertificate({
           caId,
           commonName: commonName || "",
           altNames: altNames?.map((san) => san.value) || [],
@@ -988,8 +988,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(
-          venafiTppParams as Parameters<typeof venafiTppFns.orderCertificateFromProfile>[0]
+        const venafiTppResult = await venafiTppFns.orderCertificate(
+          venafiTppParams as Parameters<typeof venafiTppFns.orderCertificate>[0]
         );
 
         if (await isCancelled()) {

@@ -32,7 +32,9 @@ export const Route = createFileRoute(
         queryFn: () => fetchProjectById(pamProjectId)
       }),
       context.queryClient.ensureQueryData({
-        queryKey: roleQueryKeys.getUserProjectPermissions({ projectId: pamProjectId }),
+        queryKey: roleQueryKeys.getUserProjectPermissions({
+          projectId: pamProjectId
+        }),
         queryFn: () => fetchUserProjectPermissions({ projectId: pamProjectId })
       })
     ]);

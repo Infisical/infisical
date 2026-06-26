@@ -67,5 +67,6 @@ export enum AppConnection {
   Datadog = "datadog",
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
-  Convex = "convex"
+  Convex = "convex",
+  TriggerDev = "trigger-dev"
 }

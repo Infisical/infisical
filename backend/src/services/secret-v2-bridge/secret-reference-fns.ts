@@ -247,12 +247,10 @@ export const expandSecretReferencesFactory = ({
             stack.push({ ...node, visitedSecrets: newVisitedSecrets });
           }
 
-          if (referencedSecretValue) {
-            expandedValue = expandedValue.replaceAll(
-              interpolationSyntax,
-              () => referencedSecretValue // prevents special characters from triggering replacement patterns
-            );
-          }
+          expandedValue = expandedValue.replaceAll(
+            interpolationSyntax,
+            () => referencedSecretValue // prevents special characters from triggering replacement patterns
+          );
         }
       }
     }

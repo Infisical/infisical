@@ -320,7 +320,7 @@ export const SecretSharingBrandingSection = () => {
             <p className="text-sm text-muted">
               Custom branding for secret sharing pages is available on Enterprise plans.
             </p>
-            <Button size="xs" variant="org" asChild>
+            <Button size="xs" variant="project" asChild>
               <a href="https://infisical.com/schedule-demo" target="_blank" rel="noreferrer">
                 Talk to Us
               </a>
@@ -416,7 +416,7 @@ export const SecretSharingBrandingSection = () => {
                   </div>
                   <div>
                     <Button
-                      variant={!isDirty || !isAllowed ? "outline" : "org"}
+                      variant={!isDirty || !isAllowed ? "outline" : "project"}
                       type="submit"
                       isPending={isUpdatingOrg}
                       isDisabled={!isDirty || !isAllowed}

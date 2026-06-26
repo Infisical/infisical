@@ -16,7 +16,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
 | `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
-| `pam-web-access/` | WebSocket session handlers (Postgres, SSH), ticket-based auth |
+| `pam-web-access/` | WebSocket session handlers (Postgres, SSH, RDP), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.
 
@@ -128,21 +128,29 @@ Policies are the governance controls applied to a template (require MFA, require
 
 "Access policy" is the category, not a type: MFA, reason, and duration are individual peer policies that each `appliesTo: "all"`. `appliesTo` can also be a list to scope a policy to specific account types. This is distinct from **settings** (recording, password constraints), which are NOT policies, they live in the template's separate `settings` column with their own schema and bespoke UI.
 
+In the template detail sheet (`frontend/src/pages/pam/PamTemplatesPage/components/TemplateDetailSheet.tsx`), the **"General"** tab is for policies and system settings (gateway, session recording / storage backend, and similar template-level defaults); the **"Configuration"** tab is only for generic template metadata like name and description. When adding a new policy or setting, it belongs on the General tab, not Configuration.
+
 Storage: a template's `policies` jsonb column is a flat map keyed by `PamPolicyType`, e.g. `{ "require-mfa": true, "max-session-duration": 3600 }`. No DB defaults and no per-policy migration: absence resolves to the policy's natural default in the resolver (a missing boolean is `false`, a missing duration falls back to `DEFAULT_SESSION_DURATION_MS`).
 
 A registry entry flows automatically to:
 - **`GET /pam/accounts/types`** (`applicablePolicies`), so the frontend renders the right editors per account type with no per-type wiring.
 - **`validatePolicyValues`**, used by template create/update to reject policies that don't apply to the type or fail their schema (returns a result object; the caller maps `ok: false` to a `BadRequestError`).
 
-Every current policy is server-enforced: `resolveAccessControls` reads the reason/MFA/duration gates and they're applied in `pam-session`/`pam-web-access`. A gateway-enforced policy would instead pass its value to the gateway in `getSessionCredentials` (not currently wired, no policy needs it yet).
+Policies are either server-enforced or gateway-enforced:
+- **Server-enforced** (MFA, reason, duration): `resolveAccessControls` reads the values and they're applied in `pam-session`/`pam-web-access` before the session starts.
+- **Gateway-enforced** (command blocking): the value is read via `resolvePolicy` in `getSessionCredentials` and included in the `policyRules` response. The gateway compiles the patterns and enforces them during the session.
+
+Command blocking (`PamPolicyType.CommandBlocking`) is the first gateway-enforced policy. It applies only to SSH (`appliesTo: [PamAccountType.SSH]`). Stored as a newline-separated string of regex patterns, split into an array at the credentials endpoint before sending to the gateway.
+
+Session log masking (`sessionLogMaskingPatterns`) is a **setting**, not a policy. It lives in `PamTemplateSettingsSchema` and is read from `account.templateSettings` in `getSessionCredentials`. It also flows to the gateway via the `policyRules` response alongside command blocking patterns.
 
 ### Adding a New Policy
 
 1. Add the value to `PamPolicyType` and an entry to `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts` (`label`, `description`, `appliesTo`, `schema`). Mirror the enum value in `frontend/src/hooks/api/pam/enums.ts`.
 2. Register the policy in `POLICY_EDITORS` (`frontend/src/pages/pam/components/policyEditors/`), keyed by the new `PamPolicyType`. Reuse an existing editor when the value shape matches (`BooleanPolicyEditor` for a `z.boolean()`, `DurationPolicyEditor` for a number); only write a new editor component for a novel value shape. Each editor receives `{ label, description, value, onChange }` and owns its own layout, booleans render inline, others vertical.
-3. Enforcement: read it where it's enforced. A server-enforced policy extends `resolveAccessControls` and is applied in `pam-session`/`pam-web-access`. A gateway-enforced policy passes its value to the gateway in `getSessionCredentials`.
+3. Enforcement: read it where it's enforced. A server-enforced policy extends `resolveAccessControls` and is applied in `pam-session`/`pam-web-access`. A gateway-enforced policy is read via `resolvePolicy` in `getSessionCredentials`, split/transformed as needed, and included in the `policyRules` response (see command blocking for the pattern). Both the service return and the router response schema must be updated atomically -- Fastify's Zod serializer strips unknown keys.
 
-No migration, no router or response-schema change, and no DB default.
+No migration, no router or response-schema change (beyond `policyRules` for gateway-enforced policies), and no DB default.
 
 ## Session Lifecycle
 

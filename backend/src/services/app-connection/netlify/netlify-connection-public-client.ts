@@ -5,6 +5,7 @@ import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxi
 
 import { createRequestClient } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { NetlifySyncContext } from "@app/services/secret-sync/netlify";
 
 import { NetlifyConnectionMethod } from "./netlify-connection-constants";
 import { TNetlifyAccount, TNetlifyConnectionConfig, TNetlifySite, TNetlifyVariable } from "./netlify-connection-types";
@@ -56,6 +57,12 @@ type NetlifyParams = {
   site_id?: string;
 };
 
+type UpdateVariableValueRequestBody = {
+  key: string;
+  value: string;
+  context?: NetlifySyncContext;
+};
+
 class NetlifyPublicClient {
   private client: AxiosInstance;
 
@@ -94,23 +101,14 @@ class NetlifyPublicClient {
     }
   }
 
-  async getVariables(
-    connection: TNetlifyConnectionConfig,
-    { account_id, ...params }: NetlifyParams,
-    limit: number = 50,
-    page: number = 1
-  ) {
-    const res = await this.send<TNetlifyVariable[]>(connection, {
+  async getVariables(connection: TNetlifyConnectionConfig, { account_id, ...params }: NetlifyParams) {
+    // This public endpoint doesn't support pagination, but it also returns all variables.
+    // Tested with 900 secrets.
+    return this.send<TNetlifyVariable[]>(connection, {
       method: "GET",
       url: `/accounts/${account_id}/env`,
-      params: {
-        ...params,
-        limit,
-        page
-      }
+      params
     });
-
-    return res;
   }
 
   async createVariable(
@@ -131,11 +129,11 @@ class NetlifyPublicClient {
   async updateVariableValue(
     connection: TNetlifyConnectionConfig,
     { account_id, ...params }: NetlifyParams,
-    variable: TNetlifyVariable
+    { key, ...variable }: UpdateVariableValueRequestBody
   ) {
     const res = await this.send<TNetlifyVariable>(connection, {
       method: "PATCH",
-      url: `/accounts/${account_id}/env/${variable.key}`,
+      url: `/accounts/${account_id}/env/${key}`,
       data: variable,
       params
     });
@@ -180,21 +178,6 @@ class NetlifyPublicClient {
     }
   }
 
-  async upsertVariable(connection: TNetlifyConnectionConfig, params: NetlifyParams, variable: TNetlifyVariable) {
-    const res = await this.getVariable(connection, params, variable);
-
-    if (!res) {
-      return this.createVariable(connection, params, variable);
-    }
-
-    if (res.is_secret) {
-      await this.deleteVariable(connection, params, variable);
-      return this.createVariable(connection, params, variable);
-    }
-
-    return this.updateVariable(connection, params, variable);
-  }
-
   async deleteVariable(
     connection: TNetlifyConnectionConfig,
     { account_id, ...params }: NetlifyParams,
@@ -219,13 +202,13 @@ class NetlifyPublicClient {
 
   async deleteVariableValue(
     connection: TNetlifyConnectionConfig,
-    { account_id, value_id, ...params }: NetlifyParams & { value_id: string },
+    { account_id, ...params }: NetlifyParams,
     variable: Pick<TNetlifyVariable, "key" | "id">
   ) {
     try {
       const res = await this.send<TNetlifyVariable>(connection, {
         method: "DELETE",
-        url: `/accounts/${account_id}/${variable.key}/value/${value_id}`,
+        url: `/accounts/${account_id}/env/${variable.key}/value/${variable.id}`,
         params
       });
 

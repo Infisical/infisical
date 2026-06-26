@@ -39,6 +39,7 @@ import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { TravisCISyncDestinationCol } from "./TravisCISyncDestinationCol";
+import { TriggerDevSyncDestinationCol } from "./TriggerDevSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
@@ -133,6 +134,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <TravisCISyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Snowflake:
       return <SnowflakeSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.TriggerDev:
+      return <TriggerDevSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

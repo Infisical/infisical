@@ -171,6 +171,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       };
     }, []);
 
+    const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
+    const shouldBindRealValue = isVisible || isSecretFocused;
+
     return (
       <div
         className={twMerge("no-scrollbar w-full overflow-auto rounded-md", containerClassName)}
@@ -182,7 +185,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               <span className={twMerge("whitespace-break-spaces", !value && "text-muted")}>
                 {syntaxHighlight(
                   value,
-                  isVisible || (isSecretFocused && !valueAlwaysHidden),
+                  shouldRevealValue,
                   isImport,
                   isLoadingValue,
                   isErrorLoadingValue,
@@ -225,7 +228,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onMouseLeave={() => {
               setHoveredPart(undefined);
             }}
-            value={value || ""}
+            value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />

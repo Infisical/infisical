@@ -45,6 +45,22 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
             2. Set it as a string value for the `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` environment variable.
             3. Restart your Infisical instance to apply the changes.
             4. You can now use GCP integration with service account impersonation.
+
+            <Note>
+                Workload identity federation is also supported. Instead of a service account key, you may
+                set `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` to an `external_account` credential
+                configuration JSON (the file produced by `gcloud iam workload-identity-pools create-cred-config`).
+                Infisical detects the credential type from the `type` field automatically. The federated identity
+                needs the `roles/iam.serviceAccountTokenCreator` role on the service accounts it impersonates.
+
+                For **AWS** providers, Infisical resolves the instance's AWS credentials through the standard AWS
+                SDK credential chain, so federation works on EC2, ECS/Fargate, EKS (IRSA), and Lambda, or from
+                `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` environment variables. The region defaults to
+                `us-east-1`; set `AWS_REGION` (or `AWS_DEFAULT_REGION`) to use a specific regional STS endpoint.
+
+                For other providers, the referenced credential source (a mounted file or URL) must be reachable
+                from the Infisical instance at runtime.
+            </Note>
         </Step>
     </Steps>
 

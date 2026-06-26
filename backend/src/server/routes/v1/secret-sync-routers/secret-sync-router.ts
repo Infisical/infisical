@@ -68,6 +68,7 @@ import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/se
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
 import { TravisCISyncListItemSchema, TravisCISyncSchema } from "@app/services/secret-sync/travis-ci";
+import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/services/secret-sync/trigger-dev";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
@@ -93,6 +94,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   HerokuSyncSchema,
   RenderSyncSchema,
   FlyioSyncSchema,
+  TriggerDevSyncSchema,
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
@@ -138,6 +140,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   HerokuSyncListItemSchema,
   RenderSyncListItemSchema,
   FlyioSyncListItemSchema,
+  TriggerDevSyncListItemSchema,
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,

@@ -196,6 +196,63 @@ func TestGetSecretByName_WithMetadata(t *testing.T) {
 	assert.Equal(t, "platform-team", metadataMap["owner"])
 }
 
+func TestGetSecretByName_WithReminder(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "get-reminder-test")
+	repeatDays := 30
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "REMINDER_SECRET", "reminder-value", &infra.CreateSecretOpts{
+		ReminderNote:       "Remember to rotate this secret",
+		ReminderRepeatDays: &repeatDays,
+	})
+
+	identity := nodejs.CreateIdentity(t, "get-reminder-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "REMINDER_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "REMINDER_SECRET", result.Secret.SecretKey)
+	require.NotNil(t, result.Secret.SecretReminderNote, "secretReminderNote should be present")
+	assert.Equal(t, "Remember to rotate this secret", *result.Secret.SecretReminderNote)
+	require.NotNil(t, result.Secret.SecretReminderRepeatDays, "secretReminderRepeatDays should be present")
+	assert.Equal(t, 30, *result.Secret.SecretReminderRepeatDays)
+}
+
+func TestGetSecretByName_WithTagColor(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "get-tag-color-test")
+
+	tag := nodejs.CreateTag(t, proj.ID, "important", "Important", "#ff0000")
+
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TAGGED_SECRET", "tagged-value", &infra.CreateSecretOpts{
+		TagIDs: []string{tag.ID},
+	})
+
+	identity := nodejs.CreateIdentity(t, "get-tag-color-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := getSecretByName(t, auth.ActorTypeIdentity, identity.ID, nodejs.OrgID(), "TAGGED_SECRET", &GetSecretByNameV4Params{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      new("/"),
+		ViewSecretValue: new(true),
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "TAGGED_SECRET", result.Secret.SecretKey)
+	require.Len(t, result.Secret.Tags, 1, "should have one tag")
+	assert.Equal(t, "important", result.Secret.Tags[0].Slug)
+	require.NotNil(t, result.Secret.Tags[0].Color, "tag color should be present")
+	assert.Equal(t, "#ff0000", *result.Secret.Tags[0].Color)
+}
+
 // =============================================================================
 // Expansion Without Imports Tests
 // =============================================================================

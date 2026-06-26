@@ -149,9 +149,18 @@ export const fnSecretsFromImports = async ({
     ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
   );
 
+  // Deduplicate imports with same (env, path) within this batch
+  const seenInBatch = new Set<string>();
+  const uniqueImports = allowedImports.filter(({ importPath, importEnv }) => {
+    const key = getImportUniqKey(importEnv.slug, importPath);
+    if (seenInBatch.has(key)) return false;
+    seenInBatch.add(key);
+    return true;
+  });
+
   const importedFolders = (
     await folderDAL.findByManySecretPath(
-      allowedImports.map(({ importEnv, importPath }) => ({
+      uniqueImports.map(({ importEnv, importPath }) => ({
         envId: importEnv.id,
         secretPath: importPath
       }))
@@ -175,7 +184,7 @@ export const fnSecretsFromImports = async ({
 
   const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
-  allowedImports.forEach(({ importPath, importEnv }) => {
+  uniqueImports.forEach(({ importPath, importEnv }) => {
     cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));
   });
   // now we need to check recursively deeper imports made inside other imports
@@ -194,7 +203,7 @@ export const fnSecretsFromImports = async ({
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
 
-  const secrets = allowedImports.map(({ importPath, importEnv, id, folderId }, i) => {
+  const secrets = uniqueImports.map(({ importPath, importEnv, id, folderId }, i) => {
     const sourceImportFolder = importedFolderGroupBySourceImport?.[`${importEnv.id}-${importPath}`]?.[0];
     const folderDeeperImportSecrets =
       secretsFromdeeperImportGroupedByFolderId?.[sourceImportFolder?.id || ""]?.[0]?.secrets || [];
@@ -280,8 +289,17 @@ export const fnSecretsV2FromImports = async ({
 
     if (!sanitizedImports.length) continue;
 
+    // Deduplicate imports with same (env, path) within this batch
+    const seenInBatch = new Set<string>();
+    const uniqueImports = sanitizedImports.filter(({ importPath, importEnv }) => {
+      const key = getImportUniqKey(importEnv.slug, importPath);
+      if (seenInBatch.has(key)) return false;
+      seenInBatch.add(key);
+      return true;
+    });
+
     const importedFolders = await folderDAL.findByManySecretPath(
-      sanitizedImports.map(({ importEnv, importPath }) => ({
+      uniqueImports.map(({ importEnv, importPath }) => ({
         envId: importEnv.id,
         secretPath: importPath
       }))
@@ -338,7 +356,7 @@ export const fnSecretsV2FromImports = async ({
 
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
-    const processedBatchImports = await processReservedImports(sanitizedImports, secretImportDAL);
+    const processedBatchImports = await processReservedImports(uniqueImports, secretImportDAL);
 
     processedBatchImports.forEach(({ importPath, importEnv }) => {
       cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));

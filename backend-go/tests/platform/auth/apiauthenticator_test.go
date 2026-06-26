@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 		MustStart()
 
 	memKeyStore = keystore.NewMemoryKeyStore()
-	authenticator = apiauth.NewApiAuthenticator(slog.Default(), stack.DB(), infra.AuthSecret, memKeyStore, nil)
+	authenticator = apiauth.NewApiAuthenticator(slog.Default(), stack.DB(), infra.AuthSecret, memKeyStore, nil, infra.NewNopErrorHandler())
 
 	code := m.Run()
 	stack.Stop()
@@ -554,7 +554,7 @@ func TestValidateServiceToken_Valid(t *testing.T) {
 		nodejs.DeleteProject(t, proj.ID)
 	})
 
-	st := nodejs.CreateServiceToken(t, proj.ID, "dev", nil)
+	st := nodejs.CreateServiceToken(t, proj.ID, nil)
 	t.Cleanup(func() {
 		nodejs.DeleteServiceToken(t, st.ID)
 	})
@@ -577,7 +577,7 @@ func TestValidateServiceToken_WrongSecret(t *testing.T) {
 		nodejs.DeleteProject(t, proj.ID)
 	})
 
-	st := nodejs.CreateServiceToken(t, proj.ID, "dev", nil)
+	st := nodejs.CreateServiceToken(t, proj.ID, nil)
 	t.Cleanup(func() {
 		nodejs.DeleteServiceToken(t, st.ID)
 	})
@@ -602,7 +602,7 @@ func TestValidateServiceToken_Expired(t *testing.T) {
 	})
 
 	expiresIn := 1
-	st := nodejs.CreateServiceToken(t, proj.ID, "dev", &expiresIn)
+	st := nodejs.CreateServiceToken(t, proj.ID, &infra.CreateServiceTokenOpts{ExpiresIn: &expiresIn})
 
 	time.Sleep(2 * time.Second)
 
@@ -1088,7 +1088,7 @@ func TestValidateServiceToken_ProjectNotFound(t *testing.T) {
 	projName := "test-st-projdel-" + uuid.New().String()[:8]
 	proj := nodejs.CreateProject(t, projName)
 
-	st := nodejs.CreateServiceToken(t, proj.ID, "dev", nil)
+	st := nodejs.CreateServiceToken(t, proj.ID, nil)
 
 	// Delete the project (this should cascade delete the service token too,
 	// but let's manually delete just the project row to simulate orphaned token)

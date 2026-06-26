@@ -1,4 +1,5 @@
 import { Control, Controller, ControllerRenderProps, useWatch } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
 import { Input } from "@app/components/v3/generic/Input";
@@ -11,6 +12,7 @@ import {
 } from "@app/components/v3/generic/Select";
 import { Switch } from "@app/components/v3/generic/Switch";
 import { TextArea } from "@app/components/v3/generic/TextArea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
 
 import { TAccountFormValues } from "./accountFormSchema";
@@ -32,6 +34,12 @@ type FieldProps = {
   isError: boolean;
 };
 
+const fieldValueAsString = (value: unknown): string => {
+  if (Array.isArray(value)) return value.join("\n");
+  if (value === undefined || value === null) return "";
+  return String(value);
+};
+
 const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   if (descriptor.secret) {
     return (
@@ -47,7 +55,7 @@ const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   if (descriptor.widget === PamFieldWidget.Textarea) {
     return (
       <TextArea
-        value={(field.value as string) ?? ""}
+        value={fieldValueAsString(field.value)}
         onChange={field.onChange}
         rows={4}
         isError={isError}
@@ -84,7 +92,7 @@ const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   }
 
   return (
-    <Input value={(field.value as string) ?? ""} onChange={field.onChange} isError={isError} />
+    <Input value={fieldValueAsString(field.value)} onChange={field.onChange} isError={isError} />
   );
 };
 
@@ -108,6 +116,14 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                 <FieldLabel>
                   {descriptor.label}
                   {(descriptor.required || descriptor.secret) && <RequiredMark />}
+                  {descriptor.tooltip && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>{descriptor.tooltip}</TooltipContent>
+                    </Tooltip>
+                  )}
                 </FieldLabel>
                 <Switch
                   variant="pam"
@@ -120,6 +136,14 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                 <FieldLabel>
                   {descriptor.label}
                   {(descriptor.required || descriptor.secret) && <RequiredMark />}
+                  {descriptor.tooltip && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>{descriptor.tooltip}</TooltipContent>
+                    </Tooltip>
+                  )}
                 </FieldLabel>
                 <FieldContent>
                   <FieldWidget field={field} descriptor={descriptor} isError={!!fieldState.error} />

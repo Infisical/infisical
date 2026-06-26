@@ -7,6 +7,7 @@ import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/ap
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
+import { RdpContent } from "./RdpContent";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
@@ -109,6 +110,10 @@ const PageContent = () => {
     );
   }
 
+  if (account.accountType === PamAccountType.SSH) {
+    return <TerminalContent account={account} />;
+  }
+
   return (
     <SessionAccessGate account={account}>
       {({ reason, mfaSessionId }) => {
@@ -117,6 +122,12 @@ const PageContent = () => {
           account.accountType === PamAccountType.MySQL
         ) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
+        }
+        if (
+          account.accountType === PamAccountType.Windows ||
+          account.accountType === PamAccountType.ActiveDirectory
+        ) {
+          return <RdpContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
         }
         return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}

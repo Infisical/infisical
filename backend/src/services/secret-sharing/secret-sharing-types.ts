@@ -38,6 +38,7 @@ export type TGetActiveSharedSecretByIdDTO = {
   sharedSecretId: string;
   orgId?: string;
   actorId?: string;
+  actor?: ActorType;
   password?: string;
 };
 

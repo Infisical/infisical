@@ -7,7 +7,6 @@ import {
   SecretsManagerClient,
   UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
-import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -20,6 +19,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
+import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap, TPkiSyncWithCredentials } from "@app/services/pki-sync/pki-sync-types";
 
@@ -53,8 +53,7 @@ const isInfisicalManagedCertificate = (secretName: string, pkiSync: TPkiSyncWith
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.DEFAULT_ENVIRONMENT;
-    return matchesCertificateNameSchema(secretName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(secretName, certificateNameSchema);
   }
 
   return secretName.startsWith(AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);
@@ -270,14 +269,7 @@ export const awsSecretsManagerPkiSyncFactory = ({
       }
 
       let targetSecretName = certName;
-      if (syncOptions?.certificateNameSchema) {
-        const extendedCertData = certData as Record<string, unknown>;
-        const safeCommonName = typeof extendedCertData.commonName === "string" ? extendedCertData.commonName : "";
-
-        targetSecretName = syncOptions.certificateNameSchema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId)
-          .replace(new RE2("\\{\\{commonName\\}\\}", "g"), safeCommonName);
-      } else {
+      if (!syncOptions?.certificateNameSchema) {
         targetSecretName = `${AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX}${certificateId}`;
       }
 
@@ -444,8 +436,17 @@ export const awsSecretsManagerPkiSyncFactory = ({
     }
 
     if (canRemoveCertificates) {
+      const trackedExternalIds = new Set(
+        existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
+      );
+      const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
+
       for (const [secretName] of Object.entries(existingSecrets)) {
         if (!activeExternalIdentifiers.has(secretName)) {
+          if (!allowPatternCleanup && !trackedExternalIds.has(secretName)) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
           try {
             await withRateLimitRetry(
               () =>

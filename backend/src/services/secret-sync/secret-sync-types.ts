@@ -198,6 +198,12 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
 import { TTravisCISync, TTravisCISyncInput, TTravisCISyncListItem, TTravisCISyncWithCredentials } from "./travis-ci";
+import {
+  TTriggerDevSync,
+  TTriggerDevSyncInput,
+  TTriggerDevSyncListItem,
+  TTriggerDevSyncWithCredentials
+} from "./trigger-dev/trigger-dev-sync-types";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
 
@@ -224,6 +230,7 @@ export type TSecretSync =
   | THerokuSync
   | TRenderSync
   | TFlyioSync
+  | TTriggerDevSync
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
@@ -266,6 +273,7 @@ export type TSecretSyncWithCredentials =
   | THerokuSyncWithCredentials
   | TRenderSyncWithCredentials
   | TFlyioSyncWithCredentials
+  | TTriggerDevSyncWithCredentials
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
@@ -310,6 +318,7 @@ export type TSecretSyncInput =
   | THerokuSyncInput
   | TRenderSyncInput
   | TFlyioSyncInput
+  | TTriggerDevSyncInput
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
@@ -355,6 +364,7 @@ export type TSecretSyncListItem =
   | THerokuSyncListItem
   | TRenderSyncListItem
   | TFlyioSyncListItem
+  | TTriggerDevSyncListItem
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem

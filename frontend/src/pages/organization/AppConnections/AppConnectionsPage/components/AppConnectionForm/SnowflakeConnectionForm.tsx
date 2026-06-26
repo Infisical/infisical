@@ -1,14 +1,25 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   SnowflakeConnectionMethod,
   TSnowflakeConnection
 } from "@app/hooks/api/appConnections/types/snowflake-connection";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -52,11 +63,7 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -68,14 +75,26 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Account"
-              tooltipText="Your Snowflake account identifier."
-            >
-              <Input value={value} onChange={(e) => onChange(e.target.value)} />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="account">
+                Account
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Your Snowflake account identifier.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="account"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -84,14 +103,26 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Username"
-              tooltipText="The login name used to authenticate with Snowflake."
-            >
-              <Input value={value} onChange={(e) => onChange(e.target.value)} />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="username">
+                Username
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The login name used to authenticate with Snowflake.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="username"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -100,38 +131,27 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Programmatic Access Token"
-              tooltipText="The Programmatic Access Token (PAT) used to authenticate with Snowflake."
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="password">
+                Programmatic Access Token
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Programmatic Access Token (PAT) used to authenticate with Snowflake.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <SecretInput id="password" value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Snowflake"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Snowflake"}
+        />
       </form>
     </FormProvider>
   );

@@ -11,6 +11,7 @@ export * from "./assumePrivileges";
 export * from "./auditLogs";
 export * from "./auditLogStreams";
 export * from "./auth";
+export * from "./billingV2";
 export * from "./bots";
 export * from "./ca";
 export * from "./certificateCleanup";

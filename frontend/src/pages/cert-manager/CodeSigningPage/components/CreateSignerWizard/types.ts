@@ -1,4 +1,4 @@
-import { SignerKeyAlgorithm, SignerMemberRole } from "@app/hooks/api/signers";
+import { CertKeySource, SignerKeyAlgorithm, SignerMemberRole } from "@app/hooks/api/signers";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 
@@ -41,6 +41,8 @@ export type WizardState = {
   certificateTtlDays: number;
   certificateRenewBeforeDays: number | null;
   keyAlgorithm: SignerKeyAlgorithm;
+  keySource: CertKeySource;
+  hsmConnectorId: string | null;
   pendingMembers: PendingMember[];
   policySteps: PolicyStep[];
   maxSignings: number | null;
@@ -55,6 +57,8 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   certificateTtlDays: 365,
   certificateRenewBeforeDays: null,
   keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
+  keySource: CertKeySource.Infisical,
+  hsmConnectorId: null,
   pendingMembers: [],
   policySteps: [],
   maxSignings: null,
@@ -89,7 +93,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Pick the Certificate Authority and the name on the certificate.",
     rightLabel: "CERTIFICATE",
     rightDescription:
-      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued.",
+      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued. Pick the key source: Infisical or HSM (the keypair stays inside your own HSM).",
     docsUrl: PkiDocsUrls.codeSigning.signers.certificate
   },
   {

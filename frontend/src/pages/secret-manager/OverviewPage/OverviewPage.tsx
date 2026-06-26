@@ -218,6 +218,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
+import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
   DownloadEnvButton,
@@ -816,6 +817,7 @@ const OverviewPageContent = () => {
     "misc",
     "updateFolder",
     "deleteFolder",
+    "moveFolder",
     "addDynamicSecret",
     "addSecretRotation",
     "addHoneyToken",
@@ -2252,6 +2254,21 @@ const OverviewPageContent = () => {
     ]
   );
 
+  // folders move one at a time from the inline row action. build the per-env record (same shape the
+  // bulk move uses) for just this folder and open the move modal, which runs the eligibility check.
+  const handleMoveFolder = useCallback(
+    (folderName: string) => {
+      const folderByEnv: Record<string, TSecretFolder> = {};
+      userAvailableEnvs.forEach((env) => {
+        const folder = getFolderByNameAndEnv(folderName, env.slug);
+        if (folder) folderByEnv[env.slug] = folder;
+      });
+
+      handlePopUpOpen("moveFolder", { folders: { [folderName]: folderByEnv } });
+    },
+    [userAvailableEnvs, getFolderByNameAndEnv, handlePopUpOpen]
+  );
+
   const toggleSelectAllRows = () => {
     const newChecks = { ...selectedEntries };
 
@@ -2595,7 +2612,6 @@ const OverviewPageContent = () => {
                 />
                 {userAvailableEnvs.length > 0 && (
                   <AddResourceButtons
-                    requiresApproval={isProtectedBranch}
                     onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
                     onAddFolder={() => {
                       handlePopUpOpen("addFolder");
@@ -3175,6 +3191,7 @@ const OverviewPageContent = () => {
                                 onToggleFolderEdit={(name: string) =>
                                   handlePopUpOpen("updateFolder", { name, description })
                                 }
+                                onToggleFolderMove={(name: string) => handleMoveFolder(name)}
                                 onToggleFolderDelete={(name: string) =>
                                   handlePopUpOpen("deleteFolder", { name })
                                 }
@@ -3777,6 +3794,22 @@ const OverviewPageContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MoveSecretsModal
+        isOpen={popUp.moveFolder.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("moveFolder", isOpen)}
+        environments={userAvailableEnvs}
+        visibleEnvs={visibleEnvs}
+        projectId={projectId}
+        projectSlug={projectSlug}
+        sourceSecretPath={secretPath}
+        secrets={{}}
+        rotations={{}}
+        folders={
+          (popUp.moveFolder?.data as { folders: Record<string, Record<string, TSecretFolder>> })
+            ?.folders ?? {}
+        }
+        onComplete={() => handlePopUpClose("moveFolder")}
+      />
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}

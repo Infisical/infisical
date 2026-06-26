@@ -4,11 +4,15 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionHsmConnectorActions
+} from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionsTab } from "./components/AppConnectionsTab";
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
+import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
 
 export const SettingsPage = () => {
   const { orgId, projectId } = useParams({ strict: false });
@@ -25,7 +29,7 @@ export const SettingsPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Settings"
-          description="Configure app connections and cleanup rules."
+          description="Configure app connections, HSM connectors, and cleanup rules."
         />
 
         <Tabs
@@ -42,6 +46,9 @@ export const SettingsPage = () => {
             <Tab variant="project" value="app-connections">
               App Connections
             </Tab>
+            <Tab variant="project" value="hsm-connectors">
+              HSM Connectors
+            </Tab>
             <Tab variant="project" value="cleanup">
               Cleanup
             </Tab>
@@ -54,6 +61,16 @@ export const SettingsPage = () => {
               a={ProjectPermissionSub.AppConnections}
             >
               <AppConnectionsTab />
+            </ProjectPermissionCan>
+          </TabPanel>
+
+          <TabPanel value="hsm-connectors">
+            <ProjectPermissionCan
+              renderGuardBanner
+              I={ProjectPermissionHsmConnectorActions.Read}
+              a={ProjectPermissionSub.HsmConnectors}
+            >
+              <HsmConnectorsTab />
             </ProjectPermissionCan>
           </TabPanel>
 

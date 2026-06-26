@@ -62,7 +62,7 @@ export const ServerAdminsPanel = () => {
                 adminUsers?.map(({ user }) => {
                   const name =
                     user.firstName || user.lastName
-                      ? `${user.firstName} ${user.lastName}`
+                      ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
                       : user.username;
                   return (
                     <Tr key={`admin-${user.id}`}>

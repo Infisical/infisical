@@ -110,11 +110,7 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import {
-  GitHubConnectionMethod,
-  releaseGitHubInstallationsTokenClaim,
-  ValidateGitHubConnectionCredentialsSchema
-} from "./github";
+import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
@@ -166,6 +162,8 @@ import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-c
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
 import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
 import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
+import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
+import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
@@ -228,6 +226,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.LaravelForge]: ValidateLaravelForgeConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
+  [AppConnection.TriggerDev]: ValidateTriggerDevConnectionCredentialsSchema,
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
@@ -487,9 +486,9 @@ export const appConnectionServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    if (projectId) {
-      const project = await projectDAL.findProjectById(projectId);
+    const project = projectId ? await projectDAL.findProjectById(projectId) : null;
 
+    if (projectId) {
       if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
 
       const { permission } = await permissionService.getProjectPermission({
@@ -571,7 +570,8 @@ export const appConnectionServiceFactory = ({
         orgId: actor.orgId,
         projectId,
         version: 2,
-        gatewayId: validationGatewayId
+        gatewayId: validationGatewayId,
+        projectType: project?.type
       } as TAppConnectionConfig,
       gatewayService,
       gatewayV2Service,
@@ -665,11 +665,6 @@ export const appConnectionServiceFactory = ({
         configuration
       } as TAppConnection;
     } catch (err) {
-      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
-        const installationsToken = (credentials as { installationsToken?: string } | undefined)?.installationsToken;
-        if (installationsToken) await releaseGitHubInstallationsTokenClaim(installationsToken, keyStore);
-      }
-
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
@@ -850,6 +845,8 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
+      const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
+
       updatedCredentials = await validateAppConnectionCredentials(
         {
           app,
@@ -858,7 +855,8 @@ export const appConnectionServiceFactory = ({
           version: appConnection.version,
           credentials: credentialsToValidate,
           method,
-          gatewayId: validationGatewayId
+          gatewayId: validationGatewayId,
+          projectType: updateProject?.type
         } as TAppConnectionConfig,
         gatewayService,
         gatewayV2Service,
@@ -1014,11 +1012,6 @@ export const appConnectionServiceFactory = ({
 
       return await decryptAppConnection(updatedConnection, kmsService);
     } catch (err) {
-      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
-        const installationsToken = (credentials as { installationsToken?: string } | undefined)?.installationsToken;
-        if (installationsToken) await releaseGitHubInstallationsTokenClaim(installationsToken, keyStore);
-      }
-
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
@@ -1151,9 +1144,13 @@ export const appConnectionServiceFactory = ({
         } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
       });
 
+    const connectionProject = appConnection.projectId
+      ? await projectDAL.findProjectById(appConnection.projectId)
+      : null;
+
     const connection = await decryptAppConnection(appConnection, kmsService);
 
-    return connection as T;
+    return { ...connection, projectType: connectionProject?.type } as unknown as T;
   };
 
   const validateAppConnectionUsageById = async (
@@ -1336,6 +1333,7 @@ export const appConnectionServiceFactory = ({
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
+    triggerDev: triggerDevConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),

@@ -26,7 +26,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { extractGatewayTarget } from "../pam-account/pam-account-schemas";
+import {
+  extractGatewayTarget,
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue
+} from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
@@ -128,6 +132,15 @@ export const pamWebAccessServiceFactory = ({
     socket.close();
   };
 
+  const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
+    const issues = getAccountAccessibilityIssues(account);
+    if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
+      throw new BadRequestError({
+        message: "S3 recording must be configured before launching this account"
+      });
+    }
+  };
+
   const issueWebSocketTicket = async ({
     accountId,
     projectId,
@@ -147,6 +160,8 @@ export const pamWebAccessServiceFactory = ({
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
+
+    enforceRecordingConfig(account);
 
     await checkAccountAccess(
       permissionService,
@@ -357,6 +372,8 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Web access is not supported for this account type" });
       }
 
+      enforceRecordingConfig(account);
+
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: account.gatewayId ?? account.templateGatewayId,
         gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
@@ -377,7 +394,7 @@ export const pamWebAccessServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-      const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+      const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);
@@ -427,8 +444,11 @@ export const pamWebAccessServiceFactory = ({
         gateway: certs.gateway
       };
 
+      const isRdp =
+        account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.ActiveDirectory;
+
       relayServer = await setupRelayServer({
-        protocol: GatewayProxyProtocol.Pam,
+        protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
         relayHost: certs.relayHost,
         relay: certs.relay,
         gateway: certs.gateway,
@@ -466,7 +486,11 @@ export const pamWebAccessServiceFactory = ({
         releaseEarlyBuffer();
       }
 
-      await pamSessionDAL.activateSession(session.id);
+      // RDP sessions are activated by the gateway after credential exchange,
+      // not by the web access service.
+      if (!isRdp) {
+        await pamSessionDAL.activateSession(session.id);
+      }
 
       logger.info({ accountId, sessionId: session.id }, "Web access session established");
 

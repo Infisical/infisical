@@ -11,7 +11,7 @@ import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-da
 import { APPLICATION_APPROVAL_SCOPES } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
+import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 
 type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
@@ -42,8 +42,7 @@ export const deleteOrgMembershipsFn = async ({
   approvalPolicyDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
-    await assertWillRetainAdmin({
-      scope: AccessScope.Organization,
+    await assertWillRetainOrgAdmin({
       scopeOrgId: orgId,
       excludeMembershipIds: orgMembershipIds,
       dal: membershipUserDAL,

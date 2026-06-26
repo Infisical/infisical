@@ -80,7 +80,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             .enum(AllowedEncryptionKeyAlgorithms)
             .optional()
             .default(SymmetricKeyAlgorithm.AES_GCM_256)
-            .describe(KMS.CREATE_KEY.encryptionAlgorithm)
+            .describe(KMS.CREATE_KEY.encryptionAlgorithm),
+          isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
         })
         .superRefine((data, ctx) => {
           if (
@@ -115,7 +116,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, encryptionAlgorithm, keyUsage },
+        body: { projectId, name, description, encryptionAlgorithm, keyUsage, isExportable },
         permission
       } = req;
 
@@ -126,7 +127,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           name,
           description,
           encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
-          keyUsage
+          keyUsage,
+          isExportable
         },
         permission
       );
@@ -140,7 +142,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             keyId: cmek.id,
             name,
             description,
-            encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm
+            encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+            isExportable
           }
         }
       });
@@ -207,6 +210,52 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           metadata: {
             keyId,
             ...body
+          }
+        }
+      });
+
+      return { key: cmek };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "rotateKmsKey",
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Rotate KMS key. Generates new key material for the key and increments its version. Previous key material is retained so existing ciphertexts remain decryptable; new encrypt operations use the new material. Only supported for encrypt-decrypt keys.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.ROTATE_KEY.keyId)
+      }),
+      response: {
+        200: z.object({
+          key: CmekSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const cmek = await server.services.cmek.rotateCmekById(keyId, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cmek.projectId!,
+        event: {
+          type: EventType.ROTATE_CMEK,
+          metadata: {
+            keyId,
+            version: cmek.version
           }
         }
       });
@@ -576,7 +625,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                 name: keyNameSchema,
                 keyUsage: z.nativeEnum(KmsKeyUsage),
                 encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
-                keyMaterial: z.string().min(1)
+                keyMaterial: z.string().min(1),
+                isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
               })
               .superRefine((data, ctx) => {
                 if (
@@ -630,7 +680,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             name: k.name,
             algorithm: k.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
             keyUsage: k.keyUsage,
-            keyMaterial: k.keyMaterial
+            keyMaterial: k.keyMaterial,
+            isExportable: k.isExportable
           }))
         },
         permission

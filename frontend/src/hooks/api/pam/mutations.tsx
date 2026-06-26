@@ -106,7 +106,7 @@ export const useCreatePamAccount = () => {
     meta: { skipValidationToast: true },
     mutationFn: async ({ accountType, ...params }: TCreatePamAccountDTO) => {
       const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountType}`, params);
-      return data.account;
+      return { ...data.account, corsProbeUrl: data.corsProbeUrl as string | null | undefined };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
@@ -115,17 +115,16 @@ export const useCreatePamAccount = () => {
   });
 };
 
-export const useUpdatePamAccount = () => {
+export const useUpdatePamAccount = ({ skipValidationToast = false } = {}) => {
   const queryClient = useQueryClient();
   return useMutation({
-    // Validation errors are mapped onto the form fields
-    meta: { skipValidationToast: true },
+    meta: skipValidationToast ? { skipValidationToast: true } : undefined,
     mutationFn: async ({ accountId, accountType, ...params }: TUpdatePamAccountDTO) => {
       const { data } = await apiRequest.patch(
         `/api/v1/pam/accounts/${accountType}/${accountId}`,
         params
       );
-      return data.account;
+      return { ...data.account, corsProbeUrl: data.corsProbeUrl as string | null | undefined };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
@@ -153,11 +152,11 @@ export const useCreatePamAccountTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreatePamAccountTemplateDTO) => {
-      const { data } = await apiRequest.post<{ template: TPamAccountTemplate }>(
-        "/api/v1/pam/account-templates",
-        params
-      );
-      return data.template;
+      const { data } = await apiRequest.post<{
+        template: TPamAccountTemplate;
+        corsProbeUrl?: string | null;
+      }>("/api/v1/pam/account-templates", params);
+      return { ...data.template, corsProbeUrl: data.corsProbeUrl };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.template() });
@@ -165,15 +164,16 @@ export const useCreatePamAccountTemplate = () => {
   });
 };
 
-export const useUpdatePamAccountTemplate = () => {
+export const useUpdatePamAccountTemplate = ({ skipValidationToast = false } = {}) => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: skipValidationToast ? { skipValidationToast: true } : undefined,
     mutationFn: async ({ templateId, ...params }: TUpdatePamAccountTemplateDTO) => {
-      const { data } = await apiRequest.patch<{ template: TPamAccountTemplate }>(
-        `/api/v1/pam/account-templates/${templateId}`,
-        params
-      );
-      return data.template;
+      const { data } = await apiRequest.patch<{
+        template: TPamAccountTemplate;
+        corsProbeUrl?: string | null;
+      }>(`/api/v1/pam/account-templates/${templateId}`, params);
+      return { ...data.template, corsProbeUrl: data.corsProbeUrl };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.template() });

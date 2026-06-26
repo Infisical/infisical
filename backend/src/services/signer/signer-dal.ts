@@ -12,6 +12,8 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateNotAfter: Date | null;
   certificateNotBefore: Date | null;
   certificateKeyAlgorithm: string | null;
+  certificateKeySource: string | null;
+  certificateHsmConnectorId: string | null;
   certificateStatus: string | null;
   certificateCaId: string | null;
   approvalPolicyName: string | null;
@@ -46,6 +48,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
           db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
           db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
+          db.ref("keySource").withSchema(TableName.Certificate).as("certificateKeySource"),
+          db.ref("hsmConnectorId").withSchema(TableName.Certificate).as("certificateHsmConnectorId"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
@@ -159,6 +163,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
           db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
           db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
+          db.ref("keySource").withSchema(TableName.Certificate).as("certificateKeySource"),
+          db.ref("hsmConnectorId").withSchema(TableName.Certificate).as("certificateHsmConnectorId"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")

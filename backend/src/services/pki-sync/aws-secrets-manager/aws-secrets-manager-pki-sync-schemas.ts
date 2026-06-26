@@ -1,8 +1,8 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
@@ -37,12 +37,7 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
           return false;
         }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "test-cert-id")
-          .replace(new RE2("\\{\\{profileId\\}\\}", "g"), "test-profile-id")
-          .replace(new RE2("\\{\\{commonName\\}\\}", "g"), "test-common-name")
-          .replace(new RE2("\\{\\{friendlyName\\}\\}", "g"), "test-friendly-name")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "test-env");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = AWS_SECRETS_MANAGER_PKI_SYNC_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some(
           (char) => testName.includes(char)
