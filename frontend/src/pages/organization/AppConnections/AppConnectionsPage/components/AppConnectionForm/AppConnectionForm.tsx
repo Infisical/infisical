@@ -68,6 +68,7 @@ import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
+import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
@@ -278,6 +279,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <MongoDBConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Qovery:
+        return <QoveryConnectionForm onSubmit={onSubmit} />;
       case AppConnection.SSH:
         return <SshConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Dbt:
@@ -527,6 +530,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Qovery:
+        return <QoveryConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.SSH:
         return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Dbt:

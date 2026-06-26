@@ -2881,6 +2881,10 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    QOVERY: {
+      accessToken: "The project access token used to authenticate with Qovery.",
+      instanceUrl: "The Qovery API URL to connect to (defaults to https://api.qovery.com)."
+    },
     DATADOG: {
       url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
       apiKey: "The Datadog API key used to authenticate.",

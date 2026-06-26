@@ -70,7 +70,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Datadog]: "Datadog",
   [AppConnection.F5BigIp]: "F5 BIG-IP",
   [AppConnection.GoDaddy]: "GoDaddy",
-  [AppConnection.Convex]: "Convex"
+  [AppConnection.Convex]: "Convex",
+  [AppConnection.Qovery]: "Qovery"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -143,5 +144,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Datadog]: AppConnectionPlanType.Regular,
   [AppConnection.F5BigIp]: AppConnectionPlanType.Regular,
   [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
-  [AppConnection.Convex]: AppConnectionPlanType.Regular
+  [AppConnection.Convex]: AppConnectionPlanType.Regular,
+  [AppConnection.Qovery]: AppConnectionPlanType.Regular
 };

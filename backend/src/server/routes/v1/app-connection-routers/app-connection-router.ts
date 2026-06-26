@@ -163,6 +163,7 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import { QoveryConnectionListItemSchema, SanitizedQoveryConnectionSchema } from "@app/services/app-connection/qovery";
 import {
   RailwayConnectionListItemSchema,
   SanitizedRailwayConnectionSchema
@@ -286,7 +287,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSnowflakeConnectionSchema.options,
   ...SanitizedDatadogConnectionSchema.options,
   ...SanitizedF5BigIpConnectionSchema.options,
-  ...SanitizedConvexConnectionSchema.options
+  ...SanitizedConvexConnectionSchema.options,
+  ...SanitizedQoveryConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -359,7 +361,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SnowflakeConnectionListItemSchema,
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
-  ConvexConnectionListItemSchema
+  ConvexConnectionListItemSchema,
+  QoveryConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

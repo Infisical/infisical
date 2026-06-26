@@ -102,6 +102,10 @@ export type TOctopusDeployConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OctopusDeploy;
 };
 
+export type TQoveryConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Qovery;
+};
+
 export type TLdapConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.LDAP;
 };
@@ -364,7 +368,8 @@ export type TAppConnectionOption =
   | TDatadogConnectionOption
   | TF5BigIpConnectionOption
   | TConvexConnectionOption
-  | TTriggerDevConnectionOption;
+  | TTriggerDevConnectionOption
+  | TQoveryConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -437,4 +442,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
+  [AppConnection.Qovery]: TQoveryConnectionOption;
 };

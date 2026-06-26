@@ -312,6 +312,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TQoveryConnection,
+  TQoveryConnectionConfig,
+  TQoveryConnectionInput,
+  TValidateQoveryConnectionCredentialsSchema
+} from "./qovery";
+import {
   TRailwayConnection,
   TRailwayConnectionConfig,
   TRailwayConnectionInput,
@@ -487,6 +493,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TQoveryConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -568,6 +575,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TQoveryConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -680,7 +688,8 @@ export type TAppConnectionConfig =
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
-  | TConvexConnectionConfig;
+  | TConvexConnectionConfig
+  | TQoveryConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -752,7 +761,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
-  | TValidateConvexConnectionCredentialsSchema;
+  | TValidateConvexConnectionCredentialsSchema
+  | TValidateQoveryConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

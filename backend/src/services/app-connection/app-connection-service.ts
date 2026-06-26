@@ -143,6 +143,7 @@ import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
@@ -266,7 +267,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
-  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
+  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
