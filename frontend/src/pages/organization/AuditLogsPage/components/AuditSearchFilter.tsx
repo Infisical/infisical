@@ -9,6 +9,7 @@ import {
   ActorSuggestion,
   useAuditLogActorSuggestions
 } from "@app/hooks/api/auditLogs/useAuditLogActorSuggestions";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export interface AppliedFilter {
   property: string;
@@ -59,25 +60,38 @@ const FILTER_PROPERTIES: FilterProperty[] = [
 
 const PROJECT_DEPENDENT_KEYS = new Set(["environment", "secret_path", "secret_key"]);
 
+// Filters available to every product. Anything beyond these is product-specific
+const GENERIC_FILTER_KEYS = ["event", "actor", "actor_id", "source"];
+
+// Per-product filter keys. Products not listed fall back to the full set (secrets default)
+const PRODUCT_FILTER_KEYS: Partial<Record<ProjectType, string[]>> = {
+  [ProjectType.PAM]: GENERIC_FILTER_KEYS
+};
+
+const getProductFilterProperties = (projectType?: ProjectType) => {
+  const keys = projectType ? PRODUCT_FILTER_KEYS[projectType] : undefined;
+  return keys ? FILTER_PROPERTIES.filter((prop) => keys.includes(prop.key)) : FILTER_PROPERTIES;
+};
+
 const getDisplayLabel = (key: string) =>
   FILTER_PROPERTIES.find((prop) => prop.key === key)?.displayLabel || key;
-
-const isFreetextKey = (key: string) =>
-  !FILTER_PROPERTIES.find((prop) => prop.key === key)?.suggestions;
 
 type Props = {
   filters: AppliedFilter[];
   onFiltersChange: (filters: AppliedFilter[]) => void;
   hasProjectContext?: boolean;
   projectId?: string;
+  projectType?: ProjectType;
 };
 
 export const AuditSearchFilter = ({
   filters,
   onFiltersChange,
   hasProjectContext,
-  projectId
+  projectId,
+  projectType
 }: Props) => {
+  const availableProperties = useMemo(() => getProductFilterProperties(projectType), [projectType]);
   const currentActorType = filters.find((f) => f.property === "actor")?.value as
     | ActorType
     | undefined;
@@ -93,10 +107,12 @@ export const AuditSearchFilter = ({
   const isTypingValue = colonIndex > 0;
   const propertyKey = isTypingValue ? query.slice(0, colonIndex).trim() : null;
   const propertyDef = propertyKey
-    ? FILTER_PROPERTIES.find((prop) => prop.key === propertyKey)
+    ? availableProperties.find((prop) => prop.key === propertyKey)
     : null;
   const typedValue = isTypingValue ? query.slice(colonIndex + 1) : "";
-  const isFreetext = propertyKey ? isFreetextKey(propertyKey) : false;
+  const isFreetext = propertyKey
+    ? availableProperties.some((prop) => prop.key === propertyKey && !prop.suggestions)
+    : false;
   const isComposing = isTypingValue && (propertyDef || isFreetext);
   const hasProjectFilter =
     hasProjectContext || filters.some((filter) => filter.property === "project");
@@ -120,9 +136,11 @@ export const AuditSearchFilter = ({
   const filteredProperties = useMemo(
     () =>
       query
-        ? FILTER_PROPERTIES.filter((prop) => prop.key.toLowerCase().startsWith(query.toLowerCase()))
-        : FILTER_PROPERTIES,
-    [query]
+        ? availableProperties.filter((prop) =>
+            prop.key.toLowerCase().startsWith(query.toLowerCase())
+          )
+        : availableProperties,
+    [query, availableProperties]
   );
 
   useEffect(() => {

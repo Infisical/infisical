@@ -85,7 +85,7 @@ export const DataExplorerRowEditor = ({
                   {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
                   <label
                     htmlFor={`row-editor-${col.name}`}
-                    className="text-xs font-medium text-mineshaft-200"
+                    className="text-xs font-medium text-foreground"
                   >
                     {col.name}
                   </label>
@@ -99,7 +99,7 @@ export const DataExplorerRowEditor = ({
                     </Badge>
                   )}
                   {isNull && (
-                    <Badge variant="outline" className="text-[10px] text-yellow-500">
+                    <Badge variant="outline" className="text-[10px] text-warning">
                       NULL
                     </Badge>
                   )}

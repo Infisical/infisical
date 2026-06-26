@@ -251,6 +251,14 @@ export const ProjectCategoryOverview = () => {
       return;
     }
 
+    if (type === ProjectType.PAM) {
+      navigate({
+        to: "/organizations/$orgId/pam/access",
+        params: { orgId }
+      });
+      return;
+    }
+
     navigate({
       to: "/organizations/$orgId/projects/$type",
       params: { orgId, type: projectTypeToUrlSlug(type) }

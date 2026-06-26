@@ -1,116 +1,65 @@
 import { Knex } from "knex";
-import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
-import { OrderByDirection } from "@app/lib/types";
+import { TableName, TPamFolders } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
+import { ormify } from "@app/lib/knex";
 
-import { PamAccountOrderBy } from "../pam-account/pam-account-enums";
+import { accountAccessibilitySql } from "../pam-account/pam-account-dal";
+
+export type TPamFolderWithCount = TPamFolders & { accountCount: number };
 
 export type TPamFolderDALFactory = ReturnType<typeof pamFolderDALFactory>;
+
 export const pamFolderDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamFolder);
 
-  const findByProjectId = async (
-    {
-      projectId,
-      parentId,
-      search,
-      limit,
-      offset = 0,
-      orderBy = PamAccountOrderBy.Name,
-      orderDirection = OrderByDirection.ASC
-    }: {
-      projectId: string;
-      parentId?: string | null;
-      search?: string;
-      limit?: number;
-      offset?: number;
-      orderBy?: PamAccountOrderBy;
-      orderDirection?: OrderByDirection;
-    },
+  const findByProjectIdFiltered = async (
+    projectId: string,
+    folderIds: string[],
+    filters?: { search?: string; accountIds?: string[]; onlyAccessible?: boolean },
     tx?: Knex
-  ) => {
-    try {
-      const dbInstance = tx || db.replicaNode();
-      const query = dbInstance(TableName.PamFolder).where(`${TableName.PamFolder}.projectId`, projectId);
-
-      if (parentId) {
-        void query.where(`${TableName.PamFolder}.parentId`, parentId);
-      } else {
-        void query.whereNull(`${TableName.PamFolder}.parentId`);
-      }
-
-      if (search) {
-        // escape special characters (`%`, `_`) and the escape character itself (`\`)
-        const escapedSearch = search
-          .replace(new RE2(/\\/g), "\\\\")
-          .replace(new RE2(/%/g), "\\%")
-          .replace(new RE2(/_/g), "\\_");
-        void query.whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamFolder, "name", `%${escapedSearch}%`]);
-      }
-
-      const countQuery = query.clone().count("*", { as: "count" }).first();
-
-      void query.select(selectAllTableCols(TableName.PamFolder));
-      const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
-
-      void query.orderByRaw(`${TableName.PamFolder}.?? COLLATE "en-x-icu" ${direction}`, [orderBy]);
-
-      if (typeof limit === "number") {
-        void query.limit(limit).offset(offset);
-      }
-
-      const [folders, countResult] = await Promise.all([query, countQuery]);
-      const totalCount = Number(countResult?.count || 0);
-
-      return { folders, totalCount };
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PAM folders" });
-    }
-  };
-
-  const findByPath = async (projectId: string, path: string, tx?: Knex) => {
-    try {
-      const dbInstance = tx || db.replicaNode();
-
-      const folders = await dbInstance(TableName.PamFolder)
-        .where(`${TableName.PamFolder}.projectId`, projectId)
-        .select(selectAllTableCols(TableName.PamFolder));
-
-      const pathSegments = path.split("/").filter(Boolean);
-      if (pathSegments.length === 0) {
-        return undefined;
-      }
-
-      const foldersByParentId = new Map<string | null, typeof folders>();
-      for (const folder of folders) {
-        const children = foldersByParentId.get(folder.parentId ?? null) ?? [];
-        children.push(folder);
-        foldersByParentId.set(folder.parentId ?? null, children);
-      }
-
-      let parentId: string | null = null;
-      let currentFolder: (typeof folders)[0] | undefined;
-
-      for (const segment of pathSegments) {
-        const childFolders: typeof folders = foldersByParentId.get(parentId) || [];
-        currentFolder = childFolders.find((folder) => folder.name === segment);
-
-        if (!currentFolder) {
-          return undefined;
+  ): Promise<TPamFolderWithCount[]> => {
+    const qb = (tx || db.replicaNode())(TableName.PamFolder)
+      .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .leftJoin(
+        TableName.PamAccountTemplate,
+        `${TableName.PamAccount}.templateId`,
+        `${TableName.PamAccountTemplate}.id`
+      )
+      .where(`${TableName.PamFolder}.projectId`, projectId)
+      .where((builder) => {
+        if (folderIds.length > 0) {
+          void builder.whereIn(`${TableName.PamFolder}.id`, folderIds);
         }
+        if (filters?.accountIds && filters.accountIds.length > 0) {
+          void builder.orWhereIn(`${TableName.PamAccount}.id`, filters.accountIds);
+        }
+      });
 
-        parentId = currentFolder.id;
-      }
-
-      return currentFolder;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PAM folder by path" });
+    if (filters?.search) {
+      void qb.whereILike(`${TableName.PamFolder}.name`, `%${sanitizeSqlLikeString(filters.search)}%`);
     }
+
+    const countExpr = filters?.onlyAccessible
+      ? `COUNT(${TableName.PamAccount}.id) FILTER (WHERE ${accountAccessibilitySql(
+          TableName.PamAccount,
+          TableName.PamAccountTemplate
+        )})::int as "accountCount"`
+      : `COUNT(${TableName.PamAccount}.id)::int as "accountCount"`;
+
+    return qb
+      .groupBy(`${TableName.PamFolder}.id`)
+      .select(`${TableName.PamFolder}.*`, db.raw(countExpr))
+      .orderBy(`${TableName.PamFolder}.name`, "asc") as unknown as Promise<TPamFolderWithCount[]>;
   };
 
-  return { ...orm, findByProjectId, findByPath };
+  const countAccountsByFolderId = async (folderId: string, tx?: Knex) => {
+    const [result] = (await (tx || db)(TableName.PamAccount).where({ folderId }).count("id as count")) as unknown as [
+      { count: string }
+    ];
+    return Number(result.count);
+  };
+
+  return { ...orm, findByProjectIdFiltered, countAccountsByFolderId };
 };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -91,6 +91,14 @@ const TypeSelectInner = ({
       return;
     }
 
+    if (type === ProjectType.PAM) {
+      navigate({
+        to: "/organizations/$orgId/pam/access",
+        params: { orgId }
+      });
+      return;
+    }
+
     navigate({
       to: "/organizations/$orgId/projects/$type",
       params: { orgId, type: projectTypeToUrlSlug(type) }
@@ -111,6 +119,11 @@ const TypeSelectInner = ({
           onClick={() => {
             if (currentType === ProjectType.CertificateManager) {
               navigateToCertManager();
+            } else if (currentType === ProjectType.PAM) {
+              navigate({
+                to: "/organizations/$orgId/pam/access",
+                params: { orgId: currentOrg?.id || "" }
+              });
             } else {
               navigate({
                 to: "/organizations/$orgId/projects/$type",
@@ -170,6 +183,7 @@ const TypeSelectInner = ({
 
 export const TypeSelect = () => {
   const params = useParams({ strict: false });
+  const { pathname } = useLocation();
   const search = useSearch({ strict: false }) as { fromApplication?: string };
   const { data: projects = [] } = useGetUserProjects();
   const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
@@ -180,6 +194,10 @@ export const TypeSelect = () => {
     if (resolvedType) {
       return <TypeSelectInner currentType={resolvedType} />;
     }
+  }
+
+  if (!params.projectId && pathname.includes("/pam/")) {
+    return <TypeSelectInner currentType={ProjectType.PAM} />;
   }
 
   if (params.projectId) {

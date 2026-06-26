@@ -97,8 +97,7 @@ export const parseProjectSlugFromPath = (pathname: string): string | undefined =
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
   ProjectType.KMS,
-  ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.SecretScanning
 ]);
 
 export const hasIntermediateProjectsView = (type: ProjectType) =>
@@ -110,6 +109,8 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
       return "/organizations/$orgId/projects/cert-manager/$projectId";
+    case ProjectType.PAM:
+      return "/organizations/$orgId/pam" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -126,7 +127,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretScanning:
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
-      return `/organizations/$orgId/projects/${type}/$projectId/resources` as const;
+      return "/organizations/$orgId/pam/access" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -139,7 +140,7 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "PAM"
+    [ProjectType.PAM]: "Privileged Access Manager"
   };
   return titleConvert[type] || type;
 };

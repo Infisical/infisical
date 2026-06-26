@@ -39,6 +39,7 @@ export type Organization = {
   parentOrgId: string | null;
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
+  pamProjectId: string | null;
 };
 
 export type UpdateOrgDTO = {

@@ -93,7 +93,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretScanning
   },
   {
-    label: "PAM",
+    label: "Privileged Access Manager",
     value: ProjectType.PAM
   }
 ];
