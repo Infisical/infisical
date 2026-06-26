@@ -76,17 +76,17 @@ export const secretImportServiceFactory = ({
   secretV2BridgeDAL,
   kmsService
 }: TSecretImportServiceFactoryDep) => {
-  // Filters out cross-project imports that no longer have a valid grant.
+  // Annotates cross-project imports with isAccessRevoked based on grant status.
   // The org-level toggle is enforced at grant creation time in project-grant-service;
   // here the grant is the single source of truth for per-import access.
-  const $filterCrossProjectImports = async <
+  const $annotateCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
   >(
     imports: T[],
     projectId: string
-  ): Promise<T[]> => {
+  ): Promise<(T & { isAccessRevoked: boolean })[]> => {
     const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
-    if (!crossProject.length) return imports;
+    if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
     const sourceFolders = await folderDAL.findByManySecretPath(
       crossProject.map((imp) => ({ envId: imp.importEnv.id, secretPath: imp.importPath }))
@@ -101,16 +101,19 @@ export const secretImportServiceFactory = ({
       grants.forEach((g) => grantedFolderIds.add(g.sourceFolderId));
     }
 
-    const validCrossProjectIds = new Set(
+    const revokedIds = new Set(
       crossProject
         .filter((_, idx) => {
           const folder = sourceFolders[idx];
-          return folder && grantedFolderIds.has(folder.id);
+          return !folder || !grantedFolderIds.has(folder.id);
         })
         .map((imp) => imp.id)
     );
 
-    return imports.filter((imp) => imp.importEnv.projectId === projectId || validCrossProjectIds.has(imp.id));
+    return imports.map((imp) => ({
+      ...imp,
+      isAccessRevoked: revokedIds.has(imp.id)
+    }));
   };
 
   const createImport = async ({
@@ -700,7 +703,7 @@ export const secretImportServiceFactory = ({
       });
 
     const secImports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-    return $filterCrossProjectImports(secImports, projectId);
+    return $annotateCrossProjectImports(secImports, projectId);
   };
 
   const getImportById = async ({
@@ -795,10 +798,12 @@ export const secretImportServiceFactory = ({
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
-    const secretImports = await $filterCrossProjectImports(
-      await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
-      projectId
-    );
+    const secretImports = (
+      await $annotateCrossProjectImports(
+        await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+        projectId
+      )
+    ).filter((imp) => !imp.isAccessRevoked);
     const allowedImports = secretImports.filter((el) =>
       hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
         environment: el.importEnv.slug,
@@ -834,10 +839,12 @@ export const secretImportServiceFactory = ({
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
-    const secretImports = await $filterCrossProjectImports(
-      await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
-      projectId
-    );
+    const secretImports = (
+      await $annotateCrossProjectImports(
+        await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+        projectId
+      )
+    ).filter((imp) => !imp.isAccessRevoked);
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -946,7 +953,8 @@ export const secretImportServiceFactory = ({
     const secImportsArrays = await Promise.all(
       folders.map(async (folder) => {
         const imports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-        return imports.map((importItem) => ({
+        const annotated = await $annotateCrossProjectImports(imports, projectId);
+        return annotated.map((importItem) => ({
           ...importItem,
           environment: folder.environment.slug
         }));

@@ -21,6 +21,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, IconButton, TableContainer, Tooltip } from "@app/components/v2";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
@@ -83,6 +84,7 @@ export const SecretImportItem = ({
     id,
     isReplication,
     isReplicationSuccess,
+    isAccessRevoked,
     replicationStatus,
     lastReplicated,
     importEnv
@@ -178,6 +180,11 @@ export const SecretImportItem = ({
             )}
         </div>
         <div className="flex items-center space-x-4 py-2 pr-4">
+          {isAccessRevoked && (
+            <span className="rounded border border-red-700/40 bg-red-900/20 px-1.5 py-0.5 text-xs text-red-400">
+              Access revoked
+            </span>
+          )}
           {lastReplicated && (
             <Tooltip
               position="left"
@@ -296,43 +303,66 @@ export const SecretImportItem = ({
           colSpan={3}
           className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}
         >
-          <div className="rounded-md bg-bunker-700 p-1">
-            <TableContainer>
-              <table className="secret-table">
-                <thead>
-                  <tr>
-                    <td style={{ padding: "0.25rem 1rem" }}>Key</td>
-                    <td style={{ padding: "0.25rem 1rem" }}>Value</td>
-                  </tr>
-                </thead>
-                <tbody>
-                  {importedSecrets?.length === 0 && (
+          {isAccessRevoked ? (
+            <div className="p-4">
+              <Empty className="gap-3 border-danger/30 bg-danger/5 p-4 text-danger md:p-4">
+                <EmptyHeader className="gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faWarning} className="size-4 shrink-0" />
+                    <EmptyTitle>
+                      {secretImport?.sourceProjectName
+                        ? `${secretImport.sourceProjectName} revoked access to these secrets.`
+                        : "Access to these secrets has been revoked."}
+                    </EmptyTitle>
+                  </div>
+                  <EmptyDescription className="text-danger/70">
+                    Imported values can no longer be resolved and any reference to them will fail at
+                    build time. Re-request access from the source project, or remove this import.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            </div>
+          ) : (
+            <div className="rounded-md bg-bunker-700 p-1">
+              <TableContainer>
+                <table className="secret-table">
+                  <thead>
                     <tr>
-                      <td colSpan={3}>
-                        <EmptyState title="No secrets found" icon={faKey} />
-                      </td>
+                      <td style={{ padding: "0.25rem 1rem" }}>Key</td>
+                      <td style={{ padding: "0.25rem 1rem" }}>Value</td>
                     </tr>
-                  )}
-                  {filteredImportedSecrets.length === 0 && importedSecrets?.length !== 0 && (
-                    <tr>
-                      <td colSpan={3}>
-                        <EmptyState title="No secrets match search" icon={faSearch} />
-                      </td>
-                    </tr>
-                  )}
-                  {filteredImportedSecrets.map((secret, index) => (
-                    <SecretImportSecretRow
-                      secret={secret}
-                      key={`${id}-${secret.key}-${index + 1}`}
-                      sourceProjectId={
-                        importEnv.projectId !== currentProject?.id ? importEnv.projectId : undefined
-                      }
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </TableContainer>
-          </div>
+                  </thead>
+                  <tbody>
+                    {importedSecrets?.length === 0 && (
+                      <tr>
+                        <td colSpan={3}>
+                          <EmptyState title="No secrets found" icon={faKey} />
+                        </td>
+                      </tr>
+                    )}
+                    {filteredImportedSecrets.length === 0 && importedSecrets?.length !== 0 && (
+                      <tr>
+                        <td colSpan={3}>
+                          <EmptyState title="No secrets match search" icon={faSearch} />
+                        </td>
+                      </tr>
+                    )}
+                    {filteredImportedSecrets.map((secret, index) => (
+                      <SecretImportSecretRow
+                        secret={secret}
+                        key={`${id}-${secret.key}-${index + 1}`}
+                        sourceProjectId={
+                          importEnv.projectId !== currentProject?.id
+                            ? importEnv.projectId
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </TableContainer>
+            </div>
+          )}
         </td>
       )}
     </>
