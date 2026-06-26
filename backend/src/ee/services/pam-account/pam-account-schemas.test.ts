@@ -217,8 +217,9 @@ describe("getAccountAccessibilityIssues", () => {
     expect(
       getAccountAccessibilityIssues({
         accountType: PamAccountType.Postgres,
-        hasGateway: true,
-        hasRecordingConfig: false,
+        gatewayId: "gw-1",
+        templateRecordingConnectionId: null,
+        templateSettings: {},
         credentialConfigured: true
       })
     ).toEqual([]);
@@ -228,8 +229,8 @@ describe("getAccountAccessibilityIssues", () => {
     expect(
       getAccountAccessibilityIssues({
         accountType: PamAccountType.Postgres,
-        hasGateway: false,
-        hasRecordingConfig: false,
+        templateRecordingConnectionId: null,
+        templateSettings: {},
         credentialConfigured: false
       })
     ).toEqual([PamAccountAccessibilityIssue.NoGateway, PamAccountAccessibilityIssue.NoCredential]);
@@ -239,8 +240,9 @@ describe("getAccountAccessibilityIssues", () => {
     expect(
       getAccountAccessibilityIssues({
         accountType: PamAccountType.Windows,
-        hasGateway: true,
-        hasRecordingConfig: false,
+        gatewayId: "gw-1",
+        templateRecordingConnectionId: null,
+        templateSettings: {},
         credentialConfigured: true
       })
     ).toEqual([PamAccountAccessibilityIssue.NoRecordingConfig]);

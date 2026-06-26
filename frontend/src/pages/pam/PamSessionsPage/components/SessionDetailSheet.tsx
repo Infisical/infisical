@@ -1,10 +1,11 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   AlertTriangleIcon,
   Ban,
   ChevronRightIcon,
   ClipboardListIcon,
+  MonitorPlayIcon,
   MoreHorizontalIcon,
   SearchIcon
 } from "lucide-react";
@@ -27,6 +28,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import {
+  PamAccountType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
@@ -41,6 +43,8 @@ import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
 import { LiveDot } from "../../components/LiveDot";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
+
+const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
 
 type Props = {
   sessionId?: string;
@@ -280,43 +284,89 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     );
   }
 
-  const tabs = [
-    {
-      value: "logs",
-      label: "Session Logs",
-      icon: <ClipboardListIcon className="mr-1.5 size-4" />,
-      content: (
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <Card>
-            <CardHeader className="flex items-center justify-between border-b">
-              <CardTitle className="text-base">Session Logs</CardTitle>
-              {isActive && (
-                <Badge variant="pam">
-                  <LiveDot className="bg-product-pam" />
-                  Live
-                </Badge>
-              )}
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <InputGroup>
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={logSearch}
-                  onChange={(e) => setLogSearch(e.target.value)}
-                  placeholder="Search logs..."
-                />
-              </InputGroup>
-              <div className="overflow-hidden rounded-md border border-border bg-popover">
-                {logContent}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )
-    }
-  ];
+  const isRdpSession =
+    session.accountType === PamAccountType.Windows ||
+    session.accountType === PamAccountType.ActiveDirectory;
+
+  const tabs = isRdpSession
+    ? [
+        {
+          value: "recording",
+          label: "Session Recording",
+          icon: <MonitorPlayIcon className="mr-1.5 size-4" />,
+          content: (
+            <div className="flex flex-1 flex-col gap-4 p-4">
+              <Card>
+                <CardHeader className="flex items-center justify-between border-b">
+                  <CardTitle className="text-base">Session Recording</CardTitle>
+                  {isActive && (
+                    <Badge variant="pam">
+                      <LiveDot className="bg-product-pam" />
+                      Live
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {showLogSkeleton ? (
+                    <div className="flex flex-col gap-2 p-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={`rec-skeleton-${i + 1}`} className="h-4 w-full" />
+                      ))}
+                    </div>
+                  ) : (
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center p-10 text-sm text-muted">
+                          Loading player...
+                        </div>
+                      }
+                    >
+                      <RdpReplayView events={filteredEvents} isStreaming={isActive} />
+                    </Suspense>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )
+        }
+      ]
+    : [
+        {
+          value: "logs",
+          label: "Session Logs",
+          icon: <ClipboardListIcon className="mr-1.5 size-4" />,
+          content: (
+            <div className="flex flex-1 flex-col gap-4 p-4">
+              <Card>
+                <CardHeader className="flex items-center justify-between border-b">
+                  <CardTitle className="text-base">Session Logs</CardTitle>
+                  {isActive && (
+                    <Badge variant="pam">
+                      <LiveDot className="bg-product-pam" />
+                      Live
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <InputGroup>
+                    <InputGroupAddon>
+                      <SearchIcon />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      value={logSearch}
+                      onChange={(e) => setLogSearch(e.target.value)}
+                      placeholder="Search logs..."
+                    />
+                  </InputGroup>
+                  <div className="overflow-hidden rounded-md border border-border bg-popover">
+                    {logContent}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )
+        }
+      ];
 
   return (
     <PamDetailSheet

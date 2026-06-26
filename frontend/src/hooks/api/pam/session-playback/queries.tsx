@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TSessionEvent } from "../types";
 import {
   decryptOneChunk,
   detectChunkGaps,
@@ -40,13 +41,13 @@ export const useGetPamSessionPlayback = (sessionId: string, enabled = true, isAc
 
 export type DecryptedChunkRecord = {
   chunkIndex: number;
-  events: unknown[];
+  events: (TSessionEvent | TBrokenChunkMarker)[];
 };
 
 export type PlaybackDecryptState = {
   loading: boolean;
   error?: string;
-  events: unknown[];
+  events: (TSessionEvent | TBrokenChunkMarker)[];
   brokenChunks: TBrokenChunkMarker[];
   missingChunks: number[];
   totalChunks: number;
@@ -202,7 +203,7 @@ export const useDecryptedSessionLogs = (
 
         setState({
           loading: isActive && !playback.sessionComplete,
-          events: orderedEvents,
+          events: orderedEvents as (TSessionEvent | TBrokenChunkMarker)[],
           brokenChunks: [...accBrokenRef.current],
           missingChunks,
           totalChunks: sortedChunks.length,
@@ -211,7 +212,7 @@ export const useDecryptedSessionLogs = (
       } else {
         // Full path: decrypt all chunks with gap markers (completed sessions)
         const missingSet = new Set(missingChunks);
-        const events: unknown[] = [];
+        const events: (TSessionEvent | TBrokenChunkMarker)[] = [];
         const brokenChunks: PlaybackDecryptState["brokenChunks"] = [];
         let chunkIdx = 0;
 
@@ -247,7 +248,7 @@ export const useDecryptedSessionLogs = (
             });
             chunkIdx += 1;
             if (r.ok) {
-              events.push(...r.events);
+              events.push(...(r.events as TSessionEvent[]));
               if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
                 brokenChunks.push({
                   __brokenChunk: true,

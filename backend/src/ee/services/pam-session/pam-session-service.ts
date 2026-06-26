@@ -30,7 +30,14 @@ import {
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
+import {
+  extractGatewayTarget,
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue,
+  parseInternalMetadata,
+  validateConnectionDetails
+} from "../pam-account/pam-account-schemas";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
@@ -97,6 +104,15 @@ export const pamSessionServiceFactory = ({
     action: ResourcePermissionPamResourceActions,
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+
+  const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
+    const issues = getAccountAccessibilityIssues(account);
+    if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
+      throw new BadRequestError({
+        message: "S3 recording must be configured before launching this account"
+      });
+    }
+  };
 
   const listSessions = async (
     projectId: string,
@@ -211,17 +227,34 @@ export const pamSessionServiceFactory = ({
         gatewayUploadTokenHash: secrets.uploadTokenHash
       });
 
+      const templateSettingsParsed = account.templateSettings
+        ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
+        : null;
+      const resolvedBackend =
+        templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
+          ? templateSettingsParsed.data.recordingStorageBackend
+          : PamRecordingStorageBackend.Postgres;
+
       recording = {
         sessionKey: secrets.sessionKey.toString("base64"),
         uploadToken: secrets.uploadToken.toString("base64"),
-        storageBackend: PamRecordingStorageBackend.Postgres,
+        storageBackend: resolvedBackend,
         projectId: session.projectId,
         sessionId
       };
     }
 
+    const normalizedConnectionDetails = validateConnectionDetails(
+      account.accountType as PamAccountType,
+      connectionDetails
+    );
+
+    if (sessionStarted) {
+      await pamSessionDAL.activateSession(sessionId);
+    }
+
     return {
-      credentials: { ...connectionDetails, ...credentials },
+      credentials: { ...normalizedConnectionDetails, ...credentials },
       recording,
       projectId: session.projectId,
       accountId: session.accountId,
@@ -347,6 +380,16 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
+    await checkAccount(
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      actor
+    );
+
+    enforceRecordingConfig(account);
+
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
@@ -381,6 +424,7 @@ export const pamSessionServiceFactory = ({
       selectedHost: gatewayTarget.host
     });
 
+    await pamSessionDAL.activateSession(session.id);
     await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
     const certs = await gatewayV2Service.getPAMConnectionDetails({

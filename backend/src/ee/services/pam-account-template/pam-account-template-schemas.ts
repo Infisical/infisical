@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 export const PamPasswordConstraintsSchema = z.object({
@@ -12,9 +14,13 @@ export const PamPasswordConstraintsSchema = z.object({
 });
 
 export const PamRecordingS3ConfigSchema = z.object({
-  bucket: z.string().min(1),
-  region: z.string().min(1),
-  keyPrefix: z.string().optional()
+  bucket: z.string().trim().min(1),
+  region: z.nativeEnum(AWSRegion),
+  keyPrefix: z.string().trim().optional()
+});
+
+export const PamAccountSettingsOverridesSchema = z.object({
+  recordingS3Config: PamRecordingS3ConfigSchema.optional()
 });
 
 export const PamTemplateSettingsSchema = z.object({
@@ -26,4 +32,5 @@ export const PamTemplateSettingsSchema = z.object({
 });
 
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
+export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
 export type TPamPasswordConstraints = z.infer<typeof PamPasswordConstraintsSchema>;

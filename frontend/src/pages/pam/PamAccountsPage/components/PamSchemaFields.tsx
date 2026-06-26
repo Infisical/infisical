@@ -34,6 +34,12 @@ type FieldProps = {
   isError: boolean;
 };
 
+const fieldValueAsString = (value: unknown): string => {
+  if (Array.isArray(value)) return value.join("\n");
+  if (value === undefined || value === null) return "";
+  return String(value);
+};
+
 const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   if (descriptor.secret) {
     return (
@@ -49,7 +55,7 @@ const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   if (descriptor.widget === PamFieldWidget.Textarea) {
     return (
       <TextArea
-        value={(field.value as string) ?? ""}
+        value={fieldValueAsString(field.value)}
         onChange={field.onChange}
         rows={4}
         isError={isError}
@@ -86,7 +92,7 @@ const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   }
 
   return (
-    <Input value={(field.value as string) ?? ""} onChange={field.onChange} isError={isError} />
+    <Input value={fieldValueAsString(field.value)} onChange={field.onChange} isError={isError} />
   );
 };
 

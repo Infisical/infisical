@@ -154,7 +154,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.Windows,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
       passwordConstraints: {
         minLength: 14,
         maxLength: 127,
@@ -170,7 +170,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.ActiveDirectory,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
       passwordConstraints: {
         minLength: 14,
         maxLength: 127,

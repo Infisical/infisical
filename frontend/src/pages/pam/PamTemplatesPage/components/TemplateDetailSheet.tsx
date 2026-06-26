@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Ban } from "lucide-react";
+import { AlertTriangleIcon, Ban } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Card,
   CardContent,
   CardDescription,
@@ -18,9 +21,16 @@ import {
   FieldLabel,
   GatewayPicker,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextArea
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useProject } from "@app/context";
+import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
@@ -35,7 +45,6 @@ import { PAM_TEMPLATE_TABS } from "../../components/pamResourceTabs";
 import { POLICY_EDITORS } from "../../components/policyEditors";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-import { RecordingConnectionPicker } from "../../PamAccountsPage/components/RecordingConnectionPicker";
 
 const configSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
@@ -44,12 +53,34 @@ const configSchema = z.object({
 
 type ConfigForm = z.infer<typeof configSchema>;
 
-const settingsSchema = z.object({
-  gatewayId: z.string().nullable(),
-  gatewayPoolId: z.string().nullable(),
-  recordingConnectionId: z.string().nullable(),
-  policies: z.record(z.unknown())
-});
+const settingsSchema = z
+  .object({
+    gatewayId: z.string().nullable(),
+    gatewayPoolId: z.string().nullable(),
+    recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
+    recordingConnectionId: z.string().nullable(),
+    s3Bucket: z.string().optional(),
+    s3Region: z.string().optional(),
+    s3KeyPrefix: z.string().optional(),
+    policies: z.record(z.unknown())
+  })
+  .superRefine((data, ctx) => {
+    if (data.recordingStorageBackend !== "aws-s3") return;
+    if (!data.recordingConnectionId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["recordingConnectionId"],
+        message: "Select an AWS connection"
+      });
+    }
+    if (!data.s3Bucket?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["s3Bucket"],
+        message: "Bucket is required"
+      });
+    }
+  });
 
 type SettingsForm = z.infer<typeof settingsSchema>;
 
@@ -76,7 +107,10 @@ const ConfigurationTab = ({
     formState: { isDirty }
   } = useForm<ConfigForm>({
     resolver: zodResolver(configSchema),
-    defaultValues: { name: "", description: "" }
+    defaultValues: {
+      name: "",
+      description: ""
+    }
   });
 
   useEffect(() => {
@@ -86,13 +120,20 @@ const ConfigurationTab = ({
 
   useEffect(() => {
     if (template) {
-      reset({ name: template.name, description: template.description ?? "" });
+      reset({
+        name: template.name,
+        description: template.description ?? ""
+      });
     }
   }, [template, reset]);
 
   const onSubmit = (data: ConfigForm) => {
     updateTemplate.mutate(
-      { templateId, name: data.name, description: data.description || null },
+      {
+        templateId,
+        name: data.name,
+        description: data.description || null
+      },
       {
         onSuccess: () => createNotification({ type: "success", text: "Template updated" })
       }
@@ -163,8 +204,15 @@ const SettingsTab = ({
 }) => {
   const { data: template, isLoading } = useGetPamAccountTemplate(templateId);
   const updateTemplate = useUpdatePamAccountTemplate();
+  const { currentProject } = useProject();
+  const { data: awsConnections = [] } = useListAvailableAppConnections(
+    AppConnection.AWS,
+    currentProject.id
+  );
+  const { map: accountTypeMap } = usePamAccountTypeMap();
 
   const {
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -175,12 +223,14 @@ const SettingsTab = ({
     defaultValues: {
       gatewayId: null,
       gatewayPoolId: null,
+      recordingStorageBackend: "postgres",
       recordingConnectionId: null,
+      s3Bucket: "",
+      s3Region: "",
+      s3KeyPrefix: "",
       policies: {}
     }
   });
-
-  const { map: accountTypeMap } = usePamAccountTypeMap();
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -189,10 +239,17 @@ const SettingsTab = ({
 
   useEffect(() => {
     if (template) {
+      const settings = (template.settings ?? {}) as Record<string, unknown>;
+      const s3Config = (settings.recordingS3Config ?? {}) as Record<string, string>;
+      const savedBackend = settings.recordingStorageBackend as "postgres" | "aws-s3" | undefined;
       reset({
         gatewayId: template.gatewayId ?? null,
         gatewayPoolId: template.gatewayPoolId ?? null,
+        recordingStorageBackend: savedBackend ?? "postgres",
         recordingConnectionId: template.recordingConnectionId ?? null,
+        s3Bucket: s3Config.bucket ?? "",
+        s3Region: s3Config.region ?? "",
+        s3KeyPrefix: s3Config.keyPrefix ?? "",
         policies: (template.policies as Record<string, unknown>) ?? {}
       });
     }
@@ -212,24 +269,69 @@ const SettingsTab = ({
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const recordingConnectionId = watch("recordingConnectionId");
   const policies = watch("policies");
-  const showRecording = accountTypeRequiresRecording(template.type);
+  const storageBackend = watch("recordingStorageBackend");
+  const requiresRecording = accountTypeRequiresRecording(template.type);
+  const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
     (p) => POLICY_EDITORS[p.key]
   );
 
   const onSubmit = (data: SettingsForm) => {
+    const settings: Record<string, unknown> = {
+      ...((template.settings ?? {}) as Record<string, unknown>),
+      recordingStorageBackend: data.recordingStorageBackend
+    };
+
+    if (data.recordingStorageBackend === "aws-s3" && data.s3Bucket) {
+      settings.recordingS3Config = {
+        bucket: data.s3Bucket,
+        region: data.s3Region || "us-east-1",
+        ...(data.s3KeyPrefix ? { keyPrefix: data.s3KeyPrefix } : {})
+      };
+    } else {
+      delete settings.recordingS3Config;
+    }
+
     updateTemplate.mutate(
       {
         templateId,
         policies: data.policies,
         gatewayId: data.gatewayId,
         gatewayPoolId: data.gatewayPoolId,
-        ...(showRecording ? { recordingConnectionId: data.recordingConnectionId } : {})
+        settings,
+        recordingConnectionId:
+          data.recordingStorageBackend === "aws-s3" ? data.recordingConnectionId : null
       },
       {
-        onSuccess: () => createNotification({ type: "success", text: "Template updated" })
+        onSuccess: async (result) => {
+          createNotification({ type: "success", text: "Template updated" });
+          const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
+          if (corsProbeUrl) {
+            try {
+              await fetch(corsProbeUrl, { mode: "cors" });
+            } catch {
+              createNotification(
+                {
+                  title: "Bucket CORS not configured",
+                  type: "warning",
+                  text: "Session playback requires the bucket to allow GET requests from this origin.",
+                  callToAction: (
+                    <a
+                      href="https://infisical.com/docs/documentation/platform/pam/recording-storage"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs underline"
+                    >
+                      CORS setup docs
+                    </a>
+                  )
+                },
+                { autoClose: 10000 }
+              );
+            }
+          }
+        }
       }
     );
   };
@@ -241,8 +343,7 @@ const SettingsTab = ({
           <CardHeader className="border-b">
             <CardTitle className="text-base">Policies</CardTitle>
             <CardDescription>
-              Policies available for {accountTypeMap[template.type]?.name ?? template.type} accounts
-              using this template.
+              Policies available for {typeName} accounts using this template.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
@@ -272,7 +373,7 @@ const SettingsTab = ({
           <CardTitle className="text-base">System Settings</CardTitle>
           <CardDescription>System-level defaults for accounts using this template.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-6">
           <Field>
             <FieldLabel>Gateway</FieldLabel>
             <FieldContent>
@@ -290,21 +391,141 @@ const SettingsTab = ({
               </FieldDescription>
             </FieldContent>
           </Field>
+        </CardContent>
+      </Card>
 
-          {showRecording && (
-            <Field>
-              <FieldLabel>Recording Bucket</FieldLabel>
-              <FieldContent>
-                <RecordingConnectionPicker
-                  value={recordingConnectionId}
-                  includeNone
-                  onChange={(value) =>
-                    setValue("recordingConnectionId", value, { shouldDirty: true })
-                  }
-                />
-                <FieldDescription>Where session recordings are stored.</FieldDescription>
-              </FieldContent>
-            </Field>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Session Recording</CardTitle>
+          <CardDescription>
+            Where session recordings for accounts using this template are stored.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <Controller
+            name="recordingStorageBackend"
+            control={control}
+            render={({ field }) => (
+              <Field>
+                <FieldLabel>Storage backend</FieldLabel>
+                <FieldContent>
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="postgres">Internal Database</SelectItem>
+                      <SelectItem value="aws-s3">AWS S3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+          />
+
+          {requiresRecording && storageBackend === "postgres" && (
+            <Alert variant="warning">
+              <AlertTriangleIcon />
+              <AlertTitle>Accounts cannot be launched</AlertTitle>
+              <AlertDescription>
+                {typeName} accounts require an external recording storage backend. Accounts using
+                this template can still be created, but sessions can&apos;t be launched until
+                external storage is configured.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {storageBackend === "aws-s3" && (
+            <>
+              <Alert variant="warning">
+                <AlertTriangleIcon />
+                <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
+                <AlertDescription>
+                  Changing the bucket on a template with existing recordings makes those recordings
+                  inaccessible unless you manually migrate each object. Keep the same bucket and key
+                  prefix when rotating credentials.
+                </AlertDescription>
+              </Alert>
+
+              <Controller
+                name="recordingConnectionId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>AWS Connection</FieldLabel>
+                    <FieldContent>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={(v) => field.onChange(v || null)}
+                      >
+                        <SelectTrigger className="w-full" isError={!!fieldState.error}>
+                          <SelectValue placeholder="Select an AWS connection" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {awsConnections.map((conn) => (
+                            <SelectItem key={conn.id} value={conn.id}>
+                              {conn.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fieldState.error ? (
+                        <FieldError>{fieldState.error.message}</FieldError>
+                      ) : (
+                        <FieldDescription>
+                          The AWS connection used to authenticate with S3.
+                        </FieldDescription>
+                      )}
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="s3Bucket"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>S3 Bucket</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        placeholder="my-recordings-bucket"
+                        isError={!!fieldState.error}
+                      />
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="s3Region"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Region</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="us-east-1" />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="s3KeyPrefix"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Key prefix (optional)</FieldLabel>
+                    <FieldContent>
+                      <Input {...field} placeholder="pam-recordings/" />
+                      <FieldDescription>Optional prefix for S3 object keys.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -336,7 +557,7 @@ export const TemplateDetailSheet = ({ isOpen, templateId, onOpenChange }: Props)
     : [];
 
   const tabContent: Partial<Record<PamSheetTab, JSX.Element | null>> = {
-    [PamSheetTab.Advanced]: templateId ? (
+    [PamSheetTab.General]: templateId ? (
       <SettingsTab templateId={templateId} onDirtyChange={setIsFormDirty} />
     ) : null,
     [PamSheetTab.Configuration]: templateId ? (

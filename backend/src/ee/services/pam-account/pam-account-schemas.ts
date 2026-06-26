@@ -9,6 +9,11 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { PamAccountType } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
+import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 const resolveSrv = promisify(dns.resolveSrv);
 
@@ -21,6 +26,28 @@ enum PamFieldWidget {
   Password = "password"
 }
 
+const optionalTrimmedString = z
+  .string()
+  .trim()
+  .transform((v) => v || undefined)
+  .optional();
+
+const normalizeDelimitedStringList = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return value;
+  const items = value
+    .split("\n")
+    .flatMap((line) => line.split(","))
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return items;
+};
+
+const delimitedStringList = z.preprocess(
+  normalizeDelimitedStringList,
+  z.array(z.string().trim().min(1).max(255)).min(1)
+);
+
 // Source of truth for account types: per-type schemas + sparse UI hints
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
@@ -32,11 +59,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       database: z.string().trim().min(1).max(255),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((v) => v || undefined)
-        .optional()
+      sslCertificate: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(63),
@@ -47,7 +70,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .transform((v) => v || undefined)
         .optional()
     }),
-    sanitizedCredentials: z.object({ username: z.string().optional() }),
+    sanitizedCredentials: z.object({ username: z.string() }),
     ui: {
       port: { defaultValue: 5432 },
       sslEnabled: { label: "SSL Enabled" },
@@ -73,11 +96,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       database: z.string().trim().min(1).max(64),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((v) => v || undefined)
-        .optional()
+      sslCertificate: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(32),
@@ -88,7 +107,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .transform((v) => v || undefined)
         .optional()
     }),
-    sanitizedCredentials: z.object({ username: z.string().optional() }),
+    sanitizedCredentials: z.object({ username: z.string() }),
     ui: {
       port: { defaultValue: 3306 },
       sslEnabled: { label: "SSL Enabled" },
@@ -114,11 +133,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       database: z.string().trim().min(1).max(255),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((v) => v || undefined)
-        .optional()
+      sslCertificate: optionalTrimmedString
     }),
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
@@ -261,11 +276,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
         }),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((v) => v || undefined)
-        .optional()
+      sslCertificate: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -309,11 +320,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       z.object({
         authMethod: z.literal("password"),
         username: z.string().trim().min(1),
-        password: z
-          .string()
-          .trim()
-          .transform((v) => v || undefined)
-          .optional()
+        password: optionalTrimmedString
       }),
       z.object({
         authMethod: z.literal("public-key"),
@@ -328,8 +335,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
       z.object({ authMethod: z.literal("certificate"), username: z.string().trim().min(1) })
     ]),
     sanitizedCredentials: z.object({
-      authMethod: z.string().optional(),
-      username: z.string().optional()
+      authMethod: z.string(),
+      username: z.string()
     }),
     ui: {
       port: { defaultValue: 22 },
@@ -350,11 +357,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     connectionDetails: z.object({
       url: z.string().url().trim().max(500),
       sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((v) => v || undefined)
-        .optional()
+      sslCertificate: optionalTrimmedString
     }),
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
@@ -380,6 +383,67 @@ export const ACCOUNT_TYPE_CONFIGS = {
       serviceAccountToken: { label: "Service Account Token", widget: PamFieldWidget.Textarea, secret: true },
       namespace: { label: "Namespace" },
       serviceAccountName: { label: "Service Account Name" }
+    }
+  },
+
+  [PamAccountType.Windows]: {
+    name: "Windows",
+    icon: "Windows.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number().int().min(1).max(65535)
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: optionalTrimmedString
+    }),
+    sanitizedCredentials: z.object({
+      username: z.string()
+    }),
+    ui: {
+      port: { defaultValue: 3389 },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.ActiveDirectory]: {
+    name: "Active Directory",
+    icon: "Windows.png",
+    connectionDetails: z.object({
+      domain: z.string().trim().min(1).max(255),
+      dcAddress: z.string().trim().min(1).max(255),
+      hosts: delimitedStringList,
+      port: z.coerce.number().int().min(1).max(65535),
+      rdpPort: z.coerce.number().int().min(1).max(65535),
+      useLdaps: z.boolean(),
+      ldapRejectUnauthorized: z.boolean(),
+      ldapCaCert: optionalTrimmedString,
+      ldapTlsServerName: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: z.string().trim().min(1).max(255)
+    }),
+    sanitizedCredentials: z.object({
+      username: z.string()
+    }),
+    ui: {
+      dcAddress: { label: "DC Address" },
+      hosts: { label: "Allowed Hosts", widget: PamFieldWidget.Textarea },
+      port: { label: "LDAP Port", defaultValue: 389 },
+      rdpPort: { label: "RDP Port", defaultValue: 3389 },
+      useLdaps: { label: "Use LDAPS" },
+      ldapRejectUnauthorized: { label: "Reject Unauthorized" },
+      ldapCaCert: {
+        label: "CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useLdaps", equals: true }
+      },
+      ldapTlsServerName: {
+        label: "TLS Server Name",
+        showWhen: { field: "useLdaps", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
     }
   }
 } as const satisfies Partial<
@@ -410,7 +474,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
 
 type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
 
-const getAccountTypeConfig = (accountType: PamAccountType) => {
+const getAccountTypeConfig = (accountType: PamAccountType | string) => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
   if (!config) {
     throw new Error(`Account type '${accountType}' is not supported in this phase`);
@@ -449,6 +513,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
+    case PamAccountType.Windows:
       return {
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
@@ -483,6 +548,11 @@ export const extractGatewayTarget = async (
       }
       return { host: firstHost, port: 27017 };
     }
+    case PamAccountType.ActiveDirectory:
+      return {
+        host: (validated as { hosts: string[]; rdpPort: number }).hosts[0],
+        port: (validated as { hosts: string[]; rdpPort: number }).rdpPort
+      };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
@@ -497,25 +567,41 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
-  accountType === PamAccountType.Windows;
+  accountType === PamAccountType.Windows || accountType === PamAccountType.ActiveDirectory;
 
-export const getAccountAccessibilityIssues = ({
-  accountType,
-  hasGateway,
-  hasRecordingConfig,
-  credentialConfigured
-}: {
-  accountType: PamAccountType;
-  hasGateway: boolean;
-  hasRecordingConfig: boolean;
+export const getAccountAccessibilityIssues = (account: {
+  accountType: PamAccountType | string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  templateGatewayId?: string | null;
+  templateGatewayPoolId?: string | null;
+  recordingConnectionId?: string | null;
+  templateRecordingConnectionId: string | null;
+  settingsOverrides?: unknown;
+  templateSettings: unknown;
   credentialConfigured: boolean;
 }): PamAccountAccessibilityIssue[] => {
   const issues: PamAccountAccessibilityIssue[] = [];
-  if (!hasGateway) issues.push(PamAccountAccessibilityIssue.NoGateway);
-  if (accountTypeRequiresRecording(accountType) && !hasRecordingConfig) {
-    issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
+
+  if (!account.gatewayId && !account.gatewayPoolId && !account.templateGatewayId && !account.templateGatewayPoolId) {
+    issues.push(PamAccountAccessibilityIssue.NoGateway);
   }
-  if (!credentialConfigured) issues.push(PamAccountAccessibilityIssue.NoCredential);
+
+  if (accountTypeRequiresRecording(account.accountType as PamAccountType)) {
+    const settingsParsed = PamTemplateSettingsSchema.safeParse(account.templateSettings);
+    const parsedTemplateSettings = settingsParsed.success ? settingsParsed.data : null;
+    const overridesParsed = PamAccountSettingsOverridesSchema.safeParse(account.settingsOverrides ?? {});
+    const parsedOverrides = overridesParsed.success ? overridesParsed.data : null;
+
+    const hasRecordingConfig = Boolean(
+      parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
+        (account.recordingConnectionId || account.templateRecordingConnectionId) &&
+        (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
+    );
+    if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
+  }
+
+  if (!account.credentialConfigured) issues.push(PamAccountAccessibilityIssue.NoCredential);
   return issues;
 };
 

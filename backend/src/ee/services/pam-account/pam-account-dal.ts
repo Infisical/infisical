@@ -6,15 +6,27 @@ import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 import { PamAccountType } from "../pam/pam-enums";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+
+const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.ActiveDirectory]
+  .map((type) => `'${type}'`)
+  .join(", ");
 
 export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
   `(
     ("${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
       or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
     and "${accountTable}"."credentialConfigured" = true
-    and ("${templateTable}"."type" != '${PamAccountType.Windows}'
-      or "${accountTable}"."recordingConnectionId" is not null
-      or "${templateTable}"."recordingConnectionId" is not null)
+    and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})
+      or (
+        "${templateTable}"."settings"->>'recordingStorageBackend' = '${PamRecordingStorageBackend.AwsS3}'
+        and ("${accountTable}"."recordingConnectionId" is not null
+          or "${templateTable}"."recordingConnectionId" is not null)
+        and coalesce(
+          "${accountTable}"."settingsOverrides"->'recordingS3Config',
+          "${templateTable}"."settings"->'recordingS3Config'
+        ) is not null
+      ))
   )`;
 
 type TPamAccountTemplateInheritedFields = {
@@ -22,6 +34,7 @@ type TPamAccountTemplateInheritedFields = {
   templateGatewayId: string | null;
   templateGatewayPoolId: string | null;
   templateRecordingConnectionId: string | null;
+  templateSettings: unknown;
 };
 
 export type TPamAccountListItem = Pick<
@@ -35,6 +48,7 @@ export type TPamAccountListItem = Pick<
   | "gatewayId"
   | "gatewayPoolId"
   | "recordingConnectionId"
+  | "settingsOverrides"
   | "createdAt"
   | "updatedAt"
 > &
@@ -121,11 +135,13 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccount}.gatewayId`,
         `${TableName.PamAccount}.gatewayPoolId`,
         `${TableName.PamAccount}.recordingConnectionId`,
+        `${TableName.PamAccount}.settingsOverrides`,
         `${TableName.PamAccount}.credentialConfigured`,
         `${TableName.PamAccount}.createdAt`,
         `${TableName.PamAccount}.updatedAt`,
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
+        `${TableName.PamAccountTemplate}.settings as templateSettings`,
         `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
         `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
         `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
