@@ -6,6 +6,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import RE2 from "re2";
+
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
@@ -434,7 +436,7 @@ export const pamSessionServiceFactory = ({
       const stsCredentials = await generateAwsIamSessionCredentials({
         connectionDetails: { roleArn: rawConnectionDetails.roleArn as string },
         targetRoleArn: rawCredentials.targetRoleArn as string,
-        roleSessionName: actorEmail,
+        roleSessionName: actorEmail.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64),
         projectId,
         sessionDuration: stsDurationSeconds
       });
