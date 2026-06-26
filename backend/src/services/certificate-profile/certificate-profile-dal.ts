@@ -80,10 +80,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
   const deleteById = async (id: string, tx?: Knex): Promise<TCertificateProfile | undefined> => {
     try {
-      const [certificateProfile] = await (tx || db)(TableName.PkiCertificateProfile)
-        .where({ id })
-        .del()
-        .returning("*");
+      const [certificateProfile] = await (tx || db)(TableName.PkiCertificateProfile).where({ id }).del().returning("*");
 
       if (!certificateProfile) return undefined;
 
