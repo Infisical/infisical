@@ -3,7 +3,7 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -281,6 +281,51 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       return { session };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/aws-console-url",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "pamSessionAwsConsoleUrl",
+      description: "Exchange AWS IAM session credentials for a federated AWS console sign-in URL",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        sessionId: z.string().uuid().describe("The session ID")
+      }),
+      body: z.object({
+        accessKeyId: z.string().min(1).describe("AWS access key ID from the session"),
+        secretAccessKey: z.string().min(1).describe("AWS secret access key from the session"),
+        sessionToken: z.string().min(1).describe("AWS session token from the session")
+      }),
+      response: {
+        200: z.object({
+          consoleUrl: z.string().describe("One-time federated AWS console sign-in URL")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Console URL generation requires JWT authentication" });
+      }
+
+      const { consoleUrl } = await server.services.pamSession.getAwsIamConsoleUrl({
+        sessionId: req.params.sessionId,
+        accessKeyId: req.body.accessKeyId,
+        secretAccessKey: req.body.secretAccessKey,
+        sessionToken: req.body.sessionToken,
+        actor: {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      });
+
+      return { consoleUrl };
+    }
+  });
 };
 
 export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
@@ -300,20 +345,27 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .trim()
           .optional()
           .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
-        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        accessMethod: z.enum(["cli", "web"]).optional().default("cli").describe("Access method (cli or web)")
       }),
       response: {
         200: z.object({
           sessionId: z.string().describe("The ID of the created session"),
           accountType: z.nativeEnum(PamAccountType).describe("The account type"),
           metadata: z.record(z.string()).optional().describe("Account-type-specific metadata (e.g., username)"),
-          relayHost: z.string().describe("The relay host to connect to"),
-          relayClientCertificate: z.string().describe("Client certificate for the relay connection"),
-          relayClientPrivateKey: z.string().describe("Client private key for the relay connection"),
-          relayServerCertificateChain: z.string().describe("Server certificate chain for the relay connection"),
-          gatewayClientCertificate: z.string().describe("Client certificate for the gateway connection"),
-          gatewayClientPrivateKey: z.string().describe("Client private key for the gateway connection"),
-          gatewayServerCertificateChain: z.string().describe("Server certificate chain for the gateway connection")
+          relayHost: z.string().optional().describe("The relay host to connect to"),
+          relayClientCertificate: z.string().optional().describe("Client certificate for the relay connection"),
+          relayClientPrivateKey: z.string().optional().describe("Client private key for the relay connection"),
+          relayServerCertificateChain: z
+            .string()
+            .optional()
+            .describe("Server certificate chain for the relay connection"),
+          gatewayClientCertificate: z.string().optional().describe("Client certificate for the gateway connection"),
+          gatewayClientPrivateKey: z.string().optional().describe("Client private key for the gateway connection"),
+          gatewayServerCertificateChain: z
+            .string()
+            .optional()
+            .describe("Server certificate chain for the gateway connection")
         })
       }
     },
@@ -338,7 +390,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorUserAgent: req.headers["user-agent"] ?? "",
         reason: req.body.reason,
         duration: req.body.duration,
-        mfaSessionId: req.body.mfaSessionId
+        mfaSessionId: req.body.mfaSessionId,
+        accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli
       });
 
       await server.services.auditLog.createAuditLog({

@@ -6,6 +6,7 @@ import { TriangleAlert } from "lucide-react";
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
+import { AwsIamAccessContent } from "./AwsIamAccessContent";
 import { DisconnectedScreen } from "./DisconnectedScreen";
 import { RdpContent } from "./RdpContent";
 import { SessionAccessGate } from "./ReasonGate";
@@ -108,6 +109,10 @@ const PageContent = () => {
         description={`Could not find an account with ID ${accountId}.`}
       />
     );
+  }
+
+  if (account.accountType === PamAccountType.AwsIam) {
+    return <AwsIamAccessContent account={account} />;
   }
 
   if (account.accountType === PamAccountType.SSH) {

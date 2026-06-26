@@ -12,9 +12,12 @@ const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.Ac
   .map((type) => `'${type}'`)
   .join(", ");
 
+const gatewayExemptAccountTypes = [PamAccountType.AwsIam].map((type) => `'${type}'`).join(", ");
+
 export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
   `(
-    ("${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
+    ("${templateTable}"."type" in (${gatewayExemptAccountTypes})
+      or "${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
       or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
     and "${accountTable}"."credentialConfigured" = true
     and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})

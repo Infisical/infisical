@@ -6,7 +6,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -49,6 +50,13 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+import {
+  AWS_STS_MAX_DURATION_ROLE_CHAINING_SECONDS,
+  AWS_STS_MIN_DURATION_SECONDS,
+  exchangeCredentialsForConsoleUrl,
+  extractAwsAccountIdFromArn,
+  generateAwsIamSessionCredentials
+} from "./aws-iam/aws-iam-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -80,6 +88,7 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -97,7 +106,8 @@ export const pamSessionServiceFactory = ({
   userDAL,
   pamSessionExpirationService,
   mfaSessionService,
-  orgDAL
+  orgDAL,
+  keyStore
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -356,7 +366,8 @@ export const pamSessionServiceFactory = ({
     actorUserAgent,
     reason,
     duration,
-    mfaSessionId
+    mfaSessionId,
+    accessMethod = PamAccessMethod.Cli
   }: {
     path: string;
     projectId: string;
@@ -368,6 +379,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    accessMethod?: PamAccessMethod;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
@@ -410,6 +422,87 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
+    // AWS IAM: no gateway, no proxy -- generate STS credentials directly
+    if (account.accountType === PamAccountType.AwsIam) {
+      const stsDurationMs = Math.max(
+        AWS_STS_MIN_DURATION_SECONDS * 1000,
+        Math.min(sessionDurationMs, AWS_STS_MAX_DURATION_ROLE_CHAINING_SECONDS * 1000)
+      );
+
+      if (stsDurationMs > maxDurationMs) {
+        throw new BadRequestError({
+          message: "AWS IAM sessions require a minimum of 15 minutes, but the configured policy maximum is lower"
+        });
+      }
+
+      sessionDurationMs = stsDurationMs;
+
+      const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+      const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
+
+      const stsDurationSeconds = Math.floor(sessionDurationMs / 1000);
+
+      const stsCredentials = await generateAwsIamSessionCredentials({
+        connectionDetails: { roleArn: rawConnectionDetails.roleArn as string },
+        targetRoleArn: rawCredentials.targetRoleArn as string,
+        roleSessionName: actorEmail,
+        projectId,
+        sessionDuration: stsDurationSeconds
+      });
+
+      const { expiresAt } = stsCredentials;
+
+      const session = await pamSessionDAL.create({
+        status: PamSessionStatus.Active,
+        accessMethod,
+        expiresAt,
+        accountName: account.name,
+        accountType: account.accountType,
+        actorEmail,
+        actorIp,
+        actorName,
+        actorUserAgent,
+        projectId,
+        accountId: account.id,
+        userId: actor.actorId,
+        reason: trimmedReason,
+        folderName: account.folderName
+      });
+
+      const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.PamAwsIamAccessKeyId(session.id),
+        ttlSeconds,
+        stsCredentials.accessKeyId
+      );
+
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+
+      // metadata carries STS credentials for AWS IAM
+      const metadata: Record<string, string> = {
+        accessKeyId: stsCredentials.accessKeyId,
+        secretAccessKey: stsCredentials.secretAccessKey,
+        sessionToken: stsCredentials.sessionToken,
+        expiresAt: expiresAt.toISOString(),
+        targetRoleArn: rawCredentials.targetRoleArn as string,
+        federatedUsername: actorEmail
+      };
+
+      const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
+      if (awsAccountId) {
+        metadata.awsAccountId = awsAccountId;
+      }
+
+      return {
+        sessionId: session.id,
+        accountId: account.id,
+        accountType: account.accountType as PamAccountType,
+        accountName: account.name,
+        metadata,
+        sessionDurationMs
+      };
+    }
+
     await checkAccount(
       account.id,
       account.folderId,
@@ -437,7 +530,7 @@ export const pamSessionServiceFactory = ({
 
     const session = await pamSessionDAL.create({
       status: PamSessionStatus.Starting,
-      accessMethod: PamAccessMethod.Cli,
+      accessMethod,
       expiresAt,
       accountName: account.name,
       accountType: account.accountType,
@@ -543,6 +636,10 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session could not be terminated" });
     }
 
+    if (session.accountType === PamAccountType.AwsIam) {
+      await keyStore.deleteItem(KeyStorePrefixes.PamAwsIamAccessKeyId(sessionId));
+    }
+
     if (session.gatewayId) {
       void (async () => {
         let relayConn: net.Socket | null = null;
@@ -589,12 +686,65 @@ export const pamSessionServiceFactory = ({
     return { session: updated, projectId: session.projectId, accountName: session.accountName };
   };
 
+  const getAwsIamConsoleUrl = async ({
+    sessionId,
+    accessKeyId,
+    secretAccessKey,
+    sessionToken,
+    actor
+  }: {
+    sessionId: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken: string;
+    actor: TActorContext;
+  }) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    if (session.userId !== actor.actorId) {
+      throw new ForbiddenRequestError({ message: "Session does not belong to the requesting user" });
+    }
+
+    if (session.status !== PamSessionStatus.Active) {
+      throw new BadRequestError({ message: "Session is not active" });
+    }
+
+    if (session.accountType !== PamAccountType.AwsIam) {
+      throw new BadRequestError({ message: "Console URL is only available for AWS IAM sessions" });
+    }
+
+    const cachedAccessKeyId = await keyStore.getItem(KeyStorePrefixes.PamAwsIamAccessKeyId(sessionId));
+    if (!cachedAccessKeyId) {
+      throw new BadRequestError({
+        message: "Session credentials are no longer available. Please start a new session."
+      });
+    }
+
+    if (cachedAccessKeyId !== accessKeyId) {
+      throw new ForbiddenRequestError({
+        message: "Submitted credentials do not match the session"
+      });
+    }
+
+    const consoleUrl = await exchangeCredentialsForConsoleUrl({
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
+    });
+
+    return { consoleUrl };
+  };
+
   return {
     access,
     listSessions,
     getSessionById,
     getSessionCredentials,
     endSessionFromGateway,
-    terminateSession
+    terminateSession,
+    getAwsIamConsoleUrl
   };
 };
