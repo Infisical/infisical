@@ -522,7 +522,7 @@ export const pamSessionServiceFactory = ({
 
     const session = await pamSessionDAL.create({
       status: PamSessionStatus.Starting,
-      accessMethod,
+      accessMethod: PamAccessMethod.Cli,
       expiresAt,
       accountName: account.name,
       accountType: account.accountType,
