@@ -1249,7 +1249,7 @@ export const secretApprovalRequestServiceFactory = ({
 
       if (recipients?.length) {
         await smtpService.sendMail({
-          recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
+          recipients,
           subjectLine: "Infisical Secret Change Policy Bypassed",
 
           substitutions: {
