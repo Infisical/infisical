@@ -60,6 +60,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -127,6 +128,7 @@ type TSecretQueueFactoryDep = {
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
 };
 
 export type TGetSecrets = {
@@ -194,7 +196,8 @@ export const secretQueueFactory = ({
   licenseService,
   membershipUserDAL,
   membershipRoleDAL,
-  telemetryService
+  telemetryService,
+  projectGrantDAL
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -439,7 +442,16 @@ export const secretQueueFactory = ({
       secretImportDAL,
       secretImports,
       hasSecretAccess: () => true,
-      viewSecretValue: true
+      viewSecretValue: true,
+      projectId: dto.projectId,
+      projectGrantDAL,
+      getProjectDecryptor: async (sourceProjectId: string) => {
+        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: sourceProjectId
+        });
+        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+      }
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {

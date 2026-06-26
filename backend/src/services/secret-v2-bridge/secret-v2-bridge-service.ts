@@ -55,6 +55,7 @@ import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -147,6 +148,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
+  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -176,7 +178,8 @@ export const secretV2BridgeServiceFactory = ({
   keyStore,
   reminderService,
   reminderDAL,
-  secretValidationRuleService
+  secretValidationRuleService,
+  projectGrantDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -1604,6 +1607,15 @@ export const secretV2BridgeServiceFactory = ({
         );
 
         return viewSecretValue ? canDescribe && canReadValue : canDescribe;
+      },
+      projectId,
+      projectGrantDAL,
+      getProjectDecryptor: async (sourceProjectId: string) => {
+        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: sourceProjectId
+        });
+        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
       }
     });
 
@@ -1831,6 +1843,15 @@ export const secretV2BridgeServiceFactory = ({
             secretName: expandSecretKey,
             secretTags: expandSecretTags
           });
+        },
+        projectId,
+        projectGrantDAL,
+        getProjectDecryptor: async (sourceProjectId: string) => {
+          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: sourceProjectId
+          });
+          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
         }
       });
 
