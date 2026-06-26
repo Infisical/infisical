@@ -16,6 +16,7 @@ export type TSecretImport = {
   lastReplicated?: string;
   environment?: string;
   sourceProjectName?: string;
+  isAccessRevoked?: boolean;
 };
 
 export type TGetImportedFoldersByEnvDTO = {

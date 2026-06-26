@@ -159,7 +159,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 projectId: z.string().optional()
               }),
               sourceProjectName: z.string().optional(),
-              environment: z.string()
+              environment: z.string(),
+              isAccessRevoked: z.boolean()
             })
             .array()
             .optional(),
@@ -723,7 +724,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 id: z.string(),
                 projectId: z.string().optional()
               }),
-              sourceProjectName: z.string().optional()
+              sourceProjectName: z.string().optional(),
+              isAccessRevoked: z.boolean()
             })
             .array()
             .optional(),

@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import { useDragOperation } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
+  BanIcon,
   ChevronDownIcon,
   FolderIcon,
   GripVerticalIcon,
@@ -21,6 +22,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -104,6 +106,10 @@ export const SecretImportTableRow = ({
   const singleEnvImport = isSingleEnvView
     ? (secretImport ?? getSecretImportByEnv(importEnvSlug, importPath, singleEnvSlug))
     : undefined;
+
+  const isAccessRevoked = isSingleEnvView
+    ? (singleEnvImport?.isAccessRevoked ?? false)
+    : (secretImport?.isAccessRevoked ?? false);
 
   const {
     ref: sortableRef,
@@ -452,7 +458,28 @@ export const SecretImportTableRow = ({
     );
   };
 
+  const renderRevokedContent = () => (
+    <Empty className="gap-3 border-danger/30 bg-danger/5 p-4 text-danger md:p-4">
+      <EmptyHeader className="gap-1.5">
+        <div className="flex items-center gap-2">
+          <TriangleAlertIcon className="size-4 shrink-0" />
+          <EmptyTitle>
+            {secretImport?.sourceProjectName
+              ? `${secretImport.sourceProjectName} revoked access to these secrets.`
+              : "Access to these secrets has been revoked."}
+          </EmptyTitle>
+        </div>
+        <EmptyDescription className="text-danger/70">
+          Imported values can no longer be resolved and any reference to them will fail at build
+          time. Re-request access from the source project, or remove this import.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+
   const renderMultiEnvExpandedSecrets = () => {
+    if (isAccessRevoked) return renderRevokedContent();
+
     if (hasAnyReplicatedImport) {
       const selectedImport = selectedEnvImportData?.secretImportRecord;
 
@@ -579,6 +606,8 @@ export const SecretImportTableRow = ({
   };
 
   const renderExpandedSecrets = (envSlug: string) => {
+    if (isAccessRevoked) return renderRevokedContent();
+
     if (filteredImportedSecrets.length === 0) {
       return (
         <Empty className="bg-transparent shadow-none">
@@ -684,6 +713,19 @@ export const SecretImportTableRow = ({
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
               <span className="truncate">{importPath}</span>
             </div>
+            {isAccessRevoked && (
+              <div
+                className={twMerge(
+                  "ml-auto flex items-center",
+                  isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16"
+                )}
+              >
+                <Badge variant="danger">
+                  <BanIcon />
+                  Access revoked
+                </Badge>
+              </div>
+            )}
             {isSingleEnvView &&
               singleEnvImport?.isReplication &&
               singleEnvImport.lastReplicated && (
