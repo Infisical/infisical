@@ -164,9 +164,10 @@ export const useCreatePamAccountTemplate = () => {
   });
 };
 
-export const useUpdatePamAccountTemplate = () => {
+export const useUpdatePamAccountTemplate = ({ skipValidationToast = false } = {}) => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: skipValidationToast ? { skipValidationToast: true } : undefined,
     mutationFn: async ({ templateId, ...params }: TUpdatePamAccountTemplateDTO) => {
       const { data } = await apiRequest.patch<{
         template: TPamAccountTemplate;

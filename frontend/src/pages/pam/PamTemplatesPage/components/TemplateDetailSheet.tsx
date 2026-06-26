@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { AlertTriangleIcon, Ban } from "lucide-react";
 import { z } from "zod";
 
@@ -38,6 +39,7 @@ import {
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
 } from "@app/hooks/api/pam";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { formatDetailDate, PamDetailSheet } from "../../components/PamDetailSheet";
@@ -62,7 +64,10 @@ const settingsSchema = z
     s3Bucket: z.string().optional(),
     s3Region: z.string().optional(),
     s3KeyPrefix: z.string().optional(),
-    policies: z.record(z.unknown())
+    policies: z.record(z.unknown()),
+    settings: z.object({
+      sessionLogMaskingPatterns: z.string().optional()
+    })
   })
   .superRefine((data, ctx) => {
     if (data.recordingStorageBackend !== "aws-s3") return;
@@ -203,7 +208,7 @@ const SettingsTab = ({
   onDirtyChange?: (isDirty: boolean) => void;
 }) => {
   const { data: template, isLoading } = useGetPamAccountTemplate(templateId);
-  const updateTemplate = useUpdatePamAccountTemplate();
+  const updateTemplate = useUpdatePamAccountTemplate({ skipValidationToast: true });
   const { currentProject } = useProject();
   const { data: awsConnections = [] } = useListAvailableAppConnections(
     AppConnection.AWS,
@@ -215,6 +220,7 @@ const SettingsTab = ({
     control,
     handleSubmit,
     reset,
+    setError,
     setValue,
     watch,
     formState: { isDirty }
@@ -228,7 +234,8 @@ const SettingsTab = ({
       s3Bucket: "",
       s3Region: "",
       s3KeyPrefix: "",
-      policies: {}
+      policies: {},
+      settings: { sessionLogMaskingPatterns: "" }
     }
   });
 
@@ -250,7 +257,10 @@ const SettingsTab = ({
         s3Bucket: s3Config.bucket ?? "",
         s3Region: s3Config.region ?? "",
         s3KeyPrefix: s3Config.keyPrefix ?? "",
-        policies: (template.policies as Record<string, unknown>) ?? {}
+        policies: (template.policies as Record<string, unknown>) ?? {},
+        settings: {
+          sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? ""
+        }
       });
     }
   }, [template, reset]);
@@ -293,6 +303,13 @@ const SettingsTab = ({
       delete settings.recordingS3Config;
     }
 
+    const maskingPatterns = data.settings.sessionLogMaskingPatterns?.trim();
+    if (maskingPatterns) {
+      settings.sessionLogMaskingPatterns = maskingPatterns;
+    } else {
+      delete settings.sessionLogMaskingPatterns;
+    }
+
     updateTemplate.mutate(
       {
         templateId,
@@ -304,6 +321,30 @@ const SettingsTab = ({
           data.recordingStorageBackend === "aws-s3" ? data.recordingConnectionId : null
       },
       {
+        onError: (error) => {
+          if (axios.isAxiosError(error)) {
+            const responseData = error.response?.data as TApiErrors | undefined;
+            if (responseData?.error === ApiErrorTypes.ValidationError) {
+              const maskingIssue = responseData.message.find((issue) =>
+                issue.path.join(".").includes("sessionLogMaskingPatterns")
+              );
+              if (maskingIssue) {
+                setError("settings.sessionLogMaskingPatterns", {
+                  type: "server",
+                  message: maskingIssue.message
+                });
+                return;
+              }
+            }
+            const msg = (error.response?.data as { message?: string })?.message;
+            createNotification({
+              type: "error",
+              text: typeof msg === "string" ? msg : "Failed to update template"
+            });
+            return;
+          }
+          createNotification({ type: "error", text: "Failed to update template" });
+        },
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Template updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
@@ -527,6 +568,32 @@ const SettingsTab = ({
               />
             </>
           )}
+
+          <Controller
+            control={control}
+            name="settings.sessionLogMaskingPatterns"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Session Log Masking</FieldLabel>
+                <FieldContent>
+                  <TextArea
+                    rows={5}
+                    placeholder={"rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b"}
+                    value={field.value ?? ""}
+                    isError={!!fieldState.error}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val.trim() ? val : "");
+                    }}
+                  />
+                  <FieldDescription>
+                    Matching content in session recordings will be masked (one regex per line).
+                  </FieldDescription>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
         </CardContent>
       </Card>
 

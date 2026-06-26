@@ -28,7 +28,14 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { resolveAccessControls } from "../pam/pam-policies";
+import {
+  PamPolicyType,
+  PamSettingType,
+  policyAppliesTo,
+  resolveAccessControls,
+  resolvePolicy,
+  splitPatternString
+} from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   extractGatewayTarget,
@@ -244,6 +251,28 @@ export const pamSessionServiceFactory = ({
       };
     }
 
+    const commandBlockingPatterns = policyAppliesTo(
+      PamPolicyType.CommandBlocking,
+      account.accountType as PamAccountType
+    )
+      ? splitPatternString(resolvePolicy(account.templatePolicies, PamPolicyType.CommandBlocking))
+      : [];
+
+    const parsedSettings = PamTemplateSettingsSchema.safeParse(account.templateSettings ?? {});
+    const maskingPatterns = parsedSettings.success
+      ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns)
+      : [];
+
+    const policyRules =
+      commandBlockingPatterns.length > 0 || maskingPatterns.length > 0
+        ? {
+            ...(commandBlockingPatterns.length > 0
+              ? { [PamPolicyType.CommandBlocking]: { patterns: commandBlockingPatterns } }
+              : {}),
+            ...(maskingPatterns.length > 0 ? { [PamSettingType.SessionLogMasking]: { patterns: maskingPatterns } } : {})
+          }
+        : null;
+
     const normalizedConnectionDetails = validateConnectionDetails(
       account.accountType as PamAccountType,
       connectionDetails
@@ -256,6 +285,7 @@ export const pamSessionServiceFactory = ({
     return {
       credentials: { ...normalizedConnectionDetails, ...credentials },
       recording,
+      policyRules,
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,

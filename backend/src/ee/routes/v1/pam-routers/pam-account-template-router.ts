@@ -3,7 +3,7 @@ import z from "zod";
 import { PamAccountTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamTemplateSettingsSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { PamTemplateSettingsInputSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -105,7 +105,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         description: z.string().trim().max(256).optional().describe("Optional description"),
         type: z.nativeEnum(PamAccountType).describe("The account type this template applies to"),
         policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
-        settings: PamTemplateSettingsSchema.optional().describe("Template settings"),
+        settings: PamTemplateSettingsInputSchema.optional().describe("Template settings"),
         gatewayId: z.string().uuid().optional().describe("Default gateway ID for accounts using this template"),
         gatewayPoolId: z.string().uuid().optional().describe("Default gateway pool ID"),
         recordingConnectionId: z.string().uuid().optional().describe("Recording storage connection ID")
@@ -173,7 +173,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description"),
         policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
-        settings: PamTemplateSettingsSchema.optional().describe("Updated settings"),
+        settings: PamTemplateSettingsInputSchema.optional().describe("Updated settings"),
         gatewayId: z.string().uuid().nullable().optional().describe("New gateway ID"),
         gatewayPoolId: z.string().uuid().nullable().optional().describe("New gateway pool ID"),
         recordingConnectionId: z.string().uuid().nullable().optional().describe("New recording connection ID")
