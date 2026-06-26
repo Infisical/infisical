@@ -128,6 +128,8 @@ Policies are the governance controls applied to a template (require MFA, require
 
 "Access policy" is the category, not a type: MFA, reason, and duration are individual peer policies that each `appliesTo: "all"`. `appliesTo` can also be a list to scope a policy to specific account types. This is distinct from **settings** (recording, password constraints), which are NOT policies, they live in the template's separate `settings` column with their own schema and bespoke UI.
 
+In the template detail sheet (`frontend/src/pages/pam/PamTemplatesPage/components/TemplateDetailSheet.tsx`), the **"General"** tab is for policies and system settings (gateway, session recording / storage backend, and similar template-level defaults); the **"Configuration"** tab is only for generic template metadata like name and description. When adding a new policy or setting, it belongs on the General tab, not Configuration.
+
 Storage: a template's `policies` jsonb column is a flat map keyed by `PamPolicyType`, e.g. `{ "require-mfa": true, "max-session-duration": 3600 }`. No DB defaults and no per-policy migration: absence resolves to the policy's natural default in the resolver (a missing boolean is `false`, a missing duration falls back to `DEFAULT_SESSION_DURATION_MS`).
 
 A registry entry flows automatically to:

@@ -193,7 +193,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {columns.map((col) => (
                         <SelectItem key={col.name} value={col.name}>
                           {col.name}
@@ -211,7 +211,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                     <SelectTrigger size="sm" className="w-28 text-xs text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {OPERATORS.map((op) => (
                         <SelectItem key={op.value} value={op.value}>
                           {op.label}

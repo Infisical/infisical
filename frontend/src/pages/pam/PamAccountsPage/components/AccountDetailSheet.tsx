@@ -710,7 +710,7 @@ const SettingsTab = ({
                     <AlertTitle>Changing bucket affects existing recordings</AlertTitle>
                     <AlertDescription>
                       Changing the bucket makes existing recordings inaccessible unless you manually
-                      migrate the objects. Keep the same bucket and key prefix when rotating
+                      migrate each object. Keep the same bucket and key prefix when rotating
                       credentials.
                     </AlertDescription>
                   </Alert>
