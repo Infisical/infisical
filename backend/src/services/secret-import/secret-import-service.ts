@@ -17,17 +17,13 @@ import {
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { canUseCrossProjectSecretSharing } from "../project-grant/project-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -55,7 +51,6 @@ type TSecretImportServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
@@ -71,7 +66,6 @@ export const secretImportServiceFactory = ({
   secretImportDAL,
   projectEnvDAL,
   projectGrantDAL,
-  orgDAL,
   permissionService,
   folderDAL,
   projectDAL,
@@ -82,28 +76,18 @@ export const secretImportServiceFactory = ({
   secretV2BridgeDAL,
   kmsService
 }: TSecretImportServiceFactoryDep) => {
-  const $isCrossProjectEnabled = async (actorOrgId: string) => {
-    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
-      orgDAL.findOrgById(actorOrgId)
-    );
-    return canUseCrossProjectSecretSharing(actorOrgId) && (org?.allowCrossProjectSecretSharing ?? false);
-  };
-
+  // Filters out cross-project imports that no longer have a valid grant.
+  // The org-level toggle is enforced at grant creation time in project-grant-service;
+  // here the grant is the single source of truth for per-import access.
   const $filterCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
   >(
     imports: T[],
-    projectId: string,
-    actorOrgId: string
+    projectId: string
   ): Promise<T[]> => {
     const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
     if (!crossProject.length) return imports;
 
-    if (!(await $isCrossProjectEnabled(actorOrgId))) {
-      return imports.filter((imp) => imp.importEnv.projectId === projectId);
-    }
-
-    // Verify each cross-project import still has a valid grant (grants can be individually revoked)
     const sourceFolders = await folderDAL.findByManySecretPath(
       crossProject.map((imp) => ({ envId: imp.importEnv.id, secretPath: imp.importPath }))
     );
@@ -716,7 +700,7 @@ export const secretImportServiceFactory = ({
       });
 
     const secImports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-    return $filterCrossProjectImports(secImports, projectId, actorOrgId);
+    return $filterCrossProjectImports(secImports, projectId);
   };
 
   const getImportById = async ({
@@ -813,8 +797,7 @@ export const secretImportServiceFactory = ({
     // so anything based on this order will also be in right position
     const secretImports = await $filterCrossProjectImports(
       await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
-      projectId,
-      actorOrgId
+      projectId
     );
     const allowedImports = secretImports.filter((el) =>
       hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -853,8 +836,7 @@ export const secretImportServiceFactory = ({
     // so anything based on this order will also be in right position
     const secretImports = await $filterCrossProjectImports(
       await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
-      projectId,
-      actorOrgId
+      projectId
     );
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
