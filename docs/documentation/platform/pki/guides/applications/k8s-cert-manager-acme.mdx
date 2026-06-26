@@ -1,12 +1,14 @@
 ---
-title: "Kubernetes cert-manager"
-sidebarTitle: "Issue Certificates in Kubernetes"
-description: "Automatically provision and manage TLS certificates in Kubernetes using Infisical."
+title: "Kubernetes cert-manager (ACME)"
+sidebarTitle: "cert-manager (ACME)"
+description: "Automatically provision and manage TLS certificates in Kubernetes using cert-manager's ACME issuer and Infisical."
 ---
 
-Issue TLS certificates to your Kubernetes workloads using [cert-manager](https://cert-manager.io/) and Infisical. Certificates are requested via ACME, stored in Kubernetes Secrets, and renewed automatically before expiration.
+Issue TLS certificates to your Kubernetes workloads using [cert-manager](https://cert-manager.io/) and Infisical over **ACME**. Certificates are requested via ACME with External Account Binding (EAB), stored in Kubernetes Secrets, and renewed automatically before expiration.
 
 <Info>
+  This is the **ACME** approach. If you would rather authenticate with an Infisical [machine identity](/documentation/platform/identities/machine-identities) (Universal Auth or Kubernetes Auth) instead of ACME/EAB, and want the CA chain populated in the Secret automatically, use the [Infisical Issuer guide](/documentation/platform/pki/guides/applications/k8s-cert-manager-issuer) instead.
+
   This guide assumes you have an Application with [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) configured.
 </Info>
 
