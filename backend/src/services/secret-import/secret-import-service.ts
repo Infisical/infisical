@@ -23,7 +23,9 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
 import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -52,6 +54,7 @@ type TSecretImportServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne" | "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -66,6 +69,7 @@ export const secretImportServiceFactory = ({
   secretImportDAL,
   projectEnvDAL,
   projectGrantDAL,
+  orgDAL,
   permissionService,
   folderDAL,
   projectDAL,
@@ -76,17 +80,23 @@ export const secretImportServiceFactory = ({
   secretV2BridgeDAL,
   kmsService
 }: TSecretImportServiceFactoryDep) => {
-  // Annotates cross-project imports with isAccessRevoked based on grant status.
-  // The org-level toggle is enforced at grant creation time in project-grant-service;
-  // here the grant is the single source of truth for per-import access.
   const $annotateCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
   >(
     imports: T[],
-    projectId: string
+    projectId: string,
+    actorOrgId: string
   ): Promise<(T & { isAccessRevoked: boolean })[]> => {
     const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
+
+    // If org-level toggle is disabled, ignore all cross-project imports
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      return imports.map((imp) => ({
+        ...imp,
+        isAccessRevoked: imp.importEnv.projectId !== projectId
+      }));
+    }
 
     const sourceFolders = await folderDAL.findByManySecretPath(
       crossProject.map((imp) => ({ envId: imp.importEnv.id, secretPath: imp.importPath }))
@@ -146,6 +156,10 @@ export const secretImportServiceFactory = ({
     const isCrossProjectImport = sourceProjectId !== projectId;
 
     if (isCrossProjectImport) {
+      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+        throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
+      }
+
       const importFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
       if (!importFolder) {
         throw new NotFoundError({
@@ -703,7 +717,7 @@ export const secretImportServiceFactory = ({
       });
 
     const secImports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-    return $annotateCrossProjectImports(secImports, projectId);
+    return $annotateCrossProjectImports(secImports, projectId, actorOrgId);
   };
 
   const getImportById = async ({
@@ -801,7 +815,8 @@ export const secretImportServiceFactory = ({
     const secretImports = (
       await $annotateCrossProjectImports(
         await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
-        projectId
+        projectId,
+        actorOrgId
       )
     ).filter((imp) => !imp.isAccessRevoked);
     const allowedImports = secretImports.filter((el) =>
@@ -842,7 +857,8 @@ export const secretImportServiceFactory = ({
     const secretImports = (
       await $annotateCrossProjectImports(
         await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
-        projectId
+        projectId,
+        actorOrgId
       )
     ).filter((imp) => !imp.isAccessRevoked);
 
@@ -953,7 +969,7 @@ export const secretImportServiceFactory = ({
     const secImportsArrays = await Promise.all(
       folders.map(async (folder) => {
         const imports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-        const annotated = await $annotateCrossProjectImports(imports, projectId);
+        const annotated = await $annotateCrossProjectImports(imports, projectId, actorOrgId);
         return annotated.map((importItem) => ({
           ...importItem,
           environment: folder.environment.slug
@@ -1109,13 +1125,23 @@ export const secretImportServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetCrossProjectImportSecretValueDTO) => {
-    await permissionService.getProjectPermission({
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
+    });
+
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath,
+      secretName
     });
 
     const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, environment, secretPath);

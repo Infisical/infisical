@@ -1978,6 +1978,7 @@ export const registerRoutes = async (
     licenseService,
     projectBotService,
     projectGrantDAL,
+    orgDAL,
     projectEnvDAL,
     folderDAL,
     permissionService,
