@@ -5,7 +5,7 @@ export type TSecretImport = {
   id: string;
   folderId: string;
   importPath: string;
-  importEnv: ProjectEnv;
+  importEnv: ProjectEnv & { projectId?: string };
   position: string;
   createdAt: string;
   updatedAt: string;
@@ -15,6 +15,7 @@ export type TSecretImport = {
   replicationStatus?: string;
   lastReplicated?: string;
   environment?: string;
+  sourceProjectName?: string;
 };
 
 export type TGetImportedFoldersByEnvDTO = {

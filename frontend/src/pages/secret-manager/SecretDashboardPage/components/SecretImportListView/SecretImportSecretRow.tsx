@@ -13,10 +13,12 @@ type SecretImportSecretRowProps = {
     isEmpty?: boolean;
     overridden: { env: string; secretPath: string };
   };
+  sourceProjectId?: string;
 };
 
 export const SecretImportSecretRow = ({
-  secret: { key, environment, secretPath = "/", isEmpty }
+  secret: { key, environment, secretPath = "/", isEmpty },
+  sourceProjectId
 }: SecretImportSecretRowProps) => {
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
@@ -33,7 +35,8 @@ export const SecretImportSecretRow = ({
       environment,
       secretPath,
       secretKey: key,
-      projectId: currentProject.id
+      projectId: currentProject.id,
+      sourceProjectId
     },
     {
       enabled: isFieldFocused && canFetchSecretValue

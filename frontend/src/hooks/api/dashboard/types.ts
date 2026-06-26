@@ -171,6 +171,7 @@ export type TGetSecretValueDTO = {
   environment: string;
   secretPath: string;
   isOverride?: boolean;
+  sourceProjectId?: string;
 };
 
 export type DashboardSecretValue =

@@ -445,7 +445,7 @@ export const CreateSecretImportForm = ({
             type="button"
             variant="project"
             isDisabled={!selectedGrant}
-            isLoading={isCreatingImport}
+            isPending={isCreatingImport}
             onClick={async () => {
               if (!selectedGrant) return;
               try {
