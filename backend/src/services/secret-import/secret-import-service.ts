@@ -88,14 +88,15 @@ export const secretImportServiceFactory = ({
     actorOrgId: string
   ): Promise<(T & { isAccessRevoked: boolean })[]> => {
     const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
+    // TODO: Do we need isAccessRemoved?
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
-    // If org-level toggle is disabled, ignore all cross-project imports
+    // If org-level toggle is disabled, strip cross-project imports entirely
     if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-      return imports.map((imp) => ({
-        ...imp,
-        isAccessRevoked: imp.importEnv.projectId !== projectId
-      }));
+      return imports
+        .filter((imp) => imp.importEnv.projectId === projectId)
+        // TODO: Do we need isAccessRemoved?
+        .map((imp) => ({ ...imp, isAccessRevoked: false }));
     }
 
     const sourceFolders = await folderDAL.findByManySecretPath(
@@ -120,10 +121,9 @@ export const secretImportServiceFactory = ({
         .map((imp) => imp.id)
     );
 
-    return imports.map((imp) => ({
-      ...imp,
-      isAccessRevoked: revokedIds.has(imp.id)
-    }));
+    return imports
+      .filter((imp) => !revokedIds.has(imp.id))
+      .map((imp) => ({ ...imp, isAccessRevoked: false }));
   };
 
   const createImport = async ({
@@ -629,9 +629,9 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    const count = await secretImportDAL.getProjectImportCount({ folderId: folder.id, search });
-
-    return count;
+    const allImports = await secretImportDAL.find({ folderId: folder.id, search });
+    const accessible = await $annotateCrossProjectImports(allImports, projectId, actorOrgId);
+    return accessible.length;
   };
 
   const getProjectImportMultiEnvCount = async ({
@@ -679,10 +679,21 @@ export const secretImportServiceFactory = ({
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
       });
-    return secretImportDAL.getUniqueImportCountByFolderIds(
-      folders.map((folder) => folder.id),
-      search
+
+    const importArrays = await Promise.all(
+      folders.map(async (folder) => {
+        const imports = await secretImportDAL.find({ folderId: folder.id, search });
+        return $annotateCrossProjectImports(imports, projectId, actorOrgId);
+      })
     );
+
+    const seen = new Set<string>();
+    for (const folderImports of importArrays) {
+      for (const imp of folderImports) {
+        seen.add(`${imp.importPath}:${imp.importEnv.id}`);
+      }
+    }
+    return seen.size;
   };
 
   const getImports = async ({

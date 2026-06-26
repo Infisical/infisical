@@ -176,11 +176,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
   };
 
   const getProjectImportCount = async (
-    { search, ...filter }: Partial<TSecretImports & { projectId: string; search?: string }>,
+    { search, projectId, ...filter }: Partial<TSecretImports & { projectId: string; search?: string }>,
     tx?: Knex
   ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+      const query = (tx || db.replicaNode())(TableName.SecretImport)
         .where(filter)
         .where("isReplication", false)
         .where((bd) => {
@@ -189,9 +189,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
-        .count();
+        .whereNull(`${TableName.Environment}.deleteAfter`);
 
+      if (projectId) {
+        void query.where(`${TableName.Environment}.projectId`, projectId);
+      }
+
+      const docs = await query.count();
       return Number(docs[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "get secret imports count" });
