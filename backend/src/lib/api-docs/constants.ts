@@ -3128,6 +3128,17 @@ export const SecretSyncs = {
       sensitive:
         "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
     },
+    QOVERY: {
+      organizationId: "The ID of the Qovery organization to sync secrets to.",
+      organizationName: "The name of the Qovery organization to sync secrets to.",
+      projectId: "The ID of the Qovery project to sync secrets to.",
+      projectName: "The name of the Qovery project to sync secrets to.",
+      environmentId:
+        "The ID of the Qovery environment to sync secrets to. When omitted, secrets are synced at the project level.",
+      environmentName: "The name of the Qovery environment to sync secrets to.",
+      variableType:
+        "Whether to sync values as Qovery environment secrets or environment variables. Environment variables expose their value; secrets do not."
+    },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
       orgName: "The name of the Laravel Forge org to sync secrets to.",

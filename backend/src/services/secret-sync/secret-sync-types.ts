@@ -161,6 +161,7 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -221,6 +222,7 @@ export type TSecretSync =
   | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync
+  | TQoverySync
   | TLaravelForgeSync
   | TWindmillSync
   | THCVaultSync
@@ -265,6 +267,7 @@ export type TSecretSyncWithCredentials =
   | TTerraformCloudSyncWithCredentials
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials
+  | TQoverySyncWithCredentials
   | TWindmillSyncWithCredentials
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
@@ -310,6 +313,7 @@ export type TSecretSyncInput =
   | TTerraformCloudSyncInput
   | TCamundaSyncInput
   | TVercelSyncInput
+  | TQoverySyncInput
   | TWindmillSyncInput
   | THCVaultSyncInput
   | TTeamCitySyncInput
@@ -355,6 +359,7 @@ export type TSecretSyncListItem =
   | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
   | TVercelSyncListItem
+  | TQoverySyncListItem
   | TLaravelForgeSyncListItem
   | TWindmillSyncListItem
   | THCVaultSyncListItem

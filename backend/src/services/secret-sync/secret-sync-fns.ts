@@ -74,6 +74,7 @@ import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
 import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
+import { QOVERY_SYNC_LIST_OPTION, QoverySyncFns } from "./qovery";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
@@ -131,7 +132,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
   [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
-  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
+  [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -429,6 +431,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Qovery:
+        return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -590,6 +594,9 @@ export const SecretSyncFns = {
       case SecretSync.Snowflake:
         secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Qovery:
+        secretMap = await QoverySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -734,6 +741,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Qovery:
+        return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

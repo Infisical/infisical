@@ -144,6 +144,7 @@ import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
+import { qoveryConnectionService } from "./qovery/qovery-connection-service";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
@@ -1322,6 +1323,7 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
+    qovery: qoveryConnectionService(connectAppConnectionById),
     ona: onaConnectionService(connectAppConnectionById),
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),

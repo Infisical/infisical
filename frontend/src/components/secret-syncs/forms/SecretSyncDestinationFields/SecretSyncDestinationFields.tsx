@@ -35,6 +35,7 @@ import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OnaSyncFields } from "./OnaSyncFields";
 import { OvhSyncFields } from "./OvhSyncFields";
+import { QoverySyncFields } from "./QoverySyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { SnowflakeSyncFields } from "./SnowflakeSyncFields";
@@ -139,6 +140,8 @@ export const SecretSyncDestinationFields = () => {
       return <SnowflakeSyncFields />;
     case SecretSync.TriggerDev:
       return <TriggerDevSyncFields />;
+    case SecretSync.Qovery:
+      return <QoverySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }
