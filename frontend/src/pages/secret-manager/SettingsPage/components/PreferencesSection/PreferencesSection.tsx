@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,37 +19,56 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
+type ToggleKey = "autoCapitalization" | "enforceEncryptedMetadata" | "secretSharing";
+
 export const PreferencesSection = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
   const { mutateAsync } = useUpdateProject();
+  const [pending, setPending] = useState<Record<ToggleKey, boolean>>({
+    autoCapitalization: false,
+    enforceEncryptedMetadata: false,
+    secretSharing: false
+  });
 
-  const notify = (state: boolean, label: string) =>
-    createNotification({
-      text: `Successfully ${state ? "enabled" : "disabled"} ${label}`,
-      type: "success"
-    });
+  const isPending = (key: ToggleKey) => pending[key];
 
-  const handleToggleAutoCapitalization = async (state: boolean) => {
-    if (!currentProject?.id) return;
-    await mutateAsync({ projectId: currentProject.id, autoCapitalization: state });
-    notify(state, "auto capitalization");
+  const runToggle = async (
+    key: ToggleKey,
+    state: boolean,
+    successLabel: string,
+    mutation: () => Promise<unknown>
+  ) => {
+    if (!currentProject?.id || pending[key]) return;
+    setPending((prev) => ({ ...prev, [key]: true }));
+    try {
+      await mutation();
+      createNotification({
+        text: `Successfully ${state ? "enabled" : "disabled"} ${successLabel}`,
+        type: "success"
+      });
+    } finally {
+      setPending((prev) => ({ ...prev, [key]: false }));
+    }
   };
 
-  const handleToggleEnforceEncryptedMetadata = async (state: boolean) => {
-    if (!currentProject?.id) return;
-    await mutateAsync({
-      projectId: currentProject.id,
-      enforceEncryptedSecretManagerSecretMetadata: state
-    });
-    notify(state, "enforced encrypted metadata");
-  };
+  const handleToggleAutoCapitalization = (state: boolean) =>
+    runToggle("autoCapitalization", state, "auto capitalization", () =>
+      mutateAsync({ projectId: currentProject!.id, autoCapitalization: state })
+    );
 
-  const handleToggleSecretSharing = async (state: boolean) => {
-    if (!currentProject?.id) return;
-    await mutateAsync({ projectId: currentProject.id, secretSharing: state });
-    notify(state, "secret sharing for this project");
-  };
+  const handleToggleEnforceEncryptedMetadata = (state: boolean) =>
+    runToggle("enforceEncryptedMetadata", state, "enforced encrypted metadata", () =>
+      mutateAsync({
+        projectId: currentProject!.id,
+        enforceEncryptedSecretManagerSecretMetadata: state
+      })
+    );
+
+  const handleToggleSecretSharing = (state: boolean) =>
+    runToggle("secretSharing", state, "secret sharing for this project", () =>
+      mutateAsync({ projectId: currentProject!.id, secretSharing: state })
+    );
 
   return (
     <Card className="mb-6">
@@ -76,7 +96,7 @@ export const PreferencesSection = () => {
                   id="autoCapitalization"
                   variant="project"
                   checked={currentProject?.autoCapitalization ?? false}
-                  disabled={!isAllowed}
+                  disabled={!isAllowed || isPending("autoCapitalization")}
                   onCheckedChange={handleToggleAutoCapitalization}
                 />
               )}
@@ -99,7 +119,7 @@ export const PreferencesSection = () => {
                   id="enforceEncryptedMetadata"
                   variant="project"
                   checked={currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false}
-                  disabled={!isAllowed}
+                  disabled={!isAllowed || isPending("enforceEncryptedMetadata")}
                   onCheckedChange={handleToggleEnforceEncryptedMetadata}
                 />
               )}
@@ -121,7 +141,7 @@ export const PreferencesSection = () => {
                   id="secretSharing"
                   variant="project"
                   checked={currentProject?.secretSharing ?? true}
-                  disabled={!isAllowed}
+                  disabled={!isAllowed || isPending("secretSharing")}
                   onCheckedChange={handleToggleSecretSharing}
                 />
               )}

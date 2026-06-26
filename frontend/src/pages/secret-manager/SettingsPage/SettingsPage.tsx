@@ -73,7 +73,11 @@ export const SettingsPage = () => {
     }
   ];
 
-  const activeTab = tabs.find((tab) => !tab.isHidden && tab.key === selectedTab);
+  const visibleTabs = tabs.filter((tab) => !tab.isHidden);
+  const activeTab =
+    visibleTabs.find((tab) => tab.key === selectedTab) ??
+    visibleTabs.find((tab) => tab.key === "tab-project-general") ??
+    visibleTabs[0];
   const baseTitle = t("settings.project.title");
   const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
 
@@ -99,14 +103,12 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" value={selectedTab}>
-          {tabs
-            .filter((el) => !el.isHidden)
-            .map(({ key, Component }) => (
-              <TabPanel value={key} key={key}>
-                <Component />
-              </TabPanel>
-            ))}
+        <Tabs orientation="vertical" value={activeTab?.key}>
+          {visibleTabs.map(({ key, Component }) => (
+            <TabPanel value={key} key={key}>
+              <Component />
+            </TabPanel>
+          ))}
         </Tabs>
       </div>
     </div>
