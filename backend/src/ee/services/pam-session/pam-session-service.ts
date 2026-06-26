@@ -51,8 +51,6 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
-  AWS_STS_MAX_DURATION_ROLE_CHAINING_SECONDS,
-  AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials
@@ -424,19 +422,6 @@ export const pamSessionServiceFactory = ({
 
     // AWS IAM: no gateway, no proxy -- generate STS credentials directly
     if (account.accountType === PamAccountType.AwsIam) {
-      const stsDurationMs = Math.max(
-        AWS_STS_MIN_DURATION_SECONDS * 1000,
-        Math.min(sessionDurationMs, AWS_STS_MAX_DURATION_ROLE_CHAINING_SECONDS * 1000)
-      );
-
-      if (stsDurationMs > maxDurationMs) {
-        throw new BadRequestError({
-          message: "AWS IAM sessions require a minimum of 15 minutes, but the configured policy maximum is lower"
-        });
-      }
-
-      sessionDurationMs = stsDurationMs;
-
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
       const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
 
