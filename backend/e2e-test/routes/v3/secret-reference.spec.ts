@@ -88,6 +88,59 @@ describe("Secret expansion", () => {
     await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 
+  test("Local secret reference with empty value", async () => {
+    const secrets = [
+      {
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: projectId,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "EMPTY",
+        value: ""
+      },
+      {
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: projectId,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "TEST",
+        // eslint-disable-next-line
+        value: "hello ${EMPTY}"
+      }
+    ];
+
+    for (const secret of secrets) {
+      // eslint-disable-next-line no-await-in-loop
+      await createSecretV2(secret);
+    }
+
+    const expandedSecret = await getSecretByNameV2({
+      environmentSlug: seedData1.environment.slug,
+      workspaceId: projectId,
+      secretPath: "/",
+      authToken: jwtAuthToken,
+      key: "TEST"
+    });
+    expect(expandedSecret.secretValue).toBe("hello ");
+
+    const listSecrets = await getSecretsV2({
+      environmentSlug: seedData1.environment.slug,
+      workspaceId: projectId,
+      secretPath: "/",
+      authToken: jwtAuthToken
+    });
+    expect(listSecrets.secrets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          secretKey: "TEST",
+          secretValue: "hello "
+        })
+      ])
+    );
+
+    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
+  });
+
   test("Cross environment secret reference", async () => {
     const secrets = [
       {

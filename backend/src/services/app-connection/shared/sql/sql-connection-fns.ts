@@ -260,6 +260,20 @@ export const validateSqlConnectionCredentials = async (
   }
 };
 
+// PlanetScale requires the connection username in `<user>.<branch>` form so its proxy can route to
+// the correct branch, but the underlying DB role is just `<user>`. Strip the branch suffix for
+// role-level statements (ALTER USER / ALTER LOGIN). Only applies to PlanetScale hosts so that
+// legitimate dotted usernames on other providers are left untouched.
+const PLANETSCALE_HOST_SUFFIX = ".psdb.cloud";
+
+export const getRoleUsernameForHost = (username: string, host: string) => {
+  const isPlanetScaleHost = host.toLowerCase().endsWith(PLANETSCALE_HOST_SUFFIX);
+  if (isPlanetScaleHost && username.includes(".")) {
+    return username.slice(0, username.indexOf("."));
+  }
+  return username;
+};
+
 export const SQL_CONNECTION_ALTER_LOGIN_STATEMENT: Record<
   TSqlCredentialsRotationWithConnection["connection"]["app"],
   (credentials: TSqlCredentialsRotationGeneratedCredentials[number]) => [string, Knex.RawBinding]
@@ -283,8 +297,10 @@ export const transferSqlConnectionCredentialsToPlatform = async (
   try {
     return await executeWithPotentialGateway(config, gatewayService, gatewayV2Service, (client) => {
       return client.transaction(async (tx) => {
+        const filteredUsername = getRoleUsernameForHost(credentials.username, credentials.host);
+
         await tx.raw(
-          ...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[app]({ username: credentials.username, password: newPassword })
+          ...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[app]({ username: filteredUsername, password: newPassword })
         );
         return callback({
           ...credentials,

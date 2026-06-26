@@ -573,6 +573,8 @@ export const ldapConfigServiceFactory = ({
             tx
           );
           isNewUser = true;
+        } else if (!newUser.firstName && firstName) {
+          newUser = await userDAL.updateById(newUser.id, { firstName, ...(lastName ? { lastName } : {}) }, tx);
         }
 
         const newUserAlias = await userAliasDAL.create(

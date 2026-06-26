@@ -47,23 +47,6 @@ export type TDeleteGitHubAppDTO = {
   orgPermission: OrgServiceActor;
 };
 
-export type TResolveGitHubAppInstallationsDTO = {
-  code: string;
-  gitHubAppId?: string;
-  host?: string;
-  instanceType?: "cloud" | "server";
-  gatewayId?: string | null;
-  gatewayPoolId?: string | null;
-  projectId?: string;
-  orgPermission: OrgServiceActor;
-};
-
-export type TGitHubAppInstallation = {
-  id: string;
-  accountLogin: string;
-  accountType: string;
-};
-
 export type TGitHubAppManifestResponse = {
   id: number;
   slug: string;

@@ -36,11 +36,13 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
     ProjectPermissionSub.Cmek
   );
 
+  const canExportKeyMaterial = canExportPrivateKey && cmek.isExportable;
+
   const { data: privateKeyData, isPending: isPrivateKeyPending } = useGetCmekPrivateKey(
     cmek?.id ?? "",
     {
-      // Only fetch private key if user has ExportPrivateKey permission
-      enabled: Boolean(cmek?.id) && canExportPrivateKey
+      // Only fetch private key if user has ExportPrivateKey permission and the key allows export
+      enabled: Boolean(cmek?.id) && canExportKeyMaterial
     }
   );
 
@@ -66,7 +68,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
   };
 
   const isLoading =
-    (canExportPrivateKey && isPrivateKeyPending) ||
+    (canExportKeyMaterial && isPrivateKeyPending) ||
     (isAsymmetricKey && canReadPublicKey && isPublicKeyPending);
 
   if (isLoading) {
@@ -79,7 +81,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
 
   return (
     <div>
-      {canExportPrivateKey && privateKeyData?.privateKey && (
+      {canExportKeyMaterial && privateKeyData?.privateKey && (
         <>
           <div className="mb-4 flex items-center justify-between">
             <h2>{isAsymmetricKey ? "Private Key (Base64)" : "Key Material (Base64)"}</h2>

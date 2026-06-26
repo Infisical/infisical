@@ -8,7 +8,7 @@ export type TUsageMeteringServiceFactory = ReturnType<typeof usageMeteringServic
 type TUsageMeteringServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_ENABLED">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
 };
 
 // Debounce window: bursts for the same {org, feature} collapse to one count because the delayed job
@@ -32,7 +32,7 @@ export const usageMeteringServiceFactory = ({
   // Fire-and-forget signal from a metered create/delete on an org-scoped meter. Never awaited and
   // never throws into the request path; inert until the v2 license server is enabled.
   const emit = (orgId: string, featureKey: string) => {
-    if (!envConfig.LICENSE_SERVER_V2_ENABLED) {
+    if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
       return;
     }
 
@@ -44,7 +44,7 @@ export const usageMeteringServiceFactory = ({
   // Project-scoped meters sum across an org's projects, so the event is keyed by org. The org is
   // resolved in the background to keep the request path free of an extra read.
   const emitForProject = (projectId: string, featureKey: string) => {
-    if (!envConfig.LICENSE_SERVER_V2_ENABLED) {
+    if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
       return;
     }
 

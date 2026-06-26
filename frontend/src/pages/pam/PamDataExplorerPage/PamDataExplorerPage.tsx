@@ -26,14 +26,14 @@ import { useQueryTabs } from "./use-query-tabs";
 
 type Props = {
   reason?: string;
+  mfaSessionId?: string;
 };
 
-export const PamDataExplorerPage = ({ reason }: Props = {}) => {
-  const { accountId, orgId } = useParams({
+export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
+  const { accountId } = useParams({
     strict: false
   }) as {
     accountId: string;
-    orgId: string;
     accountType: string;
   };
 
@@ -51,8 +51,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const latestSchemaRequestRef = useRef(0);
   const tabElRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
-  const [approvalJustification, setApprovalJustification] = useState("");
-
   // Forward refs for tab-state handlers that useDataExplorerSession calls
   // before useQueryTabs has been called. Assigned after useQueryTabs below.
   const markConnectionDeadRef = useRef<((connId: string) => void) | null>(null);
@@ -67,13 +65,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     isConnecting,
     errorMessage,
     mfaState,
-    approvalState,
     connect,
     disconnect,
     reconnect,
     handleMfaVerification,
-    submitApprovalRequest,
-    approvalRequestUrl,
     openConnection,
     closeConnection,
     fetchSchemas,
@@ -83,8 +78,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     cancelQuery
   } = useDataExplorerSession({
     accountId,
-    orgId,
-    accountName: account?.name ?? "",
     reason,
     onSessionEnd: (endReason?: string) => {
       setHasDisconnected(true);
@@ -137,10 +130,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     (node: HTMLDivElement | null) => {
       if (node && !connectedOnceRef.current) {
         connectedOnceRef.current = true;
-        connect();
+        connect(mfaSessionId);
       }
     },
-    [connect]
+    [connect, mfaSessionId]
   );
 
   // Cleanup on real unmount
@@ -302,56 +295,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
           <Button variant="pam" isFullWidth onClick={handleMfaVerification}>
             Verify MFA
           </Button>
-        )}
-      </WebAccessStatusCard>
-    );
-  }
-
-  if (approvalState?.required) {
-    return (
-      <WebAccessStatusCard
-        icon={AlertTriangleIcon}
-        title="Approval Required"
-        description={`This account is protected by policy: ${approvalState.policyName ?? "Unknown"}`}
-      >
-        {approvalState.submitted ? (
-          <>
-            <p className="text-xs text-muted">Approval request created successfully.</p>
-            {approvalRequestUrl && (
-              <a
-                href={approvalRequestUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary-500 underline hover:text-primary-400"
-              >
-                View approval request
-              </a>
-            )}
-            <Button variant="pam" isFullWidth onClick={handleReconnect}>
-              Reconnect
-            </Button>
-          </>
-        ) : (
-          <>
-            <textarea
-              className="w-full rounded border border-border bg-container px-3 py-2 text-xs text-foreground placeholder:text-muted focus:border-border focus:outline-none"
-              placeholder="Justification (optional)"
-              rows={2}
-              value={approvalJustification}
-              onChange={(e) => setApprovalJustification(e.target.value)}
-            />
-            {approvalState.errorMessage && (
-              <p className="text-xs text-danger">{approvalState.errorMessage}</p>
-            )}
-            <Button
-              variant="pam"
-              isFullWidth
-              isPending={approvalState.creating}
-              onClick={() => submitApprovalRequest(approvalJustification)}
-            >
-              Create Approval Request
-            </Button>
-          </>
         )}
       </WebAccessStatusCard>
     );

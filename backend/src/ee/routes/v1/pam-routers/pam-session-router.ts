@@ -299,7 +299,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .optional()
-          .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration.")
+          .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
       }),
       response: {
         200: z.object({
@@ -336,7 +337,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorIp: req.realIp ?? "",
         actorUserAgent: req.headers["user-agent"] ?? "",
         reason: req.body.reason,
-        duration: req.body.duration
+        duration: req.body.duration,
+        mfaSessionId: req.body.mfaSessionId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -394,7 +396,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         accountId: z.string().uuid().describe("The ID of the account")
       }),
       body: z.object({
-        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session")
+        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -414,7 +417,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         auditLogInfo: req.auditLogInfo,
-        reason: req.body.reason
+        reason: req.body.reason,
+        mfaSessionId: req.body.mfaSessionId
       });
 
       return { ticket };

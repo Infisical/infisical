@@ -34,6 +34,7 @@ import {
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
+import { TInternalKmsKeyVersionDALFactory } from "./internal-kms-key-version-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
@@ -61,7 +62,8 @@ type TKmsServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
   kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
-  internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
+  internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById">;
+  internalKmsKeyVersionDAL: Pick<TInternalKmsKeyVersionDALFactory, "create" | "find">;
   hsmService: THsmServiceFactory;
   envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
 };
@@ -71,6 +73,27 @@ export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
 // akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
 const KMS_VERSION = "v01";
 const KMS_VERSION_BLOB_LENGTH = 3;
+// v02 blobs additionally embed the key material version that encrypted them: [ciphertext][4-byte BE version]["v02"]
+// Written only for keys with version > 1 so never-rotated keys keep producing byte-identical v01 blobs.
+const KMS_VERSION_V2 = "v02";
+const KMS_KEY_VERSION_BLOB_LENGTH = 4;
+// AES-GCM output is at minimum a 12-byte IV + 16-byte auth tag (empty plaintext). A real v02 blob therefore
+// cannot be shorter than this plus its 4-byte version + 3-byte suffix; anything shorter ending in "v02" is
+// malformed/attacker input and must fall through to the legacy path rather than reading out of bounds.
+const MIN_AES_GCM_BLOB_LENGTH = 12 + 16;
+const MIN_V02_BLOB_LENGTH = MIN_AES_GCM_BLOB_LENGTH + KMS_KEY_VERSION_BLOB_LENGTH + KMS_VERSION_BLOB_LENGTH;
+
+// Single source of truth for the cipher-blob trailer so the encode side here and the decode side in
+// decryptWithKmsKey can never drift: v1 keys get the legacy 3-byte "v01" suffix (byte-identical to pre-rotation
+// output); rotated keys get [4-byte BE keyVersion]["v02"].
+const buildKmsCipherTextBlob = (encryptedBlob: Buffer, keyVersion: number) => {
+  if (keyVersion > 1) {
+    const keyVersionBlob = Buffer.alloc(KMS_KEY_VERSION_BLOB_LENGTH);
+    keyVersionBlob.writeUInt32BE(keyVersion, 0);
+    return Buffer.concat([encryptedBlob, keyVersionBlob, Buffer.from(KMS_VERSION_V2, "utf8")]);
+  }
+  return Buffer.concat([encryptedBlob, Buffer.from(KMS_VERSION, "utf8")]);
+};
 const KmsSanitizedSchema = KmsKeysSchema.extend({ isExternal: z.boolean() });
 const OPENSSL_TO_KMS: Record<string, string> = Object.fromEntries(
   Object.entries(KMS_TO_OPENSSL_NAME).map(([k, v]) => [v, k])
@@ -81,6 +104,7 @@ export const kmsServiceFactory = ({
   kmsDAL,
   kmsRootConfigDAL,
   internalKmsDAL,
+  internalKmsKeyVersionDAL,
   orgDAL,
   projectDAL,
   hsmService
@@ -95,6 +119,7 @@ export const kmsServiceFactory = ({
   const generateKmsKey = async ({
     orgId,
     isReserved = true,
+    isExportable = true,
     tx,
     name,
     projectId,
@@ -136,6 +161,7 @@ export const kmsServiceFactory = ({
           keyUsage,
           orgId,
           isReserved,
+          isExportable,
           projectId,
           description
         },
@@ -157,6 +183,75 @@ export const kmsServiceFactory = ({
     if (tx) return dbQuery(tx);
     const doc = await kmsDAL.transaction(async (tx2) => dbQuery(tx2));
     return doc;
+  };
+
+  /*
+   * Rotate KMS Key
+   * Archives the current key material in the key version table and generates fresh material.
+   * Old material is never deleted so existing ciphertexts stay decryptable.
+   */
+  const rotateKmsKey = async (kmsKeyId: string, tx?: Knex) => {
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+
+    const dbQuery = async (db: Knex) => {
+      const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, db);
+      if (!kmsDoc) {
+        throw new NotFoundError({ message: `KMS with ID '${kmsKeyId}' not found` });
+      }
+
+      if (kmsDoc.externalKms) {
+        throw new BadRequestError({
+          message: "Cannot rotate external KMS keys from Infisical. Rotate the key in your external provider instead."
+        });
+      }
+
+      if (kmsDoc.isReserved) {
+        throw new BadRequestError({ message: "Reserved Infisical-managed KMS keys cannot be rotated." });
+      }
+
+      if (kmsDoc.isDisabled) {
+        throw new BadRequestError({ message: "Key is disabled" });
+      }
+
+      if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
+        throw new BadRequestError({
+          message:
+            "Only encrypt-decrypt keys support rotation. Rotate sign-verify keys manually by creating a new key and updating your applications to use it."
+        });
+      }
+
+      const internalKms = await internalKmsDAL.findByKmsKeyIdForUpdate(kmsKeyId, db);
+      if (!internalKms) {
+        throw new NotFoundError({ message: `Internal KMS not found for KMS with ID '${kmsKeyId}'` });
+      }
+
+      const encryptionAlgorithm = internalKms.encryptionAlgorithm as SymmetricKeyAlgorithm;
+      const newKeyMaterial = crypto.randomBytes(getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm));
+      const encryptedNewKeyMaterial = keyCipher.encrypt(newKeyMaterial, ROOT_ENCRYPTION_KEY);
+
+      // archive the current material BEFORE overwriting it
+      await internalKmsKeyVersionDAL.create(
+        {
+          internalKmsId: internalKms.id,
+          encryptedKey: internalKms.encryptedKey,
+          version: internalKms.version
+        },
+        db
+      );
+
+      const updatedInternalKms = await internalKmsDAL.updateById(
+        internalKms.id,
+        {
+          encryptedKey: encryptedNewKeyMaterial,
+          version: internalKms.version + 1
+        },
+        db
+      );
+
+      return { id: kmsDoc.id, version: updatedInternalKms.version };
+    };
+
+    return tx ? dbQuery(tx) : kmsDAL.transaction(dbQuery);
   };
 
   const deleteInternalKms = async (kmsId: string, orgId: string, tx?: Knex) => {
@@ -354,12 +449,80 @@ export const kmsServiceFactory = ({
     // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
+    const internalKmsId = kmsDoc.internalKms?.id as string;
+    const currentKeyVersion = kmsDoc.internalKms?.version as number; // NOT NULL, defaults to 1
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
-    return ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+    const keyMaterialByVersion = new Map<number, Buffer>([[currentKeyVersion, kmsKey]]);
+    let archivedVersionsLoaded = false;
+    const $loadArchivedVersions = async () => {
+      if (archivedVersionsLoaded) return;
+      // one query for all archived versions; DB errors propagate (never silently treated as a decrypt failure)
+      const archivedVersions = await internalKmsKeyVersionDAL.find({ internalKmsId }, { tx });
+      for (const archived of archivedVersions) {
+        if (!keyMaterialByVersion.has(archived.version)) {
+          keyMaterialByVersion.set(archived.version, keyCipher.decrypt(archived.encryptedKey, ROOT_ENCRYPTION_KEY));
+        }
+      }
+      archivedVersionsLoaded = true;
+    };
+
+    // Try the preferred version first (cheap, no DB), then the current material, then every archived version
+    // newest-first. Returns the plaintext, or null if no available material authenticates the blob. Trying the
+    // current material covers the export/import case where rotated material was re-imported as version 1, and
+    // trying older material covers stale-replica writers that used pre-rotation material.
+    const $tryDecryptWithAnyMaterial = async (cipherTextBlob: Buffer, preferredVersion: number) => {
+      const attempt = (material?: Buffer) => {
+        if (!material) return null;
+        try {
+          return dataCipher.decrypt(cipherTextBlob, material);
+        } catch {
+          return null; // GCM auth failure for this material; try the next candidate
+        }
+      };
+
+      const preferred = attempt(keyMaterialByVersion.get(preferredVersion));
+      if (preferred) return preferred;
+
+      // skip when preferred already was the current material (seeded under currentKeyVersion)
+      if (preferredVersion !== currentKeyVersion) {
+        const current = attempt(kmsKey);
+        if (current) return current;
+      }
+
+      await $loadArchivedVersions();
+      for (let version = currentKeyVersion - 1; version >= 1; version -= 1) {
+        const decrypted = attempt(keyMaterialByVersion.get(version));
+        if (decrypted) return decrypted;
+      }
+      return null;
+    };
+
+    return async ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
+      const suffix =
+        versionedCipherTextBlob.length >= KMS_VERSION_BLOB_LENGTH
+          ? versionedCipherTextBlob.subarray(-KMS_VERSION_BLOB_LENGTH).toString("utf8")
+          : "";
+
+      // v02 is recognized structurally (suffix + minimum length), never by trusting the embedded version: a blob
+      // too short to be real AES-GCM output that happens to end in "v02" is treated as legacy/garbage and falls
+      // through, so readUInt32BE can never run on a negative offset.
+      if (suffix === KMS_VERSION_V2 && versionedCipherTextBlob.length >= MIN_V02_BLOB_LENGTH) {
+        const keyVersionOffset = versionedCipherTextBlob.length - KMS_VERSION_BLOB_LENGTH - KMS_KEY_VERSION_BLOB_LENGTH;
+        const embeddedVersion = versionedCipherTextBlob.readUInt32BE(keyVersionOffset);
+        const cipherTextBlob = versionedCipherTextBlob.subarray(0, keyVersionOffset);
+
+        const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, embeddedVersion);
+        if (decrypted) return decrypted;
+
+        return dataCipher.decrypt(cipherTextBlob, kmsKey);
+      }
+
+      // legacy v01 (or anything not validated as v02): strip the 3-byte suffix and try all available material
       const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
-      const decryptedBlob = dataCipher.decrypt(cipherTextBlob, kmsKey);
-      return Promise.resolve(decryptedBlob);
+      const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, currentKeyVersion);
+      if (decrypted) return decrypted;
+      return dataCipher.decrypt(cipherTextBlob, kmsKey);
     };
   };
 
@@ -381,6 +544,12 @@ export const kmsServiceFactory = ({
       });
     }
 
+    if (!kmsDoc.isExportable) {
+      throw new BadRequestError({
+        message: "You are not allowed to export this key"
+      });
+    }
+
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
@@ -397,6 +566,9 @@ export const kmsServiceFactory = ({
       if (kmsDoc.externalKms) {
         throw new BadRequestError({ message: `Cannot get key material for external key [kmsId=${kmsDoc.id}]` });
       }
+      if (!kmsDoc.isExportable) {
+        throw new BadRequestError({ message: `You are not allowed to export this key [kmsId=${kmsDoc.id}]` });
+      }
 
       const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
       const keyMaterial = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -406,7 +578,17 @@ export const kmsServiceFactory = ({
   };
 
   const importKeyMaterial = async (
-    { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
+    {
+      key,
+      algorithm,
+      name,
+      isReserved,
+      isExportable = true,
+      projectId,
+      orgId,
+      keyUsage,
+      kmipMetadata
+    }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
     verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
@@ -475,6 +657,7 @@ export const kmsServiceFactory = ({
           keyUsage,
           orgId,
           isReserved,
+          isExportable,
           projectId,
           kmipMetadata
         },
@@ -636,15 +819,12 @@ export const kmsServiceFactory = ({
     // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
+    const currentKeyVersion = kmsDoc.internalKms?.version as number; // NOT NULL, defaults to 1
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
-
-      // Buffer#1 encrypted text + Buffer#2 version number
-      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
-      const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
-
+      const cipherTextBlob = buildKmsCipherTextBlob(encryptedPlainTextBlob, currentKeyVersion);
       return Promise.resolve({ cipherTextBlob });
     };
   };
@@ -1157,6 +1337,7 @@ export const kmsServiceFactory = ({
   return {
     startService,
     generateKmsKey,
+    rotateKmsKey,
     deleteInternalKms,
     encryptWithKmsKey,
     decryptWithKmsKey,

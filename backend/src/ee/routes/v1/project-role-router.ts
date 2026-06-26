@@ -340,6 +340,43 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/roles/:roleId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
+      description: "Get a project role by ID",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        roleId: z.string().trim().uuid().describe(PROJECT_ROLE.GET_ROLE_BY_ID.roleId)
+      }),
+      response: {
+        200: z.object({
+          role: SanitizedRoleSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const role = await server.services.role.getProjectRoleById({
+        permission: req.permission,
+        selector: {
+          id: req.params.roleId
+        }
+      });
+
+      return { role };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/permissions",
     config: {
       rateLimit: readLimit

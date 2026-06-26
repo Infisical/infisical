@@ -16,7 +16,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
 | `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
-| `pam-web-access/` | WebSocket session handlers (Postgres, SSH), ticket-based auth |
+| `pam-web-access/` | WebSocket session handlers (Postgres, SSH, RDP), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.
 
@@ -127,6 +127,8 @@ No changes to the account form components, router schemas, or field renderers ar
 Policies are the governance controls applied to a template (require MFA, require reason, max session duration). They are registry-driven, defined once in `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts`, keyed by `PamPolicyType`. Each entry is `{ label, description, appliesTo, schema }` where `appliesTo` is an account-type list or `"all"`, and `schema` is the Zod schema for that policy's value (a primitive or object).
 
 "Access policy" is the category, not a type: MFA, reason, and duration are individual peer policies that each `appliesTo: "all"`. `appliesTo` can also be a list to scope a policy to specific account types. This is distinct from **settings** (recording, password constraints), which are NOT policies, they live in the template's separate `settings` column with their own schema and bespoke UI.
+
+In the template detail sheet (`frontend/src/pages/pam/PamTemplatesPage/components/TemplateDetailSheet.tsx`), the **"General"** tab is for policies and system settings (gateway, session recording / storage backend, and similar template-level defaults); the **"Configuration"** tab is only for generic template metadata like name and description. When adding a new policy or setting, it belongs on the General tab, not Configuration.
 
 Storage: a template's `policies` jsonb column is a flat map keyed by `PamPolicyType`, e.g. `{ "require-mfa": true, "max-session-duration": 3600 }`. No DB defaults and no per-policy migration: absence resolves to the policy's natural default in the resolver (a missing boolean is `false`, a missing duration falls back to `DEFAULT_SESSION_DURATION_MS`).
 

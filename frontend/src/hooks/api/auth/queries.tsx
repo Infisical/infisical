@@ -4,6 +4,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 
+import { adminQueryKeys } from "../admin";
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
@@ -80,6 +81,11 @@ export const useSelectOrganization = () => {
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
       if (!details.userAgent && !data.isMfaEnabled) {
         SecurityClient.setToken(data.token);
+
+        queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
+        queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+        await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+        await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
       }
 
       if (data.token && !data.isMfaEnabled) {
@@ -100,7 +106,6 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
     }

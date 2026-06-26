@@ -2,9 +2,9 @@ name: Release standalone docker image
 on:
     push:
         tags:
-            - "v*.*.*"
-            - "v*.*.*-nightly-*"
-            - "v*.*.*-nightly-*.*"
+            - "v0.*.*"
+            - "v0.*.*-nightly-*"
+            - "v0.*.*-nightly-*.*"
 
 jobs:
     infisical-tests:

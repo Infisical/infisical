@@ -43,6 +43,7 @@ import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { TravisCISyncDestinationSection } from "./TravisCISyncDestinationSection";
+import { TriggerDevSyncDestinationSection } from "./TriggerDevSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
@@ -187,6 +188,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Snowflake:
       DestinationComponents = <SnowflakeSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.TriggerDev:
+      DestinationComponents = <TriggerDevSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

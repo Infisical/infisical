@@ -63,8 +63,10 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
     | Field | Description |
     |-------|-------------|
     | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS) issue asynchronously and the Signer enters **Pending** until the cert lands. |
+    | **Key source** | Where the signing key is generated. **Infisical** (default) lets Infisical generate and manage the key for you. **HSM** generates the key inside your own HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). |
     | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. Fixed once the certificate is issued. To change it you must reissue. |
-    | **Key algorithm** | The key for the signing certificate: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. |
+    | **Key algorithm** | The signing key algorithm: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. When **Key source = HSM** the choice is restricted to `RSA-2048`, `RSA-4096`, `ECDSA P-256`, or `ECDSA P-384`. |
+    | **HSM Connector** | The HSM Connector Infisical uses to reach your HSM. Set the Connector up first under **Certificate Manager > Settings > HSM Connectors**. Shown only when **Key source = HSM**. See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors). |
     | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
     | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
 
@@ -92,6 +94,14 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
     Press **Create Signer** to finish. Infisical issues the certificate (synchronously for internal CAs, asynchronously for external CAs) and the Signer appears in the list with a status badge.
   </Step>
 </Steps>
+
+## HSM-backed Signers
+
+When you pick **Key source = HSM** on the Certificate step, pick the [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical should use. The Key algorithm choices narrow to the HSM-supported subset. The private key never leaves the HSM and every sign operation routes through the linked Connector. Infisical only holds the public key and the issued certificate.
+
+You can later switch an existing Signer between Infisical and HSM by reissuing the certificate with a different key source. Hit the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) with a `certificate.keySource` body, plus `hsmConnectorId` when switching to HSM. The signer keeps its name, members, policy, and CA. Only the underlying key and the cert wrapping it change.
+
+See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for the setup.
 
 ## Signer statuses
 
@@ -135,7 +145,7 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     To change any of them on an Active Signer: swap the CA (reissues with the new CN/Validity if you also fix those before going Active again) or, for **Key algorithm**, create a new Signer with the algorithm you want.
 
     <Note>
-      Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate; new sign operations use the new one.
+      Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
     </Note>
 
     Press **Save** to apply the changes.
@@ -144,7 +154,11 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
 
 ## Signing with a Signer
 
-To sign with a Signer, use the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) (works with `jarsigner`, `cosign`, `osslsigncode`, `signtool`, and more) or call the [Sign API](/api-reference/endpoints/code-signing/signers/sign) directly.
+To sign with a Signer, pick the integration that matches your tooling:
+
+- **[PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module)** for cross-platform tools (`jarsigner`, `cosign`, `osslsigncode`, `apksigner`, `openssl`, `gpg`, and more).
+- **[Windows KSP](/documentation/platform/pki/code-signing/windows-ksp)** for native `signtool` Authenticode signing on Windows.
+- **[Sign API](/api-reference/endpoints/code-signing/signers/sign)** to sign directly over HTTP.
 
 ## FAQ
 
@@ -153,15 +167,22 @@ To sign with a Signer, use the [PKCS#11 module](/documentation/platform/pki/code
     No. Every Signer has its own certificate. If you want different teams or different approval workflows against the same CA, create one Signer per team or workflow. Each gets its own certificate from that CA.
   </Accordion>
   <Accordion title="What's the difference between Disable and Delete?">
-    **Disable** is reversible. The Signer, its members, its policy, its history, and the certificate are all preserved; sign calls just get rejected. Re-enable to resume.
+    **Disable** is reversible. The Signer, its members, its policy, its history, and the certificate are all preserved, and sign calls just get rejected. Re-enable to resume.
 
     **Delete** is permanent. The Signer and everything attached to it (members, policy, access records, audit log) is removed. The certificate object remains in the inventory unless you delete that separately.
   </Accordion>
   <Accordion title="Why is my new Signer stuck in Pending?">
-    External CAs (AWS Private CA, Azure AD CS) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. If it stays Pending for more than a few minutes, hover the badge; the failure reason appears there once the polling job gives up.
+    External CAs (AWS Private CA, Azure AD CS) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. If it stays Pending for more than a few minutes, hover the badge. The failure reason appears there once the polling job gives up.
   </Accordion>
   <Accordion title="What happens to signed artifacts when I delete a Signer?">
-    Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate; it doesn't invalidate past signatures.
+    Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate. It does not invalidate past signatures.
+  </Accordion>
+  <Accordion title="Can I migrate an existing Signer between Infisical and an HSM?">
+    Yes. From the Signer detail page, open **Edit Signer > Certificate** and change **Key source**. When switching to HSM, pick an HSM Connector and a supported algorithm (RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384). Saving reissues the certificate with the new key. The signer keeps its name, members, approval policy, and CA. Only the key and the cert wrapping it change.
+
+    The same operation is available via the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) by passing `certificate.keySource` and (when switching to HSM) `hsmConnectorId`.
+
+    The previous certificate stays in the inventory. Delete or retire the old certificate before you try to delete the HSM Connector it referenced.
   </Accordion>
 </AccordionGroup>
 
@@ -171,7 +192,13 @@ To sign with a Signer, use the [PKCS#11 module](/documentation/platform/pki/code
   <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/code-signing/approvals">
     Add approval steps and per-approval limits to a Signer.
   </Card>
+  <Card title="HSM Connectors" icon="shield-halved" href="/documentation/platform/pki/settings/hsm-connectors">
+    Route the Signer's key operations to your own HSM.
+  </Card>
   <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
     Use jarsigner, cosign, osslsigncode, and friends with this Signer.
+  </Card>
+  <Card title="Windows KSP" icon="windows" href="/documentation/platform/pki/code-signing/windows-ksp">
+    Sign with native `signtool` on Windows.
   </Card>
 </CardGroup>

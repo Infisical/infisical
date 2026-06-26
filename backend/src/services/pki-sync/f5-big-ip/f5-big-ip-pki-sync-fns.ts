@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError, AxiosRequestConfig } from "axios";
-import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
@@ -18,6 +17,12 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
+import {
+  buildManagedCertificateNameRegexSource,
+  certificateNameSchemaHasFreeTextPlaceholder,
+  compileCertificateNameSchema
+} from "../pki-sync-certificate-name-fns";
+import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
 import { F5_BIG_IP_DEFAULT_PARTITION, F5BigIpProfileType } from "./f5-big-ip-pki-sync-constants";
@@ -88,23 +93,17 @@ const buildPartitionedPath = (partition: string, name: string) => `/${partition}
 
 const buildEncodedObjectId = (partition: string, name: string) => encodeURIComponent(`~${partition}~${name}`);
 
-const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
-
-const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
+export const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
   if (!certificateNameSchema) {
     return new RE2(`^${F5_BIG_IP_DEFAULT_CERT_NAME_PREFIX}[0-9a-f]{32}(-[a-zA-Z0-9]*)?$`);
   }
 
-  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
-  const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
-
-  const tokenized = certificateNameSchema
-    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
-    .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
-
-  const pattern = escapeRegex(tokenized)
-    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(ENV_TOKEN, "g"), "global");
+  // {{certificateId}}, {{profileId}}, and {{applicationId}} resolve to dash-stripped UUIDs (32 hex chars).
+  // {{commonName}} is arbitrary, so match any run of BIG-IP-safe characters.
+  const pattern = buildManagedCertificateNameRegexSource(certificateNameSchema, {
+    uuid: "[0-9a-f]{32}",
+    commonName: "[a-zA-Z0-9._-]*"
+  });
 
   return new RE2(`^${pattern}$`);
 };
@@ -836,10 +835,16 @@ export const f5BigIpPkiSyncFactory = ({
               } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
                 const certIdClean = certificateId.replace(new RE2("-", "g"), "");
                 if (certificateNameSchema) {
-                  targetName = handlebars.compile(certificateNameSchema)({
-                    certificateId: certIdClean,
-                    environment: "global"
-                  });
+                  targetName = compileCertificateNameSchema(
+                    certificateNameSchema,
+                    {
+                      certificateId,
+                      profileId: certData.profileId,
+                      applicationId: pkiSync.applicationId,
+                      commonName: certData.commonName
+                    },
+                    PkiSync.F5BigIp
+                  );
                 } else {
                   targetName = `${F5_BIG_IP_DEFAULT_CERT_NAME_PREFIX}${certIdClean}`;
                 }
@@ -994,16 +999,18 @@ export const f5BigIpPkiSyncFactory = ({
               }
             }
 
-            const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
             const partitionCandidates: string[] = [];
-            for (const certName of existingCertNames) {
-              if (
-                managedCertNamePattern.test(certName) &&
-                !activeExternalIdentifiers.has(certName) &&
-                !certNamesToRemove.has(certName) &&
-                !certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)
-              ) {
-                partitionCandidates.push(certName);
+            if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
+              const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
+              for (const certName of existingCertNames) {
+                if (
+                  managedCertNamePattern.test(certName) &&
+                  !activeExternalIdentifiers.has(certName) &&
+                  !certNamesToRemove.has(certName) &&
+                  !certName.endsWith(F5_BIG_IP_CHAIN_SUFFIX)
+                ) {
+                  partitionCandidates.push(certName);
+                }
               }
             }
 

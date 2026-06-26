@@ -111,13 +111,16 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         recordingConnectionId: z.string().uuid().optional().describe("Recording storage connection ID")
       }),
       response: {
-        200: z.object({ template: SanitizedTemplateSchema })
+        200: z.object({
+          template: SanitizedTemplateSchema,
+          corsProbeUrl: z.string().nullable().optional()
+        })
       }
     },
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const template = await server.services.pamAccountTemplate.create({
+      const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.create({
         ...req.body,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -152,7 +155,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         })
         .catch(() => {});
 
-      return { template };
+      return { template, corsProbeUrl };
     }
   });
 
@@ -176,13 +179,16 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         recordingConnectionId: z.string().uuid().nullable().optional().describe("New recording connection ID")
       }),
       response: {
-        200: z.object({ template: SanitizedTemplateSchema })
+        200: z.object({
+          template: SanitizedTemplateSchema,
+          corsProbeUrl: z.string().nullable().optional()
+        })
       }
     },
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const template = await server.services.pamAccountTemplate.update({
+      const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.update({
         templateId: req.params.templateId,
         ...req.body,
         projectId: req.internalPamProjectId,
@@ -217,7 +223,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         })
         .catch(() => {});
 
-      return { template };
+      return { template, corsProbeUrl };
     }
   });
 

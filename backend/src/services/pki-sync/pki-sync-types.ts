@@ -85,6 +85,8 @@ export type TCertificateMap = Record<
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;
+    profileId?: string | null;
+    commonName?: string | null;
   }
 >;
 

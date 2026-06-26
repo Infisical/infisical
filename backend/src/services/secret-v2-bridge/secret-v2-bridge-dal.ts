@@ -15,7 +15,6 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
@@ -199,6 +198,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       if (sort) {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
+      // Secondary ordering for deterministic metadata/tag order with LEFT JOINs (matches findByFolderIds)
+      void query
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
       const docs = await query;
       const data = sqlNestRelationships({
@@ -419,7 +424,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
           db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
-        .orderBy("id", "asc");
+        // Order by key (name) to match Go sidecar; secondary order by createdAt+id for deterministic tag/metadata order
+        .orderBy(`${TableName.SecretV2}.key`, "asc")
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
       const data = sqlNestRelationships({
         data: secs,
@@ -684,10 +694,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
-        .orderBy(
-          filters?.orderBy === SecretsOrderBy.Name ? "key" : "id",
-          filters?.orderDirection ?? OrderByDirection.ASC
-        );
+        // Always order by key (name) to match the Go sidecar's ordering.
+        // Secondary order by createdAt+id for deterministic tag/metadata order with LEFT JOINs.
+        .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
+        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
       let secs: Awaited<typeof query>;
 
@@ -1086,6 +1099,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           );
         })
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
@@ -1096,12 +1114,19 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
           db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
-        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"));
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"))
+        .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
 
       const docs = sqlNestRelationships({
         data: rawDocs,
         key: "id",
-        parentMapper: (el) => ({ _id: el.id, projectId: el.projectId, ...SecretsV2Schema.parse(el) }),
+        parentMapper: (el) => ({
+          _id: el.id,
+          projectId: el.projectId,
+          ...SecretsV2Schema.parse(el),
+          isRotatedSecret: Boolean(el.rotationId),
+          rotationId: el.rotationId
+        }),
         childrenMapper: [
           {
             key: "tagId",
@@ -1341,6 +1366,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        // mirror the dashboard count (countByFolderIds): exclude personal/override secrets,
+        // include honey-token + rotation backing secrets, count records (not distinct keys)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countByProject" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -1361,6 +1405,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByFolderIds,
     findStaleByProject,
     countStaleByProject,
+    countByProject,
     findDuplicatedSecretValues,
     findOne,
     find,

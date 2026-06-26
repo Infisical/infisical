@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FolderIcon, SlashIcon } from "lucide-react";
+import { Check, Copy, FolderIcon, SlashIcon } from "lucide-react";
 
 import {
   Breadcrumb,
@@ -13,8 +13,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { useTimedReset } from "@app/hooks";
 
 type Props = {
   secretPath?: string;
@@ -46,6 +51,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
   });
 
   const folderPaths = useMemo(() => (secretPath || "").split("/").filter(Boolean), [secretPath]);
+
+  const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
 
   const onFolderCrumbClick = useCallback(
     (index: number) => {
@@ -136,7 +143,12 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
       (sum, w) => sum + w + separatorWidth + GAP * 2,
       0
     );
-    const availableWidth = containerWidth - folderIconWidth - GAP;
+    // The copy-path button is a fixed-width sibling after the breadcrumb; subtract its
+    // footprint so the path collapses before it would collide with the button.
+    // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
+    const COPY_BUTTON_WIDTH = 28;
+    const copyButtonReserve = folderPaths.length > 0 ? COPY_BUTTON_WIDTH + GAP : 0;
+    const availableWidth = containerWidth - folderIconWidth - GAP - copyButtonReserve;
 
     // If everything fits, show all
     if (totalSegmentWidth <= availableWidth) {
@@ -203,8 +215,14 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
     ? folderPaths.slice(startCount, endCount > 0 ? folderPaths.length - endCount : undefined)
     : [];
 
+  // Canonical secret path (matches onFolderCrumbClick's "/"-prefixed format)
+  const fullPath = `/${folderPaths.join("/")}`;
+
   return (
-    <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+    >
       {/* Hidden measurement container */}
       <div
         ref={measureContainerRef}
@@ -231,8 +249,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
         </span>
       </div>
 
-      {/* Visible breadcrumb */}
-      <Breadcrumb>
+      {/* Visible breadcrumb (shrinks/clips on its own so the copy button is never clipped) */}
+      <Breadcrumb className="min-w-0 overflow-hidden">
         <BreadcrumbList className="flex-nowrap">
           {/* Root folder icon */}
           <BreadcrumbItem onClick={() => onFolderCrumbClick(0)}>
@@ -329,6 +347,31 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
           })}
         </BreadcrumbList>
       </Breadcrumb>
+
+      {/* Copy current folder path (pinned outside the clip flow so it's always visible) */}
+      {folderPaths.length > 0 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              variant="ghost-muted"
+              size="xs"
+              className="shrink-0"
+              aria-label="Copy folder path"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(fullPath);
+                  setIsCopied(true);
+                } catch {
+                  // clipboard unavailable (denied or insecure context); keep the un-copied state
+                }
+              }}
+            >
+              {isCopied ? <Check /> : <Copy />}
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>{isCopied ? "Copied" : "Copy path"}</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }

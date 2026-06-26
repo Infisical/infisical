@@ -53,7 +53,9 @@ Approvals must be completed in order — Step 2 approvers cannot review until St
 
 ### Self-Approval Settings
 
-The **Self Approvals** toggle controls whether users who are designated as approvers can approve their own access requests. Disable this option to require approval from a different approver.
+The **Self Approvals** toggle controls whether designated approvers can approve their own access requests. Disable it to require a different approver.
+
+When disabled, approvers can only grant themselves access through the **Bypass Approvals** break-glass flow, and only if they are explicitly listed as bypass users or groups.
 
 ### Break-Glass (Bypass) Settings
 
@@ -66,7 +68,10 @@ The **Bypass Approvals** option enables emergency access in break-glass situatio
 ![User Bypassers](/images/platform/access-controls/access-request/user-bypassers.png)
 
 <Warning>
-  Not selecting specific users or groups for bypass will allow anyone to bypass the policy.
+  When Bypass Approvals is enabled with no users or groups selected, any project member can bypass the policy on their own requests. This ensures the permission remains available without being applied automatically; it's only used when explicitly requested and bypassed. 
+  Admins are notified whenever access is bypassed.
+
+  When **Self Approvals** is disabled, approvers cannot approve their own requests through the normal workflow. They can only grant themselves access via break-glass bypass if **Bypass Approvals** is enabled and they are explicitly listed as a bypass user or group member. If no bypass users or groups are configured, self-approval is blocked entirely.
 </Warning>
 
 ## Submitting Access Requests

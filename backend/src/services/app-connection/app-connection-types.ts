@@ -378,6 +378,12 @@ import {
   TValidateTravisCIConnectionCredentialsSchema
 } from "./travis-ci";
 import {
+  TTriggerDevConnection,
+  TTriggerDevConnectionConfig,
+  TTriggerDevConnectionInput,
+  TValidateTriggerDevConnectionCredentialsSchema
+} from "./trigger-dev";
+import {
   TValidateVenafiConnectionCredentialsSchema,
   TVenafiConnection,
   TVenafiConnectionConfig,
@@ -440,6 +446,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TRenderConnection
   | TLaravelForgeConnection
   | TFlyioConnection
+  | TTriggerDevConnection
   | TGitLabConnection
   | TCloudflareConnection
   | TBitbucketConnection
@@ -520,6 +527,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRenderConnectionInput
   | TLaravelForgeConnectionInput
   | TFlyioConnectionInput
+  | TTriggerDevConnectionInput
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
@@ -632,6 +640,7 @@ export type TAppConnectionConfig =
   | TRenderConnectionConfig
   | TLaravelForgeConnectionConfig
   | TFlyioConnectionConfig
+  | TTriggerDevConnectionConfig
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
@@ -703,6 +712,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateRenderConnectionCredentialsSchema
   | TValidateLaravelForgeConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
+  | TValidateTriggerDevConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema

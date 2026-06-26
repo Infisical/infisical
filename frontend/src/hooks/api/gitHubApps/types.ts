@@ -13,9 +13,3 @@ export type TGitHubApp = {
   createdAt: string | null;
   updatedAt: string | null;
 };
-
-export type TGitHubAppInstallation = {
-  id: string;
-  accountLogin: string;
-  accountType: string;
-};

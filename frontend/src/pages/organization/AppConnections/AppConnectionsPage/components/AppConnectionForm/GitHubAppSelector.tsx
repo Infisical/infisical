@@ -1,27 +1,36 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import {
-  faArrowUpRightFromSquare,
-  faChevronLeft,
-  faCircleInfo,
-  faGear,
-  faPlus,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import slugify from "@sindresorhus/slugify";
+import {
+  ChevronLeftIcon,
+  ExternalLinkIcon,
+  GithubIcon,
+  InfoIcon,
+  PlusIcon,
+  SettingsIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldLabel,
   Input,
-  Modal,
-  ModalClose,
-  ModalContent,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import {
   Command,
   CommandGroup,
@@ -32,6 +41,7 @@ import { IconButton } from "@app/components/v3/generic/IconButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { InstanceIcon, OrgIcon, ProjectIcon } from "@app/components/v3/platform/ScopeIcons";
 import { buildGitHubAppUrl, buildGitHubHostUrl } from "@app/helpers/appConnections";
+import { useScopeVariant } from "@app/hooks";
 import { TGitHubApp, useDeleteGitHubApp } from "@app/hooks/api/gitHubApps";
 
 const SHARED_KEY = "__shared__";
@@ -82,6 +92,7 @@ export const GitHubAppSelector = ({
   const [newAppOrg, setNewAppOrg] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const scopeVariant = useScopeVariant();
 
   // Toggling `mode` unmounts the focused button (e.g. "Create new GitHub App"). If focus dropped to
   // <body>, the Dialog's focus trap would yank it to the first field at the top of the modal and
@@ -152,9 +163,7 @@ export const GitHubAppSelector = ({
 
   // Non-interactive group label rendered between dropdown items.
   const renderPickerHeading = (label: string) => (
-    <div className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-mineshaft-400">
-      {label}
-    </div>
+    <div className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-muted">{label}</div>
   );
 
   const renderPickerItem = (app: TGitHubApp) => (
@@ -168,30 +177,25 @@ export const GitHubAppSelector = ({
 
     if (deleteTargetId === app.id) {
       return (
-        <div key={app.id} className="m-1 rounded-md border border-red-500/40 bg-red-500/5 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-mineshaft-100">
-            <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+        <div key={app.id} className="m-1 rounded-md border border-danger/40 bg-danger/5 p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <TrashIcon className="size-4 text-danger" />
             <span>
               Delete <span className="font-mono">{app.name}</span>?
             </span>
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-mineshaft-300">
+          <p className="mt-1 text-xs leading-relaxed text-accent">
             Removes it from Infisical and uninstalls it from GitHub. The app registration itself
             remains on GitHub until you delete it there.
           </p>
           <div className="mt-3 flex items-center justify-end gap-2">
-            <Button
-              variant="plain"
-              colorSchema="secondary"
-              size="xs"
-              onClick={() => setDeleteTargetId(null)}
-            >
+            <Button variant="ghost" size="xs" onClick={() => setDeleteTargetId(null)}>
               Cancel
             </Button>
             <Button
-              colorSchema="danger"
+              variant="danger"
               size="xs"
-              isLoading={deleteGitHubApp.isPending}
+              isPending={deleteGitHubApp.isPending}
               onClick={() => handleDelete(app)}
             >
               Delete
@@ -207,7 +211,7 @@ export const GitHubAppSelector = ({
         value={`${app.name} ${app.owner ?? ""} ${app.slug}`}
         className="group cursor-default"
       >
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-mineshaft-600">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-foreground/10">
           {app.projectId ? (
             <ProjectIcon className="size-4 text-project" />
           ) : (
@@ -215,8 +219,8 @@ export const GitHubAppSelector = ({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-sm text-mineshaft-100">{app.name}</p>
-          <p className="truncate text-xs text-mineshaft-400">
+          <p className="truncate font-mono text-sm text-foreground">{app.name}</p>
+          <p className="truncate text-xs text-accent">
             {app.owner ? `${app.owner} · ` : ""}
             {app.connectionCount} connection{app.connectionCount === 1 ? "" : "s"}
           </p>
@@ -224,9 +228,10 @@ export const GitHubAppSelector = ({
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 data-[selected=true]:opacity-100">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="cursor-pointer rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+              <IconButton
+                variant="ghost-muted"
+                size="xs"
+                aria-label="Open on GitHub"
                 onClick={(e) => {
                   e.stopPropagation();
                   window.open(
@@ -236,8 +241,8 @@ export const GitHubAppSelector = ({
                   );
                 }}
               >
-                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs" />
-              </button>
+                <ExternalLinkIcon />
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>Open on GitHub</TooltipContent>
           </Tooltip>
@@ -248,13 +253,9 @@ export const GitHubAppSelector = ({
                     needs a focusable wrapper to open on hover/focus. */}
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
                 <span tabIndex={0}>
-                  <button
-                    type="button"
-                    disabled
-                    className="cursor-not-allowed rounded p-1 text-mineshaft-500"
-                  >
-                    <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                  </button>
+                  <IconButton variant="ghost-muted" size="xs" aria-label="Delete app" isDisabled>
+                    <TrashIcon />
+                  </IconButton>
                 </span>
               </TooltipTrigger>
               <TooltipContent>
@@ -271,16 +272,18 @@ export const GitHubAppSelector = ({
           ) : (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="cursor-pointer rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-red-400"
+                <IconButton
+                  variant="ghost-muted"
+                  size="xs"
+                  aria-label="Delete this app"
+                  className="hover:text-danger"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteTargetId(app.id);
                   }}
                 >
-                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                </button>
+                  <TrashIcon />
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Delete this app</TooltipContent>
             </Tooltip>
@@ -299,31 +302,30 @@ export const GitHubAppSelector = ({
             const app = apps.find((a) => getAppKey(a) === key);
             if (app) onChange(app);
           }}
-          isLoading={isLoading}
-          isDisabled={isLoading}
-          placeholder="Select a GitHub App"
-          containerClassName="min-w-0 flex-1"
-          className="w-full border border-mineshaft-500"
-          dropdownContainerClassName="max-w-none"
-          position="popper"
+          disabled={isLoading}
         >
-          {sharedApp && (
-            <>
-              {renderPickerHeading("INSTANCE")}
-              {renderPickerItem(sharedApp)}
-            </>
-          )}
-          {customApps.length > 0 && (
-            <>
-              {renderPickerHeading("PRIVATE")}
-              {customApps.map(renderPickerItem)}
-            </>
-          )}
-          {!sharedApp && customApps.length === 0 && !isLoading && (
-            <div className="px-4 py-6 text-center text-xs leading-relaxed text-mineshaft-400">
-              No GitHub Apps available yet. Use the gear button to create one.
-            </div>
-          )}
+          <SelectTrigger className="min-w-0 flex-1">
+            <SelectValue placeholder="Select a GitHub App" />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {sharedApp && (
+              <>
+                {renderPickerHeading("INSTANCE")}
+                {renderPickerItem(sharedApp)}
+              </>
+            )}
+            {customApps.length > 0 && (
+              <>
+                {renderPickerHeading("PRIVATE")}
+                {customApps.map(renderPickerItem)}
+              </>
+            )}
+            {!sharedApp && customApps.length === 0 && !isLoading && (
+              <div className="px-4 py-6 text-center text-xs leading-relaxed text-muted">
+                No GitHub Apps available yet. Use the gear button to create one.
+              </div>
+            )}
+          </SelectContent>
         </Select>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -331,122 +333,136 @@ export const GitHubAppSelector = ({
               variant="outline"
               aria-label="Manage GitHub Apps"
               onClick={() => setIsManageOpen(true)}
-              className="h-[38px] w-[38px] shrink-0 border-mineshaft-500 bg-mineshaft-900 text-mineshaft-200 hover:bg-mineshaft-700"
             >
-              <FontAwesomeIcon icon={faGear} />
+              <SettingsIcon />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent>Manage GitHub Apps</TooltipContent>
         </Tooltip>
       </div>
 
-      <Modal isOpen={isManageOpen} onOpenChange={handleManageOpenChange}>
-        <ModalContent
-          title="Manage GitHub Apps"
-          subTitle="Create, inspect, and remove the GitHub Apps available to your connections."
+      <Dialog open={isManageOpen} onOpenChange={handleManageOpenChange}>
+        <DialogContent
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             containerRef.current?.focus({ preventScroll: true });
           }}
+          className="max-w-xl"
         >
+          <DialogHeader>
+            <DialogTitle>Manage GitHub Apps</DialogTitle>
+            <DialogDescription>
+              Create, inspect, and remove the GitHub Apps available to your connections.
+            </DialogDescription>
+          </DialogHeader>
           <div
             ref={containerRef}
             tabIndex={-1}
-            className="overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 outline-none"
+            className="overflow-hidden rounded-md border border-border bg-container outline-none"
           >
             {mode === "create" ? (
               <div className="p-3">
-                <div className="mb-3 flex items-center gap-2 border-b border-mineshaft-600 pb-2 text-sm font-medium text-mineshaft-100">
-                  <button
-                    type="button"
-                    className="rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+                <div className="mb-3 flex items-center gap-2 border-b border-border pb-2 text-sm font-medium text-foreground">
+                  <IconButton
+                    variant="ghost-muted"
+                    size="xs"
+                    aria-label="Back to list"
                     onClick={resetCreate}
                   >
-                    <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-                  </button>
+                    <ChevronLeftIcon />
+                  </IconButton>
                   Create GitHub App
                 </div>
-                <FormControl
-                  label="App name"
-                  className="mb-1"
-                  helperText={
-                    <>
-                      {`${buildGitHubHostUrl(host).replace("https://", "")}/${
-                        instanceType === "server" ? "github-apps" : "apps"
-                      }/`}
-                      <span className="font-mono text-mineshaft-200">
-                        {GITHUB_APP_NAME_PREFIX}
-                        {newAppName.trim() ? slugify(newAppName, { lowercase: true }) : "your-app"}
-                      </span>
-                    </>
-                  }
-                >
+                <Field className="mb-1">
+                  <FieldLabel htmlFor="github-app-name">App name</FieldLabel>
                   <Input
+                    id="github-app-name"
                     ref={nameInputRef}
                     value={newAppName}
                     onChange={(e) => setNewAppName(e.target.value)}
                     placeholder="deploy-bot"
                     className="font-mono"
                   />
-                </FormControl>
-                <FormControl
-                  label="Organization"
-                  className="mt-3 mb-0"
-                  tooltipText="Enter a GitHub organization name to create the app under that organization. This is required if you want to install the app on repositories owned by the organization. Leave blank to create the app under your personal account."
-                >
+                  <FieldDescription>
+                    {`${buildGitHubHostUrl(host).replace("https://", "")}/${
+                      instanceType === "server" ? "github-apps" : "apps"
+                    }/`}
+                    <span className="font-mono text-foreground">
+                      {GITHUB_APP_NAME_PREFIX}
+                      {newAppName.trim() ? slugify(newAppName, { lowercase: true }) : "your-app"}
+                    </span>
+                  </FieldDescription>
+                </Field>
+                <Field className="mt-3 mb-0">
+                  <FieldLabel htmlFor="github-app-org">
+                    Organization
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Enter a GitHub organization name to create the app under that organization.
+                        This is required if you want to install the app on repositories owned by the
+                        organization. Leave blank to create the app under your personal account.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <Input
+                    id="github-app-org"
                     value={newAppOrg}
                     onChange={(e) => setNewAppOrg(e.target.value)}
                     placeholder="Leave blank to create on your personal account"
                   />
-                </FormControl>
-                <div className="mt-3 flex items-start gap-2 rounded-md border border-mineshaft-500 bg-mineshaft-700/40 px-3 py-2.5 text-xs leading-relaxed text-mineshaft-300">
-                  <FontAwesomeIcon icon={faCircleInfo} className="mt-0.5 text-mineshaft-400" />
-                  <span>
-                    The app will be created on{" "}
-                    <span className="font-medium text-mineshaft-100">
-                      {buildGitHubHostUrl(host).replace("https://", "")}
-                    </span>
-                    {gatewayLabel ? (
-                      <>
-                        {" "}
-                        through the{" "}
-                        <span className="font-medium text-mineshaft-100">{gatewayLabel}</span>{" "}
-                        gateway
-                      </>
-                    ) : null}
-                    . You&apos;ll be redirected to complete the private app setup. GitHub fails the
-                    setup if you&apos;re signed out, so{" "}
-                    <a
-                      href={`${buildGitHubHostUrl(host)}/login`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-mineshaft-100 underline underline-offset-2 hover:text-primary"
-                    >
-                      sign in
-                    </a>{" "}
-                    first.
-                  </span>
-                </div>
+                </Field>
+                <Alert variant="info" className="mt-3">
+                  <InfoIcon />
+                  <AlertDescription>
+                    <p>
+                      The app will be created on{" "}
+                      <span className="font-medium text-foreground">
+                        {buildGitHubHostUrl(host).replace("https://", "")}
+                      </span>
+                      {gatewayLabel ? (
+                        <>
+                          {" "}
+                          through the{" "}
+                          <span className="font-medium text-foreground">{gatewayLabel}</span>{" "}
+                          gateway
+                        </>
+                      ) : null}
+                      . You&apos;ll be redirected to complete the private app setup. GitHub fails
+                      the setup if you&apos;re signed out, so{" "}
+                      <a
+                        href={`${buildGitHubHostUrl(host)}/login`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground"
+                      >
+                        sign in
+                      </a>{" "}
+                      first.
+                    </p>
+                  </AlertDescription>
+                </Alert>
                 <div className="mt-3 flex items-center justify-end gap-2">
-                  <Button variant="plain" colorSchema="secondary" size="xs" onClick={resetCreate}>
+                  <Button variant="ghost" size="sm" onClick={resetCreate}>
                     Cancel
                   </Button>
                   <Button
-                    colorSchema="secondary"
-                    size="xs"
+                    variant={scopeVariant}
+                    size="sm"
                     isDisabled={!newAppName.trim() || isCreating}
-                    isLoading={isCreating}
-                    leftIcon={<FontAwesomeIcon icon={faGithub} />}
+                    isPending={isCreating}
                     onClick={handleContinueCreate}
                   >
+                    <GithubIcon />
                     Continue on GitHub
                   </Button>
                 </div>
               </div>
             ) : (
               <>
-                <Command className="bg-transparent">
+                <Command className="h-auto bg-transparent">
                   <CommandList className="max-h-[360px]">
                     {sharedApp && (
                       <CommandGroup heading="INSTANCE">
@@ -454,14 +470,14 @@ export const GitHubAppSelector = ({
                           value={`instance server admin ${sharedApp.name}`}
                           className="group cursor-default"
                         >
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-mineshaft-600">
-                            <InstanceIcon className="size-4 text-mineshaft-200" />
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-foreground/10">
+                            <InstanceIcon className="size-4 text-foreground" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-mono text-sm text-mineshaft-100">
+                            <p className="truncate font-mono text-sm text-foreground">
                               {sharedApp.name}
                             </p>
-                            <p className="truncate text-xs text-mineshaft-400">
+                            <p className="truncate text-xs text-muted">
                               Server admin · {sharedApp.connectionCount} connection
                               {sharedApp.connectionCount === 1 ? "" : "s"}
                             </p>
@@ -469,9 +485,10 @@ export const GitHubAppSelector = ({
                           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 data-[selected=true]:opacity-100">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="cursor-pointer rounded p-1 text-mineshaft-300 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+                                <IconButton
+                                  variant="ghost-muted"
+                                  size="xs"
+                                  aria-label="Open on GitHub"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     window.open(
@@ -485,11 +502,8 @@ export const GitHubAppSelector = ({
                                     );
                                   }}
                                 >
-                                  <FontAwesomeIcon
-                                    icon={faArrowUpRightFromSquare}
-                                    className="text-xs"
-                                  />
-                                </button>
+                                  <ExternalLinkIcon />
+                                </IconButton>
                               </TooltipTrigger>
                               <TooltipContent>Open on GitHub</TooltipContent>
                             </Tooltip>
@@ -502,7 +516,7 @@ export const GitHubAppSelector = ({
                         <span className="flex items-center gap-2">
                           PRIVATE
                           {customApps.length > 0 && (
-                            <span className="rounded-full bg-mineshaft-600 px-1.5 text-[10px] text-mineshaft-200">
+                            <span className="rounded-full bg-foreground/10 px-1.5 text-[10px] text-foreground">
                               {customApps.length}
                             </span>
                           )}
@@ -511,13 +525,11 @@ export const GitHubAppSelector = ({
                     >
                       {customApps.length === 0 && !isLoading ? (
                         <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-mineshaft-600 text-xl text-mineshaft-300">
-                            <FontAwesomeIcon icon={faGithub} />
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-foreground/10 text-accent">
+                            <GithubIcon className="size-6" />
                           </div>
-                          <p className="text-sm font-medium text-mineshaft-100">
-                            No private apps yet
-                          </p>
-                          <p className="max-w-[260px] text-xs leading-relaxed text-mineshaft-400">
+                          <p className="text-sm font-medium text-foreground">No private apps yet</p>
+                          <p className="max-w-[260px] text-xs leading-relaxed text-muted">
                             Create a dedicated GitHub App for tighter, per-team permission scoping.
                           </p>
                         </div>
@@ -532,27 +544,25 @@ export const GitHubAppSelector = ({
                 <button
                   type="button"
                   onClick={() => switchMode("create")}
-                  className="group flex w-full cursor-pointer items-center gap-2.5 border-t border-mineshaft-600 px-3 py-2.5 text-left hover:bg-foreground/5"
+                  className="group flex w-full cursor-pointer items-center gap-2.5 border-t border-border px-3 py-2.5 text-left hover:bg-foreground/5"
                 >
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-mineshaft-500 text-mineshaft-200">
-                    <FontAwesomeIcon icon={faPlus} />
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-border text-foreground">
+                    <PlusIcon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-mineshaft-100">Create new GitHub App</p>
+                    <p className="text-sm font-medium text-foreground">Create new GitHub App</p>
                   </div>
                 </button>
               </>
             )}
           </div>
           <div className="mt-4 flex items-center justify-end">
-            <ModalClose asChild>
-              <Button colorSchema="secondary" variant="plain">
-                Close
-              </Button>
-            </ModalClose>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
           </div>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

@@ -98,6 +98,7 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
@@ -314,6 +315,8 @@ import { gitHubAppServiceFactory } from "@app/services/github-app/github-app-ser
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { healthAlertServiceFactory } from "@app/services/health-alert/health-alert-queue";
+import { hsmConnectorDALFactory } from "@app/services/hsm-connector/hsm-connector-dal";
+import { hsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
@@ -358,11 +361,13 @@ import { integrationServiceFactory } from "@app/services/integration/integration
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { licenseClientFactory } from "@app/services/license-client";
+import { dualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
 import {
   buildMeteredFeatures,
   buildUsageReporter,
@@ -639,6 +644,7 @@ export const registerRoutes = async (
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
+  const hsmConnectorDAL = hsmConnectorDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
 
@@ -697,6 +703,7 @@ export const registerRoutes = async (
 
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
+  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
 
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
@@ -768,21 +775,26 @@ export const registerRoutes = async (
     permissionService
   });
 
+  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
+  // is the single read primitive; falls back to feature defaults until the server is configured.
+  const licenseClient = licenseClientFactory({ envConfig, keyStore });
+
+  // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
+  const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
+
   const licenseService = licenseServiceFactory({
     permissionService,
     orgDAL,
     licenseDAL,
     keyStore,
     projectDAL,
-    envConfig
+    envConfig,
+    licenseClient,
+    licenseDualRead
   });
 
-  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
-  // is the single read primitive; falls back to feature defaults until the server is configured.
-  const licenseClient = licenseClientFactory({ envConfig, keyStore });
-
-  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert
-  // until LICENSE_SERVER_V2_ENABLED is on (the emitter no-ops, the worker no-ops without a reporter).
+  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert while
+  // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
@@ -801,6 +813,16 @@ export const registerRoutes = async (
     meteredFeatures,
     usageReporter,
     source: usageSource
+  });
+
+  // Flag-gated v2 billing surface. Drives the catalog, subscription, and entitlement reads off the
+  // real license server via licenseClient; no new tables.
+  const licenseV2Service = licenseV2ServiceFactory({
+    envConfig,
+    orgDAL,
+    identityOrgMembershipDAL,
+    permissionService,
+    licenseClient
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
@@ -846,7 +868,10 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     projectAccessRequestDAL,
     applicationMembershipCleanupService,
-    approvalPolicyDAL
+    approvalPolicyDAL,
+    emailDomainDAL,
+    oidcConfigDAL,
+    samlConfigDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -901,6 +926,7 @@ export const registerRoutes = async (
     kmsRootConfigDAL,
     kmsDAL,
     internalKmsDAL,
+    internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,
@@ -939,6 +965,7 @@ export const registerRoutes = async (
   const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
     auditLogStreamOutboxDAL,
     auditLogStreamDAL,
+    projectDAL,
     kmsService,
     keyStore,
     queueService
@@ -992,8 +1019,8 @@ export const registerRoutes = async (
     permissionService,
     secretApprovalPolicyDAL,
     licenseService,
+    projectDAL,
     userDAL,
-    projectMembershipDAL,
     secretApprovalRequestDAL
   });
 
@@ -1136,6 +1163,13 @@ export const registerRoutes = async (
     userDAL,
     tokenService,
     keyStore
+  });
+
+  const mfaSessionService = mfaSessionServiceFactory({
+    keyStore,
+    tokenService,
+    smtpService,
+    totpService
   });
 
   const loginService = authLoginServiceFactory({
@@ -1758,7 +1792,8 @@ export const registerRoutes = async (
     permissionService,
     gatewayV2DAL,
     gatewayPoolService,
-    appConnectionDAL
+    appConnectionDAL,
+    kmsService
   });
 
   const pamAccountService = pamAccountServiceFactory({
@@ -1793,7 +1828,9 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     userDAL,
-    pamSessionExpirationService
+    pamSessionExpirationService,
+    mfaSessionService,
+    orgDAL
   });
 
   const pamSessionChunkService = pamSessionChunkServiceFactory({
@@ -1801,7 +1838,8 @@ export const registerRoutes = async (
     pamSessionEventChunkDAL,
     pamAccountDAL,
     permissionService,
-    kmsService
+    kmsService,
+    appConnectionDAL
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({
@@ -1813,7 +1851,9 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     kmsService,
-    userDAL
+    userDAL,
+    mfaSessionService,
+    orgDAL
   });
 
   const gitHubAppService = gitHubAppServiceFactory({
@@ -2012,19 +2052,6 @@ export const registerRoutes = async (
     secretDAL: secretV2BridgeDAL,
     secretVersionV2BridgeDAL
   });
-  const folderService = secretFolderServiceFactory({
-    permissionService,
-    folderDAL,
-    folderVersionDAL,
-    projectEnvDAL,
-    snapshotService,
-    projectDAL,
-    folderCommitService,
-    secretApprovalPolicyService,
-    secretV2BridgeDAL,
-    dynamicSecretDAL
-  });
-
   const secretImportService = secretImportServiceFactory({
     licenseService,
     projectBotService,
@@ -2064,6 +2091,7 @@ export const registerRoutes = async (
     snapshotService,
     resourceMetadataDAL,
     reminderService,
+    reminderDAL,
     keyStore,
     secretValidationRuleService
   });
@@ -2129,6 +2157,33 @@ export const registerRoutes = async (
     identityGroupMembershipDAL
   });
 
+  const folderService = secretFolderServiceFactory({
+    permissionService,
+    folderDAL,
+    folderVersionDAL,
+    projectEnvDAL,
+    snapshotService,
+    projectDAL,
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL,
+    kmsService,
+    secretVersionDAL: secretVersionV2BridgeDAL,
+    secretTagDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+    resourceMetadataDAL,
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretQueueService,
+    dynamicSecretDAL,
+    secretRotationV2DAL,
+    honeyTokenDAL,
+    secretImportDAL,
+    secretV2BridgeService,
+    reminderDAL,
+    reminderService
+  });
+
   const secretSharingService = secretSharingServiceFactory({
     permissionService,
     secretSharingDAL,
@@ -2153,8 +2208,7 @@ export const registerRoutes = async (
     userDAL,
     accessApprovalRequestDAL,
     accessApprovalRequestReviewerDAL,
-    additionalPrivilegeDAL,
-    projectMembershipDAL
+    additionalPrivilegeDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
@@ -2696,6 +2750,17 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const hsmConnectorService = hsmConnectorServiceFactory({
+    hsmConnectorDAL,
+    permissionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    gatewayV2DAL,
+    gatewayPoolDAL,
+    licenseService
+  });
+
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
     permissionService,
@@ -2726,6 +2791,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
+    webhookDAL,
+    projectEnvDAL,
     appConnectionService,
     telemetryService,
     auditLogService
@@ -2807,6 +2874,8 @@ export const registerRoutes = async (
     reminderDAL,
     folderDAL,
     secretV2BridgeDAL,
+    dynamicSecretDAL,
+    honeyTokenDAL,
     projectBotService,
     projectDAL,
     userDAL,
@@ -3319,7 +3388,9 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     certificateIssuanceQueue,
-    cronJob
+    cronJob,
+    hsmConnectorService,
+    certificateDAL
   });
 
   const signerService = signerServiceFactory({
@@ -3340,7 +3411,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     membershipDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    hsmConnectorService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -3436,13 +3508,6 @@ export const registerRoutes = async (
   const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
   const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
   const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
-
-  const mfaSessionService = mfaSessionServiceFactory({
-    keyStore,
-    tokenService,
-    smtpService,
-    totpService
-  });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
     aiMcpServerDAL,
@@ -3664,6 +3729,7 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     license: licenseService,
     licenseClient,
+    licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
@@ -3682,6 +3748,7 @@ export const registerRoutes = async (
     totp: totpService,
     webAuthn: webAuthnService,
     appConnection: appConnectionService,
+    hsmConnector: hsmConnectorService,
     secretSync: secretSyncService,
     kmip: kmipService,
     kmipOperation: kmipOperationService,

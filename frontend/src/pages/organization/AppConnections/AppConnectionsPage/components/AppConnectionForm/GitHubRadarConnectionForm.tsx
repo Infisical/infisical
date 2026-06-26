@@ -3,15 +3,31 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
   useGetAppConnectionOauthReturnUrl
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import {
   GitHubRadarConnectionMethod,
   TGitHubRadarConnection,
@@ -20,6 +36,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { GitHubRadarFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -39,6 +56,8 @@ type FormData = z.infer<typeof formSchema>;
 
 export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
+  const scopeVariant = useScopeVariant();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
@@ -104,6 +123,17 @@ export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) =
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 
+  const getMethodErrorText = (fieldError?: { message?: string }) => {
+    if (!isLoading && isMissingConfig) {
+      return `Environment variables have not been configured. ${
+        isInfisicalCloud()
+          ? "Please contact Infisical."
+          : `See Docs to configure GitHub Radar ${methodDetails.name} Connections.`
+      }`;
+    }
+    return fieldError?.message;
+  };
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -112,58 +142,57 @@ export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) =
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.GitHubRadar].name
-              }. This field cannot be changed after creation.`}
-              errorText={
-                !isLoading && isMissingConfig
-                  ? `Environment variables have not been configured. ${
-                      isInfisicalCloud()
-                        ? "Please contact Infisical."
-                        : `See Docs to configure GitHub Radar ${methodDetails.name} Connections.`
-                    }`
-                  : error?.message
-              }
-              isError={Boolean(error?.message) || isMissingConfig}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(GitHubRadarConnectionMethod).map((method) => {
-                  return (
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.GitHubRadar].name}. This field cannot be
+                    changed after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger
+                  className="w-full"
+                  isError={Boolean(error?.message) || isMissingConfig}
+                >
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitHubRadarConnectionMethod).map((method) => (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError>{getMethodErrorText(error)}</FieldError>
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting || isRedirecting}
+            variant={scopeVariant}
+            isPending={isSubmitting || isRedirecting}
             isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
           >
             {isUpdate ? "Reconnect to GitHub" : "Connect to GitHub"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            isDisabled={isSubmitting || isRedirecting}
+          >
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

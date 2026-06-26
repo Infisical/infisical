@@ -7,27 +7,27 @@ import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/ap
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
+import { RdpContent } from "./RdpContent";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 const TerminalContent = ({
   account,
-  orgId,
-  reason
+  reason,
+  mfaSessionId
 }: {
   account: TPamAccount;
-  orgId: string;
   reason?: string;
+  mfaSessionId?: string;
 }) => {
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
     accountId: account.id,
-    orgId,
-    accountName: account.name,
     accountType: account.accountType,
     reason,
+    mfaSessionId,
     onSessionEnd: () => setSessionEnded(true)
   });
 
@@ -85,11 +85,10 @@ const PageContent = () => {
     strict: false
   }) as {
     accountId?: string;
-    orgId?: string;
     accountType?: string;
   };
 
-  const { accountId, orgId } = params;
+  const { accountId } = params;
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
   if (isPending) {
@@ -112,16 +111,22 @@ const PageContent = () => {
   }
 
   if (account.accountType === PamAccountType.SSH) {
-    return <TerminalContent account={account} orgId={orgId!} />;
+    return <TerminalContent account={account} />;
   }
 
   return (
     <SessionAccessGate account={account}>
-      {({ reason }) => {
+      {({ reason, mfaSessionId }) => {
         if (account.accountType === PamAccountType.Postgres) {
-          return <PamDataExplorerPage reason={reason} />;
+          return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        return <TerminalContent account={account} orgId={orgId!} reason={reason} />;
+        if (
+          account.accountType === PamAccountType.Windows ||
+          account.accountType === PamAccountType.ActiveDirectory
+        ) {
+          return <RdpContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
+        }
+        return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}
     </SessionAccessGate>
   );

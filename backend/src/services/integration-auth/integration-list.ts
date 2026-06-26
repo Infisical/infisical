@@ -77,6 +77,7 @@ export enum IntegrationUrls {
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   FLYIO_MACHINES_API_URL = "https://api.machines.dev/v1",
+  TRIGGER_DEV_API_URL = "https://api.trigger.dev",
   CIRCLECI_API_URL = "https://circleci.com/api",
   TRAVISCI_API_URL = "https://api.travis-ci.com",
   SUPABASE_API_URL = "https://api.supabase.com",

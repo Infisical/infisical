@@ -1,8 +1,8 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
@@ -22,9 +22,11 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
       (schema) => {
         if (!schema) return true;
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
+        if (!schema.includes("{{certificateId}}")) {
+          return false;
+        }
+
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -34,7 +36,7 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare"
+          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
       }
     )
 });

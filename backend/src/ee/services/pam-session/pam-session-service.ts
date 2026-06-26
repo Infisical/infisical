@@ -16,9 +16,12 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
   getResourceIdsWithActions,
@@ -33,7 +36,13 @@ import {
   splitPatternString
 } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { extractGatewayTarget, parseInternalMetadata } from "../pam-account/pam-account-schemas";
+import {
+  extractGatewayTarget,
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue,
+  parseInternalMetadata,
+  validateConnectionDetails
+} from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
@@ -53,6 +62,7 @@ type TPamSessionServiceFactoryDep = {
     | "endSessionById"
     | "terminateSessionById"
     | "updateById"
+    | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
@@ -64,6 +74,11 @@ type TPamSessionServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   userDAL: Pick<TUserDALFactory, "findById">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -79,7 +94,9 @@ export const pamSessionServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   userDAL,
-  pamSessionExpirationService
+  pamSessionExpirationService,
+  mfaSessionService,
+  orgDAL
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -93,6 +110,15 @@ export const pamSessionServiceFactory = ({
     action: ResourcePermissionPamResourceActions,
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+
+  const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
+    const issues = getAccountAccessibilityIssues(account);
+    if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
+      throw new BadRequestError({
+        message: "S3 recording must be configured before launching this account"
+      });
+    }
+  };
 
   const listSessions = async (
     projectId: string,
@@ -183,6 +209,10 @@ export const pamSessionServiceFactory = ({
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
+    if (sessionStarted) {
+      await pamSessionDAL.activateSession(sessionId);
+    }
+
     let recording: {
       sessionKey: string;
       uploadToken: string;
@@ -203,10 +233,18 @@ export const pamSessionServiceFactory = ({
         gatewayUploadTokenHash: secrets.uploadTokenHash
       });
 
+      const templateSettingsParsed = account.templateSettings
+        ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
+        : null;
+      const resolvedBackend =
+        templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
+          ? templateSettingsParsed.data.recordingStorageBackend
+          : PamRecordingStorageBackend.Postgres;
+
       recording = {
         sessionKey: secrets.sessionKey.toString("base64"),
         uploadToken: secrets.uploadToken.toString("base64"),
-        storageBackend: PamRecordingStorageBackend.Postgres,
+        storageBackend: resolvedBackend,
         projectId: session.projectId,
         sessionId
       };
@@ -232,8 +270,17 @@ export const pamSessionServiceFactory = ({
           }
         : null;
 
+    const normalizedConnectionDetails = validateConnectionDetails(
+      account.accountType as PamAccountType,
+      connectionDetails
+    );
+
+    if (sessionStarted) {
+      await pamSessionDAL.activateSession(sessionId);
+    }
+
     return {
-      credentials: { ...connectionDetails, ...credentials },
+      credentials: { ...normalizedConnectionDetails, ...credentials },
       recording,
       policyRules,
       projectId: session.projectId,
@@ -305,7 +352,8 @@ export const pamSessionServiceFactory = ({
     actorIp,
     actorUserAgent,
     reason,
-    duration
+    duration,
+    mfaSessionId
   }: {
     path: string;
     projectId: string;
@@ -316,19 +364,34 @@ export const pamSessionServiceFactory = ({
     actorUserAgent: string;
     reason?: string;
     duration?: string;
+    mfaSessionId?: string;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
+
+    await checkAccount(
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      actor
+    );
 
     const trimmedReason = reason?.trim() || null;
 
     const policy = resolveAccessControls(account.templatePolicies);
 
     if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({ message: "A reason is required to access this account" });
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
     }
 
     if (policy.requireMfa) {
-      throw new BadRequestError({ message: "MFA verification is required to access this account" });
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+      );
     }
 
     const maxDurationMs = policy.maxSessionDurationSeconds
@@ -352,6 +415,8 @@ export const pamSessionServiceFactory = ({
       actor
     );
 
+    enforceRecordingConfig(account);
+
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
@@ -362,7 +427,7 @@ export const pamSessionServiceFactory = ({
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
-    const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+    const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
 
     const user = await userDAL.findById(actor.actorId);
     const expiresAt = new Date(Date.now() + sessionDurationMs);
@@ -386,6 +451,7 @@ export const pamSessionServiceFactory = ({
       selectedHost: gatewayTarget.host
     });
 
+    await pamSessionDAL.activateSession(session.id);
     await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
     const certs = await gatewayV2Service.getPAMConnectionDetails({
@@ -406,12 +472,25 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
     }
 
-    const metadata: Record<string, string> = {
-      username: rawCredentials.username as string
-    };
+    const metadata: Record<string, string> = {};
 
-    if (account.accountType === PamAccountType.Postgres || account.accountType === PamAccountType.MySQL) {
-      if (rawConnectionDetails.database) {
+    if (account.accountType === PamAccountType.Kubernetes) {
+      metadata.authMethod = rawCredentials.authMethod as string;
+      if (rawCredentials.namespace) {
+        metadata.namespace = rawCredentials.namespace as string;
+      }
+      if (rawCredentials.serviceAccountName) {
+        metadata.serviceAccountName = rawCredentials.serviceAccountName as string;
+      }
+    } else {
+      metadata.username = rawCredentials.username as string;
+      if (
+        (account.accountType === PamAccountType.Postgres ||
+          account.accountType === PamAccountType.MySQL ||
+          account.accountType === PamAccountType.MongoDB ||
+          account.accountType === PamAccountType.MsSQL) &&
+        rawConnectionDetails.database
+      ) {
         metadata.database = rawConnectionDetails.database as string;
       }
     }
