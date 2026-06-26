@@ -13,7 +13,7 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -202,17 +202,16 @@ export const requestWithGitHubGateway = async <T>(
     throw new BadRequestError({ message: "GitHub connection request is missing a target URL" });
   }
 
+  // If no gateway is configured, issue the request directly through safeRequest, which validates
+  // the target host (including server-provided pagination URLs), pins the connection to the
+  // validated IPs, and disables redirect following.
+  if (!gatewayId) {
+    return safeRequest.request<T>({ ...requestConfig, url: requestConfig.url });
+  }
+
   const url = new URL(requestConfig.url);
 
-  // Validate the target host on every request, including the non-gateway path and any
-  // server-provided pagination URLs, before the request is issued.
   await blockLocalAndPrivateIpAddresses(url.toString());
-
-  // If gateway isn't set up, don't proxy request. Do not follow redirects here, so the
-  // validated host is the one that is actually contacted.
-  if (!gatewayId) {
-    return httpRequest.request({ ...requestConfig, maxRedirects: 0 });
-  }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.host, isGateway: true, isDynamicSecret: false });
 
