@@ -404,25 +404,3 @@ export const useAccessPamAccount = () => {
     }
   });
 };
-
-export const useGetAwsIamConsoleUrl = () => {
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      accessKeyId,
-      secretAccessKey,
-      sessionToken
-    }: {
-      sessionId: string;
-      accessKeyId: string;
-      secretAccessKey: string;
-      sessionToken: string;
-    }) => {
-      const { data } = await apiRequest.post<{ consoleUrl: string }>(
-        `/api/v1/pam/sessions/${sessionId}/aws-console-url`,
-        { accessKeyId, secretAccessKey, sessionToken }
-      );
-      return data;
-    }
-  });
-};

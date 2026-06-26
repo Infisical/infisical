@@ -6,8 +6,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -87,7 +86,6 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -105,8 +103,7 @@ export const pamSessionServiceFactory = ({
   userDAL,
   pamSessionExpirationService,
   mfaSessionService,
-  orgDAL,
-  keyStore
+  orgDAL
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -485,13 +482,6 @@ export const pamSessionServiceFactory = ({
         if (awsAccountId) {
           metadata.awsAccountId = awsAccountId;
         }
-
-        const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-        await keyStore.setItemWithExpiry(
-          KeyStorePrefixes.PamAwsIamAccessKeyId(session.id),
-          ttlSeconds,
-          stsCredentials.accessKeyId
-        );
       }
 
       return {
@@ -637,10 +627,6 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session could not be terminated" });
     }
 
-    if (session.accountType === PamAccountType.AwsIam) {
-      await keyStore.deleteItem(KeyStorePrefixes.PamAwsIamAccessKeyId(sessionId));
-    }
-
     if (session.gatewayId) {
       void (async () => {
         let relayConn: net.Socket | null = null;
@@ -687,70 +673,12 @@ export const pamSessionServiceFactory = ({
     return { session: updated, projectId: session.projectId, accountName: session.accountName };
   };
 
-  const getAwsIamConsoleUrl = async ({
-    sessionId,
-    accessKeyId,
-    secretAccessKey,
-    sessionToken,
-    actor
-  }: {
-    sessionId: string;
-    accessKeyId: string;
-    secretAccessKey: string;
-    sessionToken: string;
-    actor: TActorContext;
-  }) => {
-    const session = await pamSessionDAL.findById(sessionId);
-    if (!session) {
-      throw new NotFoundError({ message: "Session not found" });
-    }
-
-    if (session.userId !== actor.actorId) {
-      throw new ForbiddenRequestError({ message: "Session does not belong to the requesting user" });
-    }
-
-    if (session.status !== PamSessionStatus.Active) {
-      throw new BadRequestError({ message: "Session is not active" });
-    }
-
-    if (session.accountType !== PamAccountType.AwsIam) {
-      throw new BadRequestError({ message: "Console URL is only available for AWS IAM sessions" });
-    }
-
-    const cachedAccessKeyId = await keyStore.getItem(KeyStorePrefixes.PamAwsIamAccessKeyId(sessionId));
-    if (!cachedAccessKeyId) {
-      throw new BadRequestError({
-        message: "Session credentials are no longer available. Please start a new session."
-      });
-    }
-
-    if (cachedAccessKeyId !== accessKeyId) {
-      throw new ForbiddenRequestError({
-        message: "Submitted credentials do not match the session"
-      });
-    }
-
-    const consoleUrl = await exchangeCredentialsForConsoleUrl({
-      accessKeyId,
-      secretAccessKey,
-      sessionToken
-    });
-
-    return {
-      consoleUrl,
-      accountId: session.accountId,
-      accountName: session.accountName,
-      projectId: session.projectId
-    };
-  };
-
   return {
     access,
     listSessions,
     getSessionById,
     getSessionCredentials,
     endSessionFromGateway,
-    terminateSession,
-    getAwsIamConsoleUrl
+    terminateSession
   };
 };

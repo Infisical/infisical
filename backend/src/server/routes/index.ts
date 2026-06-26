@@ -1830,8 +1830,7 @@ export const registerRoutes = async (
     userDAL,
     pamSessionExpirationService,
     mfaSessionService,
-    orgDAL,
-    keyStore
+    orgDAL
   });
 
   const pamSessionChunkService = pamSessionChunkServiceFactory({
