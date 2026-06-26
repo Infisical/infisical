@@ -196,6 +196,7 @@ type ProductSheetProps = {
   redirecting?: boolean;
   onClose: () => void;
   onManage: (prodId: string) => void;
+  onRemove: (prodId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
@@ -207,6 +208,7 @@ export const ProductSheet = ({
   redirecting,
   onClose,
   onManage,
+  onRemove,
   onContact
 }: ProductSheetProps) => {
   if (!prod) {
@@ -288,6 +290,16 @@ export const ProductSheet = ({
           <Button variant="outline" onClick={onClose} isDisabled={redirecting}>
             Close
           </Button>
+          {entitled && selfServe && (
+            <Button
+              variant="danger"
+              className="ml-auto"
+              onClick={() => onRemove(prodId)}
+              isDisabled={redirecting}
+            >
+              Remove
+            </Button>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

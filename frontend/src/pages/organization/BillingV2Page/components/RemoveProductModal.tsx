@@ -24,10 +24,13 @@ import { fmtMoney } from "../billing-v2-data";
 type Props = {
   orgId: string;
   product: BillingV2CatalogProduct;
+  // Dismissed without removing (cancel / escape / overlay) — keep the management sheet open behind it.
   onClose: () => void;
+  // Removal succeeded — close the confirm and the management sheet it was opened from.
+  onRemoved: () => void;
 };
 
-export const RemoveProductModal = ({ orgId, product, onClose }: Props) => {
+export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props) => {
   const preview = usePreviewBillingV2Change();
   const removeProduct = useRemoveBillingV2Product();
 
@@ -44,7 +47,7 @@ export const RemoveProductModal = ({ orgId, product, onClose }: Props) => {
         type: "success",
         text: `${product.name} will be removed. It may take a moment to update here.`
       });
-      onClose();
+      onRemoved();
     } catch {
       createNotification({ type: "error", text: `Failed to remove ${product.name}.` });
     }
