@@ -13,13 +13,15 @@ import {
 
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
-  const metadata = buildPamAccountTypeMetadata(new Set([PamAccountType.Postgres, PamAccountType.SSH]));
+  const metadata = buildPamAccountTypeMetadata(
+    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH])
+  );
   const byType = new Map(metadata.map((m) => [m.type, m]));
 
   test("flags web-access support from the provided supported-types set", () => {
     expect(byType.get(PamAccountType.Postgres)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.SSH)?.supportsWebAccess).toBe(true);
-    expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(false);
+    expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.Kubernetes)?.supportsWebAccess).toBe(false);
   });
 
@@ -217,8 +219,9 @@ describe("getAccountAccessibilityIssues", () => {
     expect(
       getAccountAccessibilityIssues({
         accountType: PamAccountType.Postgres,
-        hasGateway: true,
-        hasRecordingConfig: false,
+        gatewayId: "gw-1",
+        templateRecordingConnectionId: null,
+        templateSettings: {},
         credentialConfigured: true
       })
     ).toEqual([]);
@@ -228,8 +231,8 @@ describe("getAccountAccessibilityIssues", () => {
     expect(
       getAccountAccessibilityIssues({
         accountType: PamAccountType.Postgres,
-        hasGateway: false,
-        hasRecordingConfig: false,
+        templateRecordingConnectionId: null,
+        templateSettings: {},
         credentialConfigured: false
       })
     ).toEqual([PamAccountAccessibilityIssue.NoGateway, PamAccountAccessibilityIssue.NoCredential]);
@@ -239,8 +242,9 @@ describe("getAccountAccessibilityIssues", () => {
     expect(
       getAccountAccessibilityIssues({
         accountType: PamAccountType.Windows,
-        hasGateway: true,
-        hasRecordingConfig: false,
+        gatewayId: "gw-1",
+        templateRecordingConnectionId: null,
+        templateSettings: {},
         credentialConfigured: true
       })
     ).toEqual([PamAccountAccessibilityIssue.NoRecordingConfig]);

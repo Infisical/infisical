@@ -1793,7 +1793,8 @@ export const registerRoutes = async (
     permissionService,
     gatewayV2DAL,
     gatewayPoolService,
-    appConnectionDAL
+    appConnectionDAL,
+    kmsService
   });
 
   const pamAccountService = pamAccountServiceFactory({
@@ -1838,7 +1839,8 @@ export const registerRoutes = async (
     pamSessionEventChunkDAL,
     pamAccountDAL,
     permissionService,
-    kmsService
+    kmsService,
+    appConnectionDAL
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

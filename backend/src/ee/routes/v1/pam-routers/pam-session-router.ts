@@ -4,6 +4,7 @@ import z from "zod";
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
+import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -139,7 +140,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
               projectId: z.string(),
               sessionId: z.string()
             })
-            .nullable()
+            .nullable(),
+          policyRules: PamPolicyRulesSchema
         })
       }
     },
@@ -177,7 +179,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 
       return {
         credentials: result.credentials,
-        recording: result.recording
+        recording: result.recording,
+        policyRules: result.policyRules ?? null
       };
     }
   });

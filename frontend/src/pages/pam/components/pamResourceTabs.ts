@@ -47,7 +47,7 @@ export const PAM_FOLDER_TABS: PamResourceTab[] = [
 ];
 
 export const PAM_TEMPLATE_TABS: PamResourceTab[] = [
-  { value: PamSheetTab.Advanced, label: "General", icon: Settings2 },
+  { value: PamSheetTab.General, label: "General", icon: Settings2 },
   { value: PamSheetTab.Configuration, label: "Configuration", icon: Settings }
 ];
 

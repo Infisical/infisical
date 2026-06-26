@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { PamAccountType } from "./pam-enums";
@@ -5,8 +6,48 @@ import { PamAccountType } from "./pam-enums";
 export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
-  MaxSessionDuration = "max-session-duration"
+  MaxSessionDuration = "max-session-duration",
+  CommandBlocking = "command-blocking"
 }
+
+export enum PamSettingType {
+  SessionLogMasking = "session-log-masking"
+}
+
+export const splitPatternString = (raw: unknown): string[] => {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  return raw
+    .split(/\r?\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+};
+
+export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =>
+  z
+    .string()
+    .max(maxPatterns * (maxPatternLength + 1))
+    .refine(
+      (val) => {
+        const patterns = splitPatternString(val);
+        return patterns.length <= maxPatterns && patterns.every((p) => p.length <= maxPatternLength);
+      },
+      { message: `Maximum ${maxPatterns} patterns, each up to ${maxPatternLength} characters` }
+    )
+    .refine(
+      (val) => {
+        const patterns = splitPatternString(val);
+        return patterns.every((p) => {
+          try {
+            // eslint-disable-next-line no-new
+            new RE2(p);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+      },
+      { message: "One or more patterns are not valid regular expressions" }
+    );
 
 type TPamPolicyDefinition = {
   label: string;
@@ -33,6 +74,12 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     description: "Maximum session length in seconds (60 to 86400).",
     appliesTo: "all",
     schema: z.number().int().min(60).max(86400)
+  },
+  [PamPolicyType.CommandBlocking]: {
+    label: "Command Blocking",
+    description: "Matching commands will be rejected (one regex per line).",
+    appliesTo: [PamAccountType.SSH],
+    schema: patternsStringSchema()
   }
 };
 
@@ -92,7 +139,7 @@ export const validatePolicyValues = (
   return { ok: true, data };
 };
 
-const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknown => {
+export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknown => {
   if (!policyMap || typeof policyMap !== "object") return null;
   const parsed = PAM_POLICY_DEFINITIONS[policy].schema.safeParse((policyMap as Record<string, unknown>)[policy]);
   return parsed.success ? parsed.data : null;
@@ -103,6 +150,16 @@ export type TPamAccessControls = {
   requireMfa: boolean;
   maxSessionDurationSeconds: number | null;
 };
+
+const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
+
+export const PamPolicyRulesSchema = z
+  .object({
+    [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
+    [PamSettingType.SessionLogMasking]: PamPolicyRulePatternSchema.optional()
+  })
+  .nullable()
+  .optional();
 
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);

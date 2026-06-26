@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export enum PostgresClientMessageType {
+export enum DataExplorerClientMessageType {
   Control = "control",
   GetSchemas = "get-schemas",
   GetTables = "get-tables",
@@ -12,7 +12,7 @@ export enum PostgresClientMessageType {
   Activity = "activity"
 }
 
-export enum PostgresServerMessageType {
+export enum DataExplorerServerMessageType {
   Schemas = "schemas",
   Tables = "tables",
   TableDetail = "table-detail",
@@ -26,47 +26,47 @@ export enum PostgresServerMessageType {
 const CorrelatedBaseSchema = z.object({ id: z.string().uuid() });
 const TabScopedBaseSchema = CorrelatedBaseSchema.extend({ connectionId: z.string().uuid() });
 
-const ControlSchema = z.object({ type: z.literal(PostgresClientMessageType.Control), data: z.string() });
+const ControlSchema = z.object({ type: z.literal(DataExplorerClientMessageType.Control), data: z.string() });
 
 const GetSchemasRequestSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresClientMessageType.GetSchemas)
+  type: z.literal(DataExplorerClientMessageType.GetSchemas)
 });
 
 const GetTablesRequestSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresClientMessageType.GetTables),
+  type: z.literal(DataExplorerClientMessageType.GetTables),
   schema: z.string()
 });
 
 const GetTableDetailRequestSchema = TabScopedBaseSchema.extend({
-  type: z.literal(PostgresClientMessageType.GetTableDetail),
+  type: z.literal(DataExplorerClientMessageType.GetTableDetail),
   schema: z.string(),
   table: z.string()
 });
 
 const QueryRequestSchema = TabScopedBaseSchema.extend({
-  type: z.literal(PostgresClientMessageType.Query),
+  type: z.literal(DataExplorerClientMessageType.Query),
   sql: z.string().max(50 * 1024)
 });
 
 const CancelSchema = z.object({
-  type: z.literal(PostgresClientMessageType.Cancel),
+  type: z.literal(DataExplorerClientMessageType.Cancel),
   connectionId: z.string().uuid()
 });
 
 const OpenConnectionSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresClientMessageType.OpenConnection)
+  type: z.literal(DataExplorerClientMessageType.OpenConnection)
 });
 
 const CloseConnectionSchema = z.object({
-  type: z.literal(PostgresClientMessageType.CloseConnection),
+  type: z.literal(DataExplorerClientMessageType.CloseConnection),
   connectionId: z.string().uuid()
 });
 
 const ActivitySchema = z.object({
-  type: z.literal(PostgresClientMessageType.Activity)
+  type: z.literal(DataExplorerClientMessageType.Activity)
 });
 
-export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
+export const DataExplorerClientMessageSchema = z.discriminatedUnion("type", [
   ControlSchema,
   GetSchemasRequestSchema,
   GetTablesRequestSchema,
@@ -78,20 +78,20 @@ export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
   ActivitySchema
 ]);
 
-export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>;
+export type TDataExplorerClientMessage = z.infer<typeof DataExplorerClientMessageSchema>;
 
 const SchemasResponseSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.Schemas),
+  type: z.literal(DataExplorerServerMessageType.Schemas),
   data: z.array(z.object({ name: z.string() }))
 });
 
 const TablesResponseSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.Tables),
+  type: z.literal(DataExplorerServerMessageType.Tables),
   data: z.array(z.object({ name: z.string(), tableType: z.string() }))
 });
 
 const TableDetailResponseSchema = TabScopedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.TableDetail),
+  type: z.literal(DataExplorerServerMessageType.TableDetail),
   transactionOpen: z.boolean(),
   data: z.object({
     columns: z.array(
@@ -116,7 +116,7 @@ const TableDetailResponseSchema = TabScopedBaseSchema.extend({
 });
 
 const QueryResultResponseSchema = TabScopedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.QueryResult),
+  type: z.literal(DataExplorerServerMessageType.QueryResult),
   rows: z.array(z.record(z.string(), z.unknown())),
   fields: z.array(z.object({ name: z.string() })),
   rowCount: z.number().nullable(),
@@ -127,7 +127,7 @@ const QueryResultResponseSchema = TabScopedBaseSchema.extend({
 });
 
 const ErrorResponseSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.Error),
+  type: z.literal(DataExplorerServerMessageType.Error),
   connectionId: z.string().uuid().optional(),
   transactionOpen: z.boolean().optional(),
   error: z.string(),
@@ -136,23 +136,23 @@ const ErrorResponseSchema = CorrelatedBaseSchema.extend({
 });
 
 const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.ConnectionOpened),
+  type: z.literal(DataExplorerServerMessageType.ConnectionOpened),
   connectionId: z.string().uuid(),
-  backendPid: z.number().nullable()
+  nativeConnectionId: z.number().nullable()
 });
 
 const ConnectionOpenFailedResponseSchema = CorrelatedBaseSchema.extend({
-  type: z.literal(PostgresServerMessageType.ConnectionOpenFailed),
+  type: z.literal(DataExplorerServerMessageType.ConnectionOpenFailed),
   error: z.string()
 });
 
 const ConnectionClosedResponseSchema = z.object({
-  type: z.literal(PostgresServerMessageType.ConnectionClosed),
+  type: z.literal(DataExplorerServerMessageType.ConnectionClosed),
   connectionId: z.string().uuid(),
   reason: z.string()
 });
 
-export type TPostgresCorrelatedServerMessage = z.infer<
+export type TDataExplorerServerMessage = z.infer<
   | typeof SchemasResponseSchema
   | typeof TablesResponseSchema
   | typeof TableDetailResponseSchema
@@ -162,3 +162,21 @@ export type TPostgresCorrelatedServerMessage = z.infer<
   | typeof ConnectionOpenFailedResponseSchema
   | typeof ConnectionClosedResponseSchema
 >;
+
+export type TTabScopedMessage = Extract<
+  TDataExplorerClientMessage,
+  {
+    type:
+      | DataExplorerClientMessageType.GetTableDetail
+      | DataExplorerClientMessageType.Query
+      | DataExplorerClientMessageType.Cancel;
+  }
+>;
+
+export type TConnectionController = {
+  connectionId: string;
+  nativeConnectionId: number | null;
+  handleMessage: (msg: TTabScopedMessage) => void;
+  dispose: () => void;
+  isDisposing: () => boolean;
+};

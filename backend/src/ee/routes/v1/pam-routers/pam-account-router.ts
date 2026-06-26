@@ -9,7 +9,10 @@ import {
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
-import { PamTemplateSettingsSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -33,6 +36,7 @@ const BaseAccountFields = PamAccountsSchema.pick({
   gatewayId: true,
   gatewayPoolId: true,
   recordingConnectionId: true,
+  settingsOverrides: true,
   createdAt: true,
   updatedAt: true
 });
@@ -99,7 +103,10 @@ const registerPerTypeEndpoints = (
         credentials: config.credentials,
         gatewayId: z.string().uuid().optional().describe("The ID of the gateway to use"),
         gatewayPoolId: z.string().uuid().optional().describe("The ID of the gateway pool to use"),
-        recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use")
+        recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use"),
+        settingsOverrides: PamAccountSettingsOverridesSchema.optional().describe(
+          "Account-level template settings overrides"
+        )
       }),
       response: {
         200: z.object({
@@ -108,14 +115,15 @@ const registerPerTypeEndpoints = (
             folderName: z.string(),
             templateName: z.string(),
             connectionDetails: z.record(z.unknown())
-          })
+          }),
+          corsProbeUrl: z.string().nullable().optional()
         })
       }
     },
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const account = await server.services.pamAccount.create({
+      const { corsProbeUrl, ...account } = await server.services.pamAccount.create({
         accountType,
         ...req.body,
         projectId: req.internalPamProjectId,
@@ -154,7 +162,7 @@ const registerPerTypeEndpoints = (
         })
         .catch(() => {});
 
-      return { account };
+      return { account, corsProbeUrl };
     }
   });
 
@@ -180,16 +188,22 @@ const registerPerTypeEndpoints = (
           .uuid()
           .nullable()
           .optional()
-          .describe("The ID of the recording connection to use")
+          .describe("The ID of the recording connection to use"),
+        settingsOverrides: PamAccountSettingsOverridesSchema.optional().describe(
+          "Account-level template settings overrides"
+        )
       }),
       response: {
-        200: z.object({ account: BaseAccountFields })
+        200: z.object({
+          account: BaseAccountFields,
+          corsProbeUrl: z.string().nullable().optional()
+        })
       }
     },
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const account = await server.services.pamAccount.update({
+      const { corsProbeUrl, ...account } = await server.services.pamAccount.update({
         accountId: req.params.accountId,
         accountType,
         ...req.body,
@@ -233,7 +247,7 @@ const registerPerTypeEndpoints = (
         })
         .catch(() => {});
 
-      return { account };
+      return { account, corsProbeUrl };
     }
   });
 
