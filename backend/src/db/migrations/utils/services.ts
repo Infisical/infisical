@@ -12,6 +12,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -61,6 +62,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
+  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const groupDAL = groupDALFactory(db);
 
@@ -117,6 +119,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     kmsRootConfigDAL,
     kmsDAL,
     internalKmsDAL,
+    internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,

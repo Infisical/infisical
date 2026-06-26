@@ -37,7 +37,6 @@ export const AWS_SECRETS_MANAGER_PKI_SYNC_CERTIFICATE_NAMING = {
 
 export const AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS = {
   INFISICAL_PREFIX: "infisical-",
-  DEFAULT_ENVIRONMENT: "production",
   DEFAULT_CERTIFICATE_NAME_SCHEMA: "infisical-{{certificateId}}",
   DEFAULT_FIELD_MAPPINGS: {
     certificate: "certificate",

@@ -43,6 +43,22 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
             2. Set it as a string value for the `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` environment variable.
             3. Restart your Infisical instance to apply the changes.
             4. You can now use GCP integration with service account impersonation.
+
+            <Note>
+                Workload identity federation is also supported. Instead of a service account key, you may
+                set `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` to an `external_account` credential
+                configuration JSON (the file produced by `gcloud iam workload-identity-pools create-cred-config`).
+                Infisical detects the credential type from the `type` field automatically. The federated identity
+                needs the `roles/iam.serviceAccountTokenCreator` role on the service accounts it impersonates.
+
+                For **AWS** providers, Infisical resolves the instance's AWS credentials through the standard AWS
+                SDK credential chain, so federation works on EC2, ECS/Fargate, EKS (IRSA), and Lambda, or from
+                `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` environment variables. The region defaults to
+                `us-east-1`; set `AWS_REGION` (or `AWS_DEFAULT_REGION`) to use a specific regional STS endpoint.
+
+                For other providers, the referenced credential source (a mounted file or URL) must be reachable
+                from the Infisical instance at runtime.
+            </Note>
         </Step>
     </Steps>
 
@@ -76,16 +92,40 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
     </Step>
     <Step title="Enable Service Account Impersonation">
         To enable service account impersonation, you'll need to grant the **Service Account Token Creator** role to the Infisical instance's service account. This configuration allows Infisical to securely impersonate the new service account.
-        - Navigate to the IAM & Admin > Service Accounts section in your Google Cloud Console
-        - Select the newly created service account
-        - Click on the "PERMISSIONS" tab
-        - Click "Grant Access" to add a new principal
 
-        If you're using Infisical Cloud US, use the following service account: infisical-us@infisical-us.iam.gserviceaccount.com
-
-        If you're using Infisical Cloud EU, use the following service account: infisical-eu@infisical-eu.iam.gserviceaccount.com
+        1. Navigate to the **IAM & Admin > Service Accounts** section in your Google Cloud Console.
+        2. Select the newly created service account.
+        3. Click on the **PERMISSIONS** tab.
+        4. Click **Grant Access** to add a new principal.
+        5. In the **New principals** field, enter the Infisical service account email for your environment:
+            - **Infisical Cloud US:** `infisical-us@infisical-us.iam.gserviceaccount.com`
+            - **Infisical Cloud EU:** `infisical-eu@infisical-eu.iam.gserviceaccount.com`
+            - **Self-hosted:** use the service account you created for your instance (the one whose credentials are set in `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL`).
+        6. In the **Role** field, select **Service Account Token Creator**.
+        7. Click **Save**.
 
         ![Service Account Page](/images/app-connections/gcp/service-account-grant-access.png)
+
+        <Note>
+            **Troubleshooting: "One or more users named in the policy do not belong to a permitted customer."**
+
+            If granting access fails with the error *"One or more users named in the policy do not belong to a permitted customer."*, your Google Cloud organization has the Domain Restricted Sharing organization policy (`iam.allowedPolicyMemberDomains`) enabled. This policy only permits identities that belong to allowlisted Google organizations, so the Infisical service account is rejected until it is explicitly allowed.
+
+            To resolve this, add Infisical's Google Cloud Customer ID to the policy's allowed values **before** granting the service account a role:
+
+            1. In the Google Cloud Console, navigate to **IAM & Admin > Organization Policies**.
+            2. Search for and open the **Domain restricted sharing** (`iam.allowedPolicyMemberDomains`) policy.
+            3. Under **Custom values**, add a new allowed value containing Infisical's Google Cloud Customer ID:
+
+                ```
+                C03rsjmyl
+                ```
+
+                This is **Infisical's Google Cloud Customer ID**, not your own. Infisical uses a single Google Cloud organization, so this one Customer ID covers both the US and EU service accounts.
+
+                Enter the bare Customer ID (`C03rsjmyl`) in the Console UI. If you manage this policy with `gcloud`, a policy YAML file, or Terraform instead, use the prefixed form `is:C03rsjmyl`.
+            4. Save the policy, then return to **Step 4 (Grant Access)** in the main instructions above and complete steps 4–7 to add the Infisical service account as a principal.
+        </Note>
     </Step>
 
 </Steps>

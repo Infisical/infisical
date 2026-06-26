@@ -1,12 +1,54 @@
-import { FolderPlusIcon, SearchIcon } from "lucide-react";
+import { FolderPlusIcon, LayersIcon, PlusIcon, SearchIcon } from "lucide-react";
 
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@app/components/v3";
+import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  Button,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
+} from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
 type Props = {
   isFiltered?: boolean;
+  variant?: "secrets" | "no-environments";
+  onAddEnvironment?: () => void;
 };
 
-export function EmptyResourceDisplay({ isFiltered }: Props) {
+export function EmptyResourceDisplay({ isFiltered, variant = "secrets", onAddEnvironment }: Props) {
+  if (variant === "no-environments") {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <LayersIcon />
+          </EmptyMedia>
+          <EmptyTitle>No environments yet</EmptyTitle>
+          <EmptyDescription>
+            Environments isolate secrets by stage. Add one to start managing secrets for this
+            project.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.Environments}
+          >
+            {(isAllowed) => (
+              <Button size="xs" isDisabled={!isAllowed} onClick={onAddEnvironment}>
+                <PlusIcon />
+                Add Environment
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </EmptyContent>
+      </Empty>
+    );
+  }
+
   const { title, description } = isFiltered
     ? {
         title: "No resources match your search",

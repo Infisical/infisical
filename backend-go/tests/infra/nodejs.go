@@ -588,10 +588,12 @@ type SecretSeed struct {
 
 // CreateSecretOpts holds optional parameters for CreateSecret.
 type CreateSecretOpts struct {
-	Comment  string
-	Metadata []SecretMetadataEntry
-	TagIDs   []string
-	Type     string // "shared" or "personal", defaults to "shared"
+	Comment            string
+	Metadata           []SecretMetadataEntry
+	TagIDs             []string
+	Type               string // "shared" or "personal", defaults to "shared"
+	ReminderNote       string
+	ReminderRepeatDays *int
 }
 
 // CreateSecret creates a secret via the Node.js API.
@@ -602,12 +604,16 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 	var comment string
 	var metadata []SecretMetadataEntry
 	var tagIDs []string
+	var reminderNote string
+	var reminderRepeatDays *int
 	secretType := "shared"
 
 	if opts != nil {
 		comment = opts.Comment
 		metadata = opts.Metadata
 		tagIDs = opts.TagIDs
+		reminderNote = opts.ReminderNote
+		reminderRepeatDays = opts.ReminderRepeatDays
 		if opts.Type != "" {
 			secretType = opts.Type
 		}
@@ -622,14 +628,16 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 	r, err := n.client.R().
 		SetAuthToken(token).
 		SetBody(CreateSecretRequest{
-			ProjectID:      projectID,
-			Environment:    environment,
-			SecretPath:     secretPath,
-			SecretValue:    value,
-			SecretComment:  comment,
-			SecretMetadata: metadata,
-			Type:           secretType,
-			TagIDs:         tagIDs,
+			ProjectID:                projectID,
+			Environment:              environment,
+			SecretPath:               secretPath,
+			SecretValue:              value,
+			SecretComment:            comment,
+			SecretMetadata:           metadata,
+			Type:                     secretType,
+			TagIDs:                   tagIDs,
+			SecretReminderNote:       reminderNote,
+			SecretReminderRepeatDays: reminderRepeatDays,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
@@ -921,24 +929,46 @@ type ServiceTokenSeed struct {
 	Token string
 }
 
+// CreateServiceTokenOpts contains options for creating a service token.
+type CreateServiceTokenOpts struct {
+	Scopes      []ServiceTokenScope
+	Permissions []string
+	ExpiresIn   *int
+}
+
 // CreateServiceToken creates a service token for a project.
-func (n *NodeJSService) CreateServiceToken(t *testing.T, projectID, environment string, expiresIn *int) *ServiceTokenSeed {
+func (n *NodeJSService) CreateServiceToken(t *testing.T, projectID string, opts *CreateServiceTokenOpts) *ServiceTokenSeed {
 	t.Helper()
+
+	scopes := []ServiceTokenScope{{Environment: "dev", SecretPath: "/"}}
+	permissions := []string{"read", "write"}
+
+	if opts != nil {
+		if len(opts.Scopes) > 0 {
+			scopes = opts.Scopes
+		}
+		if len(opts.Permissions) > 0 {
+			permissions = opts.Permissions
+		}
+	}
+
+	var expiresIn *int
+	if opts != nil {
+		expiresIn = opts.ExpiresIn
+	}
 
 	var resp CreateServiceTokenResponse
 	r, err := n.client.R().
 		SetAuthToken(n.userToken).
 		SetBody(CreateServiceTokenRequest{
-			Name:        "test-service-token-" + uuid.New().String()[:8],
-			WorkspaceID: projectID,
-			Scopes: []ServiceTokenScope{
-				{Environment: environment, SecretPath: "/"},
-			},
+			Name:         "test-service-token-" + uuid.New().String()[:8],
+			WorkspaceID:  projectID,
+			Scopes:       scopes,
 			EncryptedKey: "",
 			IV:           "",
 			Tag:          "",
 			ExpiresIn:    expiresIn,
-			Permissions:  []string{"read", "write"},
+			Permissions:  permissions,
 		}).
 		SetResult(&resp).
 		Post("/api/v2/service-token")

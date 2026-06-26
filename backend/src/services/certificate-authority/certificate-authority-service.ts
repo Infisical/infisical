@@ -27,6 +27,8 @@ import {
   TUpdateCertificateRequestStatusDTO
 } from "../certificate-request/certificate-request-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { MaxInternalCas } from "../license-client";
+import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -139,6 +141,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -162,7 +165,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  usageMeteringService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -290,6 +294,8 @@ export const certificateAuthorityServiceFactory = ({
           message: "Failed to create internal certificate authority"
         });
       }
+
+      usageMeteringService.emitForProject(projectId, MaxInternalCas.key);
 
       return {
         id: ca.id,
@@ -783,6 +789,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
+      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1000,6 +1007,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
+      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
       return {
         id: certificateAuthority.id,
         type,

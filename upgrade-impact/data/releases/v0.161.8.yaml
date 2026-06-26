@@ -1,0 +1,40 @@
+version: v0.161.8
+releasedAt: 2026-06-24T17:09:25-03:00
+sourceTag: v0.161.8
+previousTag: v0.161.7
+impactLevel: medium
+summary: Startup runs a secrets deduplication migration and adds a unique index
+  for shared secret keys per folder. Upgrades can delete duplicate shared
+  secrets automatically.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Shared secret key uniqueness
+    description: Startup deletes older duplicate shared secrets within the same
+      folder and key (keeps the most recently updated row), then adds a unique
+      partial index on shared secret key and folder.
+    action: Back up the database before upgrading if you have duplicate shared secrets. Startup deletes older duplicate
+      shared secrets within the same folder automatically; this deletion is
+      irreversible. If startup fails during migration, keep the previous version
+      running and inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260623144550_secret-folder-constraint.ts
+        path: backend/src/db/migrations/20260623144550_secret-folder-constraint.ts
+        description: Deletes duplicate shared secrets by folder and key
+      - type: file
+        ref: backend/src/db/migrations/20260623144551_secret-folder-unique-index.ts
+        path: backend/src/db/migrations/20260623144551_secret-folder-unique-index.ts
+        description: Adds unique shared secret folder-key index
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-06-24T20:54:25.584Z
+  sourceRange:
+    from: v0.161.7
+    to: v0.161.8

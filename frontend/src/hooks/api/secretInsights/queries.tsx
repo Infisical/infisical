@@ -7,6 +7,8 @@ import {
   TGetAuthMethodDistributionResponse,
   TGetCalendarInsightsDTO,
   TGetCalendarInsightsResponse,
+  TGetInsightsCountsDTO,
+  TGetInsightsCountsResponse,
   TGetInsightsSummaryDTO,
   TGetInsightsSummaryResponse,
   // TGetSecretAccessLocationsDTO,
@@ -31,6 +33,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "auth-method-distribution", params] as const,
   summary: (params: TGetInsightsSummaryDTO) =>
     [...secretInsightsKeys.all(), "summary", params] as const,
+  counts: (params: TGetInsightsCountsDTO) =>
+    [...secretInsightsKeys.all(), "counts", params] as const,
   secretsDuplication: (params: TGetSecretsDuplicationDTO) =>
     [...secretInsightsKeys.all(), "secrets-duplication", params] as const,
   blindIndexStatus: (params: TGetSecretBlindIndexStatusDTO) =>
@@ -160,6 +164,32 @@ export const useGetInsightsSummary = (
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetInsightsSummaryResponse>(
         "/api/v1/insights/secrets/summary",
+        { params }
+      );
+      return data;
+    },
+    staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetInsightsCounts = (
+  params: TGetInsightsCountsDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetInsightsCountsResponse,
+      unknown,
+      TGetInsightsCountsResponse,
+      ReturnType<typeof secretInsightsKeys.counts>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.counts(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetInsightsCountsResponse>(
+        "/api/v1/insights/secrets/counts",
         { params }
       );
       return data;

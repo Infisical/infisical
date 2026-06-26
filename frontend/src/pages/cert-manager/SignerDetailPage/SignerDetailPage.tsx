@@ -271,7 +271,11 @@ export const SignerDetailPage = () => {
               </TabsList>
 
               <TabsContent value="activity" className="pt-2">
-                <SigningOperationsTable signerId={signerId} projectId={currentProject.id} />
+                <SigningOperationsTable
+                  signer={signer}
+                  signerId={signerId}
+                  projectId={currentProject.id}
+                />
               </TabsContent>
               <TabsContent value="approvals" className="pt-2">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]">

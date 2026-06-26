@@ -8,7 +8,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "@app/ee/services/secret-sync/chef";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
-import { awsSyncPreSaveTransformDestinationConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   AwsParameterStoreSyncFns
@@ -84,6 +83,7 @@ import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { TRAVIS_CI_SYNC_LIST_OPTION, TravisCISyncFns } from "./travis-ci";
+import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
@@ -109,6 +109,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
+  [SecretSync.TriggerDev]: TRIGGER_DEV_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
@@ -142,9 +143,7 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 };
 
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
-  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
-  [SecretSync.AWSSecretsManager]: awsSyncPreSaveTransformDestinationConfig,
-  [SecretSync.AWSParameterStore]: awsSyncPreSaveTransformDestinationConfig
+  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (
@@ -382,6 +381,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
@@ -519,6 +520,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.TriggerDev:
+        secretMap = await TriggerDevSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GitLab:
         secretMap = await GitLabSyncFns.getSecrets(secretSync);
@@ -682,6 +686,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:

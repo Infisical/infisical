@@ -1,4 +1,4 @@
-import handlebars from "handlebars";
+import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -26,6 +26,11 @@ import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-c
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
+import {
+  buildManagedCertificateNameRegexSource,
+  SHORT_UUID_NAME_REGEX_FRAGMENT,
+  UUID_NAME_REGEX_FRAGMENT
+} from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -89,84 +94,16 @@ export const parsePkiSyncErrorMessage = (error: unknown): string => {
   return "An unknown error occurred during PKI sync operation";
 };
 
-export const applyCertificateNameSchema = (
-  certificateMap: TCertificateMap,
-  environment: string,
-  schema?: string
-): TCertificateMap => {
-  if (!schema) return certificateMap;
-
-  const processedCertificateMap: TCertificateMap = {};
-
-  for (const [certificateId, value] of Object.entries(certificateMap)) {
-    const newName = handlebars.compile(schema)({
-      certificateId,
-      environment
-    });
-
-    processedCertificateMap[newName] = value;
-  }
-
-  return processedCertificateMap;
-};
-
-export const stripCertificateNameSchema = (
-  certificateMap: TCertificateMap,
-  environment: string,
-  schema?: string
-): TCertificateMap => {
-  if (!schema) return certificateMap;
-
-  const compiledSchemaPattern = handlebars.compile(schema)({
-    certificateId: "{{certificateId}}",
-    environment
-  });
-
-  const parts = compiledSchemaPattern.split("{{certificateId}}");
-  const prefix = parts[0];
-  const suffix = parts[parts.length - 1];
-
-  const strippedMap: TCertificateMap = {};
-
-  for (const [name, value] of Object.entries(certificateMap)) {
-    if (!name.startsWith(prefix) || !name.endsWith(suffix)) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    const strippedName = name.slice(prefix.length, name.length - suffix.length);
-    strippedMap[strippedName] = value;
-  }
-
-  return strippedMap;
-};
-
-export const matchesCertificateNameSchema = (name: string, environment: string, schema?: string): boolean => {
+export const matchesCertificateNameSchema = (name: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const compiledSchemaPattern = handlebars.compile(schema)({
-    certificateId: "{{certificateId}}",
-    environment
+  const pattern = buildManagedCertificateNameRegexSource(schema, {
+    uuid: UUID_NAME_REGEX_FRAGMENT,
+    shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
+    freeText: "[a-zA-Z0-9._-]*"
   });
 
-  if (!compiledSchemaPattern.includes("{{certificateId}}")) {
-    return name === compiledSchemaPattern;
-  }
-
-  const parts = compiledSchemaPattern.split("{{certificateId}}");
-  const prefix = parts[0];
-  const suffix = parts[parts.length - 1];
-
-  if (prefix === "" && suffix === "") return true;
-
-  // If prefix is empty, name must end with suffix
-  if (prefix === "") return name.endsWith(suffix);
-
-  // If suffix is empty, name must start with prefix
-  if (suffix === "") return name.startsWith(prefix);
-
-  // Name must start with prefix and end with suffix
-  return name.startsWith(prefix) && name.endsWith(suffix);
+  return new RE2(`^${pattern}$`).test(name);
 };
 
 const checkPkiSyncDestination = (pkiSync: TPkiSyncWithCredentials, destination: PkiSync): void => {

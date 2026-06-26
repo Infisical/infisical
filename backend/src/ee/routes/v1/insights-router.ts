@@ -287,4 +287,38 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       return result;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/counts",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsCounts",
+      description: "Get project-wide entity counts for the insights dashboard header",
+      security: [{ bearerAuth: [] }],
+      querystring: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secretCount: z.number(),
+          folderCount: z.number(),
+          dynamicSecretCount: z.number(),
+          secretRotationCount: z.number(),
+          honeyTokenCount: z.number().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId } = req.query;
+      const result = await server.services.insights.getCounts({ projectId }, req.permission);
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS, metadata: { projectId } },
+        ...req.auditLogInfo
+      });
+      return result;
+    }
+  });
 };

@@ -27,6 +27,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
+import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
@@ -153,14 +154,14 @@ export const dynamicSecretLeaseServiceFactory = ({
       if (actor === ActorType.USER) {
         const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
         if (user) {
-          identity.name = extractEmailUsername(user.username);
+          identity.name = toSafeUsername(extractEmailUsername(user.username));
         }
       } else if (actor === ActorType.IDENTITY) {
         const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
           identityDAL.findById(actorId)
         );
         if (machineIdentity) {
-          identity.name = machineIdentity.name;
+          identity.name = toSafeUsername(machineIdentity.name);
         }
       }
       const ruleProvider = convertDynamicSecretProviderToValidationRuleProvider(

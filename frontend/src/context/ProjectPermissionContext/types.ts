@@ -44,6 +44,7 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
 
@@ -239,6 +240,15 @@ export enum ProjectPermissionAppConnectionActions {
   Delete = "delete-app-connections",
   Connect = "connect-app-connections",
   RotateCredentials = "rotate-credentials"
+}
+
+export enum ProjectPermissionHsmConnectorActions {
+  Read = "read-hsm-connectors",
+  Create = "create-hsm-connectors",
+  Edit = "edit-hsm-connectors",
+  Delete = "delete-hsm-connectors",
+  Test = "test-hsm-connectors",
+  Attach = "attach-hsm-connectors"
 }
 
 export enum PermissionConditionOperators {
@@ -452,6 +462,7 @@ export enum ProjectPermissionSub {
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
+  HsmConnectors = "hsm-connectors",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
   PamDomains = "pam-domains",
@@ -739,6 +750,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ]
+  | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
   | [
       ProjectPermissionActions,

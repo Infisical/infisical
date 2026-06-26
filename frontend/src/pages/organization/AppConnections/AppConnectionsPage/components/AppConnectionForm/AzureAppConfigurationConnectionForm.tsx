@@ -3,15 +3,32 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
   useGetAppConnectionOauthReturnUrl
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import {
   AzureAppConfigurationConnectionMethod,
   TAzureAppConfigurationConnection,
@@ -20,6 +37,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureAppConfigurationFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -108,6 +126,7 @@ export const AzureAppConfigurationConnectionForm = ({
   projectId
 }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
@@ -129,6 +148,8 @@ export const AzureAppConfigurationConnectionForm = ({
     setValue,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  const scopeVariant = useScopeVariant();
 
   const selectedMethod = watch("method");
 
@@ -182,39 +203,48 @@ export const AzureAppConfigurationConnectionForm = ({
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.AzureAppConfiguration].name
-              }. This field cannot be changed after creation.`}
-              errorText={
-                !isLoading && isMissingConfig
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.AzureAppConfiguration].name}. This field
+                    cannot be changed after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger
+                  id="method"
+                  className="w-full"
+                  isError={Boolean(error) || isMissingConfig}
+                >
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(AzureAppConfigurationConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <FieldError>
+                {!isLoading && isMissingConfig
                   ? `Environment variables have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
                         : `See documentation to configure Azure ${methodDetails.name} Connections.`
                     }`
-                  : error?.message
-              }
-              isError={Boolean(error?.message) || isMissingConfig}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(AzureAppConfigurationConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+                  : error?.message}
+              </FieldError>
+            </Field>
           )}
         />
 
@@ -222,22 +252,33 @@ export const AzureAppConfigurationConnectionForm = ({
           name="tenantId"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
-              isError={Boolean(error?.message)}
-              label="Tenant ID"
-              isOptional={selectedMethod === AzureAppConfigurationConnectionMethod.OAuth}
-              errorText={error?.message}
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="tenantId">
+                Tenant ID
+                {selectedMethod === AzureAppConfigurationConnectionMethod.OAuth && (
+                  <span className="text-muted"> (optional)</span>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Azure Active Directory (Entra ID) Tenant ID.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
                 {...field}
+                id="tenantId"
                 placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error)}
                 onChange={(e) => {
                   field.onChange(e.target.value);
                   setValue("credentials.tenantId", e.target.value);
                 }}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -248,51 +289,55 @@ export const AzureAppConfigurationConnectionForm = ({
               name="credentials.clientId"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Client ID"
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                </FormControl>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.clientId">Client ID</FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.clientId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.clientSecret"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Client Secret"
-                  errorText={error?.message}
-                >
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.clientSecret">Client Secret</FieldLabel>
                   <Input
                     {...field}
+                    id="credentials.clientSecret"
                     type="password"
                     placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
+                    isError={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
           </>
         )}
-        <div className="mt-8 flex items-center">
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting || isRedirecting}
+            variant={scopeVariant}
+            isPending={isSubmitting || isRedirecting}
             isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
           >
             {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            isDisabled={isSubmitting || isRedirecting}
+          >
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

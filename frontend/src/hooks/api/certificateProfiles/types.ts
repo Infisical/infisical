@@ -106,29 +106,7 @@ export type TCreateCertificateProfileDTO = {
   certificatePolicyId: string;
   slug: string;
   description?: string;
-  enrollmentType: EnrollmentType;
   issuerType: IssuerType;
-  estConfig?: {
-    disableBootstrapCaValidation?: boolean;
-    passphrase: string;
-    caChain?: string;
-  };
-  apiConfig?: {
-    autoRenew?: boolean;
-    renewBeforeDays?: number;
-  };
-  acmeConfig?: {
-    skipDnsOwnershipVerification?: boolean;
-    skipEabBinding?: boolean;
-  };
-  scepConfig?: {
-    challengeType?: ScepChallengeType;
-    challengePassword?: string;
-    includeCaCertInResponse?: boolean;
-    allowCertBasedRenewal?: boolean;
-    dynamicChallengeExpiryMinutes?: number;
-    dynamicChallengeMaxPending?: number;
-  };
   externalConfigs?: Record<string, unknown> | null;
   defaults?: TCertificateProfileDefaults | null;
 };
@@ -137,29 +115,7 @@ export type TUpdateCertificateProfileDTO = {
   profileId: string;
   slug?: string;
   description?: string;
-  enrollmentType?: EnrollmentType;
   issuerType?: IssuerType;
-  estConfig?: {
-    disableBootstrapCaValidation?: boolean;
-    passphrase?: string;
-    caChain?: string;
-  };
-  apiConfig?: {
-    autoRenew?: boolean;
-    renewBeforeDays?: number;
-  };
-  acmeConfig?: {
-    skipDnsOwnershipVerification?: boolean;
-    skipEabBinding?: boolean;
-  };
-  scepConfig?: {
-    challengeType?: ScepChallengeType;
-    challengePassword?: string;
-    includeCaCertInResponse?: boolean;
-    allowCertBasedRenewal?: boolean;
-    dynamicChallengeExpiryMinutes?: number;
-    dynamicChallengeMaxPending?: number;
-  };
   externalConfigs?: Record<string, unknown> | null;
   defaults?: TCertificateProfileDefaults | null;
 };

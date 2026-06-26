@@ -1,11 +1,11 @@
 import {
   FileKeyIcon,
+  KeyIcon,
   LockIcon,
   LucideIcon,
-  ScanSearchIcon,
+  RadarIcon,
   TerminalIcon,
-  UsersIcon,
-  VaultIcon
+  UsersIcon
 } from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
@@ -84,6 +84,15 @@ export const urlSlugToProjectType = (slug: string): ProjectType | null => {
   if (slug === "secret-management") return ProjectType.SecretManager;
   return slug as ProjectType;
 };
+
+// Org-wide resource pages (KMIP servers, Secret Sharing) live at literal
+// /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out of the
+// pathname so the sidebar can resolve the active product when the route param is absent.
+const ORG_RESOURCE_PROJECT_SLUG_RE =
+  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings)/;
+
+export const parseProjectSlugFromPath = (pathname: string): string | undefined =>
+  pathname.match(ORG_RESOURCE_PROJECT_SLUG_RE)?.[1];
 
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
@@ -190,14 +199,14 @@ export const getProjectLottieIcon = (type: ProjectType) => {
 
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
   const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
-    [ProjectType.SecretManager]: VaultIcon,
+    [ProjectType.SecretManager]: KeyIcon,
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SSH]: TerminalIcon,
-    [ProjectType.SecretScanning]: ScanSearchIcon,
+    [ProjectType.SecretScanning]: RadarIcon,
     [ProjectType.PAM]: UsersIcon
   };
-  return iconConvert[type] || VaultIcon;
+  return iconConvert[type] || KeyIcon;
 };
 
 export type ProjectTileStyle = {

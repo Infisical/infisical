@@ -21,11 +21,12 @@ export const PkiDocsUrls = {
     pqcAlgorithms: `${PKI_DOCS_BASE_URL}/reference/pqc-algorithms`
   },
 
-  // Settings (policies, profiles, cleanup)
+  // Settings (policies, profiles, cleanup, HSM connectors)
   settings: {
     policies: `${PKI_DOCS_BASE_URL}/settings/policies`,
     profiles: `${PKI_DOCS_BASE_URL}/settings/profiles`,
-    certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`
+    certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`,
+    hsmConnectors: `${PKI_DOCS_BASE_URL}/settings/hsm-connectors`
   },
 
   // Applications
@@ -100,7 +101,9 @@ export const PkiDocsUrls = {
       requestToSign: `${PKI_DOCS_BASE_URL}/code-signing/approvals#request-to-sign`,
       grantLifecycle: `${PKI_DOCS_BASE_URL}/code-signing/approvals#access-lifecycle`
     },
-    pkcs11Module: `${PKI_DOCS_BASE_URL}/code-signing/pkcs11-module`
+    pkcs11Module: `${PKI_DOCS_BASE_URL}/code-signing/pkcs11-module`,
+    windowsKsp: `${PKI_DOCS_BASE_URL}/code-signing/windows-ksp`,
+    connect: `${PKI_DOCS_BASE_URL}/code-signing/overview`
   },
 
   // Discovery

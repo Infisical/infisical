@@ -23,7 +23,6 @@ import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -335,8 +334,6 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const project = await projectDAL.findById(projectId);
-
     await checkUserApproverPolicies(
       projectMembers.map((m) => m.user.id),
       projectId
@@ -347,15 +344,6 @@ export const projectMembershipServiceFactory = ({
     );
 
     const performDelete = async (tx: Knex) => {
-      await assertWillRetainAdmin({
-        scope: AccessScope.Project,
-        scopeOrgId: project.orgId,
-        scopeProjectId: projectId,
-        excludeMembershipIds: projectMembers.map(({ id }) => id),
-        dal: membershipUserDAL,
-        tx
-      });
-
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -441,10 +429,6 @@ export const projectMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Project members not found for project with ID '${projectId}'` });
     }
 
-    if (projectMembers.length < 2) {
-      throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
-    }
-
     const actorMembership = projectMembers.find((member) => member.userId === actorId);
     if (!actorMembership) {
       throw new BadRequestError({ message: "You are not a member of this project" });
@@ -457,15 +441,6 @@ export const projectMembershipServiceFactory = ({
     );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
-      await assertWillRetainAdmin({
-        scope: AccessScope.Project,
-        scopeOrgId: project.orgId,
-        scopeProjectId: project.id,
-        excludeMembershipIds: [actorMembership.id],
-        dal: membershipUserDAL,
-        tx
-      });
-
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,

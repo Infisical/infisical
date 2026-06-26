@@ -3,7 +3,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, ModalClose, SecretInput, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects, useSubscription } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
@@ -18,6 +27,7 @@ import {
 import { SmbConnectionMethod, TSmbConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -106,13 +116,7 @@ export const SmbConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }
   });
 
-  const {
-    handleSubmit,
-    control,
-    setValue,
-    watch,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control, setValue, watch } = form;
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
@@ -127,123 +131,125 @@ export const SmbConnectionForm = ({ appConnection, onSubmit }: Props) => {
             I={OrgGatewayPermissionActions.AttachGateways}
             a={OrgPermissionSubjects.Gateway}
           >
-            {(isAllowed) => (
-              <FormControl label="Gateway">
-                <Tooltip
-                  isDisabled={isAllowed}
-                  content="Restricted access. You don't have permission to attach gateways to resources."
-                >
-                  <div>
-                    <GatewayPicker
-                      isDisabled={!isAllowed}
-                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                        setValue("gatewayId", newGwId, { shouldDirty: true });
-                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                      }}
-                    />
-                  </div>
-                </Tooltip>
-              </FormControl>
-            )}
+            {(isAllowed) => {
+              const picker = (
+                <div>
+                  <GatewayPicker
+                    isDisabled={!isAllowed}
+                    value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                    onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                      setValue("gatewayId", newGwId, { shouldDirty: true });
+                      setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                    }}
+                  />
+                </div>
+              );
+
+              return (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="gateway">Gateway</FieldLabel>
+                  {isAllowed ? (
+                    picker
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>{picker}</TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Restricted access. You don&apos;t have permission to attach gateways to
+                        resources.
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </Field>
+              );
+            }}
           </OrgPermissionCan>
         )}
-        <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-          <Controller
-            name="credentials.host"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
+        <Controller
+          name="credentials.host"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="host">Host</FieldLabel>
+              <Input
+                id="host"
+                {...field}
+                placeholder="Hostname or IP address of Windows server"
                 isError={Boolean(error?.message)}
-                label="Host"
-              >
-                <Input {...field} placeholder="Hostname or IP address of Windows server" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            name="credentials.port"
-            control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.port"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="port">Port</FieldLabel>
+              <Input
+                id="port"
+                type="number"
+                value={value}
+                onChange={(e) => onChange(e.target.value ? Number(e.target.value) : 445)}
+                placeholder="445"
                 isError={Boolean(error?.message)}
-                label="Port"
-              >
-                <Input
-                  type="number"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value ? Number(e.target.value) : 445)}
-                  placeholder="445"
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            name="credentials.domain"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.domain"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="domain">
+                Domain <span className="text-muted">(optional)</span>
+              </FieldLabel>
+              <Input
+                id="domain"
+                {...field}
+                placeholder="e.g., MYDOMAIN (for domain-joined servers)"
                 isError={Boolean(error?.message)}
-                label="Domain"
-                isOptional
-              >
-                <Input {...field} placeholder="e.g., MYDOMAIN (for domain-joined servers)" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            name="credentials.username"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.username"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="username">Username</FieldLabel>
+              <Input
+                id="username"
+                {...field}
+                placeholder="Administrator"
                 isError={Boolean(error?.message)}
-                label="Username"
-              >
-                <Input {...field} placeholder="Administrator" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            name="credentials.password"
-            control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Password"
-              >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </FormControl>
-            )}
-          />
-        </div>
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.password"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <AppConnectionFormFooter
+          submitLabel={
+            isUpdate
               ? "Update Credentials"
-              : `Connect to ${APP_CONNECTION_MAP[AppConnection.SMB].name}`}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+              : `Connect to ${APP_CONNECTION_MAP[AppConnection.SMB].name}`
+          }
+        />
       </form>
     </FormProvider>
   );

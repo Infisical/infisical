@@ -19,6 +19,10 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
   - `acm:DeleteCertificate`
   - `acm:ListTagsForCertificate`
 
+<Tip>
+  If your AWS Connection uses the **Assume Role** method and is created within Certificate Manager, use your **Organization ID** as the External ID in your AWS IAM role trust policy. You can find the Organization ID in your organization settings. See the [AWS Connection docs](/integrations/app-connections/aws) for more details.
+</Tip>
+
 <Note>
   Certificates synced to ACM are stored as imported certificates, preserving both the certificate and private key.
 </Note>
@@ -39,7 +43,7 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active in Infisical.
             - **Preserve ARN on Renewal**: Sync renewed certificates under the same ARN instead of creating a new one.
             - **Include Root CA**: Include the Root CA certificate in the certificate chain.
-            - **Certificate Name Schema**: Customize certificate tags. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`.
+            - **Certificate Name Schema**: Customize certificate tags using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:

@@ -70,6 +70,10 @@ const isGateway404Error = (error: unknown): boolean => {
   return error instanceof BadRequestError && error.message?.includes("Request failed with status code 404");
 };
 
+const isGateway403Error = (error: unknown): boolean => {
+  return error instanceof BadRequestError && error.message?.includes("Request failed with status code 403");
+};
+
 const isGateway301Error = (error: unknown): boolean => {
   return error instanceof BadRequestError && error.message?.includes("Request failed with status code 301");
 };
@@ -727,6 +731,100 @@ class NamespaceHeaderNotSupportedError extends Error {
   }
 }
 
+const isRootNamespace = (namespace: string) => namespace === "/" || namespace === "root" || !namespace;
+
+const isWildcardPath = (path: string) => path.split("/").includes("+");
+const ACL_ALLOWED_CAPABILITIES = ["read", "list"];
+
+// Fallback for restricted Vault tokens that lack permission to list a mount from its root.
+// We ask Vault for the resultant ACL of the current token and derive the sub-paths within the
+// given mount that the token is authorized for. These are returned relative to the mount, with the
+// trailing slash preserved: an entry with a trailing slash (e.g. "team-a/") is a folder the caller
+// should recurse into, while an entry without one (e.g. "team-a/db") is a concrete secret path.
+const listHCVaultAccessiblePathsFromAcl = async (
+  namespace: string,
+  mountPath: string,
+  kvVersion: "1" | "2",
+  instanceUrl: string,
+  accessToken: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayDetails?: TGatewayDetails
+): Promise<string[]> => {
+  const fetchResultantAcl = (skipNamespaceHeader: boolean) =>
+    requestWithHCVaultGateway<{
+      data: {
+        exact_paths?: Record<string, { capabilities: string[] }>;
+        glob_paths?: Record<string, { capabilities: string[] }>;
+      };
+    }>(
+      connection,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `${instanceUrl}/v1/sys/internal/ui/resultant-acl`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(skipNamespaceHeader ? {} : { "X-Vault-Namespace": namespace })
+        }
+      },
+      gatewayDetails
+    );
+
+  // vault 1.0.0 does not support namespace root or /, responding with a 301 when the namespace header is sent.
+  let data;
+  try {
+    ({ data } = await fetchResultantAcl(isRootNamespace(namespace)));
+  } catch (error) {
+    if (
+      !isRootNamespace(namespace) &&
+      ((error instanceof AxiosError && error.response?.status === 301) || isGateway301Error(error))
+    ) {
+      ({ data } = await fetchResultantAcl(true));
+    } else {
+      throw error;
+    }
+  }
+
+  // ACL paths follow the pattern $NS/$MOUNT/... When the namespace is root there is no namespace segment, so the paths start
+  // directly with the mount. We strip both the namespace and the mount to get a path relative to the
+  // mount, keeping the trailing slash so the caller can tell folders ("team-a/") from secrets ("team-a/db").
+  const nsPrefix = isRootNamespace(namespace) ? "" : `${removeTrailingSlash(namespace)}/`;
+  const mountPrefix = `${removeTrailingSlash(mountPath)}/`;
+
+  const stripKvV2Prefix = (path: string): string => {
+    if (kvVersion !== "2") return path;
+    if (path.startsWith("data/")) return path.slice("data/".length);
+    if (path.startsWith("metadata/")) return path.slice("metadata/".length);
+    return path;
+  };
+
+  const collectRelativePaths = (paths?: Record<string, { capabilities: string[] }>): string[] => {
+    if (!paths) return [];
+
+    return (
+      Object.entries(paths)
+        // Vault's "deny" capability overrides everything; only keep paths we can actually read or list.
+        .filter(
+          ([, { capabilities }]) =>
+            !capabilities.includes("deny") && capabilities.some((cap) => ACL_ALLOWED_CAPABILITIES.includes(cap))
+        )
+        .map(([path]) => path)
+        .map((path) => (nsPrefix && path.startsWith(nsPrefix) ? path.slice(nsPrefix.length) : path))
+        .filter((path) => path.startsWith(mountPrefix))
+        .map((path) => path.slice(mountPrefix.length))
+        .map(stripKvV2Prefix)
+        .filter((path) => removeTrailingSlash(path).length > 0)
+    ); // drop the bare mount root (can't list it anyway)
+  };
+
+  const relativePaths = [...collectRelativePaths(data.data.exact_paths), ...collectRelativePaths(data.data.glob_paths)];
+
+  return Array.from(new Set(relativePaths));
+};
+
 export const listHCVaultSecretPaths = async (
   namespace: string,
   connection: THCVaultConnection,
@@ -792,7 +890,6 @@ export const listHCVaultSecretPaths = async (
     }
   };
 
-  // Recursive function to get all secret paths in a mount with controlled parallelization
   const recursivelyGetAllPaths = async (
     mountPath: string,
     kvVersion: "1" | "2",
@@ -825,6 +922,30 @@ export const listHCVaultSecretPaths = async (
     return secretPathsArrays.flat();
   };
 
+  // Recurse from each currentPath in parallel, retrying without the namespace header if Vault rejects it.
+  const recurseFromPaths = async (
+    cleanMountPath: string,
+    kvVersion: "1" | "2",
+    limiter: ReturnType<typeof createConcurrencyLimiter>,
+    currentPaths: string[]
+  ): Promise<string[]> => {
+    const arrays = await Promise.all(
+      currentPaths.map(async (currentPath) => {
+        try {
+          return await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, currentPath);
+        } catch (error) {
+          // Vault rejected the namespace header (301 on root/"/"), retry without it.
+          if (error instanceof NamespaceHeaderNotSupportedError) {
+            return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, currentPath, true);
+          }
+          throw error;
+        }
+      })
+    );
+
+    return arrays.flat();
+  };
+
   // Get all mounts
   const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
 
@@ -840,27 +961,72 @@ export const listHCVaultSecretPaths = async (
   // Create concurrency limiter to avoid overwhelming the Vault instance
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-  // Collect all secret paths from all KV mounts in parallel
-  const allSecretPathsArrays = await Promise.all(
-    kvMounts.map(async (mount) => {
+  // Collect all secret paths from all KV mounts in parallel. Each entry returns the discovered secret
+  // paths plus any paths skipped because they contain a "+" wildcard (only the resultant-ACL fallback
+  // can surface wildcards; the normal listing flow always returns an empty skipped list).
+  const perMountResults = await Promise.all(
+    kvMounts.map(async (mount): Promise<{ secretPaths: string[]; skippedWildcardPaths: string[] }> => {
       const kvVersion = mount.version === "2" ? "2" : "1";
       const cleanMountPath = mount.path.replace(/\/$/, ""); // Remove trailing slash
       try {
-        return await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
+        return {
+          secretPaths: await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter),
+          skippedWildcardPaths: []
+        };
       } catch (error) {
         // Vault rejected the namespace header (301 on root/"/"), retry the mount without it.
         if (error instanceof NamespaceHeaderNotSupportedError) {
-          return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, "", true);
+          return {
+            secretPaths: await recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter, "", true),
+            skippedWildcardPaths: []
+          };
         }
+
+        // Restricted tokens may lack permission to list the mount from its root, returning a 403 on the
+        // first listing. Fall back to the token's resultant ACL to discover the sub-paths it can access.
+        if ((error instanceof AxiosError && error.response?.status === 403) || isGateway403Error(error)) {
+          const accessiblePaths = await listHCVaultAccessiblePathsFromAcl(
+            namespace,
+            cleanMountPath,
+            kvVersion,
+            instanceUrl,
+            accessToken,
+            connection,
+            gatewayService,
+            gatewayV2Service,
+            gatewayDetails
+          );
+
+          // Drop "+" wildcard paths: they can't be listed/recursed. Surface them so the user is informed.
+          const skippedWildcardPaths = accessiblePaths
+            .filter(isWildcardPath)
+            .map((path) => `${cleanMountPath}/${removeTrailingSlash(path)}`);
+          const usablePaths = accessiblePaths.filter((path) => !isWildcardPath(path));
+
+          const directSecretPaths = usablePaths
+            .filter((path) => !path.endsWith("/"))
+            .map((path) => `${cleanMountPath}/${path}`);
+
+          const folderPaths = usablePaths.filter((path) => path.endsWith("/")).map((path) => removeTrailingSlash(path));
+
+          const recursedSecretPaths = await recurseFromPaths(cleanMountPath, kvVersion, limiter, folderPaths);
+
+          return {
+            secretPaths: Array.from(new Set([...directSecretPaths, ...recursedSecretPaths])),
+            skippedWildcardPaths
+          };
+        }
+
         throw error;
       }
     })
   );
 
-  // Flatten the arrays into a single array
-  const allSecretPaths = allSecretPathsArrays.flat();
-
-  return allSecretPaths;
+  // Flatten across mounts and dedupe both lists
+  return {
+    secretPaths: Array.from(new Set(perMountResults.flatMap((result) => result.secretPaths))),
+    skippedWildcardPaths: Array.from(new Set(perMountResults.flatMap((result) => result.skippedWildcardPaths)))
+  };
 };
 
 const fetchVaultSecretAtPath = async ({

@@ -233,6 +233,23 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // checks whether any of the given folders contains a real (non-replication, non-reserved) secret import.
+  // returns the folderId of the first match so callers can resolve its path, or undefined if none exist.
+  const findImportByFolderIds = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return undefined;
+      const doc = await (tx || db.replicaNode())(TableName.SecretImport)
+        .whereIn("folderId", folderIds)
+        .where((bd) => void bd.where("isReplication", false).orWhereNull("isReplication"))
+        .where((bd) => void bd.where("isReserved", false).orWhereNull("isReserved"))
+        .select(db.ref("folderId").withSchema(TableName.SecretImport))
+        .first();
+      return doc as { folderId: string } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find import by folder ids" });
+    }
+  };
+
   const getFolderImports = async (secretPath: string, environmentId: string, tx?: Knex) => {
     try {
       const folderImports = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -411,6 +428,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findById,
     findByIds,
     findByFolderIds,
+    findImportByFolderIds,
     findLastImportPosition,
     updateAllPosition,
     bulkUpdatePosition,

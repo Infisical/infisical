@@ -1,6 +1,8 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -62,6 +64,7 @@ export type TTelemetryServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -107,7 +110,12 @@ const getDeploymentType = (
   return DeploymentType.SelfHosted;
 };
 
-export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({
+  keyStore,
+  licenseService,
+  orgDAL,
+  emailDomainDAL
+}: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
@@ -238,6 +246,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.seat_count = plan.membersUsed;
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
+    }
+
+    try {
+      const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+      if (verifiedDomains.length > 0) {
+        properties.domain = verifiedDomains[0].domain;
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org domain for PostHog group properties");
     }
 
     return properties;
@@ -521,23 +538,20 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const BUCKET_CONCURRENCY = 5;
+
   const processAggregatedEvents = async () => {
     if (!postHog) return;
 
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
-
       logger.info(`Starting bucket processing for ${eventType}`);
 
-      // Process each bucket sequentially to control memory usage
-      for (const bucketId of TELEMETRY_BUCKET_NAMES) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const processed = await processBucketEvents(eventType, bucketId);
-          totalProcessed += processed;
-        } catch (error) {
-          logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
-        }
+      for (let i = 0; i < TELEMETRY_BUCKET_NAMES.length; i += BUCKET_CONCURRENCY) {
+        const batch = TELEMETRY_BUCKET_NAMES.slice(i, i + BUCKET_CONCURRENCY);
+        // eslint-disable-next-line no-await-in-loop
+        const results = await Promise.all(batch.map((bucketId) => processBucketEvents(eventType, bucketId)));
+        totalProcessed += results.reduce((sum, n) => sum + n, 0);
       }
 
       logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);

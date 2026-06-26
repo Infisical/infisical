@@ -45,7 +45,7 @@ const isIgnoredImportField = (path: string, fieldName: string): boolean => {
 };
 
 const isEmpty = (value: unknown): boolean => {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || value === "") {
     return true;
   }
   if (Array.isArray(value) && value.length === 0) {

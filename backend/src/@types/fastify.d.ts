@@ -33,6 +33,7 @@ import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TKmipServerServiceFactory } from "@app/ee/services/kmip-server/kmip-server-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
@@ -109,6 +110,7 @@ import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-
 import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
+import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
@@ -371,6 +373,7 @@ declare module "fastify" {
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       licenseClient: TLicenseClientFactory;
+      licenseV2: TLicenseV2ServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
       secretBlindIndex: TSecretBlindIndexServiceFactory;
       telemetry: TTelemetryServiceFactory;
@@ -392,6 +395,7 @@ declare module "fastify" {
       totp: TTotpServiceFactory;
       webAuthn: TWebAuthnServiceFactory;
       appConnection: TAppConnectionServiceFactory;
+      hsmConnector: THsmConnectorServiceFactory;
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;

@@ -38,8 +38,7 @@ export const PgSqlLock = {
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
-  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
-    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`)
+  LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -68,6 +67,8 @@ export const KeyStorePrefixes = {
     `identity-access-token-status:${identityAccessTokenId}`,
   IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
     `identity-token-uses-remaining:${identityId}:${jti}` as const,
+  IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
+    `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
@@ -91,7 +92,6 @@ export const KeyStorePrefixes = {
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
   GitHubManifestNameLock: (orgId: string, projectId: string | null, name: string) =>
     `github-manifest-name-lock:${orgId}:${projectId ?? "org"}:${name}` as const,
-  UsedGitHubInstallationsToken: (jti: string) => `used-github-installations-token:${jti}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
@@ -132,6 +132,9 @@ export const KeyStorePrefixes = {
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
   LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
+  LicenseEntitlementsIdentitySynced: (orgId: string) => `license-entitlements-identity-synced-${orgId}` as const,
+  LicenseUsageLastReported: (orgId: string, featureKey: string) =>
+    `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
   IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
@@ -167,6 +170,7 @@ export const KeyStoreTtls = {
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
   LicenseEntitlementsInSeconds: 1800, // 30 minutes
+  LicenseUsageLastReportedInSeconds: 7776000, // 90 days (~3 billing cycles) so orphaned meter keys self-clean
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes

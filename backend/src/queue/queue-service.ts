@@ -114,7 +114,8 @@ export enum QueueName {
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
-  SecretBlindIndexMigration = "secret-blind-index-migration"
+  SecretBlindIndexMigration = "secret-blind-index-migration",
+  UsageEvent = "usage-event"
 }
 
 export enum QueueJobs {
@@ -191,7 +192,8 @@ export enum QueueJobs {
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
-  SecretBlindIndexMigration = "secret-blind-index-migration"
+  SecretBlindIndexMigration = "secret-blind-index-migration",
+  UsageEvent = "usage-event-job"
 }
 
 export enum JobState {
@@ -527,6 +529,10 @@ export type TQueueJobTypes = {
   [QueueName.SecretBlindIndexMigration]: {
     name: QueueJobs.SecretBlindIndexMigration;
     payload: { projectId: string };
+  };
+  [QueueName.UsageEvent]: {
+    name: QueueJobs.UsageEvent;
+    payload: { orgId: string; featureKey: string };
   };
 };
 

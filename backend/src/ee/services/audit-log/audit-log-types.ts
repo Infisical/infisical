@@ -54,6 +54,7 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -338,6 +339,7 @@ export enum EventType {
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
+  MOVE_FOLDER = "move-folder",
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
@@ -530,6 +532,7 @@ export enum EventType {
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
+  ROTATE_CMEK = "rotate-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   GET_CMEK = "get-cmek",
@@ -571,6 +574,10 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  CREATE_HSM_CONNECTOR = "create-hsm-connector",
+  UPDATE_HSM_CONNECTOR = "update-hsm-connector",
+  DELETE_HSM_CONNECTOR = "delete-hsm-connector",
+  TEST_HSM_CONNECTOR = "test-hsm-connector",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
   ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
@@ -697,6 +704,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -1897,6 +1905,7 @@ interface AddIdentityTlsCertAuthEvent {
   metadata: {
     identityId: string;
     allowedCommonNames: string | null | undefined;
+    allowedSubjectAltNames: string[] | null | undefined;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1916,6 +1925,7 @@ interface UpdateIdentityTlsCertAuthEvent {
   metadata: {
     identityId: string;
     allowedCommonNames: string | null | undefined;
+    allowedSubjectAltNames: string[] | null | undefined;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2490,6 +2500,17 @@ interface DeleteFolderEvent {
     folderId: string;
     folderName: string;
     folderPath: string;
+  };
+}
+
+interface MoveFolderEvent {
+  type: EventType.MOVE_FOLDER;
+  metadata: {
+    folderId: string;
+    sourceEnvironment: string;
+    sourcePath: string;
+    destinationEnvironment: string;
+    destinationPath: string;
   };
 }
 
@@ -4302,6 +4323,7 @@ interface CreateCmekEvent {
     name: string;
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    isExportable?: boolean;
   };
 }
 
@@ -4318,6 +4340,14 @@ interface UpdateCmekEvent {
     keyId: string;
     name?: string;
     description?: string;
+  };
+}
+
+interface RotateCmekEvent {
+  type: EventType.ROTATE_CMEK;
+  metadata: {
+    keyId: string;
+    version: number;
   };
 }
 
@@ -4514,6 +4544,43 @@ interface RotateAppConnectionCredentialsEvent {
   type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS;
   metadata: {
     connectionId: string;
+  };
+}
+
+interface CreateHsmConnectorEvent {
+  type: EventType.CREATE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    gatewayId: string | null;
+    gatewayPoolId: string | null;
+  };
+}
+
+interface UpdateHsmConnectorEvent {
+  type: EventType.UPDATE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    fieldsUpdated: string[];
+  };
+}
+
+interface DeleteHsmConnectorEvent {
+  type: EventType.DELETE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+  };
+}
+
+interface TestHsmConnectorEvent {
+  type: EventType.TEST_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    ok: boolean;
+    memberCount: number;
   };
 }
 
@@ -4849,6 +4916,8 @@ interface CreatePkiSignerEvent {
     caId?: string | null;
     commonName?: string | null;
     approvalPolicyId?: string | null;
+    keySource?: CertKeySource;
+    hsmConnectorId?: string | null;
   };
 }
 
@@ -4933,6 +5002,10 @@ interface ReissuePkiSignerCertificateEvent {
     name: string;
     caId: string;
     commonName?: string;
+    keyAlgorithm?: string;
+    keySource?: string;
+    hsmConnectorId?: string;
+    hsmKeyAlgorithm?: string;
   };
 }
 
@@ -5676,6 +5749,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
 
 interface ViewInsightsSecretsDuplicationEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewSecretManagementInsightsCountsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS;
   metadata: {
     projectId: string;
   };
@@ -7562,6 +7642,7 @@ export type Event =
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
+  | MoveFolderEvent
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
@@ -7727,6 +7808,7 @@ export type Event =
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent
+  | RotateCmekEvent
   | DeleteCmekEvent
   | GetCmekEvent
   | GetCmeksEvent
@@ -7755,6 +7837,10 @@ export type Event =
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
   | RotateAppConnectionCredentialsEvent
+  | CreateHsmConnectorEvent
+  | UpdateHsmConnectorEvent
+  | DeleteHsmConnectorEvent
+  | TestHsmConnectorEvent
   | CreateGitHubAppEvent
   | DeleteGitHubAppEvent
   | GetSshHostGroupEvent
@@ -7893,6 +7979,7 @@ export type Event =
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
+  | ViewSecretManagementInsightsCountsEvent
   | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent

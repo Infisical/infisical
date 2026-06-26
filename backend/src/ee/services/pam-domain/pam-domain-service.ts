@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TPamDomains } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamDomains } from "@app/db/schemas";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -45,6 +46,7 @@ export const pamDomainServiceFactory = ({
   pamResourceDAL,
   permissionService,
   kmsService,
+  gatewayV2DAL,
   gatewayV2Service,
   gatewayPoolService,
   resourceMetadataDAL
@@ -115,7 +117,25 @@ export const pamDomainServiceFactory = ({
       })
     );
 
-    if (gatewayPoolId) {
+    if (gatewayId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new NotFoundError({ message: "Gateway not found" });
+      }
+    } else if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,
@@ -232,7 +252,25 @@ export const pamDomainServiceFactory = ({
       );
     }
 
-    if (gatewayPoolId && gatewayPoolId !== domain.gatewayPoolId) {
+    if (gatewayId && gatewayId !== domain.gatewayId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new NotFoundError({ message: "Gateway not found" });
+      }
+    } else if (gatewayPoolId && gatewayPoolId !== domain.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.orgId,

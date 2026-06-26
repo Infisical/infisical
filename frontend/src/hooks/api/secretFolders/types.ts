@@ -72,3 +72,23 @@ export type TUpdateFolderBatchDTO = {
     description?: string | null;
   }[];
 };
+
+export type TMoveFolderDTO = {
+  projectId: string;
+  folderId: string;
+  // source environment + parent path of the folder being moved; used only for cache invalidation
+  sourceEnvironment: string;
+  sourcePath: string;
+  destinationEnvironment: string;
+  destinationPath: string;
+  shouldOverwrite?: boolean;
+};
+
+export type TMoveFolderResponse = {
+  folderId: string;
+  sourceEnvironment: string;
+  sourcePath: string;
+  destinationEnvironment: string;
+  destinationPath: string;
+  hasApprovalRequests: boolean;
+};

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,12 @@ type AssumePrivilegeVerifier interface {
 	VerifyAssumePrivilegeToken(ctx context.Context, opts *assumeprivilege.VerifyTokenOpts) (*auth.AssumedPrivilegeDetails, error)
 }
 
+// ErrorHandler handles HTTP error responses with proper logging.
+// This interface matches shared.ErrorHandler to avoid import cycles.
+type ErrorHandler interface {
+	HandleError(w http.ResponseWriter, r *http.Request, statusCode int, err error)
+}
+
 // ApiAuthenticator performs token validation for various auth methods.
 // It's an exact port of the Node.js inject-identity logic.
 type ApiAuthenticator struct {
@@ -39,13 +46,14 @@ type ApiAuthenticator struct {
 	keyStore        keystore.KeyStore
 	authSecret      []byte
 	assumePrivilege AssumePrivilegeVerifier
+	errorHandler    ErrorHandler
 }
 
 // NewApiAuthenticator creates an ApiAuthenticator with real validation backed by pg.DB.
 // keyStore can be nil for tests that don't need Redis-backed features.
 // assumePrivilege can be nil if assume privilege feature is not needed.
-func NewApiAuthenticator(logger *slog.Logger, db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier) *ApiAuthenticator {
-	return &ApiAuthenticator{logger: logger, db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege}
+func NewApiAuthenticator(logger *slog.Logger, db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier, errorHandler ErrorHandler) *ApiAuthenticator {
+	return &ApiAuthenticator{logger: logger, db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege, errorHandler: errorHandler}
 }
 
 // AssumePrivilege returns the assume privilege verifier.
@@ -379,16 +387,16 @@ func (a *ApiAuthenticator) validateIdentityTokenClaims(ctx context.Context, clai
 }
 
 // ValidateServiceToken performs real service token validation.
-// Exact port of fnValidateServiceToken in service-token-service.ts:172-199.
+// TODO(go): FIPS mode changes in bcrypt to the other one is needed
 func (a *ApiAuthenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
-	// 1. Split token: "st.<tokenID>.<tokenSecret>"
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 || parts[0] != "st" {
+	// 1. Split token: "st.<tokenID>.<tokenSecret>[.<extra>]"
+	// Legacy tokens may have a 4th segment that should be ignored.
+	parts := strings.SplitN(token, ".", 4)
+	if len(parts) < 3 || parts[0] != "st" {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateServiceToken: invalid token format")
 	}
 	tokenID := parts[1]
 	tokenSecret := parts[2]
-
 	// 2. Find service token.
 	serviceToken, err := a.findServiceTokenByID(ctx, tokenID)
 	if err != nil {

@@ -12,6 +12,7 @@ export type TGatewayV2 = {
     name: string;
     id: string;
   } | null;
+  capabilities?: Record<string, unknown>;
 };
 
 export type GatewayAwsAuthConfig = {

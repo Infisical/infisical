@@ -206,6 +206,9 @@ import {
   THoneyTokenSecretMappingsUpdate,
   THoneyTokensInsert,
   THoneyTokensUpdate,
+  THsmConnectors,
+  THsmConnectorsInsert,
+  THsmConnectorsUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -271,6 +274,9 @@ import {
   TInternalCertificateAuthoritiesUpdate,
   TInternalKms,
   TInternalKmsInsert,
+  TInternalKmsKeyVersion,
+  TInternalKmsKeyVersionInsert,
+  TInternalKmsKeyVersionUpdate,
   TInternalKmsUpdate,
   TKeyValueStore,
   TKeyValueStoreInsert,
@@ -1458,6 +1464,11 @@ declare module "knex/types/tables" {
       TKmsRootConfigUpdate
     >;
     [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
+    [TableName.InternalKmsKeyVersion]: KnexOriginal.CompositeTableType<
+      TInternalKmsKeyVersion,
+      TInternalKmsKeyVersionInsert,
+      TInternalKmsKeyVersionUpdate
+    >;
     [TableName.ExternalKms]: KnexOriginal.CompositeTableType<TExternalKms, TExternalKmsInsert, TExternalKmsUpdate>;
     [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
     [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
@@ -1520,6 +1531,11 @@ declare module "knex/types/tables" {
       TAppConnections,
       TAppConnectionsInsert,
       TAppConnectionsUpdate
+    >;
+    [TableName.HsmConnector]: KnexOriginal.CompositeTableType<
+      THsmConnectors,
+      THsmConnectorsInsert,
+      THsmConnectorsUpdate
     >;
     [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
     [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;

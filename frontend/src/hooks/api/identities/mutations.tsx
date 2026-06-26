@@ -801,6 +801,7 @@ export const useAddIdentityTlsCertAuth = () => {
     mutationFn: async ({
       identityId,
       allowedCommonNames,
+      allowedSubjectAltNames,
       caCertificate,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -813,6 +814,7 @@ export const useAddIdentityTlsCertAuth = () => {
         `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
         {
           allowedCommonNames,
+          allowedSubjectAltNames,
           caCertificate,
           accessTokenTTL,
           accessTokenMaxTTL,
@@ -851,6 +853,7 @@ export const useUpdateIdentityTlsCertAuth = () => {
     mutationFn: async ({
       identityId,
       allowedCommonNames,
+      allowedSubjectAltNames,
       caCertificate,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -864,6 +867,7 @@ export const useUpdateIdentityTlsCertAuth = () => {
         {
           caCertificate,
           allowedCommonNames,
+          allowedSubjectAltNames,
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,

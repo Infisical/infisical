@@ -32,7 +32,8 @@ export const ProjectNavLink = ({
     }
     return item.activeMatch.test(pathname);
   })();
-  const pathMatch = pathname.startsWith(fullPath) || activeMatchResult;
+  const pathMatch =
+    (item.exactPath ? pathname === fullPath : pathname.startsWith(fullPath)) || activeMatchResult;
   const isActive = item.search
     ? pathMatch &&
       Object.entries(item.search).every(([key, value]) => {
