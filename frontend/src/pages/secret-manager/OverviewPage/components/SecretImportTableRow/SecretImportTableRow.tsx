@@ -496,6 +496,11 @@ export const SecretImportTableRow = ({
                       : importPath
                   }
                   isEmpty={secret.isEmpty}
+                  sourceProjectId={
+                    selectedEnvImportData?.secretImportRecord?.importEnv?.projectId !== currentProject?.id
+                      ? selectedEnvImportData?.secretImportRecord?.importEnv?.projectId
+                      : undefined
+                  }
                 />
               ))}
             </TableBody>
@@ -551,6 +556,11 @@ export const SecretImportTableRow = ({
                   secretPath={importPath}
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
+                  sourceProjectId={
+                    secretImport?.importEnv?.projectId !== currentProject?.id
+                      ? secretImport?.importEnv?.projectId
+                      : undefined
+                  }
                 />
               );
             })}
@@ -606,6 +616,11 @@ export const SecretImportTableRow = ({
                   : importPath
               }
               isEmpty={secret.isEmpty}
+              sourceProjectId={
+                singleEnvImport?.importEnv?.projectId !== currentProject?.id
+                  ? singleEnvImport?.importEnv?.projectId
+                  : undefined
+              }
             />
           ))}
         </TableBody>
@@ -657,6 +672,11 @@ export const SecretImportTableRow = ({
         >
           <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">
+              {secretImport?.sourceProjectName &&
+                secretImport.importEnv.projectId &&
+                secretImport.importEnv.projectId !== currentProject?.id && (
+                  <Badge variant="warning">{secretImport.sourceProjectName}</Badge>
+                )}
               <Badge variant="neutral">
                 <LayersIcon />
                 {importEnvName}

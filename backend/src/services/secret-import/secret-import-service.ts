@@ -35,6 +35,7 @@ import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fn
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
+  TGetCrossProjectImportSecretValueDTO,
   TGetSecretImportByIdDTO,
   TGetSecretImportsDTO,
   TGetSecretsFromImportDTO,
@@ -50,7 +51,7 @@ type TSecretImportServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne">;
+  projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -1046,6 +1047,62 @@ export const secretImportServiceFactory = ({
     return result;
   };
 
+  const getCrossProjectImportSecretValue = async ({
+    projectId,
+    sourceProjectId,
+    environment,
+    secretPath,
+    secretName,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetCrossProjectImportSecretValueDTO) => {
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, environment, secretPath);
+    if (!sourceFolder)
+      throw new NotFoundError({
+        message: `Folder not found at path '${secretPath}' in environment '${environment}' of source project`
+      });
+
+    const grant = await projectGrantDAL.findOne({
+      sourceFolderId: sourceFolder.id,
+      targetProjectId: projectId
+    });
+    if (!grant)
+      throw new ForbiddenRequestError({ message: "No cross-project grant found authorizing this import" });
+
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(sourceProjectId);
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({ message: "Source project has not been upgraded to the latest version" });
+
+    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sourceProjectId
+    });
+
+    const secrets = await secretV2BridgeDAL.find(
+      { folderId: sourceFolder.id, [`${TableName.SecretV2}.key` as "key"]: secretName },
+      { limit: 1 }
+    );
+    if (!secrets.length)
+      throw new NotFoundError({ message: `Secret '${secretName}' not found in source project` });
+
+    const secretValue = secrets[0].encryptedValue
+      ? sourceDecryptor({ cipherTextBlob: secrets[0].encryptedValue }).toString()
+      : "";
+
+    return { value: secretValue };
+  };
+
   return {
     createImport,
     updateImport,
@@ -1059,6 +1116,7 @@ export const secretImportServiceFactory = ({
     fnSecretsFromImports,
     getProjectImportMultiEnvCount,
     getImportsMultiEnv,
-    getFolderIsImportedBy
+    getFolderIsImportedBy,
+    getCrossProjectImportSecretValue
   };
 };

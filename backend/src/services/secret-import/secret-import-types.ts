@@ -47,6 +47,13 @@ export type TGetSecretsFromImportDTO = {
   path: string;
 } & TProjectPermission;
 
+export type TGetCrossProjectImportSecretValueDTO = {
+  sourceProjectId: string;
+  environment: string;
+  secretPath: string;
+  secretName: string;
+} & TProjectPermission;
+
 export type FolderResult = {
   envName: string;
   folderName: string;

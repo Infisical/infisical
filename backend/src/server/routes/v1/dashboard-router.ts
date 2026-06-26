@@ -152,7 +152,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           imports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
+              importEnv: z.object({
+                name: z.string(),
+                slug: z.string(),
+                id: z.string(),
+                projectId: z.string().optional()
+              }),
+              sourceProjectName: z.string().optional(),
               environment: z.string()
             })
             .array()
@@ -711,7 +717,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           imports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: z.object({
+                name: z.string(),
+                slug: z.string(),
+                id: z.string(),
+                projectId: z.string().optional()
+              }),
+              sourceProjectName: z.string().optional()
             })
             .array()
             .optional(),
@@ -1644,6 +1656,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secretKey: z.string().trim(),
+        sourceProjectId: z.string().trim().optional(),
         isOverride: z
           .enum(["true", "false"])
           .transform((value) => value === "true")
@@ -1658,7 +1671,23 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
+      const { secretPath, projectId, environment, secretKey, isOverride, sourceProjectId } = req.query;
+
+      if (sourceProjectId && sourceProjectId !== projectId) {
+        const { value } = await server.services.secretImport.getCrossProjectImportSecretValue({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          projectId,
+          sourceProjectId,
+          environment,
+          secretPath,
+          secretName: secretKey
+        });
+
+        return { value };
+      }
 
       const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,

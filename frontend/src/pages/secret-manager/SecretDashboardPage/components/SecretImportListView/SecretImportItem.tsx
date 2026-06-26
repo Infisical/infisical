@@ -169,6 +169,13 @@ export const SecretImportItem = ({
             secretPath={secretImport?.importPath || ""}
             // isReplication={isReplication}
           />
+          {secretImport?.sourceProjectName &&
+            importEnv.projectId &&
+            importEnv.projectId !== currentProject?.id && (
+              <span className="ml-2 rounded border border-yellow-700/40 bg-yellow-900/20 px-1.5 py-0.5 text-xs text-yellow-400">
+                {secretImport.sourceProjectName}
+              </span>
+            )}
         </div>
         <div className="flex items-center space-x-4 py-2 pr-4">
           {lastReplicated && (
@@ -317,6 +324,9 @@ export const SecretImportItem = ({
                     <SecretImportSecretRow
                       secret={secret}
                       key={`${id}-${secret.key}-${index + 1}`}
+                      sourceProjectId={
+                        importEnv.projectId !== currentProject?.id ? importEnv.projectId : undefined
+                      }
                     />
                   ))}
                 </tbody>
