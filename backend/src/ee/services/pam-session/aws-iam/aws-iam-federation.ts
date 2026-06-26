@@ -1,8 +1,9 @@
 import { AssumeRoleCommand, Credentials, STSClient, STSClientConfig } from "@aws-sdk/client-sts";
 
+import axios from "axios";
+
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
@@ -163,7 +164,7 @@ export const exchangeCredentialsForConsoleUrl = async (
   const federationEndpoint = "https://signin.aws.amazon.com/federation";
   const signinTokenUrl = `${federationEndpoint}?Action=getSigninToken&Session=${encodeURIComponent(sessionJson)}`;
 
-  const tokenResponse = await request.get<{ SigninToken?: string }>(signinTokenUrl);
+  const tokenResponse = await axios.get<{ SigninToken?: string }>(signinTokenUrl);
 
   if (!tokenResponse.data.SigninToken) {
     throw new InternalServerError({
