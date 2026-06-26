@@ -459,17 +459,17 @@ export const SecretImportTableRow = ({
   };
 
   const renderRevokedContent = () => (
-    <Empty className="gap-3 border-danger/30 bg-danger/5 p-4 text-danger md:p-4">
+    <Empty>
       <EmptyHeader className="gap-1.5">
         <div className="flex items-center gap-2">
-          <TriangleAlertIcon className="size-4 shrink-0" />
+          <TriangleAlertIcon className="size-4 shrink-0 text-danger" />
           <EmptyTitle>
             {secretImport?.sourceProjectName
-              ? `${secretImport.sourceProjectName} revoked access to these secrets.`
+              ? `"${secretImport.sourceProjectName}" revoked access to these secrets.`
               : "Access to these secrets has been revoked."}
           </EmptyTitle>
         </div>
-        <EmptyDescription className="text-danger/70">
+        <EmptyDescription>
           Imported values can no longer be resolved and any reference to them will fail at build
           time. Re-request access from the source project, or remove this import.
         </EmptyDescription>
