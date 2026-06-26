@@ -462,28 +462,36 @@ export const pamSessionServiceFactory = ({
         folderName: account.folderName
       });
 
-      const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-      await keyStore.setItemWithExpiry(
-        KeyStorePrefixes.PamAwsIamAccessKeyId(session.id),
-        ttlSeconds,
-        stsCredentials.accessKeyId
-      );
-
       await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
-      // metadata carries STS credentials for AWS IAM
-      const metadata: Record<string, string> = {
-        accessKeyId: stsCredentials.accessKeyId,
-        secretAccessKey: stsCredentials.secretAccessKey,
-        sessionToken: stsCredentials.sessionToken,
-        expiresAt: expiresAt.toISOString(),
-        targetRoleArn: rawCredentials.targetRoleArn as string,
-        federatedUsername: actorEmail
-      };
+      const metadata: Record<string, string> = {};
 
-      const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
-      if (awsAccountId) {
-        metadata.awsAccountId = awsAccountId;
+      if (accessMethod === PamAccessMethod.Web) {
+        const consoleUrl = await exchangeCredentialsForConsoleUrl({
+          accessKeyId: stsCredentials.accessKeyId,
+          secretAccessKey: stsCredentials.secretAccessKey,
+          sessionToken: stsCredentials.sessionToken
+        });
+        metadata.consoleUrl = consoleUrl;
+      } else {
+        metadata.accessKeyId = stsCredentials.accessKeyId;
+        metadata.secretAccessKey = stsCredentials.secretAccessKey;
+        metadata.sessionToken = stsCredentials.sessionToken;
+        metadata.expiresAt = expiresAt.toISOString();
+        metadata.targetRoleArn = rawCredentials.targetRoleArn as string;
+        metadata.federatedUsername = actorEmail;
+
+        const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
+        if (awsAccountId) {
+          metadata.awsAccountId = awsAccountId;
+        }
+
+        const ttlSeconds = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+        await keyStore.setItemWithExpiry(
+          KeyStorePrefixes.PamAwsIamAccessKeyId(session.id),
+          ttlSeconds,
+          stsCredentials.accessKeyId
+        );
       }
 
       return {

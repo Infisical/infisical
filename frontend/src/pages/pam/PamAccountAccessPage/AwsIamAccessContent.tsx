@@ -4,12 +4,7 @@ import { Loader2, ShieldAlert, TriangleAlert } from "lucide-react";
 import { Button, Label, TextArea } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
-import {
-  PamPolicyType,
-  TPamAccount,
-  useAccessPamAccount,
-  useGetAwsIamConsoleUrl
-} from "@app/hooks/api/pam";
+import { PamPolicyType, TPamAccount, useAccessPamAccount } from "@app/hooks/api/pam";
 
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
@@ -30,7 +25,6 @@ type Props = {
 
 export const AwsIamAccessContent = ({ account }: Props) => {
   const accessPamAccount = useAccessPamAccount();
-  const getAwsIamConsoleUrl = useGetAwsIamConsoleUrl();
 
   const [step, setStep] = useState<"reason" | "mfa" | "loading" | "error">("reason");
   const [reason, setReason] = useState("");
@@ -59,22 +53,14 @@ export const AwsIamAccessContent = ({ account }: Props) => {
           mfaSessionId
         });
 
-        const md = response.metadata;
-        if (!md?.accessKeyId || !md?.secretAccessKey || !md?.sessionToken) {
-          setErrorMessage("Backend did not return AWS credentials");
+        const consoleUrl = response.metadata?.consoleUrl;
+        if (!consoleUrl) {
+          setErrorMessage("Backend did not return a console URL");
           setStep("error");
           return;
         }
 
         popupRef.current?.close();
-
-        const { consoleUrl } = await getAwsIamConsoleUrl.mutateAsync({
-          sessionId: response.sessionId,
-          accessKeyId: md.accessKeyId,
-          secretAccessKey: md.secretAccessKey,
-          sessionToken: md.sessionToken
-        });
-
         window.location.href = consoleUrl;
       } catch (err: unknown) {
         const axiosErr = err as {
@@ -124,7 +110,7 @@ export const AwsIamAccessContent = ({ account }: Props) => {
         setStep("error");
       }
     },
-    [account.folderName, account.name, reason, accessPamAccount, getAwsIamConsoleUrl]
+    [account.folderName, account.name, reason, accessPamAccount]
   );
 
   const handleReasonSubmit = useCallback(() => {
