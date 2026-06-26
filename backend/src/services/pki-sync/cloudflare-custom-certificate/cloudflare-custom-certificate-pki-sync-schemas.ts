@@ -51,7 +51,7 @@ export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema,
-  syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema.optional().default({}),
+  syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

@@ -52,7 +52,7 @@ export const CreateNetScalerPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: NetScalerPkiSyncConfigSchema,
-  syncOptions: NetScalerPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: NetScalerPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

@@ -93,7 +93,7 @@ export const CreateF5BigIpPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: F5BigIpPkiSyncConfigSchema,
-  syncOptions: F5BigIpPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: F5BigIpPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

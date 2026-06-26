@@ -59,7 +59,7 @@ export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema,
-  syncOptions: AwsCertificateManagerPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AwsCertificateManagerPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

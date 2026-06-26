@@ -73,7 +73,7 @@ export const CreateAwsSecretsManagerPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsSecretsManagerPkiSyncConfigSchema,
-  syncOptions: AwsSecretsManagerPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AwsSecretsManagerPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

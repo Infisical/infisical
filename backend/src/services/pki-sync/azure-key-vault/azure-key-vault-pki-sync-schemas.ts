@@ -53,7 +53,7 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
-  syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AzureKeyVaultPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

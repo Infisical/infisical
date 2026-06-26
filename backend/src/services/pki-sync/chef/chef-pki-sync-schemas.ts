@@ -80,7 +80,7 @@ export const CreateChefPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ChefPkiSyncConfigSchema,
-  syncOptions: ChefPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: ChefPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
