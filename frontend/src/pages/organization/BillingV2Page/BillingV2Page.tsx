@@ -207,7 +207,6 @@ export const BillingV2Page = () => {
               subState={subState}
               onManageSubscription={onManageSubscription}
               onUpgrade={onUpgrade}
-              onRemove={setRemoveProdId}
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
@@ -227,6 +226,7 @@ export const BillingV2Page = () => {
           redirecting={sheetRedirecting}
           onClose={close}
           onManage={onSheetManage}
+          onRemove={setRemoveProdId}
           onContact={() => {
             close();
             onContact();
@@ -239,6 +239,10 @@ export const BillingV2Page = () => {
           orgId={orgId}
           product={removeProd}
           onClose={() => setRemoveProdId(null)}
+          onRemoved={() => {
+            setRemoveProdId(null);
+            close();
+          }}
         />
       )}
 

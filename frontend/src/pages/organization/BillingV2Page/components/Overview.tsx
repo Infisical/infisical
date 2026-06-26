@@ -360,18 +360,10 @@ type ProductRowProps = {
   entitlement?: BillingV2Entitlement;
   readOnly?: boolean;
   onManage: (id: string) => void;
-  onRemove: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductRow = ({
-  prod,
-  entitlement,
-  readOnly,
-  onManage,
-  onRemove,
-  onContact
-}: ProductRowProps) => {
+const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: ProductRowProps) => {
   const entitled = Boolean(entitlement?.entitled);
   let limitNote: string | null = null;
   if (entitled && entitlement && entitlement.limit !== null && entitlement.limit !== undefined) {
@@ -386,16 +378,9 @@ const ProductRow = ({
   if (!readOnly) {
     if (entitled) {
       action = (
-        <>
-          {selfServe && (
-            <Button variant="outline" size="sm" onClick={() => onRemove(prod.id)}>
-              Remove
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => onManage(prod.id)}>
-            Manage
-          </Button>
-        </>
+        <Button variant="outline" size="sm" onClick={() => onManage(prod.id)}>
+          Manage
+        </Button>
       );
     } else if (selfServe) {
       action = (
@@ -440,18 +425,10 @@ type ProductsCardProps = {
   catalog: BillingV2CatalogProduct[];
   readOnly?: boolean;
   onManage: (id: string) => void;
-  onRemove: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductsCard = ({
-  overview,
-  catalog,
-  readOnly,
-  onManage,
-  onRemove,
-  onContact
-}: ProductsCardProps) => (
+const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: ProductsCardProps) => (
   <Card>
     <CardHeader>
       <CardTitle>
@@ -475,7 +452,6 @@ const ProductsCard = ({
               entitlement={overview.entitlements[prod.id]}
               readOnly={readOnly}
               onManage={onManage}
-              onRemove={onRemove}
               onContact={onContact}
             />
           ))}
@@ -739,7 +715,6 @@ export type OverviewProps = {
   subState: BillingV2RenderState;
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
-  onRemove: (productId: string) => void;
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -753,7 +728,6 @@ export const Overview = ({
   subState,
   onManageSubscription,
   onUpgrade,
-  onRemove,
   onUpdatePayment,
   onEditDetails,
   onContact,
@@ -793,7 +767,6 @@ export const Overview = ({
           catalog={catalog}
           readOnly={productsReadOnly}
           onManage={onUpgrade}
-          onRemove={onRemove}
           onContact={onContact}
         />
       </div>
@@ -818,7 +791,6 @@ export const Overview = ({
         catalog={catalog}
         readOnly={productsReadOnly}
         onManage={onUpgrade}
-        onRemove={onRemove}
         onContact={onContact}
       />
       {showPayment && (
