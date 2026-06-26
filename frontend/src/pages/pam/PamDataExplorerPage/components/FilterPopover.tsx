@@ -13,8 +13,9 @@ import {
 } from "@app/components/v3/generic/Select";
 
 import type { ColumnInfo } from "../data-explorer-types";
-import type { FilterCondition, FilterOperator } from "../sql-generation";
+import type { FilterCondition, FilterOperator, SqlDialect } from "../sql-generation";
 
+// TODO: split by dialect when we add more DB engines
 function getFilterPlaceholder(columnType: string, operator: FilterOperator): string {
   switch (operator) {
     case "LIKE":
@@ -30,7 +31,10 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
       break;
   }
 
-  const t = columnType.toLowerCase().replace("[]", "");
+  const t = columnType
+    .toLowerCase()
+    .replace("[]", "")
+    .replace(/\(\d+\)/g, "");
   switch (t) {
     case "int2":
     case "int4":
@@ -41,6 +45,9 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "integer":
     case "bigint":
     case "smallint":
+    case "tinyint":
+    case "mediumint":
+    case "int":
       return "42";
     case "float4":
     case "float8":
@@ -49,6 +56,8 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "real":
     case "double precision":
     case "money":
+    case "float":
+    case "double":
       return "3.14";
     case "bool":
     case "boolean":
@@ -59,6 +68,7 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
       return "2024-01-15";
     case "timestamp":
     case "timestamptz":
+    case "datetime":
       return "2024-01-15 09:30:00";
     case "time":
     case "timetz":
@@ -75,6 +85,10 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "bpchar":
     case "name":
     case "citext":
+    case "tinytext":
+    case "mediumtext":
+    case "longtext":
+    case "enum":
       return "some text";
     default:
       return "Value";
@@ -99,9 +113,15 @@ type FilterPopoverProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
   onFiltersChange: (filters: FilterCondition[]) => Promise<boolean>;
+  dialect: SqlDialect;
 };
 
-export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopoverProps) => {
+export const FilterPopover = ({
+  columns,
+  filters,
+  onFiltersChange,
+  dialect
+}: FilterPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FilterCondition[]>(filters);
   const [isApplying, setIsApplying] = useState(false);
@@ -212,11 +232,13 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      {OPERATORS.map((op) => (
-                        <SelectItem key={op.value} value={op.value}>
-                          {op.label}
-                        </SelectItem>
-                      ))}
+                      {OPERATORS.filter((op) => dialect !== "mysql" || op.value !== "ILIKE").map(
+                        (op) => (
+                          <SelectItem key={op.value} value={op.value}>
+                            {op.label}
+                          </SelectItem>
+                        )
+                      )}
                     </SelectContent>
                   </Select>
 

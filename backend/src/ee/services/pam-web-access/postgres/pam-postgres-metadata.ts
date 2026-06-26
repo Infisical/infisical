@@ -2,13 +2,8 @@ import pg from "pg";
 
 import { logger } from "@app/lib/logger";
 
+import { type OneShotOptions } from "../pam-data-explorer-session-handler";
 import { getSchemasQuery, getTablesQuery } from "./pam-postgres-data-explorer-metadata";
-
-type OneShotOptions = {
-  relayPort: number;
-  username: string;
-  database: string;
-};
 
 const buildClient = ({ relayPort, username, database }: OneShotOptions): pg.Client => {
   const client = new pg.Client({

@@ -5,6 +5,7 @@ import { cn } from "@app/components/v3/utils";
 
 import type { FieldInfo } from "../data-explorer-types";
 import { copyData, exportData } from "../data-export";
+import type { SqlDialect } from "../sql-generation";
 import type { QueryTab } from "../use-query-tabs";
 import { ExportDropdown } from "./ExportDropdown";
 import { QueryResultsTable } from "./QueryResultsTable";
@@ -32,6 +33,7 @@ type Props = {
   cancelQuery: (connectionId: string) => void;
   onSqlChange: (sql: string) => void;
   onTransactionStateChange: (open: boolean) => void;
+  dialect: SqlDialect;
 };
 
 export function QueryPanel({
@@ -39,7 +41,8 @@ export function QueryPanel({
   executeQuery,
   cancelQuery,
   onSqlChange,
-  onTransactionStateChange
+  onTransactionStateChange,
+  dialect
 }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -142,6 +145,7 @@ export function QueryPanel({
             onSqlToRunChange={(s) => {
               sqlToRunRef.current = s;
             }}
+            sqlDialect={dialect}
           />
         </div>
 

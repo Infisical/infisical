@@ -1,5 +1,6 @@
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 
+import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 import { handlePostgresSession } from "./postgres/pam-postgres-session-handler";
 import { handleRdpSession } from "./rdp/pam-rdp-session-handler";
@@ -19,6 +20,10 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.Postgres]: {
     gatewayAccountType: PamAccountType.Postgres,
     handler: handlePostgresSession
+  },
+  [PamAccountType.MySQL]: {
+    gatewayAccountType: PamAccountType.MySQL,
+    handler: handleMysqlSession
   },
   [PamAccountType.SSH]: {
     gatewayAccountType: PamAccountType.SSH,
