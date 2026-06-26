@@ -198,14 +198,16 @@ export const requestWithGitHubGateway = async <T>(
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
+  const url = new URL(requestConfig.url as string);
+
+  // Validate the target host on every request, including the non-gateway path and any
+  // server-provided pagination URLs, before the request is issued.
+  await blockLocalAndPrivateIpAddresses(url.toString());
+
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
     return httpRequest.request(requestConfig);
   }
-
-  const url = new URL(requestConfig.url as string);
-
-  await blockLocalAndPrivateIpAddresses(url.toString());
 
   const [targetHost] = await verifyHostInputValidity({ host: url.host, isGateway: true, isDynamicSecret: false });
 
