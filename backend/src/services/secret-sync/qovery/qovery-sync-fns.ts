@@ -1,6 +1,10 @@
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { getQoveryAuthHeaders, getQoveryInstanceUrl } from "@app/services/app-connection/qovery";
+import {
+  getQoveryAuthHeaders,
+  getQoveryInstanceUrl,
+  paginatedQoveryRequest
+} from "@app/services/app-connection/qovery";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -67,11 +71,9 @@ const listManagedQoveryVariables = async (
   target: TQoverySyncTarget
 ): Promise<TQoveryApiVariable[]> => {
   const url = getQoveryResourceUrl({ instanceUrl, ...target });
-  const { data } = await request.get<{ results?: TQoveryApiVariable[] }>(url, {
-    headers: getQoveryAuthHeaders(accessToken)
-  });
+  const variables = await paginatedQoveryRequest<TQoveryApiVariable>(url, accessToken);
 
-  return (data.results ?? []).filter(
+  return variables.filter(
     (variable) =>
       variable.scope === QOVERY_API_SCOPE[target.scope] &&
       (!variable.variable_type || variable.variable_type === QOVERY_MANAGED_VARIABLE_TYPE)

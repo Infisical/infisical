@@ -18,3 +18,13 @@ export type TQoveryConnectionInput = z.infer<typeof CreateQoveryConnectionSchema
 export type TValidateQoveryConnectionCredentialsSchema = typeof ValidateQoveryConnectionCredentialsSchema;
 
 export type TQoveryConnectionConfig = DiscriminativePick<TQoveryConnectionInput, "method" | "app" | "credentials">;
+
+export type TQoveryPaginatedResponse<T> = {
+  results?: T[];
+  pagination?: {
+    page: number;
+    page_size: number;
+    total_count: number;
+    total_pages: number;
+  };
+};

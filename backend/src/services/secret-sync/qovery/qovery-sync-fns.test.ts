@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { AxiosResponse } from "axios";
+import { AxiosError, AxiosResponse } from "axios";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { request } from "@app/lib/config/request";
+import { applyJitter, delay } from "@app/lib/delay";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
 import { QoverySyncScope, QoveryVariableType } from "./qovery-sync-enums";
@@ -21,18 +22,25 @@ vi.mock("@app/lib/config/request", () => ({
   }
 }));
 
-// Resolve the base URL without the SSRF/DNS check the real helper performs, and reuse the real
-// auth-header builder that the sync now imports from the connection module.
-vi.mock("@app/services/app-connection/qovery", () => ({
-  getQoveryInstanceUrl: vi.fn(
-    async (connection: { credentials: { instanceUrl?: string } }) =>
-      connection.credentials.instanceUrl ?? "https://api.qovery.com"
-  ),
-  getQoveryAuthHeaders: (accessToken: string) => ({
-    Authorization: `Token ${accessToken}`,
-    Accept: "application/json"
-  })
+// Make the 429 retry's sleep instant; stub applyJitter to the identity so the awaited delay is deterministic.
+vi.mock("@app/lib/delay", () => ({
+  delay: vi.fn().mockResolvedValue(undefined),
+  applyJitter: vi.fn((ms: number) => ms)
 }));
+
+// Keep the real connection module so the real paginatedQoveryRequest pagination + 429 retry runs, but
+// stub getQoveryInstanceUrl to skip the SSRF/DNS check the real helper performs.
+vi.mock("@app/services/app-connection/qovery", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/services/app-connection/qovery")>();
+
+  return {
+    ...actual,
+    getQoveryInstanceUrl: vi.fn(
+      async (connection: { credentials: { instanceUrl?: string } }) =>
+        connection.credentials.instanceUrl ?? "https://api.qovery.com"
+    )
+  };
+});
 
 // keySchema filtering is exercised elsewhere; here every key is considered a match.
 vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
@@ -42,6 +50,15 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
 const ACCESS_TOKEN = "test-token";
 
 const listResponse = (results: TQoveryApiVariable[]) => ({ data: { results } }) as unknown as AxiosResponse;
+
+const pagedListResponse = (results: TQoveryApiVariable[], pagination: { page: number; total_pages: number }) =>
+  ({ data: { results, pagination: { ...pagination, page_size: 100, total_count: 0 } } }) as unknown as AxiosResponse;
+
+const tooManyRequests = () =>
+  new AxiosError("Too Many Requests", "ERR_BAD_REQUEST", undefined, undefined, {
+    status: 429,
+    headers: {}
+  } as unknown as AxiosResponse);
 
 const expectedAuth = expect.objectContaining({
   headers: expect.objectContaining({ Authorization: `Token ${ACCESS_TOKEN}`, Accept: "application/json" })
@@ -335,6 +352,76 @@ describe("QoverySyncFns.removeSecrets", () => {
 
     expect(request.delete).toHaveBeenCalledTimes(1);
     expect(request.delete).toHaveBeenCalledWith("https://api.qovery.com/project/proj-1/secret/v1", expectedAuth);
+  });
+});
+
+describe("QoverySyncFns pagination", () => {
+  test("walks every page of managed variables and reconciles entries from all pages", async () => {
+    vi.mocked(request.get)
+      .mockResolvedValueOnce(
+        pagedListResponse([{ id: "v1", key: "FOO", scope: "PROJECT", variable_type: "VALUE" }], {
+          page: 1,
+          total_pages: 2
+        })
+      )
+      .mockResolvedValueOnce(
+        pagedListResponse([{ id: "v2", key: "BAR", scope: "PROJECT", variable_type: "VALUE" }], {
+          page: 2,
+          total_pages: 2
+        })
+      );
+
+    await QoverySyncFns.removeSecrets(buildSecretSync({ variableType: QoveryVariableType.Secret }), {
+      FOO: { value: "x" },
+      BAR: { value: "y" }
+    });
+
+    // Both pages were fetched, in order, with the page/page_size query params.
+    expect(request.get).toHaveBeenCalledTimes(2);
+    expect(request.get).toHaveBeenNthCalledWith(
+      1,
+      "https://api.qovery.com/project/proj-1/secret",
+      expect.objectContaining({ params: { page: 1, page_size: 100 } })
+    );
+    expect(request.get).toHaveBeenNthCalledWith(
+      2,
+      "https://api.qovery.com/project/proj-1/secret",
+      expect.objectContaining({ params: { page: 2, page_size: 100 } })
+    );
+
+    // Entries discovered across both pages are reconciled.
+    expect(request.delete).toHaveBeenCalledTimes(2);
+    expect(request.delete).toHaveBeenCalledWith("https://api.qovery.com/project/proj-1/secret/v1", expectedAuth);
+    expect(request.delete).toHaveBeenCalledWith("https://api.qovery.com/project/proj-1/secret/v2", expectedAuth);
+  });
+});
+
+describe("QoverySyncFns rate limiting", () => {
+  test("sleeps with jitter and retries the listing after a 429, then succeeds", async () => {
+    vi.mocked(request.get)
+      .mockRejectedValueOnce(tooManyRequests())
+      .mockResolvedValueOnce(listResponse([{ id: "v1", key: "FOO", scope: "PROJECT", variable_type: "VALUE" }]));
+
+    await QoverySyncFns.removeSecrets(buildSecretSync({ variableType: QoveryVariableType.Secret }), {
+      FOO: { value: "x" }
+    });
+
+    // First GET was rate-limited; after one jittered sleep the retry succeeded and the entry was reconciled.
+    expect(request.get).toHaveBeenCalledTimes(2);
+    expect(applyJitter).toHaveBeenCalledWith(2000);
+    expect(delay).toHaveBeenCalledTimes(1);
+    expect(request.delete).toHaveBeenCalledWith("https://api.qovery.com/project/proj-1/secret/v1", expectedAuth);
+  });
+
+  test("surfaces the error after exhausting retries", async () => {
+    vi.mocked(request.get).mockRejectedValue(tooManyRequests());
+
+    await expect(
+      QoverySyncFns.removeSecrets(buildSecretSync({ variableType: QoveryVariableType.Secret }), { FOO: { value: "x" } })
+    ).rejects.toBeInstanceOf(AxiosError);
+
+    // 1 initial attempt + 5 retries.
+    expect(request.get).toHaveBeenCalledTimes(6);
   });
 });
 
