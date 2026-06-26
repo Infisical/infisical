@@ -295,6 +295,7 @@ export const pkiSyncQueueFactory = ({
                   certificateId: certificate.id,
                   profileId: cert.profileId,
                   applicationId: pkiSync.applicationId,
+                  applicationName: pkiSync.applicationName,
                   commonName: cert.commonName
                 },
                 pkiSync.destination as PkiSync
