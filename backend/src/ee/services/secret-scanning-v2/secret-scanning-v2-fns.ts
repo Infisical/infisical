@@ -83,6 +83,7 @@ const writeGitAskPassScript = async (askPassPath: string) => {
     ].join("\n"),
     { mode: 0o700 }
   );
+  // writeFile's mode can be masked by process umask; chmod enforces the executable bit for Git.
   await chmod(askPassPath, 0o700);
 };
 
@@ -113,13 +114,17 @@ export const cloneRepository = async ({ remoteUrl, repoPath, auth }: TCloneRepos
       ["-c", "credential.helper=", "clone", remoteUrl, repoPath, "--bare"],
       { env: getGitCloneEnv(auth, askPassPath) },
       (error) => {
-        void cleanupAskPass().then(() => {
-          if (error) {
-            reject(new Error(sanitizeErrorMessage(error.message || "An unknown error occurred.")));
-          } else {
-            resolve();
-          }
-        }, reject);
+        void cleanupAskPass()
+          .catch(() => {
+            // Cleanup must not replace the git clone result with a filesystem error.
+          })
+          .then(() => {
+            if (error) {
+              reject(new Error(sanitizeErrorMessage(error.message || "An unknown error occurred.")));
+            } else {
+              resolve();
+            }
+          });
       }
     );
   });

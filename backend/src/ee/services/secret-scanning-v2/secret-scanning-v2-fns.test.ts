@@ -5,13 +5,25 @@ import { cloneRepository, parseScanErrorMessage } from "./secret-scanning-v2-fns
 type ExecFileCallback = (err: Error | null) => void;
 type ExecFileCall = [string, string[], { env?: NodeJS.ProcessEnv }, ExecFileCallback];
 
-const { execFileMock } = vi.hoisted(() => ({
-  execFileMock: vi.fn<(...args: ExecFileCall) => void>()
+const { execFileMock, rmMock } = vi.hoisted(() => ({
+  execFileMock: vi.fn<(...args: ExecFileCall) => void>(),
+  rmMock: vi.fn()
 }));
 
 vi.mock("child_process", () => ({
   execFile: execFileMock
 }));
+
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("fs/promises")>();
+
+  rmMock.mockImplementation(actual.rm);
+
+  return {
+    ...actual,
+    rm: rmMock
+  };
+});
 
 const repoPath = "/tmp/infisical-secret-scanning-test-repo.git";
 const fakeToken = "ghs_fake_secret_token";
@@ -148,6 +160,48 @@ describe("secret scanning v2 git clone auth", () => {
 
     resolveLastExecFileCall();
     await expect(clonePromise).resolves.toBeUndefined();
+  });
+
+  it("does not fail a successful clone when askpass cleanup fails", async () => {
+    rmMock.mockRejectedValueOnce(new Error("EPERM cleanup failed"));
+
+    const clonePromise = cloneRepository({
+      remoteUrl: "https://github.com/infisical/infisical.git",
+      repoPath,
+      auth: {
+        username: "x-access-token",
+        password: fakeToken
+      }
+    });
+    void clonePromise.catch(() => undefined);
+
+    await waitForLastExecFileCall();
+
+    resolveLastExecFileCall();
+
+    await expect(clonePromise).resolves.toBeUndefined();
+  });
+
+  it("does not replace sanitized clone failures with askpass cleanup errors", async () => {
+    rmMock.mockRejectedValueOnce(new Error(`EPERM cleanup failed: ${fakeToken}`));
+
+    const clonePromise = cloneRepository({
+      remoteUrl: "https://github.com/infisical/infisical.git",
+      repoPath,
+      auth: {
+        username: "x-access-token",
+        password: fakeToken
+      }
+    });
+    void clonePromise.catch(() => undefined);
+
+    await waitForLastExecFileCall();
+
+    resolveLastExecFileCall(new Error(`Command failed: git clone ${credentialedGitHubUrl}`));
+
+    await expect(clonePromise).rejects.toThrow("https://[redacted]@github.com/infisical/infisical.git");
+    await expect(clonePromise).rejects.not.toThrow("EPERM cleanup failed");
+    await expect(clonePromise).rejects.not.toThrow(fakeToken);
   });
 
   it("rejects clone failures with a sanitized error", async () => {
