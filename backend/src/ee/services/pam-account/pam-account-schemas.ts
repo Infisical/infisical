@@ -406,9 +406,9 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
-  [PamAccountType.ActiveDirectory]: {
-    name: "Active Directory",
-    icon: "Windows.png",
+  [PamAccountType.WindowsAd]: {
+    name: "Windows AD",
+    icon: "ActiveDirectory.png",
     connectionDetails: z.object({
       domain: z.string().trim().min(1).max(255),
       dcAddress: z.string().trim().min(1).max(255),
@@ -428,8 +428,16 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: z.string()
     }),
     ui: {
+      domain: {
+        label: "FQDN",
+        tooltip: "The fully qualified domain name of the Active Directory domain (e.g. corp.example.com)."
+      },
       dcAddress: { label: "DC Address" },
-      hosts: { label: "Allowed Hosts", widget: PamFieldWidget.Textarea },
+      hosts: {
+        label: "Allowed Hosts",
+        widget: PamFieldWidget.Textarea,
+        tooltip: "Hostnames or IP addresses this account is allowed to connect to. One per line or comma-separated."
+      },
       port: { label: "LDAP Port", defaultValue: 389 },
       rdpPort: { label: "RDP Port", defaultValue: 3389 },
       useLdaps: { label: "Use LDAPS" },
@@ -548,7 +556,7 @@ export const extractGatewayTarget = async (
       }
       return { host: firstHost, port: 27017 };
     }
-    case PamAccountType.ActiveDirectory:
+    case PamAccountType.WindowsAd:
       return {
         host: (validated as { hosts: string[]; rdpPort: number }).hosts[0],
         port: (validated as { hosts: string[]; rdpPort: number }).rdpPort
@@ -567,7 +575,7 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
-  accountType === PamAccountType.Windows || accountType === PamAccountType.ActiveDirectory;
+  accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd;
 
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;

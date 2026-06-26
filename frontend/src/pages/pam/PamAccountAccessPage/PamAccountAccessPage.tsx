@@ -125,7 +125,7 @@ const PageContent = () => {
         }
         if (
           account.accountType === PamAccountType.Windows ||
-          account.accountType === PamAccountType.ActiveDirectory
+          account.accountType === PamAccountType.WindowsAd
         ) {
           return <RdpContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
         }

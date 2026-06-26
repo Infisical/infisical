@@ -445,7 +445,7 @@ export const pamWebAccessServiceFactory = ({
       };
 
       const isRdp =
-        account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.ActiveDirectory;
+        account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
 
       relayServer = await setupRelayServer({
         protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
