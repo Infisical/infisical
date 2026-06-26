@@ -198,15 +198,20 @@ export const requestWithGitHubGateway = async <T>(
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
-  const url = new URL(requestConfig.url as string);
+  if (!requestConfig.url) {
+    throw new BadRequestError({ message: "GitHub connection request is missing a target URL" });
+  }
+
+  const url = new URL(requestConfig.url);
 
   // Validate the target host on every request, including the non-gateway path and any
   // server-provided pagination URLs, before the request is issued.
   await blockLocalAndPrivateIpAddresses(url.toString());
 
-  // If gateway isn't set up, don't proxy request
+  // If gateway isn't set up, don't proxy request. Do not follow redirects here, so the
+  // validated host is the one that is actually contacted.
   if (!gatewayId) {
-    return httpRequest.request(requestConfig);
+    return httpRequest.request({ ...requestConfig, maxRedirects: 0 });
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.host, isGateway: true, isDynamicSecret: false });

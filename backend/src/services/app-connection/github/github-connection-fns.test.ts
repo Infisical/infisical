@@ -55,6 +55,19 @@ describe("requestWithGitHubGateway — non-gateway SSRF guard", () => {
     expect(blockMock).toHaveBeenCalledWith("https://api.github.com/user/repos");
     expect(requestMock).toHaveBeenCalledTimes(1);
     expect(blockMock.mock.invocationCallOrder[0]).toBeLessThan(requestMock.mock.invocationCallOrder[0]);
+    // Redirects must not be followed, so the request cannot be redirected off the validated host.
+    expect(requestMock).toHaveBeenCalledWith(expect.objectContaining({ maxRedirects: 0 }));
+  });
+
+  it("rejects a request with no URL instead of throwing a raw TypeError", async () => {
+    blockMock.mockResolvedValue(undefined);
+
+    await expect(
+      requestWithGitHubGateway({ gatewayId: null }, {} as any, {} as any, { method: "GET" })
+    ).rejects.toThrow(/missing a target URL/);
+
+    expect(blockMock).not.toHaveBeenCalled();
+    expect(requestMock).not.toHaveBeenCalled();
   });
 
   it("does not issue the request when the host guard rejects (non-gateway path)", async () => {
