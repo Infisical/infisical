@@ -26,6 +26,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
+import { TProjectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -90,6 +91,7 @@ type TSecretReplicationServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -137,6 +139,7 @@ export const secretReplicationServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   folderCommitService,
+  projectGrantDAL,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -288,7 +291,16 @@ export const secretReplicationServiceFactory = ({
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         viewSecretValue: true,
-        hasSecretAccess: () => true
+        hasSecretAccess: () => true,
+        projectId,
+        projectGrantDAL,
+        getProjectDecryptor: async (sourceProjectId: string) => {
+          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: sourceProjectId
+          });
+          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+        }
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({

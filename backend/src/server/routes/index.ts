@@ -1827,7 +1827,8 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
-    telemetryService
+    telemetryService,
+    projectGrantDAL
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1871,7 +1872,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     telemetryService,
-    projectEventsService
+    projectEventsService,
+    projectGrantDAL
   });
 
   const projectService = projectServiceFactory({
@@ -1993,6 +1995,7 @@ export const registerRoutes = async (
     projectGrantDAL,
     folderDAL,
     projectDAL,
+    orgDAL,
     permissionService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
@@ -2023,7 +2026,8 @@ export const registerRoutes = async (
     reminderService,
     reminderDAL,
     keyStore,
-    secretValidationRuleService
+    secretValidationRuleService,
+    projectGrantDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -2179,7 +2183,8 @@ export const registerRoutes = async (
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
     secretVersionV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    projectGrantDAL
   });
 
   const integrationService = integrationServiceFactory({
@@ -2193,7 +2198,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretImportDAL,
     secretDAL,
-    kmsService
+    kmsService,
+    projectGrantDAL
   });
 
   const accessTokenQueue = accessTokenQueueServiceFactory({
