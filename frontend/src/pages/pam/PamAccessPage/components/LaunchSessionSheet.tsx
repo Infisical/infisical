@@ -68,9 +68,9 @@ const LaunchTab = ({
   );
   const hostMissing = needsHost && !selectedHost;
 
-  const cliHost = selectedHost ?? (needsHost ? "<host>" : undefined);
+  const cliHost = selectedHost ?? (needsHost ? "HOST" : undefined);
   const cliCommand = `infisical pam access ${account.folderName}/${account.name}${
-    cliHost ? ` --target ${cliHost}` : ""
+    cliHost ? ` --target '${cliHost}'` : ""
   }`;
   const handleCopyCommand = async () => {
     await navigator.clipboard.writeText(cliCommand);

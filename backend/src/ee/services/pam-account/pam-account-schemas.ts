@@ -43,9 +43,10 @@ const normalizeDelimitedStringList = (value: unknown): unknown => {
   return items;
 };
 
+const hostPattern = new RE2(/^[A-Za-z0-9.:_-]+$/);
 const delimitedStringList = z.preprocess(
   normalizeDelimitedStringList,
-  z.array(z.string().trim().min(1).max(255)).min(1)
+  z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1)
 );
 
 // Source of truth for account types: per-type schemas + sparse UI hints

@@ -29,10 +29,13 @@ const getSelectableHosts = (account: TPamAccount): string[] => {
 
 export const RdpLauncher = ({ account, reason, mfaSessionId, preselectedHost }: Props) => {
   const hosts = useMemo(() => getSelectableHosts(account), [account]);
-  const needsPicker = hosts.length > 1 && !preselectedHost;
+
+  const validPreselectedHost =
+    preselectedHost && hosts.includes(preselectedHost) ? preselectedHost : undefined;
+  const needsPicker = hosts.length > 1 && !validPreselectedHost;
 
   const [selectedHost, setSelectedHost] = useState<string | undefined>(
-    preselectedHost ?? (hosts.length > 1 ? undefined : hosts[0])
+    validPreselectedHost ?? (hosts.length > 1 ? undefined : hosts[0])
   );
   const [pendingHost, setPendingHost] = useState<string>(hosts[0] ?? "");
 
