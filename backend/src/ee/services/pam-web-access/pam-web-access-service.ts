@@ -164,11 +164,6 @@ export const pamWebAccessServiceFactory = ({
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
-    enforceRecordingConfig(account);
-
-    const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-    const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
-
     await checkAccountAccess(
       permissionService,
       accountId,
@@ -182,6 +177,11 @@ export const pamWebAccessServiceFactory = ({
         actorAuthMethod: actor.authMethod
       }
     );
+
+    enforceRecordingConfig(account);
+
+    const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
     const trimmedReason = reason?.trim() || null;
 
