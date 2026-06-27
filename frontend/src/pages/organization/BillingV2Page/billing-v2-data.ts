@@ -33,6 +33,14 @@ export const cadenceWord = (cad: BillingV2Cadence): string => {
   return "month";
 };
 
+// Abbreviated cadence used beside per-unit dimension prices (e.g. "$5 per MCP / mo").
+export const cadenceWordShort = (cad: BillingV2Cadence): string => {
+  if (cad === "annual") {
+    return "yr";
+  }
+  return "mo";
+};
+
 // Maps the real overview interval onto the catalog cadence used for marketing prices.
 export const intervalToCadence = (interval: "month" | "year" | null): BillingV2Cadence => {
   if (interval === "year") {

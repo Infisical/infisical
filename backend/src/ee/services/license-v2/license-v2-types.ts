@@ -17,8 +17,8 @@ export type BillingV2Dim = {
 
 export type BillingV2CompareRow = {
   label: string;
-  pro: string | boolean;
-  ent: string | boolean;
+  pro: string | boolean | number;
+  ent: string | boolean | number;
 };
 
 export type BillingV2CatalogProduct = {
