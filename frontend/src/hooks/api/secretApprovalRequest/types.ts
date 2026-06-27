@@ -64,6 +64,8 @@ export type TSecretApprovalRequest = {
   secretPath: string;
   hasMerged: boolean;
   status: "open" | "close";
+  // Set when the request was merged without satisfying the policy's required approvals.
+  bypassReason?: string | null;
   policy: Omit<TSecretApprovalPolicy, "approvers" | "bypassers"> & {
     approvers: {
       isOrgMembershipActive: boolean;

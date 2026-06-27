@@ -520,7 +520,6 @@ const Form = ({
   const renderApproverSelect = (index: number) => (
     <FilterableSelect
       menuPosition="fixed"
-      menuPlacement="top"
       isMulti
       placeholder="Select members or groups..."
       options={approverOptions}
@@ -864,7 +863,6 @@ const Form = ({
             <FieldLabel>Approvers</FieldLabel>
             <FieldContent>
               <FilterableSelect
-                menuPlacement="top"
                 isMulti
                 placeholder="Select members or groups..."
                 options={approverOptions}
@@ -934,7 +932,6 @@ const Form = ({
               <FieldLabel>Bypassers</FieldLabel>
               <FieldContent>
                 <FilterableSelect
-                  menuPlacement="top"
                   isMulti
                   placeholder="Select members or groups..."
                   options={bypasserOptions}

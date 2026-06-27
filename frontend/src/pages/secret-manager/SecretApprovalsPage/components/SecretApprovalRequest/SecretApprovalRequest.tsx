@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
@@ -81,6 +82,7 @@ import {
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { ApprovalStatus } from "@app/hooks/api/types";
 
 import {
@@ -186,6 +188,7 @@ const FilterMenu = ({
 
 export const SecretApprovalRequest = () => {
   const { currentProject, projectId } = useProject();
+  const queryClient = useQueryClient();
 
   const navigate = useNavigate({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.path
@@ -273,7 +276,21 @@ export const SecretApprovalRequest = () => {
           <div className="mb-4 flex flex-wrap items-center gap-2 2xl:flex-nowrap">
             <Tabs
               value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as "open" | "close")}
+              onValueChange={(value) => {
+                setStatusFilter(value as "open" | "close");
+                // Refetch both the lists and the open/closed counts on toggle so
+                // the table rows and the tab-label counts reflect changes made
+                // elsewhere. The target list is inactive here and the count query
+                // only polls every 30s, so type: "all" forces both immediately.
+                queryClient.refetchQueries({
+                  queryKey: secretApprovalRequestKeys.listAllForProject({ projectId }),
+                  type: "all"
+                });
+                queryClient.refetchQueries({
+                  queryKey: secretApprovalRequestKeys.count({ projectId }),
+                  type: "all"
+                });
+              }}
             >
               <TabsList variant="filled">
                 <TabsTrigger value="open">

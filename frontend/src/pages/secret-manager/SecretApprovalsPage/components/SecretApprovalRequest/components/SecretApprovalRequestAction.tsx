@@ -43,6 +43,7 @@ type Props = {
   isBypasser: boolean;
   statusChangeByEmail?: string;
   enforcementLevel: EnforcementLevel;
+  bypassReason?: string | null;
 };
 
 export const SecretApprovalRequestAction = ({
@@ -55,7 +56,8 @@ export const SecretApprovalRequestAction = ({
   enforcementLevel,
   canApprove,
   isCommitter,
-  isBypasser
+  isBypasser,
+  bypassReason
 }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
@@ -65,7 +67,7 @@ export const SecretApprovalRequestAction = ({
     useUpdateSecretApprovalRequestStatus();
 
   const [byPassApproval, setByPassApproval] = useState(false);
-  const [bypassReason, setBypassReason] = useState("");
+  const [bypassReasonInput, setBypassReasonInput] = useState("");
 
   const isValidBypassReason = (value: string) => value.trim().length >= 10;
 
@@ -73,7 +75,7 @@ export const SecretApprovalRequestAction = ({
     await performSecretApprovalMerge({
       id: approvalRequestId,
       projectId,
-      bypassReason: byPassApproval ? bypassReason : undefined
+      bypassReason: byPassApproval ? bypassReasonInput : undefined
     });
     createNotification({
       type: "success",
@@ -126,8 +128,8 @@ export const SecretApprovalRequestAction = ({
                 </FieldLabel>
                 <Input
                   id="bypassReason"
-                  value={bypassReason}
-                  onChange={(e) => setBypassReason(e.target.value)}
+                  value={bypassReasonInput}
+                  onChange={(e) => setBypassReasonInput(e.target.value)}
                   placeholder="Enter reason for bypass (min 10 chars)"
                 />
               </Field>
@@ -169,7 +171,7 @@ export const SecretApprovalRequestAction = ({
                 isDisabled={
                   !(
                     (isMergable && canApprove) ||
-                    (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReason))
+                    (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReasonInput))
                   )
                 }
                 isPending={isMerging}
@@ -189,7 +191,24 @@ export const SecretApprovalRequestAction = ({
     );
   }
 
-  if (hasMerged && status === "close")
+  if (hasMerged && status === "close") {
+    if (bypassReason)
+      return (
+        <Alert variant="warning">
+          <ShieldAlertIcon />
+          <AlertTitle>Change request merged via bypass</AlertTitle>
+          <AlertDescription>
+            <span>
+              {statusChangeByEmail ? `Merged by ${statusChangeByEmail}` : "Merged"} without the
+              required approvals.
+            </span>
+            <span className="break-words">
+              <span className="font-medium text-warning">Reason:</span> {bypassReason}
+            </span>
+          </AlertDescription>
+        </Alert>
+      );
+
     return (
       <Alert variant="success">
         <CheckIcon />
@@ -199,6 +218,7 @@ export const SecretApprovalRequestAction = ({
         )}
       </Alert>
     );
+  }
 
   return (
     <Alert variant="warning">

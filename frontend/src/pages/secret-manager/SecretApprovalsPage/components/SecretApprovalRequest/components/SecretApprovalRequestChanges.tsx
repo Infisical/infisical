@@ -12,6 +12,7 @@ import {
   InfoIcon,
   KeyRoundIcon,
   MessageSquareIcon,
+  ShieldAlertIcon,
   UserXIcon
 } from "lucide-react";
 
@@ -42,6 +43,9 @@ import {
   ItemContent,
   ItemGroup,
   ItemSeparator,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -141,13 +145,13 @@ export const SecretApprovalRequestChanges = ({
   const { currentProject, projectId } = useProject();
   const [comment, setComment] = useState("");
   const [willMerge, setWillMerge] = useState(false);
-  const [isEditingReview, setIsEditingReview] = useState(false);
+  const [isReviewPopoverOpen, setIsReviewPopoverOpen] = useState(false);
 
   // Reset the review draft whenever the request changes (or the sheet closes, which
   // sets approvalRequestId to "") so state never carries over to a different request.
   useEffect(() => {
     setComment("");
-    setIsEditingReview(false);
+    setIsReviewPopoverOpen(false);
   }, [approvalRequestId]);
 
   const { data: secretApprovalRequestDetails, isPending: isLoading } =
@@ -193,7 +197,7 @@ export const SecretApprovalRequestChanges = ({
       text: `Successfully ${status} the request`
     });
     setComment("");
-    setIsEditingReview(false);
+    setIsReviewPopoverOpen(false);
   };
 
   const handleApproveAndMerge = async () => {
@@ -257,7 +261,13 @@ export const SecretApprovalRequestChanges = ({
   const actionInFlight = isUpdatingRequestStatus || willMerge;
 
   const myReview = reviewedUsers?.[userSession.id];
-  const showReviewForm = !myReview || isEditingReview;
+
+  // Opening the review popover (via the "Review changes" / "Update review" trigger) seeds the
+  // draft with any existing review comment so editing starts from the current value.
+  const handleReviewPopoverOpenChange = (open: boolean) => {
+    if (open) setComment(myReview?.comment ?? "");
+    setIsReviewPopoverOpen(open);
+  };
 
   const canReview = Boolean(
     secretApprovalRequestDetails &&
@@ -266,6 +276,41 @@ export const SecretApprovalRequestChanges = ({
       !shouldBlockSelfReview &&
       canApprove
   );
+
+  const importSource = `${replicatedImport?.importEnv?.slug ?? ""} ${
+    replicatedImport?.importPath ?? ""
+  }`.trim();
+  const isReplicated = secretApprovalRequestDetails?.isReplicated;
+  const getChangesStatusAlert = () => {
+    if (hasMerged) {
+      return {
+        variant: "success" as const,
+        icon: <CheckIcon />,
+        title: isReplicated
+          ? `These changes were approved and added to the secret import from ${importSource}.`
+          : "These secret changes were approved and applied to the target environment and path."
+      };
+    }
+
+    if (secretApprovalRequestDetails?.status === "close") {
+      return {
+        variant: "danger" as const,
+        icon: <GitPullRequestClosedIcon />,
+        title: isReplicated
+          ? "This change request was closed. These changes were not added to the secret import."
+          : "This change request was closed. These secret changes were not applied to the target environment and path."
+      };
+    }
+
+    return {
+      variant: "info" as const,
+      icon: <InfoIcon />,
+      title: isReplicated
+        ? `A secret import in this environment has pending changes from its source at ${importSource}. Approving will add them to that import.`
+        : "These secret changes are pending approval. Approving will apply them to the target environment and path."
+    };
+  };
+  const changesStatusAlert = getChangesStatusAlert();
 
   const committerUser = secretApprovalRequestDetails?.committerUser;
   const environmentName = secretApprovalRequestDetails
@@ -305,112 +350,109 @@ export const SecretApprovalRequestChanges = ({
       ]
     : [];
 
+  const reviewForm = (
+    <div className="flex flex-col gap-3">
+      <span className="text-sm font-medium text-foreground">
+        {myReview ? "Update your review" : "Finish your review"}
+      </span>
+      <Field>
+        <FieldLabel htmlFor="review-comment">Comment (optional)</FieldLabel>
+        <TextArea
+          id="review-comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Leave a comment..."
+          rows={3}
+        />
+      </Field>
+      <div className="flex gap-2">
+        <ButtonGroup>
+          <Button
+            variant="project"
+            size="sm"
+            isPending={isApproving && !willMerge}
+            isDisabled={actionInFlight}
+            onClick={() => handleReview(ApprovalStatus.APPROVED)}
+          >
+            <CheckIcon />
+            Approve
+          </Button>
+          {isMergableUponApprove && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  variant="project"
+                  size="sm"
+                  aria-label="More approval options"
+                  isDisabled={actionInFlight}
+                >
+                  <ChevronDownIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[80]">
+                <DropdownMenuItem onClick={handleApproveAndMerge}>
+                  <GitMergeIcon />
+                  Approve & Merge
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </ButtonGroup>
+        <Button
+          variant="danger"
+          size="sm"
+          isPending={isRejecting}
+          isDisabled={actionInFlight}
+          onClick={() => handleReview(ApprovalStatus.REJECTED)}
+        >
+          <BanIcon />
+          Reject
+        </Button>
+      </div>
+    </div>
+  );
+
+  // GitHub-style review entry point that opens the review form in a popover. When the user has
+  // already reviewed, the "Update Review" button sits top-right of the "Your review" section
+  // header; otherwise the "Review Changes" button sits below the prompt.
+  const reviewPopover = canReview ? (
+    <Popover open={isReviewPopoverOpen} onOpenChange={handleReviewPopoverOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant={myReview ? "outline" : "project"} size="sm" className="shrink-0">
+          <GitPullRequestIcon />
+          {myReview ? "Update Review" : "Review Changes"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align={myReview ? "end" : "start"} className="z-[70] w-96">
+        {reviewForm}
+      </PopoverContent>
+    </Popover>
+  ) : null;
+
   const reviewControls = canReview ? (
     <div className="-mx-4 mt-auto flex shrink-0 flex-col gap-3 border-t border-border px-4 pt-4">
-      {showReviewForm ? (
-        <>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {myReview ? "Update your review" : "Your review"}
-            </span>
-            {myReview && (
-              <Button
-                variant="ghost"
-                size="xs"
-                isDisabled={actionInFlight}
-                onClick={() => {
-                  setComment("");
-                  setIsEditingReview(false);
-                }}
-              >
-                Cancel
-              </Button>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-foreground">Your review</span>
+        {myReview && reviewPopover}
+      </div>
+      {myReview ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            {getReviewStatusBadge(myReview.status)}
+            {myReview.createdAt && (
+              <span className="text-xs text-muted">
+                {format(new Date(myReview.createdAt), "MMM d, yyyy h:mm aa")}
+              </span>
             )}
           </div>
-          <Field>
-            <FieldLabel htmlFor="review-comment">Comment (optional)</FieldLabel>
-            <TextArea
-              id="review-comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Leave a comment..."
-              rows={3}
-            />
-          </Field>
-          <div className="flex gap-2">
-            <ButtonGroup>
-              <Button
-                variant="project"
-                size="sm"
-                isPending={isApproving && !willMerge}
-                isDisabled={actionInFlight}
-                onClick={() => handleReview(ApprovalStatus.APPROVED)}
-              >
-                <CheckIcon />
-                Approve
-              </Button>
-              {isMergableUponApprove && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      variant="project"
-                      size="sm"
-                      aria-label="More approval options"
-                      isDisabled={actionInFlight}
-                    >
-                      <ChevronDownIcon />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleApproveAndMerge}>
-                      <GitMergeIcon />
-                      Approve & Merge
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </ButtonGroup>
-            <Button
-              variant="danger"
-              size="sm"
-              isPending={isRejecting}
-              isDisabled={actionInFlight}
-              onClick={() => handleReview(ApprovalStatus.REJECTED)}
-            >
-              <BanIcon />
-              Reject
-            </Button>
-          </div>
-        </>
+          {myReview.comment && (
+            <p className="text-sm whitespace-pre-wrap text-foreground/75">{myReview.comment}</p>
+          )}
+        </div>
       ) : (
         <>
-          <span className="text-sm font-medium text-foreground">Your review</span>
-          <div className="flex flex-col gap-2 rounded-md border border-border bg-foreground/5 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex flex-col gap-2">
-                {getReviewStatusBadge(myReview?.status)}
-                {myReview?.createdAt && (
-                  <span className="text-xs text-muted">
-                    {format(new Date(myReview.createdAt), "MMM d, yyyy h:mm aa")}
-                  </span>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="xs"
-                isDisabled={actionInFlight}
-                onClick={() => {
-                  setComment(myReview?.comment ?? "");
-                  setIsEditingReview(true);
-                }}
-              >
-                Change review
-              </Button>
-            </div>
-            {myReview?.comment && (
-              <p className="text-sm whitespace-pre-wrap text-foreground/75">{myReview.comment}</p>
-            )}
-          </div>
+          <p className="text-sm text-muted">You haven&apos;t reviewed these changes yet.</p>
+          <div className="flex">{reviewPopover}</div>
         </>
       )}
     </div>
@@ -472,10 +514,25 @@ export const SecretApprovalRequestChanges = ({
                   <DetailValue>
                     {" "}
                     {hasMerged ? (
-                      <Badge variant="success">
-                        <GitMergeIcon />
-                        Merged
-                      </Badge>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant="success">
+                          <GitMergeIcon />
+                          Merged
+                        </Badge>
+                        {secretApprovalRequestDetails.bypassReason && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Badge variant="warning">
+                                  <ShieldAlertIcon />
+                                  Bypassed
+                                </Badge>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Merged without the required approvals.</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </span>
                     ) : secretApprovalRequestDetails.status === "close" ? (
                       <Badge variant="danger">
                         <GitPullRequestClosedIcon />
@@ -573,15 +630,9 @@ export const SecretApprovalRequestChanges = ({
             </div>
 
             <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-              <Alert variant="info">
-                <InfoIcon />
-                <AlertTitle>
-                  {secretApprovalRequestDetails.isReplicated
-                    ? `A secret import in this environment has pending changes from its source at ${
-                        replicatedImport?.importEnv?.slug ?? ""
-                      } ${replicatedImport?.importPath ?? ""}. Approving will add them to that import.`
-                    : "These secret changes are pending approval. Approving will apply them to the target environment and path."}
-                </AlertTitle>
+              <Alert variant={changesStatusAlert.variant}>
+                {changesStatusAlert.icon}
+                <AlertTitle>{changesStatusAlert.title}</AlertTitle>
               </Alert>
               <div>
                 <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
@@ -624,6 +675,7 @@ export const SecretApprovalRequestChanges = ({
               isMergable={isMergable}
               statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
               enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
+              bypassReason={secretApprovalRequestDetails.bypassReason}
             />
           </SheetFooter>
         )}
