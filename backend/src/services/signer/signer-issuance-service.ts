@@ -185,6 +185,18 @@ export const signerIssuanceServiceFactory = ({
       });
     }
 
+    if (caType === CaType.DIGICERT) {
+      const effectiveKeyAlgorithm = input.hsm
+        ? hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm)
+        : (input.keyAlgorithm ?? CertKeyAlgorithm.RSA_2048);
+      if (effectiveKeyAlgorithm.startsWith("RSA_") && Number(effectiveKeyAlgorithm.slice(4)) < 3072) {
+        throw new BadRequestError({
+          message:
+            "DigiCert code signing requires an RSA key of at least 3072 bits. Choose RSA-4096 or an ECDSA algorithm."
+        });
+      }
+    }
+
     const digicertExternalOrderRef = input.digicertLifecycle
       ? { digicert: { lifecycle: input.digicertLifecycle } }
       : undefined;
@@ -265,14 +277,6 @@ export const signerIssuanceServiceFactory = ({
     }
 
     const keyAlgorithm: CertKeyAlgorithm = input.keyAlgorithm ?? CertKeyAlgorithm.RSA_2048;
-
-    if (caType === CaType.DIGICERT && keyAlgorithm.startsWith("RSA_") && Number(keyAlgorithm.slice(4)) < 3072) {
-      throw new BadRequestError({
-        message:
-          "DigiCert code signing requires an RSA key of at least 3072 bits. Choose RSA-4096 or an ECDSA algorithm."
-      });
-    }
-
     const { csrPem, privateKeyPem } = await buildCsrForSigner(input.commonName, keyAlgorithm);
 
     const encryptedCsr = await encryptForProject(input.projectId, Buffer.from(csrPem));
