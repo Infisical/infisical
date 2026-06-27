@@ -22,6 +22,11 @@ export type TSignerCertificateInput = {
   hsmConnectorId?: string;
 };
 
+export type TSignerExternalConfigurationInput = {
+  // DigiCert code signing only: reissue into this existing order instead of placing a new one.
+  reissueFromExternalOrderId?: string;
+};
+
 export type TCreateSignerDTO = {
   name: string;
   description?: string;
@@ -35,6 +40,7 @@ export type TCreateSignerDTO = {
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
   certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfigurationInput;
 } & TProjectPermission;
 
 export type TUpdateSignerDTO = {
@@ -97,6 +103,8 @@ export type TReissueCertificateDTO = {
   certificateTtlDays?: number;
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
+  // DigiCert code signing only: reissue into this existing order instead of placing a new order.
+  reissueFromExternalOrderId?: string;
 } & TActorPermission;
 
 export type TExportCertificateDTO = {

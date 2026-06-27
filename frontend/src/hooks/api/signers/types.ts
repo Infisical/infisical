@@ -265,6 +265,9 @@ export type TCreateSignerDTO = {
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
   certificate?: TSignerCertificateInput;
+  externalConfiguration?: {
+    reissueFromExternalOrderId?: string;
+  };
 };
 
 export type TUpdateSignerDTO = {
@@ -288,6 +291,7 @@ export type TReissueSignerCertificateDTO = {
     keySource: CertKeySource;
     hsmConnectorId?: string;
   };
+  reissueFromExternalOrderId?: string;
 };
 
 export type TEnableSignerDTO = { signerId: string };

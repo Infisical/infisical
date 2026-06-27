@@ -3319,6 +3319,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     signerIssuanceService,
     internalCertificateAuthorityService,
+    digicertFns: digicertCaFns,
     projectDAL,
     kmsService,
     permissionService,

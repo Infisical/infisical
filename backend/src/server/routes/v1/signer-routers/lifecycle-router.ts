@@ -45,6 +45,18 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
               hsmConnectorId: z.string().uuid().optional()
             })
             .optional(),
+          externalConfiguration: z
+            .object({
+              reissueFromExternalOrderId: z
+                .string()
+                .trim()
+                .min(1)
+                .optional()
+                .describe(
+                  "DigiCert code signing only: reissue into this existing order instead of placing a new order (reuses the subscription slot). Ignored by other CA types."
+                )
+            })
+            .optional(),
           approvalPolicyId: z.string().uuid().optional(),
           members: z
             .array(
@@ -100,7 +112,8 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
             certificateId: signer.certificateId,
             approvalPolicyId: signer.approvalPolicyId,
             keySource: req.body.certificate?.keySource,
-            hsmConnectorId: req.body.certificate?.hsmConnectorId
+            hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            reissueFromExternalOrderId: req.body.externalConfiguration?.reissueFromExternalOrderId
           }
         }
       });

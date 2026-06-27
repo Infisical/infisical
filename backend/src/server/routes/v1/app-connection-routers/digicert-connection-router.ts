@@ -78,4 +78,77 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
       return server.services.appConnection.digicert.listProducts(connectionId, req.permission);
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/organizations/:organizationId/code-signing-validation`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getDigiCertOrgCodeSigningValidation",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        organizationId: z.coerce.number().int().positive()
+      }),
+      querystring: z.object({
+        productNameId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          isValidated: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, organizationId } = req.params;
+      const { productNameId } = req.query;
+      return server.services.appConnection.digicert.getCodeSigningValidation(
+        connectionId,
+        organizationId,
+        productNameId,
+        req.permission
+      );
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/organizations/:organizationId/code-signing-orders`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listDigiCertCodeSigningOrders",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        organizationId: z.coerce.number().int().positive()
+      }),
+      querystring: z.object({
+        productNameId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z
+          .object({
+            orderId: z.number(),
+            commonName: z.string(),
+            status: z.string(),
+            validTill: z.string().optional()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, organizationId } = req.params;
+      const { productNameId } = req.query;
+      return server.services.appConnection.digicert.listCodeSigningOrders(
+        connectionId,
+        organizationId,
+        productNameId,
+        req.permission
+      );
+    }
+  });
 };

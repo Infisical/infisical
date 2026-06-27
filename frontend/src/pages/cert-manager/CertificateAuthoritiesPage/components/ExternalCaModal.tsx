@@ -34,6 +34,7 @@ import {
 import {
   TDigiCertOrganization,
   TDigiCertProduct,
+  useDigiCertConnectionCodeSigningValidation,
   useDigiCertConnectionListOrganizations,
   useDigiCertConnectionListProducts
 } from "@app/hooks/api/appConnections/digicert";
@@ -55,6 +56,7 @@ import {
   ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
   ACME_DNS_PROVIDER_NAME_MAP
 } from "@app/hooks/api/ca/constants";
+import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -127,14 +129,54 @@ const awsPcaConfigurationSchema = z.object({
   region: z.string().min(1, "Region is required")
 });
 
-const digicertConfigurationSchema = z.object({
-  digicertConnection: z.object({
-    id: z.string().min(1, "DigiCert Connection is required"),
-    name: z.string()
-  }),
-  organizationId: z.coerce.number().int().positive("Organization is required"),
-  productNameId: z.string().trim().min(1, "Product is required")
-});
+const digicertConfigurationSchema = z
+  .object({
+    digicertConnection: z.object({
+      id: z.string().min(1, "DigiCert Connection is required"),
+      name: z.string()
+    }),
+    organizationId: z.coerce.number().int().positive("Organization is required"),
+    productNameId: z.string().trim().min(1, "Product is required"),
+    purpose: z.nativeEnum(DigiCertCaPurpose).optional(),
+    // UI-only flag (not sent): true when the org isn't code-signing validated yet, so a contact is required.
+    csRequiresContact: z.boolean().optional(),
+    verifiedContact: z
+      .object({
+        firstName: z.string().trim().max(128).optional(),
+        lastName: z.string().trim().max(128).optional(),
+        email: z.string().trim().max(255).optional(),
+        jobTitle: z.string().trim().max(64).optional(),
+        telephone: z.string().trim().max(32).optional()
+      })
+      .optional()
+  })
+  .superRefine((cfg, ctx) => {
+    if (cfg.purpose !== DigiCertCaPurpose.CodeSigning || !cfg.csRequiresContact) return;
+    const c = cfg.verifiedContact;
+    const requiredFields: { key: keyof NonNullable<typeof c>; label: string }[] = [
+      { key: "firstName", label: "First Name" },
+      { key: "lastName", label: "Last Name" },
+      { key: "email", label: "Email" },
+      { key: "jobTitle", label: "Job Title" },
+      { key: "telephone", label: "Telephone" }
+    ];
+    requiredFields.forEach(({ key, label }) => {
+      if (!c?.[key] || c[key]?.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["verifiedContact", key],
+          message: `${label} is required for code signing CAs`
+        });
+      }
+    });
+    if (c?.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["verifiedContact", "email"],
+        message: "Email must be valid"
+      });
+    }
+  });
 
 const awsAcmPublicCaConfigurationSchema = z.object({
   awsConnection: z.object({
@@ -229,7 +271,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     formState: { isSubmitting },
-    watch
+    watch,
+    setValue
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
@@ -285,7 +328,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               name: ""
             },
             organizationId: 0,
-            productNameId: ""
+            productNameId: "",
+            purpose: DigiCertCaPurpose.Ssl,
+            verifiedContact: undefined
           }
         });
       } else if (initialType === CaType.AWS_ACM_PUBLIC_CA) {
@@ -548,7 +593,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               name: selectedConnection?.name || ""
             },
             organizationId: ca.configuration.organizationId,
-            productNameId: ca.configuration.productNameId
+            productNameId: ca.configuration.productNameId,
+            purpose: ca.configuration.purpose ?? DigiCertCaPurpose.Ssl,
+            verifiedContact: ca.configuration.verifiedContact
           }
         });
       } else if (ca.type === CaType.AWS_ACM_PUBLIC_CA && availableConnections?.length) {
@@ -633,6 +680,47 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.DIGICERT && !!digicertConnectionId
     });
 
+  const digicertOrganizationId =
+    caType === CaType.DIGICERT && configuration && "organizationId" in configuration
+      ? (configuration.organizationId ?? 0)
+      : 0;
+  const digicertProductNameId =
+    caType === CaType.DIGICERT && configuration && "productNameId" in configuration
+      ? (configuration.productNameId ?? "")
+      : "";
+  const digicertPurpose =
+    caType === CaType.DIGICERT && configuration && "purpose" in configuration
+      ? (configuration.purpose ?? DigiCertCaPurpose.Ssl)
+      : DigiCertCaPurpose.Ssl;
+
+  const isCsValidationCheckable =
+    caType === CaType.DIGICERT &&
+    digicertPurpose === DigiCertCaPurpose.CodeSigning &&
+    !!digicertConnectionId &&
+    !!digicertOrganizationId &&
+    !!digicertProductNameId;
+
+  const { data: csValidation, isFetching: isCsValidationFetching } =
+    useDigiCertConnectionCodeSigningValidation(
+      digicertConnectionId,
+      digicertOrganizationId,
+      digicertProductNameId,
+      { enabled: isCsValidationCheckable }
+    );
+
+  const csOrgValidated = isCsValidationCheckable ? csValidation?.isValidated : undefined;
+  const csRequiresContact = isCsValidationCheckable && csOrgValidated === false;
+  const isCheckingCsValidation =
+    isCsValidationCheckable && csOrgValidated === undefined && isCsValidationFetching;
+
+  useEffect(() => {
+    if (caType !== CaType.DIGICERT) return;
+    setValue("configuration.csRequiresContact", csRequiresContact);
+    if (!csRequiresContact) {
+      setValue("configuration.verifiedContact", undefined);
+    }
+  }, [caType, csRequiresContact, setValue]);
+
   const onFormSubmit = async ({
     type,
     name,
@@ -664,10 +752,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         region: formConfiguration.region
       };
     } else if (type === CaType.DIGICERT && "digicertConnection" in formConfiguration) {
+      const purposeForPayload = formConfiguration.purpose ?? DigiCertCaPurpose.Ssl;
       configPayload = {
         appConnectionId: formConfiguration.digicertConnection.id,
         organizationId: formConfiguration.organizationId,
-        productNameId: formConfiguration.productNameId
+        productNameId: formConfiguration.productNameId,
+        purpose: purposeForPayload,
+        ...(purposeForPayload === DigiCertCaPurpose.CodeSigning &&
+        formConfiguration.csRequiresContact &&
+        formConfiguration.verifiedContact
+          ? { verifiedContact: formConfiguration.verifiedContact }
+          : {})
       };
     } else if (type === CaType.AWS_ACM_PUBLIC_CA && "awsConnection" in formConfiguration) {
       configPayload = {
@@ -1163,31 +1258,178 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               />
               <Controller
                 control={control}
-                name="configuration.productNameId"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Product"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    isRequired
-                    tooltipText="Products available are account-specific entitlements fetched from CertCentral. Each Infisical CA issues under exactly one product."
-                  >
-                    <FilterableSelect
-                      isLoading={isDigiCertProductsPending && !!digicertConnectionId}
-                      isDisabled={!digicertConnectionId}
-                      value={digicertProducts.find((product) => product.nameId === value) ?? null}
-                      onChange={(option) => {
-                        onChange((option as SingleValue<TDigiCertProduct>)?.nameId ?? "");
-                      }}
-                      options={digicertProducts}
-                      placeholder="Select a product..."
-                      getOptionLabel={(option) => `${option.name} (${option.nameId})`}
-                      getOptionValue={(option) => option.nameId}
-                      menuPortalTarget={modalContainer.current}
-                    />
-                  </FormControl>
-                )}
+                name="configuration.purpose"
+                render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  const PURPOSE_OPTIONS = [
+                    { value: DigiCertCaPurpose.Ssl, label: "SSL / TLS" },
+                    { value: DigiCertCaPurpose.CodeSigning, label: "Code Signing" }
+                  ];
+                  return (
+                    <FormControl
+                      label="Purpose"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      isRequired
+                      tooltipText="What this CA issues. Selecting Code Signing filters the Product list to DigiCert's code-signing products."
+                    >
+                      <FilterableSelect
+                        value={
+                          PURPOSE_OPTIONS.find(
+                            (o) => o.value === (value ?? DigiCertCaPurpose.Ssl)
+                          ) ?? PURPOSE_OPTIONS[0]
+                        }
+                        onChange={(option) => {
+                          const next = (
+                            option as SingleValue<{ value: DigiCertCaPurpose; label: string }>
+                          )?.value;
+                          if (next) {
+                            onChange(next);
+                            setValue("configuration.productNameId", "");
+                          }
+                        }}
+                        options={PURPOSE_OPTIONS}
+                        getOptionLabel={(option) => option.label}
+                        getOptionValue={(option) => option.value}
+                        menuPortalTarget={modalContainer.current}
+                      />
+                    </FormControl>
+                  );
+                }}
               />
+              <Controller
+                control={control}
+                name="configuration.productNameId"
+                render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  const purpose =
+                    configuration && "purpose" in configuration
+                      ? (configuration.purpose ?? DigiCertCaPurpose.Ssl)
+                      : DigiCertCaPurpose.Ssl;
+                  const filteredProducts = digicertProducts.filter((p) => {
+                    if (purpose === DigiCertCaPurpose.CodeSigning)
+                      return p.type === "code_signing_certificate";
+                    return p.type === "ssl_certificate" || !p.type;
+                  });
+                  return (
+                    <FormControl
+                      label="Product"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      isRequired
+                      tooltipText="Products available are account-specific entitlements fetched from CertCentral. Each Infisical CA issues under exactly one product."
+                    >
+                      <FilterableSelect
+                        isLoading={isDigiCertProductsPending && !!digicertConnectionId}
+                        isDisabled={!digicertConnectionId}
+                        value={filteredProducts.find((product) => product.nameId === value) ?? null}
+                        onChange={(option) => {
+                          onChange((option as SingleValue<TDigiCertProduct>)?.nameId ?? "");
+                        }}
+                        options={filteredProducts}
+                        placeholder="Select a product..."
+                        getOptionLabel={(option) => `${option.name} (${option.nameId})`}
+                        getOptionValue={(option) => option.nameId}
+                        menuPortalTarget={modalContainer.current}
+                      />
+                    </FormControl>
+                  );
+                }}
+              />
+              {/* Shown only when the org is not yet code-signing validated. While the check is in
+                  flight nothing renders here — the submit button shows a loading state instead. */}
+              {csRequiresContact && (
+                <div className="mt-3 mb-2 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+                  <div className="mb-1 text-sm font-medium text-mineshaft-100">
+                    Verified Contact
+                  </div>
+                  <div className="mb-4 text-xs text-mineshaft-400">
+                    This organization has not completed DigiCert code-signing validation yet, so a
+                    verified contact is required. DigiCert emails this person an approval link they
+                    must click to start organization validation.
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                    <Controller
+                      control={control}
+                      name="configuration.verifiedContact.firstName"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="First Name"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                          isRequired
+                        >
+                          <Input {...field} value={field.value ?? ""} placeholder="John" />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="configuration.verifiedContact.lastName"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Last Name"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                          isRequired
+                        >
+                          <Input {...field} value={field.value ?? ""} placeholder="Doe" />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="configuration.verifiedContact.email"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Email"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                          isRequired
+                          className="col-span-2"
+                        >
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="john.doe@example.com"
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="configuration.verifiedContact.jobTitle"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Job Title"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                          isRequired
+                        >
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="Security Engineer"
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="configuration.verifiedContact.telephone"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Telephone"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                          isRequired
+                          tooltipText="Include the country code, e.g. +15551234567."
+                        >
+                          <Input {...field} value={field.value ?? ""} placeholder="+15551234567" />
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           )}
           {caType === CaType.AWS_ACM_PUBLIC_CA && (
@@ -1380,8 +1622,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               className="mr-4"
               size="sm"
               type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
+              isLoading={isSubmitting || isCheckingCsValidation}
+              isDisabled={isSubmitting || isCheckingCsValidation}
             >
               {popUp?.ca?.data ? "Update" : "Create"}
             </Button>

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShieldIcon } from "lucide-react";
+import { PenTool } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,8 +16,9 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { useListCasByProjectId } from "@app/hooks/api/ca";
+import { getCaIssuanceCapabilities, useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
+import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
 import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
@@ -28,6 +29,7 @@ import {
   useUpdateSigner
 } from "@app/hooks/api/signers";
 
+import { SignerKeyStep } from "../../../components/SignerKeyStep";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { BasicsStep } from "./BasicsStep";
 import { CertificateStep } from "./CertificateStep";
@@ -52,8 +54,13 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     enabled: Boolean(subscription?.hsm)
   });
 
-  const currentKeySource =
-    (signer.certificateKeySource as CertKeySource | undefined) ?? CertKeySource.Infisical;
+  const signerCaType = useMemo(
+    () => (cas.data ?? []).find((c) => c.id === signer.caId)?.type,
+    [cas.data, signer.caId]
+  );
+  const currentKeySource = getCaIssuanceCapabilities(signerCaType).requiresHsm
+    ? CertKeySource.Hsm
+    : ((signer.certificateKeySource as CertKeySource | undefined) ?? CertKeySource.Infisical);
   const currentHsmConnectorId = signer.certificateHsmConnectorId ?? null;
   const currentKeyAlgorithm =
     (signer.keyAlgorithm as SignerKeyAlgorithm | undefined) ?? SignerKeyAlgorithm.RSA_2048;
@@ -62,16 +69,28 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     const list = cas.data ?? [];
     return list
       .filter((ca) => ca.status === CaStatus.ACTIVE)
-      .filter(
-        (ca) =>
-          ca.type === CaType.INTERNAL ||
-          ca.type === CaType.AWS_PCA ||
-          ca.type === CaType.AZURE_AD_CS
-      )
+      .filter((ca) => {
+        if (ca.type === CaType.INTERNAL) return true;
+        if (ca.type === CaType.AWS_PCA) return true;
+        if (ca.type === CaType.AZURE_AD_CS) return true;
+        if (ca.type === CaType.DIGICERT) {
+          return ca.configuration?.purpose === DigiCertCaPurpose.CodeSigning;
+        }
+        return false;
+      })
       .map((ca) => ({
         id: ca.id,
         name: ca.name,
-        groupType: ca.type === CaType.INTERNAL ? "internal" : "external"
+        groupType: ca.type === CaType.INTERNAL ? "internal" : "external",
+        caType: ca.type,
+        digicert:
+          ca.type === CaType.DIGICERT
+            ? {
+                appConnectionId: ca.configuration.appConnectionId,
+                organizationId: ca.configuration.organizationId,
+                productNameId: ca.configuration.productNameId
+              }
+            : undefined
       }));
   }, [cas.data]);
 
@@ -92,7 +111,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       certificateTtlDays: signer.certificateTtlDays ?? 365,
       keySource: currentKeySource,
       keyAlgorithm: currentKeyAlgorithm,
-      hsmConnectorId: currentHsmConnectorId
+      hsmConnectorId: currentHsmConnectorId,
+      reissueFromExternalOrderId: null
     }
   });
 
@@ -111,6 +131,17 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const watchedTtl = certificateForm.watch("certificateTtlDays");
   const watchedKeySource = certificateForm.watch("keySource");
   const watchedHsmConnectorId = certificateForm.watch("hsmConnectorId");
+  const watchedKeyAlgorithm = certificateForm.watch("keyAlgorithm");
+  const watchedReissueOrderId = certificateForm.watch("reissueFromExternalOrderId");
+
+  const selectedCa = caOptions.find((o) => o.id === watchedCaId) ?? null;
+  const { requiresHsm } = getCaIssuanceCapabilities(selectedCa?.caType);
+
+  useEffect(() => {
+    if (requiresHsm && certificateForm.getValues("keySource") !== CertKeySource.Hsm) {
+      certificateForm.setValue("keySource", CertKeySource.Hsm, { shouldValidate: false });
+    }
+  }, [requiresHsm, certificateForm]);
 
   const caSwap = Boolean(watchedCaId) && watchedCaId !== signer.caId;
   const subjectChanged =
@@ -121,7 +152,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     watchedKeySource !== currentKeySource ||
     (watchedKeySource === CertKeySource.Hsm &&
       (watchedHsmConnectorId ?? null) !== currentHsmConnectorId);
-  const shouldReissue = caSwap || subjectChanged || keySourceChanged;
+  const keyAlgorithmChanged = watchedKeyAlgorithm !== currentKeyAlgorithm;
+  const isReissueFromOrder = Boolean(watchedReissueOrderId);
+  const shouldReissue =
+    caSwap || subjectChanged || keySourceChanged || keyAlgorithmChanged || isReissueFromOrder;
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -134,7 +168,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         certificateTtlDays: signer.certificateTtlDays ?? 365,
         keySource: currentKeySource,
         keyAlgorithm: currentKeyAlgorithm,
-        hsmConnectorId: currentHsmConnectorId
+        hsmConnectorId: currentHsmConnectorId,
+        reissueFromExternalOrderId: null
       });
     }
     onOpenChange(open);
@@ -156,19 +191,24 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         await reissueCertificate.mutateAsync({
           signerId: signer.id,
           caId: cert.caId,
-          commonName: canEditSubject && subjectChanged ? cert.commonName : undefined,
+          commonName:
+            !isReissueFromOrder && canEditSubject && subjectChanged ? cert.commonName : undefined,
           certificateTtlDays:
-            canEditSubject && subjectChanged ? cert.certificateTtlDays : undefined,
-          keyAlgorithm: keySourceChanged ? cert.keyAlgorithm : undefined,
-          certificate: keySourceChanged
-            ? {
-                keySource: cert.keySource,
-                hsmConnectorId:
-                  cert.keySource === CertKeySource.Hsm
-                    ? (cert.hsmConnectorId ?? undefined)
-                    : undefined
-              }
-            : undefined
+            !isReissueFromOrder && canEditSubject && subjectChanged
+              ? cert.certificateTtlDays
+              : undefined,
+          keyAlgorithm: keySourceChanged || keyAlgorithmChanged ? cert.keyAlgorithm : undefined,
+          certificate:
+            keySourceChanged || keyAlgorithmChanged
+              ? {
+                  keySource: cert.keySource,
+                  hsmConnectorId:
+                    cert.keySource === CertKeySource.Hsm
+                      ? (cert.hsmConnectorId ?? undefined)
+                      : undefined
+                }
+              : undefined,
+          reissueFromExternalOrderId: cert.reissueFromExternalOrderId ?? undefined
         });
       }
 
@@ -200,7 +240,18 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       return;
     }
     if (step === 1) {
-      const ok = await certificateForm.trigger();
+      const ok = await certificateForm.trigger([
+        "caId",
+        "commonName",
+        "certificateTtlDays",
+        "certificateRenewBeforeDays"
+      ]);
+      if (!ok) return;
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
+      const ok = await certificateForm.trigger(["keySource", "keyAlgorithm", "hsmConnectorId"]);
       if (!ok) return;
       await onSave();
     }
@@ -222,7 +273,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
-                <ShieldIcon className="h-5 w-5" />
+                <PenTool className="h-5 w-5" />
               </div>
               <div>
                 <div className="flex items-center gap-x-2 text-mineshaft-300">
@@ -277,11 +328,15 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                   isCasLoading={cas.isPending}
                   commonName={signer.commonName ?? signer.certificateCommonName ?? "—"}
                   certificateTtlDays={signer.certificateTtlDays ?? null}
+                  canEditSubject={canEditSubject}
+                />
+              )}
+              {step === 2 && (
+                <SignerKeyStep
+                  control={certificateForm.control}
+                  requiresHsm={requiresHsm}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
-                  caSwap={caSwap}
-                  canEditSubject={canEditSubject}
-                  keySourceChanged={keySourceChanged}
                 />
               )}
             </div>

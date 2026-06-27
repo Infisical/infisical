@@ -45,9 +45,10 @@ import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal"
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { getCertificateCredentials } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
+import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "../certificate-authority/internal/internal-certificate-authority-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -84,14 +85,14 @@ import { TSigningOperationDALFactory } from "./signing-operation-dal";
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
 
-const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([CaType.AWS_PCA, CaType.AZURE_AD_CS]);
+const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([CaType.AWS_PCA, CaType.AZURE_AD_CS, CaType.DIGICERT]);
 
 const assertCaTypeSupportsCodeSigning = (caType: CaType): void => {
   if (caType === CaType.INTERNAL) return;
   if (!CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES.has(caType)) {
     throw new BadRequestError({
       message:
-        "Code signing is only supported on Internal CAs, AWS Private CA, and Azure AD CS. Pick a different certificate authority."
+        "Code signing is only supported on Internal CAs, AWS Private CA, Azure AD CS, and DigiCert. Pick a different certificate authority."
     });
   }
 };
@@ -121,8 +122,9 @@ type TSignerServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
-  signerIssuanceService: Pick<TSignerIssuanceServiceFactory, "requestIssuance">;
+  signerIssuanceService: Pick<TSignerIssuanceServiceFactory, "requestIssuance" | "getLatestIssuanceKeyConfig">;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
+  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "revokeCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
@@ -215,7 +217,10 @@ export const resolveReissueTarget = ({
     Boolean(currentCert.hsmConnectorId) &&
     Boolean(currentCert.keyAlgorithm);
   const overrideKeySource = dto.certificate?.keySource;
-  const switchingKeySource = overrideKeySource !== undefined && overrideKeySource !== currentCert?.keySource;
+  // An algorithm change needs a fresh key, so treat it like a key source switch.
+  const changingKeyAlgorithm = dto.keyAlgorithm !== undefined && dto.keyAlgorithm !== currentCert?.keyAlgorithm;
+  const switchingKeySource =
+    (overrideKeySource !== undefined && overrideKeySource !== currentCert?.keySource) || changingKeyAlgorithm;
   const targetIsHsm = overrideKeySource ? overrideKeySource === CertKeySource.Hsm : currentIsHsm;
 
   if (targetIsHsm) {
@@ -244,6 +249,7 @@ export const signerServiceFactory = ({
   certificateAuthorityDAL,
   signerIssuanceService,
   internalCertificateAuthorityService,
+  digicertFns,
   projectDAL,
   kmsService,
   permissionService,
@@ -349,6 +355,22 @@ export const signerServiceFactory = ({
     }
 
     if (resolvedCaType) assertCaTypeSupportsCodeSigning(resolvedCaType);
+
+    let createDigicertLifecycle: { mode: "reissue"; previousOrderId: number } | undefined;
+    const reissueFromExternalOrderId = dto.externalConfiguration?.reissueFromExternalOrderId;
+    if (reissueFromExternalOrderId) {
+      if (resolvedCaType !== CaType.DIGICERT) {
+        throw new BadRequestError({
+          message:
+            "Reissuing from an existing order is only supported for DigiCert code signing certificate authorities."
+        });
+      }
+      const previousOrderId = Number(reissueFromExternalOrderId);
+      if (!Number.isInteger(previousOrderId) || previousOrderId <= 0) {
+        throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
+      }
+      createDigicertLifecycle = { mode: "reissue", previousOrderId };
+    }
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
@@ -669,6 +691,7 @@ export const signerServiceFactory = ({
             commonName: dto.commonName as string,
             certificateTtlDays: dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS,
             keyAlgorithm,
+            digicertLifecycle: createDigicertLifecycle,
             hsm:
               certificateInput?.keySource === CertKeySource.Hsm && certificateInput.hsmConnectorId
                 ? {
@@ -863,6 +886,32 @@ export const signerServiceFactory = ({
       ResourcePermissionSub.Signer
     );
 
+    // Revoke the DigiCert order so a deleted signer can't leave a live publicly-trusted cert behind.
+    // Best-effort and outside the deletion transaction so a DigiCert outage can't block the delete.
+    if (existingSigner.caId && existingSigner.certificateId) {
+      try {
+        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(existingSigner.caId);
+        if (ca?.externalCa?.type === CaType.DIGICERT) {
+          const cert = await certificateDAL.findById(existingSigner.certificateId);
+          if (cert?.serialNumber && cert.status !== CertStatus.REVOKED) {
+            await digicertFns.revokeCertificate({
+              caId: existingSigner.caId,
+              serialNumber: cert.serialNumber,
+              reason: CrlReason.CESSATION_OF_OPERATION
+            });
+            logger.info(
+              `signer delete: revoked DigiCert order for deleted signer [signerId=${existingSigner.id}] [certificateId=${cert.id}]`
+            );
+          }
+        }
+      } catch (err) {
+        logger.error(
+          err,
+          `signer delete: failed to revoke DigiCert order for signer '${existingSigner.name}' [signerId=${existingSigner.id}] [certificateId=${existingSigner.certificateId}] — deletion will proceed; revoke the order manually in CertCentral`
+        );
+      }
+    }
+
     await signerDAL.transaction(async (tx) => {
       const memberships = await membershipDAL.find(
         {
@@ -968,6 +1017,20 @@ export const signerServiceFactory = ({
     assertCaTypeSupportsCodeSigning(reissueCaType);
     const reissueIsExternal = reissueCaType !== CaType.INTERNAL;
 
+    let explicitReissueOrderId: number | undefined;
+    if (dto.reissueFromExternalOrderId) {
+      if (reissueCaType !== CaType.DIGICERT) {
+        throw new BadRequestError({
+          message:
+            "Reissuing from an existing order is only supported for DigiCert code signing certificate authorities."
+        });
+      }
+      explicitReissueOrderId = Number(dto.reissueFromExternalOrderId);
+      if (!Number.isInteger(explicitReissueOrderId) || explicitReissueOrderId <= 0) {
+        throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
+      }
+    }
+
     const allowsResubject = signer.status === SignerStatus.Pending || signer.status === SignerStatus.Failed;
     let nextCommonName = signer.commonName;
     let nextTtl = signer.certificateTtlDays;
@@ -994,10 +1057,25 @@ export const signerServiceFactory = ({
     }
 
     const reissueCurrentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+
+    // A never-issued signer has no cert to read the key config from; recover it from the last job so
+    // an HSM signer keeps its key source instead of falling back to software and being rejected.
+    const recoveredKeyConfig = reissueCurrentCert
+      ? null
+      : await signerIssuanceService.getLatestIssuanceKeyConfig(signer.id);
+
     const target = resolveReissueTarget({
       dto,
       signer,
-      currentCert: reissueCurrentCert
+      currentCert:
+        reissueCurrentCert ??
+        (recoveredKeyConfig
+          ? {
+              keySource: recoveredKeyConfig.keySource,
+              keyAlgorithm: recoveredKeyConfig.keyAlgorithm,
+              hsmConnectorId: recoveredKeyConfig.hsmConnectorId
+            }
+          : null)
     });
 
     if (reissueCaType === CaType.AZURE_AD_CS && target.isHsm) {
@@ -1029,8 +1107,12 @@ export const signerServiceFactory = ({
         ? {
             hsmConnectorId: target.hsmConnectorId,
             hsmKeyAlgorithm: target.hsmKeyAlgorithm,
-            hsmKeyLabel: switchingKeySource ? undefined : (reissueCurrentCert?.hsmKeyLabel ?? undefined),
-            hsmPublicKeySpki: switchingKeySource ? undefined : (reissueCurrentCert?.hsmPublicKeySpki ?? undefined),
+            hsmKeyLabel: switchingKeySource
+              ? undefined
+              : (reissueCurrentCert?.hsmKeyLabel ?? recoveredKeyConfig?.hsmKeyLabel ?? undefined),
+            hsmPublicKeySpki: switchingKeySource
+              ? undefined
+              : (reissueCurrentCert?.hsmPublicKeySpki ?? recoveredKeyConfig?.hsmPublicKeySpki ?? undefined),
             actor: {
               type: dto.actor,
               id: dto.actorId,
@@ -1043,6 +1125,10 @@ export const signerServiceFactory = ({
         status: SignerStatus.Pending,
         certificateFailureReason: null
       });
+      const reissueDigicertOrderId =
+        reissueCaType === CaType.DIGICERT
+          ? (explicitReissueOrderId ?? (reissueCurrentCert?.externalMetadata as { orderId?: number } | null)?.orderId)
+          : undefined;
       try {
         await signerIssuanceService.requestIssuance({
           signerId: signer.id,
@@ -1051,7 +1137,10 @@ export const signerServiceFactory = ({
           commonName: nextCommonName,
           certificateTtlDays: nextTtl ?? DEFAULT_CERTIFICATE_TTL_DAYS,
           keyAlgorithm: targetKeyAlgorithm,
-          hsm: reissueHsm
+          hsm: reissueHsm,
+          digicertLifecycle: reissueDigicertOrderId
+            ? { mode: "reissue", previousOrderId: reissueDigicertOrderId }
+            : undefined
         });
         return await signerDAL.findById(dto.signerId);
       } catch (queueErr) {
@@ -1680,6 +1769,10 @@ export const signerServiceFactory = ({
         status: SignerStatus.Pending,
         certificateFailureReason: null
       });
+      const autoRenewDigicertOrderId =
+        renewalCaType === CaType.DIGICERT
+          ? (autoRenewCert?.externalMetadata as { orderId?: number } | null)?.orderId
+          : undefined;
       try {
         await signerIssuanceService.requestIssuance({
           signerId: signer.id,
@@ -1688,7 +1781,10 @@ export const signerServiceFactory = ({
           commonName: signer.commonName,
           certificateTtlDays: ttlDays,
           keyAlgorithm: renewKeyAlgorithm,
-          hsm: autoRenewHsm
+          hsm: autoRenewHsm,
+          digicertLifecycle: autoRenewDigicertOrderId
+            ? { mode: "renew", previousOrderId: autoRenewDigicertOrderId }
+            : undefined
         });
       } catch (err) {
         await signerDAL.updateById(signer.id, {

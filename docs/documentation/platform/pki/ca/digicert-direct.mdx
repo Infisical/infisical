@@ -1,17 +1,20 @@
 ---
 title: "DigiCert (CertCentral Services API)"
-description: "Issue OV/EV certificates from DigiCert using the CertCentral Services API with manual DNS validation."
+description: "Issue TLS or Code Signing certificates from DigiCert using the CertCentral Services API."
 ---
 
 ## Concept
 
-Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentral](https://www.digicert.com/) using the [CertCentral Services API](https://dev.digicert.com/en/certcentral-apis/services-api.html).
+Infisical can issue certificates directly from [DigiCert CertCentral](https://www.digicert.com/) using the [CertCentral Services API](https://dev.digicert.com/en/certcentral-apis/services-api.html). A single DigiCert CA in Infisical is configured for one purpose:
+
+- **SSL/TLS** — issues OV and EV TLS server certificates under an SSL product entitlement on your account (for example `ssl_plus`).
+- **Code Signing** — issues OV (`code_signing`) and EV (`code_signing_ev`) code-signing certificates against a CSR. The signing key must live on an HSM.
 
 ## Prerequisites
 
 - A [DigiCert App Connection](/integrations/app-connections/digicert) with a validated CertCentral API key.
-- A CertCentral **Organization** that has been pre-validated by DigiCert
-- Entitlement to either the OV or EV SSL product on your CertCentral account.
+- A CertCentral **Organization**. For code signing, DigiCert validates the organization the first time it is used for a code-signing order, which can take up to 3 business days.
+- Entitlement to the product you intend to use (`ssl_plus`, `code_signing`, `code_signing_ev`, ...) on your CertCentral account.
 
 ## Create a DigiCert Certificate Authority
 
@@ -26,14 +29,16 @@ Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentr
 
         - **App Connection** — the DigiCert connection you created
         - **Organization** — the CertCentral organization that should appear on issued certificates
+        - **Purpose** — `SSL / TLS` or `Code Signing`. The product list filters accordingly.
         - **Product** — the CertCentral entitlement this CA will issue under
+        - **Verified Contact** (Code Signing only) — full contact info for the person DigiCert emails to approve first-time code-signing orders for this organization. All five fields required: **First Name**, **Last Name**, **Email**, **Job Title**, **Telephone** (E.164, e.g. `+15551234567`). DigiCert requires `job_title` and `telephone` on every verified contact for CS orders; referencing an existing CertCentral user by id alone is not enough. Once the organization has an active CS validation on file, DigiCert ignores this field.
       </Step>
     </Steps>
   </Tab>
   <Tab title="API">
     To create a DigiCert Certificate Authority, make an API request to the [Create DigiCert CA](/api-reference/endpoints/certificate-authorities/digicert/create) API endpoint.
 
-    ```bash Create a DigiCert CA
+    ```bash Create a DigiCert CA (SSL)
     curl --request POST \
       --url https://app.infisical.com/api/v1/pki/ca/digicert \
       --header 'Content-Type: application/json' \
@@ -43,12 +48,57 @@ Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentr
         "configuration": {
           "appConnectionId": "<digicert-app-connection-id>",
           "organizationId": 112236,
-          "productNameId": "ssl_plus"
+          "productNameId": "ssl_plus",
+          "purpose": "ssl"
+        }
+      }'
+    ```
+
+    ```bash Create a DigiCert CA (Code Signing)
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/pki/ca/digicert \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "digicert-cs",
+        "status": "active",
+        "configuration": {
+          "appConnectionId": "<digicert-app-connection-id>",
+          "organizationId": 112236,
+          "productNameId": "code_signing",
+          "purpose": "code_signing",
+          "verifiedContact": {
+            "firstName": "John",
+            "lastName": "Doe",
+            "email": "john.doe@example.com",
+            "jobTitle": "Security Engineer",
+            "telephone": "+15551234567"
+          }
         }
       }'
     ```
   </Tab>
 </Tabs>
+
+## Using a DigiCert Code Signing CA
+
+Once a CA is configured with `purpose: "code_signing"`, it appears in the **Code Signing → Create Signer** wizard's CA picker. The Signer is created in **Pending** state while DigiCert processes the order, and flips to **Active** once the certificate issues.
+
+DigiCert's CS workflow includes an out-of-band step for first orders against a new organization: DigiCert emails the organization's verified contact a link they must click to approve the order. This step cannot be skipped by the API. Subsequent orders against the same already-validated organization go from `pending` to `issued` without human action.
+
+<Note>
+  Code-signing certificates require an HSM-backed key. When you select a DigiCert code-signing CA, the Signer wizard locks the key source to **HSM** and you must pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). Infisical generates the CSR against the HSM key and sends only the CSR to DigiCert.
+</Note>
+
+### Reuse an existing order
+
+Each DigiCert order consumes a subscription slot. Instead of placing a new order, a new Signer can reissue into one of the organization's existing code-signing orders, which reuses that slot. In the Create Signer wizard's **Certificate** step, pick an order under **Reuse an existing order**. The Common Name and Validity are inherited from that order, so those fields are hidden. Leave it empty to place a new order.
+
+Over the API, set `externalConfiguration.reissueFromExternalOrderId` to the order id on [Create Signer](/api-reference/endpoints/code-signing/signers/create), or `reissueFromExternalOrderId` on [Reissue](/api-reference/endpoints/code-signing/signers/reissue).
+
+### Reissue and renewal
+
+- **Reissue** (changing the key source, key algorithm, or pointing at an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
+- **Auto-renewal** (when **Renew before** is set) places a new order linked to the prior one so DigiCert tracks certificate history. If DigiCert reports the prior order as not eligible for renewal, Infisical falls back to a fresh, unlinked order.
 
 ## DigiCert Validation Workflow
 

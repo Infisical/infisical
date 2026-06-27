@@ -4918,6 +4918,7 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    reissueFromExternalOrderId?: string | null;
   };
 }
 
@@ -5006,6 +5007,7 @@ interface ReissuePkiSignerCertificateEvent {
     keySource?: string;
     hsmConnectorId?: string;
     hsmKeyAlgorithm?: string;
+    reissueFromExternalOrderId?: string;
   };
 }
 

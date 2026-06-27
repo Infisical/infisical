@@ -32,7 +32,15 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
               keySource: z.nativeEnum(CertKeySource),
               hsmConnectorId: z.string().uuid().optional()
             })
+            .optional(),
+          reissueFromExternalOrderId: z
+            .string()
+            .trim()
+            .min(1)
             .optional()
+            .describe(
+              "DigiCert code signing only: reissue into this existing order instead of placing a new order (reuses the subscription slot). Ignored by other CA types."
+            )
         })
         .superRefine((data, ctx) => {
           if (data.certificate?.keySource !== CertKeySource.Hsm) return;
@@ -76,7 +84,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             commonName: req.body.commonName,
             keyAlgorithm: req.body.keyAlgorithm,
             keySource: req.body.certificate?.keySource,
-            hsmConnectorId: req.body.certificate?.hsmConnectorId
+            hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            reissueFromExternalOrderId: req.body.reissueFromExternalOrderId
           }
         }
       });
