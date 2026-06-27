@@ -135,7 +135,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const watchedReissueOrderId = certificateForm.watch("reissueFromExternalOrderId");
 
   const selectedCa = caOptions.find((o) => o.id === watchedCaId) ?? null;
-  const { requiresHsm } = getCaIssuanceCapabilities(selectedCa?.caType);
+  const { requiresHsm, minRsaKeyBits } = getCaIssuanceCapabilities(selectedCa?.caType);
 
   useEffect(() => {
     if (requiresHsm && certificateForm.getValues("keySource") !== CertKeySource.Hsm) {
@@ -335,6 +335,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 <SignerKeyStep
                   control={certificateForm.control}
                   requiresHsm={requiresHsm}
+                  minRsaKeyBits={minRsaKeyBits}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
                 />

@@ -46,7 +46,11 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
     body: TPlaceOrderRequest | Record<string, unknown>
   ) =>
     wrap(async () => {
-      const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${productSlug}`, body, { headers });
+      const { data } = await request.post<TResp>(
+        `${baseURL}/order/certificate/${encodeURIComponent(productSlug)}`,
+        body,
+        { headers }
+      );
       return data;
     }, `order placement for product ${productSlug}`);
 

@@ -369,44 +369,45 @@ export const DigiCertCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
-    // Network call (org validation lookup) must run outside the DB transaction.
-    if (configuration && (configuration.purpose ?? DigiCertCaPurpose.Ssl) === DigiCertCaPurpose.CodeSigning) {
-      assertPurposeMatchesProduct(DigiCertCaPurpose.CodeSigning, configuration.productNameId);
-      await assertCsOrgValidatedOrContactProvided({
-        appConnectionId: configuration.appConnectionId,
-        organizationId: configuration.organizationId,
-        productNameId: configuration.productNameId,
-        verifiedContact: configuration.verifiedContact
-      });
+    if (configuration) {
+      const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+      }
+      if (appConnection.app !== AppConnection.DigiCert) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not a DigiCert connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+
+      const resolvedPurpose = purpose ?? DigiCertCaPurpose.Ssl;
+      assertPurposeMatchesProduct(resolvedPurpose, productNameId);
+
+      if (resolvedPurpose === DigiCertCaPurpose.CodeSigning) {
+        await assertCsOrgValidatedOrContactProvided({
+          appConnectionId,
+          organizationId,
+          productNameId,
+          verifiedContact
+        });
+      }
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-        if (!appConnection) {
-          throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
-        }
-        if (appConnection.app !== AppConnection.DigiCert) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not a DigiCert connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
-
-        const resolvedPurpose = purpose ?? DigiCertCaPurpose.Ssl;
-        assertPurposeMatchesProduct(resolvedPurpose, productNameId);
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -417,7 +418,7 @@ export const DigiCertCertificateAuthorityFns = ({
             configuration: {
               organizationId,
               productNameId,
-              purpose: resolvedPurpose,
+              purpose: purpose ?? DigiCertCaPurpose.Ssl,
               ...(verifiedContact ? { verifiedContact } : {})
             }
           },

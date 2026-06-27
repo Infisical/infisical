@@ -118,7 +118,7 @@ type TSignerServiceFactoryDep = {
     THsmConnectorServiceFactory,
     "sign" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
   >;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "findDigiCertCertByOrderId">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -368,6 +368,12 @@ export const signerServiceFactory = ({
       const previousOrderId = Number(reissueFromExternalOrderId);
       if (!Number.isInteger(previousOrderId) || previousOrderId <= 0) {
         throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
+      }
+      const managedOrder = await certificateDAL.findDigiCertCertByOrderId(resolvedCaId as string, previousOrderId);
+      if (!managedOrder) {
+        throw new BadRequestError({
+          message: "That DigiCert order is not managed by this certificate authority and cannot be reused."
+        });
       }
       createDigicertLifecycle = { mode: "reissue", previousOrderId };
     }
@@ -1028,6 +1034,12 @@ export const signerServiceFactory = ({
       explicitReissueOrderId = Number(dto.reissueFromExternalOrderId);
       if (!Number.isInteger(explicitReissueOrderId) || explicitReissueOrderId <= 0) {
         throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
+      }
+      const managedOrder = await certificateDAL.findDigiCertCertByOrderId(ca.id, explicitReissueOrderId);
+      if (!managedOrder) {
+        throw new BadRequestError({
+          message: "That DigiCert order is not managed by this certificate authority and cannot be reused."
+        });
       }
     }
 

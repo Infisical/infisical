@@ -390,6 +390,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 <SignerKeyStep
                   control={certificateForm.control}
                   requiresHsm={caCaps.requiresHsm}
+                  minRsaKeyBits={caCaps.minRsaKeyBits}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
                 />

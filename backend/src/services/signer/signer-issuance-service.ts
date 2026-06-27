@@ -44,6 +44,8 @@ const DIGICERT_ISSUANCE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
 const maxIssuanceWindowMs = (caType: string): number =>
   caType === CaType.DIGICERT ? DIGICERT_ISSUANCE_WINDOW_MS : DEFAULT_ISSUANCE_WINDOW_MS;
 
+const maxIssuanceAttempts = (caType: string): number => Math.ceil(maxIssuanceWindowMs(caType) / RETRY_BACKOFF_MS) + 10;
+
 const deriveDigicertSignatureParams = (
   keyAlgorithm: string
 ): { signatureHash: "sha256" | "sha384" | "sha512"; signatureAlgorithm: CertSignatureAlgorithm } => {
@@ -263,6 +265,14 @@ export const signerIssuanceServiceFactory = ({
     }
 
     const keyAlgorithm: CertKeyAlgorithm = input.keyAlgorithm ?? CertKeyAlgorithm.RSA_2048;
+
+    if (caType === CaType.DIGICERT && keyAlgorithm.startsWith("RSA_") && Number(keyAlgorithm.slice(4)) < 3072) {
+      throw new BadRequestError({
+        message:
+          "DigiCert code signing requires an RSA key of at least 3072 bits. Choose RSA-4096 or an ECDSA algorithm."
+      });
+    }
+
     const { csrPem, privateKeyPem } = await buildCsrForSigner(input.commonName, keyAlgorithm);
 
     const encryptedCsr = await encryptForProject(input.projectId, Buffer.from(csrPem));
@@ -281,6 +291,7 @@ export const signerIssuanceServiceFactory = ({
           keyAlgorithm,
           encryptedCsr,
           encryptedPrivateKey,
+          maxAttempts: maxIssuanceAttempts(caType),
           nextPollAt: new Date()
         },
         tx

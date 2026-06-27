@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Control, Controller, useWatch } from "react-hook-form";
+import { ReactNode, useEffect } from "react";
+import { Control, Controller, useController, useWatch } from "react-hook-form";
 import { AlertTriangleIcon } from "lucide-react";
 
 import {
@@ -40,13 +40,15 @@ type SignerKeyStepProps = {
   requiresHsm: boolean;
   hsmConnectorOptions: HsmConnectorOption[];
   isHsmConnectorsLoading: boolean;
+  minRsaKeyBits?: number;
 };
 
 export const SignerKeyStep = ({
   control,
   requiresHsm,
   hsmConnectorOptions,
-  isHsmConnectorsLoading
+  isHsmConnectorsLoading,
+  minRsaKeyBits
 }: SignerKeyStepProps) => {
   const { subscription } = useSubscription();
   const isHsmLicensed = Boolean(subscription?.hsm);
@@ -58,6 +60,22 @@ export const SignerKeyStep = ({
 
   const keySource = useWatch({ control, name: "keySource" });
   const isHsm = keySource === CertKeySource.Hsm;
+
+  const isAlgorithmAllowed = (algo: SignerKeyAlgorithm): boolean => {
+    if (isHsm && !HSM_SUPPORTED_KEY_ALGORITHMS.includes(algo)) return false;
+    if (minRsaKeyBits && algo.startsWith("RSA_") && Number(algo.slice(4)) < minRsaKeyBits)
+      return false;
+    return true;
+  };
+  const algorithmOptions = Object.values(SignerKeyAlgorithm).filter(isAlgorithmAllowed);
+
+  const { field: keyAlgorithmField } = useController({ control, name: "keyAlgorithm" });
+  useEffect(() => {
+    if (algorithmOptions.length > 0 && !isAlgorithmAllowed(keyAlgorithmField.value)) {
+      keyAlgorithmField.onChange(algorithmOptions[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHsm, minRsaKeyBits, keyAlgorithmField.value]);
 
   let keySourceHint: ReactNode = "Infisical manages the keypair.";
   if (requiresHsm) {
@@ -150,42 +168,28 @@ export const SignerKeyStep = ({
         />
       )}
 
-      <Controller
-        name="keyAlgorithm"
-        control={control}
-        render={({ field, fieldState: { error } }) => {
-          const options = isHsm
-            ? Object.values(SignerKeyAlgorithm).filter((v) =>
-                HSM_SUPPORTED_KEY_ALGORITHMS.includes(v)
-              )
-            : Object.values(SignerKeyAlgorithm);
-          return (
-            <Field>
-              <FieldLabel>
-                Key algorithm <span className="text-danger">*</span>
-              </FieldLabel>
-              <FieldContent>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {options.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {signerKeyAlgorithmLabels[value]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>
-                  RSA is widely compatible; ECDSA is smaller and faster.
-                </FieldDescription>
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          );
-        }}
-      />
+      <Field>
+        <FieldLabel>
+          Key algorithm <span className="text-danger">*</span>
+        </FieldLabel>
+        <FieldContent>
+          <Select value={keyAlgorithmField.value} onValueChange={keyAlgorithmField.onChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {algorithmOptions.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {signerKeyAlgorithmLabels[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            RSA is widely compatible; ECDSA is smaller and faster.
+          </FieldDescription>
+        </FieldContent>
+      </Field>
     </FieldGroup>
   );
 };
