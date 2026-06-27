@@ -61,6 +61,7 @@ type TLicenseServiceFactoryDep = {
     | "INTERNAL_REGION"
     | "SITE_URL"
     | "LICENSE_SERVER_V2_MODE"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
   >;
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -140,6 +141,13 @@ export const licenseServiceFactory = ({
 
   const init = async () => {
     try {
+      if (envConfig.LICENSE_SERVER_V2_SERVICE_KEY) {
+        instanceType = InstanceType.Cloud;
+        logger.info(`Instance type: ${InstanceType.Cloud}`);
+        isValidLicense = true;
+        return;
+      }
+
       if (envConfig.LICENSE_SERVER_KEY) {
         const token = await licenseServerCloudApi.refreshLicense();
         if (token) instanceType = InstanceType.Cloud;

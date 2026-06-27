@@ -18,28 +18,76 @@ import {
 } from "@app/components/v3";
 import { BillingV2Cadence, BillingV2CatalogProduct, BillingV2Entitlement } from "@app/hooks/api";
 
-import { cadenceWord, fmtMoney, unitPrice } from "../billing-v2-data";
+import { cadenceWord, cadenceWordShort, fmtMoney, unitPrice } from "../billing-v2-data";
 import { ActiveBadge, ProductIcon } from "./shared";
 
-type ProPriceParts = { amount: string; unit: string } | null;
+type PriceLine = { amount: string; unit: string };
 
-const proPriceParts = (prod: BillingV2CatalogProduct, cadence: BillingV2Cadence): ProPriceParts => {
-  if (prod.model === "flat" || prod.model === "limit") {
-    const base = prod.pro?.base;
-    if (!base) {
-      return null;
-    }
-    return { amount: fmtMoney(unitPrice(base, cadence)), unit: `/ ${cadenceWord(cadence)}` };
-  }
-
-  const dimension = prod.pro?.dims?.[0];
-  if (!dimension) {
+// The plan's flat/base fee for the active cadence, when it has one (e.g. "$20 / month").
+const proBaseLine = (
+  prod: BillingV2CatalogProduct,
+  cadence: BillingV2Cadence
+): PriceLine | null => {
+  const base = prod.pro?.base;
+  if (!base) {
     return null;
   }
-  return {
-    amount: fmtMoney(unitPrice(dimension, cadence), 2),
-    unit: `/ ${dimension.noun} / ${cadenceWord(cadence)}`
-  };
+  return { amount: fmtMoney(unitPrice(base, cadence)), unit: `/ ${cadenceWord(cadence)}` };
+};
+
+// A plan's price is a base fee plus any number of metered dimensions, and any combination is valid:
+// base only, meter only, or both. The base fee leads as the headline; every priced dimension is then
+// listed below (e.g. "$5 per MCP / mo", "$3 per Agent / mo"). When there's no base fee the first
+// dimension is promoted to the headline so the card always opens with a price.
+const ProPricing = ({
+  prod,
+  cadence
+}: {
+  prod: BillingV2CatalogProduct;
+  cadence: BillingV2Cadence;
+}) => {
+  const dims = prod.pro?.dims ?? [];
+  const dimLines = dims.map((dim) => ({
+    key: dim.key,
+    amount: fmtMoney(unitPrice(dim, cadence), 2),
+    unit: `per ${dim.noun} / ${cadenceWordShort(cadence)}`
+  }));
+
+  let headline = proBaseLine(prod, cadence);
+  let usageLines = dimLines;
+  if (!headline && dims.length > 0) {
+    headline = {
+      amount: fmtMoney(unitPrice(dims[0], cadence), 2),
+      unit: `/ ${dims[0].noun} / ${cadenceWord(cadence)}`
+    };
+    usageLines = dimLines.slice(1);
+  }
+
+  if (!headline) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-wrap items-baseline gap-1.5">
+        <span className="text-2xl font-medium text-foreground">{headline.amount}</span>
+        <span className="text-xs text-muted">{headline.unit}</span>
+      </div>
+      {usageLines.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-border pt-3.5">
+          <span className="text-[10px] font-medium tracking-wide text-muted uppercase">
+            Plus per-unit usage
+          </span>
+          {usageLines.map((line) => (
+            <div key={line.key} className="flex items-baseline gap-1.5">
+              <span className="text-sm font-medium text-foreground">{line.amount}</span>
+              <span className="text-xs text-muted">{line.unit}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const renderCompareCell = (value: string | boolean) => {
@@ -86,7 +134,6 @@ type PlansViewProps = {
 
 const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) => {
   const hasEnterprise = !!prod.enterprise;
-  const priceParts = proPriceParts(prod, cadence);
   const entitled = Boolean(entitlement?.entitled);
   const selfServe = Boolean(prod.pro?.planKey);
 
@@ -101,7 +148,7 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[15px] font-semibold text-foreground">Pro</span>
+            <span className="text-[15px] font-medium text-foreground">Pro</span>
             {entitled ? (
               <Badge variant="success">
                 <Check className="text-success" />
@@ -111,23 +158,18 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
               <Badge variant="neutral">Self-Checkout</Badge>
             )}
           </div>
-          {priceParts && (
-            <div className="flex flex-wrap items-baseline gap-1.5">
-              <span className="text-2xl font-semibold text-foreground">{priceParts.amount}</span>
-              <span className="text-xs text-muted">{priceParts.unit}</span>
-            </div>
-          )}
+          <ProPricing prod={prod} cadence={cadence} />
           {prod.pro?.proFeature && <div className="text-xs text-accent">{prod.pro.proFeature}</div>}
         </div>
 
         {hasEnterprise && prod.enterprise && (
           <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[15px] font-semibold text-foreground">Enterprise</span>
+              <span className="font-medium text-foreground">Enterprise</span>
               <Badge variant="neutral">Talk to Us</Badge>
             </div>
             <div className="flex items-baseline">
-              <span className="text-2xl font-semibold text-foreground">Custom</span>
+              <span className="text-2xl font-medium text-foreground">Custom</span>
             </div>
             <div className="text-xs text-accent">{prod.enterprise.feature}</div>
             {selfServe && (
@@ -147,7 +189,7 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
 
       {hasEnterprise && prod.compare && (
         <div>
-          <div className="mb-3 text-xs font-semibold text-muted">Compare Plans</div>
+          <div className="mb-3 text-xs font-medium text-muted">Compare Plans</div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -171,7 +213,7 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
 
       {!(hasEnterprise && prod.compare) && prod.includes && (
         <div>
-          <div className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
+          <div className="mb-3 text-xs font-medium tracking-wide text-muted uppercase">
             What&apos;s included
           </div>
           <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">

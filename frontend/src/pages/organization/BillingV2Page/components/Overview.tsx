@@ -50,7 +50,7 @@ import {
 } from "@app/hooks/api";
 
 import { fmtMoney, intervalWord, pluralizeUnit } from "../billing-v2-data";
-import { ActiveBadge, LimitMeter, ProductIcon } from "./shared";
+import { ActiveBadge, ProductIcon } from "./shared";
 
 export type BillingV2Mode = "self-serve" | "managed";
 export type BillingV2RenderState =
@@ -332,28 +332,83 @@ type UsageCardProps = {
   overview: BillingV2Overview;
 };
 
-const UsageCard = ({ overview }: UsageCardProps) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>
-        <GaugeIcon className="size-4 text-accent" />
-        Usage
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="flex flex-col gap-2.5">
-      <LimitMeter
-        label="Members"
-        used={overview.usage.members}
-        limit={overview.usage.memberLimit}
-      />
-      <LimitMeter
-        label="Machine identities"
-        used={overview.usage.identities}
-        limit={overview.usage.identityLimit}
-      />
-    </CardContent>
-  </Card>
-);
+const UsageCard = ({ overview }: UsageCardProps) => {
+  const { members, identities, identityLimit } = overview.usage;
+  // Members and machine identities draw from one shared seat pool (identityLimit); there is no
+  // separate member limit, so they're metered together against the single limit.
+  const limit = identityLimit;
+  const used = members + identities;
+  const isUnlimited = limit === null;
+  const available = isUnlimited ? 0 : Math.max(0, limit - used);
+  // Cap the combined fill at 100% and split it between the two segments by their share of `used`, so
+  // the bar never overflows when members + identities exceeds the limit while keeping their ratio.
+  const usedPct = limit ? Math.min(100, (used / limit) * 100) : 0;
+  const membersPct = used ? usedPct * (members / used) : 0;
+  const identitiesPct = used ? usedPct * (identities / used) : 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <GaugeIcon className="size-4 text-accent" />
+          Usage
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between gap-2.5">
+          <span className="text-sm font-medium text-foreground">
+            Members &amp; machine identities
+          </span>
+          <span className="text-sm text-muted tabular-nums">
+            <span className="text-foreground">{used.toLocaleString()}</span>
+            {isUnlimited ? " used" : ` / ${limit.toLocaleString()} used`}
+          </span>
+        </div>
+
+        {!isUnlimited && limit > 0 && (
+          <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-org transition-all"
+              style={{ width: `${membersPct}%` }}
+            />
+            <div
+              className="h-full rounded-full bg-org/50 transition-all"
+              style={{ width: `${identitiesPct}%` }}
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2.5 text-xs">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-sm bg-org" />
+              <span className="text-muted">Members</span>
+              <span className="font-medium text-foreground tabular-nums">
+                {members.toLocaleString()}
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-sm bg-org/50" />
+              <span className="text-muted">Machine identities</span>
+              <span className="font-medium text-foreground tabular-nums">
+                {identities.toLocaleString()}
+              </span>
+            </span>
+          </div>
+          <span className="shrink-0 text-muted tabular-nums">
+            {isUnlimited ? "Unlimited" : `${available.toLocaleString()} available`}
+          </span>
+        </div>
+
+        <div className="border-t border-border pt-3 text-xs text-muted">
+          {isUnlimited
+            ? "Members and machine identities share a single, unlimited pool."
+            : `Members and machine identities share a single limit of ${limit.toLocaleString()}.`}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 type ProductRowProps = {
   prod: BillingV2CatalogProduct;

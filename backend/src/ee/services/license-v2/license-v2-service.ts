@@ -128,9 +128,17 @@ const normalizeCadence = (cadence: string | undefined): "monthly" | "annual" => 
   return "monthly";
 };
 
+// A plan carries pricing either as a flat base fee, as per-dimension prices, or both. Checking the
+// per-dimension prices alone wrongly treats a base-only plan (e.g. the NHI add-on, which has a base
+// fee but no metered dimensions) as unpriced.
+const planHasPricing = (plan: TCatalogProduct["plans"][number]): boolean =>
+  plan.prices.length > 0 ||
+  (plan.basePriceMonthlyCents !== null && plan.basePriceMonthlyCents !== undefined) ||
+  (plan.basePriceAnnualCents !== null && plan.basePriceAnnualCents !== undefined);
+
 // The paid self-serve plan (e.g. "pro"); the free tier is self-serve too but carries no prices.
 const findPaidSelfServePlan = (product: TCatalogProduct) =>
-  product.plans.find((plan) => plan.selfServe === true && plan.tier !== "free" && plan.prices.length > 0);
+  product.plans.find((plan) => plan.selfServe === true && plan.tier !== "free" && planHasPricing(plan));
 
 const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => {
   const paidSelfServePlan = findPaidSelfServePlan(product);
@@ -183,7 +191,10 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     enterprise = { sales: true, feature: salesLedPlan.feature ?? "" };
   }
 
-  const cellValue = (cells: { tier: string; value: string | boolean }[], tier: string): string | boolean => {
+  const cellValue = (
+    cells: { tier: string; value: string | number | boolean }[],
+    tier: string
+  ): string | boolean | number => {
     const cell = cells.find((candidate) => candidate.tier === tier);
     if (!cell) {
       return false;
@@ -214,7 +225,8 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
 };
 
 // Translates a catalog product into the line items the checkout endpoint expects: its paid
-// self-serve plan plus the primary priced dimension for the chosen cadence at quantity 1.
+// self-serve plan plus the primary priced dimension for the chosen cadence at quantity 1. A base-only
+// product (a base fee with no metered dimensions, e.g. the NHI add-on) checks out with no quantities.
 const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annual"): TCheckoutLineItem[] | null => {
   const paidSelfServePlan = findPaidSelfServePlan(product);
   if (!paidSelfServePlan) {
@@ -224,7 +236,13 @@ const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annu
   const price = paidSelfServePlan.prices.find(
     (candidate) => candidate.cadence === cadence && candidate.unitAmountCents > 0
   );
-  if (!price) {
+
+  const baseCents =
+    cadence === "annual" ? paidSelfServePlan.basePriceAnnualCents : paidSelfServePlan.basePriceMonthlyCents;
+  const hasBasePrice = baseCents !== null && baseCents !== undefined;
+
+  // Neither a metered price nor a base fee for this cadence means there's nothing to charge.
+  if (!price && !hasBasePrice) {
     return null;
   }
 
@@ -233,7 +251,7 @@ const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annu
       productId: product.id,
       plan: paidSelfServePlan.tier,
       cadence,
-      quantities: { [price.dimensionKey]: 1 }
+      quantities: price ? { [price.dimensionKey]: 1 } : {}
     }
   ];
 };

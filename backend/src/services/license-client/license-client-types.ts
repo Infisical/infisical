@@ -49,7 +49,7 @@ const catalogPlanSchema = z
 const catalogComparisonCellSchema = z
   .object({
     tier: z.string(),
-    value: z.union([z.string(), z.boolean()])
+    value: z.union([z.string(), z.number(), z.boolean()])
   })
   .passthrough();
 

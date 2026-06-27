@@ -29,8 +29,8 @@ const BillingV2DimSchema = z.object({
 
 const BillingV2CompareRowSchema = z.object({
   label: z.string(),
-  pro: z.union([z.string(), z.boolean()]),
-  ent: z.union([z.string(), z.boolean()])
+  pro: z.union([z.string(), z.number(), z.boolean()]),
+  ent: z.union([z.string(), z.number(), z.boolean()])
 });
 
 const BillingV2CatalogProductSchema = z.object({
