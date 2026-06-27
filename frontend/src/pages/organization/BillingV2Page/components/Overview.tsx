@@ -340,8 +340,11 @@ const UsageCard = ({ overview }: UsageCardProps) => {
   const used = members + identities;
   const isUnlimited = limit === null;
   const available = isUnlimited ? 0 : Math.max(0, limit - used);
-  const membersPct = limit ? Math.min(100, (members / limit) * 100) : 0;
-  const identitiesPct = limit ? Math.min(100, (identities / limit) * 100) : 0;
+  // Cap the combined fill at 100% and split it between the two segments by their share of `used`, so
+  // the bar never overflows when members + identities exceeds the limit while keeping their ratio.
+  const usedPct = limit ? Math.min(100, (used / limit) * 100) : 0;
+  const membersPct = used ? usedPct * (members / used) : 0;
+  const identitiesPct = used ? usedPct * (identities / used) : 0;
 
   return (
     <Card>

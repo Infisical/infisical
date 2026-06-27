@@ -165,7 +165,7 @@ const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) =>
         {hasEnterprise && prod.enterprise && (
           <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mediumtext-foreground">Enterprise</span>
+              <span className="font-medium text-foreground">Enterprise</span>
               <Badge variant="neutral">Talk to Us</Badge>
             </div>
             <div className="flex items-baseline">
