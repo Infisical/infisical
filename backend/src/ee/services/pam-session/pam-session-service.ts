@@ -38,11 +38,13 @@ import {
 } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
+  buildSessionGatewayConnectionDetails,
   extractGatewayTarget,
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
-  validateConnectionDetails
+  resolveGatewayAccountType,
+  resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
@@ -273,9 +275,10 @@ export const pamSessionServiceFactory = ({
           }
         : null;
 
-    const normalizedConnectionDetails = validateConnectionDetails(
+    const normalizedConnectionDetails = buildSessionGatewayConnectionDetails(
       account.accountType as PamAccountType,
-      connectionDetails
+      connectionDetails,
+      session.selectedHost
     );
 
     if (sessionStarted) {
@@ -356,7 +359,8 @@ export const pamSessionServiceFactory = ({
     actorUserAgent,
     reason,
     duration,
-    mfaSessionId
+    mfaSessionId,
+    targetHost
   }: {
     path: string;
     projectId: string;
@@ -368,6 +372,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    targetHost?: string;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
@@ -432,6 +437,10 @@ export const pamSessionServiceFactory = ({
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
     const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
 
+    const connectHost =
+      resolveSelectedHost(account.accountType as PamAccountType, rawConnectionDetails, targetHost) ??
+      gatewayTarget.host;
+
     const user = await userDAL.findById(actor.actorId);
     const expiresAt = new Date(Date.now() + sessionDurationMs);
 
@@ -451,7 +460,7 @@ export const pamSessionServiceFactory = ({
       gatewayId: effectiveGatewayId,
       reason: trimmedReason,
       folderName: account.folderName,
-      selectedHost: gatewayTarget.host
+      selectedHost: connectHost
     });
 
     await pamSessionDAL.activateSession(session.id);
@@ -460,8 +469,8 @@ export const pamSessionServiceFactory = ({
     const certs = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId: effectiveGatewayId,
       sessionId: session.id,
-      accountType: account.accountType as PamAccountType,
-      host: gatewayTarget.host,
+      accountType: resolveGatewayAccountType(account.accountType as PamAccountType),
+      host: connectHost,
       port: gatewayTarget.port,
       duration: sessionDurationMs,
       actorMetadata: {
