@@ -57,13 +57,6 @@ export type TPamAccessResponse = {
   sessionId: string;
   accountType: string;
   metadata?: Record<string, string>;
-  relayHost?: string;
-  relayClientCertificate?: string;
-  relayClientPrivateKey?: string;
-  relayServerCertificateChain?: string;
-  gatewayClientCertificate?: string;
-  gatewayClientPrivateKey?: string;
-  gatewayServerCertificateChain?: string;
 };
 
 // New model types
