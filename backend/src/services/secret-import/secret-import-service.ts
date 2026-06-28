@@ -51,7 +51,7 @@ type TSecretImportServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -158,6 +158,11 @@ export const secretImportServiceFactory = ({
     if (isCrossProjectImport) {
       if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
         throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
+      }
+
+      const sourceProject = await projectDAL.findById(sourceProjectId);
+      if (!sourceProject || sourceProject.orgId !== actorOrgId) {
+        throw new NotFoundError({ message: "Source project not found" });
       }
 
       const importFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
@@ -1154,6 +1159,10 @@ export const secretImportServiceFactory = ({
       secretPath,
       secretName
     });
+
+    const sourceProject = await projectDAL.findById(sourceProjectId);
+    if (!sourceProject || sourceProject.orgId !== actorOrgId)
+      throw new NotFoundError({ message: "Source project not found" });
 
     const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, environment, secretPath);
     if (!sourceFolder)
