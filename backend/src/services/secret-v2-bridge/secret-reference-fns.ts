@@ -175,11 +175,29 @@ export const expandSecretReferencesFactory = ({
           let referencedSecretEnvironmentSlug = "";
           let referencedSecretValue = "";
 
-          if (entities.length === 1) {
-            const [secretKey] = entities;
+          // Resolve the reference. Secret names may contain dots
+          // (e.g. `appsettings.json`-style transforms), so `${A.B}` could mean
+          // either a local secret literally named `A.B` or a nested reference
+          // to env=A, secret=B at root. Prefer the local match when one exists,
+          // and fall back to env.path.key only when no local secret is found.
+          // @see https://github.com/Infisical/infisical/issues/5962
+          const dottedSecretKey = interpolationKey.trim();
+          let localCandidate: { value: string; tags: string[] } | null = null;
+          if (entities.length > 1 && dottedSecretKey !== "") {
+            // eslint-disable-next-line no-await-in-loop
+            localCandidate = await fetchSecret(environment, secretPath, dottedSecretKey);
+          }
 
-            // eslint-disable-next-line no-continue,no-await-in-loop
-            const referredValue = await fetchSecret(environment, secretPath, secretKey);
+          if (entities.length === 1 || localCandidate?.value) {
+            const secretKey = entities.length === 1 ? entities[0] : dottedSecretKey;
+
+            let referredValue: { value: string; tags: string[] };
+            if (localCandidate) {
+              referredValue = localCandidate;
+            } else {
+              // eslint-disable-next-line no-await-in-loop
+              referredValue = await fetchSecret(environment, secretPath, secretKey);
+            }
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
                 message: `You do not have permission to read secret '${secretKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
