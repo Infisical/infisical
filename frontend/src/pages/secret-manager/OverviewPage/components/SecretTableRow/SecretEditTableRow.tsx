@@ -1186,7 +1186,7 @@ export const SecretEditTableRow = ({
           onMouseLeave={() => setIsHoveringActionZone(false)}
           className={twMerge(
             "absolute z-20",
-            "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+            "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             "pointer-events-none opacity-0 transition-all duration-300",
             "group-hover:pointer-events-auto group-hover:opacity-100",
             shouldStayExpanded && "pointer-events-auto opacity-100",
@@ -1194,7 +1194,7 @@ export const SecretEditTableRow = ({
               !showMenuWhileFocused &&
               "group-hover:pointer-events-none group-hover:opacity-0",
             isFieldActive && showMenuWhileFocused && "pointer-events-auto opacity-100",
-            isSingleEnvView ? "top-0.5 right-0.5" : "-top-[1px] -right-1.5"
+            isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
           {isBatchMode && hasPendingChange ? (
@@ -1305,10 +1305,12 @@ export const SecretEditTableRow = ({
               {!isImportedSecret &&
                 !isCreatable &&
                 !isPendingDelete &&
-                !!(comment ||
+                !!(
+                  comment ||
                   (canReadTags && tags?.length) ||
                   reminder ||
-                  secretMetadata?.length) && (
+                  secretMetadata?.length
+                ) && (
                   <>
                     {comment && (
                       <Tooltip>
@@ -1375,11 +1377,54 @@ export const SecretEditTableRow = ({
                     <div className="mx-0.5 h-4 w-px bg-border" />
                   </>
                 )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    className="w-6 border-0 text-muted hover:text-foreground"
+                    isDisabled={
+                      isPendingDelete ||
+                      isImportedSecret ||
+                      isManagedSecret ||
+                      (isCreatable ? !canCreate : !canEditSecretValue)
+                    }
+                    onClick={() => {
+                      setFocus("value", { shouldSelect: true });
+                    }}
+                  >
+                    <EditIcon className="size-3.5" />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{isCreatable ? "Add Value" : "Edit Value"}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    className="w-6 border-0 text-muted hover:text-foreground"
+                    isDisabled={isPendingDelete || !canCopySecret}
+                    onClick={handleCopySharedToClipboard}
+                  >
+                    {isCopied ? (
+                      <ClipboardCheckIcon className="size-3.5" />
+                    ) : (
+                      <CopyIcon className="size-3.5" />
+                    )}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{isCopied ? "Copied" : "Copy Secret"}</TooltipContent>
+              </Tooltip>
               <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
-                      <IconButton variant="ghost" size="xs" className="w-7 border-0">
+                      <IconButton
+                        variant="ghost"
+                        size="xs"
+                        className="w-7 border-0 text-muted hover:text-foreground"
+                      >
                         <EllipsisIcon />
                       </IconButton>
                     </DropdownMenuTrigger>
@@ -1398,62 +1443,6 @@ export const SecretEditTableRow = ({
                     setPendingAnnotation(null);
                   }}
                 >
-                  <Tooltip
-                    open={
-                      isImportedSecret ||
-                      isHoneyTokenSecret ||
-                      isRotatedSecret ||
-                      (isCreatable ? !canCreate : !canEditSecretValue)
-                        ? undefined
-                        : false
-                    }
-                    disableHoverableContent
-                  >
-                    <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
-                        isDisabled={
-                          isPendingDelete ||
-                          isImportedSecret ||
-                          isManagedSecret ||
-                          (isCreatable ? !canCreate : !canEditSecretValue)
-                        }
-                        onClick={() => {
-                          setFocus("value", { shouldSelect: true });
-                        }}
-                      >
-                        <EditIcon />
-                        {isCreatable ? "Add Value" : "Edit Value"}
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      {isImportedSecret
-                        ? "Cannot Edit Imported Secret"
-                        : isHoneyTokenSecret
-                          ? "Cannot Edit Honey Token Secret"
-                          : isRotatedSecret
-                            ? "Cannot Edit Rotated Secret"
-                            : "Access Denied"}
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip open={!canCopySecret ? undefined : false} disableHoverableContent>
-                    <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
-                        isDisabled={isPendingDelete || !canCopySecret}
-                        onClick={handleCopySharedToClipboard}
-                      >
-                        {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                        {isCopied ? "Copied" : "Copy Secret"}
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      {canReadSecretValue ? "No Secret Value" : "Access Denied"}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <DropdownMenuSeparator className="my-1" />
-
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger
                       disabled={isPendingDelete || isCreatable || isImportedSecret}
@@ -1521,7 +1510,7 @@ export const SecretEditTableRow = ({
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
 
-                  <DropdownMenuSeparator className="my-1" />
+                  <div className="my-1" />
                   <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">
                     Insights
                   </DropdownMenuLabel>
@@ -1599,7 +1588,7 @@ export const SecretEditTableRow = ({
                     </TooltipContent>
                   </Tooltip>
 
-                  <DropdownMenuSeparator className="my-1" />
+                  <div className="my-1" />
                   <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">
                     Manage
                   </DropdownMenuLabel>
@@ -1752,7 +1741,7 @@ export const SecretEditTableRow = ({
                     </TooltipContent>
                   </Tooltip>
 
-                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuSeparator className="mt-1 mb-1.5" />
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
                     a={subject(ProjectPermissionSub.Secrets, {
