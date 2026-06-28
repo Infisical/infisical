@@ -436,13 +436,16 @@ export type TRemoveFolderIdentityMemberDTO = {
 export type TAddPamProductIdentityMemberDTO = {
   identityId: string;
   role: string;
+  projectId: string;
 };
 
 export type TUpdatePamProductIdentityMemberDTO = {
   identityId: string;
   role: string;
+  projectId: string;
 };
 
 export type TRemovePamProductIdentityMemberDTO = {
   identityId: string;
+  projectId: string;
 };

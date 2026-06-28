@@ -15,10 +15,10 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
+import { useOrganization, useProject } from "@app/context";
+import { useGetIdentityMembershipOrgs, useListProjectIdentityMemberships } from "@app/hooks/api";
 import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
-import { useAddPamProductIdentityMember, useListPamProductIdentities } from "@app/hooks/api/pam";
+import { useAddPamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
@@ -30,6 +30,7 @@ type Props = {
 
 export const AddIdentityModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
   const { mutate: addIdentity, isPending } = useAddPamProductIdentityMember();
 
@@ -40,16 +41,19 @@ export const AddIdentityModal = ({ isOpen, onOpenChange }: Props) => {
     organizationId: currentOrg.id,
     limit: 1000
   });
-  const { data: pamIdentities } = useListPamProductIdentities();
+  const { data: projectIdentitiesData } = useListProjectIdentityMemberships({
+    projectId: currentProject.id,
+    projectType: currentProject.type
+  });
 
   const availableIdentities = useMemo(() => {
     const assignedIds = new Set(
-      (pamIdentities || []).map((m) => m.identityId).filter(Boolean) as string[]
+      (projectIdentitiesData?.identityMemberships || []).map((m) => m.identity.id)
     );
     return (orgIdentitiesData?.identityMemberships || []).filter(
       (m) => !assignedIds.has(m.identity.id)
     );
-  }, [orgIdentitiesData, pamIdentities]);
+  }, [orgIdentitiesData, projectIdentitiesData]);
 
   const handleClose = () => {
     setSelectedIdentity(null);
@@ -63,7 +67,8 @@ export const AddIdentityModal = ({ isOpen, onOpenChange }: Props) => {
     addIdentity(
       {
         identityId: selectedIdentity.identity.id,
-        role: selectedRole
+        role: selectedRole,
+        projectId: currentProject.id
       },
       {
         onSuccess: () => {

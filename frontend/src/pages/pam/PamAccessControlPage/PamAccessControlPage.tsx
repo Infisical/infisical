@@ -6,8 +6,11 @@ import { Shield } from "lucide-react";
 import { PageHeader } from "@app/components/v2";
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { useListPamProductIdentities } from "@app/hooks/api/pam";
+import {
+  useGetWorkspaceUsers,
+  useListProjectIdentityMemberships,
+  useListWorkspaceGroups
+} from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupsTab } from "./components/GroupsTab";
@@ -34,7 +37,10 @@ export const PamAccessControlPage = () => {
 
   const { data: members = [] } = useGetWorkspaceUsers(currentProject.id);
   const { data: groups = [] } = useListWorkspaceGroups(currentProject.id);
-  const { data: identities = [] } = useListPamProductIdentities();
+  const { data: identitiesData } = useListProjectIdentityMemberships({
+    projectId: currentProject.id,
+    projectType: ProjectType.PAM
+  });
 
   const updateTab = (tab: string) => {
     navigate({
@@ -53,7 +59,7 @@ export const PamAccessControlPage = () => {
         scope={ProjectType.PAM}
         icon={Shield}
         title="Access Control"
-        description="Manage members and groups."
+        description="Manage members, groups, and identities."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
         <TabsList variant="pam">
@@ -67,7 +73,7 @@ export const PamAccessControlPage = () => {
           </TabsTrigger>
           <TabsTrigger value={PamAccessControlTab.Identities}>
             Identities
-            <Badge variant="pam">{identities.length}</Badge>
+            <Badge variant="pam">{identitiesData?.totalCount ?? 0}</Badge>
           </TabsTrigger>
         </TabsList>
         <TabsContent value={PamAccessControlTab.Members}>

@@ -11,29 +11,29 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { IdentityProjectMembershipV2 } from "@app/hooks/api/identities/types";
 import { useUpdatePamProductIdentityMember } from "@app/hooks/api/pam";
-import { TPamMember } from "@app/hooks/api/pam/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
 
 type Props = {
-  identity: TPamMember | null;
-  identityName?: string;
+  identity: IdentityProjectMembershipV2 | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export const IdentityRoleModal = ({ identity, identityName, isOpen, onOpenChange }: Props) => {
+export const IdentityRoleModal = ({ identity, isOpen, onOpenChange }: Props) => {
+  const { currentProject } = useProject();
   const updateRole = useUpdatePamProductIdentityMember();
 
-  const currentRole = identity?.role ?? ProjectMembershipRole.Member;
+  const currentRole = identity?.roles?.[0]?.role ?? ProjectMembershipRole.Member;
   const [selectedRole, setSelectedRole] = useState<string>(currentRole);
 
   useEffect(() => {
     if (identity) {
-      setSelectedRole(identity.role ?? ProjectMembershipRole.Member);
+      setSelectedRole(identity.roles?.[0]?.role ?? ProjectMembershipRole.Member);
     }
   }, [identity]);
 
@@ -42,11 +42,11 @@ export const IdentityRoleModal = ({ identity, identityName, isOpen, onOpenChange
   const hasChanges = selectedRole !== currentRole;
 
   const handleSave = () => {
-    if (!identity.identityId) return;
     updateRole.mutate(
       {
-        identityId: identity.identityId,
-        role: selectedRole
+        identityId: identity.identity.id,
+        role: selectedRole,
+        projectId: currentProject.id
       },
       {
         onSuccess: () => {
@@ -63,7 +63,7 @@ export const IdentityRoleModal = ({ identity, identityName, isOpen, onOpenChange
         <DialogHeader>
           <DialogTitle>Edit Role</DialogTitle>
           <DialogDescription>
-            Update the product role for {identityName || "this identity"}.
+            Update the product role for {identity.identity.name || "this identity"}.
           </DialogDescription>
         </DialogHeader>
 

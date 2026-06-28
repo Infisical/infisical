@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { projectKeys } from "@app/hooks/api/projects/query-keys";
 
 import { pamKeys } from "./queries";
 import {
@@ -395,8 +396,11 @@ export const useAddPamProductIdentityMember = () => {
       });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+      });
     }
   });
 };
@@ -410,8 +414,11 @@ export const useUpdatePamProductIdentityMember = () => {
       });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+      });
     }
   });
 };
@@ -423,8 +430,11 @@ export const useRemovePamProductIdentityMember = () => {
       const { data } = await apiRequest.delete(`/api/v1/pam/memberships/identities/${identityId}`);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+      });
     }
   });
 };

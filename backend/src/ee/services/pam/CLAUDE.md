@@ -72,7 +72,7 @@ Scoping rules (enforced via `eventMetadata` json): account-scoped logs (have `ac
 
 ### Auth Modes
 
-All PAM endpoints use `AuthMode.JWT` only (user access). `IDENTITY_ACCESS_TOKEN` is not supported. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, except session launch and web-access which are JWT-only. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
 
 ### Roles
 

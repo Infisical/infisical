@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
+import { useOrganization, useProject } from "@app/context";
+import { useListProjectIdentityMemberships } from "@app/hooks/api";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   TPamResourceRole,
@@ -32,7 +32,6 @@ import {
   useAddFolderIdentityMember,
   useAddFolderMember,
   useListPamProductGroups,
-  useListPamProductIdentities,
   useListPamProductMembers,
   useListPamResourceRoles,
   useUpdateAccountGroupMemberRole,
@@ -131,15 +130,15 @@ export const AssignAccessModal = ({
   editMember
 }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
-  const { data: orgIdentities } = useGetIdentityMembershipOrgs({
-    organizationId: currentOrg.id,
-    limit: 1000
+  const { data: projectIdentitiesData } = useListProjectIdentityMemberships({
+    projectId: currentProject.id,
+    projectType: currentProject.type
   });
   const { data: productMembers } = useListPamProductMembers();
   const { data: productGroups } = useListPamProductGroups();
-  const { data: productIdentities } = useListPamProductIdentities();
   const { data: resourceRoles } = useListPamResourceRoles();
 
   const addAccountUser = useAddAccountMember();
@@ -195,8 +194,8 @@ export const AssignAccessModal = ({
     [productGroups]
   );
   const pamIdentityIds = useMemo(
-    () => new Set((productIdentities ?? []).map((m) => m.identityId).filter(Boolean) as string[]),
-    [productIdentities]
+    () => new Set((projectIdentitiesData?.identityMemberships ?? []).map((m) => m.identity.id)),
+    [projectIdentitiesData]
   );
 
   const assigneeOptions = useMemo<AssigneeOption[]>(() => {
@@ -217,8 +216,8 @@ export const AssignAccessModal = ({
       });
 
     const existingIds = existingIdentityIds ?? new Set<string>();
-    const identities: AssigneeOption[] = (orgIdentities?.identityMemberships ?? [])
-      .filter((im) => pamIdentityIds.has(im.identity.id) && !existingIds.has(im.identity.id))
+    const identities: AssigneeOption[] = (projectIdentitiesData?.identityMemberships ?? [])
+      .filter((im) => !existingIds.has(im.identity.id))
       .map((im) => ({
         value: im.identity.id,
         label: im.identity.name,
@@ -230,7 +229,7 @@ export const AssignAccessModal = ({
   }, [
     orgGroups,
     orgUsers,
-    orgIdentities,
+    projectIdentitiesData,
     pamGroupIds,
     pamUserIds,
     pamIdentityIds,

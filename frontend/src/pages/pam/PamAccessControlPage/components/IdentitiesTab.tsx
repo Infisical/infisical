@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import {
-  BotIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  Plus,
-  SearchIcon,
-  Trash2Icon
-} from "lucide-react";
+import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -39,67 +32,52 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
-import { useListPamProductIdentities, useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
-import { TPamMember } from "@app/hooks/api/pam/types";
+import { useListProjectIdentityMemberships } from "@app/hooks/api";
+import { IdentityProjectMembershipV2 } from "@app/hooks/api/identities/types";
+import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddIdentityModal } from "./AddIdentityModal";
 import { IdentityRoleModal } from "./IdentityRoleModal";
 
 export const IdentitiesTab = () => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [search, setSearch] = useState("");
   const [isAddIdentityOpen, setIsAddIdentityOpen] = useState(false);
-  const [selectedIdentity, setSelectedIdentity] = useState<TPamMember | null>(null);
-  const [identityToRemove, setIdentityToRemove] = useState<TPamMember | null>(null);
+  const [selectedIdentity, setSelectedIdentity] = useState<IdentityProjectMembershipV2 | null>(
+    null
+  );
+  const [identityToRemove, setIdentityToRemove] = useState<IdentityProjectMembershipV2 | null>(
+    null
+  );
 
-  const { data: identities = [], isPending } = useListPamProductIdentities();
-  const removeIdentity = useRemovePamProductIdentityMember();
-
-  const { data: orgIdentitiesData } = useGetIdentityMembershipOrgs({
-    organizationId: currentOrg.id,
-    limit: 1000
+  const { data: identitiesData, isPending } = useListProjectIdentityMemberships({
+    projectId: currentProject.id,
+    projectType: currentProject.type
   });
+  const identities = identitiesData?.identityMemberships ?? [];
 
-  const identityNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    orgIdentitiesData?.identityMemberships?.forEach((m) => {
-      map.set(m.identity.id, m.identity.name);
-    });
-    return map;
-  }, [orgIdentitiesData]);
-
-  const getIdentityName = (member: TPamMember) =>
-    (member.identityId && identityNameMap.get(member.identityId)) ||
-    member.identityId?.slice(0, 12) ||
-    "Unknown";
+  const removeIdentity = useRemovePamProductIdentityMember();
 
   const filteredIdentities = useMemo(
     () =>
-      identities.filter((member) => {
-        const name = getIdentityName(member);
-        return name.toLowerCase().includes(search.toLowerCase());
-      }),
-    [identities, search, identityNameMap]
+      identities.filter((membership) =>
+        membership.identity.name.toLowerCase().includes(search.toLowerCase())
+      ),
+    [identities, search]
   );
 
   const handleDeleteIdentity = async () => {
     if (!identityToRemove) return;
-    if (!identityToRemove.identityId) return;
-    try {
-      await removeIdentity.mutateAsync({ identityId: identityToRemove.identityId });
-      createNotification({ text: "Identity removed", type: "success" });
-      setIdentityToRemove(null);
-    } catch {
-      createNotification({ text: "Failed to remove identity", type: "error" });
-    }
+    await removeIdentity.mutateAsync({
+      identityId: identityToRemove.identity.id,
+      projectId: currentProject.id
+    });
+    createNotification({ text: "Identity removed", type: "success" });
+    setIdentityToRemove(null);
   };
-
-  const selectedIdentityName = selectedIdentity ? getIdentityName(selectedIdentity) : undefined;
-  const removeIdentityName = identityToRemove ? getIdentityName(identityToRemove) : undefined;
 
   return (
     <div>
@@ -136,7 +114,6 @@ export const IdentitiesTab = () => {
           <CardContent>
             <Empty>
               <EmptyHeader>
-                <BotIcon className="size-10 text-muted" />
                 <EmptyTitle>
                   {search ? "No identities match your search" : "No identities found"}
                 </EmptyTitle>
@@ -174,25 +151,29 @@ export const IdentitiesTab = () => {
                     <TableCell />
                   </TableRow>
                 ))}
-              {filteredIdentities.map((member) => {
-                const name = getIdentityName(member);
-                const primaryRole = member.role ?? ProjectMembershipRole.Member;
+              {filteredIdentities.map((membership) => {
+                const primaryRole = membership.roles?.[0]?.role ?? ProjectMembershipRole.Member;
                 return (
-                  <TableRow key={member.membershipId}>
+                  <TableRow key={membership.id}>
                     <TableCell className="font-medium">
-                      <HighlightText text={name} highlight={search} />
+                      <HighlightText text={membership.identity.name} highlight={search} />
                     </TableCell>
                     <TableCell>
-                      <button type="button" onClick={() => setSelectedIdentity(member)}>
+                      <button type="button" onClick={() => setSelectedIdentity(membership)}>
                         <Badge
                           variant={primaryRole === ProjectMembershipRole.Admin ? "pam" : "neutral"}
                         >
-                          {formatProjectRoleName(primaryRole)}
+                          {formatProjectRoleName(
+                            primaryRole,
+                            membership.roles?.[0]?.customRoleName
+                          )}
                         </Badge>
                       </button>
                     </TableCell>
                     <TableCell className="text-sm text-muted">
-                      {member.createdAt ? format(new Date(member.createdAt), "MMM d, yyyy") : "—"}
+                      {membership.createdAt
+                        ? format(new Date(membership.createdAt), "MMM d, yyyy")
+                        : "—"}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -214,7 +195,7 @@ export const IdentitiesTab = () => {
                             {(isAllowed) => (
                               <DropdownMenuItem
                                 isDisabled={!isAllowed}
-                                onClick={() => setSelectedIdentity(member)}
+                                onClick={() => setSelectedIdentity(membership)}
                               >
                                 <PencilIcon />
                                 Edit
@@ -230,7 +211,7 @@ export const IdentitiesTab = () => {
                               <DropdownMenuItem
                                 variant="danger"
                                 isDisabled={!isAllowed}
-                                onClick={() => setIdentityToRemove(member)}
+                                onClick={() => setIdentityToRemove(membership)}
                               >
                                 <Trash2Icon />
                                 Remove
@@ -252,7 +233,6 @@ export const IdentitiesTab = () => {
 
       <IdentityRoleModal
         identity={selectedIdentity}
-        identityName={selectedIdentityName}
         isOpen={!!selectedIdentity}
         onOpenChange={(open) => {
           if (!open) setSelectedIdentity(null);
@@ -264,7 +244,7 @@ export const IdentitiesTab = () => {
         onChange={(isOpen) => {
           if (!isOpen) setIdentityToRemove(null);
         }}
-        title={`Remove ${removeIdentityName ?? "identity"}?`}
+        title={`Remove ${identityToRemove?.identity.name ?? "identity"}?`}
         deleteKey="remove"
         buttonText="Remove"
         onDeleteApproved={handleDeleteIdentity}
