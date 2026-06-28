@@ -255,6 +255,8 @@ export type TCreatePortalPayload = {
 
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
+  // Ask the license server to recompute/bust its cached entitlements after a license change.
+  refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
   fetchCatalog: () => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;

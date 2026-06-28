@@ -182,6 +182,12 @@ export const BillingV2Page = () => {
 
   const sheetRedirecting = createPortalSession.isPending || createCheckoutSession.isPending;
 
+  // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
+  const isManaged = overview?.mode === "managed";
+  const pageDescription = isManaged
+    ? "View your subscription, products, and usage. Your plan is managed through your license."
+    : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
+
   return (
     <div className="h-full bg-bunker-800">
       <Helmet>
@@ -191,11 +197,7 @@ export const BillingV2Page = () => {
       </Helmet>
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
-          <PageHeader
-            scope="org"
-            title={t("billing.title")}
-            description="Manage your subscription, products, and payment. Payment is handled securely through Stripe."
-          />
+          <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan
             passThrough={false}
             I={OrgPermissionBillingActions.Read}
