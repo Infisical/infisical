@@ -1433,7 +1433,7 @@ export const SecretEditTableRow = ({
                 </Tooltip>
                 <DropdownMenuContent
                   align="end"
-                  className="min-w-[200px] [&_svg:not([class*='size-'])]:!size-3"
+                  className="min-w-[200px] [&_[data-variant=default]]:text-mineshaft-100 [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
                   onCloseAutoFocus={(e) => {
                     e.preventDefault();
                     if (pendingAnnotation === "comment") setIsCommentOpen(true);
