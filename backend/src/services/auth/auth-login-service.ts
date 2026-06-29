@@ -697,14 +697,19 @@ export const authLoginServiceFactory = ({
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
 
-    try {
-      if (mfaMethod !== requiredMfaMethod) {
-        throw new BadRequestError({
-          message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
-        });
-      }
+    // Enforce lock status before the try block so that locked attempts
+    // do not increment the failure counter and cascade into permanent lockout.
+    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+    // Recovery codes are a universal fallback — skip the method check.
+    // For normal MFA, ensure the submitted method matches what the org/user requires.
+    if (!isRecoveryCode && mfaMethod !== requiredMfaMethod) {
+      throw new BadRequestError({
+        message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
+      });
+    }
+
+    try {
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
           type: TokenType.TOKEN_EMAIL_MFA,

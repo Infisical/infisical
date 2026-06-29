@@ -157,7 +157,7 @@ export const KeyStoreTtls = {
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
-  UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
+  UsedTotpCodeInSeconds: 180, // covers the full ±60s acceptance window (window:2 → 150s) with margin
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
