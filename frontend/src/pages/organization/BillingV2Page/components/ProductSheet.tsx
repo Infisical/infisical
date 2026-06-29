@@ -21,59 +21,84 @@ import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
+  BillingV2Dim,
   BillingV2Entitlement,
   BillingV2Plan
 } from "@app/hooks/api";
 
-import { cadenceWord, cadenceWordShort, fmtMoney, unitPrice } from "../billing-v2-data";
+import {
+  cadenceWord,
+  cadenceWordShort,
+  fmtMoney,
+  isMeteredCadence,
+  pluralizeUnit,
+  unitPrice
+} from "../billing-v2-data";
 import { ActiveBadge, ProductIcon } from "./shared";
 
-type PriceLine = { amount: string; unit: string };
+// prefix/metered carry the usage-based framing for metered dims; absent for per_unit and base prices.
+type PriceLine = { amount: string; unit: string; prefix?: string; metered?: boolean };
 
-// A plan's price is a base fee plus any number of metered dimensions, and any combination is valid:
+// A priced dimension as a display line. A metered dimension reads as usage-based: an optional "First
+// N included, then" prefix and a flag to badge the line, instead of a fixed per-unit charge.
+const dimPriceLine = (dim: BillingV2Dim, cadence: BillingV2Cadence, unit: string): PriceLine => {
+  const metered = isMeteredCadence(dim, cadence);
+  const line: PriceLine = { amount: fmtMoney(unitPrice(dim, cadence), 2), unit, metered };
+  if (metered && dim.included > 0) {
+    line.prefix = `First ${dim.included.toLocaleString()} ${pluralizeUnit(dim.noun)} included, then`;
+  }
+  return line;
+};
+
+const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean }) => (
+  <div className="flex flex-col gap-0.5">
+    {line.prefix && <span className="text-xs text-muted">{line.prefix}</span>}
+    <div className="flex flex-wrap items-baseline gap-1.5">
+      <span className={`font-medium text-foreground ${headline ? "text-2xl" : "text-sm"}`}>
+        {line.amount}
+      </span>
+      <span className="text-xs text-muted">{line.unit}</span>
+      {line.metered && <Badge variant="neutral">Usage-based</Badge>}
+    </div>
+  </div>
+);
+
+// A plan's price is a base fee plus any number of priced dimensions, and any combination is valid:
 // base only, meter only, or both. The base fee leads as the headline; every priced dimension is then
 // listed below (e.g. "$5 per MCP / mo", "$3 per Agent / mo"). When there's no base fee the first
-// dimension is promoted to the headline so the card always opens with a price.
+// dimension is promoted to the headline so the card always opens with a price. A metered dimension
+// renders with its usage-based framing (included allowance + "Usage-based" badge).
 const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV2Cadence }) => {
   const dims = plan.dims ?? [];
-  const dimLines = dims.map((dim) => ({
-    key: dim.key,
-    amount: fmtMoney(unitPrice(dim, cadence), 2),
-    unit: `per ${dim.noun} / ${cadenceWordShort(cadence)}`
-  }));
 
   let headline: PriceLine | null = plan.base
     ? { amount: fmtMoney(unitPrice(plan.base, cadence)), unit: `/ ${cadenceWord(cadence)}` }
     : null;
-  let usageLines = dimLines;
+  let usageDims = dims;
   if (!headline && dims.length > 0) {
-    headline = {
-      amount: fmtMoney(unitPrice(dims[0], cadence), 2),
-      unit: `/ ${dims[0].noun} / ${cadenceWord(cadence)}`
-    };
-    usageLines = dimLines.slice(1);
+    headline = dimPriceLine(dims[0], cadence, `/ ${dims[0].noun} / ${cadenceWord(cadence)}`);
+    usageDims = dims.slice(1);
   }
 
   if (!headline) {
     return null;
   }
 
+  const usageLines = usageDims.map((dim) => ({
+    key: dim.key,
+    line: dimPriceLine(dim, cadence, `per ${dim.noun} / ${cadenceWordShort(cadence)}`)
+  }));
+
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-wrap items-baseline gap-1.5">
-        <span className="text-2xl font-medium text-foreground">{headline.amount}</span>
-        <span className="text-xs text-muted">{headline.unit}</span>
-      </div>
+      <PriceLineView line={headline} headline />
       {usageLines.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-border pt-3.5">
           <span className="text-[10px] font-medium tracking-wide text-muted uppercase">
             Plus per-unit usage
           </span>
-          {usageLines.map((line) => (
-            <div key={line.key} className="flex items-baseline gap-1.5">
-              <span className="text-sm font-medium text-foreground">{line.amount}</span>
-              <span className="text-xs text-muted">{line.unit}</span>
-            </div>
+          {usageLines.map(({ key, line }) => (
+            <PriceLineView key={key} line={line} />
           ))}
         </div>
       )}

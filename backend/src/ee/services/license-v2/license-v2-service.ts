@@ -83,6 +83,12 @@ const toModel = (model: string): BillingV2Model => {
   return "usage";
 };
 
+// Price kinds we understand; an unknown kind is treated as non-purchasable, never sold as per_unit.
+const PER_UNIT_KIND = "per_unit";
+const METERED_KIND = "metered";
+const KNOWN_PRICE_KINDS: readonly string[] = [PER_UNIT_KIND, METERED_KIND];
+const isKnownPriceKind = (kind: string): boolean => KNOWN_PRICE_KINDS.includes(kind);
+
 const centsToDollars = (cents: number | null | undefined): number => {
   if (!cents) {
     return 0;
@@ -135,29 +141,44 @@ const normalizeCadence = (cadence: string | undefined): "monthly" | "annual" => 
   return "monthly";
 };
 
-// A plan carries pricing either as a flat base fee, as per-dimension prices, or both. Checking the
-// per-dimension prices alone wrongly treats a base-only plan (e.g. the NHI add-on, which has a base
-// fee but no metered dimensions) as unpriced.
+// A plan carries pricing as a known-kind price, a flat base fee, or both. An unknown price kind is
+// treated as non-purchasable (never sold as per_unit); a base-only plan (e.g. the NHI add-on, a base
+// fee with no priced dimensions) must still count as priced.
 const planHasPricing = (plan: TCatalogProduct["plans"][number]): boolean =>
-  plan.prices.length > 0 ||
+  plan.prices.some((price) => isKnownPriceKind(price.kind)) ||
   (plan.basePriceMonthlyCents !== null && plan.basePriceMonthlyCents !== undefined) ||
   (plan.basePriceAnnualCents !== null && plan.basePriceAnnualCents !== undefined);
 
-// The paid self-serve plan (e.g. "pro"); the free tier is self-serve too but carries no prices.
+// The paid self-serve plan (e.g. "pro"); the free tier is self-serve too but carries no pricing.
 const findPaidSelfServePlan = (product: TCatalogProduct) =>
   product.plans.find((plan) => plan.selfServe === true && plan.tier !== "free" && planHasPricing(plan));
 
 // Project a single catalog plan into the UI shape: fold its per-dimension/per-cadence prices into the
 // dim view, and surface its base fee when it has one. Each plan carries its own pricing, so a product
-// with several tiers (pro, advanced, pro+) maps each tier independently.
+// with several tiers (pro, advanced, pro+) maps each tier independently. metered is tracked per cadence
+// so a dimension priced per_unit on one cadence and metered on the other doesn't mislabel both.
 const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]): BillingV2Plan => {
-  const priceByDim = new Map<string, { monthly: number; annual: number; included: number }>();
+  const priceByDim = new Map<
+    string,
+    { monthly: number; annual: number; included: number; meteredMonthly: boolean; meteredAnnual: boolean }
+  >();
   plan.prices.forEach((price) => {
-    const entry = priceByDim.get(price.dimensionKey) ?? { monthly: 0, annual: 0, included: 0 };
+    if (!isKnownPriceKind(price.kind)) {
+      return;
+    }
+    const entry = priceByDim.get(price.dimensionKey) ?? {
+      monthly: 0,
+      annual: 0,
+      included: 0,
+      meteredMonthly: false,
+      meteredAnnual: false
+    };
     if (price.cadence === "annual") {
       entry.annual = centsToDollars(price.unitAmountCents);
+      entry.meteredAnnual = price.kind === METERED_KIND;
     } else {
       entry.monthly = centsToDollars(price.unitAmountCents);
+      entry.meteredMonthly = price.kind === METERED_KIND;
     }
     if (price.includedQuantity !== null && price.includedQuantity !== undefined) {
       entry.included = price.includedQuantity;
@@ -177,7 +198,9 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
       noun: dimension.noun,
       monthly: priced.monthly,
       annual: priced.annual,
-      included: priced.included
+      included: priced.included,
+      meteredMonthly: priced.meteredMonthly,
+      meteredAnnual: priced.meteredAnnual
     });
   });
 
@@ -232,9 +255,9 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
   };
 };
 
-// Translates a catalog product into the line items the checkout endpoint expects: its paid
-// self-serve plan plus the primary priced dimension for the chosen cadence at quantity 1. A base-only
-// product (a base fee with no metered dimensions, e.g. the NHI add-on) checks out with no quantities.
+// Translates a catalog product into the line items the checkout endpoint expects: the chosen plan's
+// per_unit dimensions at quantity 1. Metered and base lines are added server-side, so a metered-only
+// or base-only plan (e.g. the NHI add-on) checks out with no quantities.
 const buildCheckoutItems = (
   product: TCatalogProduct,
   cadence: "monthly" | "annual",
@@ -249,13 +272,18 @@ const buildCheckoutItems = (
     return null;
   }
 
-  const price = plan.prices.find((candidate) => candidate.cadence === cadence && candidate.unitAmountCents > 0);
+  const quantities: Record<string, number> = {};
+  const perUnitPrice = plan.prices.find(
+    (candidate) => candidate.cadence === cadence && candidate.kind === PER_UNIT_KIND && candidate.unitAmountCents > 0
+  );
+  if (perUnitPrice) {
+    quantities[perUnitPrice.dimensionKey] = 1;
+  }
 
-  const baseCents = cadence === "annual" ? plan.basePriceAnnualCents : plan.basePriceMonthlyCents;
-  const hasBasePrice = baseCents !== null && baseCents !== undefined;
-
-  // Neither a metered price nor a base fee for this cadence means there's nothing to charge.
-  if (!price && !hasBasePrice) {
+  const hasMetered = plan.prices.some((candidate) => candidate.cadence === cadence && candidate.kind === METERED_KIND);
+  const baseForCadence = cadence === "annual" ? plan.basePriceAnnualCents : plan.basePriceMonthlyCents;
+  const hasBase = baseForCadence !== null && baseForCadence !== undefined;
+  if (!perUnitPrice && !hasMetered && !hasBase) {
     return null;
   }
 
@@ -264,7 +292,7 @@ const buildCheckoutItems = (
       productId: product.id,
       plan: plan.tier,
       cadence,
-      quantities: price ? { [price.dimensionKey]: 1 } : {}
+      quantities
     }
   ];
 };

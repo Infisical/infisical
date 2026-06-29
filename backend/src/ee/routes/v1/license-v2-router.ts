@@ -24,7 +24,9 @@ const BillingV2DimSchema = z.object({
   noun: z.string(),
   monthly: z.number(),
   annual: z.number(),
-  included: z.number()
+  included: z.number(),
+  meteredMonthly: z.boolean().optional(),
+  meteredAnnual: z.boolean().optional()
 });
 
 const BillingV2CompareRowSchema = z.object({
