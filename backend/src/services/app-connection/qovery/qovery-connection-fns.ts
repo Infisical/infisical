@@ -3,8 +3,6 @@ import { AxiosError, AxiosResponse, HttpStatusCode } from "axios";
 import { request } from "@app/lib/config/request";
 import { applyJitter, delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { QoveryConnectionMethod } from "./qovery-connection-enums";
@@ -15,19 +13,8 @@ const QOVERY_MAX_RETRIES = 5;
 const QOVERY_RETRY_DELAY_MS = 2_000;
 const QOVERY_MAX_PAGES = 1_000;
 
+// Qovery is a hosted-only service; self-hosting its API is not possible, so the API URL is fixed.
 export const QOVERY_DEFAULT_API_URL = "https://api.qovery.com";
-
-// Accepts anything carrying Qovery credentials (a create config or a stored connection) so the
-// same resolver is reused by validation, resource discovery, and the secret sync.
-export const getQoveryInstanceUrl = async (connection: { credentials: { instanceUrl?: string } }) => {
-  const instanceUrl = connection.credentials.instanceUrl
-    ? removeTrailingSlash(connection.credentials.instanceUrl)
-    : QOVERY_DEFAULT_API_URL;
-
-  await blockLocalAndPrivateIpAddresses(instanceUrl);
-
-  return instanceUrl;
-};
 
 export const getQoveryAuthHeaders = (accessToken: string) => ({
   Authorization: `Token ${accessToken}`,
@@ -93,10 +80,9 @@ export const paginatedQoveryRequest = async <T>(
 export type TQoveryResource = { id: string; name: string };
 
 const listQoveryResources = async (appConnection: TQoveryConnection, path: string): Promise<TQoveryResource[]> => {
-  const instanceUrl = await getQoveryInstanceUrl(appConnection);
   const { accessToken } = appConnection.credentials;
 
-  const results = await paginatedQoveryRequest<TQoveryResource>(`${instanceUrl}${path}`, accessToken);
+  const results = await paginatedQoveryRequest<TQoveryResource>(`${QOVERY_DEFAULT_API_URL}${path}`, accessToken);
 
   return results.map(({ id, name }) => ({ id, name }));
 };
@@ -119,11 +105,10 @@ export const getQoveryConnectionListItem = () => {
 };
 
 export const validateQoveryConnectionCredentials = async (config: TQoveryConnectionConfig) => {
-  const instanceUrl = await getQoveryInstanceUrl(config);
   const { accessToken } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/organization`, {
+    await request.get(`${QOVERY_DEFAULT_API_URL}/organization`, {
       headers: {
         Authorization: `Token ${accessToken}`,
         Accept: "application/json"

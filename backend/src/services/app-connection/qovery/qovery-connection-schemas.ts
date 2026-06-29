@@ -16,14 +16,7 @@ export const QoveryConnectionAccessTokenCredentialsSchema = z.object({
     .string()
     .trim()
     .min(1, "Project Access Token required")
-    .describe(AppConnections.CREDENTIALS.QOVERY.accessToken),
-  instanceUrl: z
-    .string()
-    .trim()
-    .url("Invalid Instance URL")
-    .max(255)
-    .optional()
-    .describe(AppConnections.CREDENTIALS.QOVERY.instanceUrl)
+    .describe(AppConnections.CREDENTIALS.QOVERY.accessToken)
 });
 
 const BaseQoveryConnectionSchema = BaseAppConnectionSchema.extend({
@@ -40,7 +33,7 @@ export const QoveryConnectionSchema = z.discriminatedUnion("method", [
 export const SanitizedQoveryConnectionSchema = z.discriminatedUnion("method", [
   BaseQoveryConnectionSchema.extend({
     method: z.literal(QoveryConnectionMethod.AccessToken),
-    credentials: QoveryConnectionAccessTokenCredentialsSchema.pick({ instanceUrl: true })
+    credentials: QoveryConnectionAccessTokenCredentialsSchema.pick({})
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Qovery]} (Access Token)` }))
 ]);
 

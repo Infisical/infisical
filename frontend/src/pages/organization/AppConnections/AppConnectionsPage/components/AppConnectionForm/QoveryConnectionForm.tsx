@@ -7,7 +7,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  Input,
   SecretInput,
   Select,
   SelectContent,
@@ -41,15 +40,7 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(QoveryConnectionMethod.AccessToken),
     credentials: z.object({
-      accessToken: z.string().trim().min(1, "Project Access Token required"),
-      instanceUrl: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .refine((value) => (!value ? true : z.string().url().safeParse(value).success), {
-          message: "Invalid Qovery API URL"
-        })
-        .optional()
+      accessToken: z.string().trim().min(1, "Project Access Token required")
     })
   })
 ]);
@@ -63,10 +54,7 @@ export const QoveryConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Qovery,
-      method: QoveryConnectionMethod.AccessToken,
-      credentials: {
-        instanceUrl: "https://api.qovery.com"
-      }
+      method: QoveryConnectionMethod.AccessToken
     }
   });
 
@@ -131,34 +119,6 @@ export const QoveryConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
-        <Controller
-          name="credentials.instanceUrl"
-          control={control}
-          shouldUnregister
-          render={({ field, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="instance-url">
-                Qovery API URL
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    Optional. Override only when connecting to a self-hosted Qovery instance.
-                    Defaults to https://api.qovery.com.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <Input
-                id="instance-url"
-                {...field}
-                placeholder="https://api.qovery.com"
-                isError={Boolean(error?.message)}
-              />
               <FieldError errors={[error]} />
             </Field>
           )}

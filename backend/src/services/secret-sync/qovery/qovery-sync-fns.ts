@@ -2,8 +2,8 @@ import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
 import {
   getQoveryAuthHeaders,
-  getQoveryInstanceUrl,
-  paginatedQoveryRequest
+  paginatedQoveryRequest,
+  QOVERY_DEFAULT_API_URL
 } from "@app/services/app-connection/qovery";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -50,8 +50,7 @@ export const resolveQoverySyncTarget = (
 };
 
 // Pure, verifiable URL construction: {instanceUrl}/{scope}/{scopeId}/{variableTypeSegment}[/{resourceId}].
-// SSRF validation of the host happens once in getQoveryInstanceUrl; the segments appended here are
-// resource ids, not hosts, so they cannot change the host that was already validated.
+// The host is the fixed QOVERY_DEFAULT_API_URL; the segments appended here are resource ids, not hosts.
 export const getQoveryResourceUrl = ({
   instanceUrl,
   scope,
@@ -117,7 +116,7 @@ export const QoverySyncFns = {
   syncSecrets: async (secretSync: TQoverySyncWithCredentials, secretMap: TSecretMap) => {
     const { connection, destinationConfig, environment, syncOptions } = secretSync;
     const { accessToken } = connection.credentials;
-    const instanceUrl = await getQoveryInstanceUrl(connection);
+    const instanceUrl = QOVERY_DEFAULT_API_URL;
     const target = resolveQoverySyncTarget(destinationConfig);
 
     const managedVariables = await listManagedQoveryVariables(instanceUrl, accessToken, target);
@@ -170,7 +169,7 @@ export const QoverySyncFns = {
   removeSecrets: async (secretSync: TQoverySyncWithCredentials, secretMap: TSecretMap) => {
     const { connection, destinationConfig } = secretSync;
     const { accessToken } = connection.credentials;
-    const instanceUrl = await getQoveryInstanceUrl(connection);
+    const instanceUrl = QOVERY_DEFAULT_API_URL;
     const target = resolveQoverySyncTarget(destinationConfig);
 
     const managedVariables = await listManagedQoveryVariables(instanceUrl, accessToken, target);

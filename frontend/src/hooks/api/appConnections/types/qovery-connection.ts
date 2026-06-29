@@ -9,6 +9,5 @@ export type TQoveryConnection = TRootAppConnection & { app: AppConnection.Qovery
   method: QoveryConnectionMethod.AccessToken;
   credentials: {
     accessToken: string;
-    instanceUrl?: string;
   };
 };
