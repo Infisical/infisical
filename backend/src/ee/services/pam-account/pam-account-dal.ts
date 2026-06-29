@@ -8,7 +8,7 @@ import { ormify } from "@app/lib/knex";
 import { PamAccountType } from "../pam/pam-enums";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
-const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.ActiveDirectory]
+const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
   .map((type) => `'${type}'`)
   .join(", ");
 

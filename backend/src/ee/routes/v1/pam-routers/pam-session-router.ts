@@ -5,6 +5,7 @@ import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
+import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -300,7 +301,14 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .trim()
           .optional()
           .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
-        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        targetHost: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(hostPattern, "Must be a valid hostname or IP address")
+          .optional()
+          .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
       response: {
         200: z.object({
@@ -338,7 +346,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorUserAgent: req.headers["user-agent"] ?? "",
         reason: req.body.reason,
         duration: req.body.duration,
-        mfaSessionId: req.body.mfaSessionId
+        mfaSessionId: req.body.mfaSessionId,
+        targetHost: req.body.targetHost
       });
 
       await server.services.auditLog.createAuditLog({
@@ -397,7 +406,14 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       }),
       body: z.object({
         reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
-        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        selectedHost: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(hostPattern, "Must be a valid hostname or IP address")
+          .optional()
+          .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -418,7 +434,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         auditLogInfo: req.auditLogInfo,
         reason: req.body.reason,
-        mfaSessionId: req.body.mfaSessionId
+        mfaSessionId: req.body.mfaSessionId,
+        selectedHost: req.body.selectedHost
       });
 
       return { ticket };
@@ -505,6 +522,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
             actorName: z.string(),
             reason: z.string().nullable().optional(),
             maxSessionDurationMs: z.number().optional(),
+            selectedHost: z.string().nullable().optional(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
               userAgent: z.string().optional(),
@@ -539,6 +557,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           actorUserAgent: req.headers["user-agent"] ?? "",
           reason: payload.reason,
           maxSessionDurationMs: payload.maxSessionDurationMs,
+          selectedHost: payload.selectedHost,
           preAuthMessages,
           preAuthHandler
         });

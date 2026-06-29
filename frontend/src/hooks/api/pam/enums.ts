@@ -9,7 +9,7 @@ export enum PamAccountType {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   Windows = "windows",
-  ActiveDirectory = "active-directory"
+  WindowsAd = "windows-ad"
 }
 
 export enum PamPolicyType {

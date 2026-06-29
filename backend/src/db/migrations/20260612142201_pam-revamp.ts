@@ -182,6 +182,23 @@ export async function up(knex: Knex): Promise<void> {
       return newProjectCipher.encryptor({ plainText }).cipherTextBlob;
     };
 
+    const reEncryptAdConnectionDetails = (
+      oldCipher: Awaited<ReturnType<typeof getProjectCipher>>,
+      blob?: Buffer | null
+    ) => {
+      if (!blob) return undefined;
+      const details = JSON.parse(oldCipher.decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<
+        string,
+        unknown
+      >;
+      const transformed = {
+        ...details,
+        hosts: details.dcAddress ? [details.dcAddress] : [],
+        rdpPort: 3389
+      };
+      return newProjectCipher.encryptor({ plainText: Buffer.from(JSON.stringify(transformed)) }).cipherTextBlob;
+    };
+
     const templates = await knex(TableName.PamAccountTemplate).where({ projectId: newProjectId }).select("id", "type");
     const templateMap: Record<string, string> = {};
     for (const t of templates) {
@@ -263,7 +280,10 @@ export async function up(knex: Knex): Promise<void> {
 
       for (const account of domainAccounts) {
         try {
-          const templateId = templateMap[account.domainType];
+          // active-directory domains became the windows-ad account type
+          const isActiveDirectory = account.domainType === "active-directory";
+          const templateType = isActiveDirectory ? "windows-ad" : account.domainType;
+          const templateId = templateMap[templateType];
           if (templateId) {
             await knex(TableName.PamAccount)
               .where("id", account.accountId)
@@ -272,7 +292,9 @@ export async function up(knex: Knex): Promise<void> {
                 folderId,
                 templateId,
                 encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-                encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+                encryptedConnectionDetails: isActiveDirectory
+                  ? reEncryptAdConnectionDetails(oldProjectCipher, account.encryptedConnectionDetails)
+                  : reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
                 gatewayId: account.gatewayId,
                 gatewayPoolId: account.gatewayPoolId
               });

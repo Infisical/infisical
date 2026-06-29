@@ -16,6 +16,13 @@ import {
   RadioGroup,
   RadioGroupItem
 } from "@app/components/v3";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3/generic/Select";
 import { useOrganization } from "@app/context";
 import {
   PamAccountType,
@@ -45,15 +52,26 @@ const formatFieldValue = (value: unknown): ReactNode => {
 
 const LaunchTab = ({
   account,
-  supportsWebAccess
+  supportsWebAccess,
+  hosts
 }: {
   account: TAccessiblePamAccount;
   supportsWebAccess: boolean;
+  hosts: string[];
 }) => {
   const { currentOrg } = useOrganization();
   const [method, setMethod] = useState<LaunchMethod>(supportsWebAccess ? "browser" : "cli");
 
-  const cliCommand = `infisical pam access ${account.folderName}/${account.name}`;
+  const needsHost = hosts.length > 1;
+  const [selectedHost, setSelectedHost] = useState<string | undefined>(
+    needsHost ? undefined : hosts[0]
+  );
+  const hostMissing = needsHost && !selectedHost;
+
+  const cliHost = selectedHost ?? (needsHost ? "HOST" : undefined);
+  const cliCommand = `infisical pam access ${account.folderName}/${account.name}${
+    cliHost ? ` --target '${cliHost}'` : ""
+  }`;
   const handleCopyCommand = async () => {
     await navigator.clipboard.writeText(cliCommand);
     createNotification({ text: "Command copied to clipboard", type: "success" });
@@ -67,6 +85,24 @@ const LaunchTab = ({
           <CardDescription>Choose how to connect to this account.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
+          {needsHost && (
+            <div>
+              <p className="mb-2.5 text-sm font-medium text-foreground">Host</p>
+              <Select value={selectedHost ?? ""} onValueChange={setSelectedHost}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a host" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {hosts.map((host) => (
+                    <SelectItem key={host} value={host}>
+                      {host}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {supportsWebAccess && (
             <div>
               <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
@@ -104,20 +140,28 @@ const LaunchTab = ({
           {method === "browser" && (
             <div>
               <p className="mb-2.5 text-sm text-foreground">Launch browser client</p>
-              <Button variant="pam" className="w-full" asChild>
-                <Link
-                  to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
-                  params={{
-                    orgId: currentOrg.id,
-                    accountType: account.accountType,
-                    accountId: account.id
-                  }}
-                  target="_blank"
-                >
+              {hostMissing ? (
+                <Button variant="pam" className="w-full" isDisabled>
                   <Rocket className="size-4" />
                   Connect in Browser
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button variant="pam" className="w-full" asChild>
+                  <Link
+                    to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
+                    params={{
+                      orgId: currentOrg.id,
+                      accountType: account.accountType,
+                      accountId: account.id
+                    }}
+                    search={{ host: selectedHost }}
+                    target="_blank"
+                  >
+                    <Rocket className="size-4" />
+                    Connect in Browser
+                  </Link>
+                </Button>
+              )}
             </div>
           )}
 
@@ -165,6 +209,11 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
   const conn = (fullAccount?.connectionDetails ?? {}) as Record<string, unknown>;
   const credentials = (fullAccount?.credentials ?? {}) as Record<string, unknown>;
 
+  const hosts =
+    account.accountType === PamAccountType.WindowsAd && Array.isArray(conn.hosts)
+      ? (conn.hosts as unknown[]).filter((host): host is string => typeof host === "string")
+      : [];
+
   const fieldRows = (fields: TPamFieldDescriptor[] | undefined, source: Record<string, unknown>) =>
     (fields ?? [])
       .filter((f) => !f.secret)
@@ -191,7 +240,9 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
           value: PamSheetTab.Launch,
           label: "Launch",
           icon: <Rocket className="mr-1.5 size-4" />,
-          content: <LaunchTab account={account} supportsWebAccess={supportsWebAccess} />
+          content: (
+            <LaunchTab account={account} supportsWebAccess={supportsWebAccess} hosts={hosts} />
+          )
         }
       ]}
     />
