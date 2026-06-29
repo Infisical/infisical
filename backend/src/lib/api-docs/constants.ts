@@ -3170,6 +3170,7 @@ export const SecretSyncs = {
     },
     RENDER: {
       serviceId: "The ID of the Render service to sync secrets to.",
+      workflowId: "The ID of the Render workflow to sync secrets to.",
       environmentGroupId: "The ID of the Render environment group to sync secrets to.",
       scope: "The Render scope that secrets should be synced to.",
       type: "The Render resource type to sync secrets to."
