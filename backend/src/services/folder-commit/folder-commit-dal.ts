@@ -69,6 +69,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .leftJoin(TableName.Project, function joinActiveProjectForFolderCommit() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Project}.deleteAfter`
+          );
+        })
         .where((qb) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
@@ -386,6 +391,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
+          );
+        })
+        .leftJoin(TableName.Project, function joinActiveProjectForFolderCommit() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Project}.deleteAfter`
           );
         })
         .where((qb) => {
