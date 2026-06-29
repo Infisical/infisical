@@ -12,7 +12,7 @@ import {
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
-import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -1268,6 +1268,17 @@ export const secretApprovalRequestServiceFactory = ({
 
     const { created, updated, deleted } = mergeStatus.secrets;
 
+    const requestedByActor: Actor | undefined = secretApprovalRequest.committerUserId
+      ? {
+          type: ActorType.USER,
+          metadata: {
+            userId: secretApprovalRequest.committerUserId,
+            email: secretApprovalRequest.committerUser?.email,
+            username: secretApprovalRequest.committerUser?.username ?? ""
+          }
+        }
+      : undefined;
+
     const secretMutationEvents: Event[] = [];
 
     if (created.length) {
@@ -1403,7 +1414,7 @@ export const secretApprovalRequestServiceFactory = ({
       }
     }
 
-    return { ...mergeStatus, projectId, secretMutationEvents };
+    return { ...mergeStatus, projectId, secretMutationEvents, requestedByActor };
   };
 
   // function to save secret change to secret approval
