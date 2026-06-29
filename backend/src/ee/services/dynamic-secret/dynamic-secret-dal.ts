@@ -223,6 +223,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
       .select(
         db.ref("id").withSchema(TableName.DynamicSecret),
@@ -251,6 +252,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.DynamicSecret}.gatewayPoolId`, gatewayPoolId)
       .select(
         db.ref("id").withSchema(TableName.DynamicSecret),
@@ -279,8 +281,10 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
       const result = await (tx || db.replicaNode())(TableName.DynamicSecret)
         .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .count("* as count")
         .first();
 
