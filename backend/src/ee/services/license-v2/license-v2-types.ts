@@ -13,12 +13,15 @@ export type BillingV2Dim = {
   monthly: number;
   annual: number;
   included: number;
+  // When true, the matching cadence's price is a usage overage rate, not a buyer-selected quantity.
+  meteredMonthly?: boolean;
+  meteredAnnual?: boolean;
 };
 
 export type BillingV2CompareRow = {
   label: string;
-  pro: string | boolean;
-  ent: string | boolean;
+  pro: string | boolean | number;
+  ent: string | boolean | number;
 };
 
 export type BillingV2CatalogProduct = {
@@ -63,6 +66,9 @@ export type BillingV2Entitlement = {
   entitled: boolean;
   limit?: number | null;
   used?: number;
+  // Singular noun for the limited dimension (e.g. "certificate"), resolved from the catalog so the
+  // UI can render the unit beside the count ("0 / 100 certificates").
+  unit?: string | null;
 };
 
 export type BillingV2Usage = {
@@ -82,7 +88,19 @@ export type BillingV2Overview = {
   interval: "month" | "year" | null;
   usage: BillingV2Usage;
   payment: BillingV2PaymentMethod;
-  billingDetails: { name: string; email: string } | null;
+  billingDetails: {
+    name: string;
+    email: string;
+    address: {
+      line1?: string | null;
+      line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      postalCode?: string | null;
+      country?: string | null;
+    } | null;
+    taxIds: { type: string; value: string }[];
+  } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
 };

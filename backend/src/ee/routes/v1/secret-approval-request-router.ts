@@ -143,7 +143,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { approval, projectId, secretMutationEvents, isMergedViaBypass } =
+      const { approval, projectId, secretMutationEvents, isMergedViaBypass, requestedByActor } =
         await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
           actorId: req.permission.id,
           actor: req.permission.type,
@@ -172,6 +172,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       for await (const event of secretMutationEvents) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: requestedByActor ?? req.auditLogInfo.actor,
           orgId: req.permission.orgId,
           projectId,
           event

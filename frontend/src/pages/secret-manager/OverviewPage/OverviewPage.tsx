@@ -443,8 +443,22 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
+  // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
+  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
+  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
+  // (rather than two racing effects) guarantees every param is cleared after it's applied. That
+  // matters most for `environments`: re-selecting the same environment from the reference tree
+  // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
+  // (not mount-only) because the tree is rendered inside this page, so navigating from a node
+  // updates the params without remounting.
   useEffect(() => {
-    const envSlugs = routerSearch.environments;
+    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const hasEnvLink = Boolean(envSlugs?.length);
+
+    if (!search && !filterBy && !hasEnvLink) return;
+    // Env link present but envs not loaded yet → wait so we don't strip it before applying.
+    if (hasEnvLink && userAvailableEnvs.length === 0) return;
+
     if (envSlugs && envSlugs.length > 0) {
       const envIds = userAvailableEnvs
         .filter((env) => envSlugs.includes(env.slug))
@@ -453,7 +467,29 @@ const OverviewPageContent = () => {
         setStoredEnvIds(envIds);
       }
     }
-  }, []);
+
+    if (search || filterBy) {
+      const initialFilter = { ...DEFAULT_FILTER_STATE };
+      if (filterBy) {
+        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
+        if (rowType) {
+          initialFilter[rowType] = true;
+        }
+      }
+      setFilter(initialFilter);
+
+      if (search) {
+        setSearchFilter(search as string);
+      }
+    }
+
+    navigate({ search: query, replace: true });
+  }, [
+    routerSearch.search,
+    routerSearch.filterBy,
+    routerSearch.environments?.join(","),
+    userAvailableEnvs.length
+  ]);
 
   const filteredEnvs = useMemo(() => {
     if (!storedEnvIds.length) return [];
@@ -867,28 +903,6 @@ const OverviewPageContent = () => {
       }
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
-
-  // Apply search and/or resource type filter when linked via notification/email
-  useEffect(() => {
-    if (routerSearch.search || routerSearch.filterBy) {
-      const { search, filterBy, ...query } = routerSearch;
-      // temp workaround until we transition state to query params
-      navigate({ search: query, replace: true });
-
-      const initialFilter = { ...DEFAULT_FILTER_STATE };
-      if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
-      }
-      setFilter(initialFilter);
-
-      if (search) {
-        setSearchFilter(search as string);
-      }
-    }
-  }, [routerSearch.search, routerSearch.filterBy]);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
     if (!subscription?.pitRecovery) {

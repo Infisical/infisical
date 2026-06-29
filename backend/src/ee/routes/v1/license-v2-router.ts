@@ -24,13 +24,15 @@ const BillingV2DimSchema = z.object({
   noun: z.string(),
   monthly: z.number(),
   annual: z.number(),
-  included: z.number()
+  included: z.number(),
+  meteredMonthly: z.boolean().optional(),
+  meteredAnnual: z.boolean().optional()
 });
 
 const BillingV2CompareRowSchema = z.object({
   label: z.string(),
-  pro: z.union([z.string(), z.boolean()]),
-  ent: z.union([z.string(), z.boolean()])
+  pro: z.union([z.string(), z.number(), z.boolean()]),
+  ent: z.union([z.string(), z.number(), z.boolean()])
 });
 
 const BillingV2CatalogProductSchema = z.object({
@@ -67,7 +69,8 @@ const BillingV2InvoiceSchema = z.object({
 const BillingV2EntitlementSchema = z.object({
   entitled: z.boolean(),
   limit: z.number().nullable().optional(),
-  used: z.number().optional()
+  used: z.number().optional(),
+  unit: z.string().nullable().optional()
 });
 
 const BillingV2OverviewSchema = z.object({
@@ -85,7 +88,24 @@ const BillingV2OverviewSchema = z.object({
     identityLimit: z.number().nullable()
   }),
   payment: z.object({ brand: z.string(), last4: z.string(), expMonth: z.number(), expYear: z.number() }).nullable(),
-  billingDetails: z.object({ name: z.string(), email: z.string() }).nullable(),
+  billingDetails: z
+    .object({
+      name: z.string(),
+      email: z.string(),
+      address: z
+        .object({
+          // Each sub-field is nullish: Stripe/older license servers omit or null any unfilled line.
+          line1: z.string().nullish(),
+          line2: z.string().nullish(),
+          city: z.string().nullish(),
+          state: z.string().nullish(),
+          postalCode: z.string().nullish(),
+          country: z.string().nullish()
+        })
+        .nullable(),
+      taxIds: z.object({ type: z.string(), value: z.string() }).array()
+    })
+    .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema)
 });

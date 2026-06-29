@@ -10,7 +10,9 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { EncryptionTab } from "./components/EncryptionTab";
-import { SecretSettingsTab } from "./components/ProjectGeneralTab";
+import { EnvironmentsTab } from "./components/EnvironmentsTab";
+import { PoliciesTab } from "./components/PoliciesTab";
+import { TagsTab } from "./components/TagsTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection";
 
@@ -31,11 +33,24 @@ export const SettingsPage = () => {
       Component: ProjectGeneralTab
     },
     {
-      name: "Secrets Management",
+      name: "Environments",
       description:
-        "Configure environments, secret tags, validation rules, and other secret behaviors.",
-      key: "tab-secret-general",
-      Component: SecretSettingsTab
+        "Define the environments your secrets live in, such as development, staging, and production.",
+      key: "tab-secret-environments",
+      Component: EnvironmentsTab
+    },
+    {
+      name: "Tags",
+      description: "Organize secrets with tags to make them easier to find and govern.",
+      key: "tab-secret-tags",
+      Component: TagsTab
+    },
+    {
+      name: "Policies",
+      description:
+        "Configure validation rules, retention, sharing, and other behaviors that govern this project's secrets.",
+      key: "tab-secret-policies",
+      Component: PoliciesTab
     },
     {
       name: "Encryption",
@@ -58,7 +73,11 @@ export const SettingsPage = () => {
     }
   ];
 
-  const activeTab = tabs.find((tab) => !tab.isHidden && tab.key === selectedTab);
+  const visibleTabs = tabs.filter((tab) => !tab.isHidden);
+  const activeTab =
+    visibleTabs.find((tab) => tab.key === selectedTab) ??
+    visibleTabs.find((tab) => tab.key === "tab-project-general") ??
+    visibleTabs[0];
   const baseTitle = t("settings.project.title");
   const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
 
@@ -84,14 +103,12 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" value={selectedTab}>
-          {tabs
-            .filter((el) => !el.isHidden)
-            .map(({ key, Component }) => (
-              <TabPanel value={key} key={key}>
-                <Component />
-              </TabPanel>
-            ))}
+        <Tabs orientation="vertical" value={activeTab?.key}>
+          {visibleTabs.map(({ key, Component }) => (
+            <TabPanel value={key} key={key}>
+              <Component />
+            </TabPanel>
+          ))}
         </Tabs>
       </div>
     </div>

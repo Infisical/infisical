@@ -1,1 +1,0 @@
-export { SecretSharingSection } from "./SecretSharingSection";

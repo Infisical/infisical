@@ -99,35 +99,31 @@ export const BillingV2Page = () => {
   };
 
   const redirectToCheckout = async (productId: string) => {
-    try {
-      const result = await createCheckoutSession.mutateAsync({
-        orgId,
-        productId,
-        cadence,
-        email: billingEmail,
-        returnPath: window.location.pathname
+    const result = await createCheckoutSession.mutateAsync({
+      orgId,
+      productId,
+      cadence,
+      email: billingEmail,
+      returnPath: window.location.pathname
+    });
+
+    // The product was added straight to the existing subscription; no Stripe redirect needed.
+    if (result.outcome === "subscription_updated") {
+      close();
+      createNotification({
+        type: "success",
+        text: "Product added to your subscription. It may take a moment to appear here."
       });
-
-      // The product was added straight to the existing subscription; no Stripe redirect needed.
-      if (result.outcome === "subscription_updated") {
-        close();
-        createNotification({
-          type: "success",
-          text: "Product added to your subscription. It may take a moment to appear here."
-        });
-        refetch();
-        return;
-      }
-
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-
-      createNotification({ type: "error", text: "Failed to start checkout." });
-    } catch {
-      createNotification({ type: "error", text: "Failed to start checkout." });
+      refetch();
+      return;
     }
+
+    if (result.checkoutUrl) {
+      window.location.href = result.checkoutUrl;
+      return;
+    }
+
+    createNotification({ type: "error", text: "Failed to start checkout." });
   };
 
   const onManageSubscription = () => {
@@ -186,6 +182,12 @@ export const BillingV2Page = () => {
 
   const sheetRedirecting = createPortalSession.isPending || createCheckoutSession.isPending;
 
+  // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
+  const isManaged = overview?.mode === "managed";
+  const pageDescription = isManaged
+    ? "View your subscription, products, and usage. Your plan is managed through your license."
+    : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
+
   return (
     <div className="h-full bg-bunker-800">
       <Helmet>
@@ -194,12 +196,8 @@ export const BillingV2Page = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-5xl">
-          <PageHeader
-            scope="org"
-            title={t("billing.title")}
-            description="Manage your subscription, products, and payment. Payment is handled securely through Stripe."
-          />
+        <div className="w-full max-w-8xl">
+          <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan
             passThrough={false}
             I={OrgPermissionBillingActions.Read}
@@ -211,7 +209,6 @@ export const BillingV2Page = () => {
               subState={subState}
               onManageSubscription={onManageSubscription}
               onUpgrade={onUpgrade}
-              onRemove={setRemoveProdId}
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
@@ -231,6 +228,7 @@ export const BillingV2Page = () => {
           redirecting={sheetRedirecting}
           onClose={close}
           onManage={onSheetManage}
+          onRemove={setRemoveProdId}
           onContact={() => {
             close();
             onContact();
@@ -243,6 +241,10 @@ export const BillingV2Page = () => {
           orgId={orgId}
           product={removeProd}
           onClose={() => setRemoveProdId(null)}
+          onRemoved={() => {
+            setRemoveProdId(null);
+            close();
+          }}
         />
       )}
 

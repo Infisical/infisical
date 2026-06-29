@@ -15,6 +15,7 @@ import {
 } from "@app/services/license-client/license-client-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { isV2SelfHostedLicenseKey } from "../license/license-fns";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -38,7 +39,7 @@ import {
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -67,6 +68,11 @@ export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory
 const FALLBACK_ICON = "box";
 const FALLBACK_COLOR = "#6b7280";
 
+// Self-hosted has no cloud-plan endpoint, so the org seat caps ride on the license entitlements
+// instead. These keys mirror the v2 keys in dual-read feature-mapping (MaxIdentities.key, member_limit).
+const IDENTITY_LIMIT_FEATURE_KEY = "max_identities";
+const MEMBER_LIMIT_FEATURE_KEY = "member_limit";
+
 const CATALOG_MODELS: BillingV2Model[] = ["seat", "usage", "limit", "flat"];
 
 const toModel = (model: string): BillingV2Model => {
@@ -75,6 +81,12 @@ const toModel = (model: string): BillingV2Model => {
   }
   return "usage";
 };
+
+// Price kinds we understand; an unknown kind is treated as non-purchasable, never sold as per_unit.
+const PER_UNIT_KIND = "per_unit";
+const METERED_KIND = "metered";
+const KNOWN_PRICE_KINDS: readonly string[] = [PER_UNIT_KIND, METERED_KIND];
+const isKnownPriceKind = (kind: string): boolean => KNOWN_PRICE_KINDS.includes(kind);
 
 const centsToDollars = (cents: number | null | undefined): number => {
   if (!cents) {
@@ -128,22 +140,46 @@ const normalizeCadence = (cadence: string | undefined): "monthly" | "annual" => 
   return "monthly";
 };
 
-// The paid self-serve plan (e.g. "pro"); the free tier is self-serve too but carries no prices.
+// A plan carries pricing as a known-kind price, a flat base fee, or both. An unknown price kind is
+// treated as non-purchasable (never sold as per_unit); a base-only plan (e.g. the NHI add-on, a base
+// fee with no priced dimensions) must still count as priced.
+const planHasPricing = (plan: TCatalogProduct["plans"][number]): boolean =>
+  plan.prices.some((price) => isKnownPriceKind(price.kind)) ||
+  (plan.basePriceMonthlyCents !== null && plan.basePriceMonthlyCents !== undefined) ||
+  (plan.basePriceAnnualCents !== null && plan.basePriceAnnualCents !== undefined);
+
+// The paid self-serve plan (e.g. "pro"); the free tier is self-serve too but carries no pricing.
 const findPaidSelfServePlan = (product: TCatalogProduct) =>
-  product.plans.find((plan) => plan.selfServe === true && plan.tier !== "free" && plan.prices.length > 0);
+  product.plans.find((plan) => plan.selfServe === true && plan.tier !== "free" && planHasPricing(plan));
 
 const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => {
   const paidSelfServePlan = findPaidSelfServePlan(product);
   const salesLedPlan = product.plans.find((plan) => plan.salesLed === true);
 
-  // Fold the plan's per-dimension/per-cadence prices into the dim view the UI renders.
-  const priceByDim = new Map<string, { monthly: number; annual: number; included: number }>();
+  // Fold the plan's per-dimension/per-cadence prices into the dim view the UI renders. metered is
+  // tracked per cadence so a dimension priced per_unit on one cadence and metered on the other
+  // doesn't mislabel both.
+  const priceByDim = new Map<
+    string,
+    { monthly: number; annual: number; included: number; meteredMonthly: boolean; meteredAnnual: boolean }
+  >();
   (paidSelfServePlan?.prices ?? []).forEach((price) => {
-    const entry = priceByDim.get(price.dimensionKey) ?? { monthly: 0, annual: 0, included: 0 };
+    if (!isKnownPriceKind(price.kind)) {
+      return;
+    }
+    const entry = priceByDim.get(price.dimensionKey) ?? {
+      monthly: 0,
+      annual: 0,
+      included: 0,
+      meteredMonthly: false,
+      meteredAnnual: false
+    };
     if (price.cadence === "annual") {
       entry.annual = centsToDollars(price.unitAmountCents);
+      entry.meteredAnnual = price.kind === METERED_KIND;
     } else {
       entry.monthly = centsToDollars(price.unitAmountCents);
+      entry.meteredMonthly = price.kind === METERED_KIND;
     }
     if (price.includedQuantity !== null && price.includedQuantity !== undefined) {
       entry.included = price.includedQuantity;
@@ -163,7 +199,9 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
       noun: dimension.noun,
       monthly: priced.monthly,
       annual: priced.annual,
-      included: priced.included
+      included: priced.included,
+      meteredMonthly: priced.meteredMonthly,
+      meteredAnnual: priced.meteredAnnual
     });
   });
 
@@ -183,7 +221,10 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     enterprise = { sales: true, feature: salesLedPlan.feature ?? "" };
   }
 
-  const cellValue = (cells: { tier: string; value: string | boolean }[], tier: string): string | boolean => {
+  const cellValue = (
+    cells: { tier: string; value: string | number | boolean }[],
+    tier: string
+  ): string | boolean | number => {
     const cell = cells.find((candidate) => candidate.tier === tier);
     if (!cell) {
       return false;
@@ -213,18 +254,29 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
   };
 };
 
-// Translates a catalog product into the line items the checkout endpoint expects: its paid
-// self-serve plan plus the primary priced dimension for the chosen cadence at quantity 1.
+// Builds the checkout line items: only per_unit dimensions carry a quantity (metered and base lines
+// are added server-side), so a metered-only or base-only plan checks out with no quantities.
 const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annual"): TCheckoutLineItem[] | null => {
   const paidSelfServePlan = findPaidSelfServePlan(product);
   if (!paidSelfServePlan) {
     return null;
   }
 
-  const price = paidSelfServePlan.prices.find(
-    (candidate) => candidate.cadence === cadence && candidate.unitAmountCents > 0
+  const quantities: Record<string, number> = {};
+  const perUnitPrice = paidSelfServePlan.prices.find(
+    (candidate) => candidate.cadence === cadence && candidate.kind === PER_UNIT_KIND && candidate.unitAmountCents > 0
   );
-  if (!price) {
+  if (perUnitPrice) {
+    quantities[perUnitPrice.dimensionKey] = 1;
+  }
+
+  const hasMetered = paidSelfServePlan.prices.some(
+    (candidate) => candidate.cadence === cadence && candidate.kind === METERED_KIND
+  );
+  const baseForCadence =
+    cadence === "annual" ? paidSelfServePlan.basePriceAnnualCents : paidSelfServePlan.basePriceMonthlyCents;
+  const hasBase = baseForCadence !== null && baseForCadence !== undefined;
+  if (!perUnitPrice && !hasMetered && !hasBase) {
     return null;
   }
 
@@ -233,7 +285,7 @@ const buildCheckoutItems = (product: TCatalogProduct, cadence: "monthly" | "annu
       productId: product.id,
       plan: paidSelfServePlan.tier,
       cadence,
-      quantities: { [price.dimensionKey]: 1 }
+      quantities
     }
   ];
 };
@@ -245,6 +297,10 @@ export const licenseV2ServiceFactory = ({
   permissionService,
   licenseClient
 }: TLicenseV2ServiceFactoryDep) => {
+  // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
+  // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
+  const isSelfHostedLicense = isV2SelfHostedLicenseKey(envConfig.LICENSE_KEY ?? "");
+
   const ensureBillingRead = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
     const { permission } = await permissionService.getOrgPermission({
       actorId: actor.id,
@@ -277,21 +333,54 @@ export const licenseV2ServiceFactory = ({
   const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
+    // Dimension nouns (the unit a limit counts, e.g. "certificate") live on the catalog, keyed by
+    // dimension. Only fetch it when a subscription item actually carries a limit to name.
+    const nounByDimension = new Map<string, string>();
+    const hasLimits = Boolean(subscription?.items.some((item) => Object.keys(item.limits).length > 0));
+    if (hasLimits) {
+      try {
+        const catalog = await licenseClient.getCatalog();
+        catalog?.products.forEach((product) => {
+          product.dimensions.forEach((dimension) => {
+            nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
+          });
+        });
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read catalog for entitlement units [orgId=${org.id}]`);
+      }
+    }
+
     if (subscription) {
       subscription.items.forEach((item) => {
-        const quantityValues = Object.values(item.quantities);
+        // Surface one dimension's used count, limit, and noun together so the rendered
+        // "{used} / {limit} {unit}" always describes the same thing. "Most constraining" = the
+        // highest utilization (closest to, or furthest past, its cap), i.e. the limit the customer
+        // is likeliest to hit. Each limit is paired with its OWN quantity; taking Math.max across all
+        // quantities could otherwise report a different dimension's count than the resolved unit.
         let used = 0;
-        if (quantityValues.length > 0) {
-          used = Math.max(...quantityValues);
-        }
-
-        const limitValues = Object.values(item.limits);
         let limit: number | null = null;
-        if (limitValues.length > 0) {
-          limit = Math.max(...limitValues);
+        let limitKey: string | null = null;
+        let highestUtilization = -1;
+        // Plain for-of (not forEach): assignments inside a closure don't refine the outer
+        // variable's type, so after a forEach TS still sees limitKey as null and the `limitKey ?`
+        // branch below collapses to `never`. A same-scope loop lets control-flow keep it string|null.
+        for (const [key, dimensionLimit] of Object.entries(item.limits)) {
+          const dimensionUsed = item.quantities[key] ?? 0;
+          // An unlimited (<= 0) cap can't be "hit"; only a positive cap yields a real ratio.
+          const utilization =
+            // eslint-disable-next-line no-nested-ternary
+            dimensionLimit > 0 ? dimensionUsed / dimensionLimit : dimensionUsed > 0 ? Infinity : 0;
+          if (limitKey === null || utilization > highestUtilization) {
+            highestUtilization = utilization;
+            used = dimensionUsed;
+            limit = dimensionLimit;
+            limitKey = key;
+          }
         }
 
-        entitlements[item.productId] = { entitled: true, used, limit };
+        const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
+
+        entitlements[item.productId] = { entitled: true, used, limit, unit };
       });
     }
 
@@ -355,15 +444,32 @@ export const licenseV2ServiceFactory = ({
     });
 
     // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
-    // are overlaid here; a missing plan leaves limits unknown.
+    // are overlaid here; a missing plan leaves limits unknown. Self-hosted has no cloud-plan endpoint,
+    // so the caps are read off the license entitlements instead.
     let memberLimit: number | null = null;
     let identityLimit: number | null = null;
-    try {
-      const cloudPlan = await licenseClient.getCloudPlan(orgId);
-      memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
-      identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
-    } catch (error) {
-      logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
+    if (isSelfHostedLicense) {
+      try {
+        const entitlements = await licenseClient.getEntitlements({
+          id: orgId,
+          name: organization.name,
+          slug: organization.slug
+        });
+        const memberCap = entitlements?.features[MEMBER_LIMIT_FEATURE_KEY]?.value;
+        const identityCap = entitlements?.features[IDENTITY_LIMIT_FEATURE_KEY]?.value;
+        memberLimit = typeof memberCap === "number" ? memberCap : null;
+        identityLimit = typeof identityCap === "number" ? identityCap : null;
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read entitlement caps [orgId=${orgId}]`);
+      }
+    } else {
+      try {
+        const cloudPlan = await licenseClient.getCloudPlan(orgId);
+        memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
+        identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
+      }
     }
 
     // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
@@ -382,11 +488,17 @@ export const licenseV2ServiceFactory = ({
     let payment: BillingV2Overview["payment"] = null;
     let billingDetails: BillingV2Overview["billingDetails"] = null;
     let invoices: BillingV2Overview["invoices"] = [];
+    // Self-hosted has no Stripe customer (no billing profile endpoint); leave payment/invoices empty.
     try {
-      const profile = await licenseClient.getBillingProfile(orgId);
+      const profile = isSelfHostedLicense ? null : await licenseClient.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
-        billingDetails = profile.billingDetails;
+        // name/email/address/taxIds pass straight through (address keeps its nullable sub-fields;
+        // the UI drops blank lines). The ?? null just normalizes an absent address to null, and any
+        // extra license-server keys the spread carries are stripped by the response schema.
+        billingDetails = profile.billingDetails
+          ? { ...profile.billingDetails, address: profile.billingDetails.address ?? null }
+          : null;
         invoices = profile.invoices.map((invoice) => ({
           id: invoice.id,
           number: invoice.number,
@@ -401,8 +513,10 @@ export const licenseV2ServiceFactory = ({
     }
 
     const overview: BillingV2Overview = {
-      isCloud: true,
-      mode: "self-serve",
+      // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
+      // "managed by your account team" banner off these two fields.
+      isCloud: !isSelfHostedLicense,
+      mode: isSelfHostedLicense ? "managed" : "self-serve",
       subState,
       planName,
       nextBillingDate,
