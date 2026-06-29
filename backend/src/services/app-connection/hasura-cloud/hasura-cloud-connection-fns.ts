@@ -1,5 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { HasuraCloudConnectionMethod } from "./hasura-cloud-connection-enums";
@@ -69,6 +70,8 @@ export const listHasuraCloudProjects = async (
       errors?: { message: string }[];
     }>(accessToken, { query: "query listProjects { projects { id name tenant { id } } }" });
 
+    logger.info({ responseBody }, "Response body");
+
     if (responseBody.errors?.length || !responseBody.data?.projects) {
       throw new BadRequestError({
         message: "Failed to list projects: invalid response from Hasura Cloud"
@@ -78,7 +81,7 @@ export const listHasuraCloudProjects = async (
     return responseBody.data.projects.map((project) => ({
       id: project.id,
       name: project.name,
-      tenantId: project.tenant?.id ?? null
+      tenantId: project.tenant.id
     }));
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
