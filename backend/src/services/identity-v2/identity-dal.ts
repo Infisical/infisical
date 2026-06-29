@@ -2,8 +2,10 @@ import { TDbClient } from "@app/db";
 import { AccessScope, AccessScopeData, IdentitiesSchema, TableName } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
 import { buildAuthMethods } from "../identity/identity-fns";
+import { IdentityOrderBy } from "./identity-types";
 
 export type TIdentityV2DALFactory = ReturnType<typeof identityV2DALFactory>;
 
@@ -132,7 +134,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
 
   const listIdentities = async (
     scopeData: AccessScopeData,
-    filter: { limit?: number; offset?: number; search?: string } = {}
+    filter: { limit?: number; offset?: number; search?: string; orderBy?: IdentityOrderBy; orderDirection?: OrderByDirection } = {}
   ) => {
     const baseQuery = db
       .replicaNode()(TableName.Identity)
@@ -160,6 +162,8 @@ export const identityV2DALFactory = (db: TDbClient) => {
         db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
         db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
       );
+
+    void dataQuery.orderBy(`${TableName.Identity}.name`, filter.orderDirection ?? OrderByDirection.ASC);
 
     if (filter.limit) void dataQuery.limit(filter.limit);
     if (filter.offset) void dataQuery.offset(filter.offset || 0);
