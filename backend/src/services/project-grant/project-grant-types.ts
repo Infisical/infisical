@@ -26,3 +26,9 @@ export type TListProjectGrantsDTO = TBaseActor & {
 export type TListProjectGrantsForTargetDTO = TBaseActor & {
   targetProjectId: string;
 };
+
+export type TCheckRevokedGrantsDTO = {
+  targetProjectId: string;
+  actorOrgId: string;
+  secrets: Array<{ id: string; secretValue?: string | null; secretValueHidden?: boolean }>;
+};
