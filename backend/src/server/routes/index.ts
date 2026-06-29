@@ -1994,7 +1994,8 @@ export const registerRoutes = async (
     folderDAL,
     projectDAL,
     orgDAL,
-    permissionService
+    permissionService,
+    secretV2BridgeDAL
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,

@@ -173,6 +173,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                     name: z.string(),
                     slug: z.string()
                   }),
+                  project: z
+                    .object({
+                      name: z.string(),
+                      slug: z.string(),
+                      id: z.string()
+                    })
+                    .optional(),
                   folders: z
                     .object({
                       name: z.string(),
@@ -795,6 +802,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 name: z.string(),
                 slug: z.string()
               }),
+              project: z
+                .object({
+                  name: z.string(),
+                  slug: z.string(),
+                  id: z.string()
+                })
+                .optional(),
               folders: z
                 .object({
                   name: z.string(),

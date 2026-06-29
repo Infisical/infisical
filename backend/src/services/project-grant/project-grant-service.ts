@@ -11,6 +11,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { isCrossProjectEnabled } from "./project-grant-fns";
 import { TProjectGrantDALFactory } from "./project-grant-dal";
@@ -29,6 +30,7 @@ type TProjectGrantServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
 };
 
 export const projectGrantServiceFactory = ({
@@ -36,7 +38,8 @@ export const projectGrantServiceFactory = ({
   folderDAL,
   projectDAL,
   orgDAL,
-  permissionService
+  permissionService,
+  secretV2BridgeDAL
 }: TProjectGrantServiceFactoryDep) => {
   const createGrant = async ({
     actorId,
@@ -88,7 +91,10 @@ export const projectGrantServiceFactory = ({
       throw new BadRequestError({ message: "A grant already exists for this folder and target project" });
     }
 
-    return projectGrantDAL.create({ sourceProjectId, sourceFolderId: folder.id, targetProjectId });
+    const grant = await projectGrantDAL.create({ sourceProjectId, sourceFolderId: folder.id, targetProjectId });
+    // Invalidate the target project's secret cache so cross-project references resolve immediately
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(targetProjectId);
+    return grant;
   };
 
   const deleteGrant = async ({
@@ -121,7 +127,10 @@ export const projectGrantServiceFactory = ({
       throw new NotFoundError({ message: "Grant not found" });
     }
 
-    return projectGrantDAL.deleteById(grantId);
+    const deleted = await projectGrantDAL.deleteById(grantId);
+    // Invalidate the target project's secret cache so revoked references stop resolving immediately
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(grant.targetProjectId);
+    return deleted;
   };
 
   const listGrantsByProject = async ({

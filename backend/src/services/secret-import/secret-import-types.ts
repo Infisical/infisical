@@ -78,5 +78,8 @@ export type FolderInfo = {
 export type EnvironmentInfo = {
   envName: string;
   envSlug: string;
+  projectName?: string;
+  projectSlug?: string;
+  projectId?: string;
   folders: FolderInfo[];
 };
