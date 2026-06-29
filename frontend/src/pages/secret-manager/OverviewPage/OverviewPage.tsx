@@ -443,17 +443,24 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
+  // Apply the environment filter when linked via the `environments` search param (e.g. from the
+  // secret reference tree). This runs reactively rather than on mount only, because the tree is
+  // rendered inside this page, so navigating from a node updates the param without remounting.
   useEffect(() => {
     const envSlugs = routerSearch.environments;
-    if (envSlugs && envSlugs.length > 0) {
-      const envIds = userAvailableEnvs
-        .filter((env) => envSlugs.includes(env.slug))
-        .map((env) => env.id);
-      if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
-      }
+    if (!envSlugs || envSlugs.length === 0 || userAvailableEnvs.length === 0) return;
+
+    const envIds = userAvailableEnvs
+      .filter((env) => envSlugs.includes(env.slug))
+      .map((env) => env.id);
+    if (envIds.length > 0) {
+      setStoredEnvIds(envIds);
     }
-  }, []);
+
+    // Treat the param as a one-shot deep-link input (mirrors the `search` handling below) so it
+    // doesn't override the user's stored env filter on subsequent renders.
+    navigate({ search: (prev) => ({ ...prev, environments: [] }), replace: true });
+  }, [routerSearch.environments?.join(","), userAvailableEnvs.length]);
 
   const filteredEnvs = useMemo(() => {
     if (!storedEnvIds.length) return [];
