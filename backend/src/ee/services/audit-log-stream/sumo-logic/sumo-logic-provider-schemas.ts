@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LogProvider, StreamMode } from "../audit-log-stream-enums";
+import { LogProvider } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const SumoLogicProviderCredentialsSchema = z.object({
@@ -30,6 +30,5 @@ export const CreateSumoLogicProviderLogStreamSchema = z.object({
 });
 
 export const UpdateSumoLogicProviderLogStreamSchema = z.object({
-  credentials: SumoLogicProviderCredentialsSchema,
-  streamMode: z.nativeEnum(StreamMode).optional()
+  credentials: SumoLogicProviderCredentialsSchema
 });
