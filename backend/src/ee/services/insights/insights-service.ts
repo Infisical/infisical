@@ -29,6 +29,7 @@ import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-r
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { filterVisibleDuplicationGroups } from "./insights-fns";
 import {
   // TGetAccessLocationsDTO,
   TGetAccessVolumeDTO,
@@ -517,7 +518,7 @@ export const insightsServiceFactory = ({
   };
 
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    const { permission } = await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "secrets-duplication");
 
@@ -576,9 +577,17 @@ export const insightsServiceFactory = ({
       }
     });
 
+    // Only surface secrets the caller can describe (groups reduced below two are dropped), so a
+    // duplication group cannot reveal a secret in an environment/path the caller cannot access.
+    // Applied outside withCache so the project-scoped cache stays permission-independent.
+    const visibleResult = {
+      ...result,
+      groups: filterVisibleDuplicationGroups(result.groups, permission)
+    };
+
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
 
-    return { result, remainingTTL };
+    return { result: visibleResult, remainingTTL };
   };
 
   const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: OrgServiceActor) => {
