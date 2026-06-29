@@ -5,6 +5,6 @@ export type TSumoLogicProviderLogStream = TRootProviderLogStream & {
   provider: LogProvider.SumoLogic;
   credentials: {
     url: string;
-    token?: string;
+    token: string;
   };
 };

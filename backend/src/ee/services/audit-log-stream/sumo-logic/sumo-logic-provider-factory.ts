@@ -16,11 +16,10 @@ const buildStreamHeaders = (
   credentials: TSumoLogicProviderCredentials,
   contentType: string
 ): RawAxiosRequestHeaders => {
-  const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": contentType };
-  if (credentials.token) {
-    streamHeaders["x-sumo-token"] = credentials.token;
-  }
-  return streamHeaders;
+  return {
+    "Content-Type": contentType,
+    "x-sumo-token": credentials.token
+  };
 };
 
 export const SumoLogicProviderFactory = () => {

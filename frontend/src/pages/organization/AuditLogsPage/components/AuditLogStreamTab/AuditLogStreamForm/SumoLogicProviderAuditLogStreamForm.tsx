@@ -17,7 +17,7 @@ const formSchema = z.object({
   provider: z.literal(LogProvider.SumoLogic),
   credentials: z.object({
     url: z.string().url().trim().min(1).max(255),
-    token: z.string().trim().max(255).optional()
+    token: z.string().trim().min(1).max(255)
   }),
   ...auditLogStreamFiltersSchema.shape
 });
@@ -69,15 +69,14 @@ export const SumoLogicProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
-              isOptional
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="Auth Token"
               tooltipText={
                 <>
-                  When set, it is sent as an <code>x-sumo-token</code> header. Use this if you
-                  prefer header based authentication; otherwise leave it empty and rely on the token
-                  in the URL.
+                  The collector token from your HTTP Source&apos;s <code>x-sumo-token</code> header
+                  (the value after <code>x-sumo-token: </code>). Infisical sends it as the{" "}
+                  <code>x-sumo-token</code> header on each request.
                 </>
               }
             >

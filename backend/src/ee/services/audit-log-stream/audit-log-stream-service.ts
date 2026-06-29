@@ -110,6 +110,12 @@ export const auditLogStreamServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
+    if (logStream.provider !== provider) {
+      throw new BadRequestError({
+        message: `Audit Log Stream with ID '${logStreamId}' is not for provider '${provider}'`
+      });
+    }
+
     // Stream mode can only be upgraded from "single" to "batch" — never the reverse.
     // This covers every case: new/vendor streams are already "batch", so any attempt to
     // set "single" on them is a forbidden downgrade.
