@@ -22,6 +22,10 @@ const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
  * SPIFFE consumers (e.g. Envoy, Vault) validate X.509-SVID chains and lets an operator pin a
  * stable root while the issuing intermediate rotates underneath it.
  *
+ * NOTE: each hop's issuer/subject match is a string comparison of the OpenSSL-formatted DN strings,
+ * so this assumes every certificate on the path shares the same PKI-level DN encoding conventions
+ * (string types and attribute ordering). See `issuedBy` below for the heterogeneous-PKI caveat.
+ *
  * @param leaf            the end-entity certificate presented by the client (chain[0])
  * @param presentedChain  intermediates presented by the client (chain[1..n]); order-independent
  * @param trustAnchor     the configured CA certificate to anchor the path on
@@ -42,6 +46,22 @@ export const verifyClientCertificateChain = ({
   const anchorRaw = trustAnchor.raw;
   const isAnchor = (cert: TNativeX509): boolean => cert.raw.equals(anchorRaw);
 
+  /**
+   * Returns true when `issuer` issued `child`.
+   *
+   * The name check compares the OpenSSL-formatted DN strings returned by Node's X509Certificate
+   * (`child.issuer === issuer.subject`). This is a fast pre-filter before the cryptographic
+   * `verify`, and assumes both sides of the chain share the same PKI-level DN encoding
+   * conventions — i.e. the same string types (PrintableString vs UTF8String) and attribute
+   * ordering for equivalent names. That holds within a single PKI (SPIRE emits the leaf and the
+   * rotating intermediate from one CA with consistent encoding), which is the supported case here.
+   *
+   * It can yield a false negative in a heterogeneous PKI where the issuer and subject encode the
+   * same logical DN differently (e.g. one cert uses PrintableString and the other UTF8String for an
+   * attribute, or they differ in attribute ordering). In that situation a cryptographically valid
+   * issuer relationship is rejected and chain validation fails with `ca_verification_failed`. A
+   * full RFC 5280 name comparison (per-RDN, encoding-insensitive) would be required to support that.
+   */
   const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
     if (child.issuer !== issuer.subject) return false;
     try {
