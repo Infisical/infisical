@@ -433,7 +433,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
         label: "FQDN",
         tooltip: "The fully qualified domain name of the Active Directory domain (e.g. corp.example.com)."
       },
-      dcAddress: { label: "DC Address" },
+      dcAddress: {
+        label: "DC Address",
+        tooltip:
+          "Hostname or IP address of a domain controller, used for LDAP connections (e.g. dc01.corp.example.com)."
+      },
       hosts: {
         label: "Allowed Hosts",
         widget: PamFieldWidget.Textarea,
