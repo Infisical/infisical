@@ -1,10 +1,10 @@
 ---
-title: "Kubernetes cert-manager (Infisical Issuer)"
-sidebarTitle: "cert-manager (Infisical Issuer)"
+title: "Kubernetes with cert-manager (Infisical Issuer)"
+sidebarTitle: "Issue TLS Certificates in Kubernetes (Infisical Issuer)"
 description: "Issue and renew Kubernetes TLS certificates with the Infisical cert-manager external issuer, authenticating with a machine identity."
 ---
 
-Issue TLS certificates to your Kubernetes workloads using [cert-manager](https://cert-manager.io/) and the **Infisical Issuer**, an [external issuer](https://cert-manager.io/docs/configuration/external/) for cert-manager. Certificates are signed by Infisical through a PKI Application and Certificate Profile, stored in Kubernetes Secrets (including the CA chain), and renewed automatically before expiration.
+Issue TLS certificates to your Kubernetes workloads using [cert-manager](https://cert-manager.io/) and the [Infisical Issuer](https://github.com/Infisical/infisical-issuer), an [external issuer](https://cert-manager.io/docs/configuration/external/) for cert-manager. Certificates are signed by Infisical through a [PKI Application](/documentation/platform/pki/applications/overview) and [Certificate Profile](/documentation/platform/pki/settings/profiles), stored in Kubernetes Secrets (including the CA chain), and renewed automatically before expiration.
 
 <Info>
   This is the **Infisical Issuer** approach. If you would rather use the standard cert-manager ACME issuer with EAB credentials, see the [cert-manager (ACME) guide](/documentation/platform/pki/guides/applications/k8s-cert-manager-acme) instead.
@@ -14,8 +14,8 @@ Issue TLS certificates to your Kubernetes workloads using [cert-manager](https:/
 
 ## When to use the Infisical Issuer instead of ACME
 
-- You want to authenticate with a **machine identity** (Universal Auth or Kubernetes Auth) rather than ACME/EAB credentials.
-- You want the **CA chain populated** in the Secret's `ca.crt` automatically (the ACME issuer does not populate `ca.crt`).
+- You want to authenticate with a [machine identity](/documentation/platform/identities/machine-identities) ([Universal Auth](/documentation/platform/identities/universal-auth) or [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth)) rather than ACME/EAB credentials.
+- You want the **CA chain populated** in the Secret's `ca.crt` automatically (with the ACME issuer this is not automatic and needs extra setup such as [trust-manager](https://cert-manager.io/docs/trust/trust-manager/)).
 - You do not want ACME domain-ownership challenges (HTTP-01/DNS-01).
 - You are issuing workload identity certificates (for example `spiffe://` URIs for service meshes).
 
@@ -29,23 +29,19 @@ Issue TLS certificates to your Kubernetes workloads using [cert-manager](https:/
 
 ## Guide
 
-Throughout this guide, replace `<namespace>` with the namespace where your workloads and certificates live. The credentials `Secret`, the `Issuer`, and the `Certificate` all go in this same namespace (an `Issuer` is namespace-scoped). If you instead use a `ClusterIssuer`, see the note in the "Create the Infisical Issuer" step.
+Throughout this guide, replace `<namespace>` with the namespace where your workloads and certificates live. With a namespaced `Issuer`, its credentials `Secret`, the `Issuer`, and the `Certificate` all live in this namespace. To issue across namespaces from a single resource, use a [`ClusterIssuer`](#create-the-infisical-issuer) instead, whose `Secret` and service account live in the controller's namespace rather than alongside each workload.
 
 <Steps>
   <Step title="Set up your Infisical PKI Application and machine identity">
     Before installing anything in Kubernetes, make sure you have the following in Infisical:
 
-    - A **PKI Application** with a **Certificate Profile** that uses **API enrollment**. See [Applications](/documentation/platform/pki/applications/overview) and [Certificate Profiles](/documentation/platform/pki/settings/profiles). Note the **Application name** (for example `web-services`) and the **Profile slug** (for example `web-server`). You reference the Application by its name and the Profile by its slug from the `Issuer` in a later step, so copy the slug exactly as shown in Infisical.
-    - A **machine identity** that is allowed to issue certificates on that Application. Add the identity to the Application with a role that grants the **issue-cert** permission (for example the **operator** role).
-
-    <Note>
-      The identity must have permission to issue on the **Application** (not only read it). If it is missing, issuance fails with `You are not allowed to issue-cert on certificate-profiles`.
-    </Note>
+    - A **PKI Application** with a **Certificate Profile** that uses **API enrollment**. Note the **Application name** (for example `web-services`) and the **Profile name** (for example `web-server`); you reference both by name when you create the `Issuer`.
+    - A **machine identity** added to the Application with the **operator** role, which lets it issue certificates.
 
     Pick one authentication method for the identity:
 
-    - **Universal Auth**: use the identity's **Client ID** and **Client Secret**. See [Universal Auth](/documentation/platform/identities/universal-auth).
-    - **Kubernetes Auth**: the controller mints a short-lived token for a Kubernetes service account and presents it to Infisical. Configure [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) on the identity first, and note its **Identity ID**.
+    - **Universal Auth**: use the identity's **Client ID** and **Client Secret**.
+    - **Kubernetes Auth**: the controller mints a short-lived token for a Kubernetes service account and presents it to Infisical. Configure it on the identity first, and note its **Identity ID**.
   </Step>
 
   <Step title="Install cert-manager">
@@ -161,8 +157,8 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
           url: https://app.infisical.com
           # Name of the PKI Application to issue through
           application: <application_name>
-          # Slug of the Certificate Profile to issue with
-          profile: <profile_slug>
+          # Name of the Certificate Profile to issue with
+          profile: <profile_name>
           authentication:
             method: universal
             universal:
@@ -186,7 +182,7 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
         spec:
           url: https://app.infisical.com
           application: <application_name>
-          profile: <profile_slug>
+          profile: <profile_name>
           authentication:
             method: kubernetes
             kubernetes:
