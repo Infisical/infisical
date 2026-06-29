@@ -452,7 +452,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Amazon Web Services.png",
     requiresGateway: false,
     connectionDetails: z.object({
-      roleArn: z.string().trim().min(1)
+      roleArn: z.string().trim().min(1).max(2048)
     }),
     credentials: z.object({
       targetRoleArn: z.string().trim().min(1).max(2048)
