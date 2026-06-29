@@ -442,26 +442,6 @@ export const pamSessionServiceFactory = ({
 
       const { expiresAt } = stsCredentials;
 
-      const session = await pamSessionDAL.create({
-        status: PamSessionStatus.Active,
-        accessMethod,
-        expiresAt,
-        startedAt: new Date(),
-        accountName: account.name,
-        accountType: account.accountType,
-        actorEmail,
-        actorIp,
-        actorName,
-        actorUserAgent,
-        projectId,
-        accountId: account.id,
-        userId: actor.actorId,
-        reason: trimmedReason,
-        folderName: account.folderName
-      });
-
-      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
-
       const metadata: Record<string, string> = {};
 
       if (accessMethod === PamAccessMethod.Web) {
@@ -484,6 +464,26 @@ export const pamSessionServiceFactory = ({
           metadata.awsAccountId = awsAccountId;
         }
       }
+
+      const session = await pamSessionDAL.create({
+        status: PamSessionStatus.Active,
+        accessMethod,
+        expiresAt,
+        startedAt: new Date(),
+        accountName: account.name,
+        accountType: account.accountType,
+        actorEmail,
+        actorIp,
+        actorName,
+        actorUserAgent,
+        projectId,
+        accountId: account.id,
+        userId: actor.actorId,
+        reason: trimmedReason,
+        folderName: account.folderName
+      });
+
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
       return {
         sessionId: session.id,
