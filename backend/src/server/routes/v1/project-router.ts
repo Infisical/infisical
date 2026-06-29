@@ -1162,13 +1162,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
         projectIds: z.string().trim().array().optional(),
-        name: z
-          .string()
-          .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
-          .optional()
+        name: z.string().trim().max(256).optional()
       }),
       response: {
         200: z.object({
