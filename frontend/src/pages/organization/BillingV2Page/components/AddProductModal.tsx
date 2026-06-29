@@ -25,23 +25,25 @@ import { fmtMoney } from "../billing-v2-data";
 type Props = {
   orgId: string;
   product: BillingV2CatalogProduct;
+  plan: string;
   cadence: BillingV2Cadence;
   onClose: () => void;
 };
 
-export const AddProductModal = ({ orgId, product, cadence, onClose }: Props) => {
+export const AddProductModal = ({ orgId, product, plan, cadence, onClose }: Props) => {
   const preview = usePreviewBillingV2Change();
   const addProduct = useAddBillingV2Product();
 
   // Preview the prorated charge once when the dialog opens, so the user confirms against real numbers.
   useEffect(() => {
-    preview.mutate({ orgId, addProductId: product.id, cadence });
+    preview.mutate({ orgId, addProductId: product.id, plan, cadence });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, product.id, cadence]);
+  }, [orgId, product.id, plan, cadence]);
 
-  const handleAdd = async () => {
+  const handleAdd = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     try {
-      await addProduct.mutateAsync({ orgId, productId: product.id, cadence });
+      await addProduct.mutateAsync({ orgId, productId: product.id, plan, cadence });
       createNotification({
         type: "success",
         text: `${product.name} was added. It may take a moment to update here.`
@@ -62,7 +64,7 @@ export const AddProductModal = ({ orgId, product, cadence, onClose }: Props) => 
     <AlertDialog
       open
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
+        if (!isOpen && !addProduct.isPending) {
           onClose();
         }
       }}
@@ -111,6 +113,7 @@ export const AddProductModal = ({ orgId, product, cadence, onClose }: Props) => 
             variant="org"
             isDisabled={addProduct.isPending || !canConfirm}
             onClick={handleAdd}
+            isPending={addProduct.isPending}
           >
             Add {product.name}
           </AlertDialogAction>

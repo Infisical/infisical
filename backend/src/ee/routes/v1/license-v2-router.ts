@@ -29,8 +29,18 @@ const BillingV2DimSchema = z.object({
 
 const BillingV2CompareRowSchema = z.object({
   label: z.string(),
-  pro: z.union([z.string(), z.number(), z.boolean()]),
-  ent: z.union([z.string(), z.number(), z.boolean()])
+  // Cells keyed by plan tier so the UI renders one column per plan.
+  cells: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+});
+
+const BillingV2PlanSchema = z.object({
+  tier: z.string(),
+  name: z.string(),
+  selfServe: z.boolean(),
+  salesLed: z.boolean(),
+  feature: z.string().optional(),
+  base: z.object({ monthly: z.number(), annual: z.number() }).optional(),
+  dims: BillingV2DimSchema.array()
 });
 
 const BillingV2CatalogProductSchema = z.object({
@@ -42,15 +52,7 @@ const BillingV2CatalogProductSchema = z.object({
   addon: z.boolean().optional(),
   desc: z.string(),
   tagline: z.string().optional(),
-  fromPrice: z.string().optional(),
-  pro: z.object({
-    base: z.object({ monthly: z.number(), annual: z.number() }).optional(),
-    dims: BillingV2DimSchema.array().optional(),
-    proFeature: z.string(),
-    planKey: z.string().optional()
-  }),
-  enterprise: z.object({ sales: z.literal(true), feature: z.string() }).nullable(),
-  upgradeChanges: z.object({ add: z.string().array() }).optional(),
+  plans: BillingV2PlanSchema.array(),
   includes: z.string().array().optional(),
   compare: BillingV2CompareRowSchema.array().optional()
 });
@@ -66,6 +68,7 @@ const BillingV2InvoiceSchema = z.object({
 
 const BillingV2EntitlementSchema = z.object({
   entitled: z.boolean(),
+  planTier: z.string().optional(),
   limit: z.number().nullable().optional(),
   used: z.number().optional(),
   unit: z.string().nullable().optional()
@@ -219,6 +222,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         productId: z.string().trim(),
+        plan: z.string().trim().optional(),
         cadence: z.enum(["monthly", "annual"]).optional(),
         email: z.string().trim().email().optional(),
         returnPath: ReturnPathSchema
@@ -237,6 +241,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
+        plan: req.body.plan,
         cadence: req.body.cadence,
         email: req.body.email,
         returnPath: req.body.returnPath
@@ -278,6 +283,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       body: z
         .object({
           addProductId: z.string().trim().optional(),
+          plan: z.string().trim().optional(),
           cadence: z.enum(["monthly", "annual"]).optional(),
           removeProductId: z.string().trim().optional()
         })
@@ -294,6 +300,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         addProductId: req.body.addProductId,
+        plan: req.body.plan,
         cadence: req.body.cadence,
         removeProductId: req.body.removeProductId
       });
@@ -310,6 +317,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         productId: z.string().trim(),
+        plan: z.string().trim().optional(),
         cadence: z.enum(["monthly", "annual"]).optional()
       }),
       response: {
@@ -322,6 +330,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
+        plan: req.body.plan,
         cadence: req.body.cadence
       });
     }
