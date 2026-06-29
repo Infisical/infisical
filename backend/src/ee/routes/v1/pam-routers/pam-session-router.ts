@@ -5,6 +5,7 @@ import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
+import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -305,6 +306,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .max(255)
+          .regex(hostPattern, "Must be a valid hostname or IP address")
           .optional()
           .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
@@ -409,6 +411,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .max(255)
+          .regex(hostPattern, "Must be a valid hostname or IP address")
           .optional()
           .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
