@@ -15,6 +15,7 @@ import {
 } from "@app/services/license-client/license-client-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { isV2SelfHostedLicenseKey } from "../license/license-fns";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -38,7 +39,7 @@ import {
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -66,6 +67,11 @@ export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory
 // glyph on the client.
 const FALLBACK_ICON = "box";
 const FALLBACK_COLOR = "#6b7280";
+
+// Self-hosted has no cloud-plan endpoint, so the org seat caps ride on the license entitlements
+// instead. These keys mirror the v2 keys in dual-read feature-mapping (MaxIdentities.key, member_limit).
+const IDENTITY_LIMIT_FEATURE_KEY = "max_identities";
+const MEMBER_LIMIT_FEATURE_KEY = "member_limit";
 
 const CATALOG_MODELS: BillingV2Model[] = ["seat", "usage", "limit", "flat"];
 
@@ -263,6 +269,10 @@ export const licenseV2ServiceFactory = ({
   permissionService,
   licenseClient
 }: TLicenseV2ServiceFactoryDep) => {
+  // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
+  // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
+  const isSelfHostedLicense = isV2SelfHostedLicenseKey(envConfig.LICENSE_KEY ?? "");
+
   const ensureBillingRead = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
     const { permission } = await permissionService.getOrgPermission({
       actorId: actor.id,
@@ -406,15 +416,32 @@ export const licenseV2ServiceFactory = ({
     });
 
     // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
-    // are overlaid here; a missing plan leaves limits unknown.
+    // are overlaid here; a missing plan leaves limits unknown. Self-hosted has no cloud-plan endpoint,
+    // so the caps are read off the license entitlements instead.
     let memberLimit: number | null = null;
     let identityLimit: number | null = null;
-    try {
-      const cloudPlan = await licenseClient.getCloudPlan(orgId);
-      memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
-      identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
-    } catch (error) {
-      logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
+    if (isSelfHostedLicense) {
+      try {
+        const entitlements = await licenseClient.getEntitlements({
+          id: orgId,
+          name: organization.name,
+          slug: organization.slug
+        });
+        const memberCap = entitlements?.features[MEMBER_LIMIT_FEATURE_KEY]?.value;
+        const identityCap = entitlements?.features[IDENTITY_LIMIT_FEATURE_KEY]?.value;
+        memberLimit = typeof memberCap === "number" ? memberCap : null;
+        identityLimit = typeof identityCap === "number" ? identityCap : null;
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read entitlement caps [orgId=${orgId}]`);
+      }
+    } else {
+      try {
+        const cloudPlan = await licenseClient.getCloudPlan(orgId);
+        memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
+        identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
+      }
     }
 
     // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
@@ -433,8 +460,9 @@ export const licenseV2ServiceFactory = ({
     let payment: BillingV2Overview["payment"] = null;
     let billingDetails: BillingV2Overview["billingDetails"] = null;
     let invoices: BillingV2Overview["invoices"] = [];
+    // Self-hosted has no Stripe customer (no billing profile endpoint); leave payment/invoices empty.
     try {
-      const profile = await licenseClient.getBillingProfile(orgId);
+      const profile = isSelfHostedLicense ? null : await licenseClient.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
         // name/email/address/taxIds pass straight through (address keeps its nullable sub-fields;
@@ -457,8 +485,10 @@ export const licenseV2ServiceFactory = ({
     }
 
     const overview: BillingV2Overview = {
-      isCloud: true,
-      mode: "self-serve",
+      // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
+      // "managed by your account team" banner off these two fields.
+      isCloud: !isSelfHostedLicense,
+      mode: isSelfHostedLicense ? "managed" : "self-serve",
       subState,
       planName,
       nextBillingDate,

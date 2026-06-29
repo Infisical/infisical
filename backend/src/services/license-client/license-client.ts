@@ -3,7 +3,7 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { featureReaderFactory } from "./feature-reader";
-import { licenseServerBackend } from "./license-client-backends";
+import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
   TAddSubscriptionItemsPayload,
@@ -17,26 +17,31 @@ import {
 type TLicenseClientFactoryDep = {
   envConfig: Pick<
     TEnvConfig,
-    "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY" | "INTERNAL_REGION"
+    | "LICENSE_SERVER_V2_MODE"
+    | "LICENSE_SERVER_V2_URL"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_KEY"
+    | "INTERNAL_REGION"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 
-// Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and the
-// server URL + service key are configured.
+// Mirrors SELF_HOSTED_V2_LICENSE_KEY_PREFIX in ee/license-fns; inlined to avoid a services -> ee
+// runtime import cycle (license-client <- license-service <- license-fns).
+const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
+
+// Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and either a
+// self-hosted v2 license key or the cloud service key (plus server URL) is configured.
 const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicenseClientBackend | null => {
   if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
     return null;
   }
 
   const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
-  const signingKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
-  if (!serverUrl || !signingKey) {
-    logger.warn(
-      "license-client: enabled but LICENSE_SERVER_V2_URL / _SERVICE_KEY is missing; serving feature fallbacks"
-    );
+  if (!serverUrl) {
+    logger.warn("license-client: enabled but LICENSE_SERVER_V2_URL is missing; serving feature fallbacks");
     return null;
   }
 
@@ -50,6 +55,19 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   }
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     logger.warn("license-client: LICENSE_SERVER_V2_URL must use http(s); serving feature fallbacks");
+    return null;
+  }
+
+  // A self-hosted v2 license authenticates with its own key as a bearer token; the cloud path mints an
+  // RS256 service JWT from the service key instead.
+  const licenseKey = envConfig.LICENSE_KEY;
+  if (licenseKey?.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX)) {
+    return licenseServerSelfHostedBackend(serverUrl, licenseKey, envConfig.INTERNAL_REGION);
+  }
+
+  const signingKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
+  if (!signingKey) {
+    logger.warn("license-client: enabled but LICENSE_SERVER_V2_SERVICE_KEY is missing; serving feature fallbacks");
     return null;
   }
 
@@ -73,6 +91,16 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
       return;
     }
     await resolver.invalidateEntitlements(orgId);
+  };
+
+  // Ask the license server to recompute its cached entitlements (used after a license change), then
+  // drop the local cache so the next read reflects them. No-op when the backend is dormant.
+  const refreshEntitlements = async (org: TEntitlementOrg) => {
+    if (!backend) {
+      return;
+    }
+    await backend.refreshEntitlements(org);
+    await invalidateEntitlements(org.id);
   };
 
   const getCatalog = async () => {
@@ -156,6 +184,7 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     ...featureReaderFactory({ getEntitlements }),
     getEntitlements,
     invalidateEntitlements,
+    refreshEntitlements,
     getCatalog,
     getSubscription,
     getCloudPlan,

@@ -36,24 +36,40 @@ export const usageReporterFactory = (serverUrl: string, serviceKey: string): TUs
   }
 });
 
+// Mirrors SELF_HOSTED_V2_LICENSE_KEY_PREFIX in ee/license-fns; inlined to avoid a services -> ee import.
+const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
+
 // Returns null when the v2 license server is disabled or unconfigured, which keeps usage reporting
-// inert until Phase 2 flips LICENSE_SERVER_V2_MODE on.
+// inert. A self-hosted v2 license reports with its own key as the bearer; cloud uses the service key.
 export const buildUsageReporter = (
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY">
+  envConfig: Pick<
+    TEnvConfig,
+    "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_KEY"
+  >
 ): TUsageReporter | null => {
   if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
     return null;
   }
 
   const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
-  if (!serverUrl || !envConfig.LICENSE_SERVER_V2_SERVICE_KEY) {
+  if (!serverUrl) {
+    logger.warn("usage-reporter: enabled but LICENSE_SERVER_V2_URL is missing; usage reporting disabled");
+    return null;
+  }
+
+  // A self-hosted v2 license authenticates with its own key; otherwise fall back to the cloud service key.
+  const licenseKey = envConfig.LICENSE_KEY;
+  const bearerKey = licenseKey?.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX)
+    ? licenseKey
+    : envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
+  if (!bearerKey) {
     logger.warn(
-      "usage-reporter: enabled but LICENSE_SERVER_V2_URL / LICENSE_SERVER_V2_SERVICE_KEY is missing; usage reporting disabled"
+      "usage-reporter: enabled but no LICENSE_KEY (self-hosted) / LICENSE_SERVER_V2_SERVICE_KEY (cloud) is set; usage reporting disabled"
     );
     return null;
   }
 
-  // Don't forward the service-key bearer to a non-HTTPS or malformed destination.
+  // Don't forward the bearer to a non-HTTPS or malformed destination.
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(serverUrl);
@@ -66,5 +82,5 @@ export const buildUsageReporter = (
     return null;
   }
 
-  return usageReporterFactory(serverUrl, envConfig.LICENSE_SERVER_V2_SERVICE_KEY);
+  return usageReporterFactory(serverUrl, bearerKey);
 };
