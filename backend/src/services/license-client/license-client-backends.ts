@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
+
 import {
   billingProfileResponseSchema,
   catalogResponseSchema,
@@ -55,6 +57,21 @@ const mintServiceToken = (signingKey: string): string =>
     expiresIn: "2m"
   });
 
+// Surface the license server's message on 4xx (caller-actionable, e.g. "cannot remove the last
+// product; cancel the subscription instead"); when it has none, fall back to the generic error
+// default rather than a status code the customer can't act on. 5xx bodies may carry internal detail,
+// so those stay generic.
+const throwIfResponseError = async (res: Response): Promise<void> => {
+  if (res.ok) {
+    return;
+  }
+  if (res.status >= 400 && res.status < 500) {
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new BadRequestError({ message: body?.message });
+  }
+  throw new InternalServerError({ message: "Billing service error" });
+};
+
 export const licenseServerBackend = (
   serverUrl: string,
   signingKey: string,
@@ -77,9 +94,7 @@ export const licenseServerBackend = (
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return entitlementsResponseSchema.parse(body);
   },
@@ -92,9 +107,7 @@ export const licenseServerBackend = (
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
   },
 
   fetchCatalog: async (): Promise<TCatalogResponse> => {
@@ -104,9 +117,7 @@ export const licenseServerBackend = (
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return catalogResponseSchema.parse(body);
   },
@@ -125,9 +136,7 @@ export const licenseServerBackend = (
     if (res.status === 404) {
       return null;
     }
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
 
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
@@ -153,9 +162,7 @@ export const licenseServerBackend = (
     if (res.status === 404) {
       return null;
     }
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return cloudPlanResponseSchema.parse(body);
   },
@@ -173,9 +180,7 @@ export const licenseServerBackend = (
     if (res.status === 404) {
       return null;
     }
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return billingProfileResponseSchema.parse(body);
   },
@@ -189,9 +194,7 @@ export const licenseServerBackend = (
       body: JSON.stringify(payload),
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
   },
@@ -205,9 +208,7 @@ export const licenseServerBackend = (
       body: JSON.stringify(payload),
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return sessionResponseSchema.parse(body);
   },
@@ -224,9 +225,7 @@ export const licenseServerBackend = (
       body: JSON.stringify(payload),
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return subscriptionPreviewResponseSchema.parse(body);
   },
@@ -240,9 +239,7 @@ export const licenseServerBackend = (
       body: JSON.stringify(payload),
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
   },
@@ -255,9 +252,7 @@ export const licenseServerBackend = (
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
   },
@@ -270,9 +265,7 @@ export const licenseServerBackend = (
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
   },
@@ -285,9 +278,7 @@ export const licenseServerBackend = (
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
   }
@@ -318,9 +309,7 @@ export const licenseServerSelfHostedBackend = (
       headers: { Authorization: `Bearer ${licenseKey}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return entitlementsResponseSchema.parse(body);
   },
@@ -332,9 +321,7 @@ export const licenseServerSelfHostedBackend = (
       headers: { Authorization: `Bearer ${licenseKey}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
   },
 
   fetchCatalog: async (): Promise<TCatalogResponse> => {
@@ -344,9 +331,7 @@ export const licenseServerSelfHostedBackend = (
       headers: { Authorization: `Bearer ${licenseKey}` },
       redirect: "manual"
     });
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     return catalogResponseSchema.parse(body);
   },
@@ -362,9 +347,7 @@ export const licenseServerSelfHostedBackend = (
     if (res.status === 404) {
       return null;
     }
-    if (!res.ok) {
-      throw new Error(`license server responded with ${res.status}`);
-    }
+    await throwIfResponseError(res);
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
     if (!parsed.success || !parsed.data.status) {
