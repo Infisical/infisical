@@ -368,6 +368,8 @@ type Config struct {
 	ParsedRedisSentinelHosts     []RedisHostPort
 	ParsedRedisClusterHosts      []RedisHostPort
 	ParsedRedisReadReplicas      []RedisHostPort
+	ParsedCORSAllowedOrigins     []string
+	ParsedCORSAllowedHeaders     []string
 }
 
 func (c *Config) Addr() string {
@@ -809,6 +811,16 @@ func LoadConfig() (*Config, error) {
 		cfg.ParsedRedisReadReplicas, issues = parseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
 		parseIssues = append(parseIssues, issues...)
 	}
+	if cfg.CORSAllowedOrigins != "" {
+		var issues []string
+		cfg.ParsedCORSAllowedOrigins, issues = parseStringListEnv(cfg.CORSAllowedOrigins, "CORS_ALLOWED_ORIGINS")
+		parseIssues = append(parseIssues, issues...)
+	}
+	if cfg.CORSAllowedHeaders != "" {
+		var issues []string
+		cfg.ParsedCORSAllowedHeaders, issues = parseStringListEnv(cfg.CORSAllowedHeaders, "CORS_ALLOWED_HEADERS")
+		parseIssues = append(parseIssues, issues...)
+	}
 	if len(parseIssues) > 0 {
 		return nil, &ValidationError{Issues: parseIssues}
 	}
@@ -845,6 +857,40 @@ func parseHostPortList(raw, envVar string) (result []RedisHostPort, issues []str
 		result = append(result, hp)
 	}
 	return
+}
+
+func parseStringListEnv(raw, envVar string) (result, issues []string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+
+	trimValues := func(values []string) []string {
+		trimmed := make([]string, 0, len(values))
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if value != "" {
+				trimmed = append(trimmed, value)
+			}
+		}
+		return trimmed
+	}
+
+	if json.Valid([]byte(raw)) || strings.HasPrefix(raw, "[") || strings.HasPrefix(raw, "{") {
+		var values []string
+		if err := json.Unmarshal([]byte(raw), &values); err != nil {
+			return nil, []string{fmt.Sprintf("%s must be a JSON array of strings: %v", envVar, err)}
+		}
+		return trimValues(values), nil
+	}
+
+	for entry := range strings.SplitSeq(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry != "" {
+			result = append(result, entry)
+		}
+	}
+	return result, nil
 }
 
 func (c *Config) validate() []string {
