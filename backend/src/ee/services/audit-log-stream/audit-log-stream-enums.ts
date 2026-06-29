@@ -3,7 +3,8 @@ export enum LogProvider {
   Cribl = "cribl",
   Custom = "custom",
   Datadog = "datadog",
-  Splunk = "splunk"
+  Splunk = "splunk",
+  SumoLogic = "sumo-logic"
 }
 
 export enum StreamMode {
