@@ -45,7 +45,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const folders = await server.services.pamFolder.list({
         projectId: req.internalPamProjectId,
@@ -88,7 +88,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const data = await server.services.pamFolder.getFolderPermissions({
         folderId: req.params.folderId,
@@ -121,7 +121,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const folder = await server.services.pamFolder.getById({
         folderId: req.params.folderId,
@@ -151,7 +151,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const folder = await server.services.pamFolder.create({
         ...req.body,
@@ -210,7 +210,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const folder = await server.services.pamFolder.update({
         folderId: req.params.folderId,
@@ -266,7 +266,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const folder = await server.services.pamFolder.deleteFolder({
         folderId: req.params.folderId,

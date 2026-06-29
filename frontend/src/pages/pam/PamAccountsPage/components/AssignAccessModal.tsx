@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
-import { CheckIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
+import { BotIcon, CheckIcon, User as UserIcon, Users as UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -21,19 +21,25 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   TPamResourceRole,
   useAddAccountGroupMember,
+  useAddAccountIdentityMember,
   useAddAccountMember,
   useAddFolderGroupMember,
+  useAddFolderIdentityMember,
   useAddFolderMember,
   useListPamProductGroups,
+  useListPamProductIdentities,
   useListPamProductMembers,
   useListPamResourceRoles,
   useUpdateAccountGroupMemberRole,
+  useUpdateAccountIdentityMemberRole,
   useUpdateAccountMemberRole,
   useUpdateFolderGroupMemberRole,
+  useUpdateFolderIdentityMemberRole,
   useUpdateFolderMemberRole
 } from "@app/hooks/api/pam";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
@@ -66,23 +72,28 @@ const EXPIRY_OPTIONS = [
   { value: "30d", label: "1 month" }
 ];
 
-const AssigneeSelectOption = ({ children, ...props }: OptionProps<AssigneeOption>) => (
-  <components.Option {...props}>
-    <div className="flex items-center gap-2.5">
-      {props.data.kind === PamMemberKind.Group ? (
-        <UsersIcon className="size-4 shrink-0 text-muted" />
-      ) : (
-        <UserIcon className="size-4 shrink-0 text-muted" />
-      )}
-      <div className="min-w-0">
-        <p className="truncate">{children}</p>
-        {props.data.subtitle && (
-          <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
-        )}
+const ASSIGNEE_ICON: Record<PamMemberKind, typeof UserIcon> = {
+  [PamMemberKind.User]: UserIcon,
+  [PamMemberKind.Group]: UsersIcon,
+  [PamMemberKind.Identity]: BotIcon
+};
+
+const AssigneeSelectOption = ({ children, ...props }: OptionProps<AssigneeOption>) => {
+  const Icon = ASSIGNEE_ICON[props.data.kind];
+  return (
+    <components.Option {...props}>
+      <div className="flex items-center gap-2.5">
+        <Icon className="size-4 shrink-0 text-muted" />
+        <div className="min-w-0">
+          <p className="truncate">{children}</p>
+          {props.data.subtitle && (
+            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
+          )}
+        </div>
       </div>
-    </div>
-  </components.Option>
-);
+    </components.Option>
+  );
+};
 
 const ResourceRoleOption = ({ isSelected, children, ...props }: OptionProps<TPamResourceRole>) => (
   <components.Option isSelected={isSelected} {...props}>
@@ -105,6 +116,7 @@ type Props = {
   resourceId: string;
   existingUserIds: Set<string>;
   existingGroupIds: Set<string>;
+  existingIdentityIds: Set<string>;
   editMember?: EditMemberTarget | null;
 };
 
@@ -115,23 +127,33 @@ export const AssignAccessModal = ({
   resourceId,
   existingUserIds,
   existingGroupIds,
+  existingIdentityIds,
   editMember
 }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
+  const { data: orgIdentities } = useGetIdentityMembershipOrgs({
+    organizationId: currentOrg.id,
+    limit: 1000
+  });
   const { data: productMembers } = useListPamProductMembers();
   const { data: productGroups } = useListPamProductGroups();
+  const { data: productIdentities } = useListPamProductIdentities();
   const { data: resourceRoles } = useListPamResourceRoles();
 
   const addAccountUser = useAddAccountMember();
   const addAccountGroup = useAddAccountGroupMember();
+  const addAccountIdentity = useAddAccountIdentityMember();
   const addFolderUser = useAddFolderMember();
   const addFolderGroup = useAddFolderGroupMember();
+  const addFolderIdentity = useAddFolderIdentityMember();
   const updateAccountUser = useUpdateAccountMemberRole();
   const updateAccountGroup = useUpdateAccountGroupMemberRole();
+  const updateAccountIdentity = useUpdateAccountIdentityMemberRole();
   const updateFolderUser = useUpdateFolderMemberRole();
   const updateFolderGroup = useUpdateFolderGroupMemberRole();
+  const updateFolderIdentity = useUpdateFolderIdentityMemberRole();
 
   const isEdit = Boolean(editMember);
 
@@ -149,18 +171,20 @@ export const AssignAccessModal = ({
   }, [resourceRoles]);
   const effectiveRoleSlug = roleSlug || editMember?.role || defaultRoleSlug;
 
-  const lockedActor = useMemo<AssigneeOption | null>(
-    () =>
-      editMember
-        ? {
-            value: editMember.id,
-            label: editMember.label,
-            kind: editMember.kind,
-            subtitle: editMember.kind === PamMemberKind.Group ? "Group" : ""
-          }
-        : null,
-    [editMember]
-  );
+  const lockedActor = useMemo<AssigneeOption | null>(() => {
+    if (!editMember) return null;
+    const subtitleMap: Record<PamMemberKind, string> = {
+      [PamMemberKind.User]: "",
+      [PamMemberKind.Group]: "Group",
+      [PamMemberKind.Identity]: "Machine Identity"
+    };
+    return {
+      value: editMember.id,
+      label: editMember.label,
+      kind: editMember.kind,
+      subtitle: subtitleMap[editMember.kind]
+    };
+  }, [editMember]);
 
   const pamUserIds = useMemo(
     () => new Set((productMembers ?? []).map((m) => m.userId).filter(Boolean) as string[]),
@@ -169,6 +193,10 @@ export const AssignAccessModal = ({
   const pamGroupIds = useMemo(
     () => new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean) as string[]),
     [productGroups]
+  );
+  const pamIdentityIds = useMemo(
+    () => new Set((productIdentities ?? []).map((m) => m.identityId).filter(Boolean) as string[]),
+    [productIdentities]
   );
 
   const assigneeOptions = useMemo<AssigneeOption[]>(() => {
@@ -188,20 +216,44 @@ export const AssignAccessModal = ({
         };
       });
 
-    return [...groups, ...users];
-  }, [orgGroups, orgUsers, pamGroupIds, pamUserIds, existingGroupIds, existingUserIds]);
+    const existingIds = existingIdentityIds ?? new Set<string>();
+    const identities: AssigneeOption[] = (orgIdentities?.identityMemberships ?? [])
+      .filter((im) => pamIdentityIds.has(im.identity.id) && !existingIds.has(im.identity.id))
+      .map((im) => ({
+        value: im.identity.id,
+        label: im.identity.name,
+        kind: PamMemberKind.Identity,
+        subtitle: "Machine Identity"
+      }));
+
+    return [...groups, ...identities, ...users];
+  }, [
+    orgGroups,
+    orgUsers,
+    orgIdentities,
+    pamGroupIds,
+    pamUserIds,
+    pamIdentityIds,
+    existingGroupIds,
+    existingUserIds,
+    existingIdentityIds
+  ]);
 
   const selectedRole = (resourceRoles ?? []).find((r) => r.slug === effectiveRoleSlug) ?? null;
 
   const isPending =
     addAccountUser.isPending ||
     addAccountGroup.isPending ||
+    addAccountIdentity.isPending ||
     addFolderUser.isPending ||
     addFolderGroup.isPending ||
+    addFolderIdentity.isPending ||
     updateAccountUser.isPending ||
     updateAccountGroup.isPending ||
+    updateAccountIdentity.isPending ||
     updateFolderUser.isPending ||
-    updateFolderGroup.isPending;
+    updateFolderGroup.isPending ||
+    updateFolderIdentity.isPending;
 
   const reset = () => {
     setSelectedActor(null);
@@ -211,7 +263,6 @@ export const AssignAccessModal = ({
 
   const handleEdit = () => {
     if (!editMember || !effectiveRoleSlug) return;
-    const isUser = editMember.kind === PamMemberKind.User;
 
     const opts = {
       onSuccess: () => {
@@ -221,24 +272,34 @@ export const AssignAccessModal = ({
       }
     };
 
-    if (scope === PamMembershipScope.Account && isUser) {
+    if (scope === PamMembershipScope.Account && editMember.kind === PamMemberKind.User) {
       updateAccountUser.mutate(
         { accountId: resourceId, userId: editMember.id, role: effectiveRoleSlug },
         opts
       );
-    } else if (scope === PamMembershipScope.Account) {
+    } else if (scope === PamMembershipScope.Account && editMember.kind === PamMemberKind.Group) {
       updateAccountGroup.mutate(
         { accountId: resourceId, groupId: editMember.id, role: effectiveRoleSlug },
         opts
       );
-    } else if (isUser) {
+    } else if (scope === PamMembershipScope.Account && editMember.kind === PamMemberKind.Identity) {
+      updateAccountIdentity.mutate(
+        { accountId: resourceId, identityId: editMember.id, role: effectiveRoleSlug },
+        opts
+      );
+    } else if (editMember.kind === PamMemberKind.User) {
       updateFolderUser.mutate(
         { folderId: resourceId, userId: editMember.id, role: effectiveRoleSlug },
         opts
       );
-    } else {
+    } else if (editMember.kind === PamMemberKind.Group) {
       updateFolderGroup.mutate(
         { folderId: resourceId, groupId: editMember.id, role: effectiveRoleSlug },
+        opts
+      );
+    } else {
+      updateFolderIdentity.mutate(
+        { folderId: resourceId, identityId: editMember.id, role: effectiveRoleSlug },
         opts
       );
     }
@@ -247,7 +308,6 @@ export const AssignAccessModal = ({
   const handleAssign = () => {
     if (!selectedActor || !effectiveRoleSlug) return;
     const expiryValue = expiry === "none" ? null : expiry;
-    const isUser = selectedActor.kind === PamMemberKind.User;
 
     const opts = {
       onSuccess: () => {
@@ -257,7 +317,7 @@ export const AssignAccessModal = ({
       }
     };
 
-    if (scope === PamMembershipScope.Account && isUser) {
+    if (scope === PamMembershipScope.Account && selectedActor.kind === PamMemberKind.User) {
       addAccountUser.mutate(
         {
           accountId: resourceId,
@@ -267,7 +327,7 @@ export const AssignAccessModal = ({
         },
         opts
       );
-    } else if (scope === PamMembershipScope.Account) {
+    } else if (scope === PamMembershipScope.Account && selectedActor.kind === PamMemberKind.Group) {
       addAccountGroup.mutate(
         {
           accountId: resourceId,
@@ -277,7 +337,20 @@ export const AssignAccessModal = ({
         },
         opts
       );
-    } else if (isUser) {
+    } else if (
+      scope === PamMembershipScope.Account &&
+      selectedActor.kind === PamMemberKind.Identity
+    ) {
+      addAccountIdentity.mutate(
+        {
+          accountId: resourceId,
+          identityId: selectedActor.value,
+          role: effectiveRoleSlug,
+          expiry: expiryValue
+        },
+        opts
+      );
+    } else if (selectedActor.kind === PamMemberKind.User) {
       addFolderUser.mutate(
         {
           folderId: resourceId,
@@ -287,11 +360,21 @@ export const AssignAccessModal = ({
         },
         opts
       );
-    } else {
+    } else if (selectedActor.kind === PamMemberKind.Group) {
       addFolderGroup.mutate(
         {
           folderId: resourceId,
           groupId: selectedActor.value,
+          role: effectiveRoleSlug,
+          expiry: expiryValue
+        },
+        opts
+      );
+    } else {
+      addFolderIdentity.mutate(
+        {
+          folderId: resourceId,
+          identityId: selectedActor.value,
           role: effectiveRoleSlug,
           expiry: expiryValue
         },
@@ -325,8 +408,8 @@ export const AssignAccessModal = ({
                 getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
                 getOptionLabel={(opt) => opt.label}
                 components={{ Option: AssigneeSelectOption }}
-                placeholder="Pick a user or a group..."
-                noOptionsMessage={() => "No users or groups available to assign."}
+                placeholder="Pick a user, group, or identity..."
+                noOptionsMessage={() => "No users, groups, or identities available to assign."}
               />
             </FieldContent>
           </Field>
