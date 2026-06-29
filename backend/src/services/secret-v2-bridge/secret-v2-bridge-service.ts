@@ -112,7 +112,7 @@ import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug">;
   secretVersionDAL: TSecretVersionV2DALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -187,14 +187,16 @@ export const secretV2BridgeServiceFactory = ({
     references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
     tx?: Knex
   ) => {
-    if (!references.length) return;
+    // Cross-project refs are authorized at resolution time via project grants — skip them here
+    const sameProjReferences = references.filter((el) => !el.targetProjectSlug);
+    if (!sameProjReferences.length) return;
 
-    const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
+    const uniqueReferenceEnvironmentSlugs = Array.from(new Set(sameProjReferences.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
 
     // Filter out references to non-existent environments
     const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
-    const validEnvironmentReferences = references.filter((el) => referencesEnvironmentGroupBySlug[el.environment]);
+    const validEnvironmentReferences = sameProjReferences.filter((el) => referencesEnvironmentGroupBySlug[el.environment]);
 
     if (validEnvironmentReferences.length === 0) return;
 
@@ -1466,6 +1468,9 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL: mainExpanderSecretDAL,
+      // Use the raw (non-import-aware) DAL for cross-project fetching to avoid resolving
+      // the source project's imports through the current project's context.
+      crossProjectSecretDAL: secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1479,7 +1484,23 @@ export const secretV2BridgeServiceFactory = ({
           personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) &&
         expandPersonalOverrides
           ? actorId
-          : undefined
+          : undefined,
+      projectGrantDAL,
+      getProjectDecryptor: async (sourceProjectId: string) => {
+        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: sourceProjectId
+        });
+        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+      },
+      resolveProjectSlug: async (slug: string) => {
+        try {
+          const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
+          return sourceProject.id;
+        } catch {
+          return null;
+        }
+      }
     });
 
     if (shouldExpandSecretReferences) {
@@ -1807,6 +1828,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL,
+      crossProjectSecretDAL: secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
         return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1816,7 +1838,23 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: expandSecretTags
         });
       },
-      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined
+      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
+      projectGrantDAL,
+      getProjectDecryptor: async (sourceProjectId: string) => {
+        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: sourceProjectId
+        });
+        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+      },
+      resolveProjectSlug: async (slug: string) => {
+        try {
+          const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
+          return sourceProject.id;
+        } catch {
+          return null;
+        }
+      }
     });
 
     // now if secret is not found
@@ -3153,7 +3191,23 @@ export const secretV2BridgeServiceFactory = ({
           secretPath: expandSecretPath,
           secretName: expandSecretName,
           secretTags: expandSecretTags
-        })
+        }),
+      projectGrantDAL,
+      getProjectDecryptor: async (sourceProjectId: string) => {
+        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: sourceProjectId
+        });
+        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+      },
+      resolveProjectSlug: async (slug: string) => {
+        try {
+          const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
+          return sourceProject.id;
+        } catch {
+          return null;
+        }
+      }
     });
 
     if (

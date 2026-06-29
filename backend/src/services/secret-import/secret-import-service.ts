@@ -1027,11 +1027,22 @@ export const secretImportServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
 
-    const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
+    const project = await projectDAL.findById(projectId);
+    const importedBy = await secretImportDAL.getFolderIsImportedBy(
+      secretPath,
+      folder.envId,
+      environment,
+      projectId,
+      project.slug
+    );
+
+    const sameProjItems = importedBy.filter((el) => !el.projectSlug);
+    const crossProjItems = importedBy.filter((el) => el.projectSlug);
+
     const deepPaths: { path: string; folderId: string }[] = [];
 
-    await Promise.all(
-      importedBy.map(async (el) => {
+    await Promise.all([
+      ...sameProjItems.map(async (el) => {
         const envDeepPaths = await recursivelyGetSecretPaths({
           folderDAL,
           projectEnvDAL,
@@ -1040,21 +1051,50 @@ export const secretImportServiceFactory = ({
           currentPath: "/"
         });
         deepPaths.push(...envDeepPaths);
+      }),
+      ...crossProjItems.map(async (el) => {
+        const envDeepPaths = await recursivelyGetSecretPaths({
+          folderDAL,
+          projectEnvDAL,
+          projectId: el.projectId!,
+          environment: el.envSlug,
+          currentPath: "/"
+        });
+        deepPaths.push(...envDeepPaths);
       })
-    );
+    ]);
 
-    const result = importedBy.map((el) => ({
-      environment: {
-        name: el.envName,
-        slug: el.envSlug
-      },
-      folders: el.folders.map((folderItem) => ({
-        folderId: folderItem.folderId,
-        isImported: folderItem.folderImported,
-        secrets: folderItem.secrets,
-        name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+    const result = [
+      ...sameProjItems.map((el) => ({
+        environment: {
+          name: el.envName,
+          slug: el.envSlug
+        },
+        folders: el.folders.map((folderItem) => ({
+          folderId: folderItem.folderId,
+          isImported: folderItem.folderImported,
+          secrets: folderItem.secrets,
+          name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+        }))
+      })),
+      ...crossProjItems.map((el) => ({
+        environment: {
+          name: el.envName,
+          slug: el.envSlug
+        },
+        project: {
+          name: el.projectName!,
+          slug: el.projectSlug!,
+          id: el.projectId!
+        },
+        folders: el.folders.map((folderItem) => ({
+          folderId: folderItem.folderId,
+          isImported: folderItem.folderImported,
+          secrets: folderItem.secrets,
+          name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+        }))
       }))
-    }));
+    ];
 
     // Special case for same folder references as these do not have an entry on the references table
     const locallyReferenced =

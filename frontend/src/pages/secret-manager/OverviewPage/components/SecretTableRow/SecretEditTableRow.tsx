@@ -151,6 +151,7 @@ type Props = {
     | undefined;
   importedBy?: {
     environment: { name: string; slug: string };
+    project?: { name: string; slug: string; id: string };
     folders: {
       name: string;
       secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
