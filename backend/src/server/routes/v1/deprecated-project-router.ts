@@ -11,7 +11,6 @@ import {
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
-import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -704,13 +703,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         type: z.nativeEnum(ProjectType).optional(),
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
-        name: z
-          .string()
-          .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
-          .optional()
+        name: z.string().trim().max(256).optional()
       }),
       response: {
         200: z.object({
