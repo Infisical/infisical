@@ -1574,7 +1574,12 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL,
       folderDAL,
       secretImportDAL,
-      userId: expandPersonalOverrides ? actorId : undefined,
+      // Mirror direct secrets: always pass the actor so personal overrides on imported secrets can be
+      // resolved. Whether they are actually included is decided by personalOverridesBehavior inside
+      // fnSecretsV2FromImports. Gating on expandPersonalOverrides here caused imported personal overrides
+      // to be dropped for callers that include overrides without reference expansion (e.g. the v3 raw
+      // endpoint used by the CLI export), so imports returned the shared value instead of the override.
+      userId: actorId,
       personalOverridesBehavior,
       expandSecretReferences:
         secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
