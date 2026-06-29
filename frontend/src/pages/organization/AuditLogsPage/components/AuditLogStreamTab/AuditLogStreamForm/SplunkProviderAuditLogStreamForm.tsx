@@ -2,10 +2,11 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
+import { Field, FieldError, FieldLabel, Input, SecretInput } from "@app/components/v3";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/splunk-provider";
 
+import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
 
 type Props = {
@@ -59,11 +60,7 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -73,13 +70,16 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Hostname"
-            >
-              <Input {...field} placeholder="splunk.example.com" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="hostname">Hostname</FieldLabel>
+              <Input
+                id="hostname"
+                {...field}
+                placeholder="splunk.example.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -87,39 +87,19 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Splunk Token"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="token">Splunk Token</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <div className="mt-6">
           <ProductsField />
         </div>
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Create Log Stream"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AuditLogStreamFormFooter
+          submitLabel={isUpdate ? "Update" : "Create Log Stream"}
+        />
       </form>
     </FormProvider>
   );

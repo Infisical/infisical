@@ -3,16 +3,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import {
-  Button,
-  FormControl,
-  ModalClose,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TDatadogProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/datadog-provider";
 
+import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
 
 type Props = {
@@ -57,11 +62,7 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -70,28 +71,27 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
           name="credentials.url"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Datadog Region"
-              helperText={value}
-            >
-              <Select
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.entries(DATADOG_ENDPOINTS).map(([k, v]) => {
-                  return (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="datadog-region">Datadog Region</FieldLabel>
+              <Select value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger
+                  id="datadog-region"
+                  className="w-full"
+                  isError={Boolean(error?.message)}
+                >
+                  <SelectValue placeholder="Select a region" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.entries(DATADOG_ENDPOINTS).map(([k, v]) => (
                     <SelectItem value={v} key={k}>
                       {k}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              {!error && value && <FieldDescription>{value}</FieldDescription>}
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -99,39 +99,19 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Datadog Token"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="datadog-token">Datadog Token</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <div className="mt-6">
           <ProductsField />
         </div>
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Create Log Stream"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AuditLogStreamFormFooter
+          submitLabel={isUpdate ? "Update" : "Create Log Stream"}
+        />
       </form>
     </FormProvider>
   );

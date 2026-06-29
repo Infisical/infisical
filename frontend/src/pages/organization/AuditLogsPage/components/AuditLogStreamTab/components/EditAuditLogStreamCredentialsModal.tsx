@@ -1,8 +1,8 @@
-import { Modal, ModalContent } from "@app/components/v2";
-import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@app/components/v3";
 import { TAuditLogStream } from "@app/hooks/api/types";
 
 import { AuditLogStreamForm } from "../AuditLogStreamForm/AuditLogStreamForm";
+import { AuditLogStreamHeader } from "./AuditLogStreamHeader";
 
 type Props = {
   isOpen: boolean;
@@ -18,17 +18,21 @@ export const EditAuditLogStreamCredentialsModal = ({
   if (!auditLogStream) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Edit Log Stream Credentials"
-        subTitle={`Update the credentials for this ${AUDIT_LOG_STREAM_PROVIDER_MAP[auditLogStream.provider].name} Log Stream.`}
-      >
-        <AuditLogStreamForm
-          onComplete={() => onOpenChange(false)}
-          auditLogStream={auditLogStream}
-        />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+        <SheetHeader className="border-b">
+          <SheetTitle>
+            <AuditLogStreamHeader provider={auditLogStream.provider} logStreamExists />
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <AuditLogStreamForm
+            auditLogStream={auditLogStream}
+            onComplete={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

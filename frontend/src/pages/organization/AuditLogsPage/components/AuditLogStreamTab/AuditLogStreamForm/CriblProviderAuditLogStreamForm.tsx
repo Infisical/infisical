@@ -1,21 +1,24 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleHelp, Info } from "lucide-react";
 import { z } from "zod";
 
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Switch,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
 import { TCriblProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/cribl-provider";
 
+import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
 
 type Props = {
@@ -39,6 +42,7 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
   const isUpdate = Boolean(auditLogStream);
   // Only streams already on "single" (legacy) can change mode — and only to "batch".
   const isSingleStream = auditLogStream?.streamMode === StreamMode.Single;
+  const scopeVariant = useScopeVariant();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -55,11 +59,7 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
         }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -69,26 +69,31 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Cribl Stream URL"
-              tooltipText={
-                <>
-                  To derive your Stream URL: Obtain your Cribl hostname (e.g. cribl.example.com),
-                  Infisical HTTP data source port (e.g. 20000), and HTTP event API path (e.g.
-                  /infisical).
-                  <br />
-                  <br />
-                  If your Infisical Data Source has TLS enabled, then use the https protocol.
-                </>
-              }
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="cribl-url">
+                Cribl Stream URL
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    To derive your Stream URL: Obtain your Cribl hostname (e.g. cribl.example.com),
+                    Infisical HTTP data source port (e.g. 20000), and HTTP event API path (e.g.
+                    /infisical).
+                    <br />
+                    <br />
+                    If your Infisical Data Source has TLS enabled, then use the https protocol.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="cribl-url"
                 {...field}
                 placeholder="http://default.main.example.cribl.cloud:20000/infisical/_bulk"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -96,17 +101,11 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Cribl Stream Token"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="cribl-token">Cribl Stream Token</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         {isUpdate && (
@@ -118,32 +117,36 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
                 const isBatch = field.value === StreamMode.Batch;
                 return (
                   <div>
-                    <Switch
-                      id="stream-batch-mode"
-                      isChecked={isBatch}
-                      isDisabled={!isSingleStream}
-                      onCheckedChange={(checked) =>
-                        field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
-                      }
-                    >
-                      <p className="text-sm">
+                    <Field orientation="horizontal">
+                      <FieldLabel htmlFor="stream-batch-mode" className="text-sm">
                         Batch delivery
-                        <Tooltip
-                          className="max-w-md"
-                          content={<p>Send events as a newline-delimited JSON (NDJSON) batch.</p>}
-                        >
-                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <CircleHelp />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            Send events as a newline-delimited JSON (NDJSON) batch.
+                          </TooltipContent>
                         </Tooltip>
-                      </p>
-                    </Switch>
+                      </FieldLabel>
+                      <Switch
+                        id="stream-batch-mode"
+                        variant={scopeVariant}
+                        checked={isBatch}
+                        disabled={!isSingleStream}
+                        onCheckedChange={(checked) =>
+                          field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
+                        }
+                      />
+                    </Field>
                     {isSingleStream &&
                       (isBatch ? (
-                        <p className="mt-2 text-xs text-yellow">
+                        <p className="mt-2 text-xs text-warning">
                           Switching from single to batch delivery cannot be undone. Make sure your
                           Cribl source accepts newline-delimited JSON (NDJSON) batches.
                         </p>
                       ) : (
-                        <p className="mt-2 text-xs text-mineshaft-400">
+                        <p className="mt-2 text-xs text-muted">
                           This stream uses legacy single-event delivery (one event per request).
                           Enable batch delivery to send events as a newline-delimited JSON (NDJSON)
                           batch.
@@ -160,23 +163,9 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           <ProductsField />
         </div>
 
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Create Log Stream"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AuditLogStreamFormFooter
+          submitLabel={isUpdate ? "Update" : "Create Log Stream"}
+        />
       </form>
     </FormProvider>
   );

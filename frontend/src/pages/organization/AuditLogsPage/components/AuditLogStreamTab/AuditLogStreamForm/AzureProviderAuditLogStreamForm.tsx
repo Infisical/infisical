@@ -2,10 +2,11 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
+import { Field, FieldError, FieldLabel, Input, SecretInput } from "@app/components/v3";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TAzureProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/azure-provider";
 
+import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
 
 type Props = {
@@ -41,11 +42,7 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -55,13 +52,16 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Tenant ID"
-            >
-              <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="tenantId">Tenant ID</FieldLabel>
+              <Input
+                id="tenantId"
+                {...field}
+                placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -69,13 +69,16 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client ID"
-            >
-              <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="clientId">Client ID</FieldLabel>
+              <Input
+                id="clientId"
+                {...field}
+                placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -83,17 +86,11 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client Secret"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="clientSecret">Client Secret</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -101,13 +98,16 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Data Collection Endpoint URL"
-            >
-              <Input {...field} placeholder="https://example.eastus-1.ingest.monitor.azure.com" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="dceUrl">Data Collection Endpoint URL</FieldLabel>
+              <Input
+                id="dceUrl"
+                {...field}
+                placeholder="https://example.eastus-1.ingest.monitor.azure.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -115,13 +115,16 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Data Collection Rule Immutable ID"
-            >
-              <Input {...field} placeholder="dcr-00000000000000000000000000000000" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="dcrId">Data Collection Rule Immutable ID</FieldLabel>
+              <Input
+                id="dcrId"
+                {...field}
+                placeholder="dcr-00000000000000000000000000000000"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -129,35 +132,24 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Custom Log Table Name"
-            >
-              <Input {...field} placeholder="InfisicalLogs" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="cltName">Custom Log Table Name</FieldLabel>
+              <Input
+                id="cltName"
+                {...field}
+                placeholder="InfisicalLogs"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <div className="mt-6">
           <ProductsField />
         </div>
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Create Log Stream"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AuditLogStreamFormFooter
+          submitLabel={isUpdate ? "Update" : "Create Log Stream"}
+        />
       </form>
     </FormProvider>
   );

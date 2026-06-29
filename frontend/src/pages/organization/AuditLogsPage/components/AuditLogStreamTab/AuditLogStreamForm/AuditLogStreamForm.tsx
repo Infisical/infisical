@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { createNotification } from "@app/components/notifications";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { useCreateAuditLogStream, useUpdateAuditLogStream } from "@app/hooks/api";
@@ -6,7 +8,7 @@ import { TAuditLogStreamFilters } from "@app/hooks/api/auditLogStreams/types";
 import { TAuditLogStream } from "@app/hooks/api/types";
 import { DiscriminativePick } from "@app/types";
 
-import { AuditLogStreamHeader } from "../components/AuditLogStreamHeader";
+import { AuditLogStreamFormProvider } from "./AuditLogStreamFormContext";
 import { AzureProviderAuditLogStreamForm } from "./AzureProviderAuditLogStreamForm";
 import { CriblProviderAuditLogStreamForm } from "./CriblProviderAuditLogStreamForm";
 import { CustomProviderAuditLogStreamForm } from "./CustomProviderAuditLogStreamForm";
@@ -109,26 +111,25 @@ const UpdateForm = ({ auditLogStream, onComplete }: UpdateFormProps) => {
   }
 };
 
-type Props = { onBack?: () => void } & Pick<FormProps, "onComplete"> &
+type Props = { onCancel: () => void } & Pick<FormProps, "onComplete"> &
   (
     | { provider: LogProvider; auditLogStream?: undefined }
     | { provider?: undefined; auditLogStream: TAuditLogStream }
   );
-export const AuditLogStreamForm = ({ onBack, ...props }: Props) => {
+export const AuditLogStreamForm = ({ onCancel, ...props }: Props) => {
   const { provider, auditLogStream } = props;
 
+  const contextValue = useMemo(() => ({ onCancel }), [onCancel]);
+
   return (
-    <div>
-      <AuditLogStreamHeader
-        logStreamExists={Boolean(auditLogStream)}
-        provider={auditLogStream ? auditLogStream.provider : provider}
-        onBack={onBack}
-      />
-      {auditLogStream ? (
-        <UpdateForm {...props} auditLogStream={auditLogStream} />
-      ) : (
-        <CreateForm {...props} provider={provider} />
-      )}
-    </div>
+    <AuditLogStreamFormProvider value={contextValue}>
+      <div className="flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4">
+        {auditLogStream ? (
+          <UpdateForm {...props} auditLogStream={auditLogStream} />
+        ) : (
+          <CreateForm {...props} provider={provider} />
+        )}
+      </div>
+    </AuditLogStreamFormProvider>
   );
 };

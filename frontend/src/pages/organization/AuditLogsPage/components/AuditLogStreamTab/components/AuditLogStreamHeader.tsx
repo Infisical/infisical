@@ -7,52 +7,37 @@ import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 type Props = {
   provider: LogProvider;
   logStreamExists: boolean;
-  onBack?: () => void;
 };
 
-export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Props) => {
+export const AuditLogStreamHeader = ({ provider, logStreamExists }: Props) => {
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
 
   return (
-    <div className="mb-4 flex w-full items-center gap-2 border-b border-mineshaft-500 pb-4">
-      <div className="relative">
+    <div className="flex w-full items-start gap-2">
+      <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-container">
         {providerDetails.image ? (
           <img
             alt={providerDetails.name}
             src={`/images/integrations/${providerDetails.image}`}
-            className="size-12 rounded-md bg-bunker-500 p-2"
+            className="h-7 w-7 object-contain"
           />
         ) : (
           providerDetails.icon && (
-            <div className="size-12 rounded-md bg-bunker-500 p-2">
-              <FontAwesomeIcon
-                icon={providerDetails.icon}
-                className="h-full w-full text-mineshaft-300"
-              />
-            </div>
+            <FontAwesomeIcon icon={providerDetails.icon} className="text-accent" />
           )
         )}
       </div>
       <div>
-        <div className="mb-1 flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-accent">
           {providerDetails.name}
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams#example-providers" />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 font-normal text-muted">
           {logStreamExists
             ? `${providerDetails.name} Log Stream`
             : `Create a ${providerDetails.name} Log Stream`}
         </p>
       </div>
-      {onBack && (
-        <button
-          type="button"
-          className="mt-1 ml-auto text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
-          onClick={onBack}
-        >
-          Select another provider
-        </button>
-      )}
     </div>
   );
 };
