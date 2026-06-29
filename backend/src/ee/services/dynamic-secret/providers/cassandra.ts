@@ -10,7 +10,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretCassandraSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretCassandraSchema, TCassandraLeaseData, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
@@ -18,7 +18,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-export const CassandraProvider = (): TDynamicProviderFns => {
+export const CassandraProvider = (): TDynamicProviderFns<TCassandraLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretCassandraSchema.parseAsync(inputs);
     await Promise.all(

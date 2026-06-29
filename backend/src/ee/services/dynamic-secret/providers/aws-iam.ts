@@ -28,13 +28,19 @@ import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { AwsIamAuthType, AwsIamCredentialType, DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
+import {
+  AwsIamAuthType,
+  AwsIamCredentialType,
+  DynamicSecretAwsIamSchema,
+  TAwsIamLeaseData,
+  TDynamicProviderFns
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 // AWS STS duration constants (in seconds)
 const AWS_STS_MIN_DURATION = 900;
 
-export const AwsIamProvider = (): TDynamicProviderFns => {
+export const AwsIamProvider = (): TDynamicProviderFns<TAwsIamLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretAwsIamSchema.parseAsync(inputs);
     return providerInputs;
@@ -436,8 +442,13 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
             UserName: createUserRes.User.UserName
           })
         );
-        if (!createAccessKeyRes.AccessKey)
+        if (
+          !createAccessKeyRes.AccessKey ||
+          !createAccessKeyRes.AccessKey.AccessKeyId ||
+          !createAccessKeyRes.AccessKey.SecretAccessKey
+        ) {
           throw new BadRequestError({ message: "Failed to create AWS IAM User access key" });
+        }
 
         return {
           entityId: username,

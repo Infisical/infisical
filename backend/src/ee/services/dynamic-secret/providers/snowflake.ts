@@ -9,7 +9,7 @@ import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretSnowflakeSchema, TDynamicProviderFns, TSnowflakeLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 // destroy client requires callback...
@@ -28,7 +28,7 @@ const getDaysToExpiry = (expiryDate: Date) => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-export const SnowflakeProvider = (): TDynamicProviderFns => {
+export const SnowflakeProvider = (): TDynamicProviderFns<TSnowflakeLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
     validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {

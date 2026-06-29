@@ -10,7 +10,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretSapAseSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretSapAseSchema, TDynamicProviderFns, TSapAseLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
@@ -23,7 +23,7 @@ enum SapCommands {
   DropLogin = "sp_droplogin"
 }
 
-export const SapAseProvider = (): TDynamicProviderFns => {
+export const SapAseProvider = (): TDynamicProviderFns<TSapAseLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
 

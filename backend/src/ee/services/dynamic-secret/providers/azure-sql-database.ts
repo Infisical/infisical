@@ -16,7 +16,13 @@ import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretAzureSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretAzureSqlDBSchema,
+  PasswordRequirements,
+  SqlProviders,
+  TAzureSqlDatabaseLeaseData,
+  TDynamicProviderFns
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
@@ -116,7 +122,7 @@ export const AzureSqlDatabaseProvider = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService
-}: TAzureSqlDatabaseProviderDTO): TDynamicProviderFns => {
+}: TAzureSqlDatabaseProviderDTO): TDynamicProviderFns<TAzureSqlDatabaseLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretAzureSqlDBSchema.parseAsync(inputs);
 

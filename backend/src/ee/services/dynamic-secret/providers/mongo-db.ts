@@ -8,7 +8,7 @@ import { sanitizeString } from "@app/lib/fn";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretMongoDBSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretMongoDBSchema, TDynamicProviderFns, TMongoDBLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
@@ -16,7 +16,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-export const MongoDBProvider = (): TDynamicProviderFns => {
+export const MongoDBProvider = (): TDynamicProviderFns<TMongoDBLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretMongoDBSchema.parseAsync(inputs);
     await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });

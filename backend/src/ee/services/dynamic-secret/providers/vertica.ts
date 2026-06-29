@@ -15,7 +15,7 @@ import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretVerticaSchema, PasswordRequirements, TDynamicProviderFns } from "./models";
+import { DynamicSecretVerticaSchema, PasswordRequirements, TDynamicProviderFns, TVerticaLeaseData } from "./models";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -143,7 +143,7 @@ export const VerticaProvider = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService
-}: TVerticaProviderDTO): TDynamicProviderFns => {
+}: TVerticaProviderDTO): TDynamicProviderFns<TVerticaLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretVerticaSchema.parseAsync(inputs);
 

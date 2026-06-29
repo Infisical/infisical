@@ -16,7 +16,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretSapHanaSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretSapHanaSchema, TDynamicProviderFns, TSapHanaLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
@@ -24,7 +24,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-export const SapHanaProvider = (): TDynamicProviderFns => {
+export const SapHanaProvider = (): TDynamicProviderFns<TSapHanaLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapHanaSchema.parseAsync(inputs);
 

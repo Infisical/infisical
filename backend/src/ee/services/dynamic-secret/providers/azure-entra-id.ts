@@ -4,7 +4,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 
-import { AzureEntraIDSchema, TDynamicProviderFns } from "./models";
+import { AzureEntraIDSchema, TAzureEntraIDLeaseData, TDynamicProviderFns } from "./models";
 
 const MSFT_GRAPH_API_URL = "https://graph.microsoft.com/v1.0/";
 const MSFT_LOGIN_URL = "https://login.microsoftonline.com";
@@ -16,7 +16,7 @@ const generatePassword = () => {
 
 type User = { name: string; id: string; email: string };
 
-export const AzureEntraIDProvider = (): TDynamicProviderFns & {
+export const AzureEntraIDProvider = (): TDynamicProviderFns<TAzureEntraIDLeaseData> & {
   fetchAzureEntraIdUsers: (tenantId: string, applicationId: string, clientSecret: string) => Promise<User[]>;
 } => {
   const validateProviderInputs = async (inputs: unknown) => {

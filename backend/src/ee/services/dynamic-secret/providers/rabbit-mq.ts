@@ -10,7 +10,7 @@ import { logger } from "@app/lib/logger";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretRabbitMqSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretRabbitMqSchema, TDynamicProviderFns, TRabbitMqLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
@@ -75,7 +75,7 @@ async function deleteRabbitMqUser({ axiosInstance, usernameToDelete }: TDeleteRa
   return { username: usernameToDelete };
 }
 
-export const RabbitMqProvider = (): TDynamicProviderFns => {
+export const RabbitMqProvider = (): TDynamicProviderFns<TRabbitMqLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRabbitMqSchema.parseAsync(inputs);
     await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });

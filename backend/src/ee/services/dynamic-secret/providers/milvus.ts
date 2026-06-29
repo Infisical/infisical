@@ -18,7 +18,12 @@ import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretMilvusSchema, TDynamicProviderCreateMetadata, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretMilvusSchema,
+  TDynamicProviderCreateMetadata,
+  TDynamicProviderFns,
+  TMilvusLeaseData
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 type TMilvusProviderInputs = z.infer<typeof DynamicSecretMilvusSchema>;
@@ -89,7 +94,7 @@ export const MilvusProvider = ({
   gatewayService,
   gatewayV2Service,
   gatewayPoolService
-}: TMilvusProviderDTO): TDynamicProviderFns => {
+}: TMilvusProviderDTO): TDynamicProviderFns<TMilvusLeaseData> => {
   const validateProviderInputs = async (inputs: object) => {
     const providerInputs = await DynamicSecretMilvusSchema.parseAsync(inputs);
     const { hostname, origin } = parseMilvusHost(providerInputs, providerInputs.host, providerInputs.port);
