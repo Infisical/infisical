@@ -9,6 +9,7 @@ import { registerAiMcpEndpointRouter } from "./ai-mcp-endpoint-router";
 import { registerAiMcpServerRouter } from "./ai-mcp-server-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
+import { registerAuditReportRouter } from "./audit-report-router";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
@@ -132,6 +133,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
   await server.register(registerPamInsightsRouter, { prefix: "/insights/pam" });
+  await server.register(registerAuditReportRouter, { prefix: "/audit-reports" });
 
   await server.register(
     async (pkiRouter) => {

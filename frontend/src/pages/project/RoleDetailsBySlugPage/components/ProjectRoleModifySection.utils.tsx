@@ -16,6 +16,7 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
+  ProjectPermissionAuditReportActions,
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -65,6 +66,12 @@ const AuditLogsPolicyActionSchema = z.object({
 
 const InsightsPolicyActionSchema = z.object({
   [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
+});
+
+const AuditReportPolicyActionSchema = z.object({
+  [ProjectPermissionAuditReportActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAuditReportActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAuditReportActions.Delete]: z.boolean().optional()
 });
 
 const HoneyTokenPolicyActionSchema = z.object({
@@ -734,6 +741,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Insights]: InsightsPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AuditReports]: AuditReportPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: CertificateAuthorityPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
@@ -1112,7 +1120,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
         ProjectPermissionSub.McpActivityLogs,
-        ProjectPermissionSub.Insights
+        ProjectPermissionSub.Insights,
+        ProjectPermissionSub.AuditReports
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -2629,6 +2638,27 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.AuditReports]: {
+    title: "Audit Reports",
+    description: "Generate and manage exportable compliance reports",
+    actions: [
+      {
+        label: "Generate",
+        value: ProjectPermissionAuditReportActions.Create,
+        description: "Generate new audit reports"
+      },
+      {
+        label: "Read",
+        value: ProjectPermissionAuditReportActions.Read,
+        description: "List audit reports and their status"
+      },
+      {
+        label: "Delete",
+        value: ProjectPermissionAuditReportActions.Delete,
+        description: "Delete audit reports"
+      }
+    ]
+  },
   [ProjectPermissionSub.IpAllowList]: {
     title: "IP Allowlist",
     description: "Restrict project access by IP address",
@@ -3638,6 +3668,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.HoneyTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
+  [ProjectPermissionSub.AuditReports]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
   [ProjectPermissionSub.SecretApprovalRequest]: enabled
 });

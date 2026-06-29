@@ -289,6 +289,35 @@ const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate):
   }
 };
 
+export type TStaticSecretConstraintViolation = {
+  constraintType: ConstraintType;
+  constraintLabel: string;
+  message: string;
+};
+
+/**
+ * Evaluate a single secret against a set of static-secret constraints, returning every violation
+ * (non-throwing). Reused by the audit-report compliance scan to surface already-stored secrets that do
+ * not conform to a validation rule that was created after them.
+ */
+export const evaluateStaticSecretConstraints = (
+  constraints: TConstraint[],
+  secret: TSecretToValidate
+): TStaticSecretConstraintViolation[] => {
+  const violations: TStaticSecretConstraintViolation[] = [];
+  for (const constraint of constraints) {
+    const error = evaluateConstraint(constraint, secret);
+    if (error) {
+      violations.push({
+        constraintType: constraint.type,
+        constraintLabel: CONSTRAINT_LABELS[constraint.type],
+        message: error
+      });
+    }
+  }
+  return violations;
+};
+
 /**
  * Evaluate static secret constraints against a set of secrets.
  */

@@ -46,6 +46,9 @@ import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/
 import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
 import { auditLogStreamOutboxQueueFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-queue";
 import { auditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
+import { auditReportDALFactory } from "@app/ee/services/audit-report/audit-report-dal";
+import { auditReportQueueServiceFactory } from "@app/ee/services/audit-report/audit-report-queue";
+import { auditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
@@ -2800,6 +2803,31 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const auditReportDAL = auditReportDALFactory(db);
+  const auditReportService = auditReportServiceFactory({
+    permissionService,
+    licenseService,
+    auditReportDAL,
+    projectDAL,
+    projectBotService,
+    userDAL,
+    queueService
+  });
+  // Registers the BullMQ worker that generates the CSVs and emails them.
+  auditReportQueueServiceFactory({
+    queueService,
+    auditReportDAL,
+    projectDAL,
+    smtpService,
+    secretV2BridgeDAL,
+    folderDAL,
+    secretRotationV2DAL,
+    reminderDAL,
+    auditLogDAL,
+    secretValidationRuleDAL,
+    kmsService
+  });
+
   const pkiSyncQueue = pkiSyncQueueFactory({
     queueService,
     kmsService,
@@ -3881,6 +3909,7 @@ export const registerRoutes = async (
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     insights: insightsService,
+    auditReport: auditReportService,
     pamInsights: pamInsightsService,
     githubOrgSync: githubOrgSyncConfigService,
     gitHubApp: gitHubAppService,

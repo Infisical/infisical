@@ -1,0 +1,113 @@
+import { z } from "zod";
+
+import { TAuditReports } from "@app/db/schemas";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+
+import {
+  AuditReportResultEntrySchema,
+  AuditReportStatus,
+  AuditReportType,
+  MAX_AUDIT_REPORT_ROWS,
+  TGeneratedReport
+} from "./audit-report-types";
+
+export const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+export const daysSince = (date: Date): number => Math.max(0, Math.floor((Date.now() - date.getTime()) / DAY_IN_MS));
+
+const CSV_LINE_BREAK = "\r\n";
+
+// RFC 4180 cell escaping: quote when the value contains a comma, quote, CR or LF; double embedded quotes.
+const escapeCsvCell = (value: string | number | null): string => {
+  if (value === null) return "";
+  const str = String(value);
+  return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+};
+
+const toCsvRow = (cells: (string | number | null)[]): string => cells.map(escapeCsvCell).join(",");
+
+// One report's block within the bundled CSV: a labelled section with its own column headers.
+export type TAuditReportSection = {
+  title: string;
+  report: TGeneratedReport;
+};
+
+// Serialize every requested report into a SINGLE CSV file. Each report becomes its own section
+// (title row → its column headers → its rows) so heterogeneous reports keep their natural columns,
+// preceded by a small metadata header. Sections are separated by a blank line for spreadsheet readability.
+export const serializeReportBundle = ({
+  projectName,
+  generatedAt,
+  sections
+}: {
+  projectName: string;
+  generatedAt: Date;
+  sections: TAuditReportSection[];
+}): Buffer => {
+  const lines: string[] = [
+    toCsvRow(["Infisical Audit Report"]),
+    toCsvRow(["Project", projectName]),
+    toCsvRow(["Generated At", generatedAt.toISOString()])
+  ];
+
+  sections.forEach(({ title, report }) => {
+    lines.push("");
+    // The section title occupies the first column; the report's own column headers sit on the SAME row,
+    // shifted one column to the right. Data/notes are indented by one empty leading column so they line up
+    // beneath those headers when opened in a spreadsheet (the title column acts as a left-margin label).
+    lines.push(toCsvRow([title.toUpperCase(), ...report.columns]));
+    if (report.rows.length === 0) {
+      lines.push(toCsvRow(["", "No matching records"]));
+    } else {
+      report.rows.forEach((row) => {
+        lines.push(toCsvRow(["", ...report.columns.map((column) => row[column] ?? null)]));
+      });
+    }
+    if (report.truncated) {
+      lines.push(toCsvRow(["", `Note: results truncated at ${MAX_AUDIT_REPORT_ROWS.toLocaleString()} rows`]));
+    }
+  });
+
+  return Buffer.from(lines.join(CSV_LINE_BREAK), "utf8");
+};
+
+// Resolve folder ids to their human-readable secret paths in a single batched query.
+export const buildFolderPathMap = async (
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">,
+  projectId: string,
+  folderIds: string[]
+): Promise<Record<string, string>> => {
+  const uniqueIds = [...new Set(folderIds)];
+  if (!uniqueIds.length) return {};
+
+  const folders = await folderDAL.findSecretPathByFolderIds(projectId, uniqueIds);
+  const pathByFolderId: Record<string, string> = {};
+  folders.forEach((folder) => {
+    if (folder) pathByFolderId[folder.id] = folder.path;
+  });
+  return pathByFolderId;
+};
+
+// jsonb columns surface as `unknown` from the generated schema; validate (never cast) on read.
+const StoredReportConfigsSchema = z.array(
+  z.object({
+    type: z.nativeEnum(AuditReportType),
+    inputs: z.record(z.unknown())
+  })
+);
+const StoredResultSummarySchema = z.array(AuditReportResultEntrySchema);
+
+export const presentAuditReport = (report: TAuditReports) => ({
+  id: report.id,
+  projectId: report.projectId,
+  requestedByUserId: report.requestedByUserId ?? null,
+  status: z.nativeEnum(AuditReportStatus).parse(report.status),
+  reportConfigs: StoredReportConfigsSchema.parse(report.reportConfigs),
+  emailRecipients: report.emailRecipients,
+  resultSummary: report.resultSummary == null ? null : StoredResultSummarySchema.parse(report.resultSummary),
+  errorMessage: report.errorMessage ?? null,
+  createdAt: report.createdAt,
+  updatedAt: report.updatedAt
+});
+
+export type TPresentedAuditReport = ReturnType<typeof presentAuditReport>;

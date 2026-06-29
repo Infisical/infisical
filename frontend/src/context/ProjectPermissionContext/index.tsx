@@ -3,6 +3,7 @@ export type { ProjectPermissionSet, TProjectPermission } from "./types";
 export {
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
+  ProjectPermissionAuditReportActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,

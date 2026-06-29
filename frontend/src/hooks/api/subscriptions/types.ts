@@ -38,6 +38,7 @@ export type SubscriptionPlan = {
   samlSSO: boolean;
   sshHostGroups: boolean;
   secretAccessInsights: boolean;
+  auditReports: boolean;
   hsm: boolean;
   oidcSSO: boolean;
   scim: boolean;

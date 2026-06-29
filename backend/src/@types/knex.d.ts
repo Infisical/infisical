@@ -80,6 +80,9 @@ import {
   TAuditLogStreamsInsert,
   TAuditLogStreamsUpdate,
   TAuditLogsUpdate,
+  TAuditReports,
+  TAuditReportsInsert,
+  TAuditReportsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
   TAuthTokenSessionsInsert,
@@ -1398,6 +1401,7 @@ declare module "knex/types/tables" {
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
+    [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,

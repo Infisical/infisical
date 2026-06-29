@@ -102,6 +102,7 @@ export enum QueueName {
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
   UserNotification = "user-notification",
+  AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
   PamSessionAiSummary = "pam-session-ai-summary",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
@@ -168,6 +169,7 @@ export enum QueueJobs {
   DailyReminders = "daily-reminders",
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
+  GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
@@ -453,6 +455,10 @@ export type TQueueJobTypes = {
   [QueueName.UserNotification]: {
     name: QueueJobs.UserNotification;
     payload: { notifications: TCreateUserNotificationDTO[] };
+  };
+  [QueueName.AuditReportGeneration]: {
+    name: QueueJobs.GenerateAuditReport;
+    payload: { auditReportId: string };
   };
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
