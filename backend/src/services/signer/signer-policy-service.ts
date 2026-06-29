@@ -55,7 +55,7 @@ type TSignerPolicyServiceFactoryDep = {
   signerRequestDAL: TSignerRequestDALFactory;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
-  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "find" | "updateById">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "update">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -737,22 +737,15 @@ export const signerPolicyServiceFactory = ({
     }
 
     await membershipDAL.transaction(async (tx) => {
-      const grants = await approvalRequestGrantsDAL.find(
+      await approvalRequestGrantsDAL.update(
         { requestId: dto.requestId, status: ApprovalRequestGrantStatus.Active },
-        { tx }
+        {
+          status: ApprovalRequestGrantStatus.Revoked,
+          revokedAt: new Date(),
+          revokedByUserId: dto.actor === ActorType.USER ? dto.actorId : null
+        },
+        tx
       );
-      for (const grant of grants) {
-        // eslint-disable-next-line no-await-in-loop
-        await approvalRequestGrantsDAL.updateById(
-          grant.id,
-          {
-            status: ApprovalRequestGrantStatus.Revoked,
-            revokedAt: new Date(),
-            revokedByUserId: dto.actor === ActorType.USER ? dto.actorId : null
-          },
-          tx
-        );
-      }
       await approvalRequestDAL.updateById(dto.requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
     });
 
