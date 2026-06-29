@@ -46,6 +46,19 @@ func TestParseStringListEnvCommaSeparated(t *testing.T) {
 	}
 }
 
+func TestParseStringListEnvTreatsJSONScalarAsPlainText(t *testing.T) {
+	got, issues := parseStringListEnv(`"https://example.com"`, "CORS_ALLOWED_ORIGINS")
+
+	if len(issues) > 0 {
+		t.Fatalf("expected no issues, got %v", issues)
+	}
+
+	want := []string{`"https://example.com"`}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
 func TestParseStringListEnvRejectsMalformedJSONArray(t *testing.T) {
 	_, issues := parseStringListEnv(`["https://example.com"`, "CORS_ALLOWED_ORIGINS")
 

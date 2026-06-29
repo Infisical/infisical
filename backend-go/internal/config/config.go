@@ -876,7 +876,7 @@ func parseStringListEnv(raw, envVar string) (result, issues []string) {
 		return trimmed
 	}
 
-	if json.Valid([]byte(raw)) || strings.HasPrefix(raw, "[") || strings.HasPrefix(raw, "{") {
+	if strings.HasPrefix(raw, "[") || strings.HasPrefix(raw, "{") {
 		var values []string
 		if err := json.Unmarshal([]byte(raw), &values); err != nil {
 			return nil, []string{fmt.Sprintf("%s must be a JSON array of strings: %v", envVar, err)}
