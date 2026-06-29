@@ -44,6 +44,7 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
+import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
@@ -61,6 +62,7 @@ import {
   usePamAccountActions,
   usePamAccountTypeMap,
   useRemoveAccountGroupMember,
+  useRemoveAccountIdentityMember,
   useRemoveAccountMember,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
@@ -130,8 +132,18 @@ const PermissionsTab = ({
     [orgGroups]
   );
 
+  const { data: orgIdentities } = useGetIdentityMembershipOrgs({ organizationId: currentOrg.id });
+  const identityNameMap = useMemo(
+    () =>
+      new Map(
+        (orgIdentities?.identityMemberships ?? []).map((im) => [im.identity.id, im.identity.name])
+      ),
+    [orgIdentities]
+  );
+
   const removeUser = useRemoveAccountMember();
   const removeGroup = useRemoveAccountGroupMember();
+  const removeIdentity = useRemoveAccountIdentityMember();
 
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EditMemberTarget | null>(null);
@@ -152,6 +164,15 @@ const PermissionsTab = ({
         (accountMembers?.groups ?? [])
           .filter((m) => m.groupId && !isMembershipExpired(m.expiresAt))
           .map((m) => m.groupId) as string[]
+      ),
+    [accountMembers]
+  );
+  const directIdentityIdSet = useMemo(
+    () =>
+      new Set(
+        (accountMembers?.identities ?? [])
+          .filter((m) => m.identityId && !isMembershipExpired(m.expiresAt))
+          .map((m) => m.identityId) as string[]
       ),
     [accountMembers]
   );
@@ -190,8 +211,18 @@ const PermissionsTab = ({
       source: PamMemberSource.Direct,
       kind: PamMemberKind.Group
     }));
-    return [...users, ...groups];
-  }, [accountMembers, userMap, groupMap]);
+    const identities = (accountMembers?.identities ?? []).map((m) => ({
+      member: m,
+      displayName:
+        (m.identityId ? identityNameMap.get(m.identityId) : undefined) ??
+        m.identityId ??
+        "Unknown identity",
+      subtitle: "Machine Identity",
+      source: PamMemberSource.Direct,
+      kind: PamMemberKind.Identity
+    }));
+    return [...users, ...groups, ...identities];
+  }, [accountMembers, userMap, groupMap, identityNameMap]);
 
   const inheritedMembers = useMemo<ResolvedMember[]>(() => {
     const users = (folderMembers?.users ?? []).map((m) => {
@@ -212,8 +243,18 @@ const PermissionsTab = ({
       source: PamMemberSource.Inherited,
       kind: PamMemberKind.Group
     }));
-    return [...users, ...groups];
-  }, [folderMembers, userMap, groupMap]);
+    const identities = (folderMembers?.identities ?? []).map((m) => ({
+      member: m,
+      displayName:
+        (m.identityId ? identityNameMap.get(m.identityId) : undefined) ??
+        m.identityId ??
+        "Unknown identity",
+      subtitle: "Machine Identity",
+      source: PamMemberSource.Inherited,
+      kind: PamMemberKind.Identity
+    }));
+    return [...users, ...groups, ...identities];
+  }, [folderMembers, userMap, groupMap, identityNameMap]);
 
   const isLoading = isLoadingAccount || isLoadingFolder;
 
@@ -228,6 +269,8 @@ const PermissionsTab = ({
       removeUser.mutate({ accountId, userId: rm.member.userId }, opts);
     } else if (rm.kind === PamMemberKind.Group && rm.member.groupId) {
       removeGroup.mutate({ accountId, groupId: rm.member.groupId }, opts);
+    } else if (rm.kind === PamMemberKind.Identity && rm.member.identityId) {
+      removeIdentity.mutate({ accountId, identityId: rm.member.identityId }, opts);
     }
   };
 
@@ -254,6 +297,7 @@ const PermissionsTab = ({
         resourceId={accountId}
         existingUserIds={directUserIdSet}
         existingGroupIds={directGroupIdSet}
+        existingIdentityIds={directIdentityIdSet}
         editMember={editTarget}
       />
       <RemoveMemberConfirm
@@ -274,7 +318,7 @@ const PermissionsTab = ({
             <Badge variant="pam">{directMembers.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Users and groups granted access directly on this account.
+            Users, groups, and identities granted access directly on this account.
           </CardDescription>
           <CardAction>
             <Button size="sm" variant="pam" onClick={() => setIsAssignOpen(true)}>
@@ -332,17 +376,19 @@ const PermissionsTab = ({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem
-                                onClick={() =>
+                                onClick={() => {
+                                  const idMap: Record<PamMemberKind, string | null | undefined> = {
+                                    [PamMemberKind.User]: rm.member.userId,
+                                    [PamMemberKind.Group]: rm.member.groupId,
+                                    [PamMemberKind.Identity]: rm.member.identityId
+                                  };
                                   setEditTarget({
                                     kind: rm.kind,
-                                    id:
-                                      (rm.kind === PamMemberKind.User
-                                        ? rm.member.userId
-                                        : rm.member.groupId) ?? "",
+                                    id: idMap[rm.kind] ?? "",
                                     label: rm.displayName,
                                     role: rm.member.role
-                                  })
-                                }
+                                  });
+                                }}
                               >
                                 <Pencil />
                                 Edit

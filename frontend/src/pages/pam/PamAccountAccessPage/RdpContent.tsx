@@ -13,9 +13,10 @@ type RdpContentProps = {
   account: TPamAccount;
   reason?: string;
   mfaSessionId?: string;
+  selectedHost?: string;
 };
 
-export const RdpContent = ({ account, reason, mfaSessionId }: RdpContentProps) => {
+export const RdpContent = ({ account, reason, mfaSessionId, selectedHost }: RdpContentProps) => {
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, error, disconnect, reconnect } = useRdpSession({
@@ -23,6 +24,7 @@ export const RdpContent = ({ account, reason, mfaSessionId }: RdpContentProps) =
     accountName: account.name,
     reason,
     mfaSessionId,
+    selectedHost,
     onSessionEnd: () => setSessionEnded(true)
   });
 
@@ -85,6 +87,12 @@ export const RdpContent = ({ account, reason, mfaSessionId }: RdpContentProps) =
           )}
         </span>
         <div className="flex items-center gap-4">
+          {selectedHost && (
+            <span>
+              <span className="text-muted">Host:</span>{" "}
+              <span className="text-muted">{selectedHost}</span>
+            </span>
+          )}
           <span>
             <span className="text-muted">Account:</span>{" "}
             <span className="text-muted">{account.name}</span>

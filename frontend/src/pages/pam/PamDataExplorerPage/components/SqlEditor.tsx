@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { PostgreSQL, sql } from "@codemirror/lang-sql";
+import { MySQL, PostgreSQL, sql } from "@codemirror/lang-sql";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, keymap, placeholder, type ViewUpdate } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+
+import type { SqlDialect } from "../sql-generation";
 
 const infisicalTheme = EditorView.theme({
   "&": { height: "100%", fontSize: "13px", backgroundColor: "#16181a" },
@@ -69,6 +71,7 @@ type Props = {
   onExecute: (sql: string) => void;
   onSelectionChange: (hasSelection: boolean) => void;
   onSqlToRunChange: (sql: string) => void;
+  sqlDialect: SqlDialect;
 };
 
 export function SqlEditor({
@@ -76,7 +79,8 @@ export function SqlEditor({
   onChange,
   onExecute,
   onSelectionChange,
-  onSqlToRunChange
+  onSqlToRunChange,
+  sqlDialect
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -114,7 +118,7 @@ export function SqlEditor({
           ]),
           maxSqlLength,
           placeholder("Start writing SQL..."),
-          sql({ dialect: PostgreSQL }),
+          sql({ dialect: sqlDialect === "mysql" ? MySQL : PostgreSQL }),
           infisicalTheme,
           syntaxHighlighting(infisicalHighlight),
           EditorView.updateListener.of((update: ViewUpdate) => {

@@ -43,9 +43,10 @@ const normalizeDelimitedStringList = (value: unknown): unknown => {
   return items;
 };
 
+export const hostPattern = new RE2(/^[A-Za-z0-9.:_-]+$/);
 const delimitedStringList = z.preprocess(
   normalizeDelimitedStringList,
-  z.array(z.string().trim().min(1).max(255)).min(1)
+  z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1)
 );
 
 // Source of truth for account types: per-type schemas + sparse UI hints
@@ -406,9 +407,9 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
-  [PamAccountType.ActiveDirectory]: {
-    name: "Active Directory",
-    icon: "Windows.png",
+  [PamAccountType.WindowsAd]: {
+    name: "Windows AD",
+    icon: "ActiveDirectory.png",
     connectionDetails: z.object({
       domain: z.string().trim().min(1).max(255),
       dcAddress: z.string().trim().min(1).max(255),
@@ -422,14 +423,26 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
-      password: z.string().trim().min(1).max(255)
+      password: optionalTrimmedString
     }),
     sanitizedCredentials: z.object({
       username: z.string()
     }),
     ui: {
-      dcAddress: { label: "DC Address" },
-      hosts: { label: "Allowed Hosts", widget: PamFieldWidget.Textarea },
+      domain: {
+        label: "FQDN",
+        tooltip: "The fully qualified domain name of the Active Directory domain (e.g. corp.example.com)."
+      },
+      dcAddress: {
+        label: "DC Address",
+        tooltip:
+          "Hostname or IP address of a domain controller, used for LDAP connections (e.g. dc01.corp.example.com)."
+      },
+      hosts: {
+        label: "Allowed Hosts",
+        widget: PamFieldWidget.Textarea,
+        tooltip: "Hostnames or IP addresses this account is allowed to connect to. One per line or comma-separated."
+      },
       port: { label: "LDAP Port", defaultValue: 389 },
       rdpPort: { label: "RDP Port", defaultValue: 3389 },
       useLdaps: { label: "Use LDAPS" },
@@ -442,6 +455,9 @@ export const ACCOUNT_TYPE_CONFIGS = {
       ldapTlsServerName: {
         label: "TLS Server Name",
         showWhen: { field: "useLdaps", equals: true }
+      },
+      username: {
+        tooltip: "Use the DOMAIN\\username format for domain authentication (e.g. CORP\\Administrator)."
       },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
@@ -568,7 +584,7 @@ export const extractGatewayTarget = async (
       }
       return { host: firstHost, port: 27017 };
     }
-    case PamAccountType.ActiveDirectory:
+    case PamAccountType.WindowsAd:
       return {
         host: (validated as { hosts: string[]; rdpPort: number }).hosts[0],
         port: (validated as { hosts: string[]; rdpPort: number }).rdpPort
@@ -580,6 +596,52 @@ export const extractGatewayTarget = async (
   }
 };
 
+// Hosts the launcher can pick from, or null for single-host account types
+export const getSelectableHosts = (
+  accountType: PamAccountType,
+  rawConnectionDetails: Record<string, unknown>
+): string[] | null => {
+  if (accountType !== PamAccountType.WindowsAd) return null;
+  return (validateConnectionDetails(accountType, rawConnectionDetails) as { hosts: string[] }).hosts;
+};
+
+// Validates a requested host against the allow-list; falls back to the first
+export const resolveSelectedHost = (
+  accountType: PamAccountType,
+  rawConnectionDetails: Record<string, unknown>,
+  requestedHost?: string | null
+): string | null => {
+  const hosts = getSelectableHosts(accountType, rawConnectionDetails);
+  if (!hosts) return null;
+  if (requestedHost && !hosts.includes(requestedHost)) {
+    throw new BadRequestError({ message: `Host '${requestedHost}' is not in this account's allowed hosts` });
+  }
+  return requestedHost || hosts[0];
+};
+
+// The account type the gateway sees. Windows AD is brokered through the Windows RDP protocol
+export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
+  accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
+
+export const buildSessionGatewayConnectionDetails = (
+  accountType: PamAccountType,
+  rawConnectionDetails: Record<string, unknown>,
+  selectedHost?: string | null
+): Record<string, unknown> => {
+  const validated = validateConnectionDetails(accountType, rawConnectionDetails) as Record<string, unknown>;
+
+  if (accountType === PamAccountType.WindowsAd) {
+    const { hosts, rdpPort } = validated as { hosts: string[]; rdpPort: number };
+
+    return {
+      host: selectedHost || hosts[0],
+      port: rdpPort
+    };
+  }
+
+  return validated;
+};
+
 // -- Account accessibility
 
 export enum PamAccountAccessibilityIssue {
@@ -589,7 +651,7 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
-  accountType === PamAccountType.Windows || accountType === PamAccountType.ActiveDirectory;
+  accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd;
 
 export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as

@@ -340,14 +340,14 @@ export const useDataExplorerSession = ({
 
   const openConnection = useCallback(async (): Promise<{
     connectionId: string;
-    backendPid: number | null;
+    nativeConnectionId: number | null;
   }> => {
     const resp = await sendRequest<
       Extract<DataExplorerServerMessage, { type: "connection-opened" }>
     >({
       type: "open-connection"
     });
-    return { connectionId: resp.connectionId, backendPid: resp.backendPid };
+    return { connectionId: resp.connectionId, nativeConnectionId: resp.nativeConnectionId };
   }, [sendRequest]);
 
   const closeConnection = useCallback((connectionId: string): void => {
