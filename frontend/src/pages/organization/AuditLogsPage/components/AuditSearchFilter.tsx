@@ -278,9 +278,11 @@ export const AuditSearchFilter = ({
     isKeyboardNav.current = false;
   };
 
+  const dropdownHeadingClass = "px-2 py-1.5 text-xs font-medium text-muted";
+
   const dropdownRowClass = (active: boolean) =>
-    `flex w-full items-center gap-3 px-3 py-1.5 text-sm transition-colors ${
-      active ? "bg-foreground/10" : "hover:bg-foreground/5"
+    `flex w-full items-center gap-3 rounded-sm px-2 py-1.5 text-sm transition-colors ${
+      active ? "bg-foreground/5" : "hover:bg-foreground/5"
     }`;
 
   const composingInput = (
@@ -423,9 +425,9 @@ export const AuditSearchFilter = ({
       </div>
 
       {showPropertyDropdown && (
-        <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
-          <div className="py-2">
-            <div className="px-3 py-1.5 text-xs font-medium text-muted">Add a filter</div>
+        <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-md">
+          <div className="p-1">
+            <div className={dropdownHeadingClass}>Add a filter</div>
             {filteredProperties.map((prop, index) => (
               <button
                 key={prop.key}
@@ -467,16 +469,16 @@ export const AuditSearchFilter = ({
       {showSuggestionDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-border bg-popover shadow-lg"
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-border bg-popover shadow-md"
         >
-          <div className="py-2">
+          <div className="p-1">
             {propertyKey === "actor_id" && !currentActorType ? (
               <>
                 {(valueSuggestions as ActorSuggestion[]).some(
                   (s) => s.actorType === ActorType.USER
                 ) && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted">Users</div>
+                    <div className={dropdownHeadingClass}>Users</div>
                     {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
                       suggestion.actorType === ActorType.USER ? (
                         <button
@@ -504,7 +506,7 @@ export const AuditSearchFilter = ({
                   (s) => s.actorType === ActorType.IDENTITY
                 ) && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted">Identities</div>
+                    <div className={dropdownHeadingClass}>Identities</div>
                     {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
                       suggestion.actorType === ActorType.IDENTITY ? (
                         <button
@@ -531,7 +533,7 @@ export const AuditSearchFilter = ({
               </>
             ) : (
               <>
-                <div className="px-3 py-1.5 text-xs font-medium text-muted">Suggestions</div>
+                <div className={dropdownHeadingClass}>Suggestions</div>
                 {valueSuggestions.map((suggestion, index) => (
                   <button
                     key={suggestion.value}
