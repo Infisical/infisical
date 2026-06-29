@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
+import { ActionProjectType, IdentityAuthMethod, SecretType, TableName } from "@app/db/schemas";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
@@ -52,7 +52,7 @@ type TInsightsServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "countByProject">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues" | "countByProject"
+    "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues" | "countByProject" | "find"
   >;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByProjectId">;
@@ -562,6 +562,22 @@ export const insightsServiceFactory = ({
           if (f) folderRecord[f.id] = f.path;
         });
 
+        // findDuplicatedSecretValues does not return tags; load them so tag-conditioned read
+        // permissions are honored when filtering visibility per caller.
+        const secretsWithTags = folderIds.length
+          ? await secretV2BridgeDAL.find({
+              $in: { [`${TableName.SecretV2}.folderId` as "folderId"]: folderIds },
+              [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
+            })
+          : [];
+        const tagSlugsByFolderKey = new Map<string, string[]>();
+        secretsWithTags.forEach((s) => {
+          tagSlugsByFolderKey.set(
+            `${s.folderId}:${s.key}`,
+            (s.tags ?? []).map((t) => t.slug)
+          );
+        });
+
         const groups = filteredGroups.map((g) => ({
           secrets: g.secrets.map((s) => ({
             key: s.key,
@@ -569,7 +585,8 @@ export const insightsServiceFactory = ({
               name: s.environmentName,
               slug: s.environment
             },
-            secretPath: folderRecord[s.folderId] ?? "/"
+            secretPath: folderRecord[s.folderId] ?? "/",
+            secretTags: tagSlugsByFolderKey.get(`${s.folderId}:${s.key}`) ?? []
           }))
         }));
 

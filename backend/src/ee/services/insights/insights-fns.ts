@@ -4,7 +4,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permiss
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 
 export type TInsightsDuplicationGroup = {
-  secrets: { key: string; environment: { name: string; slug: string }; secretPath: string }[];
+  secrets: { key: string; environment: { name: string; slug: string }; secretPath: string; secretTags?: string[] }[];
 };
 
 // Keep only the secrets in each duplication group that the actor can describe, and only groups that
@@ -20,7 +20,8 @@ export const filterVisibleDuplicationGroups = (
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment: s.environment.slug,
           secretPath: s.secretPath,
-          secretName: s.key
+          secretName: s.key,
+          secretTags: s.secretTags
         })
       )
     }))
