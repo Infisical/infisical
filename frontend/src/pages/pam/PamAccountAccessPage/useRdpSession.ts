@@ -17,39 +17,7 @@ const DEFAULT_DESKTOP_SIZE = { width: 1920, height: 1080 };
 
 const STATUS_BAR_HEIGHT = 33;
 
-// Mirrors the IronErrorKind enum, indexed by its discriminant
-const IRON_ERROR_KIND_NAMES = [
-  "General",
-  "WrongPassword",
-  "LogonFailure",
-  "AccessDenied",
-  "RDCleanPath",
-  "ProxyConnect",
-  "NegotiationFailure"
-];
-
-const callSafely = (fn: unknown): string | null => {
-  if (typeof fn !== "function") return null;
-  try {
-    const result = (fn as () => unknown)();
-    return typeof result === "string" && result.trim() ? result.trim() : null;
-  } catch {
-    return null;
-  }
-};
-
-const stringifyRdpError = (kind: unknown, err: unknown): string => {
-  const kindName = typeof kind === "number" ? IRON_ERROR_KIND_NAMES[kind] : undefined;
-  const backtrace = callSafely((err as { backtrace?: unknown })?.backtrace);
-
-  if (kindName && backtrace) return `${kindName}: ${backtrace}`;
-  if (kindName) return kindName;
-  if (backtrace) return backtrace;
-  if (typeof kind === "string" && kind.trim()) return kind;
-  if (err instanceof Error && err.message) return err.message;
-  if (typeof err === "string" && err.trim()) return err;
-  return "Connection failed";
-};
+const RDP_SESSION_FAILED_MESSAGE = "Unable to establish the remote session.";
 
 // WASM reads window.innerHeight for fit scaling, not the container
 const innerHeightDescriptor =
@@ -212,19 +180,13 @@ export const useRdpSession = ({
           await sessionInfo.run();
         })
         .catch((err) => {
-          const ironErr = err as {
-            backtrace?: () => string;
-            kind?: () => unknown;
-          };
-          const kind = ironErr.kind?.();
           // eslint-disable-next-line no-console
-          console.error("RDP session failed:", kind, ironErr.backtrace?.() ?? err);
+          console.error("RDP session failed:", err);
           if (!isCurrent()) return;
-          const detail = stringifyRdpError(kind, err);
-          setError(detail);
+          setError(RDP_SESSION_FAILED_MESSAGE);
           createNotification({
             type: "error",
-            text: `RDP connection failed: ${detail}`
+            text: RDP_SESSION_FAILED_MESSAGE
           });
         })
         .finally(() => {
