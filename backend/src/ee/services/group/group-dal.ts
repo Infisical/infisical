@@ -40,6 +40,19 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countGroups = async (filter: TFindFilter<TGroups>, tx?: Knex): Promise<number> => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Groups)
+        // eslint-disable-next-line
+        .where(buildFindFilter(filter))
+        .count<{ count: string }>({ count: "*" })
+        .first();
+      return Number(result?.count ?? 0);
+    } catch (err) {
+      throw new DatabaseError({ error: err, name: "Count groups" });
+    }
+  };
+
   const findByOrgId = async (orgId: string, tx?: Knex) => {
     try {
       // Return groups that have a membership in this org (native groups: group.orgId = orgId, or inherited: linked from root)
@@ -640,6 +653,7 @@ export const groupDALFactory = (db: TDbClient) => {
   return {
     ...groupOrm,
     findGroups,
+    countGroups,
     findByOrgId,
     listAvailableGroups,
     findAllGroupPossibleUsers,
