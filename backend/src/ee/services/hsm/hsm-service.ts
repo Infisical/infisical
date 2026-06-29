@@ -136,8 +136,10 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
   const $findKey = (sessionHandle: pkcs11js.Handle, type: HsmKeyType) => {
     const label = type === HsmKeyType.HMAC ? `${envConfig.HSM_KEY_LABEL}_HMAC` : envConfig.HSM_KEY_LABEL;
 
-    // AES is pinned to CKK_AES. HMAC matches on class + label only so vendor-specific generic-secret subtypes are also accepted.
-    // CKM_SHA256_HMAC works against any of them.
+    // AES is pinned to CKK_AES. HMAC matches on class + label + CKA_SIGN/CKA_VERIFY so
+    // vendor-specific generic-secret subtypes (e.g. nShield's CKK_SHA256_HMAC) are accepted,
+    // while any unrelated secret with the same label suffix that cannot perform CKM_SHA256_HMAC
+    // is filtered out at the search layer rather than failing later in C_SignInit / C_VerifyInit.
     const template: pkcs11js.Template = [
       { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
       { type: pkcs11js.CKA_LABEL, value: label }
@@ -145,6 +147,8 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
 
     if (type === HsmKeyType.AES) {
       template.push({ type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES });
+    } else {
+      template.push({ type: pkcs11js.CKA_SIGN, value: true }, { type: pkcs11js.CKA_VERIFY, value: true });
     }
 
     try {
