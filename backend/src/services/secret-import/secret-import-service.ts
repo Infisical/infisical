@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TableName } from "@app/db/schemas";
+import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -1031,7 +1031,28 @@ export const secretImportServiceFactory = ({
     );
 
     const sameProjItems = importedBy.filter((el) => !el.projectSlug);
-    const crossProjItems = importedBy.filter((el) => el.projectSlug);
+    let crossProjItems = importedBy.filter((el) => el.projectSlug);
+
+    if (crossProjItems.length) {
+      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+        crossProjItems = [];
+      } else {
+        const targetProjectIds = crossProjItems
+          .map((el) => el.projectId)
+          .filter((targetProjectId): targetProjectId is string => Boolean(targetProjectId));
+        const grants = targetProjectIds.length
+          ? await projectGrantDAL.find({
+              sourceFolderId: folder.id,
+              $in: { targetProjectId: targetProjectIds }
+            })
+          : [];
+        const grantedTargetProjectIds = new Set(grants.map((grant) => grant.targetProjectId));
+
+        crossProjItems = crossProjItems.filter(
+          (el) => el.projectId && grantedTargetProjectIds.has(el.projectId)
+        );
+      }
+    }
 
     const deepPaths: { path: string; folderId: string }[] = [];
 
@@ -1221,7 +1242,11 @@ export const secretImportServiceFactory = ({
     });
 
     const secrets = await secretV2BridgeDAL.find(
-      { folderId: sourceFolder.id, [`${TableName.SecretV2}.key` as "key"]: secretName },
+      {
+        folderId: sourceFolder.id,
+        type: SecretType.Shared,
+        [`${TableName.SecretV2}.key` as "key"]: secretName
+      },
       { limit: 1 }
     );
     if (!secrets.length)
