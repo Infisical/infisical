@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -128,28 +129,11 @@ func (m *MemoryKeyStore) StreamAdd(_ context.Context, stream, id string, values 
 }
 
 func intToString(n int64) string {
-	return string(rune(n))
+	return strconv.FormatInt(n, 10)
 }
 
 func stringToInt(s string) int64 {
-	if s == "" {
-		return 0
-	}
-	// Parse as integer string
-	var result int64
-	negative := false
-	start := 0
-	if s[0] == '-' {
-		negative = true
-		start = 1
-	}
-	for i := start; i < len(s); i++ {
-		if s[i] >= '0' && s[i] <= '9' {
-			result = result*10 + int64(s[i]-'0')
-		}
-	}
-	if negative {
-		return -result
-	}
-	return result
+	// invalid or empty values fall back to 0, matching the redis keystore's behaviour
+	n, _ := strconv.ParseInt(s, 10, 64)
+	return n
 }
