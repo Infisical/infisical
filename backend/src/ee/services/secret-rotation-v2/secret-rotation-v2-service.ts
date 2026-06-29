@@ -1131,7 +1131,8 @@ export const secretRotationV2ServiceFactory = ({
             subject(ProjectPermissionSub.Secrets, {
               environment: destinationEnvironment,
               secretPath: destinationSecretPath,
-              secretName: conflictingSecret.key
+              secretName: conflictingSecret.key,
+              secretTags: conflictingSecret.tags?.map((el) => el.slug)
             })
           );
         });
