@@ -60,6 +60,7 @@ export type TGenerateSecretApprovalRequestDTO = {
 export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   environment: string;
   secretPath: string;
+  commitMessage?: string;
   policy: TSecretApprovalPolicies;
   data: {
     [SecretOperations.Create]?: TApprovalCreateSecretV2Bridge[];

@@ -558,6 +558,14 @@ export const SecretApprovalRequestChanges = ({
                       : formatReservedPaths(secretApprovalRequestDetails.secretPath)}
                   </DetailValue>
                 </Detail>
+                {secretApprovalRequestDetails.commitMessage && (
+                  <Detail>
+                    <DetailLabel>Message</DetailLabel>
+                    <DetailValue className="break-words whitespace-pre-wrap">
+                      {secretApprovalRequestDetails.commitMessage}
+                    </DetailValue>
+                  </Detail>
+                )}
               </DetailGroup>
 
               {reviewerRows.length > 0 && (

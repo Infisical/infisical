@@ -66,6 +66,9 @@ export type TSecretApprovalRequest = {
   status: "open" | "close";
   // Set when the request was merged without satisfying the policy's required approvals.
   bypassReason?: string | null;
+  // Commit message captured when changes are submitted through a point-in-time commit.
+  // Not set for secret edits routed directly through an approval policy.
+  commitMessage?: string | null;
   policy: Omit<TSecretApprovalPolicy, "approvers" | "bypassers"> & {
     approvers: {
       isOrgMembershipActive: boolean;

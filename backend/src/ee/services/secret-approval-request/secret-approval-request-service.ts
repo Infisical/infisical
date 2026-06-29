@@ -1752,6 +1752,7 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     secretPath,
     environment,
+    commitMessage,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
     if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
@@ -2051,7 +2052,8 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId
+          committerUserId: actorId,
+          commitMessage
         },
         tx
       );
