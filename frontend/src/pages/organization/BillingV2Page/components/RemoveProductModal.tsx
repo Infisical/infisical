@@ -16,7 +16,6 @@ import {
 import {
   BillingV2CatalogProduct,
   useCancelBillingV2Subscription,
-  useGetBillingV2Catalog,
   useGetBillingV2Overview,
   usePreviewBillingV2Change,
   useRemoveBillingV2Product
@@ -37,15 +36,16 @@ const getServerMessage = (err: unknown): string | undefined =>
   (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
 
 export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props) => {
-  // Both queries are already cached by the page (same orgId key), so this reuses that data rather
-  // than refetching. Stripe can't hold a zero-item subscription, so removing the only self-serve
-  // product is rejected by the license server; that case cancels the whole subscription instead.
-  const { data: overview } = useGetBillingV2Overview(orgId);
-  const { data: catalog = [] } = useGetBillingV2Catalog(orgId);
-  const subscriptionProductCount = catalog.filter(
-    (prod) => Boolean(prod.pro?.planKey) && Boolean(overview?.entitlements[prod.id]?.entitled)
+  // Overview is already cached by the page (same orgId key), so this reuses it without refetching.
+  // Count every entitled product (the backend marks every subscription item entitled, including
+  // sales-led ones), so a second item means removing this one is not the last. Only offer the
+  // destructive whole-subscription cancel when this is the sole product, and only after the overview
+  // loads so a multi-product customer never flashes it.
+  const { data: overview, isSuccess: overviewReady } = useGetBillingV2Overview(orgId);
+  const entitledProductCount = Object.values(overview?.entitlements ?? {}).filter(
+    (entitlement) => entitlement.entitled
   ).length;
-  const isOnlyProduct = subscriptionProductCount <= 1;
+  const isOnlyProduct = overviewReady && entitledProductCount === 1;
   const periodEndDate = overview?.nextBillingDate ?? null;
 
   const preview = usePreviewBillingV2Change();
