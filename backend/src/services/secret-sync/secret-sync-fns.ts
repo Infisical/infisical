@@ -64,6 +64,8 @@ import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
+import { HASURA_CLOUD_SYNC_LIST_OPTION } from "./hasura-cloud/hasura-cloud-sync-constants";
+import { HasuraCloudSyncFns } from "./hasura-cloud/hasura-cloud-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
@@ -131,7 +133,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
   [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
-  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
+  [SecretSync.HasuraCloud]: HASURA_CLOUD_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -393,6 +396,8 @@ export const SecretSyncFns = {
         return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.HasuraCloud:
+        return HasuraCloudSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Checkly:
         return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
@@ -538,6 +543,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Railway:
         secretMap = await RailwaySyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.HasuraCloud:
+        secretMap = await HasuraCloudSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Checkly:
         secretMap = await ChecklySyncFns.getSecrets(secretSync);
@@ -698,6 +706,8 @@ export const SecretSyncFns = {
         return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.HasuraCloud:
+        return HasuraCloudSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Checkly:
         return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:

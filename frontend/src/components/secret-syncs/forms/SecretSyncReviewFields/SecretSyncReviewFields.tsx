@@ -45,6 +45,7 @@ import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSync
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
+import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
@@ -178,6 +179,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Railway:
       DestinationFieldsComponent = <RailwaySyncReviewFields />;
+      break;
+    case SecretSync.HasuraCloud:
+      DestinationFieldsComponent = <HasuraCloudSyncReviewFields />;
       break;
     case SecretSync.Checkly:
       DestinationFieldsComponent = <ChecklySyncReviewFields />;

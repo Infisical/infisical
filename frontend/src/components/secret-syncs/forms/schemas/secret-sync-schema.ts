@@ -22,6 +22,7 @@ import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
 import { GitlabSyncDestinationSchema } from "./gitlab-sync-destination-schema";
+import { HasuraCloudSyncDestinationSchema } from "./hasura-cloud-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
@@ -87,7 +88,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   OnaSyncDestinationSchema,
   TravisCISyncDestinationSchema,
   SnowflakeSyncDestinationSchema,
-  TriggerDevSyncDestinationSchema
+  TriggerDevSyncDestinationSchema,
+  HasuraCloudSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

@@ -25,6 +25,7 @@ import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { GitLabSyncFields } from "./GitLabSyncFields";
+import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
@@ -139,6 +140,8 @@ export const SecretSyncDestinationFields = () => {
       return <SnowflakeSyncFields />;
     case SecretSync.TriggerDev:
       return <TriggerDevSyncFields />;
+    case SecretSync.HasuraCloud:
+      return <HasuraCloudSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }
