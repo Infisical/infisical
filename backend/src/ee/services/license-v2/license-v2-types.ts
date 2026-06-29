@@ -13,6 +13,9 @@ export type BillingV2Dim = {
   monthly: number;
   annual: number;
   included: number;
+  // When true, the matching cadence's price is a usage overage rate, not a buyer-selected quantity.
+  meteredMonthly?: boolean;
+  meteredAnnual?: boolean;
 };
 
 export type BillingV2CompareRow = {

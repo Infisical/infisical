@@ -63,3 +63,11 @@ export const unitPrice = (dim: BillingV2Dim | BillingV2ProBase, cad: BillingV2Ca
   }
   return dim.monthly;
 };
+
+// Whether the active cadence's price is a usage-based (metered) rate rather than a per-unit charge.
+export const isMeteredCadence = (dim: BillingV2Dim, cad: BillingV2Cadence): boolean => {
+  if (cad === "annual") {
+    return dim.meteredAnnual ?? false;
+  }
+  return dim.meteredMonthly ?? false;
+};
