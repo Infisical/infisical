@@ -5,7 +5,12 @@ import RE2 from "re2";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
@@ -92,15 +97,17 @@ type TInterpolateSecretArg = {
   // When provided, personal secret overrides for this user will be preferred
   // over shared secrets when resolving references during expansion.
   userId?: string;
-  // When provided, enables resolution of cross-project references (@project-slug.env.path.KEY)
+  // Supplying all cross-project fields enables @project-slug.env.path.KEY refs.
+  // Omit them for same-project-only expansion; cross-project refs then fail closed.
+  actorOrgId?: string;
+  orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
   projectGrantDAL?: Pick<TProjectGrantDALFactory, "find">;
-  // Returns a decryptor function for a given source project's KMS data key
-  getProjectDecryptor?: (sourceProjectId: string) => Promise<(value: Buffer | null | undefined) => string>;
-  // Resolves a project slug to its project ID within the current org, or null if not found
-  resolveProjectSlug?: (slug: string) => Promise<string | null>;
-  // When provided, used for cross-project secret fetching instead of secretDAL.
-  // Use the raw (non-import-aware) DAL here to avoid resolving source-project imports
-  // through the wrong project context.
+  projectDAL?: Pick<TProjectDALFactory, "findProjectBySlug">;
+  kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  // Optional raw DAL for cross-project secret fetching. This is only distinct from
+  // secretDAL when the caller wraps secretDAL with import-aware behavior for
+  // same-project relative references; cross-project reads must stay raw so source
+  // project imports are not resolved through the target project context.
   crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
 };
 
@@ -112,12 +119,39 @@ export const expandSecretReferencesFactory = ({
   folderDAL,
   canExpandValue,
   userId,
-  crossProjectSecretDAL,
+  actorOrgId,
+  orgDAL,
   projectGrantDAL,
-  getProjectDecryptor,
-  resolveProjectSlug
+  projectDAL,
+  kmsService,
+  crossProjectSecretDAL
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
+  let crossProjectAllowedCache: boolean | undefined;
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectGrantDAL && projectDAL && kmsService);
+  const checkCrossProjectAllowed = async () => {
+    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
+    if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
+    crossProjectAllowedCache = await isCrossProjectEnabled(actorOrgId, orgDAL);
+    return crossProjectAllowedCache;
+  };
+  const resolveProjectSlug = async (slug: string) => {
+    if (!projectDAL || !actorOrgId) return null;
+    try {
+      const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
+      return sourceProject.id;
+    } catch {
+      return null;
+    }
+  };
+  const getProjectDecryptor = async (sourceProjectId: string) => {
+    if (!kmsService) return undefined;
+    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sourceProjectId
+    });
+    return (value: Buffer | null | undefined) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+  };
   // Cache key includes project to avoid collisions between same-named envs across projects
   const getCacheUniqueKey = (environment: string, secretPath: string, srcProjectId?: string) =>
     srcProjectId ? `${srcProjectId}:${environment}-${secretPath}` : `${environment}-${secretPath}`;
@@ -179,6 +213,8 @@ export const expandSecretReferencesFactory = ({
     const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
     let expandedValue = dto.value;
 
+    const crossProjectSecretSharingEnabled = await checkCrossProjectAllowed();
+
     while (stack.length) {
       const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
 
@@ -229,8 +265,12 @@ export const expandSecretReferencesFactory = ({
             referencedSecretEnvironmentSlug = environment;
           } else if (entities[0].startsWith("@")) {
             // Cross-project reference: ${@project-slug.env.path.KEY}
-            if (!resolveProjectSlug || !projectGrantDAL || !getProjectDecryptor) {
-              // Cross-project resolution not configured — leave reference unreplaced
+            // eslint-disable-next-line no-await-in-loop
+            if (
+              !hasCrossProjectConfig ||
+              !projectGrantDAL ||
+              !crossProjectSecretSharingEnabled
+            ) {
               // eslint-disable-next-line no-continue
               continue;
             }
@@ -275,8 +315,14 @@ export const expandSecretReferencesFactory = ({
                   } else {
                     // eslint-disable-next-line no-await-in-loop
                     const sourceDecrypt = await getProjectDecryptor(sourceProjectId);
-                    // Use crossProjectSecretDAL (raw, non-import-aware) when available to avoid
-                    // resolving the source project's imports through the current project's context.
+                    if (!sourceDecrypt) {
+                      secretCache[crossProjCacheKey] = {};
+                      crossProjSecretData = { value: "", tags: [] };
+                      // eslint-disable-next-line no-continue
+                      continue;
+                    }
+                    // Use the explicit raw DAL when same-project resolution wraps secretDAL
+                    // with import-aware behavior.
                     // eslint-disable-next-line no-await-in-loop
                     const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
                       folderId: sourceFolder.id

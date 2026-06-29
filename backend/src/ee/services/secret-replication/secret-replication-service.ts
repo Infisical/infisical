@@ -26,6 +26,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -92,6 +93,7 @@ type TSecretReplicationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -140,6 +142,7 @@ export const secretReplicationServiceFactory = ({
   kmsService,
   folderCommitService,
   projectGrantDAL,
+  orgDAL,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -294,13 +297,9 @@ export const secretReplicationServiceFactory = ({
         hasSecretAccess: () => true,
         projectId,
         projectGrantDAL,
-        getProjectDecryptor: async (sourceProjectId: string) => {
-          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId: sourceProjectId
-          });
-          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-        }
+        actorOrgId: orgId,
+        orgDAL,
+        kmsService
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({
