@@ -352,22 +352,23 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
                 | Field | Value |
                 |-------|-------|
                 | **Name** | A descriptive name, e.g. `Infisical Audit Logs` |
+                | **Source Host** | Your Infisical instance URL, e.g. `https://app.infisical.com` |
                 | **Source Category** | A category to query against, e.g. `infisical/audit-logs` |
+
+                ![sumo source](/images/platform/audit-log-streams/sumo-source.png)
 
                 Click **Save**. When prompted to generate the URL, select the **Auth Header** option (_"Use a base URL with separate authentication header"_). Sumo Logic will display two values:
 
                 - **URL**: the base endpoint, e.g. `https://endpoint4.collection.sumologic.com/receiver/v1/http`
                 - **Header**: the authentication header, shown as `x-sumo-token: <token>`
 
+                ![sumo auth](/images/platform/audit-log-streams/sumo-auth.png)
+
                 Copy both for the next step.
 
                 <Warning>
                     The **Header** field includes the header name prefix (`x-sumo-token: `). When copying the token, copy **only the token value** that comes after `x-sumo-token: ` — do **not** include the `x-sumo-token: ` prefix itself.
                 </Warning>
-
-                <Note>
-                    The token authenticates the request, so treat it as a secret. You can regenerate it later from the source settings if needed.
-                </Note>
             </Step>
             <Step title="Create Audit Log Stream on Infisical">
                 On Infisical, create a new audit log stream and select the **Sumo Logic** provider option.
@@ -375,13 +376,11 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
                 - **HTTP Source Address**: The **URL** from Step 1 (e.g. `https://endpoint4.collection.sumologic.com/receiver/v1/http`).
                 - **Auth Token**: The token value from the **Header** field in Step 1 — only the part after `x-sumo-token: `, not the prefix. Infisical sends it as the `x-sumo-token` header.
 
+                ![sumo stream](/images/platform/audit-log-streams/sumo-stream.png)
+
                 <Note>
                     If you'd rather use a **Presigned URL** instead, select that option in Sumo Logic, set the full presigned URL (with the embedded token) as the **HTTP Source Address**, and leave the **Auth Token** empty. The **Auth Header** approach above is recommended.
                 </Note>
-
-                <Info>
-                    Events are delivered as a newline-delimited JSON (NDJSON) batch, bounded to roughly 1 MB per request. See [Delivery Format](#delivery-format) for details.
-                </Info>
 
                 Once you're finished, click **Create Log Stream**.
             </Step>
