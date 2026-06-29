@@ -9,15 +9,9 @@ export const HasuraCloudSyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
   return (
-    <>
-      <Detail>
-        <DetailLabel>Project</DetailLabel>
-        <DetailValue>{destinationConfig.projectName}</DetailValue>
-      </Detail>
-      <Detail>
-        <DetailLabel>Tenant</DetailLabel>
-        <DetailValue>{destinationConfig.tenantId}</DetailValue>
-      </Detail>
-    </>
+    <Detail>
+      <DetailLabel>Project</DetailLabel>
+      <DetailValue>{destinationConfig.projectName}</DetailValue>
+    </Detail>
   );
 };

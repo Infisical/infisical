@@ -18,12 +18,7 @@ const HasuraCloudSyncDestinationConfigSchema = z.object({
     .trim()
     .min(1, "Hasura Cloud project ID required")
     .describe(SecretSyncs.DESTINATION_CONFIG.HASURA_CLOUD.projectId),
-  projectName: z.string().trim().describe(SecretSyncs.DESTINATION_CONFIG.HASURA_CLOUD.projectName),
-  tenantId: z
-    .string()
-    .trim()
-    .min(1, "Hasura Cloud tenant ID required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.HASURA_CLOUD.tenantId)
+  projectName: z.string().trim().describe(SecretSyncs.DESTINATION_CONFIG.HASURA_CLOUD.projectName)
 });
 
 const HasuraCloudSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

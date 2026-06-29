@@ -11,6 +11,20 @@ import {
 
 export const HASURA_CLOUD_API_URL = "https://data.pro.hasura.io/v1/graphql";
 
+export const hasuraCloudGraphqlRequest = async <T = unknown>(
+  accessToken: string,
+  body: { query: string; variables?: Record<string, unknown> }
+): Promise<T> => {
+  const response = await request.post<T>(HASURA_CLOUD_API_URL, body, {
+    headers: {
+      Authorization: `pat ${accessToken}`,
+      "Content-Type": "application/json"
+    }
+  });
+
+  return response.data;
+};
+
 export const getHasuraCloudConnectionListItem = () => {
   return {
     name: "Hasura Cloud" as const,
@@ -23,23 +37,12 @@ export const validateHasuraCloudConnectionCredentials = async (config: THasuraCl
   const { accessToken } = config.credentials;
 
   try {
-    // Hasura Cloud's GraphQL API returns HTTP 200 even on auth failures, so we must
-    // inspect the response body rather than relying on the status code alone.
-    const { data } = await request.post<{
+    const responseBody = await hasuraCloudGraphqlRequest<{
       data?: { projects?: unknown[] };
       errors?: { message: string }[];
-    }>(
-      HASURA_CLOUD_API_URL,
-      { query: "query { projects { name tenant { id } } }" },
-      {
-        headers: {
-          Authorization: `pat ${accessToken}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    }>(accessToken, { query: "query { projects { name tenant { id } } }" });
 
-    if (data.errors?.length || !data.data?.projects) {
+    if (responseBody.errors?.length || !responseBody.data?.projects) {
       throw new BadRequestError({
         message: "Unable to validate connection: invalid access token"
       });
@@ -61,30 +64,21 @@ export const listHasuraCloudProjects = async (
   const { accessToken } = appConnection.credentials;
 
   try {
-    const { data } = await request.post<{
-      data?: { projects?: { id: string; name: string; tenant: { id: string } | null }[] };
+    const responseBody = await hasuraCloudGraphqlRequest<{
+      data?: { projects?: { id: string; name: string; tenant: { id: string } }[] };
       errors?: { message: string }[];
-    }>(
-      HASURA_CLOUD_API_URL,
-      { query: "query listProjects { projects { id name tenant { id } } }" },
-      {
-        headers: {
-          Authorization: `pat ${accessToken}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    }>(accessToken, { query: "query listProjects { projects { id name tenant { id } } }" });
 
-    if (data.errors?.length || !data.data?.projects) {
+    if (responseBody.errors?.length || !responseBody.data?.projects) {
       throw new BadRequestError({
         message: "Failed to list projects: invalid response from Hasura Cloud"
       });
     }
 
-    return data.data.projects.map((project) => ({
+    return responseBody.data.projects.map((project) => ({
       id: project.id,
       name: project.name,
-      tenants: project.tenant ? [{ id: project.tenant.id }] : []
+      tenantId: project.tenant?.id ?? null
     }));
   } catch (error) {
     if (error instanceof BadRequestError) throw error;

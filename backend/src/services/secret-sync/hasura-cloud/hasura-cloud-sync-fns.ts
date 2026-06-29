@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-import { request } from "@app/lib/config/request";
-import { logger } from "@app/lib/logger/logger";
-import { HASURA_CLOUD_API_URL } from "@app/services/app-connection/hasura-cloud";
+import {
+  hasuraCloudGraphqlRequest,
+  listHasuraCloudProjects,
+  THasuraCloudConnection
+} from "@app/services/app-connection/hasura-cloud";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -29,22 +31,13 @@ const ZUpdateTenantEnv = z.object({
   })
 });
 
-const getHasuraCloudHeaders = (accessToken: string) => ({
-  Authorization: `pat ${accessToken}`,
-  "Content-Type": "application/json"
-});
-
 const getTenantEnv = async (accessToken: string, tenantId: string) => {
-  const { data } = await request.post<unknown>(
-    HASURA_CLOUD_API_URL,
-    {
-      query: "query getTenantEnv($tenantId: uuid!) { getTenantEnv(tenantId: $tenantId) { hash envVars } }",
-      variables: { tenantId }
-    },
-    { headers: getHasuraCloudHeaders(accessToken) }
-  );
+  const responseBody = await hasuraCloudGraphqlRequest(accessToken, {
+    query: "query getTenantEnv($tenantId: uuid!) { getTenantEnv(tenantId: $tenantId) { hash envVars } }",
+    variables: { tenantId }
+  });
 
-  const parsed = ZGetTenantEnv.parse(data);
+  const parsed = ZGetTenantEnv.parse(responseBody);
 
   return {
     hash: parsed.data.getTenantEnv.hash,
@@ -58,32 +51,36 @@ const updateTenantEnv = async (
   currentHash: string,
   envs: { key: string; value: string }[]
 ) => {
-  logger.info({ envs }, "Environments to update");
-  const { data } = await request.post<unknown>(
-    HASURA_CLOUD_API_URL,
-    {
-      query:
-        "mutation updateTenantEnv($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars } }",
-      variables: { currentHash, envs, tenantId }
-    },
-    { headers: getHasuraCloudHeaders(accessToken) }
-  );
+  const responseBody = await hasuraCloudGraphqlRequest(accessToken, {
+    query:
+      "mutation updateTenantEnv($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars } }",
+    variables: { currentHash, envs, tenantId }
+  });
 
-  logger.info({ data }, "Data");
-
-  return ZUpdateTenantEnv.parse(data).data.updateTenantEnv.hash;
+  return ZUpdateTenantEnv.parse(responseBody).data.updateTenantEnv.hash;
 };
 
 const deleteTenantEnv = async (accessToken: string, tenantId: string, currentHash: string, keys: string[]) => {
-  await request.post<unknown>(
-    HASURA_CLOUD_API_URL,
-    {
-      query:
-        "mutation deleteTenantEnv($id: uuid!, $currentHash: String!, $env: [String!]!) { deleteTenantEnv(tenantId: $id, currentHash: $currentHash, deleteEnvs: $env) { hash envVars } }",
-      variables: { id: tenantId, currentHash, env: keys }
-    },
-    { headers: getHasuraCloudHeaders(accessToken) }
-  );
+  await hasuraCloudGraphqlRequest(accessToken, {
+    query:
+      "mutation deleteTenantEnv($id: uuid!, $currentHash: String!, $env: [String!]!) { deleteTenantEnv(tenantId: $id, currentHash: $currentHash, deleteEnvs: $env) { hash envVars } }",
+    variables: { id: tenantId, currentHash, env: keys }
+  });
+};
+
+// Each Hasura Cloud project maps 1:1 to a tenant, so we resolve the tenant from the configured
+// project rather than storing/selecting it separately. All env operations are keyed by tenant.
+const resolveTenantId = async (connection: THasuraCloudConnection, projectId: string) => {
+  const projects = await listHasuraCloudProjects(connection);
+  const tenantId = projects.find((project) => project.id === projectId)?.tenantId;
+
+  if (!tenantId) {
+    throw new SecretSyncError({
+      message: `Could not find a Hasura Cloud tenant for the configured project [projectId=${projectId}]`
+    });
+  }
+
+  return tenantId;
 };
 
 export const HasuraCloudSyncFns = {
@@ -97,7 +94,8 @@ export const HasuraCloudSyncFns = {
       } = secretSync;
       const { accessToken } = connection.credentials;
 
-      const { environment: envVars } = await getTenantEnv(accessToken, destinationConfig.tenantId);
+      const tenantId = await resolveTenantId(connection, destinationConfig.projectId);
+      const { environment: envVars } = await getTenantEnv(accessToken, tenantId);
 
       const entries: TSecretMap = {};
 
@@ -124,9 +122,10 @@ export const HasuraCloudSyncFns = {
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
     const { accessToken } = connection.credentials;
-    const { tenantId } = destinationConfig;
+    const { projectId } = destinationConfig;
 
     try {
+      const tenantId = await resolveTenantId(connection, projectId);
       const { hash, environment: existingEnvs } = await getTenantEnv(accessToken, tenantId);
 
       const envs = Object.entries(secretMap).map(([key, secret]) => ({ key, value: secret.value }));
@@ -162,9 +161,10 @@ export const HasuraCloudSyncFns = {
   async removeSecrets(secretSync: THasuraCloudSyncWithCredentials, secretMap: TSecretMap) {
     const { destinationConfig, connection } = secretSync;
     const { accessToken } = connection.credentials;
-    const { tenantId } = destinationConfig;
+    const { projectId } = destinationConfig;
 
     try {
+      const tenantId = await resolveTenantId(connection, projectId);
       const { hash, environment: existingEnvs } = await getTenantEnv(accessToken, tenantId);
 
       const keysToDelete = Object.keys(existingEnvs).filter((key) => key in secretMap);

@@ -3221,8 +3221,7 @@ export const SecretSyncs = {
     },
     HASURA_CLOUD: {
       projectId: "The ID of the Hasura Cloud project to sync secrets to.",
-      projectName: "The name of the Hasura Cloud project to sync secrets to.",
-      tenantId: "The ID of the Hasura Cloud tenant to sync secrets to."
+      projectName: "The name of the Hasura Cloud project to sync secrets to."
     },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."

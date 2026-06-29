@@ -38,12 +38,7 @@ export const registerHasuraCloudConnectionRouter = async (server: FastifyZodProv
           projects: z
             .object({
               id: z.string(),
-              name: z.string(),
-              tenants: z
-                .object({
-                  id: z.string()
-                })
-                .array()
+              name: z.string()
             })
             .array()
         })
@@ -55,7 +50,7 @@ export const registerHasuraCloudConnectionRouter = async (server: FastifyZodProv
 
       const projects = await server.services.appConnection.hasuraCloud.listProjects(connectionId, req.permission);
 
-      return { projects };
+      return { projects: projects.map(({ id, name }) => ({ id, name })) };
     }
   });
 };

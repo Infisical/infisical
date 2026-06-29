@@ -27,5 +27,5 @@ export type THasuraCloudConnectionConfig = DiscriminativePick<
 export type THasuraCloudProject = {
   id: string;
   name: string;
-  tenants: { id: string }[];
+  tenantId: string;
 };

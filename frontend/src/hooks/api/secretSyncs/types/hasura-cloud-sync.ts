@@ -7,7 +7,6 @@ export type THasuraCloudSync = TRootSecretSync & {
   destinationConfig: {
     projectId: string;
     projectName: string;
-    tenantId: string;
   };
   connection: {
     app: AppConnection.HasuraCloud;

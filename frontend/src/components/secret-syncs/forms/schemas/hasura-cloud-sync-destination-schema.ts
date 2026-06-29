@@ -8,8 +8,7 @@ export const HasuraCloudSyncDestinationSchema = BaseSecretSyncSchema().merge(
     destination: z.literal(SecretSync.HasuraCloud),
     destinationConfig: z.object({
       projectId: z.string().min(1, "Project is required"),
-      projectName: z.string(),
-      tenantId: z.string().min(1, "Tenant is required")
+      projectName: z.string()
     })
   })
 );
