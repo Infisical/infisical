@@ -135,13 +135,17 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
 
   const $findKey = (sessionHandle: pkcs11js.Handle, type: HsmKeyType) => {
     const label = type === HsmKeyType.HMAC ? `${envConfig.HSM_KEY_LABEL}_HMAC` : envConfig.HSM_KEY_LABEL;
-    const keyType = type === HsmKeyType.HMAC ? pkcs11js.CKK_GENERIC_SECRET : pkcs11js.CKK_AES;
 
-    const template = [
+    // AES is pinned to CKK_AES. HMAC matches on class + label only so vendor-specific generic-secret subtypes are also accepted.
+    // CKM_SHA256_HMAC works against any of them.
+    const template: pkcs11js.Template = [
       { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
-      { type: pkcs11js.CKA_KEY_TYPE, value: keyType },
       { type: pkcs11js.CKA_LABEL, value: label }
     ];
+
+    if (type === HsmKeyType.AES) {
+      template.push({ type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES });
+    }
 
     try {
       // Initialize search
@@ -393,7 +397,9 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
         ];
 
         if (!$keyExists(sessionHandle, HsmKeyType.AES)) {
-          // Template for generating 256-bit AES master key
+          // Template for generating 256-bit AES master key.
+          // Negative usage attributes are set explicitly so HSMs with strict template validation works.
+          // On permissive HSMs these are already the implicit defaults.
           const keyTemplate = [
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
             { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_AES },
@@ -401,6 +407,11 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
             { type: pkcs11js.CKA_LABEL, value: envConfig.HSM_KEY_LABEL! },
             { type: pkcs11js.CKA_ENCRYPT, value: true }, // Allow encryption
             { type: pkcs11js.CKA_DECRYPT, value: true }, // Allow decryption
+            { type: pkcs11js.CKA_SIGN, value: false },
+            { type: pkcs11js.CKA_VERIFY, value: false },
+            { type: pkcs11js.CKA_WRAP, value: false },
+            { type: pkcs11js.CKA_UNWRAP, value: false },
+            { type: pkcs11js.CKA_DERIVE, value: false },
             ...genericAttributes
           ];
 
@@ -421,10 +432,15 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
           const hmacKeyTemplate = [
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_SECRET_KEY },
             { type: pkcs11js.CKA_KEY_TYPE, value: pkcs11js.CKK_GENERIC_SECRET },
-            { type: pkcs11js.CKA_VALUE_LEN, value: HMAC_KEY_SIZE / 8 }, // 256-bit key
+            { type: pkcs11js.CKA_VALUE_LEN, value: HMAC_KEY_SIZE / 8 },
             { type: pkcs11js.CKA_LABEL, value: `${envConfig.HSM_KEY_LABEL!}_HMAC` },
             { type: pkcs11js.CKA_SIGN, value: true }, // Allow signing
             { type: pkcs11js.CKA_VERIFY, value: true }, // Allow verification
+            { type: pkcs11js.CKA_ENCRYPT, value: false },
+            { type: pkcs11js.CKA_DECRYPT, value: false },
+            { type: pkcs11js.CKA_WRAP, value: false },
+            { type: pkcs11js.CKA_UNWRAP, value: false },
+            { type: pkcs11js.CKA_DERIVE, value: false },
             ...genericAttributes
           ];
 
