@@ -236,7 +236,7 @@ type CompareTableProps = {
 
 const CompareTable = ({ plans, compare }: CompareTableProps) => (
   <div>
-    <div className="mb-3 text-xs font-medium text-muted">Compare Plan</div>
+    <div className="mb-3 text-xs font-medium text-muted">Compare Plans</div>
     <Table>
       <TableHeader>
         <TableRow>
