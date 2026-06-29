@@ -14,6 +14,7 @@ import (
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/tests/infra/nodejs"
 )
 
 // licenseFeaturePath is the path to the compiled license-fns module inside the Node.js container.
@@ -123,7 +124,16 @@ func (b *Builder) MustStart() *Stack {
 
 	// 3. Start NodeJS after Postgres and Redis are healthy.
 	if b.wantNodeJS {
-		stack.nodejs, err = startNodeJS(ctx, net.Name, b.nodeJSFiles, b.buildNodeJSCmd())
+		stack.nodeJS, err = nodejs.Start(ctx, &nodejs.Config{
+			NetworkName:   net.Name,
+			Files:         b.nodeJSFiles,
+			Cmd:           b.buildNodeJSCmd(),
+			DBUser:        pgUser,
+			DBPassword:    pgPassword,
+			DBName:        pgDB,
+			EncryptionKey: EncryptionKey,
+			AuthSecret:    AuthSecret,
+		})
 		if err != nil {
 			log.Fatalf("infra: %v", err)
 		}
@@ -148,12 +158,12 @@ func (b *Builder) MustStart() *Stack {
 
 	// 7. Bootstrap admin user/org/identity via the NodeJS API.
 	if b.wantNodeJS {
-		stack.nodejs.bootstrap()
+		stack.nodeJS.Bootstrap()
 	}
 
-	// 8. Give NodeJSService access to DB for seeding helpers (e.g. toggling email verified).
+	// 8. Give the service a DB handle for seeding helpers (e.g. reading user IDs).
 	if b.wantNodeJS && stack.db != nil {
-		stack.nodejs.db = stack.db
+		stack.nodeJS.AttachDB(stack.db)
 	}
 
 	log.Println("infra: stack ready")

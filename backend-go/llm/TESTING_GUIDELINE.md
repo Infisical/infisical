@@ -23,6 +23,7 @@ Not all code needs tests. Skip tests for:
 ## Core Rules
 
 - Table-driven tests MUST use named subtests — every test case needs a `name` field passed to `t.Run`.
+- Each test must be independent and if no co-relation you should use `t.parallel` to run tests parallel
 - Integration tests MUST use build tags (`//go:build integration`) to separate from unit tests.
 - Tests MUST NOT depend on execution order — each test MUST be independently runnable.
 - Packages with goroutines SHOULD use `goleak.VerifyTestMain` in `TestMain` to detect goroutine leaks.
@@ -201,9 +202,31 @@ This keeps `go test ./...` fast by default. Integration tests run explicitly:
 make test  # runs: go test -race -tags=integration ./...
 ```
 
-### Test database setup
+### Layout: grouped by domain
 
-Use the `testutil/infra` package to spin up containers. The containers are shared across tests in the same package via `TestMain`:
+Integration tests live under `tests/`, grouped by domain (`tests/<product>/<domain>/`),
+with shared infrastructure in `tests/infra/`:
+
+```
+tests/
+├── infra/                  # testcontainers + HTTP client (shared by all suites)
+│   └── nodejs/             # Node.js backend seed facade, split by domain
+├── platform/
+│   ├── auth/               # one package per domain
+│   ├── kms/
+│   └── permission/
+└── secrets/
+    └── secrets/            # list, get, permissions, cache, v3, service token
+```
+
+Each domain is its own `package <x>_test`. Keep all tests for one domain in that package
+so they share its `TestMain` (one container boot) and helpers, and tests in other domains
+run as separate packages in parallel.
+
+### Test stack setup
+
+`tests/infra` spins up the containers (Postgres, Redis, the Node.js backend) once per
+package via `TestMain`. Build the stack with the `infra.New()` builder:
 
 ```go
 //go:build integration
@@ -217,7 +240,7 @@ import (
 
 	"go.uber.org/goleak"
 
-	"github.com/infisical/api/internal/testutil/infra"
+	"github.com/infisical/api/tests/infra"
 )
 
 var stack *infra.Stack
@@ -228,6 +251,8 @@ func TestMain(m *testing.M) {
 	stack = infra.New().
 		WithPostgres().
 		WithRedis().
+		WithNodeJSApi().
+		WithEEFeatures("rbac", "groups", "secretApproval"). // license features the suite needs
 		MustStart()
 
 	code := m.Run()
@@ -248,56 +273,38 @@ func TestMain(m *testing.M) {
 }
 ```
 
-### Writing an integration test
+### Per-test isolation + seed facade
 
-Each test gets a clean transaction that rolls back at the end, so tests never pollute each other:
+The stack is shared, so isolation comes from each test seeding its **own** project (and
+identities/secrets under it) rather than transaction rollback. Seed through the
+`tests/infra/nodejs` facade — `stack.NodeJS().For(t)` — which drives the real Node.js API
+with domain builders (required args in the constructor, optional setters, terminal `Do()`):
 
 ```go
-func TestCreateSecret_PersistsToDatabase(t *testing.T) {
-	db := testutil.AcquireDB(t) // returns a pg.DB scoped to a rolled-back tx
+func TestListSecrets_ReturnsCreatedSecret(t *testing.T) {
+	t.Parallel()
+	nj := stack.NodeJS()
+	api := nj.For(t)
 
-	svc := secrets.NewService(context.Background(), testutil.Logger(t), &secrets.Deps{
-		DB: db,
-	})
+	proj := api.Projects.Create("list-secrets").Do()
+	api.Secrets.Create(proj.ID, proj.EnvSlug, "DB_PASSWORD", "hunter2").
+		Comment("primary db").
+		Do()
 
-	created, err := svc.CreateSecret(context.Background(), secrets.CreateOpts{
-		FolderID: testutil.SeedFolder(t, db, "production", "/"),
-		Key:      "DB_PASSWORD",
-		Value:    []byte("hunter2"),
-	})
+	identity := api.Identities.Create("list-secrets-identity")
+	api.Identities.AddToProject(proj.ID, identity.ID).Role("admin").Do()
 
-	require.NoError(t, err)
-	assert.Equal(t, "DB_PASSWORD", created.Key)
-
-	// Verify it's readable
-	fetched, err := svc.GetSecretByName(context.Background(), secrets.GetByNameOpts{
-		FolderID: created.FolderID,
-		Key:      "DB_PASSWORD",
-	})
-	require.NoError(t, err)
-	assert.Equal(t, created.ID, fetched.ID)
+	client := infra.NewClientBuilder(t, newSecretsRouter(t)).
+		Identity(infra.MachineIdentity(identity.ID, nj.OrgID())).
+		Build()
+	// ... exercise the Go handler against the seeded project ...
 }
 ```
 
-### Seed helpers
-
-Create small helper functions for common test data setup. These belong in `testutil/` or as unexported helpers in the test file:
-
-```go
-// testutil/seeds.go
-func SeedFolder(t *testing.T, db pg.DB, env, path string) uuid.UUID {
-	t.Helper()
-	id := uuid.New()
-	_, err := db.Primary().Exec(context.Background(),
-		`INSERT INTO secret_folders (id, environment, path) VALUES (@id, @env, @path)`,
-		pgx.NamedArgs{"id": id, "env": env, "path": path},
-	)
-	require.NoError(t, err)
-	return id
-}
-```
-
-Always call `t.Helper()` so failure messages point to the calling test, not the seed function.
+Because every test owns a freshly-named project, suites run with `t.Parallel()` without
+cross-contamination. Add new seed endpoints as builders in the matching `tests/infra/nodejs`
+domain file (e.g. `secrets.go`, `identities.go`) so new params never break existing call
+sites.
 
 ## Goroutine Leak Detection
 

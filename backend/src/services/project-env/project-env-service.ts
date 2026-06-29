@@ -12,6 +12,7 @@ import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
 import {
@@ -26,6 +27,7 @@ import {
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
@@ -42,7 +44,8 @@ export const projectEnvServiceFactory = ({
   keyStore,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
-  secretApprovalPolicyEnvironmentDAL
+  secretApprovalPolicyEnvironmentDAL,
+  secretDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -228,6 +231,7 @@ export const projectEnvServiceFactory = ({
         "true"
       );
 
+      await secretDAL.invalidateSecretCacheByProjectId(projectId);
       return { environment: env, old: oldEnv };
     } finally {
       await lock?.release();
@@ -337,6 +341,8 @@ export const projectEnvServiceFactory = ({
         "true"
       );
 
+      await secretDAL.invalidateSecretCacheByProjectId(projectId);
+
       return env;
     } finally {
       await lock?.release();
@@ -415,6 +421,7 @@ export const projectEnvServiceFactory = ({
         return doc;
       });
 
+      await secretDAL.invalidateSecretCacheByProjectId(projectId);
       return env;
     } finally {
       await keyStore.deleteItem(operationMarkerKey);
