@@ -1,6 +1,5 @@
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { HasuraCloudConnectionMethod } from "./hasura-cloud-connection-enums";
@@ -69,8 +68,6 @@ export const listHasuraCloudProjects = async (
       data?: { projects?: { id: string; name: string; tenant: { id: string } }[] };
       errors?: { message: string }[];
     }>(accessToken, { query: "query listProjects { projects { id name tenant { id } } }" });
-
-    logger.info({ responseBody }, "Response body");
 
     if (responseBody.errors?.length || !responseBody.data?.projects) {
       throw new BadRequestError({

@@ -101,7 +101,7 @@ export const HasuraCloudSyncFns = {
 
       for (const [key, value] of Object.entries(envVars)) {
         if (matchesSchema(key, environment?.slug || "", keySchema)) {
-          entries[key] = { value: value ?? "" };
+          entries[key] = { value };
         }
       }
 
@@ -141,7 +141,8 @@ export const HasuraCloudSyncFns = {
 
       if (!disableSecretDeletion) {
         const keysToDelete = Object.keys(existingEnvs).filter(
-          (key) => matchesSchema(key, environment?.slug || "", keySchema) && !(key in secretMap)
+          (key) =>
+            matchesSchema(key, environment?.slug || "", keySchema) && !(key in secretMap) && !key.startsWith("HASURA_")
         );
 
         if (keysToDelete.length) {
