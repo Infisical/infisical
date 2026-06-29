@@ -9,24 +9,29 @@ Infisical supports connecting to Hasura Cloud using a [Personal Access Token](ht
 
 <Steps>
   <Step title="Open your Hasura Cloud account settings">
-    Log in to [Hasura Cloud](https://cloud.hasura.io), click your profile icon in the top-right corner, and select **Account Settings**.
+    Log in to [Hasura Cloud](https://cloud.hasura.io), then click **My Account** in the bottom-left corner of the Projects page.
 
-    ![Hasura Cloud Account Settings](/images/app-connections/hasura-cloud/hasura-cloud-account-settings.png)
+    ![Hasura Cloud My Account](/images/app-connections/hasura-cloud/step-1-my-account.png)
   </Step>
   <Step title="Navigate to Access Tokens">
-    In the account settings, open the **Access Tokens** section.
+    In Account Settings, open the **Access Tokens** tab.
 
-    ![Hasura Cloud Access Tokens](/images/app-connections/hasura-cloud/hasura-cloud-access-tokens.png)
+    ![Hasura Cloud Access Tokens](/images/app-connections/hasura-cloud/step-2-access-tokens.png)
   </Step>
-  <Step title="Create a new Personal Access Token">
-    Provide a descriptive name for the token, then click **Create**.
+  <Step title="Create a new access token">
+    Click **New Access Token**.
 
-    ![Create Hasura Cloud Token](/images/app-connections/hasura-cloud/hasura-cloud-create-token.png)
+    ![New Hasura Cloud Access Token](/images/app-connections/hasura-cloud/step-3.png)
+  </Step>
+  <Step title="Generate the token">
+    Enter a descriptive name for the token, then click **Generate**.
+
+    ![Generate Hasura Cloud Token](/images/app-connections/hasura-cloud/step-4.png)
   </Step>
   <Step title="Save the token">
-    After creating the token, copy its value and store it securely for the next steps. You will not be able to view it again.
+    Click **Copy** and store the token securely for the next steps. The token is revealed only once and cannot be retrieved again.
 
-    ![Hasura Cloud Token Created](/images/app-connections/hasura-cloud/hasura-cloud-token-created.png)
+    ![Copy Hasura Cloud Token](/images/app-connections/hasura-cloud/step-5.png)
   </Step>
 </Steps>
 
@@ -38,25 +43,28 @@ Infisical supports connecting to Hasura Cloud using a [Personal Access Token](ht
       <Step title="Navigate to App Connections">
         In your Infisical dashboard, navigate to the **Integrations** tab in the desired project, then select **App Connections**.
 
-        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
       </Step>
       <Step title="Select Hasura Cloud Connection">
         Click **+ Add Connection** and choose **Hasura Cloud Connection** from the list of integrations.
 
-        ![Select Hasura Cloud Connection](/images/app-connections/hasura-cloud/app-connection-option.png)
+        ![Select Hasura Cloud Connection](/images/app-connections/hasura-cloud/step-6.png)
       </Step>
       <Step title="Fill out the Hasura Cloud Connection form">
         Complete the form by providing:
         - A descriptive name for the connection
         - An optional description
+        - The **Method** (Personal Access Token)
         - The Personal Access Token from the previous step
 
-        ![Hasura Cloud Connection Modal](/images/app-connections/hasura-cloud/app-connection-form.png)
+        Then click **Connect to Hasura Cloud**.
+
+        ![Hasura Cloud Connection Modal](/images/app-connections/hasura-cloud/step-7.png)
       </Step>
       <Step title="Connection created">
         After submitting the form, your **Hasura Cloud Connection** will be successfully created and ready to use with your Infisical project.
 
-        ![Hasura Cloud Connection Created](/images/app-connections/hasura-cloud/app-connection-generated.png)
+        ![Hasura Cloud Connection Created](/images/app-connections/hasura-cloud/step-8.png)
       </Step>
     </Steps>
   </Tab>
