@@ -349,13 +349,13 @@ export const SecretImportItem = ({
                     )}
                     {filteredImportedSecrets.map((secret, index) => (
                       <SecretImportSecretRow
-                        secret={secret}
-                        key={`${id}-${secret.key}-${index + 1}`}
-                        sourceProjectId={
+                        secret={
                           importEnv.projectId !== currentProject?.id
-                            ? importEnv.projectId
-                            : undefined
+                            ? { ...secret, environment, secretPath }
+                            : secret
                         }
+                        key={`${id}-${secret.key}-${index + 1}`}
+                        importId={importEnv.projectId !== currentProject?.id ? id : undefined}
                       />
                     ))}
                   </tbody>

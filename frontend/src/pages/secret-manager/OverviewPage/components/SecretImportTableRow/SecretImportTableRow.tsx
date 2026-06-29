@@ -516,16 +516,23 @@ export const SecretImportTableRow = ({
                 <SecretImportSecretRow
                   key={`import-secret-multi-${effectiveSelectedEnv}-${secret.key}`}
                   secretKey={secret.key}
-                  environment={selectedImport?.isReplication ? effectiveSelectedEnv : importEnvSlug}
+                  environment={
+                    selectedImport?.isReplication ||
+                    selectedImport?.importEnv?.projectId !== currentProject?.id
+                      ? effectiveSelectedEnv
+                      : importEnvSlug
+                  }
                   secretPath={
                     selectedImport?.isReplication
                       ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${selectedImport.id}`
+                      : selectedImport?.importEnv?.projectId !== currentProject?.id
+                        ? secretPath
                       : importPath
                   }
                   isEmpty={secret.isEmpty}
-                  sourceProjectId={
+                  importId={
                     selectedEnvImportData?.secretImportRecord?.importEnv?.projectId !== currentProject?.id
-                      ? selectedEnvImportData?.secretImportRecord?.importEnv?.projectId
+                      ? selectedEnvImportData?.secretImportRecord?.id
                       : undefined
                   }
                 />
@@ -579,13 +586,19 @@ export const SecretImportTableRow = ({
                 <SecretImportSecretRow
                   key={`import-secret-multi-${secret.key}`}
                   secretKey={secret.key}
-                  environment={importEnvSlug}
-                  secretPath={importPath}
+                  environment={
+                    secretImport?.importEnv?.projectId !== currentProject?.id
+                      ? environments[0]?.slug || importEnvSlug
+                      : importEnvSlug
+                  }
+                  secretPath={
+                    secretImport?.importEnv?.projectId !== currentProject?.id ? secretPath : importPath
+                  }
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
-                  sourceProjectId={
+                  importId={
                     secretImport?.importEnv?.projectId !== currentProject?.id
-                      ? secretImport?.importEnv?.projectId
+                      ? secretImport?.id
                       : undefined
                   }
                 />
@@ -638,16 +651,22 @@ export const SecretImportTableRow = ({
             <SecretImportSecretRow
               key={`import-secret-${envSlug}-${secret.key}`}
               secretKey={secret.key}
-              environment={singleEnvImport?.isReplication ? singleEnvSlug : importEnvSlug}
+              environment={
+                singleEnvImport?.isReplication || singleEnvImport?.importEnv?.projectId !== currentProject?.id
+                  ? singleEnvSlug
+                  : importEnvSlug
+              }
               secretPath={
                 singleEnvImport?.isReplication
                   ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${singleEnvImport.id}`
+                  : singleEnvImport?.importEnv?.projectId !== currentProject?.id
+                    ? secretPath
                   : importPath
               }
               isEmpty={secret.isEmpty}
-              sourceProjectId={
+              importId={
                 singleEnvImport?.importEnv?.projectId !== currentProject?.id
-                  ? singleEnvImport?.importEnv?.projectId
+                  ? singleEnvImport?.id
                   : undefined
               }
             />

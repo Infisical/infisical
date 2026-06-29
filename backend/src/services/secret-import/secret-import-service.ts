@@ -1187,9 +1187,7 @@ export const secretImportServiceFactory = ({
 
   const getCrossProjectImportSecretValue = async ({
     projectId,
-    sourceProjectId,
-    environment,
-    secretPath,
+    importId,
     secretName,
     actorId,
     actor,
@@ -1209,20 +1207,36 @@ export const secretImportServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    const importDoc = await secretImportDAL.findById(importId);
+    if (!importDoc) throw new NotFoundError({ message: "Secret import not found" });
+
+    const destinationFolder = await folderDAL.findById(importDoc.folderId);
+    if (!destinationFolder || destinationFolder.projectId !== projectId) {
+      throw new NotFoundError({ message: "Secret import not found in this project" });
+    }
+
+    const [destinationPath] = await folderDAL.findSecretPathByFolderIds(projectId, [destinationFolder.id]);
+    if (!destinationPath) throw new NotFoundError({ message: "Secret import destination folder not found" });
+
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment,
-      secretPath,
+      environment: destinationPath.environmentSlug,
+      secretPath: destinationPath.path,
       secretName
     });
+
+    const sourceProjectId = importDoc.importEnv.projectId;
+    if (!sourceProjectId || sourceProjectId === projectId) {
+      throw new BadRequestError({ message: "Secret import is not a cross-project import" });
+    }
 
     const sourceProject = await projectDAL.findById(sourceProjectId);
     if (!sourceProject || sourceProject.orgId !== actorOrgId)
       throw new NotFoundError({ message: "Source project not found" });
 
-    const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, environment, secretPath);
+    const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, importDoc.importEnv.slug, importDoc.importPath);
     if (!sourceFolder)
       throw new NotFoundError({
-        message: `Folder not found at path '${secretPath}' in environment '${environment}' of source project`
+        message: `Folder not found at path '${importDoc.importPath}' in environment '${importDoc.importEnv.slug}' of source project`
       });
 
     const grant = await projectGrantDAL.findOne({

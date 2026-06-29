@@ -14,7 +14,7 @@ type Props = {
   environment: string;
   secretPath?: string;
   isEmpty?: boolean;
-  sourceProjectId?: string;
+  importId?: string;
 };
 
 export const SecretImportSecretValueCell = ({
@@ -22,7 +22,7 @@ export const SecretImportSecretValueCell = ({
   environment,
   secretPath = "/",
   isEmpty,
-  sourceProjectId
+  importId
 }: Props) => {
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -41,7 +41,7 @@ export const SecretImportSecretValueCell = ({
       secretPath,
       secretKey,
       projectId: currentProject.id,
-      sourceProjectId
+      importId
     },
     {
       enabled: isFieldFocused && canFetchSecretValue
