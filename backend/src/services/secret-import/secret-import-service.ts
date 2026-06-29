@@ -898,13 +898,9 @@ export const secretImportServiceFactory = ({
           }),
         projectId,
         projectGrantDAL,
-        getProjectDecryptor: async (sourceProjectId: string) => {
-          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId: sourceProjectId
-          });
-          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-        }
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       return importedSecrets;

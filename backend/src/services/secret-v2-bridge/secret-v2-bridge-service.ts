@@ -55,6 +55,7 @@ import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
@@ -149,6 +150,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -179,7 +181,8 @@ export const secretV2BridgeServiceFactory = ({
   reminderService,
   reminderDAL,
   secretValidationRuleService,
-  projectGrantDAL
+  projectGrantDAL,
+  orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -1468,9 +1471,6 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL: mainExpanderSecretDAL,
-      // Use the raw (non-import-aware) DAL for cross-project fetching to avoid resolving
-      // the source project's imports through the current project's context.
-      crossProjectSecretDAL: secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1485,22 +1485,14 @@ export const secretV2BridgeServiceFactory = ({
         expandPersonalOverrides
           ? actorId
           : undefined,
+      actorOrgId,
+      orgDAL,
       projectGrantDAL,
-      getProjectDecryptor: async (sourceProjectId: string) => {
-        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: sourceProjectId
-        });
-        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-      },
-      resolveProjectSlug: async (slug: string) => {
-        try {
-          const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
-          return sourceProject.id;
-        } catch {
-          return null;
-        }
-      }
+      projectDAL,
+      kmsService,
+      // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
+      // reads on the raw DAL so source imports are not resolved through this target project.
+      crossProjectSecretDAL: secretDAL
     });
 
     if (shouldExpandSecretReferences) {
@@ -1631,13 +1623,9 @@ export const secretV2BridgeServiceFactory = ({
       },
       projectId,
       projectGrantDAL,
-      getProjectDecryptor: async (sourceProjectId: string) => {
-        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: sourceProjectId
-        });
-        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-      }
+      actorOrgId,
+      orgDAL,
+      kmsService
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
@@ -1828,7 +1816,6 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL,
-      crossProjectSecretDAL: secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
         return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1839,22 +1826,11 @@ export const secretV2BridgeServiceFactory = ({
         });
       },
       userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
+      actorOrgId,
+      orgDAL,
       projectGrantDAL,
-      getProjectDecryptor: async (sourceProjectId: string) => {
-        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: sourceProjectId
-        });
-        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-      },
-      resolveProjectSlug: async (slug: string) => {
-        try {
-          const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
-          return sourceProject.id;
-        } catch {
-          return null;
-        }
-      }
+      projectDAL,
+      kmsService
     });
 
     // now if secret is not found
@@ -1884,13 +1860,9 @@ export const secretV2BridgeServiceFactory = ({
         },
         projectId,
         projectGrantDAL,
-        getProjectDecryptor: async (sourceProjectId: string) => {
-          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId: sourceProjectId
-          });
-          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-        }
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -3192,22 +3164,11 @@ export const secretV2BridgeServiceFactory = ({
           secretName: expandSecretName,
           secretTags: expandSecretTags
         }),
+      actorOrgId,
+      orgDAL,
       projectGrantDAL,
-      getProjectDecryptor: async (sourceProjectId: string) => {
-        const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: sourceProjectId
-        });
-        return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-      },
-      resolveProjectSlug: async (slug: string) => {
-        try {
-          const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
-          return sourceProject.id;
-        } catch {
-          return null;
-        }
-      }
+      projectDAL,
+      kmsService
     });
 
     if (

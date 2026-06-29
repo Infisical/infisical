@@ -12,12 +12,13 @@ import { logger } from "@app/lib/logger";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { TIntegrationAuthServiceFactory } from "./integration-auth-service";
@@ -37,12 +38,14 @@ const getIntegrationSecretsV2 = async (
     depth: number;
     secretPath: string;
     decryptor: (value: Buffer | null | undefined) => string;
+    actorOrgId: string;
   },
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">
+  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">,
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">
 ) => {
   const content: Record<string, boolean> = {};
   if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
@@ -75,13 +78,9 @@ const getIntegrationSecretsV2 = async (
     viewSecretValue: true,
     projectId: dto.projectId,
     projectGrantDAL,
-    getProjectDecryptor: async (sourceProjectId: string) => {
-      const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId: sourceProjectId
-      });
-      return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-    }
+    actorOrgId: dto.actorOrgId,
+    orgDAL,
+    kmsService
   });
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -297,7 +296,9 @@ export const deleteIntegrationSecrets = async ({
   secretDAL,
   secretImportDAL,
   kmsService,
-  projectGrantDAL
+  projectGrantDAL,
+  orgDAL,
+  actorOrgId
 }: {
   integration: Omit<TIntegrations, "envId"> & {
     projectId: string;
@@ -317,6 +318,8 @@ export const deleteIntegrationSecrets = async ({
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  actorOrgId: string;
 }) => {
   const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integration.projectId);
   const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -350,13 +353,15 @@ export const deleteIntegrationSecrets = async ({
           projectId: integration.projectId,
           folderId: folder.id,
           depth: 1,
-          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "")
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+          actorOrgId
         },
         secretV2BridgeDAL,
         folderDAL,
         secretImportDAL,
         kmsService,
-        projectGrantDAL
+        projectGrantDAL,
+        orgDAL
       )
     : await getIntegrationSecretsV1(
         {

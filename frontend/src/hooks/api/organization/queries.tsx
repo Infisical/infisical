@@ -198,8 +198,26 @@ export const useUpdateOrg = () => {
         secretShareBrandConfig
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+
+      if (variables.allowCrossProjectSecretSharing !== undefined) {
+        const secretLabels = new Set([
+          "secrets",
+          "secrets-import-sec",
+          "imported-folders-all-envs",
+          "secret-reference-tree",
+          "secret-references"
+        ]);
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey.length >= 2 &&
+            (secretLabels.has(query.queryKey[0] as string) ||
+              secretLabels.has(query.queryKey[1] as string) ||
+              query.queryKey[0] === "dashboard")
+        });
+      }
     }
   });
 };

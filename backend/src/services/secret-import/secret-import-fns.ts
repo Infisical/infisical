@@ -3,8 +3,12 @@ import RE2 from "re2";
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { groupBy, unique } from "@app/lib/fn";
 
-import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { PersonalOverridesBehavior, SecretsOrderBy } from "../secret/secret-types";
@@ -246,7 +250,9 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior,
   projectId,
   projectGrantDAL,
-  getProjectDecryptor
+  kmsService,
+  actorOrgId,
+  orgDAL
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -255,6 +261,7 @@ export const fnSecretsV2FromImports = async ({
   viewSecretValue: boolean;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (inputSecret: {
     value?: string;
@@ -268,11 +275,19 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
   projectGrantDAL?: Pick<TProjectGrantDALFactory, "find">;
-  getProjectDecryptor?: (sourceProjectId: string) => Promise<(value?: Buffer | null) => string>;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  actorOrgId: string;
 }) => {
   const cyclicDetector = new Set();
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
   const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
+  const getProjectDecryptor = async (sourceProjectId: string) => {
+    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sourceProjectId
+    });
+    return (value?: Buffer | null) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+  };
   const stack: {
     secretImports: typeof rootSecretImports;
     depth: number;
@@ -376,7 +391,8 @@ export const fnSecretsV2FromImports = async ({
     // Reserved (replication) imports are excluded: their secrets are already
     // stored locally and encrypted with the target project's key.
     const grantedFolderIds = new Set<string>();
-    if (projectId && projectGrantDAL) {
+    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL);
+    if (projectId && projectGrantDAL && crossProjectAllowed) {
       const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
       for (const { importPath, importEnv, isReserved } of processedBatchImports) {
         if (!isReserved && importEnv.projectId && importEnv.projectId !== projectId) {
@@ -394,14 +410,12 @@ export const fnSecretsV2FromImports = async ({
         });
         grants.forEach((g) => grantedFolderIds.add(g.sourceFolderId));
 
-        if (getProjectDecryptor) {
-          const projectIdsNeeded = new Set(
-            crossProjectItems.filter((c) => grantedFolderIds.has(c.sourceFolderId)).map((c) => c.sourceProjectId)
-          );
-          for (const sourceProjectId of projectIdsNeeded) {
-            if (!projectDecryptors.has(sourceProjectId)) {
-              projectDecryptors.set(sourceProjectId, await getProjectDecryptor(sourceProjectId));
-            }
+        const projectIdsNeeded = new Set(
+          crossProjectItems.filter((c) => grantedFolderIds.has(c.sourceFolderId)).map((c) => c.sourceProjectId)
+        );
+        for (const sourceProjectId of projectIdsNeeded) {
+          if (!projectDecryptors.has(sourceProjectId)) {
+            projectDecryptors.set(sourceProjectId, await getProjectDecryptor(sourceProjectId));
           }
         }
       }

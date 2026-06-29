@@ -3816,7 +3816,6 @@ export const secretServiceFactory = ({
       if (secretRefMap.size === 0) return revokedSecretIds;
 
       if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-        for (const secretId of secretRefMap.keys()) revokedSecretIds.add(secretId);
         return revokedSecretIds;
       }
 

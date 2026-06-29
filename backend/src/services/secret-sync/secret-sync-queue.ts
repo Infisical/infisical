@@ -21,6 +21,7 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
@@ -134,6 +135,7 @@ type TSecretSyncQueueFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 type SecretSyncActionJob = Job<
@@ -186,7 +188,8 @@ export const secretSyncQueueFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   telemetryService,
-  projectGrantDAL
+  projectGrantDAL,
+  orgDAL
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -278,6 +281,7 @@ export const secretSyncQueueFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const actorOrgId = secretSync.connection.orgId;
 
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
@@ -335,13 +339,9 @@ export const secretSyncQueueFactory = ({
         viewSecretValue: true,
         projectId,
         projectGrantDAL,
-        getProjectDecryptor: async (sourceProjectId: string) => {
-          const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId: sourceProjectId
-          });
-          return (value) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
-        }
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
