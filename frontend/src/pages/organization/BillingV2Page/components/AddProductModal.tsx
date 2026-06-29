@@ -64,7 +64,7 @@ export const AddProductModal = ({ orgId, product, plan, cadence, onClose }: Prop
     <AlertDialog
       open
       onOpenChange={(isOpen) => {
-        if (!isOpen && !addProduct.isPending) {
+        if (!isOpen) {
           onClose();
         }
       }}
