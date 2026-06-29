@@ -396,6 +396,29 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: false, reasonCode: "certificate_not_yet_valid" });
   });
 
+  test("rejects a leaf signed directly by a non-CA configured anchor", async () => {
+    // A configured certificate that is not marked CA:TRUE must not anchor a path even when it
+    // cryptographically signed the leaf. Otherwise chain mode would authenticate against a non-CA
+    // issuer despite being documented as trust-anchor (CA) validation.
+    const nonCaAnchorKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const nonCaAnchor = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "0a",
+      name: "CN=Non-CA Anchor",
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      keys: nonCaAnchorKeys,
+      extensions: [new x509.BasicConstraintsExtension(false)]
+    });
+    const leaf = await makeLeaf("workload", { cert: nonCaAnchor, keys: nonCaAnchorKeys });
+    const result = verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [],
+      trustAnchor: toNative(nonCaAnchor),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
+  });
+
   test("rejects when the intermediate has expired", async () => {
     const expiredIntermediate = await makeIntermediate("Expired Intermediate", root, {
       notAfter: new Date("2026-06-10T00:00:00Z")

@@ -15,7 +15,8 @@ const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
  * Unlike single-hop verification (leaf signed directly by the configured CA), this builds a
  * path from the leaf through the presented intermediates up to the configured trust anchor and
  * verifies, at every hop: the issuer relationship (subject/issuer match + signature), that each
- * issuer is a CA, and that every certificate on the path is within its validity window.
+ * issuer is a CA (including the trust anchor itself), and that every certificate on the path is
+ * within its validity window.
  *
  * The trust anchor is the only trusted input. Presented intermediates are untrusted: a forged or
  * unrelated intermediate cannot create a path to the anchor, so it is rejected. This mirrors how
@@ -86,8 +87,11 @@ export const verifyClientCertificateChain = ({
     // Reached the trust anchor: the path is complete and valid.
     if (isAnchor(current)) return { ok: true };
 
-    // The configured anchor directly issued the current certificate.
-    if (issuedBy(current, trustAnchor)) {
+    // The configured anchor directly issued the current certificate. The anchor must itself be a
+    // CA to sign certificates: presented intermediates are gated on `candidate.ca` below, and the
+    // trust anchor is held to the same bar so a non-CA cert can't anchor a path. Without this, a
+    // configured end-entity (CA:FALSE) certificate would still be accepted as the leaf's issuer.
+    if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
       if (!isWithinValidityWindow(trustAnchor, now)) {
         return {
           ok: false,
