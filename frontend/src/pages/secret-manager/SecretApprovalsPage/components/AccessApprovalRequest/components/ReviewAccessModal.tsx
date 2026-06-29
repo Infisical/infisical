@@ -7,6 +7,7 @@ import {
   FilterIcon,
   HourglassIcon,
   InfoIcon,
+  ShieldAlertIcon,
   SquarePenIcon,
   TimerIcon,
   TriangleAlertIcon,
@@ -494,6 +495,7 @@ export const ReviewAccessRequestModal = ({
       return `This access has been revoked${revokedByEmail ? ` by ${revokedByEmail}` : ""}.`;
     }
     if (hasAccessExpired) return "This request's access has expired.";
+    if (hasApproved && request.bypassReason) return "This request was approved via bypass.";
     if (hasApproved) return "This request has been approved.";
     if (isReviewedByMe) return "You have reviewed this request.";
     return "You are not the reviewer in this step.";
@@ -536,7 +538,7 @@ export const ReviewAccessRequestModal = ({
 
   const getBannerVariant = () => {
     if (hasRejected || hasRevoked || hasExpired || hasAccessExpired) return "danger";
-    if (hasApproved) return "success";
+    if (hasApproved) return request.bypassReason ? "warning" : "success";
     return "info";
   };
   const completedMessageVariant = getBannerVariant();
@@ -544,6 +546,7 @@ export const ReviewAccessRequestModal = ({
 
   const renderBannerIcon = () => {
     if (hasExpired || hasAccessExpired) return <TimerIcon />;
+    if (hasApproved && request.bypassReason) return <ShieldAlertIcon />;
     if (completedMessageVariant === "danger") return <TriangleAlertIcon />;
     if (completedMessageVariant === "success") return <CheckIcon />;
     return <InfoIcon />;
@@ -737,6 +740,11 @@ export const ReviewAccessRequestModal = ({
                 <AlertTitle>{renderCompletedMessages()}</AlertTitle>
                 {completedDescription && (
                   <AlertDescription>{completedDescription}</AlertDescription>
+                )}
+                {hasApproved && request.bypassReason && (
+                  <AlertDescription className="mt-2 break-words">
+                    <span className="font-medium text-warning">Reason:</span> {request.bypassReason}
+                  </AlertDescription>
                 )}
               </Alert>
             )}

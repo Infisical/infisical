@@ -814,7 +814,10 @@ export const accessApprovalRequestServiceFactory = ({
               privilegeId: privilegeIdToSet,
               status: ApprovalStatus.APPROVED,
               approvedAt: new Date(),
-              approvedByUserId: actorId
+              approvedByUserId: actorId,
+              // A break-glass approval grants access without the required reviews; persist the
+              // reason so the bypass can be surfaced in the UI and audit log after the fact.
+              bypassReason: isBreakGlassApprovalAttempt ? bypassReason || null : null
             },
             tx
           );
@@ -875,7 +878,12 @@ export const accessApprovalRequestServiceFactory = ({
       return reviewForThisActorProcessing;
     });
 
-    return { ...reviewStatus, projectId: accessApprovalRequest.projectId, policyId: accessApprovalRequest.policyId };
+    return {
+      ...reviewStatus,
+      projectId: accessApprovalRequest.projectId,
+      policyId: accessApprovalRequest.policyId,
+      isBypass: isBreakGlassApprovalAttempt
+    };
   };
 
   const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
