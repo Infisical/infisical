@@ -65,6 +65,7 @@ import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/dop
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
+import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -458,6 +459,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "AI",
     description: "Manage Anthropic API access."
   },
+  [AppConnection.HasuraCloud]: {
+    name: "Hasura Cloud",
+    image: "Hasura.svg",
+    category: "PLATFORM",
+    description: "GraphQL API and data access for Hasura Cloud."
+  },
   [AppConnection.OVH]: {
     name: "OVH Cloud",
     image: "OVH.png",
@@ -606,6 +613,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case FlyioConnectionMethod.AccessToken:
     case NetlifyConnectionMethod.AccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case HasuraCloudConnectionMethod.AccessToken:
       return { name: "Personal Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
     case SalesforceConnectionMethod.ClientCredentials:

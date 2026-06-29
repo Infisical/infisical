@@ -68,5 +68,6 @@ export enum AppConnection {
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
   Convex = "convex",
-  TriggerDev = "trigger-dev"
+  TriggerDev = "trigger-dev",
+  HasuraCloud = "hasura-cloud"
 }

@@ -160,6 +160,11 @@ import { GitLabConnectionMethod } from "./gitlab";
 import { getGitLabConnectionListItem, validateGitLabConnectionCredentials } from "./gitlab/gitlab-connection-fns";
 import { getGoDaddyConnectionListItem, GoDaddyConnectionMethod, validateGoDaddyConnectionCredentials } from "./godaddy";
 import {
+  getHasuraCloudConnectionListItem,
+  HasuraCloudConnectionMethod,
+  validateHasuraCloudConnectionCredentials
+} from "./hasura-cloud";
+import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
@@ -320,6 +325,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOracleDBConnectionListItem(),
     getOnePassConnectionListItem(),
     getHerokuConnectionListItem(),
+    getHasuraCloudConnectionListItem(),
     getRenderConnectionListItem(),
     getLaravelForgeConnectionListItem(),
     getOctopusDeployConnectionListItem(),
@@ -553,6 +559,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.HasuraCloud]: validateHasuraCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LaravelForge]: validateLaravelForgeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -676,6 +683,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
     case FlyioConnectionMethod.AccessToken:
+    case HasuraCloudConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
     case SalesforceConnectionMethod.ClientCredentials:
@@ -804,6 +812,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
+  [AppConnection.HasuraCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.TriggerDev]: platformManagedCredentialsNotSupported,
