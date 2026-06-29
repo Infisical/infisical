@@ -123,16 +123,18 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             ))}
         </TableBody>
       </Table>
-      <Button
-        className="mt-4"
-        isFullWidth
-        variant={scopeVariant}
-        isPending={isFetchingNextPage}
-        isDisabled={isFetchingNextPage || !hasNextPage}
-        onClick={() => fetchNextPage()}
-      >
-        {hasNextPage ? `Load More (${totalLoaded} loaded)` : `End of logs (${totalLoaded} total)`}
-      </Button>
+      {!isPending && (
+        <Button
+          className="mt-4"
+          isFullWidth
+          variant={scopeVariant}
+          isPending={isFetchingNextPage}
+          isDisabled={isFetchingNextPage || !hasNextPage}
+          onClick={() => fetchNextPage()}
+        >
+          {hasNextPage ? `Load More (${totalLoaded} loaded)` : `End of logs (${totalLoaded} total)`}
+        </Button>
+      )}
       <AuditLogDetailsSheet
         isOpen={popUp.logDetails.isOpen}
         onOpenChange={(open) => handlePopUpToggle("logDetails", open)}
