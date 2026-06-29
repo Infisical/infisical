@@ -2087,7 +2087,9 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     kmsService,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    orgDAL,
+    projectGrantDAL
   });
 
   const folderService = secretFolderServiceFactory({

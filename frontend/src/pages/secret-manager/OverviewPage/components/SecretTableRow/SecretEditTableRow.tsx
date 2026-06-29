@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
+  BanIcon,
   BellIcon,
   ClipboardCheckIcon,
   CodeXmlIcon,
@@ -161,6 +162,7 @@ type Props = {
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
+  revokedProjectGrant?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -197,7 +199,8 @@ export const SecretEditTableRow = ({
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
-  pendingKeyName
+  pendingKeyName,
+  revokedProjectGrant
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -1094,6 +1097,20 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               )}
             </div>
+          </div>
+        )}
+        {revokedProjectGrant && !isDirtyState && (
+          <div
+            className={twMerge(
+              "ml-auto flex shrink-0 items-center",
+              isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16",
+              isSingleEnvView && isFieldActive && "mr-8"
+            )}
+          >
+            <Badge variant="danger">
+              <BanIcon className="size-3.5" />
+              Access Revoked
+            </Badge>
           </div>
         )}
       </div>

@@ -121,9 +121,7 @@ export const secretImportServiceFactory = ({
         .map((imp) => imp.id)
     );
 
-    return imports
-      .filter((imp) => !revokedIds.has(imp.id))
-      .map((imp) => ({ ...imp, isAccessRevoked: false }));
+    return imports.map((imp) => ({ ...imp, isAccessRevoked: revokedIds.has(imp.id) }));
   };
 
   const createImport = async ({
