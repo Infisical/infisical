@@ -1197,6 +1197,95 @@ export const SecretEditTableRow = ({
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
+          <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+            <PopoverAnchor asChild>
+              <span className="pointer-events-none absolute inset-0" />
+            </PopoverAnchor>
+            <PopoverContent
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-80"
+              align="end"
+            >
+              <SecretCommentForm
+                comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
+                secretKey={secretName}
+                secretPath={secretPath}
+                environment={environment}
+                onClose={() => setIsCommentOpen(false)}
+                isBatchMode={isBatchMode}
+                onCommentChange={handleCommentChange}
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
+            <PopoverAnchor asChild>
+              <span className="pointer-events-none absolute inset-0" />
+            </PopoverAnchor>
+            <PopoverContent
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-80"
+              align="end"
+            >
+              <SecretTagForm
+                secretKey={secretName}
+                secretPath={secretPath}
+                environment={environment}
+                tags={isBatchMode ? ((watchedTags as WsTag[]) ?? tags) : tags}
+                onClose={() => setIsTagOpen(false)}
+                isBatchMode={isBatchMode}
+                onTagsChange={handleTagsChange}
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
+            <PopoverAnchor asChild>
+              <span className="pointer-events-none absolute inset-0" />
+            </PopoverAnchor>
+            <PopoverContent
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-[420px]"
+              side="left"
+            >
+              {secretId && (
+                <SecretReminderForm
+                  secretId={secretId}
+                  secretKey={secretName}
+                  secretPath={secretPath}
+                  environment={environment}
+                  reminder={reminder}
+                  onClose={() => setIsReminderOpen(false)}
+                />
+              )}
+            </PopoverContent>
+          </Popover>
+          <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
+            <PopoverAnchor asChild>
+              <span className="pointer-events-none absolute inset-0" />
+            </PopoverAnchor>
+            <PopoverContent
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-[500px]"
+              align="end"
+            >
+              <SecretMetadataForm
+                secretMetadata={
+                  isBatchMode
+                    ? ((watchedMetadata as {
+                        key: string;
+                        value: string;
+                        isEncrypted?: boolean;
+                      }[]) ?? secretMetadata)
+                    : secretMetadata
+                }
+                secretKey={secretName}
+                secretPath={secretPath}
+                environment={environment}
+                onClose={() => setIsMetadataOpen(false)}
+                isBatchMode={isBatchMode}
+                onMetadataChange={handleMetadataChange}
+              />
+            </PopoverContent>
+          </Popover>
           {isBatchMode && hasPendingChange ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1213,95 +1302,6 @@ export const SecretEditTableRow = ({
             </Tooltip>
           ) : (
             <>
-              <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-                <PopoverAnchor asChild>
-                  <span className="pointer-events-none absolute inset-0" />
-                </PopoverAnchor>
-                <PopoverContent
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                  className="w-80"
-                  align="end"
-                >
-                  <SecretCommentForm
-                    comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
-                    secretKey={secretName}
-                    secretPath={secretPath}
-                    environment={environment}
-                    onClose={() => setIsCommentOpen(false)}
-                    isBatchMode={isBatchMode}
-                    onCommentChange={handleCommentChange}
-                  />
-                </PopoverContent>
-              </Popover>
-              <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
-                <PopoverAnchor asChild>
-                  <span className="pointer-events-none absolute inset-0" />
-                </PopoverAnchor>
-                <PopoverContent
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                  className="w-80"
-                  align="end"
-                >
-                  <SecretTagForm
-                    secretKey={secretName}
-                    secretPath={secretPath}
-                    environment={environment}
-                    tags={isBatchMode ? ((watchedTags as WsTag[]) ?? tags) : tags}
-                    onClose={() => setIsTagOpen(false)}
-                    isBatchMode={isBatchMode}
-                    onTagsChange={handleTagsChange}
-                  />
-                </PopoverContent>
-              </Popover>
-              <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
-                <PopoverAnchor asChild>
-                  <span className="pointer-events-none absolute inset-0" />
-                </PopoverAnchor>
-                <PopoverContent
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                  className="w-[420px]"
-                  side="left"
-                >
-                  {secretId && (
-                    <SecretReminderForm
-                      secretId={secretId}
-                      secretKey={secretName}
-                      secretPath={secretPath}
-                      environment={environment}
-                      reminder={reminder}
-                      onClose={() => setIsReminderOpen(false)}
-                    />
-                  )}
-                </PopoverContent>
-              </Popover>
-              <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
-                <PopoverAnchor asChild>
-                  <span className="pointer-events-none absolute inset-0" />
-                </PopoverAnchor>
-                <PopoverContent
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                  className="w-[500px]"
-                  align="end"
-                >
-                  <SecretMetadataForm
-                    secretMetadata={
-                      isBatchMode
-                        ? ((watchedMetadata as {
-                            key: string;
-                            value: string;
-                            isEncrypted?: boolean;
-                          }[]) ?? secretMetadata)
-                        : secretMetadata
-                    }
-                    secretKey={secretName}
-                    secretPath={secretPath}
-                    environment={environment}
-                    onClose={() => setIsMetadataOpen(false)}
-                    isBatchMode={isBatchMode}
-                    onMetadataChange={handleMetadataChange}
-                  />
-                </PopoverContent>
-              </Popover>
               {!isImportedSecret &&
                 !isCreatable &&
                 !isPendingDelete &&
@@ -1396,7 +1396,19 @@ export const SecretEditTableRow = ({
                     <EditIcon className="size-3.5" />
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>{isCreatable ? "Add Value" : "Edit Value"}</TooltipContent>
+                <TooltipContent>
+                  {isImportedSecret
+                    ? "Cannot Edit Imported Secret"
+                    : isHoneyTokenSecret
+                      ? "Cannot Edit Honey Token Secret"
+                      : isRotatedSecret
+                        ? "Cannot Edit Rotated Secret"
+                        : (isCreatable ? !canCreate : !canEditSecretValue)
+                          ? "Access Denied"
+                          : isCreatable
+                            ? "Add Value"
+                            : "Edit Value"}
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1414,7 +1426,15 @@ export const SecretEditTableRow = ({
                     )}
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>{isCopied ? "Copied" : "Copy Secret"}</TooltipContent>
+                <TooltipContent>
+                  {!canCopySecret
+                    ? canReadSecretValue
+                      ? "No Secret Value"
+                      : "Access Denied"
+                    : isCopied
+                      ? "Copied"
+                      : "Copy Secret"}
+                </TooltipContent>
               </Tooltip>
               <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <Tooltip>
