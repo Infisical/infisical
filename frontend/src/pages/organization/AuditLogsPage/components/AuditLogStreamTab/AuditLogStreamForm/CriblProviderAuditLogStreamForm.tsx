@@ -163,9 +163,7 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           <ProductsField />
         </div>
 
-        <AuditLogStreamFormFooter
-          submitLabel={isUpdate ? "Update" : "Create Log Stream"}
-        />
+        <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>
   );

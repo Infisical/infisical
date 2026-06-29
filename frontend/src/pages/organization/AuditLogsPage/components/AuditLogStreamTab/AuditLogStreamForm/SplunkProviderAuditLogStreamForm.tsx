@@ -97,9 +97,7 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
         <div className="mt-6">
           <ProductsField />
         </div>
-        <AuditLogStreamFormFooter
-          submitLabel={isUpdate ? "Update" : "Create Log Stream"}
-        />
+        <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>
   );
