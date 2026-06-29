@@ -59,7 +59,16 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
         environments: [environment]
       }
     });
-  }, [navigate, routeParams.orgId, currentProject, secretPath, secretKey, isRoot, onClose]);
+  }, [
+    navigate,
+    routeParams.orgId,
+    currentProject,
+    environment,
+    secretPath,
+    secretKey,
+    isRoot,
+    onClose
+  ]);
 
   const envBadge = (
     <Badge
