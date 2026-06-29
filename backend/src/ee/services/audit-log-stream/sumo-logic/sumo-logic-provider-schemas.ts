@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LogProvider } from "../audit-log-stream-enums";
+import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const SumoLogicProviderCredentialsSchema = z.object({
@@ -15,8 +15,14 @@ export const SumoLogicProviderSchema = BaseSumoLogicProviderSchema.extend({
 });
 
 export const SanitizedSumoLogicProviderSchema = BaseSumoLogicProviderSchema.extend({
-  credentials: SumoLogicProviderCredentialsSchema.pick({
-    url: true
+  credentials: z.object({
+    url: SumoLogicProviderCredentialsSchema.shape.url,
+    // Mask the token with a placeholder when one is set (and omit it when unset) so the value is
+    // never exposed but the frontend can still tell a token exists. On update the frontend sends
+    // this placeholder back unchanged to signal "keep the existing token".
+    token: SumoLogicProviderCredentialsSchema.shape.token.transform((token) =>
+      token ? REDACTED_CREDENTIAL_VALUE : undefined
+    )
   })
 });
 

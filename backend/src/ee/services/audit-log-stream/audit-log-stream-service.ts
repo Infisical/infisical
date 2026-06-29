@@ -15,10 +15,11 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
-import { LogProvider, StreamMode } from "./audit-log-stream-enums";
+import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
+import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-types";
 
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
@@ -127,7 +128,7 @@ export const auditLogStreamServiceFactory = ({
       provider === LogProvider.Custom &&
       "headers" in finalCredentials &&
       Array.isArray(finalCredentials.headers) &&
-      finalCredentials.headers.some((header) => header.value === "******")
+      finalCredentials.headers.some((header) => header.value === REDACTED_CREDENTIAL_VALUE)
     ) {
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
@@ -142,7 +143,7 @@ export const auditLogStreamServiceFactory = ({
 
       const finalHeaders: { key: string; value: string }[] = [];
       for (const header of finalCredentials.headers) {
-        if (header.value === "******") {
+        if (header.value === REDACTED_CREDENTIAL_VALUE) {
           const oldValue = oldHeadersMap[header.key];
           if (oldValue) {
             finalHeaders.push({ key: header.key, value: oldValue });
@@ -152,6 +153,20 @@ export const auditLogStreamServiceFactory = ({
         }
       }
       finalCredentials.headers = finalHeaders;
+    }
+
+    if (
+      provider === LogProvider.SumoLogic &&
+      "token" in finalCredentials &&
+      finalCredentials.token === REDACTED_CREDENTIAL_VALUE
+    ) {
+      const decryptedOldCredentials = (await decryptLogStreamCredentials({
+        encryptedCredentials: logStream.encryptedCredentials,
+        orgId: logStream.orgId,
+        kmsService
+      })) as TSumoLogicProviderCredentials;
+
+      (finalCredentials as TSumoLogicProviderCredentials).token = decryptedOldCredentials.token;
     }
 
     const factory = LOG_STREAM_FACTORY_MAP[provider]();

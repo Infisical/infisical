@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
-import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
+import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "@app/hooks/api/auditLogStreams/enums";
 import { TSumoLogicProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/sumo-logic-provider";
 
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
@@ -85,6 +85,22 @@ export const SumoLogicProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }
                 containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                 value={value ?? ""}
                 onChange={(e) => onChange(e.target.value)}
+                onFocus={() => {
+                  if (
+                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
+                    value === REDACTED_CREDENTIAL_VALUE
+                  ) {
+                    onChange("");
+                  }
+                }}
+                onBlur={() => {
+                  if (
+                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
+                    value === ""
+                  ) {
+                    onChange(REDACTED_CREDENTIAL_VALUE);
+                  }
+                }}
               />
             </FormControl>
           )}

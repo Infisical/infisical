@@ -1,3 +1,5 @@
+export const REDACTED_CREDENTIAL_VALUE = "******";
+
 export enum LogProvider {
   Azure = "azure",
   Cribl = "cribl",
