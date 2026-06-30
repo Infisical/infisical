@@ -14,7 +14,9 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .whereIn(`${TableName.HoneyToken}.folderId`, folderIds)
       .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
       .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("name").withSchema(TableName.HoneyToken),
