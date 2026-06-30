@@ -1,3 +1,4 @@
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -20,7 +21,7 @@ export const cloud66ConnectionService = (getAppConnection: TGetAppConnectionFunc
       return stacks;
     } catch (error) {
       logger.error(error, `Failed to list Cloud 66 stacks for connection ${connectionId}`);
-      return [];
+      throw new BadRequestError({ message: `Failed to list Cloud 66 stacks for connection ${connectionId}`, error });
     }
   };
 

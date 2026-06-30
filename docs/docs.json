@@ -1516,6 +1516,18 @@
                     ]
                   },
                   {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/cloud-66/list",
+                      "api-reference/endpoints/app-connections/cloud-66/available",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-id",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-name",
+                      "api-reference/endpoints/app-connections/cloud-66/create",
+                      "api-reference/endpoints/app-connections/cloud-66/update",
+                      "api-reference/endpoints/app-connections/cloud-66/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -2744,6 +2756,20 @@
                       "api-reference/endpoints/secret-syncs/chef/sync-secrets",
                       "api-reference/endpoints/secret-syncs/chef/import-secrets",
                       "api-reference/endpoints/secret-syncs/chef/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloud-66/list",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloud-66/create",
+                      "api-reference/endpoints/secret-syncs/cloud-66/update",
+                      "api-reference/endpoints/secret-syncs/cloud-66/delete",
+                      "api-reference/endpoints/secret-syncs/cloud-66/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/import-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/remove-secrets"
                     ]
                   },
                   {
