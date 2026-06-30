@@ -169,71 +169,63 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
             </Tooltip>
           </div>
         ))}
-        <div>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => headerFields.append({ value: "", key: "" })}
-          >
-            <Plus />
-            Add Key
-          </Button>
-        </div>
-
+        <Button
+          variant="outline"
+          size="xs"
+          className="mb-4"
+          onClick={() => headerFields.append({ value: "", key: "" })}
+        >
+          <Plus />
+          Add Key
+        </Button>
         {isUpdate && (
-          <div className="mt-6">
-            <Controller
-              control={control}
-              name="streamMode"
-              render={({ field }) => {
-                const isBatch = field.value === StreamMode.Batch;
-                return (
-                  <div>
-                    <Field orientation="horizontal">
-                      <FieldLabel htmlFor="stream-batch-mode" className="text-sm">
-                        Batch delivery
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <CircleHelp />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-md">
-                            Send events as a JSON array.
-                          </TooltipContent>
-                        </Tooltip>
-                      </FieldLabel>
-                      <Switch
-                        id="stream-batch-mode"
-                        variant={scopeVariant}
-                        checked={isBatch}
-                        disabled={!isSingleStream}
-                        onCheckedChange={(checked) =>
-                          field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
-                        }
-                      />
-                    </Field>
-                    {isSingleStream &&
-                      (isBatch ? (
-                        <p className="mt-2 text-xs text-warning">
-                          Switching from single to batch delivery cannot be undone. Make sure your
-                          endpoint accepts a JSON array of events.
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-xs text-muted">
-                          This stream uses legacy single-event delivery (one event per request).
-                          Enable batch delivery to send events as a JSON array.
-                        </p>
-                      ))}
-                  </div>
-                );
-              }}
-            />
-          </div>
+          <Controller
+            control={control}
+            name="streamMode"
+            render={({ field }) => {
+              const isBatch = field.value === StreamMode.Batch;
+              return (
+                <div className="mb-4">
+                  <Field orientation="horizontal">
+                    <FieldLabel htmlFor="stream-batch-mode" className="text-sm">
+                      Batch delivery
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelp />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          Send events as a JSON array.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <Switch
+                      id="stream-batch-mode"
+                      variant={scopeVariant}
+                      checked={isBatch}
+                      disabled={!isSingleStream}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
+                      }
+                    />
+                  </Field>
+                  {isSingleStream &&
+                    (isBatch ? (
+                      <p className="mt-2 text-xs text-warning">
+                        Switching from single to batch delivery cannot be undone. Make sure your
+                        endpoint accepts a JSON array of events.
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted">
+                        This stream uses legacy single-event delivery (one event per request).
+                        Enable batch delivery to send events as a JSON array.
+                      </p>
+                    ))}
+                </div>
+              );
+            }}
+          />
         )}
-
-        <div className="mt-6">
-          <ProductsField />
-        </div>
-
+        <ProductsField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

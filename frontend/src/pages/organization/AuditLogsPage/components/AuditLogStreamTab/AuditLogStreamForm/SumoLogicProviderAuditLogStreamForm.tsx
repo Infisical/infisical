@@ -1,11 +1,22 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
-import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "@app/hooks/api/auditLogStreams/enums";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TSumoLogicProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/sumo-logic-provider";
 
+import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
 
 type Props = {
@@ -34,11 +45,7 @@ export const SumoLogicProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -48,19 +55,26 @@ export const SumoLogicProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="HTTP Source Address"
-              tooltipText={
-                <>The HTTP Source Address from your Sumo Logic HTTP Logs and Metrics Source.</>
-              }
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="sumo-logic-url">
+                HTTP Source Address
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The HTTP Source Address from your Sumo Logic HTTP Logs and Metrics Source.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="sumo-logic-url"
                 {...field}
                 placeholder="https://endpoint.collection.sumologic.com/receiver/v1/http"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -68,64 +82,27 @@ export const SumoLogicProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Auth Token"
-              tooltipText={
-                <>
-                  The collector token from your HTTP Source&apos;s <code>x-sumo-token</code> header
-                  (the value after <code>x-sumo-token: </code>). Infisical sends it as the{" "}
-                  <code>x-sumo-token</code> header on each request.
-                </>
-              }
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value ?? ""}
-                onChange={(e) => onChange(e.target.value)}
-                onFocus={() => {
-                  if (
-                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
-                    value === REDACTED_CREDENTIAL_VALUE
-                  ) {
-                    onChange("");
-                  }
-                }}
-                onBlur={() => {
-                  if (
-                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
-                    value === ""
-                  ) {
-                    onChange(REDACTED_CREDENTIAL_VALUE);
-                  }
-                }}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="sumo-logic-token">
+                Auth Token
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The collector token from your HTTP Source&apos;s <code>x-sumo-token</code>{" "}
+                    header (the value after <code>x-sumo-token: </code>
+                    ). Infisical sends it as the <code>x-sumo-token</code> header on each request.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-
-        <div className="mt-6">
-          <ProductsField />
-        </div>
-
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Create Log Stream"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <ProductsField />
+        <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>
   );

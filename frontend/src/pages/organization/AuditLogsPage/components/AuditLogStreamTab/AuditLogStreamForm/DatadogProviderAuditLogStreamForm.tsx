@@ -106,9 +106,7 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
             </Field>
           )}
         />
-        <div className="mt-6">
-          <ProductsField />
-        </div>
+        <ProductsField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

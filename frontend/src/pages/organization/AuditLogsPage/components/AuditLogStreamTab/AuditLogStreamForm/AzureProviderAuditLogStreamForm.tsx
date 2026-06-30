@@ -144,9 +144,7 @@ export const AzureProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
             </Field>
           )}
         />
-        <div className="mt-6">
-          <ProductsField />
-        </div>
+        <ProductsField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

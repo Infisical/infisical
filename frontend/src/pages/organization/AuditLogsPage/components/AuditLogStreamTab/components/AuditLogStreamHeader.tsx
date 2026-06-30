@@ -28,7 +28,7 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists }: Props) => {
         )}
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-accent">
+        <div className="flex items-center gap-x-2 text-foreground">
           {providerDetails.name}
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams#example-providers" />
         </div>
