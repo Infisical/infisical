@@ -47,7 +47,14 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
     }
   };
 
-  const listLinkedResources = async (connectorId: string, { offset, limit }: { offset: number; limit: number }) => {
+  const listLinkedResources = async (
+    connectorId: string,
+    {
+      offset,
+      limit,
+      includeCertificateAuthorities
+    }: { offset: number; limit: number; includeCertificateAuthorities: boolean }
+  ) => {
     try {
       const baseQuery = db.replicaNode()(TableName.Certificate).where("hsmConnectorId", connectorId);
 
@@ -61,32 +68,31 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
         baseQuery.clone().count<{ count: string }[]>("id as count").first()
       ]);
 
-      const caRows =
-        offset === 0
-          ? await db
-              .replicaNode()(TableName.CertificateAuthoritySecret)
-              .where(`${TableName.CertificateAuthoritySecret}.hsmConnectorId`, connectorId)
-              .join(
-                TableName.CertificateAuthority,
-                `${TableName.CertificateAuthority}.id`,
-                `${TableName.CertificateAuthoritySecret}.caId`
-              )
-              .join(
-                TableName.InternalCertificateAuthority,
-                `${TableName.InternalCertificateAuthority}.caId`,
-                `${TableName.CertificateAuthoritySecret}.caId`
-              )
-              .select(
-                db.ref("id").withSchema(TableName.CertificateAuthority).as("id"),
-                db.ref("name").withSchema(TableName.CertificateAuthority).as("name"),
-                db.ref("status").withSchema(TableName.CertificateAuthority).as("status"),
-                db.ref("type").withSchema(TableName.InternalCertificateAuthority).as("type"),
-                db.ref("commonName").withSchema(TableName.InternalCertificateAuthority).as("commonName"),
-                db.ref("hsmKeyLabel").withSchema(TableName.CertificateAuthoritySecret).as("hsmKeyLabel"),
-                db.ref("createdAt").withSchema(TableName.CertificateAuthority).as("createdAt")
-              )
-              .orderBy(`${TableName.CertificateAuthority}.createdAt`, "desc")
-          : [];
+      const caRows = includeCertificateAuthorities
+        ? await db
+            .replicaNode()(TableName.CertificateAuthoritySecret)
+            .where(`${TableName.CertificateAuthoritySecret}.hsmConnectorId`, connectorId)
+            .join(
+              TableName.CertificateAuthority,
+              `${TableName.CertificateAuthority}.id`,
+              `${TableName.CertificateAuthoritySecret}.caId`
+            )
+            .join(
+              TableName.InternalCertificateAuthority,
+              `${TableName.InternalCertificateAuthority}.caId`,
+              `${TableName.CertificateAuthoritySecret}.caId`
+            )
+            .select(
+              db.ref("id").withSchema(TableName.CertificateAuthority).as("id"),
+              db.ref("name").withSchema(TableName.CertificateAuthority).as("name"),
+              db.ref("status").withSchema(TableName.CertificateAuthority).as("status"),
+              db.ref("type").withSchema(TableName.InternalCertificateAuthority).as("type"),
+              db.ref("commonName").withSchema(TableName.InternalCertificateAuthority).as("commonName"),
+              db.ref("hsmKeyLabel").withSchema(TableName.CertificateAuthoritySecret).as("hsmKeyLabel"),
+              db.ref("createdAt").withSchema(TableName.CertificateAuthority).as("createdAt")
+            )
+            .orderBy(`${TableName.CertificateAuthority}.createdAt`, "desc")
+        : [];
 
       return {
         certificates: rows.map((r) => ({

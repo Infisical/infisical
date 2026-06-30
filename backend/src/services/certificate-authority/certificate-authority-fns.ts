@@ -454,7 +454,6 @@ export const getCaSigner = async ({
   const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
 
   if (caSecret.keySource === CertKeySource.Hsm) {
-    // signatureAlgorithm is intentionally ignored: the HSM mechanism is fixed by the key algorithm.
     if (!caSecret.hsmConnectorId || !caSecret.hsmKeyLabel || !caSecret.hsmPublicKeySpki) {
       throw new BadRequestError({ message: "HSM-backed CA secret is missing its connector, key label, or public key" });
     }
@@ -473,6 +472,7 @@ export const getCaSigner = async ({
     const signer = buildHsmCaSigner({
       caPublicKey,
       keyAlgorithm,
+      signingAlgorithm: signatureAlgorithm,
       sign: (data, mechanism, isDigest) =>
         hsmConnectorService.sign({
           connectorId,

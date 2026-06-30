@@ -9,6 +9,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -372,9 +373,15 @@ export const hsmConnectorServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    const includeCertificateAuthorities = permission.can(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
     return hsmConnectorDAL.listLinkedResources(row.id, {
       offset: dto.offset,
-      limit: dto.limit
+      limit: dto.limit,
+      includeCertificateAuthorities
     });
   };
 

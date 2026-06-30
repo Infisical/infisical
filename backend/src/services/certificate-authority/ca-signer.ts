@@ -129,36 +129,77 @@ export const buildLocalCaSigner = ({
   createCrl: (params) => x509.X509CrlGenerator.create({ ...params, signingKey: privateKey, signingAlgorithm })
 });
 
+const HSM_MECHANISM_BY_HASH: Record<"rsa" | "ecdsa", Record<string, string>> = {
+  rsa: {
+    "SHA-256": "CKM_SHA256_RSA_PKCS",
+    "SHA-384": "CKM_SHA384_RSA_PKCS",
+    "SHA-512": "CKM_SHA512_RSA_PKCS"
+  },
+  ecdsa: {
+    "SHA-256": "CKM_ECDSA_SHA256",
+    "SHA-384": "CKM_ECDSA_SHA384",
+    "SHA-512": "CKM_ECDSA_SHA512"
+  }
+};
+
+const algorithmHashName = (alg: Algorithm): string | undefined => {
+  const { hash } = alg as { hash?: string | { name?: string } };
+  return typeof hash === "string" ? hash : hash?.name;
+};
+
 export const buildHsmCaSigner = ({
   caPublicKey,
   keyAlgorithm,
+  signingAlgorithm,
   sign
 }: {
   caPublicKey: CryptoKey;
   keyAlgorithm: CertKeyAlgorithm | string;
+  signingAlgorithm?: Algorithm;
   sign: TCaExternalSignFn;
 }): TCaSigner => {
   const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
 
+  let { mechanism } = shape;
+  let certSigningAlgorithm = shape.signingAlgorithm;
+  let { keyGenParams } = shape;
+  if (signingAlgorithm) {
+    const hash = algorithmHashName(signingAlgorithm);
+    const mapped = HSM_MECHANISM_BY_HASH[shape.isEcdsa ? "ecdsa" : "rsa"][hash ?? ""];
+    if (!mapped) {
+      throw new BadRequestError({
+        message: `Signature hash "${hash}" is not supported for HSM-backed certificate authorities.`
+      });
+    }
+    mechanism = mapped;
+    certSigningAlgorithm = { name: shape.signingAlgorithm.name, hash } as Algorithm;
+    // @peculiar derives the RSA certificate's signature OID from the ephemeral key's hash, so it
+    // must match the chosen mechanism or the OID and signature disagree. ECDSA takes the hash from
+    // signingAlgorithm directly, so its key params (curve only) are left untouched.
+    if (!shape.isEcdsa) {
+      keyGenParams = { ...(shape.keyGenParams as RsaHashedKeyGenParams), hash } as RsaHashedKeyGenParams;
+    }
+  }
+
   const signTbs = async (tbs: Buffer): Promise<ArrayBuffer> => {
     // isDigest=false: the HSM hashes via its *_SHA<NN>_* mechanism, so we hand it the raw TBS.
-    let signature = await sign(tbs, shape.mechanism, false);
+    let signature = await sign(tbs, mechanism, false);
     if (shape.isEcdsa) signature = ecdsaRawRsToDer(signature);
     return bufferToArrayBuffer(signature);
   };
 
   const generateEphemeralKey = () =>
-    crypto.nativeCrypto.subtle.generateKey(shape.keyGenParams as RsaHashedKeyGenParams, true, ["sign", "verify"]);
+    crypto.nativeCrypto.subtle.generateKey(keyGenParams as RsaHashedKeyGenParams, true, ["sign", "verify"]);
 
   return {
     caPublicKey,
-    signingAlgorithm: shape.signingAlgorithm,
+    signingAlgorithm: certSigningAlgorithm,
     createCertificate: async (params) => {
       const ephemeral = await generateEphemeralKey();
       const built = await x509.X509CertificateGenerator.create({
         ...params,
         signingKey: ephemeral.privateKey,
-        signingAlgorithm: shape.signingAlgorithm
+        signingAlgorithm: certSigningAlgorithm
       });
       const cert = AsnConvert.parse(built.rawData, Certificate);
       cert.signatureValue = await signTbs(Buffer.from(AsnConvert.serialize(cert.tbsCertificate)));
@@ -169,7 +210,7 @@ export const buildHsmCaSigner = ({
       const built = await x509.Pkcs10CertificateRequestGenerator.create({
         ...params,
         keys: { privateKey: ephemeral.privateKey, publicKey: caPublicKey },
-        signingAlgorithm: shape.signingAlgorithm
+        signingAlgorithm: certSigningAlgorithm
       });
       const csr = AsnConvert.parse(built.rawData, CertificationRequest);
       csr.signature = await signTbs(Buffer.from(AsnConvert.serialize(csr.certificationRequestInfo)));
@@ -180,7 +221,7 @@ export const buildHsmCaSigner = ({
       const built = await x509.X509CrlGenerator.create({
         ...params,
         signingKey: ephemeral.privateKey,
-        signingAlgorithm: shape.signingAlgorithm
+        signingAlgorithm: certSigningAlgorithm
       });
       const crl = AsnConvert.parse(built.rawData, CertificateList);
       crl.signature = await signTbs(Buffer.from(AsnConvert.serialize(crl.tbsCertList)));
