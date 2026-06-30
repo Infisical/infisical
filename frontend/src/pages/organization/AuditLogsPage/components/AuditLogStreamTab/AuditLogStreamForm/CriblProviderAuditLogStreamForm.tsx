@@ -15,7 +15,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
-import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
+import {
+  LogProvider,
+  REDACTED_CREDENTIAL_VALUE,
+  StreamMode
+} from "@app/hooks/api/auditLogStreams/enums";
 import { TCriblProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/cribl-provider";
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
@@ -103,7 +107,29 @@ export const CriblProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Pr
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="cribl-token">Cribl Stream Token</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <SecretInput
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onFocus={() => {
+                  // On edit the field is prefilled with the redacted sentinel; clear it on focus
+                  // so the user types a fresh value instead of editing the placeholder.
+                  if (
+                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
+                    value === REDACTED_CREDENTIAL_VALUE
+                  ) {
+                    onChange("");
+                  }
+                }}
+                onBlur={() => {
+                  // Left untouched: restore the sentinel so submitting keeps the existing secret.
+                  if (
+                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
+                    value === ""
+                  ) {
+                    onChange(REDACTED_CREDENTIAL_VALUE);
+                  }
+                }}
+              />
               <FieldError errors={[error]} />
             </Field>
           )}

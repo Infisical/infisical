@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Field, FieldError, FieldLabel, Input, SecretInput } from "@app/components/v3";
-import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
+import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "@app/hooks/api/auditLogStreams/enums";
 import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/splunk-provider";
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
@@ -89,7 +89,29 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="token">Splunk Token</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <SecretInput
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onFocus={() => {
+                  // On edit the field is prefilled with the redacted sentinel; clear it on focus
+                  // so the user types a fresh value instead of editing the placeholder.
+                  if (
+                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
+                    value === REDACTED_CREDENTIAL_VALUE
+                  ) {
+                    onChange("");
+                  }
+                }}
+                onBlur={() => {
+                  // Left untouched: restore the sentinel so submitting keeps the existing secret.
+                  if (
+                    auditLogStream?.credentials.token === REDACTED_CREDENTIAL_VALUE &&
+                    value === ""
+                  ) {
+                    onChange(REDACTED_CREDENTIAL_VALUE);
+                  }
+                }}
+              />
               <FieldError errors={[error]} />
             </Field>
           )}
