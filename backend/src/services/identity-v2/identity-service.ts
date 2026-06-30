@@ -154,7 +154,7 @@ export const identityV2ServiceFactory = ({
         scopeData.projectId
       );
       for (const permissionRole of permissionRoles) {
-        if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
+        if (permissionRole?.role?.slug !== ProjectMembershipRole.NoAccess) {
           const permissionBoundary = validatePrivilegeChangeOperation(
             shouldUseNewPrivilegeSystem,
             [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],

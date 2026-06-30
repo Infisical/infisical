@@ -63,11 +63,11 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
           .array(
             z.union([
               z.object({
-                role: z.string(),
+                role: z.string().min(1),
                 isTemporary: z.literal(false).default(false)
               }),
               z.object({
-                role: z.string(),
+                role: z.string().min(1),
                 isTemporary: z.literal(true),
                 temporaryMode: z.nativeEnum(TemporaryPermissionMode),
                 temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
@@ -109,7 +109,17 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
             name: req.body.name,
             hasDeleteProtection: req.body.hasDeleteProtection,
             metadata: req.body.metadata,
-            roles: req.body.roles?.map(({ role, isTemporary }) => ({ role, isTemporary }))
+            roles: req.body.roles?.map((r) =>
+              r.isTemporary
+                ? {
+                    role: r.role,
+                    isTemporary: r.isTemporary,
+                    temporaryMode: r.temporaryMode,
+                    temporaryRange: r.temporaryRange,
+                    temporaryAccessStartTime: r.temporaryAccessStartTime
+                  }
+                : { role: r.role, isTemporary: r.isTemporary }
+            )
           }
         }
       });
