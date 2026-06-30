@@ -291,7 +291,12 @@ export const secretSyncQueueFactory = ({
       secretDAL: secretV2BridgeDAL,
       folderDAL,
       projectId,
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      actorOrgId,
+      orgDAL,
+      projectGrantDAL,
+      projectDAL,
+      kmsService
     });
 
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId });
