@@ -8,6 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { prefixWithSlash } from "@app/lib/fn";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -23,6 +24,8 @@ import {
 } from "./project-grant-types";
 
 export type TProjectGrantServiceFactory = ReturnType<typeof projectGrantServiceFactory>;
+
+const normalizeSecretPath = (secretPath: string) => prefixWithSlash(secretPath.split("/").filter(Boolean).join("/"));
 
 type TProjectGrantServiceFactoryDep = {
   projectGrantDAL: TProjectGrantDALFactory;
@@ -55,6 +58,8 @@ export const projectGrantServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
+    const canonicalSecretPath = normalizeSecretPath(secretPath);
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -65,12 +70,14 @@ export const projectGrantServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionProjectGrantActions.CreateGrant,
-      subject(ProjectPermissionSub.ProjectGrant, { environment, secretPath })
+      subject(ProjectPermissionSub.ProjectGrant, { environment, secretPath: canonicalSecretPath })
     );
 
-    const folder = await folderDAL.findBySecretPath(sourceProjectId, environment, secretPath);
+    const folder = await folderDAL.findBySecretPath(sourceProjectId, environment, canonicalSecretPath);
     if (!folder) {
-      throw new NotFoundError({ message: `Folder not found at path '${secretPath}' in environment '${environment}'` });
+      throw new NotFoundError({
+        message: `Folder not found at path '${canonicalSecretPath}' in environment '${environment}'`
+      });
     }
 
     const targetProject = await projectDAL.findById(targetProjectId);
