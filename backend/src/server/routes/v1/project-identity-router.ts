@@ -108,7 +108,8 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
             identityId: identity.id,
             name: req.body.name,
             hasDeleteProtection: req.body.hasDeleteProtection,
-            metadata: req.body.metadata
+            metadata: req.body.metadata,
+            roles: req.body.roles?.map(({ role, isTemporary }) => ({ role, isTemporary }))
           }
         }
       });

@@ -1420,13 +1420,13 @@ interface DeleteServiceTokenEvent {
 }
 
 interface CreateIdentityEvent {
-  // note: currently not logging org-role
   type: EventType.CREATE_IDENTITY;
   metadata: {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
     metadata?: { key: string; value: string }[];
+    roles?: { role: string; isTemporary: boolean }[];
   };
 }
 

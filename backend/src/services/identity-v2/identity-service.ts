@@ -199,16 +199,19 @@ export const identityV2ServiceFactory = ({
       resolvedRoleDocs = data.roles.map((membershipRole) => {
         const isCustom = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
         if (membershipRole.isTemporary) {
-          const relativeTimeInMs = membershipRole.temporaryRange ? ms(membershipRole.temporaryRange) : null;
+          if (membershipRole.temporaryMode !== TemporaryPermissionMode.Relative) {
+            throw new BadRequestError({ message: "Only relative temporary permission mode is supported" });
+          }
+          const relativeTimeInMs = ms(membershipRole.temporaryRange);
           return {
             role: isCustom ? ProjectMembershipRole.Custom : membershipRole.role,
             customRoleId: isCustom ? customRolesGroupBySlug[membershipRole.role][0].id : null,
             isTemporary: true as const,
-            temporaryMode: TemporaryPermissionMode.Relative,
+            temporaryMode: membershipRole.temporaryMode,
             temporaryRange: membershipRole.temporaryRange,
             temporaryAccessStartTime: new Date(membershipRole.temporaryAccessStartTime),
             temporaryAccessEndTime: new Date(
-              new Date(membershipRole.temporaryAccessStartTime).getTime() + (relativeTimeInMs as number)
+              new Date(membershipRole.temporaryAccessStartTime).getTime() + relativeTimeInMs
             )
           };
         }
