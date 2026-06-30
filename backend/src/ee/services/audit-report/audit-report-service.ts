@@ -7,6 +7,7 @@ import {
   ProjectPermissionAuditReportActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -145,21 +146,28 @@ export const auditReportServiceFactory = ({
     const reportConfigs = $buildReportConfigs(dto.reports);
     const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor);
 
-    const inFlightCount = await auditReportDAL.countInFlightByProject(dto.projectId);
-    if (inFlightCount >= MAX_CONCURRENT_AUDIT_REPORTS) {
-      throw new BadRequestError({
-        message: `This project already has ${MAX_CONCURRENT_AUDIT_REPORTS} reports in progress. Please wait for them to finish.`
-      });
-    }
+    const report = await auditReportDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AuditReportRequest(dto.projectId)]);
 
-    const report = await auditReportDAL.create({
-      projectId: dto.projectId,
-      requestedByUserId: actor.type === ActorType.USER ? actor.id : null,
-      status: AuditReportStatus.Pending,
-      // jsonb columns must be serialized before insert — pg otherwise treats a top-level JS array as a
-      // Postgres array literal rather than a JSON value.
-      reportConfigs: JSON.stringify(reportConfigs),
-      emailRecipients
+      const inFlightCount = await auditReportDAL.countInFlightByProject(dto.projectId, tx);
+      if (inFlightCount >= MAX_CONCURRENT_AUDIT_REPORTS) {
+        throw new BadRequestError({
+          message: `This project already has ${MAX_CONCURRENT_AUDIT_REPORTS} reports in progress. Please wait for them to finish.`
+        });
+      }
+
+      return auditReportDAL.create(
+        {
+          projectId: dto.projectId,
+          requestedByUserId: actor.type === ActorType.USER ? actor.id : null,
+          status: AuditReportStatus.Pending,
+          // jsonb columns must be serialized before insert — pg otherwise treats a top-level JS array as a
+          // Postgres array literal rather than a JSON value.
+          reportConfigs: JSON.stringify(reportConfigs),
+          emailRecipients
+        },
+        tx
+      );
     });
 
     await queueService.queue(

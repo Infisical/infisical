@@ -7,7 +7,6 @@ export const AUDIT_REPORT_TYPE_LABELS: Record<AuditReportType, string> = {
   [AuditReportType.UpcomingRotations]: "Upcoming Rotations",
   [AuditReportType.FailedRotations]: "Failed Rotations",
   [AuditReportType.UpcomingReminders]: "Upcoming Reminders",
-  [AuditReportType.OverdueReminders]: "Overdue Reminders",
   [AuditReportType.SecretAccessLog]: "Secret Access Log"
 };
 
@@ -20,7 +19,6 @@ export const AUDIT_REPORT_TYPE_DESCRIPTIONS: Record<AuditReportType, string> = {
   [AuditReportType.UpcomingRotations]: "Rotations scheduled within the next 7 days.",
   [AuditReportType.FailedRotations]: "Rotations currently in a failed state.",
   [AuditReportType.UpcomingReminders]: "Secret reminders due within the next 7 days.",
-  [AuditReportType.OverdueReminders]: "Secret reminders that are past due.",
   [AuditReportType.SecretAccessLog]: "Who accessed secrets over the last 30 days."
 };
 
@@ -31,7 +29,6 @@ export const AUDIT_REPORT_TYPES_ORDERED: AuditReportType[] = [
   AuditReportType.UpcomingRotations,
   AuditReportType.FailedRotations,
   AuditReportType.UpcomingReminders,
-  AuditReportType.OverdueReminders,
   AuditReportType.SecretAccessLog
 ];
 

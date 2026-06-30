@@ -379,25 +379,6 @@ const upcomingRemindersReport: TReportDefinition = {
   }
 };
 
-const overdueRemindersReport: TReportDefinition = {
-  type: AuditReportType.OverdueReminders,
-  label: "Overdue Reminders",
-  inputsSchema: NoInputsSchema,
-  run: async ({ projectId, dal }) => {
-    const now = new Date();
-    const reminders = await dal.reminderDAL.findByProjectAndDateRange({
-      projectId,
-      startDate: new Date(0),
-      endDate: now
-    });
-    return mapReminders(
-      dal,
-      projectId,
-      reminders.filter((reminder) => new Date(reminder.nextReminderDate) < now)
-    );
-  }
-};
-
 const secretAccessLogReport: TReportDefinition = {
   type: AuditReportType.SecretAccessLog,
   label: "Secret Access Log",
@@ -455,6 +436,5 @@ export const AUDIT_REPORT_DEFINITIONS: Record<AuditReportType, TReportDefinition
   [AuditReportType.UpcomingRotations]: upcomingRotationsReport,
   [AuditReportType.FailedRotations]: failedRotationsReport,
   [AuditReportType.UpcomingReminders]: upcomingRemindersReport,
-  [AuditReportType.OverdueReminders]: overdueRemindersReport,
   [AuditReportType.SecretAccessLog]: secretAccessLogReport
 };

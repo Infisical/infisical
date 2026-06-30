@@ -9,7 +9,6 @@ export enum AuditReportType {
   UpcomingRotations = "UPCOMING_ROTATIONS",
   FailedRotations = "FAILED_ROTATIONS",
   UpcomingReminders = "UPCOMING_REMINDERS",
-  OverdueReminders = "OVERDUE_REMINDERS",
   SecretAccessLog = "SECRET_ACCESS_LOG"
 }
 

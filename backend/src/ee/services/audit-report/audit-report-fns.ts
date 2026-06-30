@@ -24,10 +24,14 @@ export const daysSince = (date: Date): number => Math.max(0, Math.floor((Date.no
 
 const CSV_LINE_BREAK = "\r\n";
 
-// RFC 4180 cell escaping: quote when the value contains a comma, quote, CR or LF; double embedded quotes.
+const CSV_FORMULA_TRIGGERS = ["=", "+", "-", "@", "\t", "\r"];
+
 const escapeCsvCell = (value: string | number | null): string => {
   if (value === null) return "";
-  const str = String(value);
+  let str = String(value);
+  if (str.length > 0 && CSV_FORMULA_TRIGGERS.includes(str[0])) {
+    str = `'${str}`;
+  }
   return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 };
 
