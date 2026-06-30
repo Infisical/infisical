@@ -23,6 +23,7 @@ export type TProjectGrantReceived = {
   environmentName: string;
   environmentSlug: string;
   sourceProjectName: string;
+  sourceProjectSlug: string;
   secretCount: number;
 };
 
