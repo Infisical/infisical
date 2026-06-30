@@ -12,7 +12,7 @@ import {
   FieldGroup,
   FieldLabel,
   FilterableSelect,
-  Input,
+  SecretPathInput,
   Select,
   SelectContent,
   SelectItem,
@@ -111,9 +111,10 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
 
             <Field>
               <FieldLabel>Folder path</FieldLabel>
-              <Input
+              <SecretPathInput
                 value={folderPath}
-                onChange={(e) => setFolderPath(e.target.value)}
+                onChange={setFolderPath}
+                environment={environment}
                 placeholder="/"
               />
               <FieldDescription>
