@@ -150,6 +150,14 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
+    name: "gcp-iam",
+    type: PamAccountType.GcpIam,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
+    }
+  },
+  {
     name: "windows",
     type: PamAccountType.Windows,
     settings: {

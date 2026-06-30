@@ -387,6 +387,42 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.GcpIam]: {
+    name: "Google Cloud IAM",
+    icon: "Google Cloud Platform.png",
+    connectionDetails: z.object({
+      serviceAccountEmail: z.string().trim().min(1).max(255)
+    }),
+    credentials: z.discriminatedUnion("authMethod", [
+      z.object({
+        authMethod: z.literal("impersonation")
+      }),
+      z.object({
+        authMethod: z.literal("static-key"),
+        serviceAccountKeyJson: z.string().trim().min(1).max(8192)
+      })
+    ]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string()
+    }),
+    ui: {
+      serviceAccountEmail: { label: "Service Account Email" },
+      authMethod: {
+        label: "Auth Method",
+        defaultValue: "impersonation",
+        options: [
+          { label: "Impersonation (Recommended)", value: "impersonation" },
+          { label: "Static Key", value: "static-key" }
+        ]
+      },
+      serviceAccountKeyJson: {
+        label: "Service Account Key JSON",
+        widget: PamFieldWidget.Textarea,
+        secret: true
+      }
+    }
+  },
+
   [PamAccountType.Windows]: {
     name: "Windows",
     icon: "Windows.png",
@@ -569,6 +605,8 @@ export const extractGatewayTarget = async (
         host: (validated as { hosts: string[]; rdpPort: number }).hosts[0],
         port: (validated as { hosts: string[]; rdpPort: number }).rdpPort
       };
+    case PamAccountType.GcpIam:
+      return { host: "googleapis.com", port: 443 };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
