@@ -64,16 +64,13 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
         .where({ folderId })
-        .leftJoin(TableName.Environment, function joinActiveEnvForFolderCommit() {
+        .innerJoin(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
-        .leftJoin(TableName.Project, function joinActiveProjectForFolderCommit() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Project}.deleteAfter`
-          );
-        })
+        .innerJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where((qb) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
@@ -385,19 +382,16 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex, projectId?: string): Promise<TFolderCommits> => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.FolderCommit)
+      const doc = (await (tx || db.replicaNode())(TableName.FolderCommit)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ id }, TableName.FolderCommit))
-        .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
+        .innerJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
-        .leftJoin(TableName.Project, function joinActiveProjectForFolderCommit() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Project}.deleteAfter`
-          );
-        })
+        .innerJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where((qb) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
@@ -405,7 +399,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         })
         .select(selectAllTableCols(TableName.FolderCommit))
         .orderBy("commitId", "desc")
-        .first();
+        .first()) as TFolderCommits | undefined;
       if (!doc) {
         throw new NotFoundError({
           message: `Folder commit not found for ID ${id}`

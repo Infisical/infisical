@@ -96,16 +96,13 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommitChanges}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
-        .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
+        .innerJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolderCommit() {
           this.on(`${TableName.FolderCommit}.envId`, `${TableName.Environment}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
-        .leftJoin(TableName.Project, function joinActiveProjectForFolderCommit() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Project}.deleteAfter`
-          );
-        })
+        .innerJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where((qb) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
