@@ -93,7 +93,7 @@ export const SecretReferenceWizard = ({
     });
   }, [receivedGrants]);
 
-  const parsedInput = useMemo(() => {
+  const parsedCrossProjectInput = useMemo(() => {
     if (!currentInput.startsWith("@")) return null;
     const segments = currentInput.slice(1).split(".");
     const projectSlug = segments[0] || "";
@@ -106,10 +106,22 @@ export const SecretReferenceWizard = ({
     return { projectSlug, hasProjectDot, envSlug, hasEnvDot, folderSegments, lastSegment };
   }, [currentInput]);
 
-  useEffect(() => {
-    if (!parsedInput) return;
+  const parsedSameProjectInput = useMemo(() => {
+    if (currentInput.startsWith("@") || !currentInput.includes(".")) return null;
+    const segments = currentInput.split(".");
+    const envSlug = segments[0] || "";
+    const hasEnvDot = segments.length > 1;
+    const folderSegments = hasEnvDot ? segments.slice(1, -1) : [];
+    const lastSegment = hasEnvDot ? segments[segments.length - 1] : "";
 
-    const { projectSlug, hasProjectDot, envSlug, hasEnvDot, folderSegments } = parsedInput;
+    return { envSlug, hasEnvDot, folderSegments, lastSegment };
+  }, [currentInput]);
+
+  useEffect(() => {
+    if (!parsedCrossProjectInput) return;
+
+    const { projectSlug, hasProjectDot, envSlug, hasEnvDot, folderSegments } =
+      parsedCrossProjectInput;
 
     if (!hasProjectDot) {
       setState({
@@ -169,13 +181,69 @@ export const SecretReferenceWizard = ({
       env: { slug: matchedEnv.environmentSlug, name: matchedEnv.environmentName },
       secretPath
     });
-  }, [parsedInput, uniqueSourceProjects, receivedGrants]);
+  }, [parsedCrossProjectInput, uniqueSourceProjects, receivedGrants]);
+
+  useEffect(() => {
+    if (!parsedSameProjectInput) return;
+
+    const { envSlug, hasEnvDot, folderSegments } = parsedSameProjectInput;
+    const envs = currentProject?.environments || [];
+
+    const matchedEnv = envs.find((e) => e.slug.toLowerCase() === envSlug.toLowerCase());
+
+    if (!matchedEnv) {
+      setState({
+        ...INITIAL_STATE,
+        tab: "this-project",
+        step: "env"
+      });
+      return;
+    }
+
+    if (!hasEnvDot) {
+      setState({
+        ...INITIAL_STATE,
+        tab: "this-project",
+        step: "env"
+      });
+      return;
+    }
+
+    const secretPath = folderSegments.length > 0 ? `/${folderSegments.join("/")}/` : "/";
+
+    setState({
+      tab: "this-project",
+      step: "browse",
+      selectedProjectGrant: null,
+      env: { slug: matchedEnv.slug, name: matchedEnv.name },
+      secretPath
+    });
+  }, [parsedSameProjectInput, currentProject?.environments]);
 
   const projectFilter =
-    parsedInput && !parsedInput.hasProjectDot ? parsedInput.projectSlug.toLowerCase() : "";
-  const envFilter =
-    parsedInput?.hasProjectDot && !parsedInput.hasEnvDot ? parsedInput.envSlug.toLowerCase() : "";
-  const browseFilter = parsedInput?.hasEnvDot ? parsedInput.lastSegment.toLowerCase() : "";
+    parsedCrossProjectInput && !parsedCrossProjectInput.hasProjectDot
+      ? parsedCrossProjectInput.projectSlug.toLowerCase()
+      : "";
+
+  const envFilter = (() => {
+    if (parsedCrossProjectInput?.hasProjectDot && !parsedCrossProjectInput.hasEnvDot)
+      return parsedCrossProjectInput.envSlug.toLowerCase();
+    if (
+      !parsedCrossProjectInput &&
+      !parsedSameProjectInput &&
+      currentInput &&
+      !currentInput.startsWith("@")
+    )
+      return currentInput.toLowerCase();
+    return "";
+  })();
+
+  const browseFilter = (() => {
+    if (parsedCrossProjectInput?.hasEnvDot)
+      return parsedCrossProjectInput.lastSegment.toLowerCase();
+    if (parsedSameProjectInput?.hasEnvDot) return parsedSameProjectInput.lastSegment.toLowerCase();
+    return "";
+  })();
 
   const availableEnvs = useMemo(() => {
     if (state.tab === "this-project") {

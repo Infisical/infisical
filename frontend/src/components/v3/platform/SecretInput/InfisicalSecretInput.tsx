@@ -71,11 +71,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const openRefLeft = (() => {
       const left = getIndexOfUnclosedRefToTheLeft(debouncedValue, currentCursorPosition - 1);
       if (left === -1) return -1;
-      const partial = debouncedValue.slice(left + 1, currentCursorPosition);
-      // Cross-project refs (starting with @) keep the wizard open through dots
-      if (partial.startsWith("@")) return left;
-      // For same-project refs, dots are handled inline, wizard is only for fresh ${
-      if (partial.includes(".")) return -1;
       return left;
     })();
 
