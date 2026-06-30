@@ -95,7 +95,7 @@ export const RequestAuditReportModal = ({ isOpen, onOpenChange, projectId }: Pro
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Generate Audit Report</DialogTitle>
           <DialogDescription>

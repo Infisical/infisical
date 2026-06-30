@@ -1,13 +1,9 @@
 import { formatRelative } from "date-fns";
-import { FileTextIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -170,137 +166,119 @@ export const AuditReportsCard = () => {
           </Empty>
         )}
         {!isPending && totalCount > 0 && (
-          <Accordion type="single" collapsible defaultValue="history-closed">
-            <AccordionItem value="history">
-              <AccordionTrigger>
-                <div className="flex flex-1 items-center gap-2">
-                  <FileTextIcon className="size-3.5 text-muted" />
-                  <span className="text-sm text-foreground">Report History</span>
-                  <Badge variant="neutral" className="font-normal">
-                    {totalCount}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="group-data-[variant=default]/accordion:p-0">
-                <Table
-                  containerClassName="rounded-t-none overflow-x-hidden"
-                  className="table-fixed"
-                >
-                  <TableHeader className="bg-mineshaft-800">
-                    <TableRow>
-                      <TableHead className="h-10 w-[30%]">REPORTS</TableHead>
-                      <TableHead className="h-10 w-[28%]">RECIPIENTS</TableHead>
-                      <TableHead className="h-10 w-[14%]">STATUS</TableHead>
-                      <TableHead className="h-10">REQUESTED</TableHead>
-                      <TableHead className="h-10 w-12" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reports.map((report) => (
-                      <TableRow key={report.id} className="group/row bg-mineshaft-900">
-                        <TableCell isTruncatable className="max-w-0">
-                          {report.reportConfigs.length <= 1 ? (
-                            <span className="block truncate">
-                              {report.reportConfigs[0]
-                                ? AUDIT_REPORT_TYPE_LABELS[report.reportConfigs[0].type]
-                                : ""}
-                            </span>
-                          ) : (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="block truncate">
-                                    {report.reportConfigs
-                                      .map((config) => AUDIT_REPORT_TYPE_LABELS[config.type])
-                                      .join(", ")}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="flex max-w-sm flex-col gap-0.5">
-                                  {report.reportConfigs.map((config) => (
-                                    <span key={config.type}>
-                                      {AUDIT_REPORT_TYPE_LABELS[config.type]}
-                                    </span>
-                                  ))}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </TableCell>
-                        <TableCell isTruncatable className="max-w-0">
-                          {report.emailRecipients.length <= 1 ? (
-                            <span className="block truncate text-muted">
-                              {report.emailRecipients[0] ?? ""}
-                            </span>
-                          ) : (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="flex items-center gap-1.5 text-muted">
-                                    <span className="truncate">{report.emailRecipients[0]}</span>
-                                    <Badge variant="neutral" className="shrink-0 font-normal">
-                                      +{report.emailRecipients.length - 1} more
-                                    </Badge>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="flex max-w-sm flex-col gap-0.5">
-                                  {report.emailRecipients.map((email) => (
-                                    <span key={email}>{email}</span>
-                                  ))}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <ReportStatusBadge report={report} />
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-muted">
-                            {formatRelative(new Date(report.createdAt), new Date())}
-                          </span>
-                        </TableCell>
-                        <TableCell className="pr-5">
-                          <ProjectPermissionCan
-                            I={ProjectPermissionAuditReportActions.Delete}
-                            a={ProjectPermissionSub.AuditReports}
-                          >
-                            {(isAllowed) => (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <IconButton
-                                      variant="ghost"
-                                      size="sm"
-                                      aria-label="Delete report"
-                                      isDisabled={!isAllowed}
-                                      className="opacity-0 transition-opacity group-hover/row:opacity-100"
-                                      onClick={() => handlePopUpOpen("deleteReport", report)}
-                                    >
-                                      <Trash2Icon className="size-3.5" />
-                                    </IconButton>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete report</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </ProjectPermissionCan>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="p-2">
-                  <Pagination
-                    count={totalCount}
-                    page={page}
-                    perPage={perPage}
-                    onChangePage={setPage}
-                    onChangePerPage={setPerPage}
-                  />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <>
+            <Table containerClassName="overflow-x-hidden" className="table-fixed">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="h-10 w-[30%]">REPORTS</TableHead>
+                  <TableHead className="h-10 w-[28%]">RECIPIENTS</TableHead>
+                  <TableHead className="h-10 w-[14%]">STATUS</TableHead>
+                  <TableHead className="h-10">REQUESTED</TableHead>
+                  <TableHead className="h-10 w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reports.map((report) => (
+                  <TableRow key={report.id} className="group/row">
+                    <TableCell isTruncatable className="max-w-0">
+                      {report.reportConfigs.length <= 1 ? (
+                        <span className="block truncate">
+                          {report.reportConfigs[0]
+                            ? AUDIT_REPORT_TYPE_LABELS[report.reportConfigs[0].type]
+                            : ""}
+                        </span>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block truncate">
+                                {report.reportConfigs
+                                  .map((config) => AUDIT_REPORT_TYPE_LABELS[config.type])
+                                  .join(", ")}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="flex max-w-sm flex-col gap-0.5">
+                              {report.reportConfigs.map((config) => (
+                                <span key={config.type}>
+                                  {AUDIT_REPORT_TYPE_LABELS[config.type]}
+                                </span>
+                              ))}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </TableCell>
+                    <TableCell isTruncatable className="max-w-0">
+                      {report.emailRecipients.length <= 1 ? (
+                        <span className="block truncate text-muted">
+                          {report.emailRecipients[0] ?? ""}
+                        </span>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1.5 text-muted">
+                                <span className="truncate">{report.emailRecipients[0]}</span>
+                                <Badge variant="neutral" className="shrink-0 font-normal">
+                                  +{report.emailRecipients.length - 1} more
+                                </Badge>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="flex max-w-sm flex-col gap-0.5">
+                              {report.emailRecipients.map((email) => (
+                                <span key={email}>{email}</span>
+                              ))}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <ReportStatusBadge report={report} />
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-muted">
+                        {formatRelative(new Date(report.createdAt), new Date())}
+                      </span>
+                    </TableCell>
+                    <TableCell className="pr-5">
+                      <ProjectPermissionCan
+                        I={ProjectPermissionAuditReportActions.Delete}
+                        a={ProjectPermissionSub.AuditReports}
+                      >
+                        {(isAllowed) => (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <IconButton
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label="Delete report"
+                                  isDisabled={!isAllowed}
+                                  className="opacity-0 transition-opacity group-hover/row:opacity-100"
+                                  onClick={() => handlePopUpOpen("deleteReport", report)}
+                                >
+                                  <Trash2Icon className="size-3.5" />
+                                </IconButton>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete report</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </ProjectPermissionCan>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={setPerPage}
+            />
+          </>
         )}
       </CardContent>
       <RequestAuditReportModal
