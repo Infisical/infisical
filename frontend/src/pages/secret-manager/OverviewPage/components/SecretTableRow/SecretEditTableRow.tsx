@@ -1294,7 +1294,7 @@ export const SecretEditTableRow = ({
               <TooltipTrigger asChild>
                 <IconButton
                   variant="ghost"
-                  className="hover:text-error size-6 border-0"
+                  className="hover:text-error size-7 border-0"
                   size="xs"
                   onClick={() => onBatchRevert?.(environment, secretName)}
                 >
@@ -1315,7 +1315,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-6 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0 text-muted hover:text-foreground"
                         onClick={() => setIsCommentOpen(true)}
                       >
                         <MessageSquareIcon className="size-3.5" />
@@ -1330,7 +1330,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-6 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0 text-muted hover:text-foreground"
                         onClick={() => setIsTagOpen(true)}
                       >
                         <TagsIcon className="size-3.5" />
@@ -1345,7 +1345,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-6 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0 text-muted hover:text-foreground"
                         onClick={() => setIsReminderOpen(true)}
                       >
                         <BellIcon className="size-3.5" />
@@ -1360,7 +1360,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-6 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0 text-muted hover:text-foreground"
                         onClick={() => setIsMetadataOpen(true)}
                       >
                         <CodeXmlIcon className="size-3.5" />
@@ -1377,7 +1377,7 @@ export const SecretEditTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className="size-6 border-0 text-muted hover:text-foreground"
+                className="size-7 border-0 text-muted hover:text-foreground"
                 isDisabled={
                   isPendingDelete ||
                   isImportedSecret ||
@@ -1410,7 +1410,7 @@ export const SecretEditTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className="size-6 border-0 text-muted hover:text-foreground"
+                className="size-7 border-0 text-muted hover:text-foreground"
                 isDisabled={isPendingDelete || !canCopySecret}
                 onClick={handleCopySharedToClipboard}
               >
@@ -1438,7 +1438,7 @@ export const SecretEditTableRow = ({
                   <IconButton
                     variant="ghost"
                     size="xs"
-                    className="size-6 border-0 text-muted hover:text-foreground"
+                    className="size-7 border-0 text-muted hover:text-foreground"
                   >
                     <EllipsisIcon />
                   </IconButton>
