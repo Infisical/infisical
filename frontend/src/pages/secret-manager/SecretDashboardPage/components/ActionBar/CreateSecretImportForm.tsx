@@ -6,18 +6,14 @@ import { InfoIcon, Key } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretPathInput } from "@app/components/v3";
 import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogDescription,
   DialogTitle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   Field,
   FieldContent,
   FieldDescription,
@@ -29,6 +25,7 @@ import {
   ItemDescription,
   ItemMedia,
   ItemTitle,
+  SecretPathInput,
   Select,
   SelectContent,
   SelectItem,
@@ -37,7 +34,10 @@ import {
   Tabs,
   TabsContent,
   TabsList,
-  TabsTrigger
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
@@ -289,7 +289,6 @@ export const CreateSecretImportForm = ({
 
     return (
       <div className="space-y-4">
-
         <Field>
           <FieldLabel>Project</FieldLabel>
           <FieldContent>
@@ -395,8 +394,7 @@ export const CreateSecretImportForm = ({
                   import: {
                     sourceProjectId: selectedGrant.sourceProjectId,
                     environment: selectedGrant.environmentSlug,
-                    path:
-                      selectedGrant.folderName === "root" ? "/" : `/${selectedGrant.folderName}`
+                    path: selectedGrant.folderName === "root" ? "/" : `/${selectedGrant.folderName}`
                   }
                 });
                 handleClose();
@@ -456,10 +454,13 @@ export const CreateSecretImportForm = ({
                     <li className="text-mineshaft-200">
                       <strong className="font-medium text-mineshaft-100">This Project</strong> —
                       Inherit secrets from another environment or folder within{" "}
-                      <strong className="font-medium text-mineshaft-100">{currentProject?.name ?? "this project"}</strong>.
+                      <strong className="font-medium text-mineshaft-100">
+                        {currentProject?.name ?? "this project"}
+                      </strong>
+                      .
                       <p className="mt-2">
-                        Recommended when you want to reuse secrets across environments or folders
-                        in the same project.
+                        Recommended when you want to reuse secrets across environments or folders in
+                        the same project.
                       </p>
                     </li>
                     <li className="text-mineshaft-200">

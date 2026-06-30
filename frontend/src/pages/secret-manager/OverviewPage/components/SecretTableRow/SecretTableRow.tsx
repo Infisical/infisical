@@ -351,7 +351,9 @@ export const SecretTableRow = ({
                 {secretKey}
               </span>
               {!isFormExpanded &&
-                environments.some(({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectGrant) && (
+                environments.some(
+                  ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectGrant
+                ) && (
                   <Badge variant="danger">
                     <BanIcon className="size-3.5" />
                     Access Revoked

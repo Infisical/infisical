@@ -9,8 +9,8 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useDebounce, useToggle } from "@app/hooks";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
-import { SecretReferenceWizard } from "./SecretReferenceWizard";
 import { SecretInput } from "./SecretInput";
+import { SecretReferenceWizard } from "./SecretReferenceWizard";
 
 const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
   for (let i = pos; i >= 1; i -= 1) {
@@ -251,14 +251,18 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             align="start"
             onOpenAutoFocus={(e) => e.preventDefault()}
             onMouseDown={(e) => e.preventDefault()}
-            className="relative top-2 z-[100] max-h-80 overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md thin-scrollbar"
+            className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
             style={{ width: "var(--radix-popover-trigger-width)", minWidth: "320px" }}
           >
             <SecretReferenceWizard
               isEnabled={isPopupOpen}
               onSelect={handleWizardSelect}
               onFocusItem={() => inputRef.current?.focus()}
-              currentInput={openRefLeft !== -1 ? debouncedValue.slice(openRefLeft + 1, currentCursorPosition) : ""}
+              currentInput={
+                openRefLeft !== -1
+                  ? debouncedValue.slice(openRefLeft + 1, currentCursorPosition)
+                  : ""
+              }
             />
           </PopoverPrimitive.Content>
         </PopoverPrimitive.Portal>

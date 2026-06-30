@@ -6,7 +6,8 @@ import { TProjectGrant, TProjectGrantReceived } from "./types";
 
 export const projectGrantKeys = {
   listByProject: (sourceProjectId: string) => [{ sourceProjectId }, "project-grants"] as const,
-  listReceived: (targetProjectId: string) => [{ targetProjectId }, "project-grants-received"] as const
+  listReceived: (targetProjectId: string) =>
+    [{ targetProjectId }, "project-grants-received"] as const
 };
 
 export const useListProjectGrants = (sourceProjectId: string) =>
