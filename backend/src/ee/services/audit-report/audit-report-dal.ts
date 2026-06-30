@@ -27,7 +27,7 @@ export const auditReportDALFactory = (db: TDbClient) => {
         .limit(limit);
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindByProject - Audit Report" });
+      throw new DatabaseError({ error, name: "FindAuditReportsByProject" });
     }
   };
 
@@ -39,7 +39,7 @@ export const auditReportDALFactory = (db: TDbClient) => {
         .first<{ count: string | number } | undefined>();
       return Number(result?.count ?? 0);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CountByProject - Audit Report" });
+      throw new DatabaseError({ error, name: "CountAuditReportsByProject" });
     }
   };
 
@@ -52,7 +52,7 @@ export const auditReportDALFactory = (db: TDbClient) => {
         .first<{ count: string | number } | undefined>();
       return Number(result?.count ?? 0);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CountInFlightByProject - Audit Report" });
+      throw new DatabaseError({ error, name: "CountInFlightAuditReportsByProject" });
     }
   };
 

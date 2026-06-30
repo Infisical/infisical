@@ -1348,9 +1348,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  // All non-personal secrets in a project that carry a value, with just the fields needed to evaluate
-  // them against secret validation rules (key for key-constraints, encryptedValue for value-constraints,
-  // folderId to resolve the secret's path/environment for rule matching).
   const findValueValidationCandidatesByProject = async (projectId: string, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.SecretV2)

@@ -24,34 +24,29 @@ export enum AuditReportStatus {
 
 // Hard ceiling on rows per individual report. Beyond this the report is marked truncated.
 export const MAX_AUDIT_REPORT_ROWS = 100_000;
-// Max number of in-flight (pending/processing) report batches per project, to bound DB-heavy work.
-export const MAX_CONCURRENT_AUDIT_REPORTS = 5;
 
-// One requested report within a batch. `inputs` is validated against the matching report definition's
-// schema by the service before persistence, so stored inputs are always canonical.
+export const MAX_CONCURRENT_AUDIT_REPORTS = 1;
+
 export type TAuditReportConfig = {
   type: AuditReportType;
   inputs: Record<string, unknown>;
 };
 
-// Per-report outcome recorded on the batch once generation completes.
 export const AuditReportResultEntrySchema = z.object({
   type: z.nativeEnum(AuditReportType),
   rowCount: z.number(),
   truncated: z.boolean()
 });
+
 export type TAuditReportResultEntry = z.infer<typeof AuditReportResultEntrySchema>;
 
-// A single generated report's tabular payload. Cells are pre-stringified at the generator boundary so
-// CSV serialization is a pure formatting step with no per-type knowledge.
 export type TReportRow = Record<string, string | number | null>;
+
 export type TGeneratedReport = {
   columns: string[];
   rows: TReportRow[];
   truncated: boolean;
 };
-
-// ─── Service DTOs ─────────────────────────────────────────────────────────────
 
 export type TRequestAuditReportDTO = {
   projectId: string;
@@ -80,4 +75,10 @@ export type TAuditReportServiceActor = OrgServiceActor;
 // Job payload for the generation queue.
 export type TGenerateAuditReportJobPayload = {
   auditReportId: string;
+};
+
+export type TSecretToValidate = {
+  key: string;
+  value?: string;
+  previousValues?: string[];
 };

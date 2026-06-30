@@ -34,9 +34,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "requestAuditReport",
-      description: "Request generation of one or more audit reports, delivered by email as CSV attachments",
-      security: [{ bearerAuth: [] }],
+      hide: true,
       body: z.object({
         projectId: z.string().trim(),
         reports: z
@@ -46,12 +44,8 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
               inputs: z.record(z.unknown()).optional()
             })
           )
-          .min(1)
-          .describe("The report types to generate, each with optional type-specific inputs."),
-        emailRecipients: z
-          .array(z.string().email())
-          .optional()
-          .describe("Email addresses to deliver the reports to. Defaults to the requesting user's email.")
+          .min(1),
+        emailRecipients: z.array(z.string().email()).optional()
       }),
       response: {
         200: AuditReportSchema
@@ -59,7 +53,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const report = await server.services.auditReport.requestReport(req.body, req.permission);
+      const report = await server.services.auditReport.generateReport(req.body, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {
@@ -82,9 +76,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "listAuditReports",
-      description: "List audit reports for a project",
-      security: [{ bearerAuth: [] }],
+      hide: true,
       querystring: z.object({
         projectId: z.string().trim(),
         offset: z.coerce.number().min(0).default(0),
@@ -115,9 +107,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     url: "/:auditReportId",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "getAuditReport",
-      description: "Get a single audit report by ID",
-      security: [{ bearerAuth: [] }],
+      hide: true,
       params: z.object({ auditReportId: z.string().uuid() }),
       querystring: z.object({ projectId: z.string().trim() }),
       response: {
@@ -147,9 +137,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     url: "/:auditReportId",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "deleteAuditReport",
-      description: "Delete an audit report",
-      security: [{ bearerAuth: [] }],
+      hide: true,
       params: z.object({ auditReportId: z.string().uuid() }),
       querystring: z.object({ projectId: z.string().trim() }),
       response: {

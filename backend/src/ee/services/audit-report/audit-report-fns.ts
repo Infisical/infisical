@@ -2,13 +2,20 @@ import { z } from "zod";
 
 import { TAuditReports } from "@app/db/schemas";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import {
+  CONSTRAINT_LABELS,
+  evaluateConstraint,
+  TStaticSecretConstraintViolation
+} from "@app/services/secret-validation-rule/secret-validation-rule-fns";
+import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
   AuditReportType,
   MAX_AUDIT_REPORT_ROWS,
-  TGeneratedReport
+  TGeneratedReport,
+  TSecretToValidate
 } from "./audit-report-types";
 
 export const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -26,15 +33,11 @@ const escapeCsvCell = (value: string | number | null): string => {
 
 const toCsvRow = (cells: (string | number | null)[]): string => cells.map(escapeCsvCell).join(",");
 
-// One report's block within the bundled CSV: a labelled section with its own column headers.
 export type TAuditReportSection = {
   title: string;
   report: TGeneratedReport;
 };
 
-// Serialize every requested report into a SINGLE CSV file. Each report becomes its own section
-// (title row → its column headers → its rows) so heterogeneous reports keep their natural columns,
-// preceded by a small metadata header. Sections are separated by a blank line for spreadsheet readability.
 export const serializeReportBundle = ({
   projectName,
   generatedAt,
@@ -88,14 +91,12 @@ export const buildFolderPathMap = async (
   return pathByFolderId;
 };
 
-// jsonb columns surface as `unknown` from the generated schema; validate (never cast) on read.
 const StoredReportConfigsSchema = z.array(
   z.object({
     type: z.nativeEnum(AuditReportType),
     inputs: z.record(z.unknown())
   })
 );
-const StoredResultSummarySchema = z.array(AuditReportResultEntrySchema);
 
 export const presentAuditReport = (report: TAuditReports) => ({
   id: report.id,
@@ -104,10 +105,29 @@ export const presentAuditReport = (report: TAuditReports) => ({
   status: z.nativeEnum(AuditReportStatus).parse(report.status),
   reportConfigs: StoredReportConfigsSchema.parse(report.reportConfigs),
   emailRecipients: report.emailRecipients,
-  resultSummary: report.resultSummary == null ? null : StoredResultSummarySchema.parse(report.resultSummary),
+  resultSummary:
+    report.resultSummary == null ? null : z.array(AuditReportResultEntrySchema).parse(report.resultSummary),
   errorMessage: report.errorMessage ?? null,
   createdAt: report.createdAt,
   updatedAt: report.updatedAt
 });
 
 export type TPresentedAuditReport = ReturnType<typeof presentAuditReport>;
+
+export const evaluateStaticSecretConstraints = (
+  constraints: TConstraint[],
+  secret: TSecretToValidate
+): TStaticSecretConstraintViolation[] => {
+  const violations: TStaticSecretConstraintViolation[] = [];
+  for (const constraint of constraints) {
+    const error = evaluateConstraint(constraint, secret);
+    if (error) {
+      violations.push({
+        constraintType: constraint.type,
+        constraintLabel: CONSTRAINT_LABELS[constraint.type],
+        message: error
+      });
+    }
+  }
+  return violations;
+};

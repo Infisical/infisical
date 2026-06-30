@@ -18,8 +18,6 @@ import { SecretValidationRuleType } from "@app/services/secret-validation-rule/s
 import { buildFolderPathMap, DAY_IN_MS, daysSince } from "./audit-report-fns";
 import { AuditReportType, MAX_AUDIT_REPORT_ROWS, TGeneratedReport, TReportRow } from "./audit-report-types";
 
-// The DALs every generator may draw from. Narrowed with Pick so the dependency contract is explicit and
-// the same data-access layer the Insights feature uses is reused verbatim (no duplicate queries).
 export type TAuditReportGeneratorDALs = {
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -56,8 +54,6 @@ const applyRowCap = <T>(items: T[]): { items: T[]; truncated: boolean } => {
   }
   return { items, truncated: false };
 };
-
-// ─── Shared mappers ───────────────────────────────────────────────────────────
 
 const ROTATION_COLUMNS = [
   "rotationName",
@@ -213,8 +209,6 @@ const duplicateSecretsReport: TReportDefinition = {
       projectId
     });
 
-    // Drop groups whose shared value is actually a secret reference (false-positive duplicates),
-    // mirroring the Insights duplication logic.
     const realGroups = groups.filter((group) => {
       const [firstSecret] = group.secrets;
       if (!firstSecret) return false;

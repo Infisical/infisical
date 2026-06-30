@@ -52,9 +52,7 @@ export const auditReportServiceFactory = ({
   userDAL,
   queueService
 }: TAuditReportServiceFactoryDep) => {
-  // Audit reports share the Secret Insights entitlement (license) but have their own permission subject
-  // with granular Create/Read/Delete actions.
-  const checkPermission = async (
+  const $checkPermission = async (
     projectId: string,
     actor: TAuditReportServiceActor,
     action: ProjectPermissionAuditReportActions
@@ -80,7 +78,7 @@ export const auditReportServiceFactory = ({
 
   // Validate each requested report against its definition's input schema, applying defaults so the stored
   // config is canonical. Rejects unknown/duplicate types and malformed inputs before anything is persisted.
-  const buildReportConfigs = (reports: TRequestAuditReportDTO["reports"]): TAuditReportConfig[] => {
+  const $buildReportConfigs = (reports: TRequestAuditReportDTO["reports"]): TAuditReportConfig[] => {
     if (!reports.length) {
       throw new BadRequestError({ message: "At least one report must be requested" });
     }
@@ -109,7 +107,7 @@ export const auditReportServiceFactory = ({
     });
   };
 
-  const resolveRecipients = async (
+  const $resolveRecipients = async (
     requestedRecipients: string[] | undefined,
     actor: TAuditReportServiceActor
   ): Promise<string[]> => {
@@ -129,8 +127,8 @@ export const auditReportServiceFactory = ({
     throw new BadRequestError({ message: "At least one email recipient is required" });
   };
 
-  const requestReport = async (dto: TRequestAuditReportDTO, actor: TAuditReportServiceActor) => {
-    await checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Create);
+  const generateReport = async (dto: TRequestAuditReportDTO, actor: TAuditReportServiceActor) => {
+    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Create);
 
     const project = await projectDAL.findById(dto.projectId);
     if (!project) {
@@ -144,8 +142,8 @@ export const auditReportServiceFactory = ({
       throw new BadRequestError({ message: "Audit reports are not supported for this project version" });
     }
 
-    const reportConfigs = buildReportConfigs(dto.reports);
-    const emailRecipients = await resolveRecipients(dto.emailRecipients, actor);
+    const reportConfigs = $buildReportConfigs(dto.reports);
+    const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor);
 
     const inFlightCount = await auditReportDAL.countInFlightByProject(dto.projectId);
     if (inFlightCount >= MAX_CONCURRENT_AUDIT_REPORTS) {
@@ -183,7 +181,7 @@ export const auditReportServiceFactory = ({
   };
 
   const listReports = async (dto: TListAuditReportsDTO, actor: TAuditReportServiceActor) => {
-    await checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Read);
+    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Read);
 
     const reports = await auditReportDAL.findByProject(dto.projectId, {
       offset: dto.offset,
@@ -194,7 +192,7 @@ export const auditReportServiceFactory = ({
   };
 
   const getReportById = async (dto: TGetAuditReportDTO, actor: TAuditReportServiceActor) => {
-    await checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Read);
+    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Read);
 
     const report = await auditReportDAL.findById(dto.auditReportId);
     if (!report || report.projectId !== dto.projectId) {
@@ -205,7 +203,7 @@ export const auditReportServiceFactory = ({
   };
 
   const deleteReport = async (dto: TDeleteAuditReportDTO, actor: TAuditReportServiceActor) => {
-    await checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Delete);
+    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Delete);
 
     const report = await auditReportDAL.findById(dto.auditReportId);
     if (!report || report.projectId !== dto.projectId) {
@@ -217,7 +215,7 @@ export const auditReportServiceFactory = ({
   };
 
   return {
-    requestReport,
+    generateReport,
     listReports,
     getReportById,
     deleteReport

@@ -200,7 +200,7 @@ type TValidationViolation = {
   message: string;
 };
 
-const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
+export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.MinLength]: "Minimum length",
   [ConstraintType.MaxLength]: "Maximum length",
   [ConstraintType.RegexPattern]: "Regex pattern",
@@ -215,7 +215,7 @@ const TARGET_LABELS: Record<ConstraintTarget, string> = {
   [ConstraintTarget.GeneratedPassword]: "password"
 };
 
-const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
+export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
   // Skip value constraints when no value mutation is occurring (e.g. key-only rename)
   if (constraint.appliesTo === ConstraintTarget.SecretValue && secret.value === undefined) {
     return null;
