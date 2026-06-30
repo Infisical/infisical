@@ -333,6 +333,7 @@ export enum ProjectPermissionApprovalRequestGrantActions {
 }
 
 export enum ProjectPermissionProjectGrantActions {
+  ReadGrant = "read-grant",
   CreateGrant = "create-grant",
   RevokeGrant = "revoke-grant"
 }
