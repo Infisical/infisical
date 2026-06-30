@@ -215,12 +215,7 @@ export const pamSessionServiceFactory = ({
 
     if (account.accountType === PamAccountType.GcpIam) {
       const serviceAccountEmail = connectionDetails.serviceAccountEmail as string;
-      const remainingSeconds = Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000);
-      if (remainingSeconds < 60) {
-        throw new BadRequestError({
-          message: `GCP IAM session has insufficient time remaining (${remainingSeconds}s) to generate an access token`
-        });
-      }
+      const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
 
       let sourceClient;
