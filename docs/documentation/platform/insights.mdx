@@ -4,28 +4,30 @@ sidebarTitle: "Insights"
 description: "Monitor upcoming rotations, reminders, stale secrets, and secret access patterns across your project."
 ---
 
+<Note>
+  Secret Insights is a paid feature.
+
+  On Infisical Cloud it is available on the Pro and Enterprise plans, If you're self-hosting Infisical, contact sales@infisical.com to acquire a license.
+</Note>
+
 Secret Insights is an observability dashboard for your Secrets Management project. It surfaces the questions you care about most — *Which secrets are due for rotation? Which reminders are overdue? What hasn't been touched in months? Who's actually reading my secrets?* — and links you straight to the secrets you need to act on.
 
 The page is read-only. Every metric is computed from data already collected by Infisical (rotation schedules, reminders, secret modification times, access logs), so there's nothing to configure to start using it.
 
 ![Secret Insights dashboard](/images/platform/insights/overview.png)
 
-<Info>
-  Secret Insights is a paid feature.
-
-  On Infisical Cloud it is available on plans that include `secretAccessInsights`. If you're self-hosting Infisical, contact sales@infisical.com for an enterprise license.
-
-  Viewing the page also requires the **Insights → Read** project permission.
-</Info>
 
 ## Accessing Insights
 
 From a Secret Manager project, open the **Insights** tab in the project sidebar. The page is divided into four sections:
 
-- **Summary cards** — three at-a-glance counters for rotations, reminders, and stale secrets.
+- **Summary Cards** — three at-a-glance counters for rotations, reminders, and stale secrets.
+- **Audit Reports** — Generate point-in-time compliance exports.
 - **Rotation & Reminder Calendar** — a month-by-month view of every upcoming rotation and reminder.
 - **Secret Access Volume** — read-request trends over the past 7 days, plus the top callers.
 - **Authentication Methods** — how identities are authenticating to read secrets, over the past 30 days.
+
+The page also includes an **Audit Reports** card for generating exportable compliance reports — see [Audit Reports](#audit-reports).
 
 ## Summary
 
@@ -66,6 +68,99 @@ The card shows either **All secrets up to date** when nothing is stale, or **{N}
 Stale secrets aren't necessarily a problem — long-lived configuration values are normal. The list is meant as a prompt to review whether anything should be rotated, removed, or refreshed.
 
 ![Secret Insights stale secrets](/images/platform/insights/stale.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Audit Reports
+
+Audit Reports let you generate point-in-time compliance exports for a Secrets Management project — stale secrets, duplicate values, validation-rule violations, rotation status, upcoming reminders, and secret access history — and deliver them to one or more recipients as a single CSV file attached to an email.
+
+Where the rest of the Insights dashboard is a live, read-only view, an Audit Report is a snapshot you can hand to an auditor, attach to a ticket, or archive for SOC 2 / ISO 27001 evidence. You'll find it as the **Audit Reports** card on the Insights page.
+
+<Warning>
+  Audit reports can contain sensitive metadata — secret keys, paths, access patterns, and recipient emails. They are delivered by email to the addresses you specify; only send reports to recipients you trust, and treat the CSV as confidential.
+</Warning>
+
+### Generating a report
+
+1. Open the **Insights** tab and find the **Audit Reports** card.
+2. Click **Generate Report**.
+3. In the dialog, select one or more [report types](#report-types).
+4. (Optional) Enter one or more **email recipients**, comma-separated. If you leave this blank, the report is sent to your own email.
+5. Click **Generate Report**.
+
+![overview-screen](/images/platform/insights/audit-reports/generate-report.png)
+
+The request is queued and generated in the background. When it finishes, every recipient receives an email with a single CSV file attached. You can keep working — the report's status updates live in the history table.
+
+<Note>
+  Report generation is asynchronous. A project can have at most one report generating at once. 
+</Note>
+
+### Report history
+
+The Audit Reports card lists previously requested reports, newest first, paginated (10 per page by default). Each row shows:
+
+- **Reports** — the report type(s) included in that request. Hover to see the full list when multiple are combined.
+- **Recipients** — the email addresses of the recipients who has received the audit report.
+- **Status** — the generation status (see below). Hover a **Failed** or **Partial** badge for details.
+- **Requested** — when the report was requested.
+
+Use the trash icon on a row to delete a report from the history (requires the `Delete` permission).
+
+| Status | Meaning |
+|---|---|
+| **Pending** | Queued, not yet started. |
+| **Generating** | Currently being generated. |
+| **Completed** | Generated and emailed successfully. |
+| **Partial** | Delivered, but at least one report hit the row limit and was truncated. |
+| **Failed** | Generation failed. Hover the badge for the error message. |
+
+![report-history](/images/platform/insights/audit-reports/report-history.png)
+
+### Report types
+
+A single request can include any combination of the following. Each becomes its own labelled section in the CSV.
+
+| Report | What it contains |
+|---|---|
+| **Stale Secrets** | Secrets not updated within the last 90 days, with their last-updated time and age in days. |
+| **Duplicate Secrets** | Secrets that share the same value across environments and paths, grouped together. Requires the project's secret blind-index to be enabled. |
+| **Secret Validation Compliance** | Stored secrets that violate a secret validation rule covering them — for example, a secret created before a rule existed, or one that no longer meets a length/regex/prefix constraint. |
+| **Upcoming Rotations** | Secret rotations scheduled within the next 7 days. |
+| **Failed Rotations** | Secret rotations currently in a failed state. |
+| **Upcoming Reminders** | Secret reminders due within the next 7 days. |
+| **Secret Access Log** | Who accessed secrets over the last 30 days (actor, event type, secret, environment, path, IP, timestamp). |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Rotation & Reminder Calendar
 
