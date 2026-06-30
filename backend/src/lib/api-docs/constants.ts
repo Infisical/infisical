@@ -3242,6 +3242,10 @@ export const SecretSyncs = {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
       dataBagItemName: "The name of the Chef data bag item to sync secrets to."
     },
+    CLOUD66: {
+      stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
+      stackName: "The name of the Cloud 66 stack to sync secrets to."
+    },
     NORTHFLANK: {
       projectId: "The ID of the Northflank project to sync secrets to.",
       projectName: "The name of the Northflank project to sync secrets to.",

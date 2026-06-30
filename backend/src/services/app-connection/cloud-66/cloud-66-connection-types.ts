@@ -20,3 +20,8 @@ export type TValidateCloud66ConnectionCredentialsSchema = typeof ValidateCloud66
 export type TCloud66ConnectionConfig = DiscriminativePick<TCloud66ConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export type TCloud66Stack = {
+  id: string;
+  name: string;
+};

@@ -1,0 +1,38 @@
+---
+title: "Cloud 66 Connection"
+description: "Learn how to configure a Cloud 66 Connection for Infisical using a Personal Access Token."
+---
+
+Infisical supports connecting to Cloud 66 using a **Personal Access Token**.
+
+## Setup Cloud 66 Connection in Infisical
+
+<Steps>
+  <Step title="Generate a Cloud 66 Personal Access Token">
+    Log in to your [Cloud 66 account](https://app.cloud66.com) and navigate to your account's **Personal Access Tokens** settings to create a new token.
+
+    Ensure the token has permission to read your stacks and manage their environment variables.
+
+    <Warning>
+      Keep your Personal Access Token secure and do not share it. Anyone with access to this token can manage your Cloud 66 stacks.
+    </Warning>
+  </Step>
+  <Step title="Navigate to App Connections">
+    Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Cloud 66 Connection** option from the connection options modal.
+  </Step>
+  <Step title="Configure Personal Access Token">
+    Paste your Cloud 66 Personal Access Token into the provided field, then click **Connect**.
+  </Step>
+  <Step title="Connection Created">
+    Your **Cloud 66 Connection** is now available for use.
+  </Step>
+</Steps>
+
+<Info>
+  Personal Access Token connections require manual token rotation when your Cloud 66 token expires or is
+  regenerated. Monitor your connection status and update the token as needed.
+</Info>
