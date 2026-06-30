@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight, Check, ExternalLink, ShoppingCart } from "lucide-react";
 
 import {
@@ -19,8 +20,10 @@ import {
 import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
+  BillingV2CompareRow,
   BillingV2Dim,
-  BillingV2Entitlement
+  BillingV2Entitlement,
+  BillingV2Plan
 } from "@app/hooks/api";
 
 import {
@@ -35,18 +38,6 @@ import { ActiveBadge, ProductIcon } from "./shared";
 
 // prefix/metered carry the usage-based framing for metered dims; absent for per_unit and base prices.
 type PriceLine = { amount: string; unit: string; prefix?: string; metered?: boolean };
-
-// The plan's flat/base fee for the active cadence, when it has one (e.g. "$20 / month").
-const proBaseLine = (
-  prod: BillingV2CatalogProduct,
-  cadence: BillingV2Cadence
-): PriceLine | null => {
-  const base = prod.pro?.base;
-  if (!base) {
-    return null;
-  }
-  return { amount: fmtMoney(unitPrice(base, cadence)), unit: `/ ${cadenceWord(cadence)}` };
-};
 
 // A priced dimension as a display line. A metered dimension reads as usage-based: an optional "First
 // N included, then" prefix and a flag to badge the line, instead of a fixed per-unit charge.
@@ -75,17 +66,14 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
 // A plan's price is a base fee plus any number of priced dimensions, and any combination is valid:
 // base only, meter only, or both. The base fee leads as the headline; every priced dimension is then
 // listed below (e.g. "$5 per MCP / mo", "$3 per Agent / mo"). When there's no base fee the first
-// dimension is promoted to the headline so the card always opens with a price.
-const ProPricing = ({
-  prod,
-  cadence
-}: {
-  prod: BillingV2CatalogProduct;
-  cadence: BillingV2Cadence;
-}) => {
-  const dims = prod.pro?.dims ?? [];
+// dimension is promoted to the headline so the card always opens with a price. A metered dimension
+// renders with its usage-based framing (included allowance + "Usage-based" badge).
+const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV2Cadence }) => {
+  const dims = plan.dims ?? [];
 
-  let headline = proBaseLine(prod, cadence);
+  let headline: PriceLine | null = plan.base
+    ? { amount: fmtMoney(unitPrice(plan.base, cadence)), unit: `/ ${cadenceWord(cadence)}` }
+    : null;
   let usageDims = dims;
   if (!headline && dims.length > 0) {
     headline = dimPriceLine(dims[0], cadence, `/ ${dims[0].noun} / ${cadenceWord(cadence)}`);
@@ -118,14 +106,102 @@ const ProPricing = ({
   );
 };
 
-const renderCompareCell = (value: string | boolean) => {
+const renderCompareCell = (value: string | boolean | number | undefined) => {
   if (value === true) {
     return <Check className="mx-auto size-3.5 text-success" />;
   }
-  if (value === false) {
+  if (value === false || value === undefined) {
     return <span className="text-muted">—</span>;
   }
   return value;
+};
+
+type PlanBadgeProps = { plan: BillingV2Plan; isCurrent: boolean };
+
+const PlanBadge = ({ plan, isCurrent }: PlanBadgeProps) => {
+  if (isCurrent) {
+    return (
+      <Badge variant="success">
+        <Check className="text-success" />
+        Current Plan
+      </Badge>
+    );
+  }
+  if (plan.salesLed) {
+    return <Badge variant="neutral">Talk to Us</Badge>;
+  }
+  return <Badge variant="neutral">Self-Checkout</Badge>;
+};
+
+type PlanCardProps = {
+  prodId: string;
+  plan: BillingV2Plan;
+  cadence: BillingV2Cadence;
+  isCurrent: boolean;
+  entitled: boolean;
+  redirecting?: boolean;
+  onSelect: (prodId: string, planTier: string) => void;
+  onContact: () => void;
+};
+
+const PlanCard = ({
+  prodId,
+  plan,
+  cadence,
+  isCurrent,
+  entitled,
+  redirecting,
+  onSelect,
+  onContact
+}: PlanCardProps) => {
+  // A sales-led plan with no published price shows "Custom"; everything else renders its pricing.
+  const isCustom = plan.salesLed && !plan.base && plan.dims.length === 0;
+
+  let cta = null;
+  if (plan.salesLed && !isCurrent) {
+    cta = (
+      <Button variant="org" size="sm" className="mt-auto self-start" onClick={onContact}>
+        Contact sales
+        <ArrowRight />
+      </Button>
+    );
+  } else if (plan.selfServe && !entitled) {
+    // Picking a self-serve plan starts checkout (or an in-place add for an existing subscription).
+    cta = (
+      <Button
+        variant="org"
+        size="sm"
+        className="mt-auto self-start"
+        isPending={redirecting}
+        onClick={() => onSelect(prodId, plan.tier)}
+      >
+        <ShoppingCart />
+        Continue to checkout
+      </Button>
+    );
+  }
+
+  return (
+    <div
+      className={`flex flex-col gap-3.5 rounded-xl border p-[18px] ${
+        isCurrent ? "border-success/40 bg-success/5" : "border-border bg-card"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[15px] font-medium text-foreground">{plan.name}</span>
+        <PlanBadge plan={plan} isCurrent={isCurrent} />
+      </div>
+      {isCustom ? (
+        <div className="flex items-baseline">
+          <span className="text-2xl font-medium text-foreground">Custom</span>
+        </div>
+      ) : (
+        <PlanPricing plan={plan} cadence={cadence} />
+      )}
+      {plan.feature && <div className="text-xs text-accent">{plan.feature}</div>}
+      {cta}
+    </div>
+  );
 };
 
 type EntitlementSummaryProps = {
@@ -153,106 +229,123 @@ const EntitlementSummary = ({ entitlement }: EntitlementSummaryProps) => {
   );
 };
 
+type CompareTableProps = {
+  plans: BillingV2Plan[];
+  compare: BillingV2CompareRow[];
+};
+
+const CompareTable = ({ plans, compare }: CompareTableProps) => (
+  <div>
+    <div className="mb-3 text-xs font-medium text-muted">Compare Plans</div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead aria-label="Feature" />
+          {plans.map((plan) => (
+            <TableHead key={plan.tier} className="text-center">
+              {plan.name}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {compare.map((row) => (
+          <TableRow key={row.label}>
+            <TableCell className="text-accent">{row.label}</TableCell>
+            {plans.map((plan) => (
+              <TableCell key={plan.tier} className="text-center">
+                {renderCompareCell(row.cells[plan.tier])}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+);
+
+const IncludesList = ({ includes }: { includes: string[] }) => (
+  <div>
+    <div className="mb-3 text-xs font-medium tracking-wide text-muted uppercase">
+      What&apos;s included
+    </div>
+    <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">
+      {includes.map((feature) => (
+        <div className="flex items-start gap-2 text-xs text-accent" key={feature}>
+          <Check className="mt-0.5 size-3 shrink-0 text-success" />
+          {feature}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Static column classes (Tailwind can't see computed ones); cap at three before wrapping.
+const GRID_COLS: Record<number, string> = {
+  1: "grid-cols-1",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-2 lg:grid-cols-3"
+};
+
 type PlansViewProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   cadence: BillingV2Cadence;
+  redirecting?: boolean;
+  pendingTier: string | null;
+  onSelect: (prodId: string, planTier: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const PlansView = ({ prod, entitlement, cadence, onContact }: PlansViewProps) => {
-  const hasEnterprise = !!prod.enterprise;
+const PlansView = ({
+  prod,
+  entitlement,
+  cadence,
+  redirecting,
+  pendingTier,
+  onSelect,
+  onContact
+}: PlansViewProps) => {
+  // Sales-led ("Contact sales") plans sort last; alphabetical by name within each group breaks ties.
+  const plans = [...(prod.plans ?? [])].sort((a, b) => {
+    if (a.salesLed !== b.salesLed) {
+      return a.salesLed ? 1 : -1;
+    }
+    return a.name.localeCompare(b.name);
+  });
   const entitled = Boolean(entitlement?.entitled);
-  const selfServe = Boolean(prod.pro?.planKey);
+  // When entitled but the server didn't say which tier, fall back to the first self-serve plan so a
+  // card is still marked active (mirrors the previous single-"pro" behaviour).
+  const currentTier =
+    entitlement?.planTier ?? (entitled ? plans.find((plan) => plan.selfServe)?.tier : undefined);
+
+  const gridCols = GRID_COLS[Math.min(plans.length, 3)] ?? GRID_COLS[3];
+  const showCompare = Boolean(prod.compare && prod.compare.length > 0 && plans.length > 1);
 
   return (
     <>
       <EntitlementSummary entitlement={entitlement} />
 
-      <div className={`grid gap-3.5 ${hasEnterprise ? "sm:grid-cols-2" : "grid-cols-1"}`}>
-        <div
-          className={`flex flex-col gap-3.5 rounded-xl border p-[18px] ${
-            entitled ? "border-success/40 bg-success/5" : "border-org/40 bg-org/5"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[15px] font-medium text-foreground">Pro</span>
-            {entitled ? (
-              <Badge variant="success">
-                <Check className="text-success" />
-                Current Plan
-              </Badge>
-            ) : (
-              <Badge variant="neutral">Self-Checkout</Badge>
-            )}
-          </div>
-          <ProPricing prod={prod} cadence={cadence} />
-          {prod.pro?.proFeature && <div className="text-xs text-accent">{prod.pro.proFeature}</div>}
-        </div>
-
-        {hasEnterprise && prod.enterprise && (
-          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-foreground">Enterprise</span>
-              <Badge variant="neutral">Talk to Us</Badge>
-            </div>
-            <div className="flex items-baseline">
-              <span className="text-2xl font-medium text-foreground">Custom</span>
-            </div>
-            <div className="text-xs text-accent">{prod.enterprise.feature}</div>
-            {selfServe && (
-              <Button
-                variant="org"
-                size="sm"
-                className="mt-auto self-start"
-                onClick={() => onContact(prod)}
-              >
-                Contact sales
-                <ArrowRight />
-              </Button>
-            )}
-          </div>
-        )}
+      <div className={`grid gap-3.5 ${gridCols}`}>
+        {plans.map((plan) => (
+          <PlanCard
+            key={plan.tier}
+            prodId={prod.id}
+            plan={plan}
+            cadence={cadence}
+            entitled={entitled}
+            isCurrent={entitled && plan.tier === currentTier}
+            redirecting={Boolean(redirecting) && pendingTier === plan.tier}
+            onSelect={onSelect}
+            onContact={() => onContact(prod)}
+          />
+        ))}
       </div>
 
-      {hasEnterprise && prod.compare && (
-        <div>
-          <div className="mb-3 text-xs font-medium text-muted">Compare Plans</div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead aria-label="Feature" />
-                <TableHead className="text-center">Pro</TableHead>
-                <TableHead className="text-center">Enterprise</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {prod.compare.map((row) => (
-                <TableRow key={row.label}>
-                  <TableCell className="text-accent">{row.label}</TableCell>
-                  <TableCell className="text-center">{renderCompareCell(row.pro)}</TableCell>
-                  <TableCell className="text-center">{renderCompareCell(row.ent)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {!(hasEnterprise && prod.compare) && prod.includes && (
-        <div>
-          <div className="mb-3 text-xs font-medium tracking-wide text-muted uppercase">
-            What&apos;s included
-          </div>
-          <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">
-            {prod.includes.map((f) => (
-              <div className="flex items-start gap-2 text-xs text-accent" key={f}>
-                <Check className="mt-0.5 size-3 shrink-0 text-success" />
-                {f}
-              </div>
-            ))}
-          </div>
-        </div>
+      {showCompare && prod.compare ? (
+        <CompareTable plans={plans} compare={prod.compare} />
+      ) : (
+        prod.includes && prod.includes.length > 0 && <IncludesList includes={prod.includes} />
       )}
     </>
   );
@@ -265,7 +358,7 @@ type ProductSheetProps = {
   cadence: BillingV2Cadence;
   redirecting?: boolean;
   onClose: () => void;
-  onManage: (prodId: string) => void;
+  onManage: (prodId: string, planTier: string) => void;
   onRemove: (prodId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
@@ -281,36 +374,33 @@ export const ProductSheet = ({
   onRemove,
   onContact
 }: ProductSheetProps) => {
+  // Track which plan's button was clicked so only that card spins while the request is in flight,
+  // rather than every card sharing the single `redirecting` flag.
+  const [pendingTier, setPendingTier] = useState<string | null>(null);
+
   if (!prod) {
     return null;
   }
 
   const entitled = Boolean(entitlement?.entitled);
-  const selfServe = Boolean(prod.pro?.planKey);
+  const selfServe = prod.plans.some((plan) => plan.selfServe);
 
-  let primaryCta = null;
-  if (entitled) {
-    primaryCta = (
-      <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
-        Manage in Stripe
-        <ExternalLink />
-      </Button>
-    );
-  } else if (selfServe) {
-    primaryCta = (
-      <Button variant="org" onClick={() => onManage(prodId)} isPending={redirecting}>
-        <ShoppingCart />
-        Continue to Checkout
-      </Button>
-    );
-  } else if (prod.enterprise) {
-    primaryCta = (
-      <Button variant="org" onClick={() => onContact(prod)}>
-        Contact sales
-        <ArrowRight />
-      </Button>
-    );
-  }
+  const handleSelect = (id: string, planTier: string) => {
+    setPendingTier(planTier);
+    onManage(id, planTier);
+  };
+
+  // An entitled product is managed in the Stripe portal; selecting a plan is handled per-card.
+  const primaryCta = entitled ? (
+    <Button
+      variant="org"
+      onClick={() => onManage(prodId, entitlement?.planTier ?? "")}
+      isPending={redirecting}
+    >
+      Manage in Stripe
+      <ExternalLink />
+    </Button>
+  ) : null;
 
   return (
     <Sheet
@@ -351,6 +441,9 @@ export const ProductSheet = ({
             prod={prod}
             entitlement={entitlement}
             cadence={cadence}
+            redirecting={redirecting}
+            pendingTier={pendingTier}
+            onSelect={handleSelect}
             onContact={onContact}
           />
         </div>

@@ -147,7 +147,7 @@ export const getProjectTitle = (type: ProjectType) => {
 export const getProjectDescription = (type: ProjectType) => {
   const descriptions: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]:
-      "Store, sync, and rotate secrets across environments with dynamic credentials and lifecycle policies.",
+      "Centralize secrets across environments with automatic secret syncs, secret rotations, short-lived dynamic credentials, and lifecycle policies.",
     [ProjectType.CertificateManager]:
       "Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.",
     [ProjectType.KMS]:
@@ -155,7 +155,7 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Grant just-in-time access, broker sessions, and vault credentials for privileged users and machines."
+      "Grant privileged users and machines just-in-time access with session brokering and credential vaulting."
   };
   return descriptions[type] ?? "";
 };

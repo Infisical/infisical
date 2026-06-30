@@ -2669,6 +2669,8 @@ interface SecretApprovalMerge {
     mergedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+    isMergedViaBypass?: boolean;
+    bypassReason?: string;
   };
 }
 
@@ -6663,6 +6665,8 @@ interface AccessApprovalRequestReviewEvent {
     requestId: string;
     policyId: string;
     reviewStatus: string;
+    isBypass?: boolean;
+    bypassReason?: string;
   };
 }
 

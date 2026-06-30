@@ -261,7 +261,10 @@ export const CertificateStep = ({
                 min={1}
                 max={3650}
                 value={field.value ?? ""}
-                onChange={(e) => field.onChange(Number(e.target.value))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  field.onChange(val === "" ? "" : Number(val));
+                }}
                 placeholder="365"
                 isError={Boolean(error)}
               />

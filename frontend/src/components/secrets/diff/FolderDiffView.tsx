@@ -64,10 +64,8 @@ export const FolderDiffView = ({ operationType, oldVersion, newVersion }: Folder
           </div>
         </div>
       ) : (
-        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 xl:w-1/2">
-          <span className="text-sm text-mineshaft-400">
-            Folder did not exist in the previous version.
-          </span>
+        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
+          <span className="text-sm text-muted">Folder did not exist in the previous version.</span>
         </div>
       )}
 
@@ -102,8 +100,8 @@ export const FolderDiffView = ({ operationType, oldVersion, newVersion }: Folder
           </div>
         </div>
       ) : (
-        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 xl:w-1/2">
-          <span className="text-sm text-mineshaft-400">Folder will be deleted.</span>
+        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
+          <span className="text-sm text-muted">Folder will be deleted.</span>
         </div>
       )}
     </div>
