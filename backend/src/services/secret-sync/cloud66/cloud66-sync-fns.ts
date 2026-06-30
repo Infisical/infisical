@@ -1,7 +1,8 @@
 import { request } from "@app/lib/config/request";
 import {
   CLOUD_66_API_BASE_URL,
-  getCloud66Headers
+  getCloud66Headers,
+  paginateCloud66
 } from "@app/services/app-connection/cloud-66/cloud-66-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -12,31 +13,8 @@ import { TCloud66EnvVar, TCloud66SyncWithCredentials } from "./cloud66-sync-type
 // Cloud 66 system-managed variables (readonly / generated) cannot be modified or deleted via the API.
 const isModifiable = (envVar: TCloud66EnvVar) => !envVar.readonly && !envVar.is_generated;
 
-const listCloud66EnvVars = async (accessToken: string, stackId: string): Promise<TCloud66EnvVar[]> => {
-  const envVars: TCloud66EnvVar[] = [];
-  let page: number | null = 1;
-
-  while (page) {
-    // eslint-disable-next-line no-await-in-loop
-    const res = await request.get(
-      `${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments?page=${page}&per_page=30`,
-      {
-        headers: getCloud66Headers(accessToken)
-      }
-    );
-
-    const { response, pagination } = res.data as {
-      response: TCloud66EnvVar[];
-      pagination?: { next: number | null };
-    };
-
-    envVars.push(...response);
-
-    page = pagination?.next ?? null;
-  }
-
-  return envVars;
-};
+const listCloud66EnvVars = (accessToken: string, stackId: string): Promise<TCloud66EnvVar[]> =>
+  paginateCloud66<TCloud66EnvVar>(accessToken, `/3/stacks/${stackId}/environments`);
 
 const createCloud66EnvVar = (accessToken: string, stackId: string, key: string, value: string) =>
   request.post(

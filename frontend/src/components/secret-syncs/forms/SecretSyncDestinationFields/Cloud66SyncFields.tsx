@@ -1,8 +1,12 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Field,
   FieldContent,
   FieldError,
@@ -65,6 +69,15 @@ export const Cloud66SyncFields = () => {
           </Field>
         )}
       />
+
+      <Alert variant="warning">
+        <TriangleAlert />
+        <AlertTitle>Hyphens are not supported in keys</AlertTitle>
+        <AlertDescription>
+          Cloud 66 does not allow environment variable names containing hyphens (-). Secrets whose
+          keys contain a hyphen will be skipped during sync.
+        </AlertDescription>
+      </Alert>
     </FieldGroup>
   );
 };

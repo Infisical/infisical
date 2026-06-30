@@ -16,9 +16,6 @@ description: "Learn how to configure a Cloud 66 Sync for Infisical."
 </Note>
 
 
-<Note>
-    Secrets with hyphens are not allowed by Cloud 66, so they are skipped from the sync process.
-</Note>
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -43,6 +40,10 @@ description: "Learn how to configure a Cloud 66 Sync for Infisical."
 
             - **Cloud 66 Connection**: The Cloud 66 Connection to authenticate with.
             - **Stack**: The Cloud 66 stack (application) to sync secrets to.
+
+            <Note>
+                Secrets with hyphens are not allowed by Cloud 66, so they are skipped from the sync process.
+            </Note>
 
         5. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then click **Continue**.
         ![Configure Initial Sync Behavior](/images/secret-syncs/cloud66/step-5.png)
