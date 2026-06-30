@@ -96,6 +96,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.Project}.orgId`, orgId)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
       .count<{ count: string | number }>({
         count: `${TableName.HoneyToken}.id`
@@ -145,10 +146,12 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
       .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.HoneyToken}.projectId`, projectId)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
-      // exclude honey tokens in soft-deleted environments, mirroring findByFolderIds and the other counts
+      // exclude honey tokens in soft-deleted environments / projects, mirroring findByFolderIds and the other counts
       .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .count<{ count: string | number }>({
         count: `${TableName.HoneyToken}.id`
       });
