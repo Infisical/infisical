@@ -80,7 +80,13 @@ export const dashboardKeys = {
       { projectId, secretPath, environment, filterByAction }
     ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
-  getSecretValue: ({ projectId, environment, secretPath, secretKey, isOverride }: TGetSecretValueDTO) =>
+  getSecretValue: ({
+    projectId,
+    environment,
+    secretPath,
+    secretKey,
+    isOverride
+  }: TGetSecretValueDTO) =>
     [
       ...dashboardKeys.getSecretValuesRoot(),
       projectId,

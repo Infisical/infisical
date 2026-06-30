@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeftIcon, ChevronRightIcon, FolderIcon, KeyRoundIcon, LayersIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
+  FolderIcon,
+  KeyRoundIcon,
+  LayersIcon
+} from "lucide-react";
 
 import { useProject } from "@app/context";
 import { useGetProjectFolders, useGetProjectSecrets, useGetWorkspaceById } from "@app/hooks/api";
@@ -34,7 +40,12 @@ const INITIAL_STATE: WizardState = {
   secretPath: "/"
 };
 
-export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, currentInput = "" }: Props) => {
+export const SecretReferenceWizard = ({
+  onSelect,
+  isEnabled,
+  onFocusItem,
+  currentInput = ""
+}: Props) => {
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
@@ -58,10 +69,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
     viewSecretValue: false,
     options: {
       enabled:
-        isEnabled &&
-        state.step === "browse" &&
-        Boolean(browseProjectId) &&
-        Boolean(state.env?.slug)
+        isEnabled && state.step === "browse" && Boolean(browseProjectId) && Boolean(state.env?.slug)
     }
   });
 
@@ -71,10 +79,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
     path: state.secretPath,
     options: {
       enabled:
-        isEnabled &&
-        state.step === "browse" &&
-        Boolean(browseProjectId) &&
-        Boolean(state.env?.slug)
+        isEnabled && state.step === "browse" && Boolean(browseProjectId) && Boolean(state.env?.slug)
     }
   });
 
@@ -155,8 +160,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
       return;
     }
 
-    const secretPath =
-      folderSegments.length > 0 ? `/${folderSegments.join("/")}/` : "/";
+    const secretPath = folderSegments.length > 0 ? `/${folderSegments.join("/")}/` : "/";
 
     setState({
       tab: "another-project",
@@ -167,8 +171,10 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
     });
   }, [parsedInput, uniqueSourceProjects, receivedGrants]);
 
-  const projectFilter = parsedInput && !parsedInput.hasProjectDot ? parsedInput.projectSlug.toLowerCase() : "";
-  const envFilter = parsedInput?.hasProjectDot && !parsedInput.hasEnvDot ? parsedInput.envSlug.toLowerCase() : "";
+  const projectFilter =
+    parsedInput && !parsedInput.hasProjectDot ? parsedInput.projectSlug.toLowerCase() : "";
+  const envFilter =
+    parsedInput?.hasProjectDot && !parsedInput.hasEnvDot ? parsedInput.envSlug.toLowerCase() : "";
   const browseFilter = parsedInput?.hasEnvDot ? parsedInput.lastSegment.toLowerCase() : "";
 
   const availableEnvs = useMemo(() => {
@@ -221,8 +227,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
   const handleSelectFolder = (folderName: string) => {
     setState((prev) => {
       const currentPath = prev.secretPath;
-      const newPath =
-        currentPath === "/" ? `/${folderName}/` : `${currentPath}${folderName}/`;
+      const newPath = currentPath === "/" ? `/${folderName}/` : `${currentPath}${folderName}/`;
       return { ...prev, secretPath: newPath };
     });
   };
@@ -253,7 +258,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
       return;
     }
     const pathParts = state.secretPath.split("/").filter(Boolean);
-    const newPath = "/" + pathParts.slice(0, index).join("/") + (index > 0 ? "/" : "");
+    const newPath = `/${pathParts.slice(0, index).join("/")}${index > 0 ? "/" : ""}`;
     setState((prev) => ({ ...prev, secretPath: newPath }));
   };
 
@@ -265,40 +270,40 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
       : uniqueSourceProjects;
 
     return (
-    <div className="flex flex-col">
-      {filteredProjects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-sm text-muted">
-          {projectFilter ? "No matching projects" : "No projects have shared secrets with you"}
-        </div>
-      ) : (
-        <>
-          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Projects that shared with you
+      <div className="flex flex-col">
+        {filteredProjects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-sm text-muted">
+            {projectFilter ? "No matching projects" : "No projects have shared secrets with you"}
           </div>
-          {filteredProjects.map((grant) => (
-            <button
-              key={grant.sourceProjectId}
-              type="button"
-              aria-label="suggestion-item"
-              onClick={() => {
-                onFocusItem();
-                handleSelectProject(grant);
-              }}
-              className="flex w-full cursor-pointer items-center justify-between px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10"
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex size-6 shrink-0 items-center justify-center rounded bg-project/20 text-xs font-semibold text-project">
-                  {grant.sourceProjectName[0]?.toUpperCase()}
+        ) : (
+          <>
+            <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
+              Projects that shared with you
+            </div>
+            {filteredProjects.map((grant) => (
+              <button
+                key={grant.sourceProjectId}
+                type="button"
+                aria-label="suggestion-item"
+                onClick={() => {
+                  onFocusItem();
+                  handleSelectProject(grant);
+                }}
+                className="flex w-full cursor-pointer items-center justify-between px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded bg-project/20 text-xs font-semibold text-project">
+                    {grant.sourceProjectName[0]?.toUpperCase()}
+                  </div>
+                  <span className="truncate">{grant.sourceProjectName}</span>
                 </div>
-                <span className="truncate">{grant.sourceProjectName}</span>
-              </div>
-              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
-            </button>
-          ))}
-        </>
-      )}
-    </div>
-  );
+                <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+    );
   };
 
   const renderEnvStep = () => {
@@ -307,50 +312,50 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
       : availableEnvs;
 
     return (
-    <div className="flex flex-col">
-      {state.selectedProjectGrant && (
-        <button
-          type="button"
-          aria-label="suggestion-item"
-          onClick={() => {
-            onFocusItem();
-            setState((prev) => ({ ...prev, step: "project", env: null }));
-          }}
-          className="flex items-center gap-1.5 border-b border-border px-2 py-1.5 text-xs text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeftIcon className="size-3 shrink-0" />
-          <span className="truncate">{state.selectedProjectGrant.sourceProjectName}</span>
-        </button>
-      )}
-      <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
-        Environments
-      </div>
-      {filteredEnvs.length === 0 ? (
-        <div className="flex items-center justify-center py-6 text-sm text-muted">
-          {envFilter ? "No matching environments" : "No environments available"}
-        </div>
-      ) : (
-        filteredEnvs.map((env) => (
+      <div className="flex flex-col">
+        {state.selectedProjectGrant && (
           <button
-            key={env.slug}
             type="button"
             aria-label="suggestion-item"
             onClick={() => {
               onFocusItem();
-              handleSelectEnv(env.slug, env.name);
+              setState((prev) => ({ ...prev, step: "project", env: null }));
             }}
-            className="flex w-full cursor-pointer items-center justify-between px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10"
+            className="flex items-center gap-1.5 border-b border-border px-2 py-1.5 text-xs text-muted transition-colors hover:text-foreground"
           >
-            <div className="flex items-center gap-2">
-              <LayersIcon className="size-4 text-success" />
-              <span>{env.name}</span>
-            </div>
-            <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+            <ArrowLeftIcon className="size-3 shrink-0" />
+            <span className="truncate">{state.selectedProjectGrant.sourceProjectName}</span>
           </button>
-        ))
-      )}
-    </div>
-  );
+        )}
+        <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
+          Environments
+        </div>
+        {filteredEnvs.length === 0 ? (
+          <div className="flex items-center justify-center py-6 text-sm text-muted">
+            {envFilter ? "No matching environments" : "No environments available"}
+          </div>
+        ) : (
+          filteredEnvs.map((env) => (
+            <button
+              key={env.slug}
+              type="button"
+              aria-label="suggestion-item"
+              onClick={() => {
+                onFocusItem();
+                handleSelectEnv(env.slug, env.name);
+              }}
+              className="flex w-full cursor-pointer items-center justify-between px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10"
+            >
+              <div className="flex items-center gap-2">
+                <LayersIcon className="size-4 text-success" />
+                <span>{env.name}</span>
+              </div>
+              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+            </button>
+          ))
+        )}
+      </div>
+    );
   };
 
   const renderBrowseStep = () => {
@@ -364,7 +369,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
 
     return (
       <div className="flex flex-col">
-        <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto border-b border-border px-2 py-1.5 text-xs text-muted no-scrollbar">
+        <div className="no-scrollbar flex min-w-0 items-center gap-0.5 overflow-x-auto border-b border-border px-2 py-1.5 text-xs text-muted">
           <button
             type="button"
             aria-label="suggestion-item"
@@ -427,7 +432,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
         )}
 
         {secretList.length > 0 && (
-          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
             Secrets in this {state.tab === "another-project" ? "project" : "environment"}
           </div>
         )}
@@ -471,9 +476,7 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, curren
 
   return (
     <Tabs value={state.tab} onValueChange={handleTabChange} className="gap-0">
-      <TabsList
-        className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0"
-      >
+      <TabsList className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0">
         <TabsTrigger
           value="this-project"
           className="flex-1 rounded-none rounded-tl-md border-0 py-2 text-xs"

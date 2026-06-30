@@ -458,6 +458,18 @@ export const SecretImportTableRow = ({
     );
   };
 
+  const getImportedSecretPath = (importItem?: TSecretImport | null) => {
+    if (importItem?.isReplication) {
+      return `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${importItem.id}`;
+    }
+
+    if (importItem?.importEnv?.projectId !== currentProject?.id) {
+      return secretPath;
+    }
+
+    return importPath;
+  };
+
   const renderRevokedContent = () => (
     <Empty>
       <EmptyHeader className="gap-1.5">
@@ -522,13 +534,7 @@ export const SecretImportTableRow = ({
                       ? effectiveSelectedEnv
                       : importEnvSlug
                   }
-                  secretPath={
-                    selectedImport?.isReplication
-                      ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${selectedImport.id}`
-                      : selectedImport?.importEnv?.projectId !== currentProject?.id
-                        ? secretPath
-                      : importPath
-                  }
+                  secretPath={getImportedSecretPath(selectedImport)}
                   isEmpty={secret.isEmpty}
                 />
               ))}
@@ -587,7 +593,9 @@ export const SecretImportTableRow = ({
                       : importEnvSlug
                   }
                   secretPath={
-                    secretImport?.importEnv?.projectId !== currentProject?.id ? secretPath : importPath
+                    secretImport?.importEnv?.projectId !== currentProject?.id
+                      ? secretPath
+                      : importPath
                   }
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
@@ -642,17 +650,12 @@ export const SecretImportTableRow = ({
               key={`import-secret-${envSlug}-${secret.key}`}
               secretKey={secret.key}
               environment={
-                singleEnvImport?.isReplication || singleEnvImport?.importEnv?.projectId !== currentProject?.id
+                singleEnvImport?.isReplication ||
+                singleEnvImport?.importEnv?.projectId !== currentProject?.id
                   ? singleEnvSlug
                   : importEnvSlug
               }
-              secretPath={
-                singleEnvImport?.isReplication
-                  ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${singleEnvImport.id}`
-                  : singleEnvImport?.importEnv?.projectId !== currentProject?.id
-                    ? secretPath
-                  : importPath
-              }
+              secretPath={getImportedSecretPath(singleEnvImport)}
               isEmpty={secret.isEmpty}
             />
           ))}

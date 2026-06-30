@@ -131,7 +131,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     }, [debouncedValue]);
 
     const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
-    const showWizard = isPopupOpen && (!suggestionSource.isDeep || suggestionSource.value.startsWith("@"));
+    const showWizard =
+      isPopupOpen && (!suggestionSource.isDeep || suggestionSource.value.startsWith("@"));
 
     const handleWizardSelect = (referenceContent: string) => {
       const { left } = suggestionSource;
@@ -494,9 +495,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               if (showWizard) e.preventDefault();
             }}
             className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
-            style={
-              showWizard ? undefined : { width: "var(--radix-popover-trigger-width)" }
-            }
+            style={showWizard ? undefined : { width: "var(--radix-popover-trigger-width)" }}
           >
             {showWizard ? (
               <SecretReferenceWizard

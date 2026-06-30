@@ -17,7 +17,12 @@ import {
   FieldTitle,
   Switch
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization, useServerConfig } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useServerConfig
+} from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -106,29 +111,31 @@ export const ProductSettingsPage = () => {
                       )}
                     </OrgPermissionCan>
                   </Field>
-                  {config.isCrossProjectSecretSharingEnabled && <Field orientation="horizontal">
-                    <FieldContent>
-                      <FieldTitle>Cross-project secret sharing</FieldTitle>
-                      <FieldDescription>
-                        When enabled, allows secret imports and secret references to target folders
-                        and secrets from other projects within the same organization.
-                      </FieldDescription>
-                    </FieldContent>
-                    <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
-                      a={OrgPermissionSubjects.Settings}
-                    >
-                      {(isAllowed) => (
-                        <Switch
-                          id="allow-cross-project-secret-sharing"
-                          variant="project"
-                          checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
-                          onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
-                          disabled={!isAllowed || isPending}
-                        />
-                      )}
-                    </OrgPermissionCan>
-                  </Field>}
+                  {config.isCrossProjectSecretSharingEnabled && (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>Cross-project secret sharing</FieldTitle>
+                        <FieldDescription>
+                          When enabled, allows secret imports and secret references to target
+                          folders and secrets from other projects within the same organization.
+                        </FieldDescription>
+                      </FieldContent>
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Edit}
+                        a={OrgPermissionSubjects.Settings}
+                      >
+                        {(isAllowed) => (
+                          <Switch
+                            id="allow-cross-project-secret-sharing"
+                            variant="project"
+                            checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
+                            onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
+                            disabled={!isAllowed || isPending}
+                          />
+                        )}
+                      </OrgPermissionCan>
+                    </Field>
+                  )}
                 </FieldGroup>
               </CardContent>
             </Card>
