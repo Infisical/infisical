@@ -128,7 +128,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
         workspaceId: z.string().trim().describe(ENVIRONMENTS.CREATE.projectId)
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe(ENVIRONMENTS.CREATE.name),
+        name: z.string().trim().min(1).max(255).describe(ENVIRONMENTS.CREATE.name),
         position: z.number().min(1).optional().describe(ENVIRONMENTS.CREATE.position),
         slug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.CREATE.slug)
       }),
@@ -191,7 +191,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
       }),
       body: z.object({
         slug: slugSchema({ max: 64 }).optional().describe(ENVIRONMENTS.UPDATE.slug),
-        name: z.string().trim().min(1).max(64).optional().describe(ENVIRONMENTS.UPDATE.name),
+        name: z.string().trim().min(1).max(255).optional().describe(ENVIRONMENTS.UPDATE.name),
         position: z.number().optional().describe(ENVIRONMENTS.UPDATE.position)
       }),
       response: {
