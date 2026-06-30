@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,6 +23,7 @@ import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
+import { CreateCaWizard } from "./CreateCaWizard/CreateCaWizard";
 import { CaCertModal } from "./CaCertModal";
 import { CaInstallCertModal } from "./CaInstallCertModal";
 import { CaModal } from "./CaModal";
@@ -31,6 +33,7 @@ export const CaSection = () => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCa } = useDeleteCa();
   const { mutateAsync: updateCa } = useUpdateCa();
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "ca",
@@ -85,7 +88,7 @@ export const CaSection = () => {
             {(isAllowed) => (
               <Button
                 variant="project"
-                onClick={() => handlePopUpOpen("ca")}
+                onClick={() => setIsCreateWizardOpen(true)}
                 isDisabled={!isAllowed}
               >
                 <PlusIcon />
@@ -98,6 +101,7 @@ export const CaSection = () => {
       <CardContent>
         <CaTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
+      <CreateCaWizard isOpen={isCreateWizardOpen} onOpenChange={setIsCreateWizardOpen} />
       <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

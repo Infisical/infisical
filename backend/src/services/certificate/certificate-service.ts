@@ -26,6 +26,7 @@ import { caSupportsCapability } from "@app/services/certificate-authority/certif
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { MaxActiveCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -107,6 +108,7 @@ type TCertificateServiceFactoryDep = {
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -132,7 +134,8 @@ export const certificateServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationDAL,
   licenseService,
-  usageMeteringService
+  usageMeteringService,
+  hsmConnectorService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -576,7 +579,8 @@ export const certificateServiceFactory = ({
         certificateAuthoritySecretDAL,
         projectDAL,
         certificateDAL,
-        kmsService
+        kmsService,
+        hsmConnectorService
       });
     }
 

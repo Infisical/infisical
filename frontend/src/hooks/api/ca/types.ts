@@ -1,4 +1,5 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
+import { CertKeySource } from "../signers/types";
 import {
   AcmeDnsProvider,
   CaRenewalType,
@@ -128,6 +129,9 @@ export type TInternalCertificateAuthority = {
     locality: string;
     maxPathLength: number;
     keyAlgorithm: CertKeyAlgorithm;
+    keySource?: CertKeySource;
+    hsmConnectorId?: string;
+    hsmKeyLabel?: string;
     notAfter?: string;
     notBefore?: string;
     dn?: string;
