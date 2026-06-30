@@ -1426,7 +1426,16 @@ interface CreateIdentityEvent {
     name: string;
     hasDeleteProtection: boolean;
     metadata?: { key: string; value: string }[];
-    roles?: { role: string; isTemporary: boolean }[];
+    roles?: (
+      | { role: string; isTemporary: false }
+      | {
+          role: string;
+          isTemporary: true;
+          temporaryMode: string;
+          temporaryRange: string;
+          temporaryAccessStartTime: string;
+        }
+    )[];
   };
 }
 
