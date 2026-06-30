@@ -68,9 +68,9 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
         ALTER USER INFISICAL set NETWORK_POLICY = 'INFISICAL_SYNC_POLICY';
         ```
 
-        <Note>
+        <Warning>
             Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
-        </Note>
+        </Warning>
     </Step>
     <Step title="Generate a Programmatic Access Token">
         Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.

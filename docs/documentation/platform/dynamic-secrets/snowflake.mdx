@@ -37,6 +37,27 @@ Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-create-user
     </Note>
   </Step>
 
+    <Step title="Create a network policy">
+        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user.
+
+
+        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+        ![Create network policy](/images/app-connections/snowflake/step-4.png)
+
+
+        ```SQL
+        CREATE NETWORK POLICY PREVIOUSLY_CREATED_USER
+            ALLOWED_IP_LIST = ('0.0.0.0/0')
+            COMMENT = 'Allow access from any IP';
+        
+        ALTER USER INFISICAL set NETWORK_POLICY = 'PREVIOUSLY_CREATED_USER';
+        ```
+
+        <Warning>
+            Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
+        </Warning>
+    </Step>
+
   <Step title="Generate a Programmatic Access Token">
     Select the **Governance & Security** tab and click on **Users & roles**. Then select the user you created in the previous step.
 
