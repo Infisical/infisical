@@ -77,7 +77,7 @@ const schema = z
       [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
     }),
     enableAutoRenewal: z.boolean().optional().default(false),
-    renewalBefore: z.number().min(1).optional(),
+    renewalBefore: z.coerce.number().min(1).optional(),
     renewalUnit: z.nativeEnum(TimeUnit).optional(),
     // Properties for Azure ADCS only
     azureTemplateType: z.string().optional(),
@@ -753,7 +753,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                           placeholder="5"
                           type="number"
                           min={1}
-                          onChange={(e) => onChange(Number(e.target.value))}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            onChange(val === "" ? "" : Number(val));
+                          }}
                         />
                       </FormControl>
                     )}

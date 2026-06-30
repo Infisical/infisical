@@ -12,7 +12,7 @@ import {
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
-import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -679,6 +679,10 @@ export const secretApprovalRequestServiceFactory = ({
     if (!hasMinApproval && !(isSoftEnforcement && canBypass))
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
+    // A bypass merge applies the changes without satisfying the policy's required approvals.
+    // Persist the reason so it can be surfaced in the UI and distinguished from a normal merge.
+    const isMergedViaBypass = isSoftEnforcement && !hasMinApproval;
+
     const { botKey, shouldUseSecretV2Bridge, project } = await projectBotService.getBotKey(projectId);
     let mergeStatus;
     if (shouldUseSecretV2Bridge) {
@@ -970,7 +974,8 @@ export const secretApprovalRequestServiceFactory = ({
             conflicts: JSON.stringify(conflicts),
             hasMerged: true,
             status: RequestState.Closed,
-            statusChangedByUserId: actorId
+            statusChangedByUserId: actorId,
+            bypassReason: isMergedViaBypass ? bypassReason || null : null
           },
           tx
         );
@@ -1160,7 +1165,8 @@ export const secretApprovalRequestServiceFactory = ({
             conflicts: JSON.stringify(conflicts),
             hasMerged: true,
             status: RequestState.Closed,
-            statusChangedByUserId: actorId
+            statusChangedByUserId: actorId,
+            bypassReason: isMergedViaBypass ? bypassReason || null : null
           },
           tx
         );
@@ -1267,6 +1273,17 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { created, updated, deleted } = mergeStatus.secrets;
+
+    const requestedByActor: Actor | undefined = secretApprovalRequest.committerUserId
+      ? {
+          type: ActorType.USER,
+          metadata: {
+            userId: secretApprovalRequest.committerUserId,
+            email: secretApprovalRequest.committerUser?.email,
+            username: secretApprovalRequest.committerUser?.username ?? ""
+          }
+        }
+      : undefined;
 
     const secretMutationEvents: Event[] = [];
 
@@ -1403,7 +1420,7 @@ export const secretApprovalRequestServiceFactory = ({
       }
     }
 
-    return { ...mergeStatus, projectId, secretMutationEvents };
+    return { ...mergeStatus, projectId, secretMutationEvents, isMergedViaBypass, requestedByActor };
   };
 
   // function to save secret change to secret approval
@@ -1735,6 +1752,7 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     secretPath,
     environment,
+    commitMessage,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
     if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
@@ -2034,7 +2052,8 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId
+          committerUserId: actorId,
+          commitMessage
         },
         tx
       );

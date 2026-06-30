@@ -28,6 +28,8 @@ const catalogPlanPriceSchema = z
   .object({
     dimensionKey: z.string(),
     cadence: z.string(),
+    // Permissive (like model/tier/cadence) so a new License Server kind can't break parsing; normalized in code.
+    kind: z.string().default("per_unit"),
     unitAmountCents: z.number(),
     includedQuantity: z.number().nullish()
   })

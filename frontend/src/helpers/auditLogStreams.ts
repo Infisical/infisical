@@ -13,7 +13,8 @@ export const AUDIT_LOG_STREAM_PROVIDER_MAP: Record<
   [LogProvider.Custom]: { name: "Custom", icon: faCode },
   [LogProvider.Datadog]: { name: "Datadog", image: "Datadog.png" },
   [LogProvider.Splunk]: { name: "Splunk", image: "Splunk.png", size: 65 },
-  [LogProvider.QRadar]: { name: "IBM QRadar", image: "IBM.png" }
+  [LogProvider.QRadar]: { name: "IBM QRadar", image: "IBM.png" },
+  [LogProvider.SumoLogic]: { name: "Sumo Logic", image: "SumoLogic.png" }
 };
 
 // Strictly for showing to the client in the front-end
@@ -24,6 +25,7 @@ export function getProviderUrl(
     case LogProvider.Custom:
     case LogProvider.Datadog:
     case LogProvider.Cribl:
+    case LogProvider.SumoLogic:
       return logStream.credentials.url;
     case LogProvider.Splunk:
       return `https://${logStream.credentials.hostname}:8088/services/collector/event`;

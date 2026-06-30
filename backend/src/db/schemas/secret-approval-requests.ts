@@ -20,7 +20,8 @@ export const SecretApprovalRequestsSchema = z.object({
   isReplicated: z.boolean().nullable().optional(),
   committerUserId: z.string().uuid().nullable().optional(),
   statusChangedByUserId: z.string().uuid().nullable().optional(),
-  bypassReason: z.string().nullable().optional()
+  bypassReason: z.string().nullable().optional(),
+  commitMessage: z.string().nullable().optional()
 });
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;

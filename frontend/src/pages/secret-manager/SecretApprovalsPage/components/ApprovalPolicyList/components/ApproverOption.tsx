@@ -3,16 +3,16 @@ import { BanIcon, CheckIcon, UserIcon, UsersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Badge } from "@app/components/v3";
-import { ApproverType } from "@app/hooks/api/accessApproval/types";
+import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
 
 export type ApproverOptionData = {
   id: string;
-  type: ApproverType;
+  type: ApproverType | BypasserType;
   name?: string;
   isOrgMembershipActive?: boolean;
 };
 
-const TypeIcon = ({ type }: { type: ApproverType }) =>
+const TypeIcon = ({ type }: { type: ApproverType | BypasserType }) =>
   type === ApproverType.Group ? (
     <UsersIcon className="size-3.5 shrink-0 text-muted" />
   ) : (
