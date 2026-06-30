@@ -11,6 +11,20 @@ import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
 import { THasuraCloudSyncWithCredentials } from "./hasura-cloud-sync-types";
 
+const ZGraphqlErrors = z.object({
+  errors: z.array(z.object({ message: z.string() })).optional()
+});
+
+const assertNoGraphqlErrors = (responseBody: unknown) => {
+  const { errors } = ZGraphqlErrors.parse(responseBody);
+
+  if (errors?.length) {
+    throw new SecretSyncError({
+      message: `Hasura Cloud API error: ${errors.map((error) => error.message).join("; ")}`
+    });
+  }
+};
+
 const ZGetTenantEnv = z.object({
   data: z.object({
     getTenantEnv: z.object({
@@ -37,6 +51,8 @@ const getTenantEnv = async (accessToken: string, tenantId: string) => {
     variables: { tenantId }
   });
 
+  assertNoGraphqlErrors(responseBody);
+
   const parsed = ZGetTenantEnv.parse(responseBody);
 
   return {
@@ -57,15 +73,19 @@ const updateTenantEnv = async (
     variables: { currentHash, envs, tenantId }
   });
 
+  assertNoGraphqlErrors(responseBody);
+
   return ZUpdateTenantEnv.parse(responseBody).data.updateTenantEnv.hash;
 };
 
 const deleteTenantEnv = async (accessToken: string, tenantId: string, currentHash: string, keys: string[]) => {
-  await hasuraCloudGraphqlRequest(accessToken, {
+  const responseBody = await hasuraCloudGraphqlRequest(accessToken, {
     query:
       "mutation deleteTenantEnv($id: uuid!, $currentHash: String!, $env: [String!]!) { deleteTenantEnv(tenantId: $id, currentHash: $currentHash, deleteEnvs: $env) { hash envVars } }",
     variables: { id: tenantId, currentHash, env: keys }
   });
+
+  assertNoGraphqlErrors(responseBody);
 };
 
 // Each Hasura Cloud project maps 1:1 to a tenant, so we resolve the tenant from the configured
