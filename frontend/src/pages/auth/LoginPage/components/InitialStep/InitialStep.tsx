@@ -381,32 +381,33 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
           )}
 
           {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
-          {config.allowSignUp &&
+        </CardContent>
+      </Card>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        {config.allowSignUp &&
           (shouldDisplayLoginMethod(LoginMethod.EMAIL) ||
             shouldDisplayLoginMethod(LoginMethod.GOOGLE) ||
             shouldDisplayLoginMethod(LoginMethod.GITHUB) ||
-            shouldDisplayLoginMethod(LoginMethod.GITLAB)) ? (
-            <div className="mt-6 flex flex-row justify-center text-xs text-label">
+            shouldDisplayLoginMethod(LoginMethod.GITLAB)) && (
+            <div className="flex flex-row items-center justify-center gap-1.5 text-sm">
+              <span className="text-label">Don&apos;t have an account?</span>
               <Link to="/signup">
-                <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                  Don&apos;t have an account yet? {t("login.create-account")}
-                </span>
-              </Link>
-            </div>
-          ) : (
-            <div className="mt-4" />
-          )}
-          {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
-            <div className="mt-2 flex flex-row justify-center text-xs text-label">
-              <Link to="/account-recovery">
-                <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                  Recover your account
+                <span className="cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project">
+                  Sign up
                 </span>
               </Link>
             </div>
           )}
-        </CardContent>
-      </Card>
+        {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
+          <div className="flex flex-row justify-center text-xs text-label">
+            <Link to="/account-recovery">
+              <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                Recover your account
+              </span>
+            </Link>
+          </div>
+        )}
+      </div>
     </form>
   );
 };
