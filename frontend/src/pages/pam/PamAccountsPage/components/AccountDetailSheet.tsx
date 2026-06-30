@@ -660,6 +660,9 @@ const SettingsTab = ({
           <CardDescription>System configuration overrides.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {!showGatewaySection && !showRecordingOverride && (
+            <p className="text-sm text-muted">No settings available for this account type.</p>
+          )}
           {showGatewaySection && (
             <div
               className={`rounded-md border p-4 ${isGatewayOverriding ? "border-product-pam/50" : "border-border"}`}
