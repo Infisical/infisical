@@ -297,10 +297,6 @@ export const fnSecretsV2FromImports = async ({
   const stack: {
     secretImports: typeof rootSecretImports;
     depth: number;
-    inheritedCrossProjectAccessScope?: { environment: string; secretPath: string };
-    // Set when we've crossed into a foreign project. Deeper imports that leave this
-    // project are blocked, preventing transitive cross-project chains (A->B->C, A->B->A).
-    importedFromProjectId?: string;
     parentImportedSecrets: (TSecretsV2 & {
       secretValueHidden: boolean;
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
@@ -315,8 +311,7 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
-    const { secretImports, depth, parentImportedSecrets, inheritedCrossProjectAccessScope, importedFromProjectId } =
-      stack.pop()!;
+    const { secretImports, depth, parentImportedSecrets } = stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
     const sanitizedImports = secretImports.filter(
@@ -444,8 +439,8 @@ export const fnSecretsV2FromImports = async ({
       const isCrossProject =
         !isReserved && Boolean(projectId && importEnv.projectId && importEnv.projectId !== projectId);
       const accessScope =
-        isCrossProject && (importAccessScopeByFolderId?.get(folderId) || inheritedCrossProjectAccessScope)
-          ? importAccessScopeByFolderId?.get(folderId) || inheritedCrossProjectAccessScope!
+        isCrossProject && importAccessScopeByFolderId?.get(folderId)
+          ? importAccessScopeByFolderId.get(folderId)!
           : { environment: importEnv.slug, secretPath: importPath };
 
       // Skip cross-project imports that have no corresponding ProjectGrant
@@ -485,24 +480,13 @@ export const fnSecretsV2FromImports = async ({
           _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
         }));
 
-      if (deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
-        let deeperImportsForFolder = deeperImportsGroupByFolderId[sourceImportFolder?.id || ""];
-
-        // Once we cross a project boundary, only follow imports that stay within
-        // that foreign project. This blocks transitive cross-project chains:
-        //   Project A -> Project B -> Project C  (blocked at B->C)
-        //   Project A -> Project B -> Project A  (blocked at B->A)
-        const foreignProjectId = importedFromProjectId ?? (isCrossProject ? importEnv.projectId : undefined);
-        if (foreignProjectId) {
-          deeperImportsForFolder = deeperImportsForFolder.filter((imp) => imp.importEnv.projectId === foreignProjectId);
-        }
+      if (!isCrossProject && deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
+        const deeperImportsForFolder = deeperImportsGroupByFolderId[sourceImportFolder?.id || ""];
 
         if (deeperImportsForFolder.length > 0) {
           stack.push({
             secretImports: deeperImportsForFolder,
             depth: depth + 1,
-            importedFromProjectId: foreignProjectId,
-            inheritedCrossProjectAccessScope: isCrossProject ? accessScope : inheritedCrossProjectAccessScope,
             parentImportedSecrets: secretsWithDuplicate
           });
         }
