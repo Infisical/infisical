@@ -100,6 +100,11 @@ import {
   getCircleCIConnectionListItem,
   validateCircleCIConnectionCredentials
 } from "./circleci";
+import {
+  Cloud66ConnectionMethod,
+  getCloud66ConnectionListItem,
+  validateCloud66ConnectionCredentials
+} from "./cloud-66";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -292,6 +297,11 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.GoDaddy
 ];
 
+// App Connections available within Secret Manager projects ahead of a dedicated secret sync /
+// rotation / external migration mapping. Once Cloud 66 gains a secret sync it will be derived from
+// SECRET_SYNC_CONNECTION_MAP and can be removed from here.
+const SECRET_MANAGER_APP_CONNECTIONS = [AppConnection.Cloud66];
+
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
@@ -348,6 +358,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAnthropicConnectionListItem(),
     getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
+    getCloud66ConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
     getVenafiTppConnectionListItem(),
@@ -371,7 +382,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
           return (
             Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
             Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
-            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app)
+            EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app) ||
+            SECRET_MANAGER_APP_CONNECTIONS.includes(option.app)
           );
         case ProjectType.SecretScanning:
           return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
@@ -581,6 +593,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Cloud66]: validateCloud66ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
@@ -618,6 +631,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case Cloud66ConnectionMethod.AccessToken:
       return "Personal Access Token";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -832,6 +846,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
   [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Cloud66]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,

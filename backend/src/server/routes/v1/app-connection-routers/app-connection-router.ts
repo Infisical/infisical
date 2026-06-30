@@ -66,6 +66,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  Cloud66ConnectionListItemSchema,
+  SanitizedCloud66ConnectionSchema
+} from "@app/services/app-connection/cloud-66";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -252,6 +256,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedCircleCIConnectionSchema.options,
+  ...SanitizedCloud66ConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
@@ -325,6 +330,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
   CircleCIConnectionListItemSchema,
+  Cloud66ConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,

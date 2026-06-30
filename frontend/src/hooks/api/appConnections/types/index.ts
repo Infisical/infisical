@@ -16,6 +16,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -86,6 +87,7 @@ export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
+export * from "./cloud-66-connection";
 export * from "./cloudflare-connection";
 export * from "./convex-connection";
 export * from "./databricks-connection";
@@ -192,6 +194,7 @@ export type TAppConnection =
   | TOpenRouterConnection
   | TAnthropicConnection
   | TCircleCIConnection
+  | TCloud66Connection
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TVenafiTppConnection

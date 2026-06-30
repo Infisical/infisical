@@ -84,6 +84,7 @@ import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
+import { ValidateCloud66ConnectionCredentialsSchema } from "./cloud-66";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateConvexConnectionCredentialsSchema } from "./convex";
@@ -249,6 +250,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.Cloud66]: ValidateCloud66ConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.VenafiTpp]: ValidateVenafiTppConnectionCredentialsSchema,
