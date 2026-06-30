@@ -91,7 +91,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
@@ -120,7 +122,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.SecretImport)
         .where({ [`${TableName.SecretImport}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
@@ -149,7 +153,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
         .whereIn(`${TableName.SecretImport}.id`, ids)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
@@ -180,7 +186,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .count();
 
       return Number(docs[0]?.count ?? 0);
@@ -200,7 +208,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .count(db.raw(`DISTINCT ("${TableName.SecretImport}"."importPath", "${TableName.SecretImport}"."importEnv")`));
 
       // @ts-expect-error scott - not typed
@@ -216,7 +226,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .whereIn("folderId", folderIds)
         .where("isReplication", false)
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
@@ -256,7 +268,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .where({ importPath: secretPath, importEnv: environmentId })
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(db.ref("id").withSchema(TableName.SecretFolder).as("folderId"));
       return folderImports;
     } catch (error) {
@@ -276,7 +290,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .where({ importPath: secretPath, importEnv: environmentId })
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
           db.ref("name").withSchema(TableName.Environment).as("envName"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -289,7 +305,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .join(TableName.SecretV2, `${TableName.SecretReferenceV2}.secretId`, `${TableName.SecretV2}.id`)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where(`${TableName.SecretFolder}.isReserved`, false)
         .select(
