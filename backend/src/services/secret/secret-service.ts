@@ -50,17 +50,17 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
+import { TCheckRevokedGrantsDTO } from "../project-grant/project-grant-types";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { TOrgDALFactory } from "../org/org-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
-import { TCheckRevokedGrantsDTO } from "../project-grant/project-grant-types";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
@@ -3793,84 +3793,85 @@ export const secretServiceFactory = ({
   };
 
   const getSecretsWithRevokedProjectGrant = async ({
-      targetProjectId,
-      actorOrgId,
-      secrets
-    }: TCheckRevokedGrantsDTO): Promise<Set<string>> => {
-      const revokedSecretIds = new Set<string>();
+    targetProjectId,
+    actorOrgId,
+    secrets
+  }: TCheckRevokedGrantsDTO): Promise<Set<string>> => {
+    const revokedSecretIds = new Set<string>();
 
-      const toRefKey = (ref: { targetProjectSlug: string; environment: string; secretPath: string }) =>
-        `${ref.targetProjectSlug}:${ref.environment}:${ref.secretPath}`;
+    const toRefKey = (ref: { targetProjectSlug: string; environment: string; secretPath: string }) =>
+      `${ref.targetProjectSlug}:${ref.environment}:${ref.secretPath}`;
 
-      type CrossProjectRef = { targetProjectSlug: string; environment: string; secretPath: string };
-      const secretRefMap = new Map<string, CrossProjectRef[]>();
-      for (const secret of secrets) {
-        if (secret.secretValueHidden || !secret.secretValue) continue;
+    type CrossProjectRef = { targetProjectSlug: string; environment: string; secretPath: string };
+    const secretRefMap = new Map<string, CrossProjectRef[]>();
+    for (const secret of secrets) {
+      if (!secret.secretValueHidden && secret.secretValue) {
         const { nestedReferences } = getAllSecretReferences(secret.secretValue);
-        const crossProjectRefs = nestedReferences.filter(
-          (ref): ref is typeof ref & { targetProjectSlug: string } => Boolean(ref.targetProjectSlug)
+        const crossProjectRefs = nestedReferences.filter((ref): ref is typeof ref & { targetProjectSlug: string } =>
+          Boolean(ref.targetProjectSlug)
         );
         if (crossProjectRefs.length > 0) secretRefMap.set(secret.id, crossProjectRefs);
       }
+    }
 
-      if (secretRefMap.size === 0) return revokedSecretIds;
+    if (secretRefMap.size === 0) return revokedSecretIds;
 
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-        return revokedSecretIds;
-      }
-
-      const uniqueRefs = new Map<string, CrossProjectRef>();
-      for (const refs of secretRefMap.values()) {
-        for (const ref of refs) {
-          const key = toRefKey(ref);
-          if (!uniqueRefs.has(key)) uniqueRefs.set(key, ref);
-        }
-      }
-
-      const slugToProjectId = new Map<string, Promise<string | null>>();
-      const resolveSlug = (slug: string) => {
-        if (!slugToProjectId.has(slug)) {
-          slugToProjectId.set(
-            slug,
-            projectDAL
-              .findProjectBySlug(slug, actorOrgId)
-              .then((p) => p.id)
-              .catch(() => null)
-          );
-        }
-        return slugToProjectId.get(slug)!;
-      };
-
-      const refKeyToFolderId = new Map<string, string | null>();
-      await Promise.all(
-        [...uniqueRefs.entries()].map(async ([key, ref]) => {
-          const sourceProjectId = await resolveSlug(ref.targetProjectSlug);
-          if (!sourceProjectId) {
-            refKeyToFolderId.set(key, null);
-            return;
-          }
-          const folder = await folderDAL.findBySecretPath(sourceProjectId, ref.environment, ref.secretPath);
-          refKeyToFolderId.set(key, folder?.id ?? null);
-        })
-      );
-
-      const folderIds = [...refKeyToFolderId.values()].filter((id): id is string => id !== null);
-      let grantedFolderIds = new Set<string>();
-      if (folderIds.length > 0) {
-        const grants = await projectGrantDAL.find({ $in: { sourceFolderId: folderIds }, targetProjectId });
-        grantedFolderIds = new Set(grants.map((g) => g.sourceFolderId));
-      }
-
-      for (const [secretId, refs] of secretRefMap.entries()) {
-        const hasRevoked = refs.some((ref) => {
-          const folderId = refKeyToFolderId.get(toRefKey(ref));
-          return !folderId || !grantedFolderIds.has(folderId);
-        });
-        if (hasRevoked) revokedSecretIds.add(secretId);
-      }
-
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
       return revokedSecretIds;
     }
+
+    const uniqueRefs = new Map<string, CrossProjectRef>();
+    for (const refs of secretRefMap.values()) {
+      for (const ref of refs) {
+        const key = toRefKey(ref);
+        if (!uniqueRefs.has(key)) uniqueRefs.set(key, ref);
+      }
+    }
+
+    const slugToProjectId = new Map<string, Promise<string | null>>();
+    const resolveSlug = (slug: string) => {
+      if (!slugToProjectId.has(slug)) {
+        slugToProjectId.set(
+          slug,
+          projectDAL
+            .findProjectBySlug(slug, actorOrgId)
+            .then((p) => p.id)
+            .catch(() => null)
+        );
+      }
+      return slugToProjectId.get(slug)!;
+    };
+
+    const refKeyToFolderId = new Map<string, string | null>();
+    await Promise.all(
+      [...uniqueRefs.entries()].map(async ([key, ref]) => {
+        const sourceProjectId = await resolveSlug(ref.targetProjectSlug);
+        if (!sourceProjectId) {
+          refKeyToFolderId.set(key, null);
+          return;
+        }
+        const folder = await folderDAL.findBySecretPath(sourceProjectId, ref.environment, ref.secretPath);
+        refKeyToFolderId.set(key, folder?.id ?? null);
+      })
+    );
+
+    const folderIds = [...refKeyToFolderId.values()].filter((id): id is string => id !== null);
+    let grantedFolderIds = new Set<string>();
+    if (folderIds.length > 0) {
+      const grants = await projectGrantDAL.find({ $in: { sourceFolderId: folderIds }, targetProjectId });
+      grantedFolderIds = new Set(grants.map((g) => g.sourceFolderId));
+    }
+
+    for (const [secretId, refs] of secretRefMap.entries()) {
+      const hasRevoked = refs.some((ref) => {
+        const folderId = refKeyToFolderId.get(toRefKey(ref));
+        return !folderId || !grantedFolderIds.has(folderId);
+      });
+      if (hasRevoked) revokedSecretIds.add(secretId);
+    }
+
+    return revokedSecretIds;
+  };
 
   return {
     attachTags,

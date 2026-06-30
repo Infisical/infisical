@@ -55,6 +55,7 @@ import { TMembershipUserDALFactory } from "../membership-user/membership-user-da
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { canUseCrossProjectSecretSharing } from "../project-grant/project-grant-fns";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
@@ -84,7 +85,6 @@ import {
   TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
-import { canUseCrossProjectSecretSharing } from "../project-grant/project-grant-fns";
 
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
@@ -620,7 +620,7 @@ export const orgServiceFactory = ({
       });
     }
 
-    const crossProjectSecretSharingEnabled = canUseCrossProjectSecretSharing(orgId) && allowCrossProjectSecretSharing
+    const crossProjectSecretSharingEnabled = canUseCrossProjectSecretSharing(orgId) && allowCrossProjectSecretSharing;
 
     const org = await orgDAL.updateById(orgId, {
       name,
@@ -890,10 +890,10 @@ export const orgServiceFactory = ({
         typeof isActive === "undefined"
           ? [foundMembership]
           : await orgDAL.updateMembership(
-            { id: membershipId, scopeOrgId: orgId, scope: AccessScope.Organization },
-            { isActive },
-            tx
-          );
+              { id: membershipId, scopeOrgId: orgId, scope: AccessScope.Organization },
+              { isActive },
+              tx
+            );
       if (userRole) {
         await membershipRoleDAL.delete({ membershipId }, tx);
         await membershipRoleDAL.create(
