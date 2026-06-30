@@ -145,7 +145,7 @@ export const projectGrantServiceFactory = ({
     const deleted = await projectGrantDAL.deleteById(grantId);
     // Invalidate the target project's secret cache so revoked references stop resolving immediately
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(grant.targetProjectId);
-    return deleted;
+    return { ...deleted, environment: folderInfo.environmentSlug, secretPath: folderInfo.path };
   };
 
   const listGrantsByProject = async ({
