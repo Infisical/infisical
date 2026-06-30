@@ -174,8 +174,8 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
-    name: "active-directory",
-    type: PamAccountType.ActiveDirectory,
+    name: "windows-ad",
+    type: PamAccountType.WindowsAd,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,

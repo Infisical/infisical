@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -44,6 +45,7 @@ type TPamMembershipServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
@@ -52,10 +54,17 @@ export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServic
 const VALID_PRODUCT_ROLES = Object.values(PamProductRole);
 const VALID_RESOURCE_ROLES = Object.values(PamResourceRole);
 
-const resolveActorColumn = (dto: { userId?: string; groupId?: string }) => {
+const resolveActorColumn = (dto: { userId?: string; groupId?: string; identityId?: string }) => {
   if (dto.userId) return { column: "actorUserId" as const, id: dto.userId, kind: "user" as const };
   if (dto.groupId) return { column: "actorGroupId" as const, id: dto.groupId, kind: "group" as const };
-  throw new BadRequestError({ message: "Either userId or groupId is required" });
+  if (dto.identityId) return { column: "actorIdentityId" as const, id: dto.identityId, kind: "identity" as const };
+  throw new BadRequestError({ message: "Either userId, groupId, or identityId is required" });
+};
+
+const kindLabel = (kind: "user" | "group" | "identity") => {
+  if (kind === "user") return "User";
+  if (kind === "group") return "Group";
+  return "Identity";
 };
 
 const resourceScope = (projectId: string, resourceType: ResourceType, resourceId: string) => ({
@@ -72,6 +81,7 @@ export const pamMembershipServiceFactory = ({
   pamAccountDAL,
   userDAL,
   groupDAL,
+  identityDAL,
   permissionService
 }: TPamMembershipServiceFactoryDep) => {
   // Shared helpers
@@ -145,7 +155,10 @@ export const pamMembershipServiceFactory = ({
     return account;
   };
 
-  const validateActorExists = async (dto: { userId?: string; groupId?: string }, orgId: string) => {
+  const validateActorExists = async (
+    dto: { userId?: string; groupId?: string; identityId?: string },
+    orgId: string
+  ) => {
     const { column, id, kind } = resolveActorColumn(dto);
 
     if (kind === "user") {
@@ -161,16 +174,35 @@ export const pamMembershipServiceFactory = ({
       if (orgMemberships.length === 0) {
         throw new BadRequestError({ message: "User must be an active member of this organization" });
       }
-    } else {
+    } else if (kind === "group") {
       const group = await groupDAL.findById(id);
       if (!group) throw new NotFoundError({ message: `Group with ID '${id}' not found` });
       if (group.orgId !== orgId) throw new BadRequestError({ message: "Group does not belong to this organization" });
+    } else {
+      const identity = await identityDAL.findById(id);
+      if (!identity) throw new NotFoundError({ message: `Identity with ID '${id}' not found` });
+      if (identity.projectId) {
+        throw new BadRequestError({ message: "Project-scoped identities cannot be added as PAM members" });
+      }
+
+      const orgMemberships = await membershipDAL.find({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgId,
+        actorIdentityId: id,
+        isActive: true
+      });
+      if (orgMemberships.length === 0) {
+        throw new BadRequestError({ message: "Identity must be an active member of this organization" });
+      }
     }
 
     return { column, id, kind };
   };
 
-  const validateProductMember = async (projectId: string, dto: { userId?: string; groupId?: string }) => {
+  const validateProductMember = async (
+    projectId: string,
+    dto: { userId?: string; groupId?: string; identityId?: string }
+  ) => {
     const { column, id } = resolveActorColumn(dto);
     const memberships = await membershipDAL.find({
       scope: AccessScope.Project,
@@ -246,7 +278,7 @@ export const pamMembershipServiceFactory = ({
       );
       if (existing.length > 0) {
         throw new BadRequestError({
-          message: `${kind === "user" ? "User" : "Group"} is already a member of this PAM product`
+          message: `${kindLabel(kind)} is already a member of this PAM product`
         });
       }
 
@@ -267,6 +299,7 @@ export const pamMembershipServiceFactory = ({
         membershipId: membership.id,
         userId: kind === "user" ? id : undefined,
         groupId: kind === "group" ? id : undefined,
+        identityId: kind === "identity" ? id : undefined,
         role: membershipRole.role,
         createdAt: membership.createdAt
       };
@@ -385,6 +418,14 @@ export const pamMembershipServiceFactory = ({
   const updateProductMemberRole = async ({ projectId, role, ...dto }: TUpdatePamProductMemberDTO & TActorContext) => {
     await checkProductAdmin(projectId, dto);
 
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
     if (!VALID_PRODUCT_ROLES.includes(role)) {
       throw new BadRequestError({
         message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
@@ -400,7 +441,7 @@ export const pamMembershipServiceFactory = ({
       );
       if (!membership) {
         throw new NotFoundError({
-          message: `${kind === "user" ? "User" : "Group"} is not a member of this PAM product`
+          message: `${kindLabel(kind)} is not a member of this PAM product`
         });
       }
 
@@ -416,6 +457,7 @@ export const pamMembershipServiceFactory = ({
         membershipId: membership.id,
         userId: kind === "user" ? id : undefined,
         groupId: kind === "group" ? id : undefined,
+        identityId: kind === "identity" ? id : undefined,
         role
       };
     });
@@ -423,6 +465,14 @@ export const pamMembershipServiceFactory = ({
 
   const removeProductMember = async ({ projectId, ...dto }: TRemovePamProductMemberDTO & TActorContext) => {
     await checkProductAdmin(projectId, dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
 
     const { column, id, kind } = resolveActorColumn(dto);
 
@@ -433,7 +483,7 @@ export const pamMembershipServiceFactory = ({
       );
       if (!membership) {
         throw new NotFoundError({
-          message: `${kind === "user" ? "User" : "Group"} is not a member of this PAM product`
+          message: `${kindLabel(kind)} is not a member of this PAM product`
         });
       }
 
@@ -460,7 +510,8 @@ export const pamMembershipServiceFactory = ({
       return {
         membershipId: membership.id,
         userId: kind === "user" ? id : undefined,
-        groupId: kind === "group" ? id : undefined
+        groupId: kind === "group" ? id : undefined,
+        identityId: kind === "identity" ? id : undefined
       };
     });
   };
@@ -479,7 +530,7 @@ export const pamMembershipServiceFactory = ({
     resourceKey: string,
     role: string,
     expiry: string | null | undefined,
-    dto: { userId?: string; groupId?: string } & TActorContext
+    dto: { userId?: string; groupId?: string; identityId?: string } & TActorContext
   ) => {
     if (!VALID_RESOURCE_ROLES.includes(role as PamResourceRole)) {
       throw new BadRequestError({
@@ -509,7 +560,7 @@ export const pamMembershipServiceFactory = ({
         );
         if (isStillActive) {
           throw new BadRequestError({
-            message: `${kind === "user" ? "User" : "Group"} is already a member of this ${resourceKey}`
+            message: `${kindLabel(kind)} is already a member of this ${resourceKey}`
           });
         }
         await membershipRoleDAL.delete({ membershipId: existing[0].id }, tx);
@@ -549,6 +600,7 @@ export const pamMembershipServiceFactory = ({
         [resourceKey]: resourceId,
         userId: kind === "user" ? id : undefined,
         groupId: kind === "group" ? id : undefined,
+        identityId: kind === "identity" ? id : undefined,
         role: membershipRole.role,
         expiresAt: membershipRole.temporaryAccessEndTime ?? null,
         createdAt: membership.createdAt
@@ -562,7 +614,7 @@ export const pamMembershipServiceFactory = ({
     resourceId: string,
     resourceKey: string,
     role: string,
-    dto: { userId?: string; groupId?: string } & TActorContext
+    dto: { userId?: string; groupId?: string; identityId?: string } & TActorContext
   ) => {
     if (!VALID_RESOURCE_ROLES.includes(role as PamResourceRole)) {
       throw new BadRequestError({
@@ -571,6 +623,10 @@ export const pamMembershipServiceFactory = ({
     }
 
     if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
       throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
     }
 
@@ -583,7 +639,7 @@ export const pamMembershipServiceFactory = ({
       );
       if (!membership) {
         throw new NotFoundError({
-          message: `${kind === "user" ? "User" : "Group"} is not a member of this ${resourceKey}`
+          message: `${kindLabel(kind)} is not a member of this ${resourceKey}`
         });
       }
 
@@ -594,6 +650,7 @@ export const pamMembershipServiceFactory = ({
         [resourceKey]: resourceId,
         userId: kind === "user" ? id : undefined,
         groupId: kind === "group" ? id : undefined,
+        identityId: kind === "identity" ? id : undefined,
         role
       };
     });
@@ -604,9 +661,13 @@ export const pamMembershipServiceFactory = ({
     resourceType: ResourceType,
     resourceId: string,
     resourceKey: string,
-    dto: { userId?: string; groupId?: string } & TActorContext
+    dto: { userId?: string; groupId?: string; identityId?: string } & TActorContext
   ) => {
     if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
       throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
     }
 
@@ -618,7 +679,7 @@ export const pamMembershipServiceFactory = ({
     });
     if (!membership) {
       throw new NotFoundError({
-        message: `${kind === "user" ? "User" : "Group"} is not a member of this ${resourceKey}`
+        message: `${kindLabel(kind)} is not a member of this ${resourceKey}`
       });
     }
 
@@ -631,7 +692,8 @@ export const pamMembershipServiceFactory = ({
       membershipId: membership.id,
       [resourceKey]: resourceId,
       userId: kind === "user" ? id : undefined,
-      groupId: kind === "group" ? id : undefined
+      groupId: kind === "group" ? id : undefined,
+      identityId: kind === "identity" ? id : undefined
     };
   };
 

@@ -121,7 +121,7 @@ const registerPerTypeEndpoints = (
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { corsProbeUrl, ...account } = await server.services.pamAccount.create({
         accountType,
@@ -201,7 +201,7 @@ const registerPerTypeEndpoints = (
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { corsProbeUrl, ...account } = await server.services.pamAccount.update({
         accountId: req.params.accountId,
@@ -264,7 +264,7 @@ const registerPerTypeEndpoints = (
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const account = await server.services.pamAccount.deleteAccount({
         accountId: req.params.accountId,
@@ -321,7 +321,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async () => {
       return {
         accountTypes: buildPamAccountTypeMetadata(new Set(Object.keys(SESSION_HANDLERS) as PamAccountType[]))
@@ -346,7 +346,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const accounts = await server.services.pamAccount.list({
         projectId: req.internalPamProjectId,
@@ -399,7 +399,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { accounts, totalCount } = await server.services.pamAccount.listAccessible({
         projectId: req.internalPamProjectId,
@@ -444,7 +444,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const data = await server.services.pamAccount.getAccountPermissions({
         accountId: req.params.accountId,
@@ -473,7 +473,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const account = await server.services.pamAccount.getById({
         accountId: req.params.accountId,
@@ -500,7 +500,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
@@ -543,7 +543,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.pamAccount.getSshCaPublicKey({
         accountId: req.params.accountId,
@@ -569,7 +569,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       const { publicKey: caPublicKey } = await server.services.pamAccount.getSshCaPublicKey({
         accountId: req.params.accountId,

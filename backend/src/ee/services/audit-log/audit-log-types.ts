@@ -5915,6 +5915,7 @@ interface PamProductMemberAddEvent {
   metadata: {
     userId?: string;
     groupId?: string;
+    identityId?: string;
     role: string;
   };
 }
@@ -5924,6 +5925,7 @@ interface PamProductMemberUpdateEvent {
   metadata: {
     userId?: string;
     groupId?: string;
+    identityId?: string;
     role: string;
   };
 }
@@ -5933,6 +5935,7 @@ interface PamProductMemberRemoveEvent {
   metadata: {
     userId?: string;
     groupId?: string;
+    identityId?: string;
   };
 }
 
@@ -5942,6 +5945,7 @@ interface PamFolderMemberAddEvent {
     folderId: string;
     userId?: string;
     groupId?: string;
+    identityId?: string;
     role: string;
   };
 }
@@ -5952,6 +5956,7 @@ interface PamFolderMemberUpdateEvent {
     folderId: string;
     userId?: string;
     groupId?: string;
+    identityId?: string;
     role: string;
   };
 }
@@ -5962,6 +5967,7 @@ interface PamFolderMemberRemoveEvent {
     folderId: string;
     userId?: string;
     groupId?: string;
+    identityId?: string;
   };
 }
 
@@ -5971,6 +5977,7 @@ interface PamAccountMemberAddEvent {
     accountId: string;
     userId?: string;
     groupId?: string;
+    identityId?: string;
     role: string;
   };
 }
@@ -5981,6 +5988,7 @@ interface PamAccountMemberUpdateEvent {
     accountId: string;
     userId?: string;
     groupId?: string;
+    identityId?: string;
     role: string;
   };
 }
@@ -5991,6 +5999,7 @@ interface PamAccountMemberRemoveEvent {
     accountId: string;
     userId?: string;
     groupId?: string;
+    identityId?: string;
   };
 }
 

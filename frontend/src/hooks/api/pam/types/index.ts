@@ -61,7 +61,7 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
-  type === PamAccountType.Windows || type === PamAccountType.ActiveDirectory;
+  type === PamAccountType.Windows || type === PamAccountType.WindowsAd;
 
 export type TPamAccountSettingsOverrides = {
   recordingS3Config?: { bucket: string; region: string; keyPrefix?: string };
@@ -322,6 +322,7 @@ export type TPamResourceRole = {
 export type TPamMembersData = {
   users: TPamMember[];
   groups: TPamMember[];
+  identities: TPamMember[];
 };
 
 export type TAddAccountUserMemberDTO = {
@@ -394,4 +395,57 @@ export type TUpdateFolderGroupMemberRoleDTO = {
 export type TRemoveFolderGroupMemberDTO = {
   folderId: string;
   groupId: string;
+};
+
+export type TAddAccountIdentityMemberDTO = {
+  accountId: string;
+  identityId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateAccountIdentityMemberRoleDTO = {
+  accountId: string;
+  identityId: string;
+  role: string;
+};
+
+export type TRemoveAccountIdentityMemberDTO = {
+  accountId: string;
+  identityId: string;
+};
+
+export type TAddFolderIdentityMemberDTO = {
+  folderId: string;
+  identityId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateFolderIdentityMemberRoleDTO = {
+  folderId: string;
+  identityId: string;
+  role: string;
+};
+
+export type TRemoveFolderIdentityMemberDTO = {
+  folderId: string;
+  identityId: string;
+};
+
+export type TAddPamProductIdentityMemberDTO = {
+  identityId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductIdentityMemberDTO = {
+  identityId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TRemovePamProductIdentityMemberDTO = {
+  identityId: string;
+  projectId: string;
 };

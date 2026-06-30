@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
-import { RdpContent } from "./RdpContent";
+import { RdpLauncher } from "./RdpLauncher";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
@@ -89,6 +89,7 @@ const PageContent = () => {
   };
 
   const { accountId } = params;
+  const { host: preselectedHost } = useSearch({ strict: false }) as { host?: string };
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
   if (isPending) {
@@ -125,9 +126,16 @@ const PageContent = () => {
         }
         if (
           account.accountType === PamAccountType.Windows ||
-          account.accountType === PamAccountType.ActiveDirectory
+          account.accountType === PamAccountType.WindowsAd
         ) {
-          return <RdpContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
+          return (
+            <RdpLauncher
+              account={account}
+              reason={reason}
+              mfaSessionId={mfaSessionId}
+              preselectedHost={preselectedHost}
+            />
+          );
         }
         return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}

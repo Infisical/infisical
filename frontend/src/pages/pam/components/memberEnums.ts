@@ -1,6 +1,7 @@
 export enum PamMemberKind {
   User = "user",
-  Group = "group"
+  Group = "group",
+  Identity = "identity"
 }
 
 export enum PamMemberSource {

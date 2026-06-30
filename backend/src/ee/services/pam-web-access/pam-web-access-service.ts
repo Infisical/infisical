@@ -29,7 +29,8 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   extractGatewayTarget,
   getAccountAccessibilityIssues,
-  PamAccountAccessibilityIssue
+  PamAccountAccessibilityIssue,
+  resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
@@ -84,6 +85,7 @@ type THandleWebSocketConnectionDTO = {
   actorUserAgent: string;
   reason: string | null | undefined;
   maxSessionDurationMs?: number;
+  selectedHost?: string | null;
   preAuthMessages: TEarlyBufferedMsg[];
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
@@ -150,7 +152,8 @@ export const pamWebAccessServiceFactory = ({
     actorName,
     auditLogInfo,
     reason,
-    mfaSessionId
+    mfaSessionId,
+    selectedHost
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -160,8 +163,6 @@ export const pamWebAccessServiceFactory = ({
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
-
-    enforceRecordingConfig(account);
 
     await checkAccountAccess(
       permissionService,
@@ -176,6 +177,11 @@ export const pamWebAccessServiceFactory = ({
         actorAuthMethod: actor.authMethod
       }
     );
+
+    enforceRecordingConfig(account);
+
+    const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
     const trimmedReason = reason?.trim() || null;
 
@@ -220,7 +226,8 @@ export const pamWebAccessServiceFactory = ({
         actorName,
         auditLogInfo,
         reason: trimmedReason,
-        maxSessionDurationMs
+        maxSessionDurationMs,
+        selectedHost: resolvedHost
       })
     });
 
@@ -255,6 +262,7 @@ export const pamWebAccessServiceFactory = ({
     actorUserAgent,
     reason: accessReason,
     maxSessionDurationMs: policyDurationMs,
+    selectedHost,
     preAuthMessages,
     preAuthHandler
   }: THandleWebSocketConnectionDTO): Promise<void> => {
@@ -395,6 +403,7 @@ export const pamWebAccessServiceFactory = ({
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
       const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+      const targetHost = selectedHost || gatewayTarget.host;
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);
@@ -417,14 +426,14 @@ export const pamWebAccessServiceFactory = ({
         gatewayId: effectiveGatewayId,
         reason: accessReason?.trim() || null,
         folderName: account.folderName,
-        selectedHost: gatewayTarget.host
+        selectedHost: targetHost
       });
 
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId: effectiveGatewayId,
         sessionId: session.id,
         accountType: handlerEntry.gatewayAccountType,
-        host: gatewayTarget.host,
+        host: targetHost,
         port: gatewayTarget.port,
         duration: sessionDurationMs,
         actorMetadata: {
@@ -444,8 +453,7 @@ export const pamWebAccessServiceFactory = ({
         gateway: certs.gateway
       };
 
-      const isRdp =
-        account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.ActiveDirectory;
+      const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
 
       relayServer = await setupRelayServer({
         protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,

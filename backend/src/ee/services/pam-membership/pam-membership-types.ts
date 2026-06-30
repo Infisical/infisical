@@ -8,6 +8,7 @@ export type TAddPamProductMemberDTO = {
   projectId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
   role: PamProductRole;
 };
 
@@ -22,6 +23,7 @@ export type TUpdatePamProductMemberDTO = {
   projectId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
   role: PamProductRole;
 };
 
@@ -29,6 +31,7 @@ export type TRemovePamProductMemberDTO = {
   projectId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
 };
 
 export type TListPamFolderMembersDTO = {
@@ -41,6 +44,7 @@ export type TAddPamFolderMemberDTO = {
   folderId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
   role: PamResourceRole;
   expiry?: string | null;
 };
@@ -50,6 +54,7 @@ export type TUpdatePamFolderMemberDTO = {
   folderId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
   role: PamResourceRole;
 };
 
@@ -58,6 +63,7 @@ export type TRemovePamFolderMemberDTO = {
   folderId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
 };
 
 export type TListPamAccountMembersDTO = {
@@ -70,6 +76,7 @@ export type TAddPamAccountMemberDTO = {
   accountId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
   role: PamResourceRole;
   expiry?: string | null;
 };
@@ -79,6 +86,7 @@ export type TUpdatePamAccountMemberDTO = {
   accountId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
   role: PamResourceRole;
 };
 
@@ -87,4 +95,5 @@ export type TRemovePamAccountMemberDTO = {
   accountId: string;
   userId?: string;
   groupId?: string;
+  identityId?: string;
 };

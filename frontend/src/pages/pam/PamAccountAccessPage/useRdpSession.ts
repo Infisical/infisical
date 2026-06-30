@@ -17,6 +17,8 @@ const DEFAULT_DESKTOP_SIZE = { width: 1920, height: 1080 };
 
 const STATUS_BAR_HEIGHT = 33;
 
+const RDP_SESSION_FAILED_MESSAGE = "Unable to establish the remote session.";
+
 // WASM reads window.innerHeight for fit scaling, not the container
 const innerHeightDescriptor =
   Object.getOwnPropertyDescriptor(window, "innerHeight") ??
@@ -80,6 +82,7 @@ type UseRdpSessionOptions = {
   accountName: string;
   reason?: string;
   mfaSessionId?: string;
+  selectedHost?: string;
   onSessionEnd?: () => void;
 };
 
@@ -88,6 +91,7 @@ export const useRdpSession = ({
   accountName,
   reason,
   mfaSessionId,
+  selectedHost,
   onSessionEnd
 }: UseRdpSessionOptions) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -138,7 +142,7 @@ export const useRdpSession = ({
 
     const { data } = await apiRequest.post<{ ticket: string }>(
       `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-      { reason, mfaSessionId }
+      { reason, mfaSessionId, selectedHost }
     );
     if (!isCurrent()) return;
     const proxyAddress = buildProxyAddress(data.ticket);
@@ -176,19 +180,13 @@ export const useRdpSession = ({
           await sessionInfo.run();
         })
         .catch((err) => {
-          const ironErr = err as {
-            backtrace?: () => string;
-            kind?: () => unknown;
-          };
-          const kind = ironErr.kind?.();
           // eslint-disable-next-line no-console
-          console.error("RDP session failed:", kind, ironErr.backtrace?.() ?? err);
+          console.error("RDP session failed:", err);
           if (!isCurrent()) return;
-          const detail = typeof kind === "string" ? kind : String(err);
-          setError(detail);
+          setError(RDP_SESSION_FAILED_MESSAGE);
           createNotification({
             type: "error",
-            text: `RDP connection failed: ${detail}`
+            text: RDP_SESSION_FAILED_MESSAGE
           });
         })
         .finally(() => {
@@ -200,7 +198,7 @@ export const useRdpSession = ({
 
     containerRef.current.appendChild(el);
     elementRef.current = el;
-  }, [accountId, accountName, reason, mfaSessionId, buildProxyAddress, teardown]);
+  }, [accountId, accountName, reason, mfaSessionId, selectedHost, buildProxyAddress, teardown]);
 
   const handleConnectError = useCallback((err: unknown) => {
     let message = "Failed to start RDP session";

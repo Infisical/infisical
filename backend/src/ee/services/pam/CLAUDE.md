@@ -72,7 +72,7 @@ Scoping rules (enforced via `eventMetadata` json): account-scoped logs (have `ac
 
 ### Auth Modes
 
-All PAM endpoints use `AuthMode.JWT` only (user access). `IDENTITY_ACCESS_TOKEN` is not supported. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, except session launch and web-access which are JWT-only. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
 
 ### Roles
 
@@ -105,7 +105,9 @@ How descriptors are derived:
 
 ### Key Helpers
 
-- **`extractGatewayTarget(accountType, rawConnectionDetails)`** -- validated extraction of `{ host, port }` from decrypted connection details, dispatched by account type. Use this instead of raw type casts.
+- **`extractGatewayTarget(accountType, rawConnectionDetails)`** -- validated extraction of `{ host, port }` from decrypted connection details, dispatched by account type. Used to set the cert routing extension (`getPAMConnectionDetails`) and the session's `selectedHost`. Use this instead of raw type casts.
+- **`buildSessionGatewayConnectionDetails(accountType, rawConnectionDetails, selectedHost?)`** -- reshapes decrypted connection details into the blob the gateway reads for a live session (returned from `getSessionCredentials`). Most types pass through their validated connection details unchanged. Windows AD is the exception: it is brokered through the **Windows** RDP gateway protocol (`gatewayAccountType: Windows`), so it must be reduced to the Windows shape `{ host, port }` -- `host` is the `selectedHost` (the chosen entry from the account's `hosts` list) and `port` is `rdpPort`. The AD-only fields (FQDN/`domain`, `dcAddress`, the LDAP `port`, ldap settings) are intentionally **not** forwarded: they are not part of the RDP leg, and a stray `domain` alongside a `DOMAIN\username` credential makes the gateway's NLA credential resolution ambiguous and fails the session. Domain login is carried by the `DOMAIN\username` credential format (mirrors how `main`'s domain accounts brokered RDP through the Windows resource's `{ host, port }`). When adding a type that reuses another type's gateway protocol, reshape it here.
+- **`getSelectableHosts(accountType, rawConnectionDetails)`** / **`resolveSelectedHost(accountType, rawConnectionDetails, requestedHost?)`** -- host-selection support for account types that hold a host list (Windows AD). `getSelectableHosts` returns the candidate hosts (or `null` for single-host types); `resolveSelectedHost` validates a launcher-requested host against that allow-list and returns the host to connect to (falling back to the first). The web-access ticket (`issueWebSocketTicket`) resolves the host **at issuance** and bakes it into the signed ticket payload, so the WS connection can't target an arbitrary host. The frontend `RdpLauncher` prompts for the host when there's more than one.
 - **`sanitizeCredentials(accountType, decrypted)`** -- strips secret fields from decrypted credentials using the type's `sanitizedCredentials` allowlist; used by `getById` before returning credentials to the client.
 - **`buildPamAccountTypeMetadata()`** -- builds the field descriptors served by `GET /pam/accounts/types`.
 - **`PamAccessMethod`** enum (`Web`, `Cli`) -- use instead of hardcoded `"web"`/`"cli"` strings.
@@ -118,7 +120,7 @@ Most types need only backend changes -- the frontend auto-renders from metadata.
 2. Add a config entry to `ACCOUNT_TYPE_CONFIGS` in `pam-account/pam-account-schemas.ts`: `name`, `icon`, `connectionDetails`, `credentials`, `sanitizedCredentials`, and any `ui` hints (set `widget: "password"`/`"textarea"` and `secret: true` where the schema can't express it).
 3. Drop the icon image into `frontend/public/images/integrations/` matching the `icon` filename in the config. No component edit -- `AccountPlatformIcon` and the type pickers resolve the name/icon from `GET /pam/accounts/types`.
 4. Add a case to `extractGatewayTarget` in `pam-account-schemas.ts`.
-5. If it supports web access: add a session handler in `pam-web-access/` (export the handler function) and add an entry for it to the `SESSION_HANDLERS` map in `pam-session-handlers.ts`.
+5. If it supports web access: add a session handler in `pam-web-access/` (export the handler function) and add an entry for it to the `SESSION_HANDLERS` map in `pam-session-handlers.ts`. If the entry reuses another type's `gatewayAccountType` (e.g. Windows AD → `Windows` for RDP), add a case to `buildSessionGatewayConnectionDetails` so the session credentials blob matches the shape that gateway protocol expects.
 
 No changes to the account form components, router schemas, or field renderers are needed. The per-type route bodies use `config.connectionDetails`/`config.credentials` directly, the detail response (`SanitizedAccountDetailSchema`) is a discriminated union auto-derived from `ACCOUNT_TYPE_CONFIGS` (each variant pulls `connectionDetails` and `sanitizedCredentials` from the config), and the frontend forms render from `GET /pam/accounts/types`.
 
