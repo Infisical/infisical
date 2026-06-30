@@ -80,14 +80,13 @@ export const dashboardKeys = {
       { projectId, secretPath, environment, filterByAction }
     ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
-  getSecretValue: ({ projectId, environment, secretPath, secretKey, isOverride, importId }: TGetSecretValueDTO) =>
+  getSecretValue: ({ projectId, environment, secretPath, secretKey, isOverride }: TGetSecretValueDTO) =>
     [
       ...dashboardKeys.getSecretValuesRoot(),
       projectId,
       environment,
       secretPath,
       secretKey,
-      importId,
       isOverride
     ] as const,
   getFolderMoveEligibility: (folderId: string) =>

@@ -1684,7 +1684,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secretKey: z.string().trim(),
-        importId: z.string().trim().uuid().optional(),
         isOverride: z
           .enum(["true", "false"])
           .transform((value) => value === "true")
@@ -1699,21 +1698,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretPath, projectId, environment, secretKey, isOverride, importId } = req.query;
-
-      if (importId) {
-        const { value } = await server.services.secretImport.getCrossProjectImportSecretValue({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          projectId,
-          importId,
-          secretName: secretKey
-        });
-
-        return { value };
-      }
+      const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
       const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,

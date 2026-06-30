@@ -355,7 +355,6 @@ export const SecretImportItem = ({
                             : secret
                         }
                         key={`${id}-${secret.key}-${index + 1}`}
-                        importId={importEnv.projectId !== currentProject?.id ? id : undefined}
                       />
                     ))}
                   </tbody>

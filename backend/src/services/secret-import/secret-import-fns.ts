@@ -32,6 +32,10 @@ type TSecretImportSecrets = {
 type TSecretImportSecretsV2 = {
   secretPath: string;
   environment: string;
+  accessScope: {
+    environment: string;
+    secretPath: string;
+  };
   environmentInfo: {
     id: string;
     slug: string;
@@ -245,6 +249,7 @@ export const fnSecretsV2FromImports = async ({
   decryptor,
   expandSecretReferences,
   hasSecretAccess,
+  importAccessScopeByFolderId,
   viewSecretValue,
   userId,
   personalOverridesBehavior,
@@ -271,6 +276,7 @@ export const fnSecretsV2FromImports = async ({
     secretKey: string;
   }) => Promise<string | undefined>;
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
+  importAccessScopeByFolderId?: Map<string, { environment: string; secretPath: string }>;
   userId?: string;
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
@@ -291,6 +297,7 @@ export const fnSecretsV2FromImports = async ({
   const stack: {
     secretImports: typeof rootSecretImports;
     depth: number;
+    inheritedCrossProjectAccessScope?: { environment: string; secretPath: string };
     parentImportedSecrets: (TSecretsV2 & {
       secretValueHidden: boolean;
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
@@ -305,7 +312,7 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
-    const { secretImports, depth, parentImportedSecrets } = stack.pop()!;
+    const { secretImports, depth, parentImportedSecrets, inheritedCrossProjectAccessScope } = stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
     const sanitizedImports = secretImports.filter(
@@ -430,7 +437,12 @@ export const fnSecretsV2FromImports = async ({
     processedBatchImports.forEach(({ importPath, importEnv, id, folderId, isReserved }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
 
-      const isCrossProject = !isReserved && Boolean(projectId && importEnv.projectId && importEnv.projectId !== projectId);
+      const isCrossProject =
+        !isReserved && Boolean(projectId && importEnv.projectId && importEnv.projectId !== projectId);
+      const accessScope =
+        isCrossProject && (importAccessScopeByFolderId?.get(folderId) || inheritedCrossProjectAccessScope)
+          ? importAccessScopeByFolderId?.get(folderId) || inheritedCrossProjectAccessScope!
+          : { environment: importEnv.slug, secretPath: importPath };
 
       // Skip cross-project imports that have no corresponding ProjectGrant
       if (isCrossProject && !grantedFolderIds.has(sourceImportFolder?.id || "")) {
@@ -446,8 +458,8 @@ export const fnSecretsV2FromImports = async ({
       const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
         .filter((item) =>
           hasSecretAccess(
-            importEnv.slug,
-            importPath,
+            accessScope.environment,
+            accessScope.secretPath,
             item.key,
             item.tags.map((el) => el.slug)
           )
@@ -473,6 +485,7 @@ export const fnSecretsV2FromImports = async ({
         stack.push({
           secretImports: deeperImportsGroupByFolderId[sourceImportFolder?.id || ""],
           depth: depth + 1,
+          inheritedCrossProjectAccessScope: isCrossProject ? accessScope : inheritedCrossProjectAccessScope,
           parentImportedSecrets: secretsWithDuplicate
         });
       }
@@ -481,6 +494,7 @@ export const fnSecretsV2FromImports = async ({
         processedImports.push({
           secretPath: importPath,
           environment: importEnv.slug,
+          accessScope,
           environmentInfo: importEnv,
           folderId: importedFolders?.[i]?.id,
           id,
