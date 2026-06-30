@@ -5,6 +5,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretReferenceWizard } from "@app/components/v3/platform/SecretInput/SecretReferenceWizard";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -130,6 +131,31 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     }, [debouncedValue]);
 
     const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
+    const showWizard = isPopupOpen && !suggestionSource.isDeep;
+
+    const handleWizardSelect = (referenceContent: string) => {
+      const { left } = suggestionSource;
+      const rightBracketIndex = getIndexOfUnclosedRefToTheRight(value, left);
+      const isEnclosed = rightBracketIndex !== -1;
+
+      const lhsValue = value.slice(0, left);
+      const rhsValue = value.slice(
+        rightBracketIndex !== -1 ? rightBracketIndex + 1 : currentCursorPosition
+      );
+
+      const newValue = `${lhsValue}${referenceContent}${isEnclosed ? "" : "}"}${rhsValue}`;
+      onChange?.(newValue);
+
+      const delay = setTimeout(() => {
+        clearTimeout(delay);
+        if (inputRef.current) {
+          const cursorPos = lhsValue.length + referenceContent.length + 1;
+          inputRef.current.selectionEnd = cursorPos;
+        }
+      }, 10);
+
+      setIsFocused.off();
+    };
     const { data: secrets } = useGetProjectSecrets({
       viewSecretValue: false,
       environment: suggestionSource.environment || "",
@@ -464,89 +490,100 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           <Popover.Content
             align="start"
             onOpenAutoFocus={(e) => e.preventDefault()}
-            className="relative top-2 z-100 max-h-64 thin-scrollbar min-w-80 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
-            style={{
-              width: "var(--radix-popover-trigger-width)"
+            onMouseDown={(e) => {
+              if (showWizard) e.preventDefault();
             }}
+            className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
+            style={
+              showWizard ? undefined : { width: "var(--radix-popover-trigger-width)" }
+            }
           >
-            <div
-              className="h-full w-full flex-col items-center justify-center rounded-md text-white"
-              ref={popoverContentRef}
-            >
-              {suggestions.map((item, i) => {
-                let entryIcon;
-                let subText;
-                const isNoMatchMessage = item.slug === "__no_match__";
+            {showWizard ? (
+              <SecretReferenceWizard
+                isEnabled={isPopupOpen}
+                onSelect={handleWizardSelect}
+                onFocusItem={() => inputRef.current?.focus()}
+              />
+            ) : (
+              <div
+                className="h-full w-full flex-col items-center justify-center rounded-md text-white"
+                ref={popoverContentRef}
+              >
+                {suggestions.map((item, i) => {
+                  let entryIcon;
+                  let subText;
+                  const isNoMatchMessage = item.slug === "__no_match__";
 
-                if (isNoMatchMessage) {
-                  entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
-                  subText = "No results";
-                } else if (item.type === ReferenceType.SECRET) {
-                  entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
-                  subText = "Secret";
-                } else if (item.type === ReferenceType.ENVIRONMENT) {
-                  entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-green-700" />;
-                  subText = "Environment";
-                } else {
-                  entryIcon = <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />;
-                  subText = "Folder";
-                }
+                  if (isNoMatchMessage) {
+                    entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
+                    subText = "No results";
+                  } else if (item.type === ReferenceType.SECRET) {
+                    entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
+                    subText = "Secret";
+                  } else if (item.type === ReferenceType.ENVIRONMENT) {
+                    entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-green-700" />;
+                    subText = "Environment";
+                  } else {
+                    entryIcon = <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />;
+                    subText = "Folder";
+                  }
 
-                return isNoMatchMessage ? (
-                  <div
-                    role="status"
-                    aria-label="no-match-message"
-                    className="flex w-full items-center justify-between border-mineshaft-600 text-left"
-                    key={`secret-reference-secret-${i + 1}`}
-                  >
-                    <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
-                      <div className="flex w-full items-start gap-2">
-                        <div className="mt-1 flex items-center">{entryIcon}</div>
-                        <div className="text-md w-10/12 truncate text-left">
-                          <span className="text-gray-400">{item.label}</span>
-                          <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
-                            {subText}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSuggestionSelect(i);
-                    }}
-                    aria-label="suggestion-item"
-                    onClick={(e) => {
-                      inputRef.current?.focus();
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSuggestionSelect(i);
-                    }}
-                    onMouseEnter={() => setHighlightedIndex(i)}
-                    className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
-                    key={`secret-reference-secret-${i + 1}`}
-                  >
+                  return isNoMatchMessage ? (
                     <div
-                      className={`${
-                        highlightedIndex === i ? "bg-mineshaft-500" : ""
-                      } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
+                      role="status"
+                      aria-label="no-match-message"
+                      className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                      key={`secret-reference-secret-${i + 1}`}
                     >
-                      <div className="flex w-full items-start gap-2">
-                        <div className="mt-1 flex items-center">{entryIcon}</div>
-                        <div className="text-md w-10/12 truncate text-left">
-                          <span>{item.label}</span>
-                          <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
-                            {subText}
+                      <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
+                        <div className="flex w-full items-start gap-2">
+                          <div className="mt-1 flex items-center">{entryIcon}</div>
+                          <div className="text-md w-10/12 truncate text-left">
+                            <span className="text-gray-400">{item.label}</span>
+                            <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                              {subText}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSuggestionSelect(i);
+                      }}
+                      aria-label="suggestion-item"
+                      onClick={(e) => {
+                        inputRef.current?.focus();
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSuggestionSelect(i);
+                      }}
+                      onMouseEnter={() => setHighlightedIndex(i)}
+                      className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
+                      key={`secret-reference-secret-${i + 1}`}
+                    >
+                      <div
+                        className={`${
+                          highlightedIndex === i ? "bg-mineshaft-500" : ""
+                        } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
+                      >
+                        <div className="flex w-full items-start gap-2">
+                          <div className="mt-1 flex items-center">{entryIcon}</div>
+                          <div className="text-md w-10/12 truncate text-left">
+                            <span>{item.label}</span>
+                            <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                              {subText}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
