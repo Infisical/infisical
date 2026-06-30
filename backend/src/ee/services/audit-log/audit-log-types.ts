@@ -7578,6 +7578,8 @@ interface DeleteProjectGrantEvent {
     grantId: string;
     sourceProjectId: string;
     targetProjectId: string;
+    environment: string;
+    secretPath: string;
   };
 }
 

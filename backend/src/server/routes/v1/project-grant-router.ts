@@ -152,7 +152,9 @@ export const registerProjectGrantRouter = async (server: FastifyZodProvider) => 
           metadata: {
             grantId: grant.id,
             sourceProjectId: grant.sourceProjectId,
-            targetProjectId: grant.targetProjectId
+            targetProjectId: grant.targetProjectId,
+            environment: grant.environment,
+            secretPath: grant.secretPath
           }
         }
       });
