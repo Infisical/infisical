@@ -39,7 +39,7 @@ export const DigiCertCertificateAuthorityConfigurationSchema = z.object({
       telephone: z.string().trim().min(1).max(32)
     })
     .optional()
-    .describe("Contact info for the user who approves first-time CS orders for the organization")
+    .describe("Contact info for the user who approves first-time code signing orders for the organization")
 });
 
 export const DigiCertCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({

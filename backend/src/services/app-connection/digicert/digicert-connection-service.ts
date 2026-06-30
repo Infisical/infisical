@@ -3,8 +3,8 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
-  getDigiCertOrgCodeSigningValidation,
-  listDigiCertCodeSigningOrders,
+  getDigiCertOrgValidation,
+  listDigiCertOrders,
   listDigiCertOrganizations,
   listDigiCertProducts
 } from "./digicert-connection-fns";
@@ -37,7 +37,7 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
     }
   };
 
-  const getCodeSigningValidation = async (
+  const getOrgValidation = async (
     connectionId: string,
     organizationId: number,
     productNameId: string,
@@ -45,14 +45,14 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
   ) => {
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
     try {
-      return await getDigiCertOrgCodeSigningValidation(appConnection, organizationId, productNameId);
+      return await getDigiCertOrgValidation(appConnection, organizationId, productNameId);
     } catch (error) {
-      logger.error(error, `Failed to check DigiCert code signing validation [connectionId=${connectionId}]`);
+      logger.error(error, `Failed to check DigiCert organization validation [connectionId=${connectionId}]`);
       return { isValidated: false };
     }
   };
 
-  const listCodeSigningOrders = async (
+  const listOrders = async (
     connectionId: string,
     organizationId: number,
     productNameId: string,
@@ -60,9 +60,9 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
   ) => {
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
     try {
-      return await listDigiCertCodeSigningOrders(appConnection, organizationId, productNameId);
+      return await listDigiCertOrders(appConnection, organizationId, productNameId);
     } catch (error) {
-      logger.error(error, `Failed to list DigiCert code signing orders [connectionId=${connectionId}]`);
+      logger.error(error, `Failed to list DigiCert orders [connectionId=${connectionId}]`);
       return [];
     }
   };
@@ -70,7 +70,7 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
   return {
     listOrganizations,
     listProducts,
-    getCodeSigningValidation,
-    listCodeSigningOrders
+    getOrgValidation,
+    listOrders
   };
 };

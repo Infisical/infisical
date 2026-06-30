@@ -17,7 +17,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useDigiCertConnectionListCodeSigningOrders } from "@app/hooks/api/appConnections/digicert";
+import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
 import { getCaIssuanceCapabilities } from "@app/hooks/api/ca";
 
 import { CertificateForm } from "./schemas";
@@ -42,7 +42,7 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
   const digicertCfg = selectedCa?.digicert;
   const canReuseOrder = caps.supportsExistingOrderReuse && Boolean(digicertCfg);
   const { data: codeSigningOrders = [], isLoading: isOrdersLoading } =
-    useDigiCertConnectionListCodeSigningOrders(
+    useDigiCertConnectionListOrders(
       digicertCfg?.appConnectionId ?? "",
       digicertCfg?.organizationId ?? 0,
       digicertCfg?.productNameId ?? "",
@@ -51,7 +51,7 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
 
   const orderOptions = codeSigningOrders.map((o) => ({
     value: String(o.orderId),
-    label: `${o.commonName || "Code signing certificate"} (#${o.orderId})`,
+    label: `${o.commonName || o.organizationName || "Code signing certificate"} (#${o.orderId})`,
     commonName: o.commonName
   }));
   type OrderOption = (typeof orderOptions)[number];
@@ -169,6 +169,12 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
                   noOptionsMessage={() => "No existing orders found."}
                 />
                 <FieldDescription>Leave empty to issue a new certificate.</FieldDescription>
+                {field.value && (
+                  <FieldDescription className="text-warning">
+                    Reissuing replaces the certificate in this order. DigiCert revokes the previous
+                    one within 72 hours, after which it can no longer be used to sign.
+                  </FieldDescription>
+                )}
               </FieldContent>
             </Field>
           )}

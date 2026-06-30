@@ -63,12 +63,12 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
     | Field | Description |
     |-------|-------------|
     | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS, DigiCert) issue asynchronously and the Signer enters **Pending** until the cert lands. |
-    | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. Fixed once the certificate is issued. To change it you must reissue. |
+    | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. You can change it later; doing so reissues the certificate. |
     | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
     | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
 
     <Note>
-      For DigiCert code-signing CAs, this step also offers an optional **Reuse an existing order** field. Selecting one of the organization's existing DigiCert orders reissues into it (reusing the order slot) instead of placing a new one, and inherits the Common Name and Validity from that order. Leave it empty to issue a new certificate.
+      Some CAs add extra fields on this step. Check your CA's documentation for any CA-specific options.
     </Note>
 
     Click **Next** to choose the signing key.
@@ -128,7 +128,7 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 
 ## Edit a Signer
 
-Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Saving can trigger a fresh issuance, so some fields are read-only once the Signer is Active.
+Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
 
 <Steps>
   <Step title="Basics">
@@ -144,8 +144,8 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     Change which CA issues the certificate and its identity.
 
     - **Certificate Authority**: swap to another CA. Saving with a different CA reissues the certificate immediately from the new CA.
-    - **Reuse an existing order**: DigiCert code signing only. While the Signer is **Pending** or **Failed**, you can point it at an existing DigiCert order to reuse that order slot instead of placing a new one. Common Name and Validity are inherited from the order.
-    - **Common Name** and **Validity (days)**: editable while the Signer is **Pending** or **Failed** so you can fix bad inputs and try issuance again. Locked once the Signer is **Active** so the issued cert and the Signer's stored intent can't drift apart.
+    - **Reuse an existing order**: offered by some CAs (DigiCert code signing). Point the Signer at an existing order to reuse that order slot instead of placing a new one. Common Name and Validity are inherited from the order.
+    - **Common Name** and **Validity (days)**: edit them to change the identity on the certificate. Saving reissues the certificate with the new values, and the signer switches to the new certificate.
     - **Renew before (days)**: edit any time, 1 to 30, must be less than Validity.
 
     Click **Next** to edit the signing key.

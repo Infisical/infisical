@@ -2,6 +2,7 @@ import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
@@ -23,7 +24,7 @@ export type TSignerCertificateInput = {
 };
 
 export type TSignerExternalConfigurationInput = {
-  // DigiCert code signing only: reissue into this existing order instead of placing a new one.
+  caType: CaType.DIGICERT;
   reissueFromExternalOrderId?: string;
 };
 
@@ -103,8 +104,7 @@ export type TReissueCertificateDTO = {
   certificateTtlDays?: number;
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
-  // DigiCert code signing only: reissue into this existing order instead of placing a new order.
-  reissueFromExternalOrderId?: string;
+  externalConfiguration?: TSignerExternalConfigurationInput;
 } & TActorPermission;
 
 export type TExportCertificateDTO = {

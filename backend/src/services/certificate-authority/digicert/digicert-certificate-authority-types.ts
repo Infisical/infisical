@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
 import {
   CreateDigiCertCertificateAuthoritySchema,
   DigiCertCertificateAuthoritySchema,
@@ -125,19 +126,9 @@ export type TDigiCertAlternateOrdersResponse = {
   orders?: { order_id: number; certificate_id?: number | null; status?: string }[];
 };
 
-export type TCodeSigningOrderStatus =
-  | "pending"
-  | "needs_approval"
-  | "processing"
-  | "issued"
-  | "rejected"
-  | "canceled"
-  | "expired"
-  | "revoked";
-
 export type TCodeSigningOrderInfo = {
   id: number;
-  status: TCodeSigningOrderStatus;
+  status: CodeSigningOrderStatus;
   certificateId: number | null;
   rawStatus: string;
 };

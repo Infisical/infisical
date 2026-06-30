@@ -16,6 +16,10 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 - A CertCentral **Organization**. For code signing, DigiCert validates the organization the first time it is used for a code-signing order, which can take up to 3 business days.
 - Entitlement to the product you intend to use (`ssl_plus`, `code_signing`, `code_signing_ev`, ...) on your CertCentral account.
 
+<Note>
+  Configuring a DigiCert CA requires a CertCentral account with administrator-level access (or a role with permission to manage organizations, products, and API keys). The API key used for the App Connection inherits the permissions of the CertCentral user that created it.
+</Note>
+
 ## Create a DigiCert Certificate Authority
 
 <Tabs>
@@ -81,24 +85,11 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 
 ## Using a DigiCert Code Signing CA
 
-Once a CA is configured with `purpose: "code_signing"`, it appears in the **Code Signing → Create Signer** wizard's CA picker. The Signer is created in **Pending** state while DigiCert processes the order, and flips to **Active** once the certificate issues.
+A CA configured for code signing is used from the **Code Signing** product, not the TLS issuance flow. For creating signers, reusing orders, HSM requirements, reissue, renewal, and deletion behavior, see the dedicated guide:
 
-DigiCert's CS workflow includes an out-of-band step for first orders against a new organization: DigiCert emails the organization's verified contact a link they must click to approve the order. This step cannot be skipped by the API. Subsequent orders against the same already-validated organization go from `pending` to `issued` without human action.
-
-<Note>
-  Code-signing certificates require an HSM-backed key. When you select a DigiCert code-signing CA, the Signer wizard locks the key source to **HSM** and you must pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). Infisical generates the CSR against the HSM key and sends only the CSR to DigiCert.
-</Note>
-
-### Reuse an existing order
-
-Each DigiCert order consumes a subscription slot. Instead of placing a new order, a new Signer can reissue into one of the organization's existing code-signing orders, which reuses that slot. In the Create Signer wizard's **Certificate** step, pick an order under **Reuse an existing order**. The Common Name and Validity are inherited from that order, so those fields are hidden. Leave it empty to place a new order.
-
-Over the API, set `externalConfiguration.reissueFromExternalOrderId` to the order id on [Create Signer](/api-reference/endpoints/code-signing/signers/create), or `reissueFromExternalOrderId` on [Reissue](/api-reference/endpoints/code-signing/signers/reissue).
-
-### Reissue and renewal
-
-- **Reissue** (changing the key source, key algorithm, or pointing at an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
-- **Auto-renewal** (when **Renew before** is set) places a new order linked to the prior one so DigiCert tracks certificate history. If DigiCert reports the prior order as not eligible for renewal, Infisical falls back to a fresh, unlinked order.
+<Card title="Code Signing with DigiCert" icon="signature" href="/documentation/platform/pki/code-signing/digicert-code-signing">
+  Issue code-signing certificates from this CA with an HSM-backed key.
+</Card>
 
 ## DigiCert Validation Workflow
 

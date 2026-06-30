@@ -232,7 +232,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         approvalPolicy,
         certificate,
         externalConfiguration: state.reissueFromExternalOrderId
-          ? { reissueFromExternalOrderId: state.reissueFromExternalOrderId }
+          ? {
+              caType: CaType.DIGICERT,
+              reissueFromExternalOrderId: state.reissueFromExternalOrderId
+            }
           : undefined
       });
 

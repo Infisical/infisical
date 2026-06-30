@@ -1,0 +1,59 @@
+---
+title: "Code Signing with DigiCert"
+description: "Issue code-signing certificates from DigiCert CertCentral with an HSM-backed key."
+---
+
+## Concept
+
+A DigiCert Certificate Authority configured for code signing issues OV (`code_signing`) and EV (`code_signing_ev`) certificates from your CertCentral account against a CSR. The signing key must live on an HSM, so Infisical generates the CSR against an HSM key and sends only the CSR to DigiCert.
+
+This guide covers using such a CA from the **Code Signing** product. To set up the CA itself, see [DigiCert (CertCentral Services API)](/documentation/platform/pki/ca/digicert-direct).
+
+## Prerequisites
+
+- A DigiCert Certificate Authority created with **Purpose** set to `Code Signing`. See [DigiCert (CertCentral Services API)](/documentation/platform/pki/ca/digicert-direct).
+- An [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) the signing key can be generated on.
+
+## Create a Signer
+
+Once a CA is configured for code signing, it appears in the **Code Signing → Create Signer** wizard's CA picker. The Signer is created in **Pending** state while DigiCert processes the order, and flips to **Active** once the certificate issues.
+
+DigiCert's code-signing workflow includes an out-of-band step for the first order against a new organization: DigiCert emails the organization's verified contact a link they must click to approve the order. This step cannot be skipped by the API. Subsequent orders against the same already-validated organization go from `pending` to `issued` without human action.
+
+<Note>
+  Code-signing certificates require an HSM-backed key. When you select a DigiCert code-signing CA, the Signer wizard locks the key source to **HSM** and you must pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors).
+</Note>
+
+A **Pending** signer is checked on a schedule. To poll DigiCert immediately instead of waiting for the next check, use **Check issuance now** from the signer's actions menu.
+
+### Reuse an existing order
+
+Each DigiCert order consumes a subscription slot on your CertCentral account. If a code-signing order already exists in this CA's organization, a Signer can issue into that order instead of spending another slot. This includes orders placed directly in DigiCert, not just ones Infisical created.
+
+Reuse is scoped to the CA's configured organization and product, so only orders from that organization and product can be selected. The Common Name and Validity come from the chosen order rather than from the Signer.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    In the Create Signer wizard's **Certificate** step, open **Reuse an existing order** and pick one of the listed issued orders. The Common Name and Validity fields are hidden because they are inherited from the order. Leave the field empty to place a new order.
+  </Tab>
+  <Tab title="API">
+    Set `externalConfiguration.reissueFromExternalOrderId` to the order id on [Create Signer](/api-reference/endpoints/code-signing/signers/create) or [Reissue](/api-reference/endpoints/code-signing/signers/reissue).
+  </Tab>
+</Tabs>
+
+<Warning>
+  Reissuing into an existing order replaces that order's certificate. DigiCert revokes the previous certificate within 72 hours, after which it can no longer be used to sign.
+</Warning>
+
+## Editing a Signer
+
+Editing a signer's Common Name, validity, key source, key algorithm, or CA triggers a fresh issuance. The signer returns to **Pending** until the new certificate issues, and DigiCert revokes the previous certificate within 72 hours.
+
+## Reissue and renewal
+
+- **Reissue** (changing the key source, key algorithm, or pointing at an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
+- **Auto-renewal** (when **Renew before** is set) places a new order linked to the prior one so DigiCert tracks certificate history. If DigiCert reports the prior order as not eligible for renewal, Infisical falls back to a fresh, unlinked order.
+
+## Deleting a Signer
+
+Deleting a DigiCert code-signing signer revokes its DigiCert order, so the certificate can no longer be used to sign anywhere. Depending on your CertCentral account's revocation policy, DigiCert may queue the revocation for administrator approval.

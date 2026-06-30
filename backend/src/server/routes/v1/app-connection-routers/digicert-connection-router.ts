@@ -81,12 +81,12 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
 
   server.route({
     method: "GET",
-    url: `/:connectionId/organizations/:organizationId/code-signing-validation`,
+    url: `/:connectionId/organizations/:organizationId/validation`,
     config: {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getDigiCertOrgCodeSigningValidation",
+      operationId: "getDigiCertOrgValidation",
       params: z.object({
         connectionId: z.string().uuid(),
         organizationId: z.coerce.number().int().positive()
@@ -104,7 +104,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;
-      return server.services.appConnection.digicert.getCodeSigningValidation(
+      return server.services.appConnection.digicert.getOrgValidation(
         connectionId,
         organizationId,
         productNameId,
@@ -115,12 +115,12 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
 
   server.route({
     method: "GET",
-    url: `/:connectionId/organizations/:organizationId/code-signing-orders`,
+    url: `/:connectionId/organizations/:organizationId/orders`,
     config: {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listDigiCertCodeSigningOrders",
+      operationId: "listDigiCertOrders",
       params: z.object({
         connectionId: z.string().uuid(),
         organizationId: z.coerce.number().int().positive()
@@ -133,6 +133,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .object({
             orderId: z.number(),
             commonName: z.string(),
+            organizationName: z.string(),
             status: z.string(),
             validTill: z.string().optional()
           })
@@ -143,7 +144,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;
-      return server.services.appConnection.digicert.listCodeSigningOrders(
+      return server.services.appConnection.digicert.listOrders(
         connectionId,
         organizationId,
         productNameId,

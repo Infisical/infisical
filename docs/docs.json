@@ -851,8 +851,14 @@
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
                       "documentation/platform/pki/code-signing/approvals",
-                      "documentation/platform/pki/code-signing/pkcs11-module",
-                      "documentation/platform/pki/code-signing/windows-ksp"
+                      {
+                        "group": "Guides",
+                        "pages": [
+                          "documentation/platform/pki/code-signing/digicert-code-signing",
+                          "documentation/platform/pki/code-signing/pkcs11-module",
+                          "documentation/platform/pki/code-signing/windows-ksp"
+                        ]
+                      }
                     ]
                   },
                   {

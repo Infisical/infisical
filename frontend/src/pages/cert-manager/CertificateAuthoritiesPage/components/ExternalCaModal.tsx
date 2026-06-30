@@ -34,9 +34,9 @@ import {
 import {
   TDigiCertOrganization,
   TDigiCertProduct,
-  useDigiCertConnectionCodeSigningValidation,
   useDigiCertConnectionListOrganizations,
-  useDigiCertConnectionListProducts
+  useDigiCertConnectionListProducts,
+  useDigiCertConnectionOrgValidation
 } from "@app/hooks/api/appConnections/digicert";
 import {
   TDNSMadeEasyZone,
@@ -701,7 +701,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     !!digicertProductNameId;
 
   const { data: csValidation, isFetching: isCsValidationFetching } =
-    useDigiCertConnectionCodeSigningValidation(
+    useDigiCertConnectionOrgValidation(
       digicertConnectionId,
       digicertOrganizationId,
       digicertProductNameId,

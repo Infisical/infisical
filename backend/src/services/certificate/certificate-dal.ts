@@ -65,21 +65,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findDigiCertCertByOrderId = async (caId: string, orderId: number) => {
-    try {
-      const cert = await db
-        .replicaNode()(TableName.Certificate)
-        .where({ caId })
-        .whereRaw(`"externalMetadata"->>'type' = ?`, ["digicert"])
-        .whereRaw(`("externalMetadata"->>'orderId') = ?`, [String(orderId)])
-        .first();
-
-      return cert;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find DigiCert cert by order ID" });
-    }
-  };
-
   const findActiveDigiCertCertsByOrderIds = async (caId: string, orderIds: number[]) => {
     if (orderIds.length === 0) return [];
     try {
@@ -1174,7 +1159,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
     findActiveDigiCertCertsByOrderIds,
-    findDigiCertCertByOrderId,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
     findActiveCertificatesByIds,

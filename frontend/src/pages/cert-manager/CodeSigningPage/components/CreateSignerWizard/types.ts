@@ -103,7 +103,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Select the issuing CA and the certificate's name and validity.",
     rightLabel: "CERTIFICATE",
     rightDescription:
-      "Select the CA that issues the certificate and the name shown on it. The Common Name cannot be changed after issuance.",
+      "Select the CA that issues the certificate and the name shown on it. You can change the name or validity later; doing so reissues the certificate.",
     docsUrl: PkiDocsUrls.codeSigning.signers.certificate
   },
   {

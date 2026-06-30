@@ -6,6 +6,7 @@ import { approvalRequestQuery } from "@app/hooks/api/approvalRequests/queries";
 
 import { signerKeys } from "./queries";
 import {
+  SignerStatus,
   TAddSignerGroupMemberDTO,
   TAddSignerIdentityMemberDTO,
   TAddSignerUserMembersDTO,
@@ -133,6 +134,31 @@ export const useReissueSignerCertificate = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
       createNotification({ text: "Certificate re-issue scheduled", type: "success" });
+    }
+  });
+};
+
+export const useCheckSignerIssuance = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TSigner, object, string>({
+    mutationFn: async (signerId) => {
+      const { data } = await apiRequest.post<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/issuance/check`
+      );
+      return data;
+    },
+    onSuccess: (signer) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      createNotification({
+        text:
+          signer.status === SignerStatus.Pending
+            ? "Issuance still pending. Checked just now."
+            : "Issuance status updated",
+        type: signer.status === SignerStatus.Pending ? "info" : "success"
+      });
     }
   });
 };

@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useDigiCertConnectionListCodeSigningOrders } from "@app/hooks/api/appConnections/digicert";
+import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
 import { getCaIssuanceCapabilities } from "@app/hooks/api/ca";
 
 import { CertificateForm } from "./schemas";
@@ -25,27 +25,17 @@ type CertificateStepProps = {
   form: ReturnType<typeof useForm<CertificateForm>>;
   caOptions: CaOption[];
   isCasLoading: boolean;
-  commonName: string;
-  certificateTtlDays: number | null;
-  canEditSubject: boolean;
 };
 
-export const CertificateStep = ({
-  form,
-  caOptions,
-  isCasLoading,
-  commonName,
-  certificateTtlDays,
-  canEditSubject
-}: CertificateStepProps) => {
+export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateStepProps) => {
   const selectedCaId = form.watch("caId");
   const selectedCa = caOptions.find((o) => o.id === selectedCaId) ?? null;
   const caps = getCaIssuanceCapabilities(selectedCa?.caType);
 
   const digicertCfg = selectedCa?.digicert;
-  const canReuseOrder = canEditSubject && caps.supportsExistingOrderReuse && Boolean(digicertCfg);
+  const canReuseOrder = caps.supportsExistingOrderReuse && Boolean(digicertCfg);
   const { data: codeSigningOrders = [], isLoading: isOrdersLoading } =
-    useDigiCertConnectionListCodeSigningOrders(
+    useDigiCertConnectionListOrders(
       digicertCfg?.appConnectionId ?? "",
       digicertCfg?.organizationId ?? 0,
       digicertCfg?.productNameId ?? "",
@@ -54,7 +44,7 @@ export const CertificateStep = ({
 
   const orderOptions = codeSigningOrders.map((o) => ({
     value: String(o.orderId),
-    label: `${o.commonName || "Code signing certificate"} (#${o.orderId})`,
+    label: `${o.commonName || o.organizationName || "Code signing certificate"} (#${o.orderId})`,
     commonName: o.commonName
   }));
   type OrderOption = (typeof orderOptions)[number];
@@ -160,88 +150,72 @@ export const CertificateStep = ({
                   noOptionsMessage={() => "No existing orders found."}
                 />
                 <FieldDescription>Leave empty to issue a new certificate.</FieldDescription>
+                {field.value && (
+                  <FieldDescription className="text-warning">
+                    Reissuing replaces the certificate in this order. DigiCert revokes the previous
+                    one within 72 hours, after which it can no longer be used to sign.
+                  </FieldDescription>
+                )}
               </FieldContent>
             </Field>
           )}
         />
       )}
 
-      {!isReissue &&
-        (canEditSubject ? (
-          <Controller
-            name="commonName"
-            control={form.control}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>
-                  Common Name <span className="text-danger">*</span>
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="Acme Mobile, Inc."
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>
-                    The legal name on the certificate. Locked once the signer is active.
-                  </FieldDescription>
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-        ) : (
-          <Field>
-            <FieldLabel>Common Name</FieldLabel>
-            <FieldContent>
-              <Input value={commonName} readOnly disabled />
-              <FieldDescription>The legal name shown on the certificate.</FieldDescription>
-            </FieldContent>
-          </Field>
-        ))}
+      {!isReissue && (
+        <Controller
+          name="commonName"
+          control={form.control}
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Common Name <span className="text-danger">*</span>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Acme Mobile, Inc."
+                  isError={Boolean(error)}
+                />
+                <FieldDescription>
+                  The legal name on the certificate. Changing it reissues the certificate.
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
 
-      {!isReissue &&
-        (canEditSubject ? (
-          <Controller
-            name="certificateTtlDays"
-            control={form.control}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>
-                  Validity (days) <span className="text-danger">*</span>
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={3650}
-                    value={field.value ?? ""}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                    placeholder="365"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>
-                    How long each certificate stays valid. Locked once the signer is active.
-                  </FieldDescription>
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-        ) : (
-          <Field>
-            <FieldLabel>Validity (days)</FieldLabel>
-            <FieldContent>
-              <Input
-                value={certificateTtlDays != null ? String(certificateTtlDays) : "—"}
-                readOnly
-                disabled
-              />
-              <FieldDescription>How long each issued certificate stays valid.</FieldDescription>
-            </FieldContent>
-          </Field>
-        ))}
+      {!isReissue && (
+        <Controller
+          name="certificateTtlDays"
+          control={form.control}
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Validity (days) <span className="text-danger">*</span>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={field.value ?? ""}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  placeholder="365"
+                  isError={Boolean(error)}
+                />
+                <FieldDescription>
+                  How long each certificate stays valid. Changing it reissues the certificate.
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
 
       <Controller
         name="certificateRenewBeforeDays"

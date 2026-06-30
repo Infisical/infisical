@@ -99,11 +99,18 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
 
   const getOrdersByAlternativeId = async (alternativeOrderId: string) =>
     wrap(async () => {
-      const { data } = await request.get<TDigiCertAlternateOrdersResponse>(
-        `${baseURL}/order/alternate/${encodeURIComponent(alternativeOrderId)}`,
-        { headers }
-      );
-      return data;
+      try {
+        const { data } = await request.get<TDigiCertAlternateOrdersResponse>(
+          `${baseURL}/order/alternate/${encodeURIComponent(alternativeOrderId)}`,
+          { headers }
+        );
+        return data;
+      } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 404) {
+          return { orders: [] };
+        }
+        throw error;
+      }
     }, `alternate order lookup for ${alternativeOrderId}`);
 
   const revokeOrder = async (orderId: number, comments: string) =>

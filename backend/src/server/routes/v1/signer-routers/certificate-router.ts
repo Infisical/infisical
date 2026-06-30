@@ -8,7 +8,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
-import { HSM_SUPPORTED_KEY_ALGORITHMS, SignerIdParamsSchema, SignerKeyAlgorithm } from "./schemas";
+import {
+  HSM_SUPPORTED_KEY_ALGORITHMS,
+  SignerExternalConfigurationSchema,
+  SignerIdParamsSchema,
+  SignerKeyAlgorithm
+} from "./schemas";
 
 export const registerSignerCertificateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -33,14 +38,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
               hsmConnectorId: z.string().uuid().optional()
             })
             .optional(),
-          reissueFromExternalOrderId: z
-            .string()
-            .trim()
-            .min(1)
-            .optional()
-            .describe(
-              "DigiCert code signing only: reissue into this existing order instead of placing a new order (reuses the subscription slot). Ignored by other CA types."
-            )
+          externalConfiguration: SignerExternalConfigurationSchema.optional()
         })
         .superRefine((data, ctx) => {
           if (data.certificate?.keySource !== CertKeySource.Hsm) return;
@@ -85,7 +83,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             keyAlgorithm: req.body.keyAlgorithm,
             keySource: req.body.certificate?.keySource,
             hsmConnectorId: req.body.certificate?.hsmConnectorId,
-            reissueFromExternalOrderId: req.body.reissueFromExternalOrderId
+            externalConfiguration: req.body.externalConfiguration
           }
         }
       });

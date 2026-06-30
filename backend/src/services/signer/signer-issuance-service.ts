@@ -21,6 +21,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
+import { CodeSigningOrderStatus } from "../certificate-authority/digicert/digicert-certificate-authority-enums";
 import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -583,7 +584,12 @@ export const signerIssuanceServiceFactory = ({
     const persistPlacedOrder = async (orderId: number, certificateId: number | null) => {
       await signerIssuanceJobDAL.updateById(job.id, {
         externalOrderRef: {
-          digicert: { orderId, certificateId, lastStatus: "pending", lastCheckedAt: new Date().toISOString() }
+          digicert: {
+            orderId,
+            certificateId,
+            lastStatus: CodeSigningOrderStatus.Pending,
+            lastCheckedAt: new Date().toISOString()
+          }
         }
       });
       logger.info(
@@ -675,10 +681,10 @@ export const signerIssuanceServiceFactory = ({
     });
 
     if (
-      info.status === "rejected" ||
-      info.status === "canceled" ||
-      info.status === "expired" ||
-      info.status === "revoked"
+      info.status === CodeSigningOrderStatus.Rejected ||
+      info.status === CodeSigningOrderStatus.Canceled ||
+      info.status === CodeSigningOrderStatus.Expired ||
+      info.status === CodeSigningOrderStatus.Revoked
     ) {
       await markJobFailed(
         job,
@@ -687,7 +693,7 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
 
-    if (info.status !== "issued") {
+    if (info.status !== CodeSigningOrderStatus.Issued) {
       logger.info(
         `signer issuance: DigiCert order still pending [jobId=${job.id}] [signerId=${job.signerId}] [orderId=${existingOrderId}] [status=${info.status}]`
       );
@@ -777,9 +783,16 @@ export const signerIssuanceServiceFactory = ({
     };
   };
 
+  const runPendingJobNow = async (signerId: string): Promise<void> => {
+    const job = await signerIssuanceJobDAL.transaction((tx) => signerIssuanceJobDAL.findLatestForSigner(signerId, tx));
+    if (!job || job.status !== SignerIssuanceJobStatus.Pending) return;
+    await processJob(job.id);
+  };
+
   return {
     requestIssuance,
     processJob,
+    runPendingJobNow,
     getLatestIssuanceKeyConfig,
     start
   };

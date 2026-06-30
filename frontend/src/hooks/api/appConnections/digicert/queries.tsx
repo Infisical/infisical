@@ -11,27 +11,22 @@ const digicertConnectionKeys = {
     [...digicertConnectionKeys.all, "organizations", connectionId] as const,
   listProducts: (connectionId: string) =>
     [...digicertConnectionKeys.all, "products", connectionId] as const,
-  codeSigningValidation: (connectionId: string, organizationId: number, productNameId: string) =>
+  orgValidation: (connectionId: string, organizationId: number, productNameId: string) =>
     [
       ...digicertConnectionKeys.all,
-      "code-signing-validation",
+      "org-validation",
       connectionId,
       organizationId,
       productNameId
     ] as const,
-  codeSigningOrders: (connectionId: string, organizationId: number, productNameId: string) =>
-    [
-      ...digicertConnectionKeys.all,
-      "code-signing-orders",
-      connectionId,
-      organizationId,
-      productNameId
-    ] as const
+  orders: (connectionId: string, organizationId: number, productNameId: string) =>
+    [...digicertConnectionKeys.all, "orders", connectionId, organizationId, productNameId] as const
 };
 
-export type TDigiCertCodeSigningOrder = {
+export type TDigiCertOrder = {
   orderId: number;
   commonName: string;
+  organizationName: string;
   status: string;
   validTill?: string;
 };
@@ -84,7 +79,7 @@ export const useDigiCertConnectionListProducts = (
   });
 };
 
-export const useDigiCertConnectionCodeSigningValidation = (
+export const useDigiCertConnectionOrgValidation = (
   connectionId: string,
   organizationId: number,
   productNameId: string,
@@ -93,20 +88,16 @@ export const useDigiCertConnectionCodeSigningValidation = (
       { isValidated: boolean },
       unknown,
       { isValidated: boolean },
-      ReturnType<typeof digicertConnectionKeys.codeSigningValidation>
+      ReturnType<typeof digicertConnectionKeys.orgValidation>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: digicertConnectionKeys.codeSigningValidation(
-      connectionId,
-      organizationId,
-      productNameId
-    ),
+    queryKey: digicertConnectionKeys.orgValidation(connectionId, organizationId, productNameId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ isValidated: boolean }>(
-        `/api/v1/app-connections/digicert/${connectionId}/organizations/${organizationId}/code-signing-validation`,
+        `/api/v1/app-connections/digicert/${connectionId}/organizations/${organizationId}/validation`,
         { params: { productNameId } }
       );
       return data;
@@ -115,25 +106,25 @@ export const useDigiCertConnectionCodeSigningValidation = (
   });
 };
 
-export const useDigiCertConnectionListCodeSigningOrders = (
+export const useDigiCertConnectionListOrders = (
   connectionId: string,
   organizationId: number,
   productNameId: string,
   options?: Omit<
     UseQueryOptions<
-      TDigiCertCodeSigningOrder[],
+      TDigiCertOrder[],
       unknown,
-      TDigiCertCodeSigningOrder[],
-      ReturnType<typeof digicertConnectionKeys.codeSigningOrders>
+      TDigiCertOrder[],
+      ReturnType<typeof digicertConnectionKeys.orders>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: digicertConnectionKeys.codeSigningOrders(connectionId, organizationId, productNameId),
+    queryKey: digicertConnectionKeys.orders(connectionId, organizationId, productNameId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TDigiCertCodeSigningOrder[]>(
-        `/api/v1/app-connections/digicert/${connectionId}/organizations/${organizationId}/code-signing-orders`,
+      const { data } = await apiRequest.get<TDigiCertOrder[]>(
+        `/api/v1/app-connections/digicert/${connectionId}/organizations/${organizationId}/orders`,
         { params: { productNameId } }
       );
       return data;

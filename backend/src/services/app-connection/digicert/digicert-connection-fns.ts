@@ -102,11 +102,13 @@ const DIGICERT_CS_VALIDATION_TYPE_BY_PRODUCT: Record<string, string> = {
   code_signing_ev: "ev_cs"
 };
 
+export const DIGICERT_CS_PRODUCT_NAME_IDS = new Set(Object.keys(DIGICERT_CS_VALIDATION_TYPE_BY_PRODUCT));
+
 type TDigiCertOrgValidationResponse = {
   validations?: { type?: string; status?: string }[];
 };
 
-export const isDigiCertOrgCodeSigningValidated = (
+export const isDigiCertOrgValidatedForProduct = (
   validations: { type?: string; status?: string }[] | undefined,
   productNameId: string
 ): boolean => {
@@ -116,7 +118,7 @@ export const isDigiCertOrgCodeSigningValidated = (
   );
 };
 
-export const getDigiCertOrgCodeSigningValidation = async (
+export const getDigiCertOrgValidation = async (
   appConnection: TDigiCertConnection,
   organizationId: number,
   productNameId: string
@@ -135,7 +137,7 @@ export const getDigiCertOrgCodeSigningValidation = async (
       }
     );
 
-    return { isValidated: isDigiCertOrgCodeSigningValidated(data.validations, productNameId) };
+    return { isValidated: isDigiCertOrgValidatedForProduct(data.validations, productNameId) };
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
@@ -155,18 +157,20 @@ type TDigiCertOrdersResponse = {
   }[];
 };
 
-export type TDigiCertCodeSigningOrder = {
+export type TDigiCertOrder = {
   orderId: number;
   commonName: string;
+  organizationName: string;
   status: string;
   validTill?: string;
 };
 
-export const listDigiCertCodeSigningOrders = async (
+export const listDigiCertOrders = async (
   appConnection: TDigiCertConnection,
   organizationId: number,
-  productNameId: string
-): Promise<TDigiCertCodeSigningOrder[]> => {
+  productNameId: string,
+  status = "issued"
+): Promise<TDigiCertOrder[]> => {
   const { apiKey } = appConnection.credentials;
   const baseUrl = getDigiCertApiBaseUrl(appConnection.credentials);
 
@@ -179,22 +183,22 @@ export const listDigiCertCodeSigningOrders = async (
       params: {
         "filters[product_name_id]": productNameId,
         "filters[organization_id]": organizationId,
-        "filters[status]": "issued",
+        "filters[status]": status,
         limit: 1000
       }
     });
 
     return (data.orders ?? []).map((order) => ({
       orderId: order.id,
-      // A code-signing cert's subject is the organization, so label the order by org name.
-      commonName: order.organization?.name || order.certificate?.common_name || "",
+      commonName: order.certificate?.common_name ?? "",
+      organizationName: order.organization?.name ?? "",
       status: order.status ?? "",
       validTill: order.certificate?.valid_till
     }));
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to list DigiCert code signing orders: ${extractDigiCertErrorMessage(error)}`
+        message: `Failed to list DigiCert orders: ${extractDigiCertErrorMessage(error)}`
       });
     }
     throw error;

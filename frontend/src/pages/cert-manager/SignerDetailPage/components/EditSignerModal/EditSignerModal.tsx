@@ -23,7 +23,6 @@ import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   SignerKeyAlgorithm,
-  SignerStatus,
   TSigner,
   useReissueSignerCertificate,
   useUpdateSigner
@@ -99,9 +98,6 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     values: { name: signer.name, description: signer.description ?? "" }
   });
 
-  const canEditSubject =
-    signer.status === SignerStatus.Pending || signer.status === SignerStatus.Failed;
-
   const certificateForm = useForm<CertificateForm>({
     resolver: zodResolver(certificateSchema),
     values: {
@@ -145,9 +141,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
 
   const caSwap = Boolean(watchedCaId) && watchedCaId !== signer.caId;
   const subjectChanged =
-    canEditSubject &&
-    ((watchedCommonName ?? "") !== (signer.commonName ?? "") ||
-      (watchedTtl ?? 0) !== (signer.certificateTtlDays ?? 0));
+    (watchedCommonName ?? "") !== (signer.commonName ?? "") ||
+    (watchedTtl ?? 0) !== (signer.certificateTtlDays ?? 0);
   const keySourceChanged =
     watchedKeySource !== currentKeySource ||
     (watchedKeySource === CertKeySource.Hsm &&
@@ -191,12 +186,9 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         await reissueCertificate.mutateAsync({
           signerId: signer.id,
           caId: cert.caId,
-          commonName:
-            !isReissueFromOrder && canEditSubject && subjectChanged ? cert.commonName : undefined,
+          commonName: !isReissueFromOrder && subjectChanged ? cert.commonName : undefined,
           certificateTtlDays:
-            !isReissueFromOrder && canEditSubject && subjectChanged
-              ? cert.certificateTtlDays
-              : undefined,
+            !isReissueFromOrder && subjectChanged ? cert.certificateTtlDays : undefined,
           keyAlgorithm: keySourceChanged || keyAlgorithmChanged ? cert.keyAlgorithm : undefined,
           certificate:
             keySourceChanged || keyAlgorithmChanged
@@ -208,7 +200,12 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                       : undefined
                 }
               : undefined,
-          reissueFromExternalOrderId: cert.reissueFromExternalOrderId ?? undefined
+          externalConfiguration: cert.reissueFromExternalOrderId
+            ? {
+                caType: CaType.DIGICERT,
+                reissueFromExternalOrderId: cert.reissueFromExternalOrderId
+              }
+            : undefined
         });
       }
 
@@ -326,9 +323,6 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                   form={certificateForm}
                   caOptions={caOptions}
                   isCasLoading={cas.isPending}
-                  commonName={signer.commonName ?? signer.certificateCommonName ?? "—"}
-                  certificateTtlDays={signer.certificateTtlDays ?? null}
-                  canEditSubject={canEditSubject}
                 />
               )}
               {step === 2 && (
@@ -359,8 +353,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
           </div>
 
           <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-            <span className="text-xs text-muted">
-              {shouldReissue ? "Saving will reissue the certificate immediately." : ""}
+            <span className="text-xs text-warning">
+              {shouldReissue
+                ? "Saving reissues the certificate immediately. The signer switches to the new certificate."
+                : ""}
             </span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
