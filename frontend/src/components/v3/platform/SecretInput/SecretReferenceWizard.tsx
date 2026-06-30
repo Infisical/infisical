@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftIcon, ChevronRightIcon, FolderIcon, KeyRoundIcon, LayersIcon } from "lucide-react";
 
 import { useProject } from "@app/context";
@@ -23,6 +23,7 @@ type Props = {
   onSelect: (referenceContent: string) => void;
   isEnabled: boolean;
   onFocusItem: () => void;
+  currentInput?: string;
 };
 
 const INITIAL_STATE: WizardState = {
@@ -33,7 +34,7 @@ const INITIAL_STATE: WizardState = {
   secretPath: "/"
 };
 
-export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem }: Props) => {
+export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem, currentInput = "" }: Props) => {
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
@@ -86,6 +87,89 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem }: Prop
       return true;
     });
   }, [receivedGrants]);
+
+  const parsedInput = useMemo(() => {
+    if (!currentInput.startsWith("@")) return null;
+    const segments = currentInput.slice(1).split(".");
+    const projectSlug = segments[0] || "";
+    const hasProjectDot = currentInput.indexOf(".") !== -1;
+    const envSlug = segments[1] || "";
+    const hasEnvDot = segments.length > 2;
+    const folderSegments = hasEnvDot ? segments.slice(2, -1) : [];
+    const lastSegment = hasEnvDot ? segments[segments.length - 1] : "";
+
+    return { projectSlug, hasProjectDot, envSlug, hasEnvDot, folderSegments, lastSegment };
+  }, [currentInput]);
+
+  useEffect(() => {
+    if (!parsedInput) return;
+
+    const { projectSlug, hasProjectDot, envSlug, hasEnvDot, folderSegments } = parsedInput;
+
+    if (!hasProjectDot) {
+      setState({
+        ...INITIAL_STATE,
+        tab: "another-project",
+        step: "project"
+      });
+      return;
+    }
+
+    const matchedGrant = uniqueSourceProjects.find(
+      (g) => g.sourceProjectSlug.toLowerCase() === projectSlug.toLowerCase()
+    );
+    if (!matchedGrant) {
+      setState({
+        ...INITIAL_STATE,
+        tab: "another-project",
+        step: "project"
+      });
+      return;
+    }
+
+    if (!hasEnvDot) {
+      setState({
+        tab: "another-project",
+        step: "env",
+        selectedProjectGrant: matchedGrant,
+        env: null,
+        secretPath: "/"
+      });
+      return;
+    }
+
+    const envGrants =
+      receivedGrants?.filter((g) => g.sourceProjectId === matchedGrant.sourceProjectId) || [];
+    const matchedEnv = envGrants.find(
+      (g) => g.environmentSlug.toLowerCase() === envSlug.toLowerCase()
+    );
+
+    if (!matchedEnv) {
+      setState({
+        tab: "another-project",
+        step: "env",
+        selectedProjectGrant: matchedGrant,
+        env: null,
+        secretPath: "/"
+      });
+      return;
+    }
+
+    const secretPath =
+      folderSegments.length > 0 ? `/${folderSegments.join("/")}/` : "/";
+
+    setState({
+      tab: "another-project",
+      step: "browse",
+      selectedProjectGrant: matchedGrant,
+      env: { slug: matchedEnv.environmentSlug, name: matchedEnv.environmentName },
+      secretPath
+    });
+  }, [parsedInput, uniqueSourceProjects, receivedGrants]);
+
+  const projectFilter = parsedInput && !parsedInput.hasProjectDot ? parsedInput.projectSlug.toLowerCase() : "";
+  const envFilter = parsedInput?.hasProjectDot && !parsedInput.hasEnvDot ? parsedInput.envSlug.toLowerCase() : "";
+  const browseFilter = parsedInput?.hasEnvDot ? parsedInput.lastSegment.toLowerCase() : "";
 
   const availableEnvs = useMemo(() => {
     if (state.tab === "this-project") {
@@ -173,18 +257,25 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem }: Prop
     setState((prev) => ({ ...prev, secretPath: newPath }));
   };
 
-  const renderProjectStep = () => (
+  const renderProjectStep = () => {
+    const filteredProjects = projectFilter
+      ? uniqueSourceProjects.filter((g) =>
+          g.sourceProjectSlug.toLowerCase().includes(projectFilter)
+        )
+      : uniqueSourceProjects;
+
+    return (
     <div className="flex flex-col">
-      {uniqueSourceProjects.length === 0 ? (
+      {filteredProjects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-sm text-muted">
-          No projects have shared secrets with you
+          {projectFilter ? "No matching projects" : "No projects have shared secrets with you"}
         </div>
       ) : (
         <>
           <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
             Projects that shared with you
           </div>
-          {uniqueSourceProjects.map((grant) => (
+          {filteredProjects.map((grant) => (
             <button
               key={grant.sourceProjectId}
               type="button"
@@ -208,8 +299,14 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem }: Prop
       )}
     </div>
   );
+  };
 
-  const renderEnvStep = () => (
+  const renderEnvStep = () => {
+    const filteredEnvs = envFilter
+      ? availableEnvs.filter((e) => e.slug.toLowerCase().includes(envFilter))
+      : availableEnvs;
+
+    return (
     <div className="flex flex-col">
       {state.selectedProjectGrant && (
         <button
@@ -228,12 +325,12 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem }: Prop
       <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
         Environments
       </div>
-      {availableEnvs.length === 0 ? (
+      {filteredEnvs.length === 0 ? (
         <div className="flex items-center justify-center py-6 text-sm text-muted">
-          No environments available
+          {envFilter ? "No matching environments" : "No environments available"}
         </div>
       ) : (
-        availableEnvs.map((env) => (
+        filteredEnvs.map((env) => (
           <button
             key={env.slug}
             type="button"
@@ -254,10 +351,15 @@ export const SecretReferenceWizard = ({ onSelect, isEnabled, onFocusItem }: Prop
       )}
     </div>
   );
+  };
 
   const renderBrowseStep = () => {
-    const folderList = folders || [];
-    const secretList = secrets || [];
+    const folderList = browseFilter
+      ? (folders || []).filter((f) => f.name.toLowerCase().includes(browseFilter))
+      : folders || [];
+    const secretList = browseFilter
+      ? (secrets || []).filter((s) => s.key.toLowerCase().includes(browseFilter))
+      : secrets || [];
     const isEmpty = folderList.length === 0 && secretList.length === 0;
 
     return (

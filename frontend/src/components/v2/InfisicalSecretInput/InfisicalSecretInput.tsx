@@ -131,7 +131,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     }, [debouncedValue]);
 
     const isPopupOpen = Boolean(suggestionSource.isOpen) && isFocused;
-    const showWizard = isPopupOpen && !suggestionSource.isDeep;
+    const showWizard = isPopupOpen && (!suggestionSource.isDeep || suggestionSource.value.startsWith("@"));
 
     const handleWizardSelect = (referenceContent: string) => {
       const { left } = suggestionSource;
@@ -503,6 +503,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 isEnabled={isPopupOpen}
                 onSelect={handleWizardSelect}
                 onFocusItem={() => inputRef.current?.focus()}
+                currentInput={suggestionSource.value}
               />
             ) : (
               <div

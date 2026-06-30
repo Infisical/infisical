@@ -55,6 +55,7 @@ export const registerProjectGrantRouter = async (server: FastifyZodProvider) => 
             environmentName: z.string(),
             environmentSlug: z.string(),
             sourceProjectName: z.string(),
+            sourceProjectSlug: z.string(),
             secretCount: z.number()
           }).array()
         })

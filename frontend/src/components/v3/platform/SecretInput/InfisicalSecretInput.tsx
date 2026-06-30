@@ -71,9 +71,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const openRefLeft = (() => {
       const left = getIndexOfUnclosedRefToTheLeft(debouncedValue, currentCursorPosition - 1);
       if (left === -1) return -1;
-      // Only open the wizard when the cursor is right after ${ with no dots yet typed
-      // (typing env.folder... is handled inline; wizard is for fresh ${)
       const partial = debouncedValue.slice(left + 1, currentCursorPosition);
+      // Cross-project refs (starting with @) keep the wizard open through dots
+      if (partial.startsWith("@")) return left;
+      // For same-project refs, dots are handled inline, wizard is only for fresh ${
       if (partial.includes(".")) return -1;
       return left;
     })();
@@ -257,6 +258,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               isEnabled={isPopupOpen}
               onSelect={handleWizardSelect}
               onFocusItem={() => inputRef.current?.focus()}
+              currentInput={openRefLeft !== -1 ? debouncedValue.slice(openRefLeft + 1, currentCursorPosition) : ""}
             />
           </PopoverPrimitive.Content>
         </PopoverPrimitive.Portal>

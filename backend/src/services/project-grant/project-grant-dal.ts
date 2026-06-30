@@ -55,6 +55,7 @@ export const projectGrantDALFactory = (db: TDbClient) => {
         `${TableName.Environment}.name as environmentName`,
         `${TableName.Environment}.slug as environmentSlug`,
         `sourceProject.name as sourceProjectName`,
+        `sourceProject.slug as sourceProjectSlug`,
         db.raw(
           `(SELECT COUNT(*)::integer FROM "${TableName.SecretV2}" WHERE "folderId" = "${TableName.ProjectFolderGrant}"."sourceFolderId" AND "type" = 'shared') as "secretCount"`
         )
@@ -65,6 +66,7 @@ export const projectGrantDALFactory = (db: TDbClient) => {
       environmentName: string;
       environmentSlug: string;
       sourceProjectName: string;
+      sourceProjectSlug: string;
       secretCount: number;
     })[];
   };
