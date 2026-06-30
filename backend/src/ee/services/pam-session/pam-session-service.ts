@@ -1,3 +1,4 @@
+import { Impersonated, JWT } from "google-auth-library";
 import net from "net";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -6,11 +7,13 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -208,6 +211,65 @@ export const pamSessionServiceFactory = ({
       }
     }
 
+    if (account.accountType === PamAccountType.GcpIam) {
+      const serviceAccountEmail = connectionDetails.serviceAccountEmail as string;
+      const remainingSeconds = Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000);
+      if (remainingSeconds < 60) {
+        throw new BadRequestError({
+          message: `GCP IAM session has insufficient time remaining (${remainingSeconds}s) to generate an access token`
+        });
+      }
+      const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
+
+      let sourceClient;
+      if (credentials.authMethod === "static-key") {
+        const keyJson = JSON.parse(credentials.serviceAccountKeyJson as string) as {
+          client_email?: string;
+          private_key?: string;
+        };
+        sourceClient = new JWT({
+          email: keyJson.client_email,
+          key: keyJson.private_key,
+          scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+        });
+      } else {
+        const appCfg = getConfig();
+        if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
+          throw new InternalServerError({
+            message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"
+          });
+        }
+        sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+      }
+
+      const impersonated = new Impersonated({
+        sourceClient,
+        targetPrincipal: serviceAccountEmail,
+        lifetime: sessionTtlSeconds,
+        delegates: [],
+        targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
+      });
+
+      let tokenResponse;
+      try {
+        tokenResponse = await impersonated.getAccessToken();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new BadRequestError({
+          message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
+        });
+      }
+
+      if (!tokenResponse?.token) {
+        throw new BadRequestError({
+          message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]`
+        });
+      }
+
+      credentials.token = tokenResponse.token;
+      delete credentials.serviceAccountKeyJson;
+    }
+
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
     if (sessionStarted) {
@@ -277,10 +339,6 @@ export const pamSessionServiceFactory = ({
       account.accountType as PamAccountType,
       connectionDetails
     );
-
-    if (sessionStarted) {
-      await pamSessionDAL.activateSession(sessionId);
-    }
 
     return {
       credentials: { ...normalizedConnectionDetails, ...credentials },
@@ -477,7 +535,10 @@ export const pamSessionServiceFactory = ({
 
     const metadata: Record<string, string> = {};
 
-    if (account.accountType === PamAccountType.Kubernetes) {
+    if (account.accountType === PamAccountType.GcpIam) {
+      metadata.serviceAccountEmail = rawConnectionDetails.serviceAccountEmail as string;
+      metadata.authMethod = rawCredentials.authMethod as string;
+    } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {
         metadata.namespace = rawCredentials.namespace as string;
