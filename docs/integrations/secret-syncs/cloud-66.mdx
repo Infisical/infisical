@@ -21,8 +21,10 @@ description: "Learn how to configure a Cloud 66 Sync for Infisical."
         ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
 
         2. Select the **Cloud 66** option.
+        ![Select Cloud 66](/images/secret-syncs/cloud66/step-1.png)
 
-        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+        3. Configure the **Source** from where secrets should be retrieved, then click **Continue**.
+        ![Configure Source](/images/secret-syncs/cloud66/step-3.png)
 
             - **Environment**: The project environment to retrieve secrets from.
             - **Secret Path**: The folder path to retrieve secrets from.
@@ -31,32 +33,40 @@ description: "Learn how to configure a Cloud 66 Sync for Infisical."
             If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
         </Tip>
 
-        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        4. Configure the **Destination** to where secrets should be deployed, then click **Continue**.
+        ![Configure Destination](/images/secret-syncs/cloud66/step-4.png)
 
             - **Cloud 66 Connection**: The Cloud 66 Connection to authenticate with.
             - **Stack**: The Cloud 66 stack (application) to sync secrets to.
 
-        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        5. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then click **Continue**.
+        ![Configure Initial Sync Behavior](/images/secret-syncs/cloud66/step-5.png)
 
-            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
-                - **Import - Prefer values from Infisical**: Import secrets from Cloud 66 to Infisical; if a secret with the same name already exists in Infisical, do nothing. Afterwards, sync secrets to Cloud 66.
-                - **Import - Prefer values from Cloud 66**: Import secrets from Cloud 66 to Infisical; if a secret with the same name already exists in Infisical, replace its value with the one from Cloud 66. Afterwards, sync secrets to Cloud 66.
-                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-            - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+            - **Overwrite Cloud 66**: On the initial sync, Infisical writes its secrets to Cloud 66 and imports nothing. Depending on your configuration, this can remove secrets from Cloud 66.
+            - **Import from Cloud (Prioritize Infisical)**: Imports secrets from Cloud 66 before the initial sync; if a secret with the same name already exists in Infisical, the Infisical value is kept.
+            - **Import from Cloud (Prioritize Cloud)**: Imports secrets from Cloud 66 before the initial sync; if a secret with the same name already exists in Infisical, its value is replaced with the one from Cloud 66.
+
+        6. Configure the **Sync Options** to specify how secrets should be synced, then click **Continue**.
+        ![Configure Sync Options](/images/secret-syncs/cloud66/step-6.png)
+
+            - **Disable secret deletion**: If enabled, Infisical will not remove secrets from Cloud 66 during a sync. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            - **Auto-sync on changes**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Customize key names**: Add a prefix or suffix so Infisical can identify which keys in Cloud 66 it manages, leaving everything else untouched.
             <Note>
-                We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                We highly recommend customizing key names to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
             </Note>
-            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
-            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
-        6. Configure the **Details** of your Cloud 66 Sync, then click **Next**.
+        7. Configure the **Details** of your Cloud 66 Sync, then click **Continue**.
+        ![Configure Details](/images/secret-syncs/cloud66/step-7.png)
 
             - **Name**: The name of your sync. Must be slug-friendly.
             - **Description**: An optional description for your sync.
 
-        7. Review your Cloud 66 Sync configuration, then click **Create Sync**.
+        8. Review your Cloud 66 Sync configuration, then click **Create Sync**.
+        ![Review Configuration](/images/secret-syncs/cloud66/step-8.png)
 
-        8. If enabled, your Cloud 66 Sync will begin syncing your secrets to the destination endpoint.
+        9. If enabled, your Cloud 66 Sync will begin syncing your secrets to the destination endpoint.
+        ![Sync Created](/images/secret-syncs/cloud66/step-9.png)
 
     </Tab>
     <Tab title="API">

@@ -1,15 +1,13 @@
 import { request } from "@app/lib/config/request";
-import { CLOUD_66_API_BASE_URL } from "@app/services/app-connection/cloud-66/cloud-66-connection-fns";
+import {
+  CLOUD_66_API_BASE_URL,
+  getCloud66Headers
+} from "@app/services/app-connection/cloud-66/cloud-66-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TCloud66EnvVar, TCloud66SyncWithCredentials } from "./cloud66-sync-types";
-
-const getHeaders = (accessToken: string) => ({
-  Authorization: `Bearer ${accessToken}`,
-  Accept: "application/json"
-});
 
 // Cloud 66 system-managed variables (readonly / generated) cannot be modified or deleted via the API.
 const isModifiable = (envVar: TCloud66EnvVar) => !envVar.readonly && !envVar.is_generated;
@@ -23,7 +21,7 @@ const listCloud66EnvVars = async (accessToken: string, stackId: string): Promise
     const res = await request.get(
       `${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments?page=${page}&per_page=30`,
       {
-        headers: getHeaders(accessToken)
+        headers: getCloud66Headers(accessToken)
       }
     );
 
@@ -44,19 +42,19 @@ const createCloud66EnvVar = (accessToken: string, stackId: string, key: string, 
   request.post(
     `${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments`,
     { key, value },
-    { headers: getHeaders(accessToken) }
+    { headers: getCloud66Headers(accessToken) }
   );
 
 const updateCloud66EnvVar = (accessToken: string, stackId: string, key: string, value: string) =>
   request.put(
     `${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments/${encodeURIComponent(key)}`,
     { value },
-    { headers: getHeaders(accessToken) }
+    { headers: getCloud66Headers(accessToken) }
   );
 
 const deleteCloud66EnvVar = (accessToken: string, stackId: string, key: string) =>
   request.delete(`${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments/${encodeURIComponent(key)}`, {
-    headers: getHeaders(accessToken)
+    headers: getCloud66Headers(accessToken)
   });
 
 export const Cloud66SyncFns = {

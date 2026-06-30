@@ -8,6 +8,11 @@ import { TCloud66Connection, TCloud66ConnectionConfig, TCloud66Stack } from "./c
 
 export const CLOUD_66_API_BASE_URL = "https://app.cloud66.com/api";
 
+export const getCloud66Headers = (accessToken: string) => ({
+  Authorization: `Bearer ${accessToken}`,
+  Accept: "application/json"
+});
+
 export const getCloud66ConnectionListItem = () => {
   return {
     name: "Cloud 66" as const,
@@ -21,10 +26,7 @@ export const validateCloud66ConnectionCredentials = async (config: TCloud66Conne
 
   try {
     await request.get(`${CLOUD_66_API_BASE_URL}/3/stacks`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json"
-      },
+      headers: getCloud66Headers(accessToken),
       validateStatus: (status) => status === 200
     });
   } catch (error: unknown) {
@@ -47,10 +49,7 @@ export const listCloud66Stacks = async (appConnection: TCloud66Connection): Prom
   while (page) {
     // eslint-disable-next-line no-await-in-loop
     const res = await request.get(`${CLOUD_66_API_BASE_URL}/3/stacks?page=${page}&per_page=30`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json"
-      }
+      headers: getCloud66Headers(accessToken)
     });
 
     const { response, pagination } = res.data as {
