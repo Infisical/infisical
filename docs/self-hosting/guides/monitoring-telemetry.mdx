@@ -343,13 +343,13 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only IDs and bounded enums as labels. No names, emails, IPs, or user agents. Designed for large or multi-tenant deployments. Per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only `infisical.organization.id` and bounded enums as labels. No project IDs, names, emails, IPs, or user agents. Per-project and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you are a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
 To eliminate the in-memory cost of the high-cardinality meters entirely, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true`. When enabled, the SDK discards all data points from the `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
 
-For per-user / per-identity / per-IP breakdowns, query the audit log table. It carries `actorId`, `actorType`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who*.
+For per-user / per-identity / per-IP / per-project breakdowns, query the audit log table. It carries `actorId`, `actorType`, `projectId`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who* and *where*.
 
 ### Resource attributes (every metric)
 

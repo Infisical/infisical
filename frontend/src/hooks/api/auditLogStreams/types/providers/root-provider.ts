@@ -1,7 +1,7 @@
 import { AuditLogStreamProduct, StreamMode } from "../../enums";
 
 export type TAuditLogStreamFilters = {
-  products?: AuditLogStreamProduct[];
+  products?: AuditLogStreamProduct[] | null;
 };
 
 export type TRootProviderLogStream = {

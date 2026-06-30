@@ -670,7 +670,6 @@ export const AccessApprovalRequest = ({
 
                   return (
                     <TableRow
-                      className="h-12"
                       key={request.id}
                       tabIndex={0}
                       onClick={() => handleSelectRequest(request)}

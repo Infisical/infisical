@@ -776,7 +776,8 @@
                         "group": "Applications",
                         "pages": [
                           "documentation/platform/pki/guides/applications/infisical-agent",
-                          "documentation/platform/pki/guides/applications/k8s-cert-manager",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-acme",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-issuer",
                           "documentation/platform/pki/guides/applications/nginx-certbot",
                           "documentation/platform/pki/guides/applications/apache-certbot",
                           "documentation/platform/pki/guides/applications/tomcat-certbot",
@@ -3937,6 +3938,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",
+      "destination": "/documentation/platform/pki/guides/applications/k8s-cert-manager-acme"
+    },
     {
       "source": "/sdks/languages/csharp",
       "destination": "/sdks/languages/dotnet"

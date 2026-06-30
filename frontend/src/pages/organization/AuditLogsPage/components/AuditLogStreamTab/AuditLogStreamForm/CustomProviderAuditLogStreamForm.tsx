@@ -15,7 +15,11 @@ import {
   Switch,
   Tooltip
 } from "@app/components/v2";
-import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
+import {
+  LogProvider,
+  REDACTED_CREDENTIAL_VALUE,
+  StreamMode
+} from "@app/hooks/api/auditLogStreams/enums";
 import { TCustomProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/custom-provider";
 
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
@@ -129,8 +133,8 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
-                        auditLogStream.credentials.headers[i].value === "******" &&
-                        field.value === "******"
+                        auditLogStream.credentials.headers[i].value === REDACTED_CREDENTIAL_VALUE &&
+                        field.value === REDACTED_CREDENTIAL_VALUE
                       ) {
                         field.onChange("");
                       }
@@ -140,10 +144,10 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
-                        auditLogStream.credentials.headers[i].value === "******" &&
+                        auditLogStream.credentials.headers[i].value === REDACTED_CREDENTIAL_VALUE &&
                         field.value === ""
                       ) {
-                        field.onChange("******");
+                        field.onChange(REDACTED_CREDENTIAL_VALUE);
                       }
                       setShowPassword(false);
                     }}

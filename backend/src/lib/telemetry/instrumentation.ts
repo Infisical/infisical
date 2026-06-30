@@ -32,9 +32,8 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "http.request.method",
   "http.route",
   "http.response.status_code",
-  // Tenant scope — bounded by org/project count
+  // Tenant scope — bounded by org count
   "infisical.organization.id",
-  "infisical.project.id",
   "infisical.environment",
   // Bounded enums
   "infisical.auth.method",
