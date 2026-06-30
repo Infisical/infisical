@@ -36,13 +36,14 @@ export const useCreateBillingV2CheckoutSession = () => {
     mutationFn: async ({
       orgId,
       productId,
+      plan,
       cadence,
       email,
       returnPath
     }: TCreateBillingV2CheckoutSessionDTO) => {
       const { data } = await apiRequest.post<BillingV2CheckoutResult>(
         `/api/v1/organizations/${orgId}/billing/v2/checkout-session`,
-        { productId, cadence, email, returnPath }
+        { productId, plan, cadence, email, returnPath }
       );
 
       return data;
@@ -72,6 +73,7 @@ export const usePreviewBillingV2Change = () => {
     mutationFn: async ({
       orgId,
       addProductId,
+      plan,
       cadence,
       removeProductId
     }: TPreviewBillingV2ChangeDTO) => {
@@ -79,7 +81,7 @@ export const usePreviewBillingV2Change = () => {
         data: { preview }
       } = await apiRequest.post<{ preview: BillingV2Preview }>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/preview`,
-        { addProductId, cadence, removeProductId }
+        { addProductId, plan, cadence, removeProductId }
       );
 
       return preview;
@@ -90,10 +92,10 @@ export const usePreviewBillingV2Change = () => {
 export const useAddBillingV2Product = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, productId, cadence }: TAddBillingV2ProductDTO) => {
+    mutationFn: async ({ orgId, productId, plan, cadence }: TAddBillingV2ProductDTO) => {
       const { data } = await apiRequest.post<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/items`,
-        { productId, cadence }
+        { productId, plan, cadence }
       );
 
       return data;

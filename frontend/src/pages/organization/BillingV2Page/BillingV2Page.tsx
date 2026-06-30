@@ -50,7 +50,8 @@ export const BillingV2Page = () => {
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
-  const [addProdId, setAddProdId] = useState<string | null>(null);
+  // The product to add in place plus the chosen plan tier (an existing-subscription upgrade path).
+  const [addProd, setAddProd] = useState<{ id: string; plan: string } | null>(null);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -82,7 +83,7 @@ export const BillingV2Page = () => {
 
   const cadence = intervalToCadence(overview?.interval ?? null);
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
-  const addProd = addProdId ? catalogById(catalog, addProdId) : undefined;
+  const addProdProduct = addProd ? catalogById(catalog, addProd.id) : undefined;
 
   const close = () => setFlow(null);
 
@@ -98,10 +99,11 @@ export const BillingV2Page = () => {
     }
   };
 
-  const redirectToCheckout = async (productId: string) => {
+  const redirectToCheckout = async (productId: string, plan: string) => {
     const result = await createCheckoutSession.mutateAsync({
       orgId,
       productId,
+      plan,
       cadence,
       email: billingEmail,
       returnPath: window.location.pathname
@@ -141,7 +143,7 @@ export const BillingV2Page = () => {
     overview?.subState === "trialing" ||
     overview?.subState === "past-due";
 
-  const onSheetManage = async (productId: string) => {
+  const onSheetManage = async (productId: string, plan: string) => {
     const isEntitled = Boolean(overview?.entitlements[productId]?.entitled);
     if (isEntitled) {
       await redirectToPortal();
@@ -149,10 +151,10 @@ export const BillingV2Page = () => {
     }
     if (hasActiveSubscription) {
       close();
-      setAddProdId(productId);
+      setAddProd({ id: productId, plan });
       return;
     }
-    await redirectToCheckout(productId);
+    await redirectToCheckout(productId, plan);
   };
 
   const onUpdatePayment = async () => {
@@ -248,12 +250,13 @@ export const BillingV2Page = () => {
         />
       )}
 
-      {addProd && (
+      {addProdProduct && addProd && (
         <AddProductModal
           orgId={orgId}
-          product={addProd}
+          product={addProdProduct}
+          plan={addProd.plan}
           cadence={cadence}
-          onClose={() => setAddProdId(null)}
+          onClose={() => setAddProd(null)}
         />
       )}
     </div>
