@@ -20,12 +20,12 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
 import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { TOrgDALFactory } from "../org/org-dal";
+import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -37,7 +37,6 @@ import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fn
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
-  TGetCrossProjectImportSecretValueDTO,
   TGetSecretImportByIdDTO,
   TGetSecretImportsDTO,
   TGetSecretsFromImportDTO,
@@ -93,10 +92,12 @@ export const secretImportServiceFactory = ({
 
     // If org-level toggle is disabled, strip cross-project imports entirely
     if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-      return imports
-        .filter((imp) => imp.importEnv.projectId === projectId)
-        // TODO: Do we need isAccessRemoved?
-        .map((imp) => ({ ...imp, isAccessRevoked: false }));
+      return (
+        imports
+          .filter((imp) => imp.importEnv.projectId === projectId)
+          // TODO: Do we need isAccessRemoved?
+          .map((imp) => ({ ...imp, isAccessRevoked: false }))
+      );
     }
 
     const sourceFolders = await folderDAL.findByManySecretPath(
@@ -155,7 +156,9 @@ export const secretImportServiceFactory = ({
 
     if (isCrossProjectImport) {
       if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-        throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
+        throw new ForbiddenRequestError({
+          message: "Cross-project secret sharing is not enabled for this organization"
+        });
       }
 
       const sourceProject = await projectDAL.findById(sourceProjectId);
@@ -835,8 +838,8 @@ export const secretImportServiceFactory = ({
     ).filter((imp) => !imp.isAccessRevoked);
     const allowedImports = secretImports.filter((el) =>
       hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment: el.importEnv.slug,
-        secretPath: el.importPath
+        environment: el.importEnv.projectId && el.importEnv.projectId !== projectId ? environment : el.importEnv.slug,
+        secretPath: el.importEnv.projectId && el.importEnv.projectId !== projectId ? secretPath : el.importPath
       })
     );
 
@@ -889,6 +892,7 @@ export const secretImportServiceFactory = ({
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
           hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment: expandEnvironment,
@@ -1048,9 +1052,7 @@ export const secretImportServiceFactory = ({
           : [];
         const grantedTargetProjectIds = new Set(grants.map((grant) => grant.targetProjectId));
 
-        crossProjItems = crossProjItems.filter(
-          (el) => el.projectId && grantedTargetProjectIds.has(el.projectId)
-        );
+        crossProjItems = crossProjItems.filter((el) => el.projectId && grantedTargetProjectIds.has(el.projectId));
       }
     }
 
@@ -1185,94 +1187,6 @@ export const secretImportServiceFactory = ({
     return result;
   };
 
-  const getCrossProjectImportSecretValue = async ({
-    projectId,
-    importId,
-    secretName,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetCrossProjectImportSecretValueDTO) => {
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-      throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    const importDoc = await secretImportDAL.findById(importId);
-    if (!importDoc) throw new NotFoundError({ message: "Secret import not found" });
-
-    const destinationFolder = await folderDAL.findById(importDoc.folderId);
-    if (!destinationFolder || destinationFolder.projectId !== projectId) {
-      throw new NotFoundError({ message: "Secret import not found in this project" });
-    }
-
-    const [destinationPath] = await folderDAL.findSecretPathByFolderIds(projectId, [destinationFolder.id]);
-    if (!destinationPath) throw new NotFoundError({ message: "Secret import destination folder not found" });
-
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment: destinationPath.environmentSlug,
-      secretPath: destinationPath.path,
-      secretName
-    });
-
-    const sourceProjectId = importDoc.importEnv.projectId;
-    if (!sourceProjectId || sourceProjectId === projectId) {
-      throw new BadRequestError({ message: "Secret import is not a cross-project import" });
-    }
-
-    const sourceProject = await projectDAL.findById(sourceProjectId);
-    if (!sourceProject || sourceProject.orgId !== actorOrgId)
-      throw new NotFoundError({ message: "Source project not found" });
-
-    const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, importDoc.importEnv.slug, importDoc.importPath);
-    if (!sourceFolder)
-      throw new NotFoundError({
-        message: `Folder not found at path '${importDoc.importPath}' in environment '${importDoc.importEnv.slug}' of source project`
-      });
-
-    const grant = await projectGrantDAL.findOne({
-      sourceFolderId: sourceFolder.id,
-      targetProjectId: projectId
-    });
-    if (!grant)
-      throw new ForbiddenRequestError({ message: "No cross-project grant found authorizing this import" });
-
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(sourceProjectId);
-    if (!shouldUseSecretV2Bridge)
-      throw new BadRequestError({ message: "Source project has not been upgraded to the latest version" });
-
-    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: sourceProjectId
-    });
-
-    const secrets = await secretV2BridgeDAL.find(
-      {
-        folderId: sourceFolder.id,
-        type: SecretType.Shared,
-        [`${TableName.SecretV2}.key` as "key"]: secretName
-      },
-      { limit: 1 }
-    );
-    if (!secrets.length)
-      throw new NotFoundError({ message: `Secret '${secretName}' not found in source project` });
-
-    const secretValue = secrets[0].encryptedValue
-      ? sourceDecryptor({ cipherTextBlob: secrets[0].encryptedValue }).toString()
-      : "";
-
-    return { value: secretValue };
-  };
-
   return {
     createImport,
     updateImport,
@@ -1286,7 +1200,6 @@ export const secretImportServiceFactory = ({
     fnSecretsFromImports,
     getProjectImportMultiEnvCount,
     getImportsMultiEnv,
-    getFolderIsImportedBy,
-    getCrossProjectImportSecretValue
+    getFolderIsImportedBy
   };
 };

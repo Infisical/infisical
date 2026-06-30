@@ -49,14 +49,14 @@ import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { TOrgDALFactory } from "../org/org-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -199,7 +199,9 @@ export const secretV2BridgeServiceFactory = ({
 
     // Filter out references to non-existent environments
     const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
-    const validEnvironmentReferences = sameProjReferences.filter((el) => referencesEnvironmentGroupBySlug[el.environment]);
+    const validEnvironmentReferences = sameProjReferences.filter(
+      (el) => referencesEnvironmentGroupBySlug[el.environment]
+    );
 
     if (validEnvironmentReferences.length === 0) return;
 
@@ -1596,6 +1598,15 @@ export const secretV2BridgeServiceFactory = ({
           ? expandImportedSecretReferences
           : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+      importAccessScopeByFolderId: new Map(
+        paths.map((folderPath) => [
+          folderPath.folderId,
+          {
+            environment,
+            secretPath: folderPath.path
+          }
+        ])
+      ),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
         const canDescribe = hasSecretReadValueOrDescribePermission(
           permission,
@@ -1850,6 +1861,7 @@ export const secretV2BridgeServiceFactory = ({
         personalOverridesBehavior: secretType === SecretType.Personal ? PersonalOverridesBehavior.Priority : undefined,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         expandSecretReferences: shouldExpandSecretReferences && viewSecretValue ? expandSecretReferences : undefined,
+        importAccessScopeByFolderId: new Map([[folderId, { environment, secretPath: path }]]),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
           return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
             environment: expandEnvironment,
@@ -1880,8 +1892,8 @@ export const secretV2BridgeServiceFactory = ({
             if (viewSecretValue) {
               if (
                 !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-                  environment: importedSecret.environment,
-                  secretPath: importedSecrets[i].secretPath,
+                  environment: importedSecrets[i].accessScope.environment,
+                  secretPath: importedSecrets[i].accessScope.secretPath,
                   secretName: importedSecret.key,
                   secretTags: (importedSecret.secretTags || []).map((el) => el.slug)
                 }) &&

@@ -10,7 +10,6 @@ type Props = {
   secretPath?: string;
   isEmpty?: boolean;
   missingFromEnvs?: string[];
-  importId?: string;
 };
 
 export const SecretImportSecretRow = ({
@@ -18,8 +17,7 @@ export const SecretImportSecretRow = ({
   environment,
   secretPath = "/",
   isEmpty,
-  missingFromEnvs,
-  importId
+  missingFromEnvs
 }: Props) => {
   return (
     <TableRow className="group">
@@ -42,7 +40,6 @@ export const SecretImportSecretRow = ({
           environment={environment}
           secretPath={secretPath}
           isEmpty={isEmpty}
-          importId={importId}
         />
       </TableCell>
     </TableRow>

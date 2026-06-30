@@ -172,7 +172,6 @@ export type TGetSecretValueDTO = {
   environment: string;
   secretPath: string;
   isOverride?: boolean;
-  importId?: string;
 };
 
 export type DashboardSecretValue =

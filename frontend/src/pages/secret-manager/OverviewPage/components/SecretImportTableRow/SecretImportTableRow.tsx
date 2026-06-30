@@ -530,11 +530,6 @@ export const SecretImportTableRow = ({
                       : importPath
                   }
                   isEmpty={secret.isEmpty}
-                  importId={
-                    selectedEnvImportData?.secretImportRecord?.importEnv?.projectId !== currentProject?.id
-                      ? selectedEnvImportData?.secretImportRecord?.id
-                      : undefined
-                  }
                 />
               ))}
             </TableBody>
@@ -596,11 +591,6 @@ export const SecretImportTableRow = ({
                   }
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
-                  importId={
-                    secretImport?.importEnv?.projectId !== currentProject?.id
-                      ? secretImport?.id
-                      : undefined
-                  }
                 />
               );
             })}
@@ -664,11 +654,6 @@ export const SecretImportTableRow = ({
                   : importPath
               }
               isEmpty={secret.isEmpty}
-              importId={
-                singleEnvImport?.importEnv?.projectId !== currentProject?.id
-                  ? singleEnvImport?.id
-                  : undefined
-              }
             />
           ))}
         </TableBody>

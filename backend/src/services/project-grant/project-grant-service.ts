@@ -26,7 +26,7 @@ export type TProjectGrantServiceFactory = ReturnType<typeof projectGrantServiceF
 
 type TProjectGrantServiceFactoryDep = {
   projectGrantDAL: TProjectGrantDALFactory;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -109,6 +109,16 @@ export const projectGrantServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
+    const grant = await projectGrantDAL.findById(grantId);
+    if (!grant || grant.sourceProjectId !== sourceProjectId) {
+      throw new NotFoundError({ message: "Grant not found" });
+    }
+
+    const [folderInfo] = await folderDAL.findSecretPathByFolderIds(sourceProjectId, [grant.sourceFolderId]);
+    if (!folderInfo) {
+      throw new NotFoundError({ message: "Grant not found" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -119,13 +129,11 @@ export const projectGrantServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionProjectGrantActions.RevokeGrant,
-      ProjectPermissionSub.ProjectGrant
+      subject(ProjectPermissionSub.ProjectGrant, {
+        environment: folderInfo.environmentSlug,
+        secretPath: folderInfo.path
+      })
     );
-
-    const grant = await projectGrantDAL.findById(grantId);
-    if (!grant || grant.sourceProjectId !== sourceProjectId) {
-      throw new NotFoundError({ message: "Grant not found" });
-    }
 
     const deleted = await projectGrantDAL.deleteById(grantId);
     // Invalidate the target project's secret cache so revoked references stop resolving immediately
