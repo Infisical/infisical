@@ -266,11 +266,7 @@ export const expandSecretReferencesFactory = ({
           } else if (entities[0].startsWith("@")) {
             // Cross-project reference: ${@project-slug.env.path.KEY}
             // eslint-disable-next-line no-await-in-loop
-            if (
-              !hasCrossProjectConfig ||
-              !projectGrantDAL ||
-              !crossProjectSecretSharingEnabled
-            ) {
+            if (!hasCrossProjectConfig || !projectGrantDAL || !crossProjectSecretSharingEnabled) {
               // eslint-disable-next-line no-continue
               continue;
             }

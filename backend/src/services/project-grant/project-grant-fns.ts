@@ -9,12 +9,7 @@ export const canUseCrossProjectSecretSharing = (orgId: string) => {
   return appCfg.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST.includes(orgId);
 };
 
-export const isCrossProjectEnabled = async (
-  actorOrgId: string,
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">
-) => {
-  const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
-    orgDAL.findOrgById(actorOrgId)
-  );
+export const isCrossProjectEnabled = async (actorOrgId: string, orgDAL: Pick<TOrgDALFactory, "findOrgById">) => {
+  const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () => orgDAL.findOrgById(actorOrgId));
   return canUseCrossProjectSecretSharing(actorOrgId) && (org?.allowCrossProjectSecretSharing ?? false);
 };

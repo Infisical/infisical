@@ -324,7 +324,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .join(TableName.SecretV2, `${TableName.SecretReferenceV2}.secretId`, `${TableName.SecretV2}.id`)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .join(`${TableName.Project} as crossProject`, `${TableName.Environment}.projectId`, `crossProject.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .where(`${TableName.SecretFolder}.isReserved`, false)
         .select(
@@ -335,9 +335,9 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
           db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey"),
           db.ref("environment").withSchema(TableName.SecretReferenceV2).as("referencedSecretEnv"),
-          db.raw(`"crossProject"."name" as "projectName"`),
-          db.raw(`"crossProject"."slug" as "sourceProjectSlug"`),
-          db.raw(`"crossProject"."id" as "sourceProjectId"`)
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("slug").withSchema(TableName.Project).as("sourceProjectSlug"),
+          db.ref("id").withSchema(TableName.Project).as("sourceProjectId")
         );
 
       const folderResults = folderImports.map(({ envName, envSlug, folderName, folderId }) => ({
@@ -469,7 +469,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
         }
 
         if (!updatedAcc[key].folders[item.folderId]) {
-          updatedAcc[key].folders[item.folderId] = { secrets: [], folderId: item.folderId, folderName: item.folderName };
+          updatedAcc[key].folders[item.folderId] = {
+            secrets: [],
+            folderId: item.folderId,
+            folderName: item.folderName
+          };
         }
 
         updatedAcc[key].folders[item.folderId].secrets.push({

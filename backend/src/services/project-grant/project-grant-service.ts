@@ -13,8 +13,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
-import { isCrossProjectEnabled } from "./project-grant-fns";
 import { TProjectGrantDALFactory } from "./project-grant-dal";
+import { isCrossProjectEnabled } from "./project-grant-fns";
 import {
   TCreateProjectGrantDTO,
   TDeleteProjectGrantDTO,
@@ -189,10 +189,7 @@ export const projectGrantServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.SecretImports
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.SecretImports);
 
     return projectGrantDAL.listByTargetProject(targetProjectId);
   };

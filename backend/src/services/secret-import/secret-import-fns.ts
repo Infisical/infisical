@@ -494,9 +494,7 @@ export const fnSecretsV2FromImports = async ({
         //   Project A -> Project B -> Project A  (blocked at B->A)
         const foreignProjectId = importedFromProjectId ?? (isCrossProject ? importEnv.projectId : undefined);
         if (foreignProjectId) {
-          deeperImportsForFolder = deeperImportsForFolder.filter(
-            (imp) => imp.importEnv.projectId === foreignProjectId
-          );
+          deeperImportsForFolder = deeperImportsForFolder.filter((imp) => imp.importEnv.projectId === foreignProjectId);
         }
 
         if (deeperImportsForFolder.length > 0) {
