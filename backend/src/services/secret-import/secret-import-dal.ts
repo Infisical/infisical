@@ -91,7 +91,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
-        .leftJoin(`${TableName.Project} as sourceProject`, `${TableName.Environment}.projectId`, `sourceProject.id`)
+        .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
@@ -99,7 +99,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Environment),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("projectId").withSchema(TableName.Environment).as("envProjectId"),
-          db.raw(`"sourceProject"."name" as "sourceProjectName"`)
+          db.ref("name").withSchema(TableName.Project).as("sourceProjectName")
         )
         .orderBy("position", "asc");
 
@@ -112,7 +112,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
       return docs.map(({ envId, envProjectId, slug, name, sourceProjectName, ...el }) => ({
         ...el,
         importEnv: { id: envId, slug, name, projectId: envProjectId },
-        sourceProjectName: (sourceProjectName as string) ?? undefined
+        sourceProjectName: sourceProjectName ?? undefined
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
@@ -124,7 +124,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.SecretImport)
         .where({ [`${TableName.SecretImport}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
-        .leftJoin(`${TableName.Project} as sourceProject`, `${TableName.Environment}.projectId`, `sourceProject.id`)
+        .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
@@ -132,7 +132,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Environment),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("projectId").withSchema(TableName.Environment).as("envProjectId"),
-          db.raw(`"sourceProject"."name" as "sourceProjectName"`)
+          db.ref("name").withSchema(TableName.Project).as("sourceProjectName")
         )
         .first();
 
@@ -145,7 +145,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
       return {
         ...el,
         importEnv: { id: envId, slug, name, projectId: envProjectId },
-        sourceProjectName: (sourceProjectName as string) ?? undefined
+        sourceProjectName: sourceProjectName ?? undefined
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
