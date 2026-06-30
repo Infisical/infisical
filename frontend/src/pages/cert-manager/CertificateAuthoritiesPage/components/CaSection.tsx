@@ -26,7 +26,6 @@ import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CreateCaWizard } from "./CreateCaWizard/CreateCaWizard";
 import { CaCertModal } from "./CaCertModal";
 import { CaInstallCertModal } from "./CaInstallCertModal";
-import { CaModal } from "./CaModal";
 import { CaTable } from "./CaTable";
 
 export const CaSection = () => {
@@ -36,7 +35,6 @@ export const CaSection = () => {
   const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "ca",
     "caCert",
     "installCaCert",
     "deleteCa",
@@ -102,7 +100,6 @@ export const CaSection = () => {
         <CaTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
       <CreateCaWizard isOpen={isCreateWizardOpen} onOpenChange={setIsCreateWizardOpen} />
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal

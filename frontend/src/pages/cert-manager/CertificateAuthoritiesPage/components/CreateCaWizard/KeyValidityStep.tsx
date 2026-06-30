@@ -1,4 +1,4 @@
-import { Controller, useForm } from "react-hook-form";
+import { Controller, UseFormReturn } from "react-hook-form";
 
 import {
   Badge,
@@ -30,7 +30,7 @@ import { CaWizardForm } from "./schemas";
 import { HSM_SUPPORTED_CA_KEY_ALGORITHMS, HsmConnectorOption } from "./types";
 
 type Props = {
-  form: ReturnType<typeof useForm<CaWizardForm>>;
+  form: UseFormReturn<CaWizardForm>;
   hsmConnectorOptions: HsmConnectorOption[];
   isHsmConnectorsLoading: boolean;
 };

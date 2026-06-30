@@ -1,4 +1,4 @@
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, UseFormReturn } from "react-hook-form";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
@@ -18,7 +18,7 @@ import { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "@app/hooks/api/ca";
 import { CaWizardForm } from "./schemas";
 
 type Props = {
-  form: ReturnType<typeof useForm<CaWizardForm>>;
+  form: UseFormReturn<CaWizardForm>;
 };
 
 export const DistributionStep = ({ form }: Props) => {

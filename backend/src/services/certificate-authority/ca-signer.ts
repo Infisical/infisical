@@ -4,7 +4,7 @@ import { Certificate, CertificateList } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ecdsaRawRsToDer } from "@app/lib/csr/pkcs11-algorithm-map";
+import { bufferToArrayBuffer, ecdsaRawRsToDer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError } from "@app/lib/errors";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
@@ -96,15 +96,6 @@ export const caKeyAlgorithmToHsmShape = (keyAlgorithm: CertKeyAlgorithm | string
         message: `Key algorithm "${keyAlgorithm}" is not supported for HSM-backed certificate authorities.`
       });
   }
-};
-
-export const caKeyAlgorithmToHsmKeyAlgorithm = (keyAlgorithm: CertKeyAlgorithm | string): HsmKeyAlgorithm =>
-  caKeyAlgorithmToHsmShape(keyAlgorithm).hsmKeyAlgorithm;
-
-const bufferToArrayBuffer = (buf: Buffer): ArrayBuffer => {
-  const ab = new ArrayBuffer(buf.length);
-  new Uint8Array(ab).set(buf);
-  return ab;
 };
 
 export const buildLocalCaSigner = ({

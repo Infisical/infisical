@@ -187,7 +187,7 @@ export const certManagerExportServiceFactory = ({
           .map((ca) => ca.name)
           .join(", ");
         throw new BadRequestError({
-          message: `Cannot export HSM-backed certificate authorities (${names}); their signing keys are bound to a project-scoped HSM connector. Remove them from the source project before exporting.`
+          message: `Cannot export HSM-backed certificate authorities (${names}). Their signing keys live on an HSM reached through a connector that exists only in the source project, so they cannot be recreated in the destination. Delete these certificate authorities, then export again.`
         });
       }
 

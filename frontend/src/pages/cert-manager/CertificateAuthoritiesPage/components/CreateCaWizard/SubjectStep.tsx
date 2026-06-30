@@ -1,11 +1,11 @@
-import { Controller, useForm } from "react-hook-form";
+import { Controller, UseFormReturn } from "react-hook-form";
 
 import { Field, FieldContent, FieldError, FieldGroup, FieldLabel, Input } from "@app/components/v3";
 
 import { CaWizardForm } from "./schemas";
 
 type Props = {
-  form: ReturnType<typeof useForm<CaWizardForm>>;
+  form: UseFormReturn<CaWizardForm>;
 };
 
 const SUBJECT_FIELDS: { name: keyof CaWizardForm; label: string; placeholder: string }[] = [

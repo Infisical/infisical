@@ -32,7 +32,7 @@ import { useListHsmConnectorLinkedResources } from "@app/hooks/api/hsmConnectors
 
 type Props = { connectorId: string };
 
-export const HsmConnectorLinkedCertsSection = ({ connectorId }: Props) => {
+export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const { data, isPending } = useListHsmConnectorLinkedResources(connectorId, {

@@ -29,7 +29,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
-import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
 import {
   CaCertDetailsSection,
   CaCertificatesSection,
@@ -74,7 +73,6 @@ const Page = () => {
   const { mutateAsync: deleteCa } = useDeleteCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "ca",
     "deleteCa",
     "installCaCert",
     "renewCa",
@@ -204,7 +202,6 @@ const Page = () => {
           }
         </ProjectPermissionCan>
       )}
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

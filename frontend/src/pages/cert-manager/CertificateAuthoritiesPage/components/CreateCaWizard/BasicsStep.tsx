@@ -1,4 +1,4 @@
-import { Controller, useForm } from "react-hook-form";
+import { Controller, UseFormReturn } from "react-hook-form";
 
 import {
   Field,
@@ -19,7 +19,7 @@ import { InternalCaType } from "@app/hooks/api/ca/enums";
 import { CaWizardForm } from "./schemas";
 
 type Props = {
-  form: ReturnType<typeof useForm<CaWizardForm>>;
+  form: UseFormReturn<CaWizardForm>;
 };
 
 export const BasicsStep = ({ form }: Props) => {

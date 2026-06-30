@@ -56,13 +56,7 @@ import { DEFAULT_CRL_VALIDITY_DAYS } from "../../certificate-common/certificate-
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
-import {
-  buildHsmCaSigner,
-  buildLocalCaSigner,
-  caKeyAlgorithmToHsmKeyAlgorithm,
-  caKeyAlgorithmToHsmShape,
-  TCaSigner
-} from "../ca-signer";
+import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "../ca-signer";
 import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
@@ -381,7 +375,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         connectorId: dto.hsmConnectorId,
         projectId,
         keyLabel: `ca-${crypto.nativeCrypto.randomUUID()}`,
-        keyAlgorithm: caKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm)
+        keyAlgorithm: shape.hsmKeyAlgorithm
       });
       hsmKey = generated;
 
@@ -410,20 +404,79 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
-    const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      let notBeforeDate: Date | undefined;
-      if (notAfter) {
-        notBeforeDate = notBefore ? new Date(notBefore) : new Date();
-      }
-
+    let notBeforeDate: Date | undefined;
+    let notAfterDate: Date | undefined;
+    if (notAfter) {
+      notBeforeDate = notBefore ? new Date(notBefore) : new Date();
       // if undefined, set [notAfterDate] to 10 years from now
-      let notAfterDate: Date | undefined;
-      if (notAfter) {
-        notAfterDate = new Date(notAfter);
+      notAfterDate = new Date(notAfter);
+    }
+    const serialNumber = createSerialNumber();
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    let encryptedPrivateKey: Buffer | undefined;
+    if (!useHsm) {
+      const localPrivateKey = (localKeys as CryptoKeyPair).privateKey;
+      // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
+      let privateKeyDer: Buffer;
+      if (isPqcCryptoKey(localPrivateKey)) {
+        privateKeyDer = await exportPqcKeyToDer(localPrivateKey);
+      } else {
+        const skObj = crypto.nativeCrypto.KeyObject.from(localPrivateKey);
+        privateKeyDer = skObj.export({ type: "pkcs8", format: "der" });
       }
+      encryptedPrivateKey = (await kmsEncryptor({ plainText: privateKeyDer })).cipherTextBlob;
+    }
 
-      const serialNumber = createSerialNumber();
+    let rootCertMaterial: { encryptedCertificate: Buffer; encryptedCertificateChain: Buffer } | undefined;
+    if (type === InternalCaType.ROOT && notAfter) {
+      const cert = await caSigner.createCertificate({
+        subject: dn,
+        issuer: dn,
+        serialNumber,
+        notBefore: notBeforeDate,
+        notAfter: notAfterDate,
+        publicKey: caSigner.caPublicKey,
+        extensions: [
+          new x509.BasicConstraintsExtension(
+            true,
+            maxPathLength === -1 || maxPathLength === null ? undefined : maxPathLength,
+            true
+          ),
+          new x509.KeyUsagesExtension(isPqcAlgorithm(keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES, true),
+          await x509.SubjectKeyIdentifierExtension.create(caSigner.caPublicKey)
+        ]
+      });
 
+      rootCertMaterial = {
+        encryptedCertificate: (await kmsEncryptor({ plainText: Buffer.from(new Uint8Array(cert.rawData)) }))
+          .cipherTextBlob,
+        encryptedCertificateChain: (await kmsEncryptor({ plainText: Buffer.alloc(0) })).cipherTextBlob
+      };
+    }
+
+    const thisUpdate = new Date();
+    const nextUpdate = new Date(thisUpdate);
+    nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
+    const crl = await caSigner.createCrl({
+      issuer: dn,
+      thisUpdate,
+      nextUpdate,
+      entries: []
+    });
+    const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
+      plainText: Buffer.from(new Uint8Array(crl.rawData))
+    });
+
+    const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
@@ -461,118 +514,41 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId,
-        projectDAL,
-        kmsService
-      });
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({
-        kmsId: certificateManagerKmsId
-      });
+      const caSecret =
+        useHsm && hsmKey
+          ? await certificateAuthoritySecretDAL.create(
+              {
+                caId: ca.id,
+                keySource: CertKeySource.Hsm,
+                hsmConnectorId: dto.hsmConnectorId,
+                hsmKeyLabel: hsmKey.keyLabel,
+                hsmPublicKeySpki: hsmKey.publicKeySpkiDer
+              },
+              tx
+            )
+          : await certificateAuthoritySecretDAL.create(
+              {
+                caId: ca.id,
+                keySource: CertKeySource.Infisical,
+                encryptedPrivateKey
+              },
+              tx
+            );
 
-      let caSecret;
-      if (useHsm && hsmKey) {
-        caSecret = await certificateAuthoritySecretDAL.create(
-          {
-            caId: ca.id,
-            keySource: CertKeySource.Hsm,
-            hsmConnectorId: dto.hsmConnectorId,
-            hsmKeyLabel: hsmKey.keyLabel,
-            hsmPublicKeySpki: hsmKey.publicKeySpkiDer
-          },
-          tx
-        );
-      } else {
-        const localPrivateKey = (localKeys as CryptoKeyPair).privateKey;
-        // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
-        let privateKeyDer: Buffer;
-        if (isPqcCryptoKey(localPrivateKey)) {
-          privateKeyDer = await exportPqcKeyToDer(localPrivateKey);
-        } else {
-          const skObj = crypto.nativeCrypto.KeyObject.from(localPrivateKey);
-          privateKeyDer = skObj.export({ type: "pkcs8", format: "der" });
-        }
-
-        const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-          plainText: privateKeyDer
-        });
-
-        caSecret = await certificateAuthoritySecretDAL.create(
-          {
-            caId: ca.id,
-            keySource: CertKeySource.Infisical,
-            encryptedPrivateKey
-          },
-          tx
-        );
-      }
-
-      if (type === InternalCaType.ROOT && notAfter) {
-        // note: create self-signed cert only applicable for root CA
-        const cert = await caSigner.createCertificate({
-          subject: dn,
-          issuer: dn,
-          serialNumber,
-          notBefore: notBeforeDate,
-          notAfter: notAfterDate,
-          publicKey: caSigner.caPublicKey,
-          extensions: [
-            new x509.BasicConstraintsExtension(
-              true,
-              maxPathLength === -1 || maxPathLength === null ? undefined : maxPathLength,
-              true
-            ),
-            new x509.KeyUsagesExtension(
-              isPqcAlgorithm(keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES,
-              true
-            ),
-            await x509.SubjectKeyIdentifierExtension.create(caSigner.caPublicKey)
-          ]
-        });
-
-        const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
-          plainText: Buffer.from(new Uint8Array(cert.rawData))
-        });
-
-        const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
-          plainText: Buffer.alloc(0)
-        });
-
+      if (rootCertMaterial) {
         const caCert = await certificateAuthorityCertDAL.create(
           {
             caId: ca.id,
-            encryptedCertificate,
-            encryptedCertificateChain,
+            encryptedCertificate: rootCertMaterial.encryptedCertificate,
+            encryptedCertificateChain: rootCertMaterial.encryptedCertificateChain,
             version: 1,
             caSecretId: caSecret.id
           },
           tx
         );
 
-        await internalCertificateAuthorityDAL.updateById(
-          internalCa.id,
-          {
-            activeCaCertId: caCert.id
-          },
-          tx
-        );
+        await internalCertificateAuthorityDAL.updateById(internalCa.id, { activeCaCertId: caCert.id }, tx);
       }
-
-      // create empty CRL
-      const thisUpdate = new Date();
-      const nextUpdate = new Date(thisUpdate);
-      nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
-
-      const crl = await caSigner.createCrl({
-        issuer: internalCa.dn,
-        thisUpdate,
-        nextUpdate,
-        entries: []
-      });
-
-      const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
-        plainText: Buffer.from(new Uint8Array(crl.rawData))
-      });
 
       await certificateAuthorityCrlDAL.create(
         {
