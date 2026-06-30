@@ -239,8 +239,13 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
 
   const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
     const result = await (tx || db.replicaNode())(TableName.DynamicSecret)
+      .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
-      .count("id")
+      .count(`${TableName.DynamicSecret}.id`)
       .first();
 
     return parseInt(String(result?.count || "0"), 10);
@@ -269,8 +274,13 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
 
   const countByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
     const result = await (tx || db.replicaNode())(TableName.DynamicSecret)
+      .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.DynamicSecret}.gatewayPoolId`, gatewayPoolId)
-      .count("id")
+      .count(`${TableName.DynamicSecret}.id`)
       .first();
 
     return parseInt(String(result?.count || "0"), 10);
