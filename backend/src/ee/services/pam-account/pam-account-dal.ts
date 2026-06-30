@@ -6,8 +6,8 @@ import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 import { PamAccountType } from "../pam/pam-enums";
-import { ACCOUNT_TYPE_CONFIGS } from "./pam-account-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { ACCOUNT_TYPE_CONFIGS } from "./pam-account-schemas";
 
 const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
   .map((type) => `'${type}'`)
