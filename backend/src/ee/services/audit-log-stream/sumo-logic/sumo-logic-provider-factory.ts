@@ -1,8 +1,7 @@
 import { RawAxiosRequestHeaders } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
 import {
@@ -28,9 +27,7 @@ export const SumoLogicProviderFactory = () => {
   }) => {
     const { url } = credentials;
 
-    await blockLocalAndPrivateIpAddresses(url);
-
-    await request
+    await safeRequest
       .post(url, JSON.stringify({ ping: "ok" }), {
         headers: buildStreamHeaders(credentials, "application/json"),
         timeout: AUDIT_LOG_STREAM_TIMEOUT
@@ -50,11 +47,9 @@ export const SumoLogicProviderFactory = () => {
 
     const { url } = credentials;
 
-    await blockLocalAndPrivateIpAddresses(url);
-
     const body = auditLogs.map((auditLog) => JSON.stringify(auditLog)).join("\n");
 
-    await request.post(url, body, {
+    await safeRequest.post(url, body, {
       headers: buildStreamHeaders(credentials, "application/x-ndjson"),
       timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
     });
