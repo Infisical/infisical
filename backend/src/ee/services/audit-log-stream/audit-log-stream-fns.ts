@@ -10,6 +10,7 @@ import { getCriblProviderListItem } from "./cribl/cribl-provider-fns";
 import { getCustomProviderListItem } from "./custom/custom-provider-fns";
 import { getDatadogProviderListItem } from "./datadog/datadog-provider-fns";
 import { getSplunkProviderListItem } from "./splunk/splunk-provider-fns";
+import { getSumoLogicProviderListItem } from "./sumo-logic/sumo-logic-provider-fns";
 
 export const listProviderOptions = () => {
   return [
@@ -17,7 +18,8 @@ export const listProviderOptions = () => {
     getSplunkProviderListItem(),
     getCustomProviderListItem(),
     getAzureProviderListItem(),
-    getCriblProviderListItem()
+    getCriblProviderListItem(),
+    getSumoLogicProviderListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
