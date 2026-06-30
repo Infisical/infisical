@@ -298,6 +298,9 @@ export const fnSecretsV2FromImports = async ({
     secretImports: typeof rootSecretImports;
     depth: number;
     inheritedCrossProjectAccessScope?: { environment: string; secretPath: string };
+    // Set when we've crossed into a foreign project. Deeper imports that leave this
+    // project are blocked, preventing transitive cross-project chains (A->B->C, A->B->A).
+    importedFromProjectId?: string;
     parentImportedSecrets: (TSecretsV2 & {
       secretValueHidden: boolean;
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
@@ -312,7 +315,8 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
-    const { secretImports, depth, parentImportedSecrets, inheritedCrossProjectAccessScope } = stack.pop()!;
+    const { secretImports, depth, parentImportedSecrets, inheritedCrossProjectAccessScope, importedFromProjectId } =
+      stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
     const sanitizedImports = secretImports.filter(
@@ -482,12 +486,28 @@ export const fnSecretsV2FromImports = async ({
         }));
 
       if (deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
-        stack.push({
-          secretImports: deeperImportsGroupByFolderId[sourceImportFolder?.id || ""],
-          depth: depth + 1,
-          inheritedCrossProjectAccessScope: isCrossProject ? accessScope : inheritedCrossProjectAccessScope,
-          parentImportedSecrets: secretsWithDuplicate
-        });
+        let deeperImportsForFolder = deeperImportsGroupByFolderId[sourceImportFolder?.id || ""];
+
+        // Once we cross a project boundary, only follow imports that stay within
+        // that foreign project. This blocks transitive cross-project chains:
+        //   Project A -> Project B -> Project C  (blocked at B->C)
+        //   Project A -> Project B -> Project A  (blocked at B->A)
+        const foreignProjectId = importedFromProjectId ?? (isCrossProject ? importEnv.projectId : undefined);
+        if (foreignProjectId) {
+          deeperImportsForFolder = deeperImportsForFolder.filter(
+            (imp) => imp.importEnv.projectId === foreignProjectId
+          );
+        }
+
+        if (deeperImportsForFolder.length > 0) {
+          stack.push({
+            secretImports: deeperImportsForFolder,
+            depth: depth + 1,
+            importedFromProjectId: foreignProjectId,
+            inheritedCrossProjectAccessScope: isCrossProject ? accessScope : inheritedCrossProjectAccessScope,
+            parentImportedSecrets: secretsWithDuplicate
+          });
+        }
       }
 
       if (isFirstIteration) {
