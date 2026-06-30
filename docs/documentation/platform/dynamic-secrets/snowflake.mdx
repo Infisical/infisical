@@ -9,25 +9,52 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
 
 ## Snowflake Prerequisites
 
-<Note>
-  Infisical requires a Snowflake user in your account with the USERADMIN role.
-  This user will act as a service account for Infisical and facilitate the
-  creation of new users as needed.
-</Note>
 
 <Steps>
-  <Step title="Navigate to Snowflake's User Dashboard and press the '+ User' button">
+  <Step title="Open user settings">
+   Select the tab **Governance & Security** tab and click on **Users & roles**
     ![Snowflake User
     Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-users-page.png)
   </Step>
-  <Step title="Create a Snowflake user with the USERADMIN role for Infisical">
-    <Warning>
-      Be sure to uncheck "Force user to change password on first time login"
-    </Warning>
+
+
+  <Step title="Create a new User">
+  On the top right click on **Create user**
+    ![Snowflake User
+Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-create-user-button.png)
+  </Step>
+
+  <Step title="Configure user details">
+  Create a Snowflake user with the USERADMIN role for Infisical
     ![Snowflake Create Service
     User](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-create-service-user.png)
+
+
+    <Note>
+    Infisical requires a Snowflake user in your account with the USERADMIN role.
+    This user will act as a service account for Infisical and facilitate the
+    creation of new users as needed.
+    </Note>
   </Step>
-  <Step title="Click on the Account Menu in the bottom left and take note of your Account and Organization identifiers">
+
+  <Step title="Generate a Programmatic Access Token">
+    Select the tab **Governance & Security** and click on **User & roles**. Select the User created on the last step. 
+
+    ![Select User](/images/platform/dynamic-secrets/snowflake/select-user-for-pat.png)
+
+    Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name and configure its expiration. The role restrictions in this case needs to be **USERADMIN**. 
+    ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
+    ![Add Programmatic Access Token name](/images/app-connections/snowflake/step-6.png)
+  </Step>
+
+    <Step title="Copy the Token">
+        Copy the generated token. Snowflake only displays it once, store it somewhere secure for the next step.
+
+        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-7.png)
+    </Step>
+
+  <Step title="Save the Account and Organization identifiers">
+    Click on the Account Menu in the bottom left and take note of your Account and Organization identifiers
     ![Snowflake Account And Organization
     Identifiers](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-identifiers.png)
   </Step>
