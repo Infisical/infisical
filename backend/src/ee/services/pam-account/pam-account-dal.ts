@@ -7,14 +7,21 @@ import { ormify } from "@app/lib/knex";
 
 import { PamAccountType } from "../pam/pam-enums";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { ACCOUNT_TYPE_CONFIGS } from "./pam-account-schemas";
 
 const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
   .map((type) => `'${type}'`)
   .join(", ");
 
+const gatewayExemptAccountTypes = (Object.entries(ACCOUNT_TYPE_CONFIGS) as [string, { requiresGateway?: boolean }][])
+  .filter(([, config]) => config.requiresGateway === false)
+  .map(([type]) => `'${type}'`)
+  .join(", ");
+
 export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
   `(
-    ("${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
+    ("${templateTable}"."type" in (${gatewayExemptAccountTypes})
+      or "${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
       or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
     and "${accountTable}"."credentialConfigured" = true
     and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})

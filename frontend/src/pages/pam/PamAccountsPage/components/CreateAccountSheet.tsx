@@ -120,7 +120,10 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
   const selectedMetadata = accountTypes.find((t) => t.type === selectedTemplate?.type);
 
   const needsGateway = Boolean(
-    selectedTemplate && !selectedTemplate.gatewayId && !selectedTemplate.gatewayPoolId
+    selectedMetadata?.requiresGateway !== false &&
+      selectedTemplate &&
+      !selectedTemplate.gatewayId &&
+      !selectedTemplate.gatewayPoolId
   );
   const needsRecording = Boolean(
     selectedTemplate &&
