@@ -398,7 +398,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       }),
       z.object({
         authMethod: z.literal("static-key"),
-        serviceAccountKeyJson: z.string().trim().min(1)
+        serviceAccountKeyJson: z.string().trim().min(1).max(8192)
       })
     ]),
     sanitizedCredentials: z.object({
