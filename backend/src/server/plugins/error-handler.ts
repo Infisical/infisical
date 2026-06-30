@@ -60,7 +60,40 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
   });
 
   server.setErrorHandler((error: Error, req, res) => {
-    req.log.error(error);
+    // Expected client errors don't need stack traces. Log them without the Error object to
+    // avoid stack serialization; keep full-stack logging for unexpected / server errors.
+    const isExpectedClientError =
+      error instanceof BadRequestError ||
+      error instanceof NotFoundError ||
+      error instanceof UnauthorizedError ||
+      error instanceof ForbiddenError ||
+      error instanceof ForbiddenRequestError ||
+      error instanceof PermissionBoundaryError ||
+      error instanceof ZodError ||
+      error instanceof RateLimitError ||
+      error instanceof PolicyViolationError ||
+      (error instanceof ScimRequestError && error.status < 500) ||
+      (error instanceof AcmeError && error.status < 500) ||
+      error instanceof jwt.JsonWebTokenError;
+
+    if (isExpectedClientError) {
+      // Log structured fields (NOT the Error instance) so these stay searchable by name/route
+      // without serializing a stack
+      req.log.warn(
+        {
+          reqId: req.id,
+          errorName: error.name,
+          errorMessage: error.message,
+          route: req.routeOptions?.url,
+          method: req.method,
+          details: (error as { details?: unknown }).details
+        },
+        `client error: ${error.name}`
+      );
+    } else {
+      req.log.error(error);
+    }
+
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       const { method } = req;
       const route = req.routeOptions.url;
@@ -275,7 +308,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
           detail: error.message
-          // TODO: add subproblems if they exist
         });
     } else if (error instanceof PolicyViolationError) {
       void res.status(HttpStatusCodes.Forbidden).send({

@@ -10,12 +10,14 @@ describe("withCache", () => {
   let mockKeyStore: {
     getItem: ReturnType<typeof vi.fn>;
     setItemWithExpiry: ReturnType<typeof vi.fn>;
+    ttl: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     mockKeyStore = {
       getItem: vi.fn(),
-      setItemWithExpiry: vi.fn().mockResolvedValue("OK")
+      setItemWithExpiry: vi.fn().mockResolvedValue("OK"),
+      ttl: vi.fn().mockResolvedValue(-2)
     };
   });
 
@@ -362,12 +364,14 @@ describe("withCacheFingerprint", () => {
   let mockKeyStore: {
     getItem: ReturnType<typeof vi.fn>;
     setItemWithExpiry: ReturnType<typeof vi.fn>;
+    ttl: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     mockKeyStore = {
       getItem: vi.fn(),
-      setItemWithExpiry: vi.fn().mockResolvedValue("OK")
+      setItemWithExpiry: vi.fn().mockResolvedValue("OK"),
+      ttl: vi.fn().mockResolvedValue(-2)
     };
   });
 

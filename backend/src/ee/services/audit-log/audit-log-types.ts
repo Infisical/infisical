@@ -54,6 +54,7 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -94,12 +95,30 @@ export type TCreateAuditLogDTO = {
     | EstAccountActor
     | ScepAccountActor
     | GatewayActor
-    | RelayActor;
+    | RelayActor
+    | KmipServerActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+
+// What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
+// push time so a consumer retry (reprocessing the same batch after a failed insert)
+// re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
+// `createdAt`/`expiresAt` are ISO strings for JSON round-tripping through the stream.
+//
+// org/plan/retention are also resolved at push time and travel with the entry, so the
+// consumer persists it with no further DB lookups: `orgId` is the resolved org (never
+// undefined for a streamed entry), `expiresAt` is the precomputed TTL boundary, and
+// `projectName` is captured for project-scoped events (Postgres-only at insert time).
+export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
+  id: string;
+  createdAt: string;
+  orgId: string;
+  expiresAt: string;
+  projectName?: string;
+};
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
@@ -320,6 +339,7 @@ export enum EventType {
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
+  MOVE_FOLDER = "move-folder",
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
@@ -512,6 +532,7 @@ export enum EventType {
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
+  ROTATE_CMEK = "rotate-cmek",
   DELETE_CMEK = "delete-cmek",
   GET_CMEKS = "get-cmeks",
   GET_CMEK = "get-cmek",
@@ -553,9 +574,15 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  CREATE_HSM_CONNECTOR = "create-hsm-connector",
+  UPDATE_HSM_CONNECTOR = "update-hsm-connector",
+  DELETE_HSM_CONNECTOR = "delete-hsm-connector",
+  TEST_HSM_CONNECTOR = "test-hsm-connector",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
   ROTATE_APP_CONNECTION_CREDENTIALS = "rotate-app-connection-credentials",
+  CREATE_GITHUB_APP = "create-github-app",
+  DELETE_GITHUB_APP = "delete-github-app",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -676,6 +703,8 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+  VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -833,6 +862,17 @@ export enum EventType {
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
   PKI_SIGNER_SIGN = "pki-signer-sign",
+  ENABLE_PKI_SIGNER = "enable-pki-signer",
+  DISABLE_PKI_SIGNER = "disable-pki-signer",
+  REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
+  EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
+  UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
+  PKI_SIGNER_REQUEST_TO_SIGN = "pki-signer-request-to-sign",
+  PKI_SIGNER_PRE_APPROVE_SIGNING = "pki-signer-pre-approve-signing",
+  PKI_SIGNER_REVOKE_REQUEST = "pki-signer-revoke-request",
+  ADD_PKI_SIGNER_MEMBER = "add-pki-signer-member",
+  UPDATE_PKI_SIGNER_MEMBER = "update-pki-signer-member",
+  REMOVE_PKI_SIGNER_MEMBER = "remove-pki-signer-member",
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
   SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",
@@ -846,6 +886,14 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+
+  // OAuth 2.0 authorization server clients
+  CREATE_OAUTH_CLIENT = "create-oauth-client",
+  UPDATE_OAUTH_CLIENT = "update-oauth-client",
+  DELETE_OAUTH_CLIENT = "delete-oauth-client",
+  ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
+  OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
+
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
@@ -865,6 +913,11 @@ export enum EventType {
   RELAY_UPDATE = "relay-update",
   RELAY_DELETE = "relay-delete",
   RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
+
+  KMIP_SERVER_CREATE = "kmip-server-create",
+  KMIP_SERVER_UPDATE = "kmip-server-update",
+  KMIP_SERVER_DELETE = "kmip-server-delete",
+  KMIP_SERVER_ENROLLMENT_TOKEN_CREATE = "kmip-server-enrollment-token-create",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -894,7 +947,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.EST_ACCOUNT]: "profileId",
   [ActorType.SCEP_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
-  [ActorType.RELAY]: "relayId"
+  [ActorType.RELAY]: "relayId",
+  [ActorType.KMIP_SERVER]: "kmipServerId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -966,6 +1020,10 @@ interface RelayActorMetadata {
   relayId: string;
 }
 
+interface KmipServerActorMetadata {
+  kmipServerId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1030,6 +1088,11 @@ export interface RelayActor {
   metadata: RelayActorMetadata;
 }
 
+export interface KmipServerActor {
+  type: ActorType.KMIP_SERVER;
+  metadata: KmipServerActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1042,7 +1105,8 @@ export type Actor =
   | EstAccountActor
   | ScepAccountActor
   | GatewayActor
-  | RelayActor;
+  | RelayActor
+  | KmipServerActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -1841,6 +1905,7 @@ interface AddIdentityTlsCertAuthEvent {
   metadata: {
     identityId: string;
     allowedCommonNames: string | null | undefined;
+    allowedSubjectAltNames: string[] | null | undefined;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1860,6 +1925,7 @@ interface UpdateIdentityTlsCertAuthEvent {
   metadata: {
     identityId: string;
     allowedCommonNames: string | null | undefined;
+    allowedSubjectAltNames: string[] | null | undefined;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2437,6 +2503,17 @@ interface DeleteFolderEvent {
   };
 }
 
+interface MoveFolderEvent {
+  type: EventType.MOVE_FOLDER;
+  metadata: {
+    folderId: string;
+    sourceEnvironment: string;
+    sourcePath: string;
+    destinationEnvironment: string;
+    destinationPath: string;
+  };
+}
+
 interface CreateWebhookEvent {
   type: EventType.CREATE_WEBHOOK;
   metadata: {
@@ -2592,6 +2669,8 @@ interface SecretApprovalMerge {
     mergedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+    isMergedViaBypass?: boolean;
+    bypassReason?: string;
   };
 }
 
@@ -4246,6 +4325,7 @@ interface CreateCmekEvent {
     name: string;
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    isExportable?: boolean;
   };
 }
 
@@ -4262,6 +4342,14 @@ interface UpdateCmekEvent {
     keyId: string;
     name?: string;
     description?: string;
+  };
+}
+
+interface RotateCmekEvent {
+  type: EventType.ROTATE_CMEK;
+  metadata: {
+    keyId: string;
+    version: number;
   };
 }
 
@@ -4458,6 +4546,68 @@ interface RotateAppConnectionCredentialsEvent {
   type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS;
   metadata: {
     connectionId: string;
+  };
+}
+
+interface CreateHsmConnectorEvent {
+  type: EventType.CREATE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    gatewayId: string | null;
+    gatewayPoolId: string | null;
+  };
+}
+
+interface UpdateHsmConnectorEvent {
+  type: EventType.UPDATE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    fieldsUpdated: string[];
+  };
+}
+
+interface DeleteHsmConnectorEvent {
+  type: EventType.DELETE_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+  };
+}
+
+interface TestHsmConnectorEvent {
+  type: EventType.TEST_HSM_CONNECTOR;
+  metadata: {
+    connectorId: string;
+    name: string;
+    ok: boolean;
+    memberCount: number;
+  };
+}
+
+interface CreateGitHubAppEvent {
+  type: EventType.CREATE_GITHUB_APP;
+  metadata: {
+    gitHubAppId: string;
+    name: string;
+    appId: string;
+    slug: string;
+    owner?: string | null;
+    host?: string | null;
+    instanceType: string;
+    projectId?: string | null;
+  };
+}
+
+interface DeleteGitHubAppEvent {
+  type: EventType.DELETE_GITHUB_APP;
+  metadata: {
+    gitHubAppId: string;
+    name: string;
+    appId: string;
+    slug: string;
+    projectId?: string | null;
   };
 }
 
@@ -4764,8 +4914,12 @@ interface CreatePkiSignerEvent {
   metadata: {
     signerId: string;
     name: string;
-    certificateId: string;
+    certificateId?: string | null;
+    caId?: string | null;
+    commonName?: string | null;
     approvalPolicyId?: string | null;
+    keySource?: CertKeySource;
+    hsmConnectorId?: string | null;
   };
 }
 
@@ -4824,6 +4978,111 @@ interface PkiSignerSignEvent {
     signerId: string;
     name: string;
     signingAlgorithm: string;
+  };
+}
+
+interface EnablePkiSignerEvent {
+  type: EventType.ENABLE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface DisablePkiSignerEvent {
+  type: EventType.DISABLE_PKI_SIGNER;
+  metadata: {
+    signerId: string;
+    name: string;
+  };
+}
+
+interface ReissuePkiSignerCertificateEvent {
+  type: EventType.REISSUE_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    caId: string;
+    commonName?: string;
+    keyAlgorithm?: string;
+    keySource?: string;
+    hsmConnectorId?: string;
+    hsmKeyAlgorithm?: string;
+  };
+}
+
+interface ExportPkiSignerCertificateEvent {
+  type: EventType.EXPORT_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    serialNumber: string;
+  };
+}
+
+interface UpdatePkiSignerApprovalPolicyEvent {
+  type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY;
+  metadata: {
+    signerId: string;
+    stepCount: number;
+  };
+}
+
+interface PkiSignerRequestToSignEvent {
+  type: EventType.PKI_SIGNER_REQUEST_TO_SIGN;
+  metadata: {
+    signerId: string;
+    requestId?: string;
+  };
+}
+
+interface PkiSignerPreApproveSigningEvent {
+  type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING;
+  metadata: {
+    signerId: string;
+    requestId?: string;
+    granteeUserId?: string;
+    granteeIdentityId?: string;
+  };
+}
+
+interface PkiSignerRevokeRequestEvent {
+  type: EventType.PKI_SIGNER_REVOKE_REQUEST;
+  metadata: {
+    signerId: string;
+    requestId: string;
+  };
+}
+
+interface AddPkiSignerMemberEvent {
+  type: EventType.ADD_PKI_SIGNER_MEMBER;
+  metadata: {
+    signerId: string;
+    kind: string;
+    role?: string;
+    added?: number;
+    userIds?: string[];
+    identityId?: string;
+    groupId?: string;
+  };
+}
+
+interface UpdatePkiSignerMemberEvent {
+  type: EventType.UPDATE_PKI_SIGNER_MEMBER;
+  metadata: {
+    signerId: string;
+    kind: string;
+    memberId: string;
+    role: string;
+  };
+}
+
+interface RemovePkiSignerMemberEvent {
+  type: EventType.REMOVE_PKI_SIGNER_MEMBER;
+  metadata: {
+    signerId: string;
+    kind: string;
+    memberId: string;
   };
 }
 
@@ -4891,8 +5150,9 @@ interface CreateKmipClientCertificateEvent {
   metadata: {
     clientId: string;
     ttl: string;
-    keyAlgorithm: string;
+    keyAlgorithm?: string;
     serialNumber: string;
+    isFromCsr: boolean;
   };
 }
 
@@ -5416,6 +5676,9 @@ interface ProjectDeleteEvent {
   metadata: {
     id: string;
     name: string;
+    // true: actor soft-deleted the project (marked for deletion).
+    // false: the async cleanup worker hard-deleted an expired soft-deleted project.
+    softDelete?: boolean;
   };
 }
 
@@ -5481,6 +5744,20 @@ interface ViewInsightsAuthMethodsEvent {
 
 interface ViewSecretManagementInsightsSummaryEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewInsightsSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewSecretManagementInsightsCountsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS;
   metadata: {
     projectId: string;
   };
@@ -6388,6 +6665,8 @@ interface AccessApprovalRequestReviewEvent {
     requestId: string;
     policyId: string;
     reviewStatus: string;
+    isBypass?: boolean;
+    bypassReason?: string;
   };
 }
 
@@ -6927,6 +7206,50 @@ interface ExternalMigrationDeleteEvent {
     provider: string;
   };
 }
+interface CreateOauthClientEvent {
+  type: EventType.CREATE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface UpdateOauthClientEvent {
+  type: EventType.UPDATE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface DeleteOauthClientEvent {
+  type: EventType.DELETE_OAUTH_CLIENT;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface RotateOauthClientSecretEvent {
+  type: EventType.ROTATE_OAUTH_CLIENT_SECRET;
+  metadata: {
+    clientDbId: string;
+    clientId: string;
+    name: string;
+  };
+}
+
+interface OauthClientAuthorizeEvent {
+  type: EventType.OAUTH_CLIENT_AUTHORIZE;
+  metadata: {
+    clientId: string;
+    clientName: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -6976,7 +7299,7 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
-type ResourceAuthMethodResourceType = "gateway" | "relay";
+type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
@@ -7024,7 +7347,6 @@ interface ResourceAuthMethodRevokeEvent {
     resourceId: string;
     method: ResourceAuthMethodKind;
     resourceName: string;
-    deletedTokenCount: number;
   };
 }
 
@@ -7055,6 +7377,38 @@ interface RelayDeleteEvent {
 
 interface RelayEnrollmentTokenCreateEvent {
   type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
+  };
+}
+
+interface KmipServerCreateEvent {
+  type: EventType.KMIP_SERVER_CREATE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerUpdateEvent {
+  type: EventType.KMIP_SERVER_UPDATE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerDeleteEvent {
+  type: EventType.KMIP_SERVER_DELETE;
+  metadata: {
+    kmipServerId: string;
+    name: string;
+  };
+}
+
+interface KmipServerEnrollmentTokenCreateEvent {
+  type: EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE;
   metadata: {
     tokenId: string;
     name: string;
@@ -7292,6 +7646,7 @@ export type Event =
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
+  | MoveFolderEvent
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
@@ -7457,6 +7812,7 @@ export type Event =
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent
+  | RotateCmekEvent
   | DeleteCmekEvent
   | GetCmekEvent
   | GetCmeksEvent
@@ -7485,6 +7841,12 @@ export type Event =
   | GetAppConnectionUsageEvent
   | MigrateAppConnectionEvent
   | RotateAppConnectionCredentialsEvent
+  | CreateHsmConnectorEvent
+  | UpdateHsmConnectorEvent
+  | DeleteHsmConnectorEvent
+  | TestHsmConnectorEvent
+  | CreateGitHubAppEvent
+  | DeleteGitHubAppEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent
@@ -7532,6 +7894,17 @@ export type Event =
   | GetPkiSignerPublicKeyEvent
   | GetPkiSigningOperationsEvent
   | PkiSignerSignEvent
+  | EnablePkiSignerEvent
+  | DisablePkiSignerEvent
+  | ReissuePkiSignerCertificateEvent
+  | ExportPkiSignerCertificateEvent
+  | UpdatePkiSignerApprovalPolicyEvent
+  | PkiSignerRequestToSignEvent
+  | PkiSignerPreApproveSigningEvent
+  | PkiSignerRevokeRequestEvent
+  | AddPkiSignerMemberEvent
+  | UpdatePkiSignerMemberEvent
+  | RemovePkiSignerMemberEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -7609,6 +7982,8 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewInsightsSecretsDuplicationEvent
+  | ViewSecretManagementInsightsCountsEvent
   | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent
@@ -7764,6 +8139,11 @@ export type Event =
   | ExternalMigrationCreateEvent
   | ExternalMigrationUpdateEvent
   | ExternalMigrationDeleteEvent
+  | CreateOauthClientEvent
+  | UpdateOauthClientEvent
+  | DeleteOauthClientEvent
+  | RotateOauthClientSecretEvent
+  | OauthClientAuthorizeEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
@@ -7778,6 +8158,10 @@ export type Event =
   | RelayUpdateEvent
   | RelayDeleteEvent
   | RelayEnrollmentTokenCreateEvent
+  | KmipServerCreateEvent
+  | KmipServerUpdateEvent
+  | KmipServerDeleteEvent
+  | KmipServerEnrollmentTokenCreateEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent

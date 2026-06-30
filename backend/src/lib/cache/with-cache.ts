@@ -3,6 +3,7 @@ import { logger } from "@app/lib/logger";
 import { permissionCacheFingerprintDurationHistogram, permissionCacheLookupCounter } from "@app/lib/telemetry/metrics";
 
 type TCacheKeyStore = Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+type TCacheKeyStoreTTLGetter = Pick<TKeyStoreFactory, "ttl">;
 
 /** Read a raw string from Redis, returning null on miss or error. */
 const cacheGet = async (keyStore: TCacheKeyStore, key: string, errMsg: string): Promise<string | null> => {
@@ -75,6 +76,21 @@ export const withCache = async <T>({ keyStore, key, ttlSeconds, fetcher, reviver
   await cacheSet(keyStore, key, ttl, JSON.stringify(result), "withCache: cache write failed");
 
   return result;
+};
+
+/**
+ * Returns the remaining TTL (in seconds) for a cache key, or -1 if the key does not exist / has no expiry.
+ */
+export const getCacheTtl = async (keyStore: TCacheKeyStoreTTLGetter, key: string): Promise<number> => {
+  try {
+    const remaining = await keyStore.ttl(key);
+    // Redis returns -2 if key doesn't exist, -1 if no expiry is set
+    if (remaining < 0) return -1;
+    return remaining;
+  } catch (err) {
+    logger.warn({ key, err }, `getCacheTtl: failed to read TTL [key=${key}]`);
+    return -1;
+  }
 };
 
 type TWithCacheFingerprintOpts<T> = {

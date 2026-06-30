@@ -6,6 +6,7 @@ import {
   GatewayActor,
   IdentityActor,
   KmipClientActor,
+  KmipServerActor,
   PlatformActor,
   RelayActor,
   ScepAccountActor,
@@ -275,7 +276,8 @@ export type TSecretModifiedEvent = {
       | EstAccountActor
       | ScepAccountActor
       | GatewayActor
-      | RelayActor;
+      | RelayActor
+      | KmipServerActor;
   };
 };
 

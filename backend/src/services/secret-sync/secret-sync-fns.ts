@@ -33,6 +33,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
@@ -82,6 +83,7 @@ import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { TRAVIS_CI_SYNC_LIST_OPTION, TravisCISyncFns } from "./travis-ci";
+import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
@@ -107,6 +109,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
+  [SecretSync.TriggerDev]: TRIGGER_DEV_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
@@ -166,6 +169,7 @@ export const preSaveTransformDestinationConfig = async (
 type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -294,7 +298,14 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    }: TSyncSecretDeps
   ): Promise<TSyncSecretsResult | void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -309,14 +320,18 @@ export const SecretSyncFns = {
           schemaSecretMap,
           gatewayService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          { gitHubAppDAL, kmsService }
         );
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
         }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
@@ -366,6 +381,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
@@ -442,7 +459,10 @@ export const SecretSyncFns = {
       case SecretSync.AzureKeyVault:
         secretMap = await azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureAppConfiguration:
@@ -500,6 +520,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.TriggerDev:
+        secretMap = await TriggerDevSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GitLab:
         secretMap = await GitLabSyncFns.getSecrets(secretSync);
@@ -580,7 +603,14 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayService,
+      gatewayV2Service,
+      gatewayPoolService
+    }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -595,14 +625,18 @@ export const SecretSyncFns = {
           schemaSecretMap,
           gatewayService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          { gitHubAppDAL, kmsService }
         );
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService
         }).removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
@@ -652,6 +686,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:

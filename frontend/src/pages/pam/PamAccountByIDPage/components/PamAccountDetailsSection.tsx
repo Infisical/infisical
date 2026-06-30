@@ -12,7 +12,12 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
-import { PAM_RESOURCE_TYPE_MAP, PamAccountRotationStatus, TPamAccount } from "@app/hooks/api/pam";
+import {
+  isPamRotationSupported,
+  PAM_RESOURCE_TYPE_MAP,
+  PamAccountRotationStatus,
+  TPamAccount
+} from "@app/hooks/api/pam";
 import { useGetPamAccountById } from "@app/hooks/api/pam/queries";
 
 type Props = {
@@ -55,6 +60,9 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
     ? PAM_RESOURCE_TYPE_MAP[account.resource.resourceType]
     : null;
   const isRotating = account.rotationStatus === PamAccountRotationStatus.Rotating;
+  const rotationSupported = account.resource
+    ? isPamRotationSupported(account.resource.resourceType)
+    : false;
 
   // Poll for status updates while rotation is in progress
   useGetPamAccountById(account.id, {
@@ -112,40 +120,44 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
           <DetailLabel>Created</DetailLabel>
           <DetailValue>{format(new Date(account.createdAt), "MM/dd/yyyy, hh:mm a")}</DetailValue>
         </Detail>
-        <Detail>
-          <DetailLabel>Rotation Status</DetailLabel>
-          <DetailValue>
-            <Badge
-              variant={rotationStatusVariant(account.rotationStatus)}
-              className={isRotating ? "animate-pulse" : undefined}
-            >
-              {rotationStatusLabel(account.rotationStatus)}
-            </Badge>
-          </DetailValue>
-        </Detail>
-        {(account.rotationStatus === PamAccountRotationStatus.Failed ||
-          account.rotationStatus === PamAccountRotationStatus.PartialSuccess) &&
-          account.lastRotationMessage && (
+        {rotationSupported && (
+          <>
             <Detail>
-              <DetailLabel>Last Rotation Message</DetailLabel>
-              <DetailValue
-                className={`text-xs break-words ${
-                  account.rotationStatus === PamAccountRotationStatus.Failed
-                    ? "text-danger"
-                    : "text-warning"
-                }`}
-              >
-                {account.lastRotationMessage}
+              <DetailLabel>Rotation Status</DetailLabel>
+              <DetailValue>
+                <Badge
+                  variant={rotationStatusVariant(account.rotationStatus)}
+                  className={isRotating ? "animate-pulse" : undefined}
+                >
+                  {rotationStatusLabel(account.rotationStatus)}
+                </Badge>
               </DetailValue>
             </Detail>
-          )}
-        {"lastRotatedAt" in account && account.lastRotatedAt && (
-          <Detail>
-            <DetailLabel>Last Rotated</DetailLabel>
-            <DetailValue>
-              {format(new Date(account.lastRotatedAt as string), "MM/dd/yyyy, hh:mm a")}
-            </DetailValue>
-          </Detail>
+            {(account.rotationStatus === PamAccountRotationStatus.Failed ||
+              account.rotationStatus === PamAccountRotationStatus.PartialSuccess) &&
+              account.lastRotationMessage && (
+                <Detail>
+                  <DetailLabel>Last Rotation Message</DetailLabel>
+                  <DetailValue
+                    className={`text-xs break-words ${
+                      account.rotationStatus === PamAccountRotationStatus.Failed
+                        ? "text-danger"
+                        : "text-warning"
+                    }`}
+                  >
+                    {account.lastRotationMessage}
+                  </DetailValue>
+                </Detail>
+              )}
+            {"lastRotatedAt" in account && account.lastRotatedAt && (
+              <Detail>
+                <DetailLabel>Last Rotated</DetailLabel>
+                <DetailValue>
+                  {format(new Date(account.lastRotatedAt as string), "MM/dd/yyyy, hh:mm a")}
+                </DetailValue>
+              </Detail>
+            )}
+          </>
         )}
       </DetailGroup>
     </div>

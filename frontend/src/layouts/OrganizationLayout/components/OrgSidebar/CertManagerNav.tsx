@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "@tanstack/react-router";
 import {
   Bell,
+  FileBadge,
   FileKey,
   FileText,
   GitCompare,
   Inbox,
+  Landmark,
   LayoutDashboard,
   PenTool,
   Search,
@@ -37,6 +40,8 @@ export const CertManagerNav = ({
 }) => {
   const { hasProjectRole } = useProjectPermission();
   const { currentProject } = useProject();
+  const { search: locationSearch } = useLocation();
+  const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const isCertManagerAdmin = hasProjectRole("admin");
   const projectId = currentProject?.id ?? "";
   const { data: certManagerInstance } = useCertManagerInstanceState();
@@ -133,7 +138,33 @@ export const CertManagerNav = ({
       label: "Signers",
       icon: PenTool,
       pathSuffix: "code-signing",
-      activeMatch: /\/code-signing/
+      activeMatch: hasSignerContext ? /\/code-signing|\/approvals\/[^/]+/ : /\/code-signing/
+    }
+  ];
+
+  const certificateResourcesItems: NavItem[] = [
+    {
+      label: "Certificate Authorities",
+      icon: Landmark,
+      pathSuffix: "certificate-authorities",
+      activeMatch: (pathname, search) =>
+        /\/ca\//.test(pathname) && !isApplicationSourcedDetail(pathname, search)
+    },
+    {
+      label: "Certificate Policies",
+      icon: ShieldCheck,
+      pathSuffix: "certificate-policies",
+      exactPath: true,
+      activeMatch: (pathname, search) =>
+        /\/certificate-policies\//.test(pathname) && !isApplicationSourcedDetail(pathname, search)
+    },
+    {
+      label: "Certificate Profiles",
+      icon: FileBadge,
+      pathSuffix: "certificate-profiles",
+      exactPath: true,
+      activeMatch: (pathname, search) =>
+        /\/certificate-profiles\//.test(pathname) && !isApplicationSourcedDetail(pathname, search)
     }
   ];
 
@@ -163,13 +194,7 @@ export const CertManagerNav = ({
       activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-    {
-      label: "Settings",
-      icon: Settings,
-      pathSuffix: "settings",
-      activeMatch: (pathname, search) =>
-        detailPathRegex.test(pathname) && !isApplicationSourcedDetail(pathname, search)
-    }
+    { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];
 
   const generalItemsForRole = isCertManagerAdmin
@@ -189,6 +214,11 @@ export const CertManagerNav = ({
       <SidebarCollapsibleGroup label="Code Signing">
         <ProjectNavList items={codeSigningItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
+      {isCertManagerAdmin ? (
+        <SidebarCollapsibleGroup label="Certificate Resources">
+          <ProjectNavList items={certificateResourcesItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      ) : null}
       {isCertManagerAdmin && hasAnyLegacy ? (
         <SidebarCollapsibleGroup label="Legacy" defaultOpen={false}>
           <ProjectNavList items={legacyItems} onSubmenuOpen={onSubmenuOpen} />

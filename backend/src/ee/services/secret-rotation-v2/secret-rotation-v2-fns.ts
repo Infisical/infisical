@@ -9,6 +9,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
+import { CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION } from "./convex-access-key";
 import { DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION } from "./databricks-service-principal-secret";
 import {
   DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION,
@@ -67,7 +68,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION,
   [SecretRotation.SupabaseApiKey]: SUPABASE_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.SalesforceOauthCredentials]: SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION,
-  [SecretRotation.DatadogApplicationKeySecret]: DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION
+  [SecretRotation.DatadogApplicationKeySecret]: DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION,
+  [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -417,7 +419,11 @@ export const rotateSecretsFns = async ({
   try {
     const secretRotation = await secretRotationV2DAL.findById(rotationId);
 
-    if (!secretRotation) throw new Error(`Secret rotation ${rotationId} not found`);
+    if (!secretRotation) {
+      // skip rather than throw, so it doesn't retry-storm when a rotation is deleted.
+      logger.info(`secretRotationV2Queue: rotation ${rotationId} not found (deleted?), skipping ${logDetails}`);
+      return;
+    }
 
     if (!secretRotation.isAutoRotationEnabled) {
       logger.info(`secretRotationV2Queue: Skipping Rotation - Auto-Rotation Disabled Since Queue ${logDetails}`);

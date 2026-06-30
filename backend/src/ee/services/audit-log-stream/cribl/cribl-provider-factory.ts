@@ -4,8 +4,13 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { TLogStreamFactoryStreamLog, TLogStreamFactoryValidateCredentials } from "../audit-log-stream-types";
+import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
+import {
+  TLogStreamFactoryBatchStreamLog,
+  TLogStreamFactoryGetProviderBatchLimit,
+  TLogStreamFactoryStreamLog,
+  TLogStreamFactoryValidateCredentials
+} from "../audit-log-stream-types";
 import { TCriblProviderCredentials } from "./cribl-provider-types";
 
 export const CriblProviderFactory = () => {
@@ -33,6 +38,30 @@ export const CriblProviderFactory = () => {
     return credentials;
   };
 
+  // Cribl HTTP source ingests newline-delimited JSON for batch payloads.
+  const batchStreamLog: TLogStreamFactoryBatchStreamLog<TCriblProviderCredentials> = async ({
+    credentials,
+    auditLogs
+  }) => {
+    if (auditLogs.length === 0) return;
+
+    const { url, token } = credentials;
+
+    await blockLocalAndPrivateIpAddresses(url);
+
+    const streamHeaders: RawAxiosRequestHeaders = {
+      "Content-Type": "application/x-ndjson",
+      Authorization: `Bearer ${token}`
+    };
+
+    const body = auditLogs.map((auditLog) => JSON.stringify(auditLog)).join("\n");
+
+    await request.post(url, body, {
+      headers: streamHeaders,
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
+    });
+  };
+
   const streamLog: TLogStreamFactoryStreamLog<TCriblProviderCredentials> = async ({ credentials, auditLog }) => {
     const { url, token } = credentials;
 
@@ -49,8 +78,15 @@ export const CriblProviderFactory = () => {
     });
   };
 
+  const getProviderBatchLimit: TLogStreamFactoryGetProviderBatchLimit = () => ({
+    maxLogs: 900,
+    maxBytes: 4 * 1024 * 1024
+  });
+
   return {
     validateCredentials,
-    streamLog
+    batchStreamLog,
+    streamLog,
+    getProviderBatchLimit
   };
 };

@@ -12,7 +12,6 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { SanitizedUserSchema } from "../../sanitizedSchemas";
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
@@ -219,23 +218,14 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      const memberships = await server.services.pkiApplicationMembership.deleteMembersAndCleanup({
+      const memberships = await server.services.projectMembership.deleteProjectMemberships({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         projectId,
         emails: req.body.emails,
-        usernames: req.body.usernames,
-        performDelete: (tx) =>
-          server.services.projectMembership.deleteProjectMemberships(
-            {
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              actorAuthMethod: req.permission.authMethod,
-              actorOrgId: req.permission.orgId,
-              projectId,
-              emails: req.body.emails,
-              usernames: req.body.usernames
-            },
-            tx
-          )
+        usernames: req.body.usernames
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -269,19 +259,10 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
-      const { membership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
-        projectId,
-        actorKind: ApplicationMemberKind.User,
-        actorId: userId,
-        performDelete: (tx) =>
-          server.services.membershipUser.deleteMembership(
-            {
-              permission: req.permission,
-              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
-              selector: { userId }
-            },
-            tx
-          )
+      const { membership } = await server.services.membershipUser.deleteMembership({
+        permission: req.permission,
+        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        selector: { userId }
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

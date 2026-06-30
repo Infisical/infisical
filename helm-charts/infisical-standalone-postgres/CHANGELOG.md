@@ -1,3 +1,9 @@
+## 1.9.0 (May 28, 2026)
+Changes:
+* Added support for sidecar containers via `infisical.extraContainers`, enabling use cases like HSM PKCS#11 client sidecars (e.g., Entrust nShield).
+* Added support for init containers via `infisical.extraInitContainers`.
+* Documented `infisical.extraVolumes` and `infisical.extraVolumeMounts` in `values.yaml` with usage examples.
+
 ## 1.8.0 (April 6, 2026)
 Changes:
 * The bundled ingress-nginx controller now uses a dedicated IngressClass name (`infisical-nginx`) instead of the common `nginx` class. This prevents the bundled controller from unintentionally picking up other Ingress resources in your cluster, and avoids conflicts with existing ingress controllers.

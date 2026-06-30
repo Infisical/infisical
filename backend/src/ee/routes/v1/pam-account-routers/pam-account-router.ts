@@ -824,6 +824,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             actorEmail: z.string(),
             actorName: z.string(),
             reason: z.string().nullable().optional(),
+            grantExpiresAt: z.string().nullable().optional(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
               userAgent: z.string().optional(),
@@ -857,6 +858,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           actorIp: req.realIp ?? "",
           actorUserAgent: req.headers["user-agent"] ?? "",
           reason: payload.reason,
+          grantExpiresAt: payload.grantExpiresAt ?? null,
           preAuthMessages,
           preAuthHandler
         });

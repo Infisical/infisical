@@ -64,5 +64,9 @@ export enum AppConnection {
   TravisCI = "travis-ci",
   Salesforce = "salesforce",
   Snowflake = "snowflake",
-  Datadog = "datadog"
+  Datadog = "datadog",
+  F5BigIp = "f5-big-ip",
+  GoDaddy = "godaddy",
+  Convex = "convex",
+  TriggerDev = "trigger-dev"
 }

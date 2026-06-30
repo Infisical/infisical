@@ -279,32 +279,45 @@ export const queueStalledCounter = infisicalCoreMeter.createCounter("infisical.q
   unit: "{job}"
 });
 
-// Audit log lifecycle metrics. Wired in audit-log-queue.ts at pushToLog / worker handler / failed listener.
+// Audit log lifecycle metrics. Wired in audit-log-queue.ts: enqueued when an event is appended to
+// the Redis ingest stream, dropped when the request-path push fails, persist duration around the
+// batch insert in the unified consumer.
 export const auditLogEnqueuedCounter = infisicalCoreMeter.createCounter("infisical.audit_log.enqueued.count", {
-  description: "Audit log events enqueued for persistence, by event type and actor type.",
+  description: "Audit log events appended to the ingest stream for persistence, by event type and actor type.",
   unit: "{event}"
 });
 
 export const auditLogPersistDurationHistogram = infisicalCoreMeter.createHistogram(
   "infisical.audit_log.persist.duration",
   {
-    description: "Latency from worker pickup to durable storage (postgres or clickhouse).",
+    description: "Latency of the consumer's batch insert to durable storage (postgres or clickhouse), by outcome.",
     unit: "s"
   }
 );
 
 export const auditLogDroppedCounter = infisicalCoreMeter.createCounter("infisical.audit_log.dropped.count", {
   description:
-    "Audit log events that failed to persist (max retries / validation / disabled). Operators should alert on this.",
+    "Audit log events dropped on the request path because the ingest-stream push failed (at-most-once). Operators should alert on this.",
   unit: "{event}"
 });
 
-// Audit log stream metrics. Wired in audit-log-stream-service.ts streamLog().
+// Audit log stream metrics. Wired in audit-log-stream-outbox-service.ts drainStream() per provider send.
 export const auditLogStreamDeliveryDurationHistogram = infisicalCoreMeter.createHistogram(
   "infisical.audit_log_stream.delivery.duration",
   {
     description: "Per-provider audit log stream delivery latency and attempt count (use _count for delivery volume).",
     unit: "s"
+  }
+);
+
+// Wired in audit-log-stream-outbox-service.ts. Incremented when stream events are dropped after
+// exhausting all delivery retries (there is no DLQ — the events are gone). Operators should alert on this.
+export const auditLogStreamDeliveryExhaustedCounter = infisicalCoreMeter.createCounter(
+  "infisical.audit_log_stream.delivery.exhausted.count",
+  {
+    description:
+      "Audit log stream events dropped after exhausting all delivery retries, by stream and org. Operators should alert on this.",
+    unit: "{event}"
   }
 );
 
@@ -374,6 +387,33 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   description: "HTTP 429 responses (rate limit exceeded).",
   unit: "{request}"
 });
+
+// -- License Server v2 dual-read (InfisicalCore meter) ----------------------------------------------
+export const licenseDualReadDiffCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.diff.count", {
+  description:
+    "v1 vs License Server v2 entitlement comparison results, by feature and kind (mismatch/v2_missing/v1_absent/indeterminate). Match results are not counted.",
+  unit: "{result}"
+});
+
+export const licenseDualReadErrorCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.error.count", {
+  description: "Failures resolving the v2 entitlement set during dual-read comparison, by error type.",
+  unit: "{error}"
+});
+
+export const recordLicenseDualReadDiff = (params: { feature: string; kind: string }) => {
+  if (!isTelemetryEnabled()) return;
+  licenseDualReadDiffCounter.add(1, {
+    "license.feature": params.feature,
+    "license.dual_read.kind": params.kind
+  });
+};
+
+export const recordLicenseDualReadError = (params: { error?: unknown }) => {
+  if (!isTelemetryEnabled()) return;
+  const attributes: Record<string, string> = {};
+  if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
+  licenseDualReadErrorCounter.add(1, attributes);
+};
 
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {

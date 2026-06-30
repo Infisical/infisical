@@ -18,6 +18,7 @@ import { SalesforceOauthCredentialsRotationSchema } from "@app/ee/services/secre
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
+import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { HpIloRotationSchema } from "./hp-ilo-rotation";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key";
@@ -42,5 +43,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   HpIloRotationSchema,
   SupabaseApiKeyRotationSchema,
   SalesforceOauthCredentialsRotationSchema,
-  DatadogApplicationKeySecretRotationSchema
+  DatadogApplicationKeySecretRotationSchema,
+  ConvexAccessKeyRotationSchema
 ]);

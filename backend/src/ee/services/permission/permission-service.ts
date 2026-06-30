@@ -1,15 +1,15 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
-import handlebars from "handlebars";
 
 import {
   AccessScope,
   ActionProjectType,
-  ApplicationMembershipRole,
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
+  ResourceMembershipRole,
+  ResourceType,
   ServiceTokenScopes,
   TProjects
 } from "@app/db/schemas";
@@ -18,12 +18,16 @@ import {
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
-  applicationProjectAdminFallbackPermissions,
   cryptographicOperatorPermissions,
+  projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
+  projectAdminSignerFallbackPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
   projectViewerPermission,
+  signerAdminPermissions,
+  signerAuditorPermissions,
+  signerOperatorPermissions,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
@@ -38,6 +42,12 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import {
+  applyOauthScopeToOrgRules,
+  applyOauthScopeToProjectRules,
+  isValidOauthScope,
+  OauthScope
+} from "@app/services/oauth-client/oauth-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -52,7 +62,12 @@ import {
   OrgPermissionSubjects
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { escapeHandlebarsMissingDict, expandLegacyForbidActions, validateOrgSSO } from "./permission-fns";
+import {
+  escapeHandlebarsMissingDict,
+  expandLegacyForbidActions,
+  handlebarsClient,
+  validateOrgSSO
+} from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
@@ -66,6 +81,16 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "./project-permission";
+
+// Returns the delegated OAuth scopes for the current request, or undefined when this is not an
+// OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
+// narrowing applies, while undefined means a first-party session / background job is untouched.
+const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
+  const raw = requestContext.get(RequestContextKey.OauthScopes);
+  if (!raw) return undefined;
+  // The scopes were validated at consent time, but re-coerce defensively against the catalog.
+  return raw.filter(isValidOauthScope);
+};
 
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles
@@ -126,31 +151,51 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   return rules;
 };
 
-const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO) => {
+const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
+  if (resourceType === ResourceType.Signer) {
+    switch (role) {
+      case ResourceMembershipRole.Admin:
+        return signerAdminPermissions;
+      case ResourceMembershipRole.Operator:
+        return signerOperatorPermissions;
+      case ResourceMembershipRole.Auditor:
+        return signerAuditorPermissions;
+      case ResourceMembershipRole.Custom:
+        throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
+      default:
+        throw new NotFoundError({ name: "SignerRoleInvalid", message: `Signer role '${role}' not found` });
+    }
+  }
+
+  switch (role) {
+    case ResourceMembershipRole.Admin:
+      return applicationAdminPermissions;
+    case ResourceMembershipRole.Operator:
+      return applicationOperatorPermissions;
+    case ResourceMembershipRole.Auditor:
+      return applicationAuditorPermissions;
+    case ResourceMembershipRole.Custom:
+      throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
+    default:
+      throw new NotFoundError({
+        name: "ApplicationRoleInvalid",
+        message: `Application role '${role}' not found`
+      });
+  }
+};
+
+const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, resourceType: ResourceType) => {
   const rules = appUserRoles
-    .map(({ role }) => {
-      switch (role) {
-        case ApplicationMembershipRole.Admin:
-          return applicationAdminPermissions;
-        case ApplicationMembershipRole.Operator:
-          return applicationOperatorPermissions;
-        case ApplicationMembershipRole.Auditor:
-          return applicationAuditorPermissions;
-        case ApplicationMembershipRole.Custom:
-          throw new BadRequestError({
-            message: "Custom resource-level roles are not supported yet"
-          });
-        default:
-          throw new NotFoundError({
-            name: "ApplicationRoleInvalid",
-            message: `Application role '${role}' not found`
-          });
-      }
-    })
+    .map(({ role }) => resolveResourceRoleRules(resourceType, role))
     .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ResourcePermissionSet>>[])
     .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
+};
+
+const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
+  if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
+  return projectAdminApplicationFallbackPermissions;
 };
 
 type MembershipWithRoles = {
@@ -171,7 +216,7 @@ const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?
   !role.isTemporary ||
   Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
 
-const flattenActiveRolesFromMemberships = <T extends string>(
+export const flattenActiveRolesFromMemberships = <T extends string>(
   memberships: MembershipWithRoles[],
   customRoleValue: T
 ): { role: string; permissions?: unknown }[] => {
@@ -276,13 +321,14 @@ export const permissionServiceFactory = ({
 
       const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 
-      const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
+      const fullPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
         conditionsMatcher
       });
 
-      const canBypassSso = permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      const canBypassSso = fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
 
-      // SSO enforcement applies only to users
+      // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
+      // property of the user's roles, not of what an OAuth client was delegated.
       if (actor === ActorType.USER) {
         validateOrgSSO(
           actorAuthMethod,
@@ -292,6 +338,14 @@ export const permissionServiceFactory = ({
           canBypassSso
         );
       }
+
+      // Delegated OAuth tokens get a scope-narrowed ability; first-party sessions get the full one.
+      const oauthScopes = getDelegatedOauthScopes();
+      const permission = oauthScopes
+        ? createMongoAbility<OrgPermissionSet>(applyOauthScopeToOrgRules(fullPermission.rules, oauthScopes), {
+            conditionsMatcher
+          })
+        : fullPermission;
 
       return {
         permission,
@@ -571,7 +625,7 @@ export const permissionServiceFactory = ({
       }
 
       const rules = buildProjectPermissionRules(permissionFromRoles);
-      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,
         (i) => i.key,
@@ -624,7 +678,19 @@ export const permissionServiceFactory = ({
 
     requestContext.set(RequestContextKey.ProjectDetails, payload.projectDetailsCtx);
     requestContext.set(RequestContextKey.IdentityPermissionMetadata, payload.identityPermissionMetadataCtx);
-    return payload.result;
+
+    // Narrow the ability for delegated OAuth tokens. Applied here, outside the (cross-request) cache
+    // boundary, so the cached payload always holds the full ability and only this request is scoped.
+    const oauthScopes = getDelegatedOauthScopes();
+    if (!oauthScopes) return payload.result;
+
+    return {
+      ...payload.result,
+      permission: createMongoAbility<ProjectPermissionSet>(
+        applyOauthScopeToProjectRules(payload.result.permission.rules, oauthScopes),
+        { conditionsMatcher }
+      )
+    };
   };
 
   const getResourcePermission: TPermissionServiceFactory["getResourcePermission"] = async ({
@@ -658,6 +724,19 @@ export const permissionServiceFactory = ({
     });
 
     return requestMemoize(memoKey, async () => {
+      // The v1 OAuth scope catalog does not cover resource-level (e.g. cert-manager) memberships, so
+      // a delegated token receives an empty resource ability — any ForbiddenError.from(...) check on
+      // it fails. This keeps the strict deny-by-default contract for anything outside granted scopes.
+      const oauthScopes = getDelegatedOauthScopes();
+      if (oauthScopes) {
+        return {
+          permission: createMongoAbility<ResourcePermissionSet>([], { conditionsMatcher }),
+          memberships: [],
+          hasRole: () => false,
+          isImplicitAdmin: false
+        };
+      }
+
       let isProjectAdmin = false;
       let isProjectMember = false;
       try {
@@ -696,15 +775,15 @@ export const permissionServiceFactory = ({
         actorType: actor
       });
 
+      const fallbackRules = resolveResourceProjectAdminFallback(resourceType);
+
       if (resourceMemberships?.length) {
         const permissionFromRoles = flattenActiveRolesFromMemberships(
           resourceMemberships,
-          ApplicationMembershipRole.Custom
+          ResourceMembershipRole.Custom
         );
-        const resourceRules = buildResourcePermissionRules(permissionFromRoles);
-        const mergedRules = isProjectAdmin
-          ? [...resourceRules, ...applicationProjectAdminFallbackPermissions]
-          : resourceRules;
+        const resourceRules = buildResourcePermissionRules(permissionFromRoles, resourceType);
+        const mergedRules = isProjectAdmin ? [...resourceRules, ...fallbackRules] : resourceRules;
         const permission = createMongoAbility<ResourcePermissionSet>(mergedRules, { conditionsMatcher });
 
         const hasRole = (role: string) => membershipsHaveActiveRole(resourceMemberships, role);
@@ -718,7 +797,7 @@ export const permissionServiceFactory = ({
       }
 
       if (isProjectAdmin) {
-        const permission = createMongoAbility<ResourcePermissionSet>(applicationProjectAdminFallbackPermissions, {
+        const permission = createMongoAbility<ResourcePermissionSet>(fallbackRules, {
           conditionsMatcher
         });
         return {
@@ -748,7 +827,7 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -794,7 +873,7 @@ export const permissionServiceFactory = ({
         })) || [];
 
       const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
-      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,

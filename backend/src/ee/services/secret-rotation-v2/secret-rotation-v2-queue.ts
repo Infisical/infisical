@@ -134,8 +134,15 @@ export const secretRotationV2QueueServiceFactory = async ({
 
         logger.info(`secretRotationV2Queue: Sending Status Notification [rotationId=${rotationId}]`);
 
-        const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
         const project = await projectDAL.findById(projectId);
+        if (!project) {
+          logger.info(
+            `secretRotationV2Queue: project deleted, skipping rotation notification [rotationId=${rotationId}] [projectId=${projectId}]`
+          );
+          return;
+        }
+
+        const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
 
         const projectAdmins = projectMembers.filter((member) =>
           member.roles.some((role) => role.role === ProjectMembershipRole.Admin)

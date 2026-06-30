@@ -182,6 +182,12 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGithubAppConnections,
+  TGithubAppConnectionsInsert,
+  TGithubAppConnectionsUpdate,
+  TGithubApps,
+  TGithubAppsInsert,
+  TGithubAppsUpdate,
   TGithubOrgSyncConfigs,
   TGithubOrgSyncConfigsInsert,
   TGithubOrgSyncConfigsUpdate,
@@ -200,6 +206,9 @@ import {
   THoneyTokenSecretMappingsUpdate,
   THoneyTokensInsert,
   THoneyTokensUpdate,
+  THsmConnectors,
+  THsmConnectorsInsert,
+  THsmConnectorsUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -265,6 +274,9 @@ import {
   TInternalCertificateAuthoritiesUpdate,
   TInternalKms,
   TInternalKmsInsert,
+  TInternalKmsKeyVersion,
+  TInternalKmsKeyVersionInsert,
+  TInternalKmsKeyVersionUpdate,
   TInternalKmsUpdate,
   TKeyValueStore,
   TKeyValueStoreInsert,
@@ -281,6 +293,9 @@ import {
   TKmipOrgServerCertificates,
   TKmipOrgServerCertificatesInsert,
   TKmipOrgServerCertificatesUpdate,
+  TKmipServers,
+  TKmipServersInsert,
+  TKmipServersUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
@@ -302,6 +317,9 @@ import {
   TMemberships,
   TMembershipsInsert,
   TMembershipsUpdate,
+  TOauthClients,
+  TOauthClientsInsert,
+  TOauthClientsUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -407,6 +425,9 @@ import {
   TPkiScepTransactions,
   TPkiScepTransactionsInsert,
   TPkiScepTransactionsUpdate,
+  TPkiSignerCertificateIssuanceJobs,
+  TPkiSignerCertificateIssuanceJobsInsert,
+  TPkiSignerCertificateIssuanceJobsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1048,6 +1069,11 @@ declare module "knex/types/tables" {
       TPkiDiscoveryScanHistoryUpdate
     >;
     [TableName.PkiSigners]: KnexOriginal.CompositeTableType<TPkiSigners, TPkiSignersInsert, TPkiSignersUpdate>;
+    [TableName.PkiSignerCertificateIssuanceJobs]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateIssuanceJobs,
+      TPkiSignerCertificateIssuanceJobsInsert,
+      TPkiSignerCertificateIssuanceJobsUpdate
+    >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
       TPkiSigningOperationsInsert,
@@ -1357,6 +1383,7 @@ declare module "knex/types/tables" {
     >;
     [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.OauthClient]: KnexOriginal.CompositeTableType<TOauthClients, TOauthClientsInsert, TOauthClientsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.LdapGroupMap]: KnexOriginal.CompositeTableType<
@@ -1437,6 +1464,11 @@ declare module "knex/types/tables" {
       TKmsRootConfigUpdate
     >;
     [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
+    [TableName.InternalKmsKeyVersion]: KnexOriginal.CompositeTableType<
+      TInternalKmsKeyVersion,
+      TInternalKmsKeyVersionInsert,
+      TInternalKmsKeyVersionUpdate
+    >;
     [TableName.ExternalKms]: KnexOriginal.CompositeTableType<TExternalKms, TExternalKmsInsert, TExternalKmsUpdate>;
     [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
     [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
@@ -1500,6 +1532,11 @@ declare module "knex/types/tables" {
       TAppConnectionsInsert,
       TAppConnectionsUpdate
     >;
+    [TableName.HsmConnector]: KnexOriginal.CompositeTableType<
+      THsmConnectors,
+      THsmConnectorsInsert,
+      THsmConnectorsUpdate
+    >;
     [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
     [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;
     [TableName.KmipOrgConfig]: KnexOriginal.CompositeTableType<
@@ -1517,6 +1554,7 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
     >;
+    [TableName.KmipServer]: KnexOriginal.CompositeTableType<TKmipServers, TKmipServersInsert, TKmipServersUpdate>;
     [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
     [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
       TProjectGateways,
@@ -1552,6 +1590,12 @@ declare module "knex/types/tables" {
       TSecretReminderRecipients,
       TSecretReminderRecipientsInsert,
       TSecretReminderRecipientsUpdate
+    >;
+    [TableName.GitHubApp]: KnexOriginal.CompositeTableType<TGithubApps, TGithubAppsInsert, TGithubAppsUpdate>;
+    [TableName.GitHubAppConnection]: KnexOriginal.CompositeTableType<
+      TGithubAppConnections,
+      TGithubAppConnectionsInsert,
+      TGithubAppConnectionsUpdate
     >;
     [TableName.GithubOrgSyncConfig]: KnexOriginal.CompositeTableType<
       TGithubOrgSyncConfigs,

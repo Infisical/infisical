@@ -22,7 +22,8 @@ export const forwardToGoSidecar = fp(async (server, opt: { sidecarUrl: string })
       return reply.from(request.url, {
         rewriteRequestHeaders: (_req, headers) => ({
           ...headers,
-          "X-Request-Id": request.id
+          "X-Request-Id": request.id,
+          "X-Real-Ip": request.realIp
         })
       });
     }

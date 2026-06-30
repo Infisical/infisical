@@ -47,7 +47,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
     ref
   ): JSX.Element => {
     return (
-      <div className={twMerge("flex items-center space-x-2", containerClassName)}>
+      <div className={twMerge("flex items-center", containerClassName)}>
         <SelectPrimitive.Root
           {...props}
           onValueChange={(value) => {

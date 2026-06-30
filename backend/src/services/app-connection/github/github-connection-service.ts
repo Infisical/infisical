@@ -6,7 +6,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   getGitHubEnvironments,
   getGitHubOrganizations,
-  getGitHubRepositories
+  getGitHubRepositories,
+  TGitHubAppCredentialResolverDeps
 } from "@app/services/app-connection/github/github-connection-fns";
 import { TGitHubConnection } from "@app/services/app-connection/github/github-connection-types";
 
@@ -26,7 +27,8 @@ export const githubConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  gitHubAppDeps: TGitHubAppCredentialResolverDeps
 ) => {
   const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
@@ -35,7 +37,8 @@ export const githubConnectionService = (
       appConnection,
       gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
 
     return repositories;
@@ -48,7 +51,8 @@ export const githubConnectionService = (
       appConnection,
       gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
 
     return organizations;
@@ -66,7 +70,8 @@ export const githubConnectionService = (
       gatewayV2Service,
       gatewayPoolService,
       owner,
-      repo
+      repo,
+      gitHubAppDeps
     );
 
     return environments;

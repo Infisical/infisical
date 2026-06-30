@@ -463,6 +463,7 @@ tables:
       - updatedAt
       - identityId
       - allowedCommonNames
+      - allowedSubjectAltNames
 
   - name: identity_token_auths
     source: public.identity_token_auths

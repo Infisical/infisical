@@ -27,6 +27,7 @@ type Props = {
   onClearAll: () => void;
   onSaveView?: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
+  onDynamicFieldSearch?: Record<string, (query: string) => void>;
   hiddenFieldKeys?: string[];
 };
 
@@ -103,12 +104,14 @@ const FilterRow = ({
   onUpdate,
   onRemove,
   dynamicFieldOptions: dynOpts,
+  onDynamicFieldSearch,
   availableFields
 }: {
   rule: FilterRule;
   onUpdate: (updated: FilterRule) => void;
   onRemove: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
+  onDynamicFieldSearch?: Record<string, (query: string) => void>;
   availableFields: FilterFieldDefinition[];
 }) => {
   const fieldDef = getFieldDef(rule.field, dynOpts);
@@ -155,6 +158,8 @@ const FilterRow = ({
           })
           .filter(Boolean) as { value: string; label: string }[];
 
+        const serverSearch = onDynamicFieldSearch?.[rule.field];
+
         return (
           <FilterableSelect
             isMulti
@@ -169,6 +174,15 @@ const FilterRow = ({
             maxMenuHeight={160}
             menuPortalTarget={document.body}
             menuPosition="fixed"
+            {...(serverSearch
+              ? {
+                  filterOption: () => true,
+                  onInputChange: (value, { action }) => {
+                    if (action === "input-change") serverSearch(value);
+                  },
+                  onMenuClose: () => serverSearch("")
+                }
+              : {})}
           />
         );
       }
@@ -277,6 +291,7 @@ export const FilterBuilder = ({
   onClearAll,
   onSaveView,
   dynamicFieldOptions,
+  onDynamicFieldSearch,
   hiddenFieldKeys
 }: Props) => {
   const availableFields = hiddenFieldKeys?.length
@@ -344,6 +359,7 @@ export const FilterBuilder = ({
                 onUpdate={(updated) => handleUpdateRule(index, updated)}
                 onRemove={() => handleRemoveRule(index)}
                 dynamicFieldOptions={dynamicFieldOptions}
+                onDynamicFieldSearch={onDynamicFieldSearch}
                 availableFields={availableFields}
               />
             </div>

@@ -143,6 +143,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.READ_SHARED_SECRET]: "Read shared secret",
   [EventType.CREATE_CMEK]: "Create KMS key",
   [EventType.UPDATE_CMEK]: "Update KMS key",
+  [EventType.ROTATE_CMEK]: "Rotate KMS key",
   [EventType.DELETE_CMEK]: "Delete KMS key",
   [EventType.GET_CMEKS]: "List KMS keys",
   [EventType.GET_CMEK]: "Get KMS key",
@@ -169,6 +170,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_APP_CONNECTION]: "Delete App Connection",
   [EventType.GET_APP_CONNECTION_USAGE]: "Get App Connection Usage",
   [EventType.MIGRATE_APP_CONNECTION]: "Migrate App Connection",
+  [EventType.CREATE_GITHUB_APP]: "Create GitHub App",
+  [EventType.DELETE_GITHUB_APP]: "Delete GitHub App",
   [EventType.GET_SECRET_SYNCS]: "List secret syncs",
   [EventType.GET_SECRET_SYNC]: "Get Secret Sync",
   [EventType.CREATE_SECRET_SYNC]: "Create Secret Sync",
@@ -283,6 +286,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "View Secrets Management Access Locations Insights",
   [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION]: "View Secrets Duplication Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS]:
+    "View Secrets Management Resource Counts Insights",
 
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
@@ -449,7 +455,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.RELAY_CREATE]: "Create relay",
   [EventType.RELAY_UPDATE]: "Update relay",
   [EventType.RELAY_DELETE]: "Delete relay",
-  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token"
+  [EventType.RELAY_ENROLLMENT_TOKEN_CREATE]: "Generate relay enrollment token",
+  [EventType.KMIP_SERVER_CREATE]: "Create KMIP server",
+  [EventType.KMIP_SERVER_UPDATE]: "Update KMIP server",
+  [EventType.KMIP_SERVER_DELETE]: "Delete KMIP server",
+  [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

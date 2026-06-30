@@ -60,6 +60,7 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
 
@@ -234,6 +235,15 @@ export enum ProjectPermissionAppConnectionActions {
   RotateCredentials = "rotate-credentials"
 }
 
+export enum ProjectPermissionHsmConnectorActions {
+  Read = "read-hsm-connectors",
+  Create = "create-hsm-connectors",
+  Edit = "edit-hsm-connectors",
+  Delete = "delete-hsm-connectors",
+  Test = "test-hsm-connectors",
+  Attach = "attach-hsm-connectors"
+}
+
 export enum ProjectPermissionSecretScanningFindingActions {
   Read = "read-findings",
   Update = "update-findings"
@@ -375,6 +385,7 @@ export enum ProjectPermissionSub {
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
+  HsmConnectors = "hsm-connectors",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
   PamDomains = "pam-domains",
@@ -560,6 +571,11 @@ export type McpEndpointSubjectFields = {
   name: string;
 };
 
+export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type PamAccountSubjectFields = {
   resourceName?: string;
   resourceType?: string;
@@ -711,6 +727,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ]
+  | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
   | [
       ProjectPermissionActions,
@@ -732,7 +749,10 @@ export type ProjectPermissionSet =
       ProjectPermissionMcpEndpointActions,
       ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
     ]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
+  | [
+      ProjectPermissionHoneyTokenActions,
+      ProjectPermissionSub.HoneyTokens | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
@@ -921,6 +941,23 @@ const PkiSyncConditionSchema = z
   .partial();
 
 const SecretImportConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const HoneyTokenConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1810,6 +1847,12 @@ const GeneralPermissionSchema = [
     ).optional()
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.HsmConnectors).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHsmConnectorActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.PamFolders).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -1893,9 +1936,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.HoneyTokens).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: HoneyTokenConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),

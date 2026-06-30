@@ -1,15 +1,16 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { conditionsMatcher } from "@app/hooks/api/roles/queries";
+import {
+  createResourcePermissionQueryHook,
+  ResourcePermissionResponse
+} from "@app/helpers/resourcePermissions";
 
 import {
+  TListPkiApplicationsParams,
   TListPkiApplicationsResponse,
   TPkiApplication,
   TPkiApplicationEnrollmentState,
-  TPkiApplicationListItem,
   TPkiApplicationMember,
   TPkiApplicationPermissionSet,
   TPkiApplicationProfile
@@ -17,15 +18,16 @@ import {
 
 export const pkiApplicationKeys = {
   all: ["pki-applications"] as const,
-  list: (search?: string) => [...pkiApplicationKeys.all, "list", { search }] as const,
+  list: (params?: TListPkiApplicationsParams) =>
+    [...pkiApplicationKeys.all, "list", { ...params }] as const,
   byId: (applicationId: string) => [...pkiApplicationKeys.all, "by-id", { applicationId }] as const,
   byName: (name: string) => [...pkiApplicationKeys.all, "by-name", { name }] as const,
   profiles: (applicationId: string) =>
     [...pkiApplicationKeys.all, "profiles", { applicationId }] as const,
   members: (applicationId: string) =>
     [...pkiApplicationKeys.all, "members", { applicationId }] as const,
-  myPermissions: (applicationId: string) =>
-    [...pkiApplicationKeys.all, "my-permissions", { applicationId }] as const,
+  getUserApplicationPermissions: (applicationId: string) =>
+    ["user-application-permissions", { applicationId }] as const,
   enrollment: (applicationId: string, profileId: string) =>
     [...pkiApplicationKeys.all, "enrollment", { applicationId, profileId }] as const
 };
@@ -33,26 +35,30 @@ export const pkiApplicationKeys = {
 const BASE_URL = "/api/v1/cert-manager/applications";
 
 export const useListPkiApplications = (
-  search?: string,
+  params?: TListPkiApplicationsParams,
   options?: Omit<
     UseQueryOptions<
       TListPkiApplicationsResponse,
       unknown,
-      TPkiApplicationListItem[],
+      TListPkiApplicationsResponse,
       ReturnType<typeof pkiApplicationKeys.list>
     >,
     "queryKey" | "queryFn"
   >
 ) =>
   useQuery({
-    queryKey: pkiApplicationKeys.list(search),
+    queryKey: pkiApplicationKeys.list(params),
     queryFn: async () => {
+      const { applicationIds, ...rest } = params ?? {};
       const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
-        params: { search }
+        params: {
+          ...rest,
+          ...(applicationIds?.length ? { applicationIds: applicationIds.join(",") } : {})
+        }
       });
       return data;
     },
-    select: (data) => data.applications,
+    placeholderData: (previousData) => previousData,
     ...options
   });
 
@@ -154,32 +160,15 @@ export const useGetPkiApplicationEnrollment = (applicationId: string, profileId:
     enabled: Boolean(applicationId && profileId)
   });
 
-export const useGetPkiApplicationPermissions = (applicationId: string) =>
-  useQuery({
-    queryKey: pkiApplicationKeys.myPermissions(applicationId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        data: {
-          permissions: PackRule<RawRuleOf<MongoAbility<TPkiApplicationPermissionSet>>>[];
-          memberships: Array<{
-            id: string;
-            actorUserId?: string | null;
-            actorIdentityId?: string | null;
-            actorGroupId?: string | null;
-            roles: Array<{ role: string; customRoleSlug?: string | null }>;
-          }>;
-        };
-      }>(`${BASE_URL}/${applicationId}/my-permissions`);
-      return data.data;
-    },
-    enabled: Boolean(applicationId),
-    select: (data) => {
-      const rules = unpackRules<RawRuleOf<MongoAbility<TPkiApplicationPermissionSet>>>(
-        data.permissions
-      );
-      const permission = createMongoAbility<TPkiApplicationPermissionSet>(rules, {
-        conditionsMatcher
-      });
-      return { permission, memberships: data.memberships };
-    }
+export const fetchUserPkiApplicationPermissions = async (applicationId: string) => {
+  const { data } = await apiRequest.get<{
+    data: ResourcePermissionResponse<TPkiApplicationPermissionSet>;
+  }>(`${BASE_URL}/${applicationId}/permissions`);
+  return data.data;
+};
+
+export const useGetPkiApplicationPermissions =
+  createResourcePermissionQueryHook<TPkiApplicationPermissionSet>({
+    queryKey: (applicationId) => pkiApplicationKeys.getUserApplicationPermissions(applicationId),
+    fetchFn: fetchUserPkiApplicationPermissions
   });

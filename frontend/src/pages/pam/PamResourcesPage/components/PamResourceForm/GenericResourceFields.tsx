@@ -55,7 +55,6 @@ export const GenericResourceFields = () => {
             <FieldContent>
               <GatewayPicker
                 isRequired
-                variant="v3"
                 placeholder="Select a Gateway..."
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {

@@ -50,12 +50,16 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "audit_log.backend",
   "audit_log.drop_reason",
   "audit_log_stream.provider",
+  "audit_log_stream.id",
   "scim.operation",
   "sso.provider",
   "sso.action",
   "db.pool.state",
   "cache.result",
   "rate_limit.bucket",
+  // License Server v2 dual-read comparison (bounded: feature key set + a small set of diff kinds)
+  "license.feature",
+  "license.dual_read.kind",
   // Build info gauge labels — single-value per deploy, no cardinality concern
   "service.version",
   "git.commit.sha",

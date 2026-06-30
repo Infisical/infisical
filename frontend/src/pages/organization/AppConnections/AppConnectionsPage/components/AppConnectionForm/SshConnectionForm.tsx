@@ -1,18 +1,24 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects, useSubscription } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
@@ -20,6 +26,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { SshConnectionMethod, TSshConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -92,13 +99,7 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty },
-    watch,
-    setValue
-  } = form;
+  const { handleSubmit, control, watch, setValue } = form;
 
   const selectedMethod = watch("method");
   const gatewayId = watch("gatewayId");
@@ -138,23 +139,32 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
             a={OrgPermissionSubjects.Gateway}
           >
             {(isAllowed) => (
-              <FormControl label="Gateway">
-                <Tooltip
-                  isDisabled={isAllowed}
-                  content="Restricted access. You don't have permission to attach gateways to resources."
-                >
-                  <div>
-                    <GatewayPicker
-                      isDisabled={!isAllowed}
-                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                        setValue("gatewayId", newGwId, { shouldDirty: true });
-                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                      }}
-                    />
-                  </div>
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GatewayPicker
+                        isDisabled={!isAllowed}
+                        value={{
+                          gatewayId: gatewayId ?? null,
+                          gatewayPoolId: gatewayPoolId ?? null
+                        }}
+                        onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                          setValue("gatewayId", newGwId, { shouldDirty: true });
+                          setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  {!isAllowed && (
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  )}
                 </Tooltip>
-              </FormControl>
+              </Field>
             )}
           </OrgPermissionCan>
         )}
@@ -162,166 +172,163 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="method"
           control={control}
           render={({ field: { value }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The authentication method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.SSH].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Authentication Method"
-            >
+            <Field className="mb-4">
+              <FieldLabel>
+                Authentication Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The authentication method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.SSH].name}. This field cannot be changed after
+                    creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Select
-                isDisabled={isUpdate}
+                disabled={isUpdate}
                 value={value}
                 onValueChange={(val) => handleMethodChange(val as SshConnectionMethod)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
               >
-                {Object.values(SshConnectionMethod).map((method) => {
-                  return (
+                <SelectTrigger className="w-full" isError={Boolean(error?.message)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(SshConnectionMethod).map((method) => (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}
                     </SelectItem>
-                  );
-                })}
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-          <div className="grid grid-cols-2 gap-2">
-            <Controller
-              name="credentials.host"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Host"
-                >
-                  <Input {...field} placeholder="Hostname or IP address" />
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="credentials.port"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Port"
-                >
-                  <Input {...field} type="number" placeholder="22" />
-                </FormControl>
-              )}
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-2">
           <Controller
-            name="credentials.username"
+            name="credentials.host"
             control={control}
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Username"
-              >
-                <Input {...field} placeholder="SSH username" />
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel htmlFor="ssh-host">Host</FieldLabel>
+                <Input
+                  id="ssh-host"
+                  {...field}
+                  placeholder="Hostname or IP address"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
-          {selectedMethod === SshConnectionMethod.Password ? (
-            <Controller
-              name="credentials.password"
-              control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
+          <Controller
+            name="credentials.port"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="ssh-port">Port</FieldLabel>
+                <Input
+                  id="ssh-port"
+                  {...field}
+                  type="number"
+                  placeholder="22"
                   isError={Boolean(error?.message)}
-                  label="Password"
-                >
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </div>
+        <Controller
+          name="credentials.username"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="ssh-username">Username</FieldLabel>
+              <Input
+                id="ssh-username"
+                {...field}
+                placeholder="SSH username"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        {selectedMethod === SshConnectionMethod.Password ? (
+          <Controller
+            name="credentials.password"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel>Password</FieldLabel>
+                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        ) : (
+          <>
+            <Controller
+              name="credentials.privateKey"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel>Private Key</FieldLabel>
                   <SecretInput
-                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
-          ) : (
-            <>
-              <Controller
-                name="credentials.privateKey"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Private Key"
-                  >
-                    <SecretInput
-                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                name="credentials.passphrase"
-                control={control}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Passphrase"
-                    isOptional
-                  >
-                    <SecretInput
-                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                      value={value ?? ""}
-                      onChange={(e) => onChange(e.target.value)}
-                    />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-        </div>
+            <Controller
+              name="credentials.passphrase"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Passphrase <span className="text-muted">(optional)</span>
+                  </FieldLabel>
+                  <SecretInput value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </>
+        )}
         <Controller
           name="configuration.blockedUsers"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Blocked Users"
-              isOptional
-              tooltipText="A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., root,admin,ubuntu)."
-            >
-              <Input {...field} value={field.value ?? ""} placeholder="root,admin,ubuntu" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel>
+                Blocked Users <span className="text-muted">(optional)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    A comma-separated list of usernames that are blocked from being used in
+                    operations like secret rotation (e.g., root,admin,ubuntu).
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                {...field}
+                value={field.value ?? ""}
+                placeholder="root,admin,ubuntu"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to SSH"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to SSH"} />
       </form>
     </FormProvider>
   );

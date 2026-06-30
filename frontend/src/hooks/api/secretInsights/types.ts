@@ -120,3 +120,47 @@ export type TGetAuthMethodDistributionDTO = {
 export type TGetAuthMethodDistributionResponse = {
   methods: TAuthMethodCount[];
 };
+
+export type TGetSecretsDuplicationDTO = {
+  projectId: string;
+};
+
+export type TDuplicatedSecretEntry = {
+  key: string;
+  environment: {
+    name: string;
+    slug: string;
+  };
+  secretPath: string;
+};
+
+export type TDuplicatedSecretGroup = {
+  secrets: TDuplicatedSecretEntry[];
+};
+
+export type TGetSecretsDuplicationResponse = {
+  secretBlindIndexEnabled: boolean;
+  groups: TDuplicatedSecretGroup[];
+  remainingTtl: number;
+};
+
+export type TGetSecretBlindIndexStatusDTO = {
+  projectId: string;
+};
+
+export type TGetSecretBlindIndexStatusResponse = {
+  status: "not-found" | "pending" | "completed" | "failed";
+  message?: string;
+};
+
+export type TGetInsightsCountsDTO = {
+  projectId: string;
+};
+
+export type TGetInsightsCountsResponse = {
+  secretCount: number;
+  folderCount: number;
+  dynamicSecretCount: number;
+  secretRotationCount: number;
+  honeyTokenCount: number | null;
+};

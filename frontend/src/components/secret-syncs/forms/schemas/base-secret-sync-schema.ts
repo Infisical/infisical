@@ -47,7 +47,10 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
   return z.object({
     name: slugSchema({ field: "Name", max: 256 }),
     description: z.string().trim().max(256, "Cannot exceed 256 characters").optional(),
-    connection: z.object({ name: z.string(), id: z.string().uuid() }),
+    connection: z
+      .object({ name: z.string(), id: z.string().uuid() })
+      .nullable()
+      .refine((val) => val !== null, { message: "Connection Required" }),
     environment: z.object({ slug: z.string(), id: z.string(), name: z.string() }),
     secretPath: z.string().min(1, "Secret path required"),
     syncOptions: syncOptionsSchema,

@@ -11,6 +11,7 @@ export const FilterableSelect = <T,>({
   getGroupHeaderLabel = null,
   options = [],
   isError,
+  components,
   ...props
 }: Props<T, boolean, GroupBase<T>> & {
   groupBy?: string | null;
@@ -56,7 +57,7 @@ export const FilterableSelect = <T,>({
         MultiValueRemove,
         Option,
         Group,
-        ...props.components
+        ...components
       }}
       classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}
       {...props}

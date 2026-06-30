@@ -75,12 +75,11 @@ const Page = () => {
 
       setIsDeleteModalOpen(false);
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
         params: {
           orgId: currentOrg.id,
           projectId
-        },
-        search: { selectedTab: "certificate-policies" }
+        }
       });
     } catch (error) {
       createNotification({
@@ -119,12 +118,11 @@ const Page = () => {
                   </Link>
                 ) : (
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies"
                     params={{
                       orgId: currentOrg.id,
                       projectId
                     }}
-                    search={{ selectedTab: "certificate-policies" }}
                     className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
                   >
                     <FontAwesomeIcon icon={faChevronLeft} />

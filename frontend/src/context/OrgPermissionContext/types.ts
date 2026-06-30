@@ -46,6 +46,14 @@ export enum OrgRelayPermissionActions {
   RevokeRelayAccess = "revoke-relay-access"
 }
 
+export enum OrgKmipServerPermissionActions {
+  CreateKmipServers = "create-kmip-servers",
+  ListKmipServers = "list-kmip-servers",
+  EditKmipServers = "edit-kmip-servers",
+  DeleteKmipServers = "delete-kmip-servers",
+  RevokeKmipServerAccess = "revoke-kmip-server-access"
+}
+
 export enum OrgPermissionMachineIdentityAuthTemplateActions {
   ListTemplates = "list-templates",
   CreateTemplates = "create-templates",
@@ -75,6 +83,7 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
+  KmipServer = "kmip-server",
   Gateway = "gateway",
   GatewayPool = "gateway-pool",
   Relay = "relay",
@@ -85,7 +94,8 @@ export enum OrgPermissionSubjects {
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
-  HoneyTokens = "honey-tokens"
+  HoneyTokens = "honey-tokens",
+  OauthClients = "oauth-clients"
 }
 
 export enum OrgPermissionCertManagerActions {
@@ -131,6 +141,8 @@ export enum OrgPermissionAuditLogsActions {
   Read = "read"
 }
 
+// TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgKmipServerPermissionActions).
+// This only gates the legacy KMIP proxy flow.
 export enum OrgPermissionKmipActions {
   Proxy = "proxy"
 }
@@ -191,6 +203,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
+  | [OrgKmipServerPermissionActions, OrgPermissionSubjects.KmipServer]
   | [
       OrgPermissionMachineIdentityAuthTemplateActions,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -209,6 +222,7 @@ export type OrgPermissionSet =
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
-  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

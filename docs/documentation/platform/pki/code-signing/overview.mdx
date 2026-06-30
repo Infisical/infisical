@@ -1,92 +1,96 @@
 ---
 title: "Code Signing"
 sidebarTitle: "Overview"
-description: "Securely sign code and artifacts with centralized key management and approval workflows."
+description: "Sign software artifacts with managed code-signing certificates, central approval, and a full audit trail."
 ---
 
-Digitally sign software artifacts (JARs, binaries, container images, and more) while keeping private keys secure on the server. Instead of distributing signing keys to developer workstations or CI pipelines, signing operations are performed centrally through Infisical with full audit trails and approval controls.
+Code Signing is where teams digitally sign software (JARs, container images, Windows installers, Android APKs, Linux packages, scripts). Within Code Signing, you can:
 
-<Info>
-  Code Signing uses **Signers** as the organizing concept, similar to how [Applications](/documentation/platform/pki/applications/overview) work for certificates. Product Admins create Signers and assign team members who can then request signing access.
-</Info>
+- **Sign artifacts** through any tool that supports PKCS#11, with native Windows `signtool`, or directly via the [Sign API](/api-reference/endpoints/code-signing/signers/sign)
+- **Require approvals** before signatures are produced, with per-approval limits on count and time
+- **Manage who can sign** with per-Signer roles for users, machine identities, and groups
+- **Track every signing operation** in a full audit trail
 
-## How It Works
+Each **Signer** represents a single signing identity, like `mobile-app-prod`, `firmware-release`, or `ci-staging-builds`. Product Admins create Signers, attach a code-signing certificate, and assign team members. Teams then operate independently within their assigned Signers.
 
-<div align="center">
-
-```mermaid
-sequenceDiagram
-    participant Tool as Signing Tool
-    participant PKCS as PKCS#11 Module
-    participant Infisical as Infisical
-
-    Tool->>PKCS: Sign data
-    PKCS->>Infisical: POST /signers/{id}/sign
-    Infisical->>Infisical: Validate grant, sign data
-    Infisical-->>PKCS: Signature
-    PKCS-->>Tool: Signature
-```
-
-</div>
-
-1. A **Signer** is created and bound to a certificate with the `codeSigning` extended key usage.
-2. Optionally, a **Signing Policy** is attached to govern who can use the signer and under what conditions. Without a policy, authorized users and identities can sign immediately.
-3. When a policy is configured, users or machine identities **request signing access** through the signing workflow. Once approved, the caller receives a **grant** that authorizes signing operations.
-4. The signing tool (e.g., jarsigner) calls the Infisical API, either directly or through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), and the signature is computed server-side.
-5. Every signing operation is recorded as an immutable **audit entry** on the signer.
-
-## Core Concepts
-
-### Signers
-
-A [signer](/documentation/platform/pki/code-signing/signers) is a named code-signer bound to a certificate. It represents a signing capability within Certificate Manager. Private keys are stored securely on the Infisical server and never leave it. All cryptographic operations are performed server-side.
-
-### Signing Policies
-
-[Signing policies](/documentation/platform/pki/code-signing/signing-policies) optionally define the rules that must be satisfied before signing can occur. Policies support constraints that can be combined:
-
-- **Max Window Duration**: Limits how long a signing grant remains valid.
-- **Max Signings**: Limits the total number of signing operations a grant allows.
-
-### Signing Operations
-
-Every call to sign data, whether it succeeds, fails, or is denied, is recorded as a signing operation. This provides a complete audit trail of who signed what, when, and using which grant.
-
-### PKCS#11 Module
-
-The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) implements the PKCS#11 v2.40 standard, allowing standard signing tools to use Infisical signers without code changes. The module supports RSA (PKCS#1 v1.5 and PSS) and ECDSA signing mechanisms.
-
-## Getting Started
+## What's in a Signer?
 
 <CardGroup cols={2}>
-  <Card title="Create a Signer" icon="pen-nib" href="/documentation/platform/pki/code-signing/signers">
-    Set up a code-signer and bind it to a certificate.
+  <Card title="Certificate" icon="certificate">
+    The X.509 code-signing certificate the Signer uses, backed by an internal or external CA.
   </Card>
-  <Card title="Configure Signing Policies" icon="file-contract" href="/documentation/platform/pki/code-signing/signing-policies">
-    Define rules for who can sign and when.
+  <Card title="Members" icon="users">
+    Team members with Administrator, Operator, or Auditor roles on this Signer.
   </Card>
-  <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
-    Use standard signing tools with Infisical.
+  <Card title="Approval policy" icon="check-double">
+    Optional review workflow before signatures are produced.
   </Card>
-  <Card title="Signing Requests" icon="paper-plane" href="/documentation/platform/pki/code-signing/signing-requests">
-    Request signing access when policies are configured.
+  <Card title="Activity" icon="clock-rotate-left">
+    Audit trail of every successful, failed, and denied signing operation.
   </Card>
 </CardGroup>
 
-## What's Next?
+## How a signing operation flows
 
-If you're new to Code Signing, start by [creating a Signer](/documentation/platform/pki/code-signing/signers). If you need approval workflows, set up a [Signing Policy](/documentation/platform/pki/code-signing/signing-policies) first.
+```mermaid
+sequenceDiagram
+    participant Tool as Signing tool<br/>(jarsigner / cosign / ...)
+    participant PKCS as PKCS#11 Module
+    participant Infisical as Infisical
+    participant CA as Certificate Authority
 
-For integration guides with specific tools, see:
+    Note over Infisical,CA: Once, when the Signer is created
+    Infisical->>CA: Request code-signing cert
+    CA-->>Infisical: Certificate
 
-<CardGroup cols={3}>
-  <Card title="Cosign" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
-    Sign container images
+    Note over Tool,Infisical: Per signing operation
+    Tool->>PKCS: Sign artifact
+    PKCS->>Infisical: POST /signers/{id}/sign
+    Infisical->>Infisical: Check access
+    Infisical->>Infisical: Sign
+    Infisical-->>PKCS: Signature
+    PKCS-->>Tool: Signature attached to artifact
+```
+
+1. A Product Admin creates a [Signer](/documentation/platform/pki/code-signing/signers) and picks the CA that issues its certificate.
+2. The Admin adds [members](/documentation/platform/pki/code-signing/signers#members) (users, machine identities, or groups) and picks a role for each.
+3. Optionally, the Admin attaches an [approval policy](/documentation/platform/pki/code-signing/approvals) so signing requires sign-off.
+4. Operators sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) (`signtool`), or the [Sign API](/api-reference/endpoints/code-signing/signers/sign). Infisical produces the signature and records an audit entry on the Signer.
+
+## Signer roles
+
+Members are assigned to Signers with one of three roles:
+
+| Role | Capabilities |
+|------|--------------|
+| **Administrator** | Full control: edit settings, manage members, edit the approval policy, pre-approve signing, sign, export the certificate. |
+| **Operator** | Sign artifacts and submit signing requests. Cannot change settings or members. |
+| **Auditor** | Read-only: view members, activity, and the audit log. Cannot sign. |
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="How is this different from handing out a .pfx or .p12 file?">
+    When you distribute a key file, anyone with a copy can sign anything for the lifetime of the certificate, and you can't take that copy back. With a Signer, you can disable signing, revoke active access, or remove a member at any time, and that change takes effect immediately.
+  </Accordion>
+  <Accordion title="Do I have to require approval for every signature?">
+    No. A Signer can have no approval policy, in which case any member with sign rights can sign immediately and you still get a full audit trail. Approvals are optional and most useful for production releases or compliance-sensitive workloads.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Create a Signer" icon="pen-nib" href="/documentation/platform/pki/code-signing/signers#create-a-signer">
+    The 4-step wizard.
   </Card>
-  <Card title="jarsigner" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
-    Sign Java JARs
+  <Card title="Add an approval policy" icon="check-double" href="/documentation/platform/pki/code-signing/approvals#configure-the-approval-policy">
+    Require sign-off and cap per-approval limits.
   </Card>
-  <Card title="GPG" icon="key" href="/documentation/platform/pki/guides/code-signing/gpg">
-    Sign with GPG
+  <Card title="Install the PKCS#11 module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module#installation">
+    Hook up your signing tools.
+  </Card>
+  <Card title="Sign your first JAR" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    End-to-end walkthrough.
   </Card>
 </CardGroup>

@@ -48,6 +48,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -96,7 +97,7 @@ type TLdapConfigServiceFactoryDep = {
     | "find"
     | "findUserEncKeyByUserId"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -494,6 +495,16 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
+    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
+    // separate email-verification step (the email-domain ownership check above already proves the
+    // org owns this domain, and password signup is blocked for enforced domains).
+    const skipEmailVerification = Boolean(organization.authEnforced);
+
+    // A stale, still-unverified alias may point at another user's account. Don't mutate that
+    // account's org membership / group state until the IdP proves control of it (the
+    // email-verification fallback below issues no session). Resolved against the existing alias
+    // before any mutation; freshly created aliases are never stale.
+    let isStaleAlias = false;
     if (userAlias) {
       // Verify the existing user's stored email domain + cross-org check
       const existingUser = await userDAL.findOne({ id: userAlias.userId });
@@ -503,41 +514,43 @@ export const ldapConfigServiceFactory = ({
           orgId,
           emailDomainDAL
         });
+        isStaleAlias = isStaleSsoAlias({ user: existingUser, userAlias, assertedEmail: sanitizedEmail });
       }
-      await userDAL.transaction(async (tx) => {
-        const [orgMembership] = await orgDAL.findMembership(
-          {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
-            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-          },
-          { tx }
-        );
-        if (!orgMembership) {
-          const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
+      if (!isStaleAlias)
+        await userDAL.transaction(async (tx) => {
+          const [orgMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+            },
+            { tx }
+          );
+          if (!orgMembership) {
+            const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          const membership = await orgDAL.createMembership(
-            {
-              actorUserId: userAlias.userId,
-              scopeOrgId: orgId,
-              scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Invited,
-              isActive: true
-            },
-            tx
-          );
-          await membershipRoleDAL.create(
-            {
-              membershipId: membership.id,
-              role,
-              customRoleId: roleId
-            },
-            tx
-          );
-        } else if (!orgMembership.isActive) {
-          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
-        }
-      });
+            const membership = await orgDAL.createMembership(
+              {
+                actorUserId: userAlias.userId,
+                scopeOrgId: orgId,
+                scope: AccessScope.Organization,
+                status: OrgMembershipStatus.Invited,
+                isActive: true
+              },
+              tx
+            );
+            await membershipRoleDAL.create(
+              {
+                membershipId: membership.id,
+                role,
+                customRoleId: roleId
+              },
+              tx
+            );
+          } else if (!orgMembership.isActive) {
+            throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+          }
+        });
     } else {
       let isNewUser = false;
       userAlias = await userDAL.transaction(async (tx) => {
@@ -553,11 +566,15 @@ export const ldapConfigServiceFactory = ({
               firstName,
               lastName,
               authMethods: [],
-              isGhost: false
+              isGhost: false,
+              isEmailVerified: skipEmailVerification,
+              isAccepted: skipEmailVerification
             },
             tx
           );
           isNewUser = true;
+        } else if (!newUser.firstName && firstName) {
+          newUser = await userDAL.updateById(newUser.id, { firstName, ...(lastName ? { lastName } : {}) }, tx);
         }
 
         const newUserAlias = await userAliasDAL.create(
@@ -567,7 +584,8 @@ export const ldapConfigServiceFactory = ({
             aliasType: UserAliasType.LDAP,
             externalId,
             emails: [sanitizedEmail],
-            orgId
+            orgId,
+            isEmailVerified: skipEmailVerification
           },
           tx
         );
@@ -625,9 +643,9 @@ export const ldapConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const user = await userDAL.transaction(async (tx) => {
+    let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
-      if (groups) {
+      if (groups && !isStaleAlias) {
         const ldapGroupIdsToBePartOf = (
           await ldapGroupMapDAL.find({
             ldapConfigId,
@@ -704,7 +722,18 @@ export const ldapConfigServiceFactory = ({
       return newUser;
     });
 
-    if (user.email && !userAlias.isEmailVerified) {
+    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
+    if (skipEmailVerification) {
+      ({ user, userAlias } = await ensureSsoAccountVerified({
+        user,
+        userAlias,
+        assertedEmail: sanitizedEmail,
+        userDAL,
+        userAliasDAL
+      }));
+    }
+
+    if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,

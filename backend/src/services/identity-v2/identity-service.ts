@@ -1,4 +1,11 @@
-import { AccessScope, ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAdminConsoleAction,
@@ -43,7 +50,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityMetadataDAL: TIdentityMetadataDALFactory;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeAllTokensForIdentity">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
-  projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds">;
+  projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -88,6 +95,14 @@ export const identityV2ServiceFactory = ({
       });
     }
 
+    let projectMemberRole = ProjectMembershipRole.NoAccess as string;
+    if (scopeData.scope === AccessScope.Project) {
+      const project = await projectDAL.findById(scopeData.projectId);
+      if (project?.type === ProjectType.CertificateManager) {
+        projectMemberRole = ProjectMembershipRole.Member;
+      }
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create(
         {
@@ -107,7 +122,8 @@ export const identityV2ServiceFactory = ({
         tx
       );
 
-      const newMembershipIds = [orgMembership.id];
+      await membershipRoleDAL.insertMany([{ membershipId: orgMembership.id, role: OrgMembershipRole.NoAccess }], tx);
+
       if (scopeData.scope === AccessScope.Project) {
         const projectMembership = await membershipIdentityDAL.create(
           {
@@ -118,16 +134,8 @@ export const identityV2ServiceFactory = ({
           },
           tx
         );
-        newMembershipIds.push(projectMembership.id);
+        await membershipRoleDAL.insertMany([{ membershipId: projectMembership.id, role: projectMemberRole }], tx);
       }
-
-      await membershipRoleDAL.insertMany(
-        newMembershipIds.map((membershipId) => ({
-          membershipId,
-          role: OrgMembershipRole.NoAccess
-        })),
-        tx
-      );
 
       let insertedMetadata: Array<{
         id: string;
@@ -391,6 +399,17 @@ export const identityV2ServiceFactory = ({
       return { identityMemberships: [], totalCount: 0 };
     }
 
+    const enrichWithLockouts = async <T extends { identity: { id: string } }>(rows: T[]) =>
+      Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          identity: {
+            ...row.identity,
+            activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(row.identity.id, keyStore)
+          }
+        }))
+      );
+
     if (conditionalProjectIds.size === 0) {
       const { totalCount, docs } = await identityMembershipV2DAL.searchIdentitiesV2({
         orgId: actorOrgId,
@@ -403,7 +422,7 @@ export const identityV2ServiceFactory = ({
         accessibleProjectIds
       });
 
-      return { identityMemberships: docs, totalCount };
+      return { identityMemberships: await enrichWithLockouts(docs), totalCount };
     }
 
     // Conditional Read rules on Identity exist for at least one accessible project. SQL pagination
@@ -422,7 +441,7 @@ export const identityV2ServiceFactory = ({
     const pageOffset = offset ?? 0;
     const pageLimit = limit ?? filtered.length;
     return {
-      identityMemberships: filtered.slice(pageOffset, pageOffset + pageLimit),
+      identityMemberships: await enrichWithLockouts(filtered.slice(pageOffset, pageOffset + pageLimit)),
       totalCount: filtered.length
     };
   };

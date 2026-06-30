@@ -158,7 +158,18 @@ The recommended approach is to use the `login` module to authenticate once and r
         auth_method: token_auth
         token: "<your-token>"
       register: infisical_login
+      no_log: true
     ```
+
+    <Warning>
+      Your token is returned as-is in `login_data.access_token` so it can be reused in later tasks. As a result, Ansible no longer masks it, and it can appear in:
+
+      - Verbose output (`-v`/`-vvv`)
+      - Log files (`ANSIBLE_LOG_PATH`)
+      - CI/CD logs
+
+      Always set `no_log: true` on the login task, as shown above, to keep the token out of output and logs.
+    </Warning>
 
     You can also provide the `auth_method` and `token` parameters through environment variables:
 

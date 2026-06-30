@@ -9,12 +9,14 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   ClockIcon,
+  LayersIcon,
   LayoutGridIcon,
   ListIcon,
   PlusIcon,
   SearchIcon,
   StarIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -60,7 +62,10 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionProjectActions
+} from "@app/context/OrgPermissionContext/types";
 import {
   getProjectDescription,
   getProjectHomePage,
@@ -147,6 +152,11 @@ const ProjectTypeContent = ({
   orgId: string;
 }) => {
   const { subscription } = useSubscription();
+  const { permission } = useOrgPermission();
+  const canRequestAccess = permission.can(
+    OrgPermissionProjectActions.RequestAccess,
+    OrgPermissionSubjects.Project
+  );
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
@@ -155,6 +165,7 @@ const ProjectTypeContent = ({
     const storedView = localStorage.getItem("projectListView");
     if (
       storedView &&
+      canRequestAccess &&
       (storedView === ProjectListView.AllProjects || storedView === ProjectListView.MyProjects)
     ) {
       return storedView;
@@ -195,7 +206,7 @@ const ProjectTypeContent = ({
         scope={projectType}
         icon={getProjectLucideIcon(projectType)}
       />
-      {projectListView === ProjectListView.MyProjects ? (
+      {projectListView === ProjectListView.MyProjects || !canRequestAccess ? (
         <MyProjectsForType
           projectType={projectType}
           projectListView={projectListView}
@@ -203,6 +214,7 @@ const ProjectTypeContent = ({
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          hideProjectListToggle={!canRequestAccess}
         />
       ) : (
         <AllProjectsForType
@@ -212,6 +224,7 @@ const ProjectTypeContent = ({
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          hideProjectListToggle={!canRequestAccess}
         />
       )}
       <NewProjectModal
@@ -235,12 +248,14 @@ type SubViewProps = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
+  hideProjectListToggle: boolean;
 };
 
 const MyProjectsForType = ({
   projectType,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -384,38 +399,37 @@ const MyProjectsForType = ({
       >
         <CardHeader>
           <div className="flex items-start gap-3">
-            <div
-              className={`shrink-0 rounded-sm border p-[5px] transition-colors duration-200 ${tileStyle.containerClassName}`}
-            >
-              <WorkspaceIcon className={`h-4.5 w-4.5 shrink-0 ${tileStyle.iconClassName}`} />
+            <div className="shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+              <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardDescription className="text-base font-semibold text-foreground">
-                <span
-                  className={`underline decoration-[1.5px] underline-offset-4 ${tileStyle.titleUnderlineClassName}`}
-                >
-                  {workspace.name}
-                </span>
+              <CardDescription className="truncate text-base font-semibold text-foreground">
+                {workspace.name}
               </CardDescription>
-              <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                {workspace.description || <span className="text-muted">No description</span>}
+              <p className="truncate text-sm leading-5 text-muted">
+                {getProjectTitle(workspace.type)}
               </p>
             </div>
           </div>
           <CardAction>{renderFavoriteButton(workspace)}</CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <div className="flex items-center gap-4 border-t border-border pt-3">
-            <span className="text-muted">
-              <span className="text-sm font-medium text-foreground">{environmentCount}</span>{" "}
-              <span className="text-xs">
-                {environmentCount === 1 ? "environment" : "environments"}
+          <p className="line-clamp-2 text-sm leading-relaxed text-accent">
+            {workspace.description || <span className="text-muted italic">No description</span>}
+          </p>
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+            <span className="flex items-center gap-1.5 text-muted">
+              <LayersIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
+                <span className="text-xs">
+                  {environmentCount === 1 ? "Environment" : "Environments"}
+                </span>
               </span>
             </span>
-            <div className="h-4 w-px bg-border" />
             <span className="text-muted">
               <span className="text-xs">Created </span>
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-xs font-medium text-foreground">
                 {format(new Date(workspace.createdAt), "MMM d, yyyy")}
               </span>
             </span>
@@ -440,16 +454,21 @@ const MyProjectsForType = ({
             <Card key={`workspace-cards-loading-${i + 1}`} className="h-full bg-container">
               <CardHeader>
                 <div className="flex items-start gap-3">
-                  <Skeleton className="h-7 w-7 shrink-0 rounded-sm bg-mineshaft-600" />
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-mineshaft-600" />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <Skeleton className="h-4 w-1/2 bg-mineshaft-600" />
-                    <Skeleton className="h-4 w-3/4 bg-mineshaft-600" />
+                    <Skeleton className="h-3 w-1/3 bg-mineshaft-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <div className="border-t border-border pt-3">
-                  <Skeleton className="h-3 w-1/3 bg-mineshaft-600" />
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-full bg-mineshaft-600" />
+                  <Skeleton className="h-3 w-2/3 bg-mineshaft-600" />
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <Skeleton className="h-3 w-16 bg-mineshaft-600" />
+                  <Skeleton className="h-3 w-24 bg-mineshaft-600" />
                 </div>
               </CardContent>
             </Card>
@@ -509,10 +528,10 @@ const MyProjectsForType = ({
           <TableBody>
             {workspacesWithFaveProp.map((workspace) => {
               const WorkspaceIcon = getProjectLucideIcon(workspace.type);
-              const tileStyle = PROJECT_TILE_STYLE;
               return (
                 <TableRow
                   key={workspace.id}
+                  className="group"
                   onClick={() => navigateToProject(workspace)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") navigateToProject(workspace);
@@ -520,12 +539,8 @@ const MyProjectsForType = ({
                   tabIndex={0}
                 >
                   <TableCell className="w-0 pr-0">
-                    <div
-                      className={`inline-flex shrink-0 items-center justify-center rounded-sm border p-1 ${tileStyle.containerClassName}`}
-                    >
-                      <WorkspaceIcon
-                        className={`h-3.5 w-3.5 shrink-0 ${tileStyle.iconClassName}`}
-                      />
+                    <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+                      <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                     </div>
                   </TableCell>
                   <TableCell isTruncatable>{workspace.name}</TableCell>
@@ -569,7 +584,12 @@ const MyProjectsForType = ({
   }
 
   return (
-    <Card>
+    <Card
+      className={twMerge(
+        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent p-0" : "",
+        "transition-all duration-100"
+      )}
+    >
       <CardHeader>
         <Toolbar
           searchFilter={searchFilter}
@@ -583,6 +603,7 @@ const MyProjectsForType = ({
           }}
           projectListView={projectListView}
           onProjectListViewChange={onProjectListViewChange}
+          hideProjectListToggle={hideProjectListToggle}
           onAddNewProject={onAddNewProject}
           onUpgradePlan={onUpgradePlan}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
@@ -609,6 +630,7 @@ const AllProjectsForType = ({
   projectType,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -735,7 +757,6 @@ const AllProjectsForType = ({
         <TableBody>
           {searchedProjects?.projects?.map((workspace) => {
             const WorkspaceIcon = getProjectLucideIcon(workspace.type);
-            const tileStyle = PROJECT_TILE_STYLE;
             const goToProject = () =>
               navigate({
                 to: getProjectHomePage(workspace.type, workspace.environments),
@@ -744,6 +765,7 @@ const AllProjectsForType = ({
             return (
               <TableRow
                 key={workspace.id}
+                className="group"
                 onClick={workspace.isMember ? goToProject : undefined}
                 onKeyDown={(evt) => {
                   if (evt.key === "Enter" && workspace.isMember) goToProject();
@@ -751,10 +773,8 @@ const AllProjectsForType = ({
                 tabIndex={workspace.isMember ? 0 : -1}
               >
                 <TableCell className="w-0 pr-0">
-                  <div
-                    className={`inline-flex shrink-0 items-center justify-center rounded-sm border p-1 ${tileStyle.containerClassName}`}
-                  >
-                    <WorkspaceIcon className={`h-3.5 w-3.5 shrink-0 ${tileStyle.iconClassName}`} />
+                  <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+                    <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                   </div>
                 </TableCell>
                 <TableCell isTruncatable>{workspace.name}</TableCell>
@@ -877,6 +897,7 @@ const AllProjectsForType = ({
           onViewModeChange={() => {}}
           projectListView={projectListView}
           onProjectListViewChange={onProjectListViewChange}
+          hideProjectListToggle={hideProjectListToggle}
           onAddNewProject={onAddNewProject}
           onUpgradePlan={onUpgradePlan}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
@@ -914,6 +935,7 @@ const Toolbar = ({
   onViewModeChange,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed,
@@ -927,13 +949,16 @@ const Toolbar = ({
   onViewModeChange: (mode: ProjectsViewMode) => void;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
+  hideProjectListToggle: boolean;
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => (
   <div className="flex w-full flex-row flex-wrap items-center gap-2 md:flex-nowrap">
-    <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+    {!hideProjectListToggle && (
+      <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+    )}
     <InputGroup className="flex-1">
       <InputGroupAddon align="inline-start">
         <SearchIcon />

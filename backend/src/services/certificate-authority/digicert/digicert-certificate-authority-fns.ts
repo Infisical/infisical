@@ -17,15 +17,7 @@ import { TDigiCertConnection } from "@app/services/app-connection/digicert/digic
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import {
-  CertExtendedKeyUsage,
-  CertExtendedKeyUsageOIDToName,
-  CertKeyAlgorithm,
-  CertKeyUsage,
-  CertStatus,
-  CrlReason,
-  TAltNameType
-} from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/services/certificate/certificate-types";
 import {
   DigiCertExternalMetadataSchema,
   TDigiCertExternalMetadata
@@ -36,9 +28,14 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { extractIssuedCertificateFields, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
+import {
+  DIGICERT_FINAL_ISSUED_STATUSES,
+  DigiCertOrderStatus,
+  DigiCertPollOutcome
+} from "./digicert-certificate-authority-enums";
 import {
   TCreateDigiCertCertificateAuthorityDTO,
   TDigiCertCertificateAuthority,
@@ -153,49 +150,6 @@ const parseTtlToDays = (ttl: string): number => {
     default:
       throw new BadRequestError({ message: `Invalid TTL unit: ${unit}` });
   }
-};
-
-const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
-  const subject = extractDnParts(certObj.subjectName);
-  const commonName = subject.commonName ?? "";
-
-  const sanExt = certObj.getExtension("2.5.29.17");
-  const altNames: string[] = [];
-  if (sanExt) {
-    const sanNames = new x509.GeneralNames(sanExt.value);
-    for (const item of sanNames.items) {
-      if (
-        item.type === TAltNameType.DNS ||
-        item.type === TAltNameType.IP ||
-        item.type === TAltNameType.EMAIL ||
-        item.type === TAltNameType.URL
-      ) {
-        altNames.push(item.value);
-      }
-    }
-  }
-
-  const keyUsages: CertKeyUsage[] = [];
-  const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
-  if (keyUsagesExt) {
-    for (const keyUsage of Object.values(CertKeyUsage)) {
-      // eslint-disable-next-line no-bitwise
-      if ((x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0) {
-        keyUsages.push(keyUsage);
-      }
-    }
-  }
-
-  const extendedKeyUsages: CertExtendedKeyUsage[] = [];
-  const ekuExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
-  if (ekuExt) {
-    for (const oid of ekuExt.usages) {
-      const mapped = CertExtendedKeyUsageOIDToName[oid as string];
-      if (mapped) extendedKeyUsages.push(mapped);
-    }
-  }
-
-  return { commonName, altNames, keyUsages, extendedKeyUsages };
 };
 
 const extractLeafAndChain = (pemBundle: string): { leaf: string; chain: string } => {
@@ -405,7 +359,7 @@ export const DigiCertCertificateAuthorityFns = ({
     return cas.map(castDbEntryToDigiCertCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     commonName,
     altNames = [],
@@ -552,7 +506,8 @@ export const DigiCertCertificateAuthorityFns = ({
     digicertOrderId,
     encryptedPrivateKey,
     isRenewal,
-    originalCertificateId
+    originalCertificateId,
+    applicationId
   }: {
     caId: string;
     certificateRequest: {
@@ -570,6 +525,7 @@ export const DigiCertCertificateAuthorityFns = ({
     encryptedPrivateKey?: Buffer;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    applicationId?: string | null;
   }): Promise<{ certificateId: string; certificatePem: string }> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
@@ -608,6 +564,7 @@ export const DigiCertCertificateAuthorityFns = ({
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
+          applicationId: applicationId ?? undefined,
           profileId: certificateRequest.profileId ?? undefined,
           status: CertStatus.ACTIVE,
           friendlyName: issued.commonName || "",
@@ -657,6 +614,57 @@ export const DigiCertCertificateAuthorityFns = ({
     });
 
     return { certificateId: createdCertificateId, certificatePem: leaf };
+  };
+
+  const pollOrderForCertificate = async ({
+    caId,
+    orderId
+  }: {
+    caId: string;
+    orderId: number;
+  }): Promise<
+    | { status: DigiCertPollOutcome.Issued; certificateId: number }
+    | { status: DigiCertPollOutcome.Pending; orderStatus: string }
+    | { status: DigiCertPollOutcome.Failed; orderStatus: string; reason: string }
+  > => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
+      throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
+    }
+    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
+
+    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+      digicertCa.configuration.appConnectionId,
+      appConnectionDAL,
+      kmsService
+    );
+    const client = createDigiCertApiClient(apiKey, baseUrl);
+
+    const orderInfo = await client.getOrder(orderId);
+    let orderStatus = orderInfo.status?.toLowerCase() ?? "unknown";
+    let certificateId = orderInfo.certificate?.id;
+
+    if (orderStatus === DigiCertOrderStatus.Pending) {
+      const checkResult = await client.checkValidation(orderId);
+      orderStatus = checkResult.order_status?.toLowerCase() ?? orderStatus;
+      certificateId = checkResult.certificate_id ?? certificateId;
+    }
+
+    const isFinalisable = DIGICERT_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
+    if (isFinalisable && certificateId) {
+      return { status: DigiCertPollOutcome.Issued, certificateId };
+    }
+
+    if (
+      orderStatus === DigiCertOrderStatus.Rejected ||
+      orderStatus === DigiCertOrderStatus.Canceled ||
+      orderStatus === DigiCertOrderStatus.Expired ||
+      orderStatus === DigiCertOrderStatus.Revoked
+    ) {
+      return { status: DigiCertPollOutcome.Failed, orderStatus, reason: `DigiCert order ${orderStatus}` };
+    }
+
+    return { status: DigiCertPollOutcome.Pending, orderStatus };
   };
 
   const revokeCertificate = async ({
@@ -717,8 +725,9 @@ export const DigiCertCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile,
+    orderCertificate,
     fetchAndAttachIssuedCertificate,
+    pollOrderForCertificate,
     revokeCertificate
   };
 };

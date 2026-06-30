@@ -9,7 +9,8 @@ export const PKI_SYNC_NAME_MAP: Record<PkiSync, string> = {
   [PkiSync.AwsElasticLoadBalancer]: "AWS Elastic Load Balancer",
   [PkiSync.Chef]: "Chef",
   [PkiSync.CloudflareCustomCertificate]: "Cloudflare Custom SSL Certificate",
-  [PkiSync.NetScaler]: "NetScaler"
+  [PkiSync.NetScaler]: "NetScaler",
+  [PkiSync.F5BigIp]: "F5 BIG-IP"
 };
 
 export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
@@ -19,5 +20,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AwsElasticLoadBalancer]: AppConnection.AWS,
   [PkiSync.Chef]: AppConnection.Chef,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
-  [PkiSync.NetScaler]: AppConnection.NetScaler
+  [PkiSync.NetScaler]: AppConnection.NetScaler,
+  [PkiSync.F5BigIp]: AppConnection.F5BigIp
 };

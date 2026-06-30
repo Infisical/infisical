@@ -37,6 +37,8 @@ const baseSecretRotationV2Query = ({
     .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
     .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
     .whereNull(`${TableName.Environment}.deleteAfter`)
+    .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+    .whereNull(`${TableName.Project}.deleteAfter`)
     .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
     .select(selectAllTableCols(TableName.SecretRotationV2))
     .select(
@@ -565,6 +567,11 @@ export const secretRotationV2DALFactory = (
       .where(`${TableName.SecretRotationV2}.isAutoRotationEnabled`, true)
       .whereNotNull(`${TableName.SecretRotationV2}.nextRotationAt`)
       .andWhereRaw(`"nextRotationAt" <= ?`, [rotateBy])
+      .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.SecretRotationV2));
 
     return secretRotations;
@@ -641,9 +648,42 @@ export const secretRotationV2DALFactory = (
     }
   };
 
+  const existsByFolderIds = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return undefined;
+      const doc = await (tx || db.replicaNode())(TableName.SecretRotationV2)
+        .whereIn("folderId", folderIds)
+        .select(db.ref("folderId").withSchema(TableName.SecretRotationV2))
+        .first();
+      return doc as { folderId: string } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Exists by folder ids - Secret Rotation V2" });
+    }
+  };
+
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretRotationV2)
+        .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, function joinActiveEnvForSecretRotationV2Count() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .countDistinct(`${TableName.SecretRotationV2}.id`)
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count by Project - Secret Rotation V2" });
+    }
+  };
+
   return {
     ...secretRotationV2Orm,
     find,
+    existsByFolderIds,
     create,
     findById,
     updateById,
@@ -654,6 +694,7 @@ export const secretRotationV2DALFactory = (
     findWithMappedSecretsCount,
     findByProjectAndDateRange,
     findByProject,
+    countByProject,
     findSecretRotationsToQueue
   };
 };

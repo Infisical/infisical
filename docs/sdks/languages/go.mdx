@@ -136,266 +136,274 @@ When using automatic token refreshing it's important to understand how your appl
 This is only necessary if you are creating multiple instances of the client, and those instances are deleted or otherwise removed throughout the application lifecycle.
 If you are only creating one instance of the client, and it will be used throughout the lifetime of your application, you don't need to worry about this.
 
-# Authentication
+
+## Authentication
+
+### Authentication Methods
 
 The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
 
-#### Universal Auth
+<AccordionGroup>
+  <Accordion title="Universal Auth">
+    **Using environment variables**
 
-**Using environment variables**
+    Call `.Auth().UniversalAuthLogin()` with empty arguments to use the following environment variables:
 
-Call `.Auth().UniversalAuthLogin()` with empty arguments to use the following environment variables:
+    - `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
+    - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
 
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
+    **Using the SDK directly**
 
-**Using the SDK directly**
+    ```go
+    _, err := client.Auth().UniversalAuthLogin("CLIENT_ID", "CLIENT_SECRET")
 
-```go
-_, err := client.Auth().UniversalAuthLogin("CLIENT_ID", "CLIENT_SECRET")
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
 
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
+  <Accordion title="GCP ID Token">
+    <Info>
+      Please note that this authentication method will only work if you're running
+      your application on Google Cloud Platform. Please [read
+      more](/documentation/platform/identities/gcp-auth) about this authentication
+      method.
+    </Info>
 
-#### GCP ID Token Auth
+    **Using environment variables**
 
-<Info>
-  Please note that this authentication method will only work if you're running
-  your application on Google Cloud Platform. Please [read
-  more](/documentation/platform/identities/gcp-auth) about this authentication
-  method.
-</Info>
+    Call `.Auth().GcpIdTokenAuthLogin()` with empty arguments to use the following environment variables:
 
-**Using environment variables**
+    - `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
 
-Call `.Auth().GcpIdTokenAuthLogin()` with empty arguments to use the following environment variables:
+    **Using the SDK directly**
 
-- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+    ```go
+    _, err := client.Auth().GcpIdTokenAuthLogin("YOUR_MACHINE_IDENTITY_ID")
 
-**Using the SDK directly**
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+  <Accordion title="GCP IAM Auth">
+    **Using environment variables**
 
-```go
-_, err := client.Auth().GcpIdTokenAuthLogin("YOUR_MACHINE_IDENTITY_ID")
+    Call `.Auth().GcpIamAuthLogin()` with empty arguments to use the following environment variables:
+
+    - `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+    - `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
+
+    **Using the SDK directly**
 
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
+    ```go
+    _, err = client.Auth().GcpIamAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_KEY_FILE_PATH")
 
-#### GCP IAM Auth
-
-**Using environment variables**
-
-Call `.Auth().GcpIamAuthLogin()` with empty arguments to use the following environment variables:
-
-- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
-
-**Using the SDK directly**
-
-```go
-_, err = client.Auth().GcpIamAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_KEY_FILE_PATH")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-#### AWS IAM Auth
-
-<Info>
-  Please note that this authentication method will only work if you're running
-  your application on AWS. Please [read
-  more](/documentation/platform/identities/aws-auth) about this authentication
-  method.
-</Info>
-
-**Using environment variables**
-
-Call `.Auth().AwsIamAuthLogin()` with empty arguments to use the following environment variables:
-
-- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-
-```go
-_, err = client.Auth().AwsIamAuthLogin("MACHINE_IDENTITY_ID")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-#### Azure Auth
-
-<Info>
-  Please note that this authentication method will only work if you're running
-  your application on Azure. Please [read
-  more](/documentation/platform/identities/azure-auth) about this authentication
-  method.
-</Info>
-
-**Using environment variables**
-
-Call `.Auth().AzureAuthLogin()` with empty arguments to use the following environment variables:
-
-- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-
-```go
-_, err = client.Auth().AzureAuthLogin("MACHINE_IDENTITY_ID")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-#### Kubernetes Auth
-
-<Info>
-  Please note that this authentication method will only work if you're running
-  your application on Kubernetes. Please [read
-  more](/documentation/platform/identities/kubernetes-auth) about this
-  authentication method.
-</Info>
-
-**Using environment variables**
-
-Call `.Auth().KubernetesAuthLogin()` with empty arguments to use the following environment variables:
-
-- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
-
-**Using the SDK directly**
-
-```go
-// Service account token path will default to /var/run/secrets/kubernetes.io/serviceaccount/token if empty value is passed
-_, err = client.Auth().KubernetesAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_TOKEN_PATH")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-#### JWT Auth
-
-<Info>
-  Please note that this authentication method requires a valid JWT token from
-  your JWT issuer. Please [read
-  more](/documentation/platform/identities/jwt-auth) about this authentication
-  method.
-</Info>
-
-**Using the SDK**
-
-```go
-credential, err := client.Auth().JwtAuthLogin("MACHINE_IDENTITY_ID", "JWT_TOKEN")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-#### LDAP Auth
-
-<Info>
-  Please note that this authentication method requires LDAP credentials. Please
-  [read more](/documentation/platform/identities/ldap-auth/general) about this
-  authentication method.
-</Info>
-
-**Using environment variables**
-
-You can set the `INFISICAL_LDAP_AUTH_IDENTITY_ID` environment variable and pass empty string for the identity ID:
-
-```go
-credential, err := client.Auth().LdapAuthLogin("", "LDAP_USERNAME", "LDAP_PASSWORD")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-**Using the SDK directly**
-
-```go
-credential, err := client.Auth().LdapAuthLogin("MACHINE_IDENTITY_ID", "LDAP_USERNAME", "LDAP_PASSWORD")
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-#### OCI Auth
-
-<Info>
-  Please note that this authentication method will only work if you're running
-  your application on Oracle Cloud Infrastructure. Please [read
-  more](/documentation/platform/identities/oci-auth) about this authentication
-  method.
-</Info>
-
-**Using environment variables**
-
-You can set the `INFISICAL_OCI_AUTH_IDENTITY_ID` environment variable and omit the `IdentityID` field:
-
-```go
-credential, err := client.Auth().OciAuthLogin(infisical.OciAuthLoginOptions{
-  UserID:      "USER_OCID",
-  TenancyID:   "TENANCY_OCID",
-  Fingerprint: "FINGERPRINT",
-  PrivateKey:  "PRIVATE_KEY",
-  Region:      "REGION",
-})
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-**Using the SDK directly**
-
-```go
-credential, err := client.Auth().OciAuthLogin(infisical.OciAuthLoginOptions{
-  IdentityID:  "MACHINE_IDENTITY_ID",
-  UserID:      "USER_OCID",
-  TenancyID:   "TENANCY_OCID",
-  Fingerprint: "FINGERPRINT",
-  PrivateKey:  "PRIVATE_KEY",
-  Region:      "REGION",
-  Passphrase:  nil, // Optional: pointer to string if your private key has a passphrase
-})
-
-if err != nil {
-  fmt.Println(err)
-  os.Exit(1)
-}
-```
-
-**OciAuthLoginOptions fields:**
-
-- `IdentityID` (string) - Your Infisical Machine Identity ID. Can be set via `INFISICAL_OCI_AUTH_IDENTITY_ID` environment variable.
-- `UserID` (string) - Your OCI user OCID.
-- `TenancyID` (string) - Your OCI tenancy OCID.
-- `Fingerprint` (string) - Your OCI API key fingerprint.
-- `PrivateKey` (string) - Your OCI private key (PEM format).
-- `Region` (string) - Your OCI region (e.g., `us-ashburn-1`).
-- `Passphrase` (\*string) - Optional: pointer to passphrase string if your private key is encrypted.
-
-## Organization Authentication
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="AWS IAM Auth">
+    <Info>
+      Please note that this authentication method will only work if you're running
+      your application on AWS. Please [read
+      more](/documentation/platform/identities/aws-auth) about this authentication
+      method.
+    </Info>
+
+    **Using environment variables**
+
+    Call `.Auth().AwsIamAuthLogin()` with empty arguments to use the following environment variables:
+
+    - `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+    **Using the SDK directly**
+
+    ```go
+    _, err = client.Auth().AwsIamAuthLogin("MACHINE_IDENTITY_ID")
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+  <Accordion title="Azure Auth">
+    <Info>
+      Please note that this authentication method will only work if you're running
+      your application on Azure. Please [read
+      more](/documentation/platform/identities/azure-auth) about this authentication
+      method.
+    </Info>
+
+    **Using environment variables**
+
+    Call `.Auth().AzureAuthLogin()` with empty arguments to use the following environment variables:
+
+    - `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
+
+    **Using the SDK directly**
+
+    ```go
+    _, err = client.Auth().AzureAuthLogin("MACHINE_IDENTITY_ID")
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Kubernetes Auth">
+    <Info>
+      Please note that this authentication method will only work if you're running
+      your application on Kubernetes. Please [read
+      more](/documentation/platform/identities/kubernetes-auth) about this
+      authentication method.
+    </Info>
+
+    **Using environment variables**
+
+    Call `.Auth().KubernetesAuthLogin()` with empty arguments to use the following environment variables:
+
+    - `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
+    - `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+    **Using the SDK directly**
+
+    ```go
+    // Service account token path will default to /var/run/secrets/kubernetes.io/serviceaccount/token if empty value is passed
+    _, err = client.Auth().KubernetesAuthLogin("MACHINE_IDENTITY_ID", "SERVICE_ACCOUNT_TOKEN_PATH")
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+  <Accordion title="JWT Auth">
+    <Info>
+      Please note that this authentication method requires a valid JWT token from
+      your JWT issuer. Please [read
+      more](/documentation/platform/identities/jwt-auth) about this authentication
+      method.
+    </Info>
+
+    **Using the SDK**
+
+    ```go
+    credential, err := client.Auth().JwtAuthLogin("MACHINE_IDENTITY_ID", "JWT_TOKEN")
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+  <Accordion title="LDAP Auth">
+    <Info>
+      Please note that this authentication method requires LDAP credentials. Please
+      [read more](/documentation/platform/identities/ldap-auth/general) about this
+      authentication method.
+    </Info>
+
+    **Using environment variables**
+
+    You can set the `INFISICAL_LDAP_AUTH_IDENTITY_ID` environment variable and pass empty string for the identity ID:
+
+    ```go
+    credential, err := client.Auth().LdapAuthLogin("", "LDAP_USERNAME", "LDAP_PASSWORD")
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+
+    **Using the SDK directly**
+
+    ```go
+    credential, err := client.Auth().LdapAuthLogin("MACHINE_IDENTITY_ID", "LDAP_USERNAME", "LDAP_PASSWORD")
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="OCI Auth">
+    <Info>
+      Please note that this authentication method will only work if you're running
+      your application on Oracle Cloud Infrastructure. Please [read
+      more](/documentation/platform/identities/oci-auth) about this authentication
+      method.
+    </Info>
+
+    **Using environment variables**
+
+    You can set the `INFISICAL_OCI_AUTH_IDENTITY_ID` environment variable and omit the `IdentityID` field:
+
+    ```go
+    credential, err := client.Auth().OciAuthLogin(infisical.OciAuthLoginOptions{
+      UserID:      "USER_OCID",
+      TenancyID:   "TENANCY_OCID",
+      Fingerprint: "FINGERPRINT",
+      PrivateKey:  "PRIVATE_KEY",
+      Region:      "REGION",
+    })
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+
+
+    **Using the SDK directly**
+
+    ```go
+    credential, err := client.Auth().OciAuthLogin(infisical.OciAuthLoginOptions{
+      IdentityID:  "MACHINE_IDENTITY_ID",
+      UserID:      "USER_OCID",
+      TenancyID:   "TENANCY_OCID",
+      Fingerprint: "FINGERPRINT",
+      PrivateKey:  "PRIVATE_KEY",
+      Region:      "REGION",
+      Passphrase:  nil, // Optional: pointer to string if your private key has a passphrase
+    })
+
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(1)
+    }
+    ```
+
+    **OciAuthLoginOptions fields:**
+
+    - `IdentityID` (string) - Your Infisical Machine Identity ID. Can be set via `INFISICAL_OCI_AUTH_IDENTITY_ID` environment variable.
+    - `UserID` (string) - Your OCI user OCID.
+    - `TenancyID` (string) - Your OCI tenancy OCID.
+    - `Fingerprint` (string) - Your OCI API key fingerprint.
+    - `PrivateKey` (string) - Your OCI private key (PEM format).
+    - `Region` (string) - Your OCI region (e.g., `us-ashburn-1`).
+    - `Passphrase` (\*string) - Optional: pointer to passphrase string if your private key is encrypted.
+  </Accordion>
+</AccordionGroup>
+
+
+
+### Sub-Organization Authentication
+
+<Note>
+  This section is only relevant to you if your organization is utilizing [sub-organizations](/documentation/platform/sub-organizations) within Infisical.
+</Note>
 
 All SDK authentication methods support logging into a sub-organization that your machine identity has access to. This is optional and only necessary when attempting to authenticate into a sub-organization using an identity created at the root organization.
 
@@ -410,10 +418,10 @@ if err != nil {
 }
 ```
 
-<Note>
+<Tip>
   If no organization slug is provided, the authentication session defaults to
   the organization where the machine identity was originally created.
-</Note>
+</Tip>
 
 ## Secrets
 
@@ -467,8 +475,6 @@ secrets, err := client.Secrets().List(infisical.ListSecretsOptions{
 
 </ParamField>
 
-###
-
 ### Retrieve Secret
 
 `client.Secrets().Retrieve(options)`
@@ -509,8 +515,6 @@ secret, err := client.Secrets().Retrieve(infisical.RetrieveSecretOptions{
     </ParamField>
   </Expandable>
 </ParamField>
-
-###
 
 ### Create Secret
 
@@ -558,8 +562,6 @@ secret, err := client.Secrets().Create(infisical.CreateSecretOptions{
     </ParamField>
   </Expandable>
 </ParamField>
-
-###
 
 ### Update Secret
 
@@ -611,8 +613,6 @@ secret, err := client.Secrets().Update(infisical.UpdateSecretOptions{
     </ParamField>
   </Expandable>
 </ParamField>
-
-###
 
 ### Delete Secret
 
@@ -725,8 +725,6 @@ Create multiple secrets in Infisical.
 
 ## Folders
 
-###
-
 ### List Folders
 
 `client.Folders().List(options)`
@@ -759,8 +757,6 @@ folders, err := client.Folders().List(infisical.ListFoldersOptions{
     </Expandable>
 
 </ParamField>
-
-###
 
 ### Create Folder
 
@@ -796,8 +792,6 @@ folder, err := client.Folders().Create(infisical.CreateFolderOptions{
     </ParamField>
   </Expandable>
 </ParamField>
-
-###
 
 ### Update Folder
 
@@ -838,8 +832,6 @@ folder, err := client.Folders().Update(infisical.UpdateFolderOptions{
   </Expandable>
 </ParamField>
 
-###
-
 ### Delete Folder
 
 `client.Folders().Delete(options)`
@@ -879,6 +871,315 @@ deletedFolder, err := client.Folders().Delete(infisical.DeleteFolderOptions{
         </ParamField>
     </Expandable>
 
+</ParamField>
+
+## Dynamic Secrets
+
+[Dynamic secrets](/documentation/platform/dynamic-secrets/overview) generate credentials on-demand instead of storing static values. Credentials are issued through short-lived **leases** that Infisical automatically revokes when they expire.
+
+<Note>
+  The Go SDK reads dynamic secret configurations and manages their leases.
+  Creating or updating a dynamic secret's configuration is done through the
+  [Infisical dashboard](/documentation/platform/dynamic-secrets/overview) or the
+  [API](/api-reference/endpoints/dynamic-secrets/create).
+</Note>
+
+### List Dynamic Secrets
+
+`client.DynamicSecrets().List(options)`
+
+Retrieve all dynamic secrets within a project environment and path.
+
+```go
+dynamicSecrets, err := client.DynamicSecrets().List(infisical.ListDynamicSecretsRootCredentialsOptions{
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secrets live.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secrets
+      live.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secrets live. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Get Dynamic Secret by Name
+
+`client.DynamicSecrets().GetByName(options)`
+
+Retrieve a single dynamic secret configuration by name.
+
+```go
+dynamicSecret, err := client.DynamicSecrets().GetByName(infisical.GetDynamicSecretRootCredentialByNameOptions{
+  DynamicSecretName: "<dynamic-secret-name>",
+  ProjectSlug:       "<project-slug>",
+  EnvironmentSlug:   "dev",
+  SecretPath:        "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="DynamicSecretName" type="string" required>
+      The name of the dynamic secret to retrieve.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Dynamic Secret Leases
+
+A lease represents a single set of generated credentials with its own TTL. Use leases to generate, inspect, renew, and revoke credentials from a dynamic secret. Access the leases interface with `client.DynamicSecrets().Leases()`.
+
+### Create Lease
+
+`client.DynamicSecrets().Leases().Create(options)`
+
+Generate a new set of credentials from a dynamic secret.
+
+```go
+credentials, dynamicSecret, lease, err := client.DynamicSecrets().Leases().Create(infisical.CreateDynamicSecretLeaseOptions{
+  DynamicSecretName: "<dynamic-secret-name>",
+  ProjectSlug:       "<project-slug>",
+  EnvironmentSlug:   "dev",
+  SecretPath:        "/",
+  TTL:               "5m", // Optional
+})
+```
+
+<Note>
+  Your generated credentials are returned in the first return value
+  (`credentials`, a `map[string]any`). The exact keys depend on the dynamic
+  secret provider.
+</Note>
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="DynamicSecretName" type="string" required>
+      The name of the dynamic secret to create a lease for.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+    <ParamField query="TTL" type="string" optional>
+      How long the lease credentials should remain valid, e.g. `5m` or `1h`.
+      Defaults to the dynamic secret's default TTL if not specified.
+    </ParamField>
+    <ParamField query="Config" type="map[string]any" optional>
+      Optional provider-specific configuration for the lease.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return
+
+<ParamField query="Return" type="(map[string]any, DynamicSecret, DynamicSecretLease, error)">
+  The generated credentials, the dynamic secret the lease was created from, the
+  lease details, and an error if the request failed.
+</ParamField>
+
+### List Leases
+
+`client.DynamicSecrets().Leases().List(options)`
+
+Retrieve all leases for a dynamic secret.
+
+```go
+leases, err := client.DynamicSecrets().Leases().List(infisical.ListDynamicSecretLeasesOptions{
+  DynamicSecretName: "<dynamic-secret-name>",
+  ProjectSlug:       "<project-slug>",
+  EnvironmentSlug:   "dev",
+  SecretPath:        "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="DynamicSecretName" type="string" required>
+      The name of the dynamic secret whose leases should be fetched.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Get Lease by ID
+
+`client.DynamicSecrets().Leases().GetById(options)`
+
+Retrieve a single lease, including its associated dynamic secret.
+
+```go
+lease, err := client.DynamicSecrets().Leases().GetById(infisical.GetDynamicSecretLeaseByIdOptions{
+  LeaseId:         "<lease-id>",
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="LeaseId" type="string" required>
+      The ID of the lease to retrieve.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return (map)
+
+<ParamField query="Return" type="(DynamicSecretLeaseWithDynamicSecret, error)">
+  The lease, with the associated dynamic secret nested in its `DynamicSecret`
+  field, and an error if the request failed.
+</ParamField>
+
+### Renew Lease
+
+`client.DynamicSecrets().Leases().RenewById(options)`
+
+Extend the TTL of an existing lease.
+
+```go
+lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicSecretLeaseOptions{
+  LeaseId:         "<lease-id>",
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+  TTL:             "10m", // Optional
+})
+```
+
+<Note>
+  Renewals must happen **before** the lease expires. Renewing does not issue new
+  credentials; it extends the expiration of the existing credentials.
+</Note>
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="LeaseId" type="string" required>
+      The ID of the lease to renew.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+    <ParamField query="TTL" type="string" optional>
+      How much time to add to the lease's current expiration, e.g. `10m` or
+      `1h`. The duration is added to the existing expiry rather than measured
+      from now, so renewing a lease that still has time left extends it beyond
+      the remaining time. The total lifetime cannot exceed the dynamic secret's
+      max TTL, counted from when the lease was created. Defaults to the dynamic
+      secret's default TTL if not specified.
+    </ParamField>
+    <ParamField query="IsForced" type="boolean" default="false" optional>
+      When true, the renewal is applied even if the lease has already expired.
+      Forced renewals may produce a new lease record rather than extending the
+      existing one; use only as a last resort when a normal renewal fails.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Delete Lease
+
+`client.DynamicSecrets().Leases().DeleteById(options)`
+
+Revoke a lease and its associated credentials.
+
+```go
+lease, err := client.DynamicSecrets().Leases().DeleteById(infisical.DeleteDynamicSecretLeaseOptions{
+  LeaseId:         "<lease-id>",
+  ProjectSlug:     "<project-slug>",
+  EnvironmentSlug: "dev",
+  SecretPath:      "/",
+  IsForced:        false,
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" optional>
+  <Expandable title="properties">
+    <ParamField query="LeaseId" type="string" required>
+      The ID of the lease to delete.
+    </ParamField>
+    <ParamField query="ProjectSlug" type="string" required>
+      The slug of the project where the dynamic secret lives.
+    </ParamField>
+    <ParamField query="EnvironmentSlug" type="string" required>
+      The slug name (dev, prod, etc) of the environment where the dynamic secret
+      lives.
+    </ParamField>
+    <ParamField query="SecretPath" type="string" optional>
+      The path where the dynamic secret lives. The root path is `/`.
+    </ParamField>
+    <ParamField query="IsForced" type="boolean" default="false" optional>
+      When true, the lease is removed from Infisical without attempting to revoke
+      the credentials from the external provider. This is potentially unsafe for
+      sensitive dynamic secrets.
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ## KMS
@@ -987,7 +1288,7 @@ deletedKey, err = client.Kms().Keys().Delete(infisical.KmsDeleteKeyOptions{
   </Expandable>
 </ParamField>
 
-#### Return (object)
+#### Return
 
 <ParamField query="Return" type="object">
   <Expandable title="properties">

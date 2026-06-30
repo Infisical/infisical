@@ -104,6 +104,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Datadog Application Key",
     image: "DatadogWhite.png",
     size: 50
+  },
+  [SecretRotation.ConvexAccessKey]: {
+    name: "Convex Access Key",
+    image: "Convex.png",
+    size: 50
   }
 };
 
@@ -127,7 +132,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
-  [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog
+  [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog,
+  [SecretRotation.ConvexAccessKey]: AppConnection.Convex
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -151,7 +157,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.HpIloLocalAccount]: false,
   [SecretRotation.SupabaseApiKey]: true,
   [SecretRotation.SalesforceOauthCredentials]: true,
-  [SecretRotation.DatadogApplicationKeySecret]: true
+  [SecretRotation.DatadogApplicationKeySecret]: true,
+  [SecretRotation.ConvexAccessKey]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

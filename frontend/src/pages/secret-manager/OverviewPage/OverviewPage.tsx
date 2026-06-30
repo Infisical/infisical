@@ -6,10 +6,11 @@ import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
   ChevronDownIcon,
+  ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
   EyeIcon,
@@ -22,6 +23,7 @@ import {
   SettingsIcon,
   TrashIcon
 } from "lucide-react";
+import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -99,7 +101,8 @@ import {
   ProjectPermissionSub,
   useProject,
   useProjectPermission,
-  useSubscription
+  useSubscription,
+  useUser
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
@@ -122,6 +125,7 @@ import {
   useToggle
 } from "@app/hooks";
 import {
+  projectKeys,
   useCreateFolder,
   useCreateSecretBatch,
   useCreateSecretV3,
@@ -153,6 +157,10 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/migration";
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import {
+  useGetSecretApprovalRequestCount,
+  useGetSecretApprovalRequests
+} from "@app/hooks/api/secretApprovalRequest";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
@@ -183,6 +191,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
+import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
@@ -209,6 +218,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
+import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
   DownloadEnvButton,
@@ -294,6 +304,19 @@ const OverviewPageContent = () => {
   const { permission } = useProjectPermission();
   const tableRef = useRef<HTMLDivElement>(null);
   const { currentProject, projectId } = useProject();
+  const { user } = useUser();
+  const { data: approvalCount } = useGetSecretApprovalRequestCount({ projectId });
+  const pendingApprovalsCount = approvalCount?.open ?? 0;
+  const { data: openApprovalRequests } = useGetSecretApprovalRequests({
+    projectId,
+    status: "open",
+    limit: 100,
+    options: { enabled: pendingApprovalsCount > 0 }
+  });
+  const canApproveAny =
+    openApprovalRequests?.approvals?.some((req) =>
+      req.policy?.approvers?.some((a) => a.userId === user.id)
+    ) ?? false;
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
@@ -383,6 +406,9 @@ const OverviewPageContent = () => {
   }, []);
 
   const userAvailableEnvs = currentProject?.environments || [];
+  const isMoreEnvironmentsAllowed = subscription?.environmentLimit
+    ? userAvailableEnvs.length < subscription.environmentLimit
+    : true;
   const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
     permission.can(
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
@@ -417,8 +443,22 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
+  // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
+  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
+  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
+  // (rather than two racing effects) guarantees every param is cleared after it's applied. That
+  // matters most for `environments`: re-selecting the same environment from the reference tree
+  // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
+  // (not mount-only) because the tree is rendered inside this page, so navigating from a node
+  // updates the params without remounting.
   useEffect(() => {
-    const envSlugs = routerSearch.environments;
+    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const hasEnvLink = Boolean(envSlugs?.length);
+
+    if (!search && !filterBy && !hasEnvLink) return;
+    // Env link present but envs not loaded yet → wait so we don't strip it before applying.
+    if (hasEnvLink && userAvailableEnvs.length === 0) return;
+
     if (envSlugs && envSlugs.length > 0) {
       const envIds = userAvailableEnvs
         .filter((env) => envSlugs.includes(env.slug))
@@ -427,7 +467,29 @@ const OverviewPageContent = () => {
         setStoredEnvIds(envIds);
       }
     }
-  }, []);
+
+    if (search || filterBy) {
+      const initialFilter = { ...DEFAULT_FILTER_STATE };
+      if (filterBy) {
+        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
+        if (rowType) {
+          initialFilter[rowType] = true;
+        }
+      }
+      setFilter(initialFilter);
+
+      if (search) {
+        setSearchFilter(search as string);
+      }
+    }
+
+    navigate({ search: query, replace: true });
+  }, [
+    routerSearch.search,
+    routerSearch.filterBy,
+    routerSearch.environments?.join(","),
+    userAvailableEnvs.length
+  ]);
 
   const filteredEnvs = useMemo(() => {
     if (!storedEnvIds.length) return [];
@@ -447,6 +509,25 @@ const OverviewPageContent = () => {
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
   const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
+
+  const relevantPendingApprovalsCount = useMemo(() => {
+    // Reviewers see project-wide pending requests (existing behavior).
+    if (canApproveAny) return pendingApprovalsCount;
+
+    // Requesters only see requests at the specific environment + path they're viewing,
+    // so only when a single environment is selected.
+    if (visibleEnvs.length !== 1) return 0;
+
+    const selectedEnvSlug = visibleEnvs[0].slug;
+    return (
+      openApprovalRequests?.approvals?.filter(
+        (req) =>
+          req.policy?.secretPath &&
+          req.environment === selectedEnvSlug &&
+          picomatch.isMatch(secretPath, req.policy.secretPath, { strictSlashes: false })
+      ).length ?? 0
+    );
+  }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
 
   const {
     data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
@@ -489,7 +570,8 @@ const OverviewPageContent = () => {
   });
 
   const canReadSecrets = singleVisibleEnv
-    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject)
+    ? permission.can(ProjectPermissionSecretActions.DescribeSecret, secretSubject) ||
+      permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject)
     : true;
 
   const canEditSecrets = singleVisibleEnv
@@ -534,19 +616,23 @@ const OverviewPageContent = () => {
       environments: (userAvailableEnvs || []).map(({ slug }) => slug)
     });
 
-  const importedSecretsFlat = useMemo(
-    () =>
-      secretImports?.flatMap(({ data }, index) =>
-        (data ?? []).map((item) => ({
+  const importedSecretsFlat = useMemo(() => {
+    if (!userAvailableEnvs.length) return [];
+
+    return (
+      secretImports?.flatMap(({ data }, index) => {
+        const sourceEnv = userAvailableEnvs[index]?.slug;
+        if (!sourceEnv) return [];
+
+        return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
-          sourceEnv: userAvailableEnvs[index].slug,
+          sourceEnv,
           secrets: item.secrets
-        }))
-      ) ?? [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [(secretImports || []).map((response) => response.data)]
-  );
+        }));
+      }) ?? []
+    );
+  }, [secretImports, userAvailableEnvs]);
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const activeTagSlugs = useMemo(
@@ -767,6 +853,7 @@ const OverviewPageContent = () => {
     "misc",
     "updateFolder",
     "deleteFolder",
+    "moveFolder",
     "addDynamicSecret",
     "addSecretRotation",
     "addHoneyToken",
@@ -793,7 +880,8 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials"
+    "viewHoneyTokenCredentials",
+    "createEnvironment"
   ] as const);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
@@ -815,28 +903,6 @@ const OverviewPageContent = () => {
       }
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
-
-  // Apply search and/or resource type filter when linked via notification/email
-  useEffect(() => {
-    if (routerSearch.search || routerSearch.filterBy) {
-      const { search, filterBy, ...query } = routerSearch;
-      // temp workaround until we transition state to query params
-      navigate({ search: query, replace: true });
-
-      const initialFilter = { ...DEFAULT_FILTER_STATE };
-      if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
-      }
-      setFilter(initialFilter);
-
-      if (search) {
-        setSearchFilter(search as string);
-      }
-    }
-  }, [routerSearch.search, routerSearch.filterBy]);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
     if (!subscription?.pitRecovery) {
@@ -1532,7 +1598,7 @@ const OverviewPageContent = () => {
     value: string,
     type = SecretType.Shared
   ) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       addPendingChange(
         {
           id: crypto.randomUUID(),
@@ -1619,7 +1685,7 @@ const OverviewPageContent = () => {
     skipMultilineEncoding?: boolean | null;
     originalValue?: string;
   }) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
 
       let batchSecretValue: string | undefined = value;
@@ -1735,7 +1801,7 @@ const OverviewPageContent = () => {
     secretId?: string,
     type = SecretType.Shared
   ) => {
-    if (isBatchModeActive) {
+    if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
 
       if (!existingSecret) {
@@ -2040,7 +2106,7 @@ const OverviewPageContent = () => {
         text: requiresApproval
           ? "Requested changes have been sent for review"
           : "Changes saved successfully",
-        type: "success"
+        type: requiresApproval ? "info" : "success"
       });
     },
     [singleVisibleEnv, projectId, secretPath, isProtectedBranch, queryClient, createCommit]
@@ -2200,6 +2266,21 @@ const OverviewPageContent = () => {
       getSecretRotationByName,
       getHoneyTokenByName
     ]
+  );
+
+  // folders move one at a time from the inline row action. build the per-env record (same shape the
+  // bulk move uses) for just this folder and open the move modal, which runs the eligibility check.
+  const handleMoveFolder = useCallback(
+    (folderName: string) => {
+      const folderByEnv: Record<string, TSecretFolder> = {};
+      userAvailableEnvs.forEach((env) => {
+        const folder = getFolderByNameAndEnv(folderName, env.slug);
+        if (folder) folderByEnv[env.slug] = folder;
+      });
+
+      handlePopUpOpen("moveFolder", { folders: { [folderName]: folderByEnv } });
+    },
+    [userAvailableEnvs, getFolderByNameAndEnv, handlePopUpOpen]
   );
 
   const toggleSelectAllRows = () => {
@@ -2413,6 +2494,7 @@ const OverviewPageContent = () => {
   const isTableFiltered = isFilteredByResources;
 
   const tableView = (() => {
+    if (userAvailableEnvs.length === 0) return "no-environments" as const;
     if (isTagFilterEmpty) return "tag-filter-empty" as const;
     if (isTableEmpty) {
       const cannotCreate = permission.cannot(
@@ -2617,6 +2699,30 @@ const OverviewPageContent = () => {
             </div>
           </CardHeader>
           <CardContent>
+            {relevantPendingApprovalsCount > 0 && (
+              <Alert variant="info" className="-mt-2 mb-3 py-1.5">
+                <AlertTitle className="flex items-center gap-3">
+                  <InfoIcon className="size-4 shrink-0 text-info" />
+                  <span>
+                    You have {relevantPendingApprovalsCount} pending secret change request
+                    {relevantPendingApprovalsCount === 1 ? "" : "s"}.
+                    {!canApproveAny &&
+                      " Once approved, your changes will be applied to this folder."}
+                  </span>
+                  {canApproveAny && (
+                    <Link
+                      to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                      params={{ orgId, projectId }}
+                      search={{ selectedTab: "approval-requests", requestId: "" }}
+                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-white underline underline-offset-2"
+                    >
+                      Review
+                      <ChevronRightIcon className="mt-px size-4" />
+                    </Link>
+                  )}
+                </AlertTitle>
+              </Alert>
+            )}
             {isSingleEnvView &&
               hasPathPolicies &&
               // eslint-disable-next-line no-nested-ternary
@@ -2671,6 +2777,20 @@ const OverviewPageContent = () => {
                   </AlertTitle>
                 </Alert>
               ) : null)}
+            {tableView === "no-environments" && (
+              <EmptyResourceDisplay
+                variant="no-environments"
+                onAddEnvironment={() => {
+                  if (isMoreEnvironmentsAllowed) {
+                    handlePopUpOpen("createEnvironment");
+                  } else {
+                    handlePopUpOpen("upgradePlan", {
+                      text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
+                    });
+                  }
+                }}
+              />
+            )}
             {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
             {tableView === "filter-empty" && (
               <EmptyResourceDisplay isFiltered={isTableFiltered || Boolean(searchFilter)} />
@@ -2681,7 +2801,7 @@ const OverviewPageContent = () => {
                   <div className="absolute top-2 right-3 z-50 mb-4 flex items-center justify-end gap-2">
                     {isProtectedBranch && (
                       <Tooltip>
-                        <TooltipTrigger>
+                        <TooltipTrigger asChild>
                           <Badge variant="info">
                             <LockIcon />
                             Protected
@@ -3085,6 +3205,7 @@ const OverviewPageContent = () => {
                                 onToggleFolderEdit={(name: string) =>
                                   handlePopUpOpen("updateFolder", { name, description })
                                 }
+                                onToggleFolderMove={(name: string) => handleMoveFolder(name)}
                                 onToggleFolderDelete={(name: string) =>
                                   handlePopUpOpen("deleteFolder", { name })
                                 }
@@ -3480,6 +3601,15 @@ const OverviewPageContent = () => {
           text={popUp.upgradePlan.data?.text}
         />
       )}
+      <AddEnvironmentModal
+        isOpen={popUp.createEnvironment.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
+        onComplete={async () => {
+          await queryClient.refetchQueries({
+            queryKey: projectKeys.getProjectById(projectId)
+          });
+        }}
+      />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
         environments={userAvailableSecretRotationEnvs}
@@ -3678,6 +3808,22 @@ const OverviewPageContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MoveSecretsModal
+        isOpen={popUp.moveFolder.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("moveFolder", isOpen)}
+        environments={userAvailableEnvs}
+        visibleEnvs={visibleEnvs}
+        projectId={projectId}
+        projectSlug={projectSlug}
+        sourceSecretPath={secretPath}
+        secrets={{}}
+        rotations={{}}
+        folders={
+          (popUp.moveFolder?.data as { folders: Record<string, Record<string, TSecretFolder>> })
+            ?.folders ?? {}
+        }
+        onComplete={() => handlePopUpClose("moveFolder")}
+      />
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}

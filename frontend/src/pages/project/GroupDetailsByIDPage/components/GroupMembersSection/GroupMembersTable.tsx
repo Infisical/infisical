@@ -3,8 +3,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronDownIcon, FilterIcon, HardDriveIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal, Lottie } from "@app/components/v2";
+import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { Lottie } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -24,15 +24,12 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useAssumeProjectPrivileges } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
@@ -91,9 +88,6 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     setUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
-
   const { data: groupMemberships, isPending } = useListGroupMembers({
     id: groupMembership.group.id,
     groupSlug: groupMembership.group.slug,
@@ -114,38 +108,6 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     offset,
     setPage
   });
-
-  const assumePrivileges = useAssumeProjectPrivileges();
-
-  const handleAssumePrivileges = async () => {
-    const { actorId, actorType } = popUp?.assumePrivileges?.data as {
-      actorId: string;
-      actorType: ActorType;
-    };
-    assumePrivileges.mutate(
-      {
-        actorId,
-        actorType,
-        projectId: currentProject.id
-      },
-      {
-        onSuccess: () => {
-          createNotification({
-            type: "success",
-            text:
-              actorType === ActorType.IDENTITY
-                ? "Machine identity privilege assumption has started"
-                : "User privilege assumption has started"
-          });
-
-          const url = getProjectHomePage(currentProject.type, currentProject.environments);
-          window.location.assign(
-            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
-          );
-        }
-      }
-    );
-  };
 
   const filterOptions = [
     {
@@ -278,14 +240,11 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
           onChangePerPage={handlePerPageChange}
         />
       )}
-      <ConfirmActionModal
+      <AssumePrivilegesModal
         isOpen={popUp.assumePrivileges.isOpen}
-        confirmKey="assume"
-        title={`Do you want to assume privileges of this ${popUp.assumePrivileges?.data?.actorType === ActorType.IDENTITY ? "machine identity" : "user"}?`}
-        subTitle={`This will set your privileges to those of the ${popUp.assumePrivileges?.data?.actorType === ActorType.IDENTITY ? "machine identity" : "user"} for the next hour.`}
-        onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
-        onConfirmed={handleAssumePrivileges}
-        buttonText="Confirm"
+        onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+        actorType={(popUp.assumePrivileges.data as { actorType: ActorType })?.actorType}
+        actorId={(popUp.assumePrivileges.data as { actorId: string })?.actorId}
       />
     </>
   );

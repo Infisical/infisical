@@ -17,6 +17,7 @@ import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
+import { TConvexConnection } from "./convex-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
 import { TDbtConnection } from "./dbt-connection";
@@ -26,11 +27,13 @@ import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TDopplerConnection } from "./doppler-connection";
 import { TExternalInfisicalConnection } from "./external-infisical-connection";
+import { TF5BigIpConnection } from "./f5-big-ip-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { TGitLabConnection } from "./gitlab-connection";
+import { TGoDaddyConnection } from "./godaddy-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -61,6 +64,7 @@ import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TTravisCIConnection } from "./travis-ci-connection";
+import { TTriggerDevConnection } from "./trigger-dev-connection";
 import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -83,6 +87,7 @@ export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
+export * from "./convex-connection";
 export * from "./databricks-connection";
 export * from "./datadog-connection";
 export * from "./dbt-connection";
@@ -91,6 +96,7 @@ export * from "./digicert-connection";
 export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
 export * from "./external-infisical-connection";
+export * from "./f5-big-ip-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -126,6 +132,7 @@ export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./travis-ci-connection";
+export * from "./trigger-dev-connection";
 export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
@@ -195,10 +202,14 @@ export type TAppConnection =
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
+  | TGoDaddyConnection
   | TTravisCIConnection
   | TSalesforceConnection
   | TSnowflakeConnection
-  | TDatadogConnection;
+  | TDatadogConnection
+  | TF5BigIpConnection
+  | TConvexConnection
+  | TTriggerDevConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

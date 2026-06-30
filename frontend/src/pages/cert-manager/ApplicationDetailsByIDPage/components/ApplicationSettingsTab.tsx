@@ -477,9 +477,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         <span>
           No certificate profiles exist yet. Create one in{" "}
           <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+            to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
             params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-            search={{ selectedTab: "certificate-profiles" }}
             className="text-primary underline hover:text-primary/80"
           >
             Certificate Profiles

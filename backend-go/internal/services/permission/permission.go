@@ -576,12 +576,16 @@ func (s *Service) getPermission(ctx context.Context, params *getPermissionParams
 		where.Add("membership.scope = 'project'").Add(`membership."scopeProjectId" = @projectID`)
 	}
 
-	// Build additional privilege join condition
+	// Build additional privilege join condition.
+	// Match the privilege against the request's actor literal, not against
+	// membership.actor*Id. Group-derived memberships have actorUserId/actorIdentityId
+	// NULL, so the column-to-column predicate dropped privileges for any user/identity
+	// whose only project access is via a group.
 	apJoinCond := qb.NewWhere()
 	if params.ActorType == auth.ActorTypeIdentity {
-		apJoinCond.Add(`membership."actorIdentityId" = addlPriv."actorIdentityId"`)
+		apJoinCond.Add(`addlPriv."actorIdentityId" = @actorID`)
 	} else {
-		apJoinCond.Add(`membership."actorUserId" = addlPriv."actorUserId"`)
+		apJoinCond.Add(`addlPriv."actorUserId" = @actorID`)
 	}
 	if params.Scope == AccessScopeOrganization {
 		apJoinCond.Add(`membership."scopeOrgId" = addlPriv."orgId"`)

@@ -1,6 +1,6 @@
 # infisical-standalone
 
-![Version: 1.4.0](https://img.shields.io/badge/Version-1.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
+![Version: 1.9.0](https://img.shields.io/badge/Version-1.9.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
 
 A helm chart to deploy Infisical
 
@@ -23,6 +23,11 @@ A helm chart to deploy Infisical
 | infisical.databaseSchemaMigrationJob.image.tag | string | `"no-root-v2.0"` | Image tag version |
 | infisical.deploymentAnnotations | object | `{}` | Custom annotations for Infisical deployment |
 | infisical.enabled | bool | `true` |  |
+| infisical.extraContainers | list | `[]` | Additional containers to run alongside the Infisical container (sidecars). Useful for running auxiliary services like HSM PKCS#11 clients |
+| infisical.extraEnv | list | `[]` | Extra environment variables to set on the Infisical container |
+| infisical.extraInitContainers | list | `[]` | Additional init containers to run before the Infisical container starts |
+| infisical.extraVolumeMounts | list | `[]` | Additional volume mounts for the Infisical container |
+| infisical.extraVolumes | list | `[]` | Additional volumes to attach to the Infisical pods |
 | infisical.fullnameOverride | string | `""` | Override for the full name of Infisical resources in this deployment |
 | infisical.image.imagePullSecrets | list | `[]` | Secret references for pulling the image, if needed |
 | infisical.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not already present on the node |

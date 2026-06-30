@@ -107,6 +107,39 @@ infisical:
       # -- CPU request for Infisical container
       cpu: 350m
 
+  # -- Additional containers to run alongside the Infisical container (sidecars).
+  # -- Useful for running auxiliary services like HSM PKCS#11 clients.
+  # -- Example:
+  # -- extraContainers:
+  # --   - name: hsm-client
+  # --     image: my-hsm-client:latest
+  # --     volumeMounts:
+  # --       - name: pkcs11-socket
+  # --         mountPath: /var/run/hsm
+  extraContainers: []
+
+  # -- Additional init containers to run before the Infisical container starts.
+  # -- Example:
+  # -- extraInitContainers:
+  # --   - name: wait-for-hsm
+  # --     image: busybox:latest
+  # --     command: ['sh', '-c', 'until nc -z hsm-host 9004; do sleep 2; done']
+  extraInitContainers: []
+
+  # -- Additional volumes to attach to the Infisical pods.
+  # -- Example:
+  # -- extraVolumes:
+  # --   - name: pkcs11-socket
+  # --     emptyDir: {}
+  extraVolumes: []
+
+  # -- Additional volume mounts for the Infisical container.
+  # -- Example:
+  # -- extraVolumeMounts:
+  # --   - name: pkcs11-socket
+  # --     mountPath: /var/run/hsm
+  extraVolumeMounts: []
+
 ingress:
   # -- Enable or disable ingress configuration
   enabled: true

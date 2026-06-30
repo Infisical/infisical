@@ -47,6 +47,10 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 
 		    ![custom provider](/images/platform/audit-log-streams/custom-provider.png)
 
+				<Info>
+				    Custom endpoints receive audit logs as a **JSON array of events** per request (batch delivery). Make sure your receiver accepts an array. See [Delivery Format](#delivery-format) for details.
+				</Info>
+
 				Once you're finished, click **Create Log Stream**.
 		</Step>
 		<Step title="Log Stream Created">
@@ -334,7 +338,61 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
     </Accordion>
 </AccordionGroup>
 
+## Delivery Reliability and Failure Handling
+
+Audit log delivery is decoupled from the action that produced the event. When something happens in Infisical, the event is first recorded as an audit log and durably queued for streaming, and only then delivered to your configured destinations in the background. A streaming failure never blocks or rolls back the underlying action, and a temporary outage at your destination does not lose events that were already queued.
+
+### What happens when an event fails to be pushed to a stream?
+
+If a delivery attempt to your destination fails, the event is **not** discarded immediately. Instead:
+
+1. **Automatic retries with backoff.** The event is retried automatically up to **5 attempts**. Retries use exponential backoff with jitter (starting at 30 seconds and capping at roughly 4 minutes between attempts) so a struggling or rate-limiting destination is not hammered.
+2. **Exhaustion.** If all 5 attempts fail, the event is dropped from the stream. The drop is surfaced for observability through logs and metrics.
+
+<Note>
+    Dropping an event from a **stream** after exhausting retries does **not** remove it from Infisical's own audit log storage. The event remains queryable in Infisical (see backfilling below) as long as audit log storage is enabled.
+</Note>
+
+### Can I manually retry a failed event?
+
+There is no manual "retry" or "replay" button so far, and retries are not something you trigger yourself. Retrying is fully **automatic**, as described above: every event is retried up to 5 times with backoff, and crashed or stalled deliveries are automatically recovered by the background sweeper. In practice, transient destination outages recover on their own once the destination is reachable again, with no action required on your side.
+
+### How can I backfill lost events into my SIEM?
+
+Because streaming is best-effort with bounded retries, your durable source of truth for compliance is Infisical's own audit log storage, not the stream. To backfill events that were dropped (or that occurred while a stream was misconfigured or disabled), re-ingest them from Infisical's stored audit logs:
+
+1. **Identify the gap.** Use error logs (self-hosted), or the time range of the destination outage, to determine which window of events is missing from your SIEM.
+2. **Export the events from Infisical.** Query the missing window from Infisical's audit logs, filtered by event type, actor, project, and date range:
+   - In the UI, under **Organization Settings → Audit Logs**.
+   - Via the [Export Audit Logs API](/api-reference/endpoints/audit-logs/export-audit-log), which returns events in the same structure shown below and can be paginated over the affected time range.
+3. **Re-ingest into your SIEM.** Push the exported events into your SIEM using its native ingestion API. The exported fields match the [audit log structure](#audit-logs-structure) below, so the same parsing and transformation rules you already use for the live stream apply to backfilled events.
+
+<Warning>
+    Backfilling depends on the events still being stored in Infisical. If you have set `DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true` and are not using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), the stream is your **only** sink and dropped events cannot be recovered. Keep at least one durable audit log store (PostgreSQL or ClickHouse) enabled if you rely on streams for compliance. Also note that backfilling is bounded by your plan's audit log **retention period**: events older than your retention window are no longer available to export.
+</Warning>
+
+## Delivery Format
+
+Infisical streams audit logs to your destination in **batches**. Rather than sending one HTTP request per event, Infisical accumulates events and delivers them together, which improves throughput and reduces load on your receiver.
+
+For **Custom** streams, each request is an HTTP `POST` with a body containing a **JSON array** of audit log events:
+
+```json
+[
+  { "id": "...", "eventType": "create-secret", "...": "..." },
+  { "id": "...", "eventType": "get-secrets", "...": "..." }
+]
+```
+
+Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk) are batched automatically using each provider's native bulk-ingestion format.
+
+<Note>
+    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, and Splunk providers always batch and have no single-event mode.
+</Note>
+
 ### Example Log Entry
+
+The example below shows a single audit log event. For Custom streams using batch delivery, this object appears as an element inside the JSON array described above.
 
 ```created-secret.json
 {

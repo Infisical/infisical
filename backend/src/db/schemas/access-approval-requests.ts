@@ -26,7 +26,8 @@ export const AccessApprovalRequestsSchema = z.object({
   approvedAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
   approvedByUserId: z.string().uuid().nullable().optional(),
-  revokedByUserId: z.string().uuid().nullable().optional()
+  revokedByUserId: z.string().uuid().nullable().optional(),
+  bypassReason: z.string().nullable().optional()
 });
 
 export type TAccessApprovalRequests = z.infer<typeof AccessApprovalRequestsSchema>;

@@ -13,3 +13,9 @@ export const DIGICERT_FINAL_ISSUED_STATUSES = [DigiCertOrderStatus.Issued] as co
 export enum DigiCertProcessorOutcome {
   Skipped = "skipped"
 }
+
+export enum DigiCertPollOutcome {
+  Issued = "issued",
+  Pending = "pending",
+  Failed = "failed"
+}

@@ -73,6 +73,7 @@ import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/ty
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
+  adminQueryKeys,
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
@@ -82,8 +83,9 @@ import {
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
-import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
+import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
   ApplicationSelect,
@@ -96,12 +98,6 @@ import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
-
-const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.groups) return "Enterprise";
-  if (subscription.pitRecovery) return "Pro";
-  return "Free";
-};
 
 const getFormattedSupportEmailLink = (variables: {
   org_id: string;
@@ -221,10 +217,12 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
+    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
     await navigateUserToOrg({ navigate, organizationId, navigateTo });
     queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
@@ -619,7 +617,7 @@ export const Navbar = () => {
         </Tooltip>
       ) : (
         <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-          {getPlan(subscription)}
+          {getSubscriptionPlanLabel(subscription)}
         </Badge>
       )}
       <VersionBadge />

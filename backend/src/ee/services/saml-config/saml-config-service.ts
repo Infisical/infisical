@@ -41,6 +41,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
@@ -70,7 +71,7 @@ type TSamlConfigServiceFactoryDep = {
     | "findUserEncKeyByUserId"
     | "findUserEncKeyByUserIdsBatch"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
@@ -550,6 +551,11 @@ export const samlConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
+    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
+    // separate email-verification step (the email-domain ownership check above already proves the
+    // org owns this domain, and password signup is blocked for enforced domains).
+    const skipEmailVerification = Boolean(organization.authEnforced);
+
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
@@ -565,7 +571,16 @@ export const samlConfigServiceFactory = ({
         orgId,
         emailDomainDAL
       });
+      // A stale, still-unverified alias may point at another user's account. Don't mutate that
+      // account's org membership / identity metadata / group state until the IdP proves control of
+      // it (the email-verification fallback below issues no session). This guard must run before the
+      // mutations, not just before ensureSsoAccountVerified at the end.
+      const isStaleAlias = isStaleSsoAlias({ user: foundUser, userAlias, assertedEmail: sanitizedEmail });
       user = await userDAL.transaction(async (tx) => {
+        if (isStaleAlias) {
+          return foundUser;
+        }
+
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -641,7 +656,8 @@ export const samlConfigServiceFactory = ({
             {
               username: sanitizedEmail,
               email: sanitizedEmail,
-              isEmailVerified: false,
+              isEmailVerified: skipEmailVerification,
+              isAccepted: skipEmailVerification,
               firstName,
               lastName,
               authMethods: [],
@@ -650,6 +666,8 @@ export const samlConfigServiceFactory = ({
             tx
           );
           isNewUser = true;
+        } else if (!newUser.firstName && firstName) {
+          newUser = await userDAL.updateById(newUser.id, { firstName, ...(lastName ? { lastName } : {}) }, tx);
         }
 
         userAlias = await userAliasDAL.create(
@@ -659,7 +677,7 @@ export const samlConfigServiceFactory = ({
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
-            isEmailVerified: false
+            isEmailVerified: skipEmailVerification
           },
           tx
         );
@@ -745,7 +763,18 @@ export const samlConfigServiceFactory = ({
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    if (user.email && !userAlias.isEmailVerified) {
+    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
+    if (skipEmailVerification) {
+      ({ user, userAlias } = await ensureSsoAccountVerified({
+        user,
+        userAlias,
+        assertedEmail: sanitizedEmail,
+        userDAL,
+        userAliasDAL
+      }));
+    }
+
+    if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,

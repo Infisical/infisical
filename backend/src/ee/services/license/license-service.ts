@@ -17,6 +17,9 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TDualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
+import { projectV2ToFeatureSet } from "@app/services/license-client/dual-read/entitlement-projection";
+import { TLicenseClientFactory } from "@app/services/license-client/license-client";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -51,13 +54,22 @@ import {
 type TLicenseServiceFactoryDep = {
   envConfig: Pick<
     TEnvConfig,
-    "LICENSE_SERVER_URL" | "LICENSE_SERVER_KEY" | "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "INTERNAL_REGION" | "SITE_URL"
+    | "LICENSE_SERVER_URL"
+    | "LICENSE_SERVER_KEY"
+    | "LICENSE_KEY"
+    | "LICENSE_KEY_OFFLINE"
+    | "INTERNAL_REGION"
+    | "SITE_URL"
+    | "LICENSE_SERVER_V2_MODE"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
   >;
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   projectDAL: TProjectDALFactory;
+  licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription" | "refreshEntitlements">;
+  licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -65,13 +77,19 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
+// A self-hosted v2 license is single-tenant: the license key identifies the tenant, so entitlement
+// reads carry no real org id. This fixed id only keys the local entitlement cache for the instance.
+const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
+
 export const licenseServiceFactory = ({
   orgDAL,
   permissionService,
   licenseDAL,
   keyStore,
   projectDAL,
-  envConfig
+  envConfig,
+  licenseClient,
+  licenseDualRead
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
@@ -103,7 +121,7 @@ export const licenseServiceFactory = ({
         data: { currentPlan }
       } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
 
-      const workspacesUsed = await projectDAL.countOfOrgProjects(null);
+      const workspacesUsed = await projectDAL.countOfBillableOrgProjects(null);
       currentPlan.workspacesUsed = workspacesUsed;
 
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
@@ -125,12 +143,73 @@ export const licenseServiceFactory = ({
     }
   };
 
+  // Self-hosted equivalent of syncLicenseKeyOnPremFeatures, but sourced from License Server v2: project
+  // the license's entitlements into the v1 feature shape and refresh the instance-wide onPremFeatures.
+  const syncSelfHostedV2Features = async (shouldThrow: boolean = false) => {
+    logger.info("Start syncing self-hosted license features from License Server v2");
+    try {
+      if (!licenseClient) {
+        throw new BadRequestError({ message: "License Server v2 client is not configured" });
+      }
+
+      const entitlements = await licenseClient.getEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
+      if (!entitlements) {
+        throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
+      }
+      const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+
+      // The entitlement projection only carries feature flags; derive the plan tier from the
+      // subscription/contract view. Non-fatal so a subscription read failure keeps the features.
+      try {
+        const subscription = await licenseClient.getSubscription(SELF_HOSTED_LICENSE_ORG_ID);
+        const paidTiers = (subscription?.items ?? [])
+          .map((item) => item.plan.toLowerCase())
+          .filter((tier) => tier !== "free");
+        if (paidTiers.some((tier) => tier.includes("enterprise"))) {
+          currentPlan.slug = "enterprise";
+        } else if (paidTiers.length > 0) {
+          currentPlan.slug = "pro";
+        }
+      } catch (error) {
+        logger.error(error, "syncSelfHostedV2Features: failed to resolve plan tier from subscription");
+      }
+
+      // Usage is instance-wide for self-hosted (null orgId aggregates the whole instance), as in the v1 sync.
+      currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(null);
+      currentPlan.membersUsed = await licenseDAL.countOfOrgMembers(null);
+      currentPlan.identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(null);
+
+      onPremFeatures = currentPlan;
+      logger.info("Successfully synced self-hosted license features from License Server v2");
+    } catch (error) {
+      logger.error(error, "Failed to sync self-hosted license features from License Server v2");
+      if (shouldThrow) throw error;
+    }
+  };
+
   const init = async () => {
     try {
+      if (envConfig.LICENSE_SERVER_V2_SERVICE_KEY) {
+        instanceType = InstanceType.Cloud;
+        logger.info(`Instance type: ${InstanceType.Cloud}`);
+        isValidLicense = true;
+        return;
+      }
+
       if (envConfig.LICENSE_SERVER_KEY) {
         const token = await licenseServerCloudApi.refreshLicense();
         if (token) instanceType = InstanceType.Cloud;
         logger.info(`Instance type: ${InstanceType.Cloud}`);
+        isValidLicense = true;
+        return;
+      }
+
+      // New self-hosted key (prefix "infisical_lk_") resolves features from License Server v2. The key
+      // authenticates directly (no on-prem login handshake); a successful entitlements sync validates it.
+      if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.OnlineV2) {
+        await syncSelfHostedV2Features(true);
+        instanceType = InstanceType.EnterpriseOnPremV2;
+        logger.info(`Instance type: ${InstanceType.EnterpriseOnPremV2}`);
         isValidLicense = true;
         return;
       }
@@ -194,6 +273,12 @@ export const licenseServiceFactory = ({
       job.start();
       return job;
     }
+    if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.OnlineV2) {
+      logger.info("Setting up background sync process for refresh onPremFeatures from License Server v2");
+      const job = new CronJob("*/10 * * * *", () => syncSelfHostedV2Features());
+      job.start();
+      return job;
+    }
   };
 
   const getPlan = async (orgId: string, projectId?: string) => {
@@ -210,19 +295,55 @@ export const licenseServiceFactory = ({
         if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
         const rootOrgId = org.id;
 
-        const {
-          data: { currentPlan }
-        } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
-        );
-        const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
-        currentPlan.workspacesUsed = workspacesUsed;
+        let currentPlan: TFeatureSet;
+        if (envConfig.LICENSE_SERVER_V2_MODE === "on") {
+          // Serve from License Server v2, projected into the v1 plan shape so getPlan callers are unchanged.
+          if (!licenseClient) {
+            throw new BadRequestError({ message: "License Server v2 client is not configured" });
+          }
+          const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
+          if (!entitlements) {
+            throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
+          }
+          currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+
+          // The entitlement projection only carries feature flags, so set the plan slug from the
+          // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
+          // it non-fatal so a subscription read failure doesn't drop the org to the free fallback.
+          try {
+            const subscription = await licenseClient.getSubscription(rootOrgId);
+            const paidTiers = (subscription?.items ?? [])
+              .map((item) => item.plan.toLowerCase())
+              .filter((tier) => tier !== "free");
+            if (paidTiers.some((tier) => tier.includes("enterprise"))) {
+              currentPlan.slug = "enterprise";
+            } else if (paidTiers.length > 0) {
+              currentPlan.slug = "pro";
+            }
+          } catch (error) {
+            logger.error(error, `getPlan: failed to resolve plan tier from subscription [orgId=${rootOrgId}]`);
+          }
+        } else {
+          const {
+            data: { currentPlan: v1Plan }
+          } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
+            `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
+          );
+          currentPlan = v1Plan;
+        }
+
+        currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
 
         const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
         currentPlan.membersUsed = membersUsed;
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
 
-        if (currentPlan?.identitiesUsed && currentPlan.identitiesUsed !== identityUsed) {
+        // Seat sync targets the v1 license server only; v2 derives usage from registered counters.
+        if (
+          envConfig.LICENSE_SERVER_V2_MODE !== "on" &&
+          currentPlan?.identitiesUsed &&
+          currentPlan.identitiesUsed !== identityUsed
+        ) {
           try {
             await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
               quantity: membersUsed,
@@ -242,6 +363,11 @@ export const licenseServiceFactory = ({
           KeyStoreTtls.LicenseCloudPlanInSeconds,
           JSON.stringify(currentPlan)
         );
+
+        // read-compare bake: serve v1 but shadow-compare against v2 in the background ahead of the cutover.
+        if (envConfig.LICENSE_SERVER_V2_MODE === "read-compare") {
+          licenseDualRead?.compareInBackground(rootOrgId, currentPlan);
+        }
 
         return currentPlan;
       }
@@ -270,10 +396,15 @@ export const licenseServiceFactory = ({
     if (instanceType === InstanceType.EnterpriseOnPrem) {
       await syncLicenseKeyOnPremFeatures(true);
     }
+    if (instanceType === InstanceType.EnterpriseOnPremV2) {
+      // Bust the license server's cached entitlements (e.g. after a license change), then re-sync.
+      await licenseClient?.refreshEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
+      await syncSelfHostedV2Features(true);
+    }
   };
 
   const generateOrgCustomerId = async (orgName: string, email?: string | null) => {
-    if (instanceType === InstanceType.Cloud) {
+    if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
       const {
         data: { customerId }
       } = await licenseServerCloudApi.request.post<{ customerId: string }>(
@@ -297,7 +428,7 @@ export const licenseServiceFactory = ({
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     const rootOrgId = org.id;
-    if (instanceType === InstanceType.Cloud) {
+    if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
       const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
       if (org?.customerId) {
@@ -316,6 +447,11 @@ export const licenseServiceFactory = ({
         usedSeats,
         usedIdentitySeats
       });
+    } else if (instanceType === InstanceType.EnterpriseOnPremV2) {
+      // v2 self-hosted reports usage asynchronously via the usage-snapshot queue, not a synchronous seat
+      // patch; keep the in-memory counts current so limit checks are accurate until the next sync.
+      onPremFeatures.membersUsed = await licenseDAL.countOfOrgMembers(null, tx);
+      onPremFeatures.identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(null, tx);
     }
     await refreshPlan(rootOrgId);
   };
@@ -475,7 +611,7 @@ export const licenseServiceFactory = ({
     const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
       orgDAL.countAllOrgMembers(orgId),
       licenseDAL.countOfOrgIdentities(orgId),
-      projectDAL.countOfOrgProjects(orgId)
+      projectDAL.countOfBillableOrgProjects(orgId)
     ]);
 
     return {

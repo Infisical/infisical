@@ -71,7 +71,7 @@ Infisical supports two methods for connecting to AWS.
                     This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
 
                     Infisical automatically sends the correct External ID based on the connection’s scope:
-                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project.
+                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project. **Certificate Manager** connections use the **Organization ID** as the External ID.
                     - **Organization-scoped connections** use the **Organization ID** as the External ID.
 
                     <strong>Always enable "Require external ID" when setting up the IAM Role, and use the ID that matches your connection’s scope.</strong>
@@ -505,6 +505,13 @@ Infisical supports two methods for connecting to AWS.
                         3. Select the **Assume Role** method option and provide the **AWS IAM Role ARN** obtained from the previous step and press **Connect to AWS**.
                         ![Create AWS Connection](/images/app-connections/aws/create-assume-role-method.png)
 
+                        <Note>
+                            The optional **STS Endpoint URL** field lets you override the default AWS STS endpoint that Infisical
+                            calls to assume the role. Provide an HTTPS URL (for example a VPC PrivateLink, GovCloud, China, FIPS,
+                            or region-pinned STS endpoint) when the default `https://sts.amazonaws.com` is not reachable or desired.
+                            Leave it blank to use AWS's default endpoint resolution.
+                        </Note>
+
                         4. Your **AWS Connection** is now available for use.
                         ![Assume Role AWS Connection](/images/app-connections/aws/assume-role-connection.png)
                     </Tab>
@@ -524,6 +531,7 @@ Infisical supports two methods for connecting to AWS.
                                     "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                                     "credentials": {
                                         "roleArn": "...",
+                                        "stsEndpoint": "https://sts.amazonaws.com"
                                     }
                                 }'
                         ```

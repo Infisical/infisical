@@ -9,7 +9,8 @@ import {
   getGitHubInstanceApiUrl,
   GitHubConnectionMethod,
   makePaginatedGitHubRequest,
-  requestWithGitHubGateway
+  requestWithGitHubGateway,
+  TGitHubAppCredentialResolverDeps
 } from "@app/services/app-connection/github";
 import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -25,7 +26,8 @@ const getEncryptedSecrets = async (
   secretSync: TGitHubSyncWithCredentials,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  gitHubAppDeps: TGitHubAppCredentialResolverDeps
 ) => {
   const { destinationConfig, connection } = secretSync;
 
@@ -52,6 +54,7 @@ const getEncryptedSecrets = async (
     gatewayV2Service,
     gatewayPoolService,
     path,
+    gitHubAppDeps,
     (data) => data.secrets
   );
 };
@@ -233,7 +236,8 @@ export const GithubSyncFns = {
     ogSecretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+    gitHubAppDeps: TGitHubAppCredentialResolverDeps
   ) => {
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
@@ -279,7 +283,13 @@ export const GithubSyncFns = {
         token = connection.credentials.personalAccessToken;
         break;
       default:
-        token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
+        token = await getGitHubAppAuthToken(
+          connection,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService,
+          gitHubAppDeps
+        );
     }
 
     const resolvedSync = { ...secretSync, connection };
@@ -287,7 +297,8 @@ export const GithubSyncFns = {
       resolvedSync,
       gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
     const publicKey = await getPublicKey(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token);
 
@@ -334,7 +345,8 @@ export const GithubSyncFns = {
     ogSecretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+    gitHubAppDeps: TGitHubAppCredentialResolverDeps
   ) => {
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
@@ -355,14 +367,21 @@ export const GithubSyncFns = {
         token = connection.credentials.personalAccessToken;
         break;
       default:
-        token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
+        token = await getGitHubAppAuthToken(
+          connection,
+          gatewayService,
+          gatewayV2Service,
+          gatewayPoolService,
+          gitHubAppDeps
+        );
     }
 
     const encryptedSecrets = await getEncryptedSecrets(
       resolvedSync,
       gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
 
     for await (const encryptedSecret of encryptedSecrets) {

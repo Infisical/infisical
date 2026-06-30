@@ -44,6 +44,7 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
 
@@ -241,6 +242,15 @@ export enum ProjectPermissionAppConnectionActions {
   RotateCredentials = "rotate-credentials"
 }
 
+export enum ProjectPermissionHsmConnectorActions {
+  Read = "read-hsm-connectors",
+  Create = "create-hsm-connectors",
+  Edit = "edit-hsm-connectors",
+  Delete = "delete-hsm-connectors",
+  Test = "test-hsm-connectors",
+  Attach = "attach-hsm-connectors"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -362,7 +372,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
-  | ProjectPermissionSub.Commits;
+  | ProjectPermissionSub.Commits
+  | ProjectPermissionSub.HoneyTokens;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -451,6 +462,7 @@ export enum ProjectPermissionSub {
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
+  HsmConnectors = "hsm-connectors",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
   PamDomains = "pam-domains",
@@ -495,6 +507,11 @@ export type DynamicSecretSubjectFields = {
 };
 
 export type SecretImportSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type HoneyTokenSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -733,6 +750,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ]
+  | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
   | [
       ProjectPermissionActions,
@@ -757,7 +775,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
+  | [
+      ProjectPermissionHoneyTokenActions,
+      (
+        | ProjectPermissionSub.HoneyTokens
+        | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+      )
+    ]
   | [
       ProjectPermissionMcpEndpointActions,
       (

@@ -13,12 +13,116 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
+import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-types";
+
+export type TGitHubAppCredentialResolverDeps = {
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+type TResolvedGitHubAppCredentials = {
+  appId: string;
+  slug: string;
+  clientId: string;
+  clientSecret: string;
+  privateKey: string;
+  host: string | null;
+  instanceType: "cloud" | "server" | null;
+};
+
+export const resolveGitHubAppCredentials = async (
+  {
+    gitHubAppId,
+    orgId,
+    projectId
+  }: {
+    gitHubAppId?: string | null;
+    orgId: string;
+    projectId?: string | null;
+  },
+  { gitHubAppDAL, kmsService }: TGitHubAppCredentialResolverDeps
+): Promise<TResolvedGitHubAppCredentials> => {
+  if (gitHubAppId) {
+    const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
+    if (!app || (projectId !== undefined && app.projectId && app.projectId !== projectId)) {
+      throw new BadRequestError({
+        message: `GitHub App with id ${gitHubAppId} not found in this ${projectId ? "project" : "organization"}.`
+      });
+    }
+
+    // Project-scoped apps are encrypted with the project's data key, org-scoped apps with the
+    // org's, mirroring how app connection credentials are encrypted per scope.
+    const { decryptor } = await kmsService.createCipherPairWithDataKey(
+      app.projectId
+        ? { type: KmsDataKey.SecretManager, projectId: app.projectId }
+        : { type: KmsDataKey.Organization, orgId }
+    );
+
+    return {
+      appId: app.appId,
+      slug: app.slug,
+      clientId: app.clientId,
+      clientSecret: decryptor({ cipherTextBlob: app.encryptedClientSecret }).toString(),
+      privateKey: decryptor({ cipherTextBlob: app.encryptedPrivateKey }).toString(),
+      host: app.host ?? null,
+      instanceType: (app.instanceType as "cloud" | "server" | undefined) ?? "cloud"
+    };
+  }
+
+  const {
+    INF_APP_CONNECTION_GITHUB_APP_ID,
+    INF_APP_CONNECTION_GITHUB_APP_SLUG,
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
+    INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
+    INF_APP_CONNECTION_GITHUB_APP_HOST
+  } = getConfig();
+
+  if (
+    !INF_APP_CONNECTION_GITHUB_APP_ID ||
+    !INF_APP_CONNECTION_GITHUB_APP_SLUG ||
+    !INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID ||
+    !INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET ||
+    !INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+  ) {
+    const missingEnvVars = Object.entries({
+      INF_APP_CONNECTION_GITHUB_APP_ID,
+      INF_APP_CONNECTION_GITHUB_APP_SLUG,
+      INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+      INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
+      INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY
+    })
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    throw new InternalServerError({
+      message: `GitHub App environment variables have not been configured. Missing: ${missingEnvVars.join(", ")}`
+    });
+  }
+
+  // Bind the shared app to its server-configured host (defaults to github.com).
+  // This prevents callers from redirecting the OAuth exchange to an arbitrary host
+  // and receiving the shared client secret.
+  const sharedAppHost = INF_APP_CONNECTION_GITHUB_APP_HOST ?? null;
+
+  return {
+    appId: INF_APP_CONNECTION_GITHUB_APP_ID,
+    slug: INF_APP_CONNECTION_GITHUB_APP_SLUG,
+    clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
+    clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
+    privateKey: INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY,
+    host: sharedAppHost,
+    instanceType: null
+  };
+};
 
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
@@ -43,10 +147,25 @@ export const getGitHubInstanceApiUrl = async (config: {
   if (config.credentials.instanceType === "server") {
     apiBase = `${host}/api/v3`;
   } else {
+    await blockLocalAndPrivateIpAddresses(`https://api.${host}`);
     apiBase = `api.${host}`;
   }
 
   return apiBase;
+};
+
+export const PLATFORM_GITHUB_CREDENTIAL_HOST = "github.com";
+
+export const assertPlatformGitHubHostAllowed = (host?: string | null) => {
+  const { isCloud } = getConfig();
+  const normalizedHost = (host || PLATFORM_GITHUB_CREDENTIAL_HOST).trim().toLowerCase();
+
+  if (isCloud && normalizedHost !== PLATFORM_GITHUB_CREDENTIAL_HOST) {
+    throw new BadRequestError({
+      message:
+        "GitHub App and OAuth connections to a custom host (e.g. GitHub Enterprise Server) are only supported on self-hosted Infisical, where you can register your own GitHub App. To use a custom host, self-host Infisical — or use the Personal Access Token method on Infisical Cloud."
+    });
+  }
 };
 
 export const getGitHubGatewayConnectionDetails = async (
@@ -79,12 +198,18 @@ export const requestWithGitHubGateway = async <T>(
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
-  // If gateway isn't set up, don't proxy request
-  if (!gatewayId) {
-    return httpRequest.request(requestConfig);
+  if (!requestConfig.url) {
+    throw new BadRequestError({ message: "GitHub connection request is missing a target URL" });
   }
 
-  const url = new URL(requestConfig.url as string);
+  // If no gateway is configured, issue the request directly through safeRequest, which validates
+  // the target host (including server-provided pagination URLs), pins the connection to the
+  // validated IPs, and disables redirect following.
+  if (!gatewayId) {
+    return safeRequest.request<T>({ ...requestConfig, url: requestConfig.url });
+  }
+
+  const url = new URL(requestConfig.url);
 
   await blockLocalAndPrivateIpAddresses(url.toString());
 
@@ -173,41 +298,65 @@ export const requestWithGitHubGateway = async <T>(
   );
 };
 
-export const getGitHubAppAuthToken = async (
-  appConnection: TGitHubConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
-) => {
-  const appCfg = getConfig();
-  const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
-  let appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
-
-  if (!appId || !appPrivateKey) {
-    throw new InternalServerError({
-      message: `GitHub App keys are not configured.`
-    });
-  }
-
-  appPrivateKey = appPrivateKey
+export const signGitHubAppJwt = (appId: string, privateKey: string) => {
+  const appPrivateKey = privateKey
     .split("\n")
     .map((line) => line.trim())
     .join("\n");
 
+  const now = Math.floor(Date.now() / 1000);
+  // Backdate iat by 60s per GitHub's recommendation — GitHub rejects app JWTs whose iat is in the
+  // future relative to their clock, so a slightly fast server clock would cause intermittent 401s.
+  return crypto.jwt().sign({ iat: now - 60, exp: now + 5 * 60, iss: appId }, appPrivateKey, { algorithm: "RS256" });
+};
+
+export const buildGitHubAppJwtHeaders = (appJwt: string) => ({
+  Accept: "application/vnd.github+json",
+  Authorization: `Bearer ${appJwt}`,
+  "X-GitHub-Api-Version": "2022-11-28"
+});
+
+export const getGitHubAppAuthToken = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
+) => {
   if (appConnection.method !== GitHubConnectionMethod.App) {
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iat: now,
-    exp: now + 5 * 60,
-    iss: appId
-  };
+  const {
+    appId,
+    privateKey,
+    host: appHost,
+    instanceType: appInstanceType
+  } = await resolveGitHubAppCredentials(
+    {
+      gitHubAppId: appConnection.credentials.gitHubAppId,
+      orgId: appConnection.orgId,
+      projectId: appConnection.projectId ?? null
+    },
+    deps
+  );
 
-  const appJwt = crypto.jwt().sign(payload, appPrivateKey, { algorithm: "RS256" });
+  // Always target the server-configured host the app is bound to, never the host stored on the
+  // connection — the signed app JWT (and any installation token minted from it) must never leave
+  // for a host that isn't the app's own. For an org-managed app this is the host on the app record;
+  // for the shared instance app it's INF_APP_CONNECTION_GITHUB_APP_HOST (null = github.com). The
+  // caller-supplied connection host is never trusted for either. instanceType is authoritative only
+  // for org-managed apps; the shared app's instanceType still comes from the connection, since it
+  // only shapes the API URL path and not the destination host.
+  const effectiveCredentials = appConnection.credentials.gitHubAppId
+    ? { host: appHost ?? undefined, instanceType: appInstanceType ?? "cloud" }
+    : { host: appHost ?? undefined, instanceType: appConnection.credentials.instanceType };
 
-  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  assertPlatformGitHubHostAllowed(effectiveCredentials.host);
+
+  const appJwt = signGitHubAppJwt(appId, privateKey);
+
+  const apiBaseUrl = await getGitHubInstanceApiUrl({ credentials: effectiveCredentials });
   const { installationId } = appConnection.credentials;
 
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -226,11 +375,7 @@ export const getGitHubAppAuthToken = async (
     {
       url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
       method: "POST",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${appJwt}`,
-        "X-GitHub-Api-Version": "2022-11-28"
-      }
+      headers: buildGitHubAppJwtHeaders(appJwt)
     },
     gatewayConnectionDetails
   );
@@ -267,6 +412,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   path: string,
+  deps: TGitHubAppCredentialResolverDeps,
   dataMapper?: (data: R) => T[]
 ): Promise<T[]> => {
   const { credentials, method } = appConnection;
@@ -281,14 +427,13 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       token = credentials.personalAccessToken;
       break;
     default:
-      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service, gatewayPoolService);
+      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service, gatewayPoolService, deps);
   }
 
-  const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
-  const initialUrlObj = new URL(baseUrl);
+  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const initialUrlObj = new URL(`https://${apiBaseUrl}${path}`);
   initialUrlObj.searchParams.set("per_page", "100");
 
-  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
     gatewayId: appConnection.gatewayId,
     gatewayPoolId: appConnection.gatewayPoolId
@@ -421,7 +566,8 @@ export const getGitHubRepositories = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     return makePaginatedGitHubRequest<GitHubRepository, { repositories: GitHubRepository[] }>(
@@ -430,6 +576,7 @@ export const getGitHubRepositories = async (
       gatewayV2Service,
       gatewayPoolService,
       "/installation/repositories",
+      deps,
       (data) => data.repositories
     );
   }
@@ -439,7 +586,8 @@ export const getGitHubRepositories = async (
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    "/user/repos"
+    "/user/repos",
+    deps
   );
 
   return repos.filter((repo) => repo.permissions?.admin);
@@ -449,7 +597,8 @@ export const getGitHubOrganizations = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     const installationRepositories = await makePaginatedGitHubRequest<
@@ -461,6 +610,7 @@ export const getGitHubOrganizations = async (
       gatewayV2Service,
       gatewayPoolService,
       "/installation/repositories",
+      deps,
       (data) => data.repositories
     );
 
@@ -479,7 +629,8 @@ export const getGitHubOrganizations = async (
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    "/user/orgs"
+    "/user/orgs",
+    deps
   );
 };
 
@@ -489,7 +640,8 @@ export const getGitHubEnvironments = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   owner: string,
-  repo: string
+  repo: string,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   try {
     return await makePaginatedGitHubRequest<GitHubEnvironment, { environments: GitHubEnvironment[] }>(
@@ -498,6 +650,7 @@ export const getGitHubEnvironments = async (
       gatewayV2Service,
       gatewayPoolService,
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
+      deps,
       (data) => data.environments
     );
   } catch (error) {
@@ -522,12 +675,127 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
   return "error" in data;
 }
 
+export const sanitizeGitHubAxiosError = (error: unknown) => {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as { error?: string; error_description?: string; message?: string } | undefined;
+
+    return {
+      status: error.response?.status,
+      code: error.code,
+      githubError: data?.error,
+      githubErrorDescription: data?.error_description,
+      githubMessage: data?.message,
+      message: error.message
+    };
+  }
+
+  return { message: error instanceof Error ? error.message : "Unknown error" };
+};
+
+export type TGitHubUserInstallation = {
+  id: number;
+  app_id: number;
+  account: {
+    login: string;
+    type: string;
+  };
+};
+
+export const listGitHubUserInstallations = async (
+  apiBaseUrl: string,
+  accessToken: string,
+  requestFn: (
+    requestConfig: AxiosRequestConfig & { url: string }
+  ) => Promise<AxiosResponse<{ installations: TGitHubUserInstallation[] }>>
+): Promise<TGitHubUserInstallation[]> => {
+  const installations: TGitHubUserInstallation[] = [];
+  const MAX_PAGES = 100;
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await requestFn({
+      url: `https://${apiBaseUrl}/user/installations`,
+      method: "GET",
+      params: { per_page: 100, page },
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${accessToken}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    });
+
+    const pageInstallations = data.installations ?? [];
+    installations.push(...pageInstallations);
+
+    if (pageInstallations.length < 100) {
+      break;
+    }
+  }
+
+  return installations;
+};
+
+export const exchangeGitHubOAuthCode = async ({
+  host,
+  clientId,
+  clientSecret,
+  code,
+  requestFn
+}: {
+  host: string;
+  clientId: string;
+  clientSecret: string;
+  code: string;
+  requestFn: (requestConfig: AxiosRequestConfig & { url: string }) => Promise<AxiosResponse<GithubTokenRespData>>;
+}): Promise<AxiosResponse<GithubTokenRespData>> => {
+  const { SITE_URL } = getConfig();
+
+  return requestFn({
+    url: `https://${host}/login/oauth/access_token`,
+    method: "POST",
+    data: {
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
+    },
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    }
+  });
+};
+
 export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  deps: TGitHubAppCredentialResolverDeps
 ) => {
   const { credentials, method } = config;
+
+  let resolvedAppCredentials: TResolvedGitHubAppCredentials | undefined;
+  if (method === GitHubConnectionMethod.App) {
+    resolvedAppCredentials = await resolveGitHubAppCredentials(
+      { gitHubAppId: credentials.gitHubAppId, orgId: config.orgId, projectId: config.projectId ?? null },
+      deps
+    );
+
+    // Bind the connection's host to the server-configured host for the resolved app — for both the
+    // shared instance app (INF_APP_CONNECTION_GITHUB_APP_HOST, null = github.com) and org-managed apps.
+    // The caller-supplied host is never persisted, so the shared client secret / app JWT and any token
+    // minted from them can only ever be sent to the app's own host. instanceType is authoritative only
+    // for org-managed apps; the shared app's instanceType still comes from the caller (it only shapes
+    // the API URL path, not the destination host).
+    const mutableCredentials = credentials as { host?: string; instanceType: "cloud" | "server" };
+    mutableCredentials.host = resolvedAppCredentials.host ?? undefined;
+    if (credentials.gitHubAppId) {
+      mutableCredentials.instanceType = resolvedAppCredentials.instanceType ?? "cloud";
+    }
+  }
+
+  if (method === GitHubConnectionMethod.App && !credentials.code) {
+    throw new BadRequestError({ message: "GitHub App code required" });
+  }
 
   const apiBaseUrl = await getGitHubInstanceApiUrl(config);
   const gatewayConnectionDetails = config.gatewayId
@@ -561,7 +829,7 @@ export const validateGitHubConnectionCredentials = async (
         host: credentials.host
       };
     } catch (e: unknown) {
-      logger.error(e, "Unable to verify GitHub PAT connection");
+      logger.error(sanitizeGitHubAxiosError(e), "Unable to verify GitHub PAT connection");
 
       throw new BadRequestError({
         message: "Unable to validate Personal Access Token: verify token has proper permissions"
@@ -569,25 +837,19 @@ export const validateGitHubConnectionCredentials = async (
     }
   }
 
-  const {
-    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
-    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET,
-    INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
-    INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET,
-    SITE_URL
-  } = getConfig();
+  const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET } = getConfig();
 
-  const { clientId, clientSecret } =
-    method === GitHubConnectionMethod.App
-      ? {
-          clientId: INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID,
-          clientSecret: INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET
-        }
-      : // oauth
-        {
-          clientId: INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
-          clientSecret: INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET
-        };
+  let clientId: string | undefined;
+  let clientSecret: string | undefined;
+
+  if (method === GitHubConnectionMethod.App) {
+    // Resolved above so the host could be bound before any credential use.
+    clientId = resolvedAppCredentials!.clientId;
+    clientSecret = resolvedAppCredentials!.clientSecret;
+  } else {
+    clientId = INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID;
+    clientSecret = INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET;
+  }
 
   if (!clientId || !clientSecret) {
     throw new InternalServerError({
@@ -601,31 +863,32 @@ export const validateGitHubConnectionCredentials = async (
   let tokenResp: AxiosResponse<GithubTokenRespData>;
   const host = credentials.host || "github.com";
 
+  assertPlatformGitHubHostAllowed(host);
+
   const oauthGatewayConnectionDetails = config.gatewayId
     ? await getGitHubGatewayConnectionDetails(config.gatewayId, host, gatewayV2Service)
     : undefined;
 
+  const oauthCode = credentials.code;
+  if (!oauthCode) {
+    throw new BadRequestError({ message: "GitHub authorization code required" });
+  }
+
   try {
-    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(
-      resolvedConfig,
-      gatewayService,
-      gatewayV2Service,
-      {
-        url: `https://${host}/login/oauth/access_token`,
-        method: "POST",
-        data: {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: credentials.code,
-          redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
-        },
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        }
-      },
-      oauthGatewayConnectionDetails
-    );
+    tokenResp = await exchangeGitHubOAuthCode({
+      host,
+      clientId,
+      clientSecret,
+      code: oauthCode,
+      requestFn: (requestConfig) =>
+        requestWithGitHubGateway<GithubTokenRespData>(
+          resolvedConfig,
+          gatewayService,
+          gatewayV2Service,
+          requestConfig,
+          oauthGatewayConnectionDetails
+        )
+    });
 
     if (isGithubErrorResponse(tokenResp?.data)) {
       throw new BadRequestError({
@@ -633,7 +896,7 @@ export const validateGitHubConnectionCredentials = async (
       });
     }
   } catch (e: unknown) {
-    logger.error(e, "Unable to verify GitHub connection");
+    logger.error(sanitizeGitHubAxiosError(e), "Unable to verify GitHub connection");
 
     if (e instanceof BadRequestError) {
       throw e;
@@ -650,50 +913,44 @@ export const validateGitHubConnectionCredentials = async (
     });
   }
 
+  let resolvedInstallationId: string | undefined;
+
   if (method === GitHubConnectionMethod.App) {
     if (!tokenResp.data.access_token) {
       throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
     }
 
-    const installationsResp = await requestWithGitHubGateway<{
-      installations: {
-        id: number;
-        account: {
-          login: string;
-          type: string;
-          id: number;
-        };
-      }[];
-    }>(
-      resolvedConfig,
-      gatewayService,
-      gatewayV2Service,
-      {
-        url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${tokenResp.data.access_token}`,
-          "Accept-Encoding": "application/json"
-        }
-      },
-      gatewayConnectionDetails
+    // installations are scoped to this GitHub App since the token is a user-to-server token
+    const installations = await listGitHubUserInstallations(apiBaseUrl, tokenResp.data.access_token, (requestConfig) =>
+      requestWithGitHubGateway<{ installations: TGitHubUserInstallation[] }>(
+        resolvedConfig,
+        gatewayService,
+        gatewayV2Service,
+        requestConfig,
+        gatewayConnectionDetails
+      )
     );
 
-    const matchingInstallation = installationsResp.data.installations.find(
-      (installation) => installation.id === +credentials.installationId
-    );
+    // The installation is selected through GitHub's own install UI and returned to us as an explicit
+    // installationId (required) — never auto-resolved from the user's accessible installations, so we
+    // can't bind to an account the user merely belongs to rather than one they intended.
+    const { installationId } = credentials;
+    const matchingInstallation = installations.find((installation) => installation.id === +installationId);
 
     if (!matchingInstallation) {
       throw new ForbiddenRequestError({
         message: "User does not have access to the provided installation"
       });
     }
+
+    resolvedInstallationId = installationId;
   }
 
   switch (method) {
     case GitHubConnectionMethod.App:
       return {
-        installationId: credentials.installationId,
+        installationId: resolvedInstallationId as string,
+        gitHubAppId: credentials.gitHubAppId ?? null,
         instanceType: credentials.instanceType,
         host: credentials.host
       };

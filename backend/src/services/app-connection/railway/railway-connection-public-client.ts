@@ -10,7 +10,8 @@ import {
   RailwayAccountWorkspaceListSchema,
   RailwayGetProjectsByProjectTokenSchema,
   RailwayGetSubscriptionTypeSchema,
-  RailwayProjectsListSchema
+  RailwayProjectsListSchema,
+  RailwayWorkspaceProjectsListSchema
 } from "./railway-connection-schemas";
 import { RailwayProject, TRailwayConnectionConfig, TRailwayResponse } from "./railway-connection-types";
 
@@ -44,7 +45,7 @@ export function getRailwayRatelimiter(headers: AxiosResponse["headers"]): {
   const now = +new Date();
   const nextReset = +new Date(limitResetAt);
 
-  const remaining = Math.min(0, nextReset - now);
+  const remaining = Math.max(0, nextReset - now);
 
   const wait = () => {
     return new Promise<void>((res) => {
@@ -66,6 +67,7 @@ class RailwayPublicClient {
     this.client = createRequestClient({
       method: "POST",
       baseURL: IntegrationUrls.RAILWAY_API_URL,
+      timeout: 1000 * 60, // 60 seconds timeout
       headers: {
         "Content-Type": "application/json"
       }
@@ -107,7 +109,7 @@ class RailwayPublicClient {
   healthcheck(config: RailwaySendReqOptions) {
     switch (config.method) {
       case RailwayConnectionMethod.AccountToken:
-        return this.send(`{ me { teams { edges { node { id } } } } }`, config);
+        return this.send(`{ me { id } }`, config);
       case RailwayConnectionMethod.ProjectToken:
         return this.send(`{ projectToken { projectId environmentId project { id } } }`, config);
       case RailwayConnectionMethod.TeamToken:
@@ -121,8 +123,8 @@ class RailwayPublicClient {
     config: RailwaySendReqOptions,
     variables: { input: { serviceId: string; environmentId: string }; first?: number }
   ) {
-    return this.send<TRailwayResponse<{ deployments: { edges: { node: { id: string } }[] } }>>(
-      `query deployments($input: DeploymentListInput!, $first: Int) { deployments(first: $first, input: $input) { edges { node { id } } } }`,
+    return this.send<TRailwayResponse<{ deployments: { edges: { node: { id: string; status: string } }[] } }>>(
+      `query deployments($input: DeploymentListInput!, $first: Int) { deployments(first: $first, input: $input) { edges { node { id status } } } }`,
       config,
       variables
     );
@@ -169,21 +171,29 @@ class RailwayPublicClient {
       }
 
       case RailwayConnectionMethod.AccountToken: {
-        const res = await this.send(
-          `{ me { workspaces { id, name, team{ projects{ edges{ node{ id, name, services{ edges { node { name, id } } } environments { edges { node { name, id } } } } } } } } } }`,
-          config
+        const workspacesResponse = await this.send(`{ me { workspaces { id name } } }`, config);
+
+        const workspaces = await RailwayAccountWorkspaceListSchema.parseAsync(workspacesResponse);
+
+        const projectPerWorkspace = await Promise.all(
+          workspaces.me.workspaces.map(async (w) => {
+            const projectsResponse = await this.send(
+              `query workspace($workspaceId: String!) { workspace(workspaceId: $workspaceId) { projects { edges { node { id, name, services { edges { node { id, name } } } environments { edges { node { name, id } } } } } } } }`,
+              config,
+              { workspaceId: w.id }
+            );
+
+            const projectsData = await RailwayWorkspaceProjectsListSchema.parseAsync(projectsResponse);
+            return projectsData.workspace.projects.edges.map((p) => ({
+              id: p.node.id,
+              name: p.node.name,
+              environments: p.node.environments.edges.map((e) => e.node),
+              services: p.node.services.edges.map((s) => s.node)
+            }));
+          })
         );
 
-        const data = await RailwayAccountWorkspaceListSchema.parseAsync(res);
-
-        return data.me.workspaces.flatMap((w) =>
-          w.team.projects.edges.map((p) => ({
-            id: p.node.id,
-            name: p.node.name,
-            environments: p.node.environments.edges.map((e) => e.node),
-            services: p.node.services.edges.map((s) => s.node)
-          }))
-        );
+        return projectPerWorkspace.flat();
       }
 
       case RailwayConnectionMethod.ProjectToken: {
@@ -215,10 +225,10 @@ class RailwayPublicClient {
     config: RailwaySendReqOptions,
     variables: { projectId: string; environmentId: string; serviceId?: string }
   ) {
-    const res = await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(
-      `query variables($environmentId: String!, $projectId: String!, $serviceId: String) { variables( projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId ) }`,
+    const res = await this.send<TRailwayResponse<{ variables: Record<string, string | null> }>>(
+      `query variables($projectId: String!, $environmentId: String!, $serviceId: String, $unrendered: Boolean) { variables( projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId, unrendered: $unrendered ) }`,
       config,
-      variables
+      { ...variables, unrendered: true }
     );
 
     if (!res?.variables) {
@@ -233,7 +243,7 @@ class RailwayPublicClient {
   async deleteVariable(
     config: RailwaySendReqOptions,
     variables: {
-      input: { projectId: string; environmentId: string; name: string; skipDeploys?: boolean; serviceId?: string };
+      input: { projectId: string; environmentId: string; name: string; serviceId?: string };
     }
   ) {
     await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(

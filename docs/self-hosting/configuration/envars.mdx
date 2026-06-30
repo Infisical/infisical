@@ -742,6 +742,10 @@ You can configure third-party app connections for re-use across Infisical Projec
         The private key for the GitHub App
     </ParamField>
 
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_HOST" type="string" default="github.com" optional>
+        The hostname of the GitHub instance where the shared GitHub App is registered. Only required when the shared GitHub App is registered on a GitHub Enterprise Server (GHES) instance rather than github.com (e.g. `github.mycompany.com`). Defaults to `github.com` when not set.
+    </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub Radar App Connection">

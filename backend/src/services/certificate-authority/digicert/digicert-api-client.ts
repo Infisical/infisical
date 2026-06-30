@@ -5,64 +5,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { DIGICERT_AUTH_HEADER } from "@app/services/app-connection/digicert/digicert-connection-constants";
 import { extractDigiCertErrorMessage } from "@app/services/app-connection/digicert/digicert-connection-errors";
 
-type TPlaceOrderRequest = {
-  certificate: {
-    common_name: string;
-    dns_names?: string[];
-    csr: string;
-    signature_hash?: string;
-  };
-  organization: { id: number };
-
-  order_validity: { days: number } | { years: number };
-  dcv_method: "dns-txt-token";
-  skip_approval?: boolean;
-  renewal_of_order_id?: number;
-};
-
-type TDigiCertDcvToken = {
-  token: string;
-  status?: string;
-  expiration_date?: string;
-};
-
-type TPlaceOrderResponse = {
-  id: number;
-  certificate_id?: number;
-  dcv_random_value?: string;
-  domains: {
-    id: number;
-    dns_name: string;
-    dcv_token?: TDigiCertDcvToken;
-  }[];
-};
-
-type TOrderResponse = {
-  id: number;
-  status: string;
-  certificate?: {
-    id: number;
-  };
-  dcv_method?: string;
-};
-
-type TCheckValidationResponse = {
-  order_status?: string;
-  certificate_id?: number;
-  dcv_status?: string;
-  dns_name_validations?: {
-    dns_name: string;
-    status: string;
-  }[];
-};
-
-type TOrderStatusChangesResponse = {
-  orders?: {
-    order_id: number;
-    certificate_id: number;
-    status: string;
-  }[];
-};
+import {
+  TCheckValidationResponse,
+  TOrderResponse,
+  TOrderStatusChangesResponse,
+  TPlaceOrderRequest,
+  TPlaceOrderResponse
+} from "./digicert-certificate-authority-types";
 
 export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
 

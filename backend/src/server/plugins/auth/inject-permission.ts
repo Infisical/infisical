@@ -87,6 +87,19 @@ export const injectPermission = fp(async (server) => {
       logger.info(
         `injectPermission: Injecting permissions for [permissionsForRelay=${req.auth.relayId}] [type=${ActorType.RELAY}]`
       );
+    } else if (req.auth.actor === ActorType.KMIP_SERVER) {
+      req.permission = {
+        type: ActorType.KMIP_SERVER,
+        id: req.auth.kmipServerId,
+        orgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
+        authMethod: null
+      };
+
+      logger.info(
+        `injectPermission: Injecting permissions for [permissionsForKmipServer=${req.auth.kmipServerId}] [type=${ActorType.KMIP_SERVER}]`
+      );
     }
   });
 });
