@@ -167,9 +167,8 @@ export const projectGrantServiceFactory = ({
       projectId: sourceProjectId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    // CreateGrant implies the ability to read existing grants
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProjectGrantActions.CreateGrant,
+      ProjectPermissionProjectGrantActions.ReadGrant,
       ProjectPermissionSub.ProjectGrant
     );
 

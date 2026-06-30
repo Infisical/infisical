@@ -324,6 +324,7 @@ const ApprovalRequestGrantPolicyActionSchema = z.object({
 });
 
 const ProjectGrantPolicyActionSchema = z.object({
+  [ProjectPermissionProjectGrantActions.ReadGrant]: z.boolean().optional(),
   [ProjectPermissionProjectGrantActions.CreateGrant]: z.boolean().optional(),
   [ProjectPermissionProjectGrantActions.RevokeGrant]: z.boolean().optional()
 });
@@ -1475,6 +1476,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
         if (subject === ProjectPermissionSub.ProjectGrant) {
           formVal[subject]!.push({
+            [ProjectPermissionProjectGrantActions.ReadGrant]: action.includes(
+              ProjectPermissionProjectGrantActions.ReadGrant
+            ),
             [ProjectPermissionProjectGrantActions.CreateGrant]: action.includes(
               ProjectPermissionProjectGrantActions.CreateGrant
             ),
@@ -3567,6 +3571,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Project Grant",
     description: "Grant or revoke access to secrets in specific environments and paths",
     actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionProjectGrantActions.ReadGrant,
+        description: "View existing project grants"
+      },
       {
         label: "Create Grant",
         value: ProjectPermissionProjectGrantActions.CreateGrant,

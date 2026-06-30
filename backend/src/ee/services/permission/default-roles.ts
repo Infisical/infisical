@@ -498,7 +498,11 @@ const buildAdminPermissionRules = () => {
   can([ProjectPermissionSecretApprovalRequestActions.Read], ProjectPermissionSub.SecretApprovalRequest);
 
   can(
-    [ProjectPermissionProjectGrantActions.CreateGrant, ProjectPermissionProjectGrantActions.RevokeGrant],
+    [
+      ProjectPermissionProjectGrantActions.ReadGrant,
+      ProjectPermissionProjectGrantActions.CreateGrant,
+      ProjectPermissionProjectGrantActions.RevokeGrant
+    ],
     ProjectPermissionSub.ProjectGrant
   );
 
