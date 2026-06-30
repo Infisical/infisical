@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { components, MultiValue, OptionProps } from "react-select";
-import {
-  Building2Icon,
-  CheckIcon,
-  GlobeIcon,
-  KeyIcon,
-  LockIcon,
-  type LucideIcon,
-  ScanSearchIcon,
-  ShieldCheckIcon,
-  UsersIcon
-} from "lucide-react";
+import { Building2Icon, CheckIcon, GlobeIcon, Info, type LucideIcon } from "lucide-react";
 import { z } from "zod";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { getProjectLucideIcon } from "@app/helpers/project";
 import { AuditLogStreamProduct } from "@app/hooks/api/auditLogStreams/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 // Shared across every provider form so product scoping stays consistent. Re-exported into each
 // provider's form schema (`...auditLogStreamFiltersSchema.shape`) and rendered via <ProductsField />.
@@ -37,12 +36,14 @@ export const AUDIT_LOG_STREAM_PRODUCT_LABELS: Record<AuditLogStreamProduct, stri
   [AuditLogStreamProduct.Organization]: "Organization"
 };
 
-const PRODUCT_ICONS: Record<AuditLogStreamProduct, LucideIcon> = {
-  [AuditLogStreamProduct.SecretManager]: KeyIcon,
-  [AuditLogStreamProduct.CertificateManager]: ShieldCheckIcon,
-  [AuditLogStreamProduct.KMS]: LockIcon,
-  [AuditLogStreamProduct.SecretScanning]: ScanSearchIcon,
-  [AuditLogStreamProduct.PAM]: UsersIcon,
+// Reuse the shared project icons so the select (and the stream table) match the Projects pages.
+// Organization isn't a project type, so it keeps its own org-level icon.
+export const PRODUCT_ICONS: Record<AuditLogStreamProduct, LucideIcon> = {
+  [AuditLogStreamProduct.SecretManager]: getProjectLucideIcon(ProjectType.SecretManager),
+  [AuditLogStreamProduct.CertificateManager]: getProjectLucideIcon(ProjectType.CertificateManager),
+  [AuditLogStreamProduct.KMS]: getProjectLucideIcon(ProjectType.KMS),
+  [AuditLogStreamProduct.SecretScanning]: getProjectLucideIcon(ProjectType.SecretScanning),
+  [AuditLogStreamProduct.PAM]: getProjectLucideIcon(ProjectType.PAM),
   [AuditLogStreamProduct.Organization]: Building2Icon
 };
 
@@ -82,12 +83,12 @@ const ProductOptionItem = ({ isSelected, children, ...props }: OptionProps<Produ
     const isAllProducts = (props.getValue() as ProductOption[]).length === 0;
 
     return (
-      <div className="border-b border-mineshaft-600">
+      <div className="border-b border-border">
         <components.Option {...props} isSelected={isAllProducts}>
           <div className="flex flex-row items-center gap-2">
-            <GlobeIcon className="size-4 shrink-0 text-mineshaft-300" />
+            <GlobeIcon className="size-4 shrink-0 text-muted" />
             <p className="mr-auto truncate">{children}</p>
-            {isAllProducts && <CheckIcon className="ml-2 size-4 shrink-0 text-primary" />}
+            {isAllProducts && <CheckIcon className="ml-2 size-4 shrink-0" />}
           </div>
         </components.Option>
       </div>
@@ -99,9 +100,9 @@ const ProductOptionItem = ({ isSelected, children, ...props }: OptionProps<Produ
   return (
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center gap-2">
-        <Icon className="size-4 shrink-0 text-mineshaft-300" />
+        <Icon className="size-4 shrink-0 text-muted" />
         <p className="mr-auto truncate">{children}</p>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0 text-primary" />}
+        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
       </div>
     </components.Option>
   );
@@ -126,13 +127,23 @@ export const ProductsField = () => {
   );
 
   return (
-    <FormControl
-      label="Products"
-      isOptional
-      tooltipText="Only stream audit logs for the selected products. Leave empty to stream every product. Select 'Organization' to include org-level events (e.g. SSO, members, settings)."
-    >
+    <Field>
+      <FieldLabel htmlFor="products">
+        Products <span className="text-muted">(optional)</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">
+            Only stream audit logs for the selected products. Leave empty to stream every product.
+            Select &apos;Organization&apos; to include org-level events (e.g. SSO, members,
+            settings).
+          </TooltipContent>
+        </Tooltip>
+      </FieldLabel>
       <div ref={containerRef}>
         <FilterableSelect
+          inputId="products"
           isMulti
           value={value}
           options={[ALL_OPTION, ...PRODUCT_OPTIONS]}
@@ -155,12 +166,12 @@ export const ProductsField = () => {
           placeholder="All products"
           getOptionValue={(option) => option.value}
           getOptionLabel={(option) => option.label}
-          menuListClassName="max-h-[18rem] overflow-y-auto thin-scrollbar"
           components={{ Option: ProductOptionItem }}
           menuPortalTarget={menuPortalTarget ?? undefined}
+          menuPosition="fixed"
           menuPlacement="auto"
         />
       </div>
-    </FormControl>
+    </Field>
   );
 };

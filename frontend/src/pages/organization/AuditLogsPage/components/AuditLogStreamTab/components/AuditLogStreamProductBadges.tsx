@@ -11,7 +11,10 @@ import {
 } from "@app/components/v3";
 import { AuditLogStreamProduct } from "@app/hooks/api/auditLogStreams/enums";
 
-import { AUDIT_LOG_STREAM_PRODUCT_LABELS } from "../AuditLogStreamForm/AuditLogStreamProductsField";
+import {
+  AUDIT_LOG_STREAM_PRODUCT_LABELS,
+  PRODUCT_ICONS
+} from "../AuditLogStreamForm/AuditLogStreamProductsField";
 
 type Props = {
   products: AuditLogStreamProduct[];
@@ -27,11 +30,16 @@ const ProductBadge = ({
 }: {
   product: AuditLogStreamProduct;
   className?: string;
-}) => (
-  <Badge variant="neutral" isTruncatable className={twMerge("max-w-[10rem]", className)}>
-    {AUDIT_LOG_STREAM_PRODUCT_LABELS[product]}
-  </Badge>
-);
+}) => {
+  const Icon = PRODUCT_ICONS[product];
+
+  return (
+    <Badge variant="neutral" isTruncatable className={twMerge("max-w-[10rem]", className)}>
+      <Icon />
+      <span>{AUDIT_LOG_STREAM_PRODUCT_LABELS[product]}</span>
+    </Badge>
+  );
+};
 
 export const AuditLogStreamProductBadges = ({
   products,
@@ -39,7 +47,7 @@ export const AuditLogStreamProductBadges = ({
 }: Props) => {
   // No products configured means the stream receives every product.
   if (products.length === 0) {
-    return <span className="text-sm text-mineshaft-400">All products</span>;
+    return <span className="text-sm text-muted">All products</span>;
   }
 
   // Sort by displayed label so order is stable regardless of how the list was stored.
