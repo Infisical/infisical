@@ -800,6 +800,7 @@ export const pitServiceFactory = ({
             policy,
             secretPath,
             environment,
+            commitMessage: message,
             projectId,
             actor,
             actorId,

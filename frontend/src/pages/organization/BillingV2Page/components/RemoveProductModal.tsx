@@ -63,7 +63,8 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, product.id, isOnlyProduct]);
 
-  const handleRemove = async () => {
+  const handleRemove = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     try {
       await removeProduct.mutateAsync({ orgId, productId: product.id });
       createNotification({
@@ -195,6 +196,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
             variant="danger"
             isDisabled={removeProduct.isPending || previewLoading}
             onClick={handleRemove}
+            isPending={removeProduct.isPending}
           >
             Remove {product.name}
           </AlertDialogAction>

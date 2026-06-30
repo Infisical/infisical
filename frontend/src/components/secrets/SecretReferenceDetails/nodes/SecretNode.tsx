@@ -48,15 +48,15 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
     if (isRoot) return;
     onClose?.();
     navigate({
-      to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+      to: ROUTE_PATHS.SecretManager.OverviewPage.path,
       params: {
         orgId: routeParams.orgId as string,
-        projectId: currentProject?.id || "",
-        envSlug: environment
+        projectId: currentProject?.id || ""
       },
       search: {
         secretPath,
-        search: secretKey
+        search: secretKey,
+        environments: [environment]
       }
     });
   }, [

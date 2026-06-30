@@ -17,7 +17,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
-import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
+import {
+  LogProvider,
+  REDACTED_CREDENTIAL_VALUE,
+  StreamMode
+} from "@app/hooks/api/auditLogStreams/enums";
 import { TCustomProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/custom-provider";
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
@@ -127,8 +131,8 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
-                        auditLogStream.credentials.headers[i].value === "******" &&
-                        field.value === "******"
+                        auditLogStream.credentials.headers[i].value === REDACTED_CREDENTIAL_VALUE &&
+                        field.value === REDACTED_CREDENTIAL_VALUE
                       ) {
                         field.onChange("");
                       }
@@ -138,10 +142,10 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
-                        auditLogStream.credentials.headers[i].value === "******" &&
+                        auditLogStream.credentials.headers[i].value === REDACTED_CREDENTIAL_VALUE &&
                         field.value === ""
                       ) {
-                        field.onChange("******");
+                        field.onChange(REDACTED_CREDENTIAL_VALUE);
                       }
                       setShowPassword(false);
                     }}

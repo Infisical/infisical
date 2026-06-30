@@ -21,7 +21,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 export const auditLogStreamFiltersSchema = z.object({
   filters: z
     .object({
-      products: z.nativeEnum(AuditLogStreamProduct).array().optional()
+      products: z.nativeEnum(AuditLogStreamProduct).array().nullish()
     })
     .nullish()
 });

@@ -307,15 +307,15 @@ export const SecretReferenceTree = ({
     (env: string, path: string, key: string) => {
       onClose?.();
       navigate({
-        to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+        to: ROUTE_PATHS.SecretManager.OverviewPage.path,
         params: {
           orgId: routeParams.orgId as string,
-          projectId: currentProject?.id || "",
-          envSlug: env
+          projectId: currentProject?.id || ""
         },
         search: {
           secretPath: path || "/",
-          search: key || ""
+          search: key || "",
+          environments: [env]
         }
       });
     },

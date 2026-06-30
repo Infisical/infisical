@@ -14,6 +14,7 @@ import { CriblProviderAuditLogStreamForm } from "./CriblProviderAuditLogStreamFo
 import { CustomProviderAuditLogStreamForm } from "./CustomProviderAuditLogStreamForm";
 import { DatadogProviderAuditLogStreamForm } from "./DatadogProviderAuditLogStreamForm";
 import { SplunkProviderAuditLogStreamForm } from "./SplunkProviderAuditLogStreamForm";
+import { SumoLogicProviderAuditLogStreamForm } from "./SumoLogicProviderAuditLogStreamForm";
 
 // Provider forms submit their provider + credentials; the custom form may also submit a
 // one-way streamMode upgrade (single -> batch). Every form may submit product filters.
@@ -64,6 +65,8 @@ const CreateForm = ({ provider, onComplete }: CreateFormProps) => {
       return <DatadogProviderAuditLogStreamForm onSubmit={onSubmit} />;
     case LogProvider.Splunk:
       return <SplunkProviderAuditLogStreamForm onSubmit={onSubmit} />;
+    case LogProvider.SumoLogic:
+      return <SumoLogicProviderAuditLogStreamForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled Provider: ${provider}`);
   }
@@ -105,6 +108,10 @@ const UpdateForm = ({ auditLogStream, onComplete }: UpdateFormProps) => {
     case LogProvider.Splunk:
       return (
         <SplunkProviderAuditLogStreamForm onSubmit={onSubmit} auditLogStream={auditLogStream} />
+      );
+    case LogProvider.SumoLogic:
+      return (
+        <SumoLogicProviderAuditLogStreamForm onSubmit={onSubmit} auditLogStream={auditLogStream} />
       );
     default:
       throw new Error(`Unhandled Provider: ${(auditLogStream as TAuditLogStream).provider}`);
