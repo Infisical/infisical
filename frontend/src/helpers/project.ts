@@ -147,15 +147,15 @@ export const getProjectTitle = (type: ProjectType) => {
 export const getProjectDescription = (type: ProjectType) => {
   const descriptions: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]:
-      "Centralized secrets across environments — sync, rotation, dynamic credentials, and lifecycle policies.",
+      "Centralized secrets across environments: sync, rotation, dynamic credentials, and lifecycle policies.",
     [ProjectType.CertificateManager]:
       "Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.",
     [ProjectType.KMS]:
-      "Key Management — generate, store, and use cryptographic keys. Encrypt, decrypt, sign, and verify against managed CMKs.",
+      "Key Management: generate, store, and use cryptographic keys. Encrypt, decrypt, sign, and verify against managed CMKs.",
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Privileged Access Management — just-in-time access, session brokering, and credential vaulting for privileged users and machines."
+      "Privileged Access Management: just-in-time access, session brokering, and credential vaulting for privileged users and machines."
   };
   return descriptions[type] ?? "";
 };
@@ -183,18 +183,6 @@ export const collapseCertManagerProjects = (
           : display.name
     }
   ];
-};
-
-export const getProjectLottieIcon = (type: ProjectType) => {
-  const iconConvert: Partial<Record<ProjectType, string>> = {
-    [ProjectType.SecretManager]: "vault",
-    [ProjectType.KMS]: "unlock",
-    [ProjectType.CertificateManager]: "note",
-    [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan",
-    [ProjectType.PAM]: "groups"
-  };
-  return iconConvert[type] || "vault";
 };
 
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
