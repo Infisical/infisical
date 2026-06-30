@@ -185,18 +185,6 @@ export const collapseCertManagerProjects = (
   ];
 };
 
-export const getProjectLottieIcon = (type: ProjectType) => {
-  const iconConvert: Partial<Record<ProjectType, string>> = {
-    [ProjectType.SecretManager]: "vault",
-    [ProjectType.KMS]: "unlock",
-    [ProjectType.CertificateManager]: "note",
-    [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan",
-    [ProjectType.PAM]: "groups"
-  };
-  return iconConvert[type] || "vault";
-};
-
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
   const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
     [ProjectType.SecretManager]: KeyIcon,
