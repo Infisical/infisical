@@ -477,8 +477,14 @@ export const ACCOUNT_TYPE_CONFIGS = {
       targetRoleArn: z.string().optional()
     }),
     ui: {
-      roleArn: { label: "PAM Role ARN" },
-      targetRoleArn: { label: "Target Role ARN" }
+      roleArn: {
+        label: "PAM Role ARN",
+        tooltip: "The ARN of the IAM role that Infisical assumes to broker access to the target role."
+      },
+      targetRoleArn: {
+        label: "Target Role ARN",
+        tooltip: "The ARN of the IAM role the user will assume when accessing this account."
+      }
     }
   }
 } as const satisfies Partial<

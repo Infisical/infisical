@@ -6,13 +6,17 @@ import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 import { PamAccountType } from "../pam/pam-enums";
+import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
   .map((type) => `'${type}'`)
   .join(", ");
 
-const gatewayExemptAccountTypes = [PamAccountType.AwsIam].map((type) => `'${type}'`).join(", ");
+const gatewayExemptAccountTypes = (Object.entries(ACCOUNT_TYPE_CONFIGS) as [string, { requiresGateway?: boolean }][])
+  .filter(([, config]) => config.requiresGateway === false)
+  .map(([type]) => `'${type}'`)
+  .join(", ");
 
 export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
   `(
