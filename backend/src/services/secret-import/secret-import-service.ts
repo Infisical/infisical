@@ -188,6 +188,12 @@ export const secretImportServiceFactory = ({
     }
 
     if (isReplication) {
+      if (isCrossProjectImport) {
+        throw new BadRequestError({
+          message: "Replication is not supported for cross-project imports"
+        });
+      }
+
       const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.secretApproval) {
         throw new BadRequestError({
