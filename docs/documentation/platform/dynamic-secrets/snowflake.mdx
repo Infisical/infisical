@@ -12,14 +12,14 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
 
 <Steps>
   <Step title="Open user settings">
-   Select the tab **Governance & Security** tab and click on **Users & roles**
+   Select the **Governance & Security** tab and click on **Users & roles**.
     ![Snowflake User
     Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-users-page.png)
   </Step>
 
 
   <Step title="Create a new User">
-  On the top right click on **Create user**
+  In the top right, click **Create user**
     ![Snowflake User
 Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-create-user-button.png)
   </Step>
@@ -38,17 +38,17 @@ Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-create-user
   </Step>
 
   <Step title="Generate a Programmatic Access Token">
-    Select the tab **Governance & Security** and click on **User & roles**. Select the User created on the last step. 
+    Select the **Governance & Security** tab and click on **Users & roles**. Then select the user you created in the previous step.
 
     ![Select User](/images/platform/dynamic-secrets/snowflake/select-user-for-pat.png)
 
-    Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name and configure its expiration. The role restrictions in this case needs to be **USERADMIN**. 
+    Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name and configure its expiration. Set the role restriction to **USERADMIN**.
     ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
     ![Add Programmatic Access Token name](/images/app-connections/snowflake/step-6.png)
   </Step>
 
     <Step title="Copy the Token">
-        Copy the generated token. Snowflake only displays it once, store it somewhere secure for the next step.
+        Copy the generated token. Snowflake only displays it once, so store it somewhere secure for the next step.
 
         ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-7.png)
     </Step>
@@ -94,11 +94,11 @@ Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-create-user
         </ParamField>
 
         <ParamField path="User" type="string" required>
-            Username of the Infisical Service User
+            Username of the Infisical service user
         </ParamField>
 
-        <ParamField path="Password" type="string" required>
-            Password of the Infisical Service User
+        <ParamField path="Programmatic Access Token" type="string" required>
+            Programmatic Access Token (PAT) of the Infisical service user used to authenticate with Snowflake
         </ParamField>
 
         ![Dynamic Secret Setup Modal](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-setup-modal.png)

@@ -10,6 +10,10 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 - A [Snowflake account](https://app.snowflake.com/) with permission to create Programmatic Access Tokens.
 - The **account identifier** for your Snowflake instance, which combines your organization name and account name. You can find it in your Snowflake login URL (`https://app.snowflake.com/orgName/accountName/#/account/users`) or under **Account Details** in Snowsight.
 
+<Tip>
+    Create a dedicated Snowflake user (or role) for Infisical rather than reusing a personal account. This keeps the connection's blast radius small and makes it easy to rotate or revoke access independently.
+</Tip>
+
 ## Create a Snowflake Programmatic Access Token
 
 <Steps>
@@ -91,9 +95,6 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
     </Step>
 </Steps>
 
-<Tip>
-    Create a dedicated Snowflake user (or role) for Infisical rather than reusing a personal account. This keeps the connection's blast radius small and makes it easy to rotate or revoke access independently.
-</Tip>
 
 ## Create Snowflake Connection in Infisical
 

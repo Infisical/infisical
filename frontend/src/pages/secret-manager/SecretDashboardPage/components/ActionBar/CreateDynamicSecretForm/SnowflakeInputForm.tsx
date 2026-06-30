@@ -229,11 +229,11 @@ export const SnowflakeInputForm = ({
                   defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Password"
+                      label="Programmatic Access Token"
                       className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
-                      tooltipText="You can provide a Programmatic Access Token (PAT) here instead of a password. PATs are Snowflake's recommended credential going forward; password authentication remains supported for now but is being phased out."
+                      tooltipText="The Programmatic Access Token (PAT) used to authenticate with Snowflake. A user password is still accepted, but Snowflake is phasing out password authentication."
                     >
                       <Input {...field} type="password" autoComplete="new-password" />
                     </FormControl>
