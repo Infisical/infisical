@@ -141,6 +141,7 @@
                       "integrations/app-connections/gitlab",
                       "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
+                      "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
                       "integrations/app-connections/external-infisical",
@@ -646,6 +647,7 @@
                       "integrations/secret-syncs/github",
                       "integrations/secret-syncs/gitlab",
                       "integrations/secret-syncs/hashicorp-vault",
+                      "integrations/secret-syncs/hasura-cloud",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/external-infisical",
@@ -1706,6 +1708,18 @@
                       "api-reference/endpoints/app-connections/hashicorp-vault/create",
                       "api-reference/endpoints/app-connections/hashicorp-vault/update",
                       "api-reference/endpoints/app-connections/hashicorp-vault/delete"
+                    ]
+                  },
+                  {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/hasura-cloud/list",
+                      "api-reference/endpoints/app-connections/hasura-cloud/available",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/app-connections/hasura-cloud/create",
+                      "api-reference/endpoints/app-connections/hasura-cloud/update",
+                      "api-reference/endpoints/app-connections/hasura-cloud/delete"
                     ]
                   },
                   {
@@ -2916,6 +2930,20 @@
                       "api-reference/endpoints/secret-syncs/hashicorp-vault/sync-secrets",
                       "api-reference/endpoints/secret-syncs/hashicorp-vault/import-secrets",
                       "api-reference/endpoints/secret-syncs/hashicorp-vault/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/list",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/create",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/update",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/delete",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/import-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/remove-secrets"
                     ]
                   },
                   {

@@ -42,6 +42,7 @@ export enum SecretSync {
   TravisCI = "travis-ci",
   Snowflake = "snowflake",
   TriggerDev = "trigger-dev",
+  HasuraCloud = "hasura-cloud",
   Cloud66 = "cloud-66"
 }
 

@@ -53,6 +53,10 @@ import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-s
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
+import {
+  HasuraCloudSyncListItemSchema,
+  HasuraCloudSyncSchema
+} from "@app/services/secret-sync/hasura-cloud/hasura-cloud-sync-schemas";
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
@@ -118,6 +122,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OnaSyncSchema,
   TravisCISyncSchema,
   SnowflakeSyncSchema,
+  HasuraCloudSyncSchema,
   Cloud66SyncSchema
 ]);
 
@@ -165,6 +170,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
   SnowflakeSyncListItemSchema,
+  HasuraCloudSyncListItemSchema,
   Cloud66SyncListItemSchema
 ]);
 
