@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { getRundeckInstanceUrl } from "@app/services/app-connection/rundeck";
+import { RUNDECK_API_VERSION } from "@app/services/app-connection/rundeck/rundeck-connection-fns";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -12,7 +13,6 @@ import { TSecretMap } from "../secret-sync-types";
 import { TRundeckSyncWithCredentials } from "./rundeck-sync-types";
 
 // Rundeck Key Storage API version (matches the native Rundeck integration)
-const RUNDECK_STORAGE_API_VERSION = 44;
 
 const RUNDECK_SECRET_CONTENT_TYPE = "application/x-rundeck-data-password";
 
@@ -41,7 +41,7 @@ const getRundeckClientDetails = async (secretSync: TRundeckSyncWithCredentials) 
   const storagePath = getRundeckStoragePath(destinationConfig.project, destinationConfig.path);
 
   return {
-    baseUrl: `${instanceUrl}/api/${RUNDECK_STORAGE_API_VERSION}/storage/${storagePath}`,
+    baseUrl: `${instanceUrl}/api/${RUNDECK_API_VERSION}/storage/${storagePath}`,
     headers: {
       "X-Rundeck-Auth-Token": connection.credentials.apiToken
     }

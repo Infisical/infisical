@@ -17,7 +17,7 @@ export const rundeckConnectionService = (getAppConnection: TGetAppConnectionFunc
     try {
       const projects = await listRundeckProjects(appConnection);
 
-      return projects ?? [];
+      return projects;
     } catch (error) {
       logger.error(error, "Failed to establish connection with Rundeck");
       return [];

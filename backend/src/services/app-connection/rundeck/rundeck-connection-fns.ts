@@ -9,6 +9,8 @@ import { AppConnection } from "../app-connection-enums";
 import { RundeckConnectionMethod } from "./rundeck-connection-enums";
 import { TRundeckConnection, TRundeckConnectionConfig, TRundeckProject } from "./rundeck-connection-types";
 
+export const RUNDECK_API_VERSION = "58";
+
 export const getRundeckInstanceUrl = async (config: TRundeckConnectionConfig) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
 
@@ -30,7 +32,7 @@ export const validateRundeckConnectionCredentials = async (config: TRundeckConne
   const { apiToken } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/api/14/projects`, {
+    await request.get(`${instanceUrl}/api/${RUNDECK_API_VERSION}/projects`, {
       headers: {
         "X-Rundeck-Auth-Token": apiToken,
         Accept: "application/json"
@@ -56,7 +58,7 @@ export const listRundeckProjects = async (appConnection: TRundeckConnection): Pr
   const { apiToken } = appConnection.credentials;
 
   try {
-    const { data } = await request.get<TRundeckProject[]>(`${instanceUrl}/api/14/projects`, {
+    const { data } = await request.get<TRundeckProject[]>(`${instanceUrl}/api/${RUNDECK_API_VERSION}/projects`, {
       headers: {
         "X-Rundeck-Auth-Token": apiToken,
         Accept: "application/json"
