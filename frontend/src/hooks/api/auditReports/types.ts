@@ -51,8 +51,3 @@ export type TRequestAuditReportDTO = {
   reports: { type: AuditReportType; inputs?: Record<string, unknown> }[];
   emailRecipients?: string[];
 };
-
-export type TDeleteAuditReportDTO = {
-  projectId: string;
-  auditReportId: string;
-};

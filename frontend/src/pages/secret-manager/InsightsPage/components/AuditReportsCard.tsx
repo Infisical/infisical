@@ -114,7 +114,7 @@ export const AuditReportsCard = () => {
   const handleDeleteReport = async () => {
     const report = popUp.deleteReport.data as TAuditReport;
     try {
-      await deleteAuditReport.mutateAsync({ projectId, auditReportId: report.id });
+      await deleteAuditReport.mutateAsync(report.id);
       createNotification({ type: "success", text: "Successfully deleted audit report" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete audit report";

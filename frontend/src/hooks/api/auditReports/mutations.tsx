@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { auditReportKeys } from "./queries";
-import { TAuditReport, TDeleteAuditReportDTO, TRequestAuditReportDTO } from "./types";
+import { TAuditReport, TRequestAuditReportDTO } from "./types";
 
 export const useRequestAuditReport = () => {
   const queryClient = useQueryClient();
@@ -19,12 +19,9 @@ export const useRequestAuditReport = () => {
 export const useDeleteAuditReport = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, auditReportId }: TDeleteAuditReportDTO) => {
+    mutationFn: async (auditReportId: string) => {
       const { data } = await apiRequest.delete<TAuditReport>(
-        `/api/v1/audit-reports/${auditReportId}`,
-        {
-          params: { projectId }
-        }
+        `/api/v1/audit-reports/${auditReportId}`
       );
       return data;
     },
