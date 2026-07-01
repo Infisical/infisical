@@ -372,7 +372,7 @@ export const ProjectCategoryOverview = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleTileClick(type);
               }}
-              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`}
+              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out will-change-transform hover:scale-[1.01] ${cardClassName}`}
             >
               {tileBody}
             </Card>
