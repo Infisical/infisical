@@ -680,7 +680,9 @@ export const SecretEditTableRow = ({
 
   const handleCopySharedToClipboard = async () => {
     try {
-      if (isPendingCreate) {
+      if (isPendingCreate || (isBatchMode && hasPendingValueChange)) {
+        // In batch mode with a queued value change, copy the pending value shown in the field
+        // rather than refetching the (stale) committed server value.
         await window.navigator.clipboard.writeText((watchedValue as string) ?? "");
       } else {
         const { data } = await refetchSharedValue();
@@ -1627,7 +1629,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuCheckboxItem
-                    checked={!skipMultilineEncoding}
+                    checked={skipMultilineEncoding}
                     disabled={
                       isPendingDelete ||
                       isCreatable ||
