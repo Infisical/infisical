@@ -93,6 +93,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         clearTimeout(delay);
         if (inputRef.current) {
           const cursorPos = lhsValue.length + referenceContent.length + 1; // +1 for }
+          inputRef.current.selectionStart = cursorPos;
           inputRef.current.selectionEnd = cursorPos;
         }
       }, 10);
@@ -236,7 +237,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 setIsFocused.off();
               if (props.onBlur) props.onBlur(evt);
             }}
-            onChange={(e) => onChange?.(e.target.value)}
+            onChange={(e) => {
+              onChange?.(e.target.value);
+              setIsFocused.on();
+            }}
             containerClassName={containerClassName}
             onClickSegment={handleClickSegment}
           />
