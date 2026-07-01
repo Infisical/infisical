@@ -10,6 +10,7 @@ import { RoleOption } from "@app/components/roles";
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -69,27 +70,29 @@ type ProductDefinition = {
   roles?: { slug: string; name: string; description: string }[];
 };
 
+// Names come from the shared getProjectTitle util so the select matches the Projects pages.
 const PRODUCT_DEFINITIONS: ProductDefinition[] = [
-  { type: ProjectType.SecretManager, name: "Secrets", isSingleton: false },
+  {
+    type: ProjectType.SecretManager,
+    name: getProjectTitle(ProjectType.SecretManager),
+    isSingleton: false
+  },
   {
     type: ProjectType.CertificateManager,
-    name: "Certificate Manager",
+    name: getProjectTitle(ProjectType.CertificateManager),
     isSingleton: true,
     roles: CERT_MANAGER_ROLES
   },
-  { type: ProjectType.KMS, name: "KMS", isSingleton: false },
-  { type: ProjectType.SSH, name: "SSH", isSingleton: false },
-  { type: ProjectType.SecretScanning, name: "Secret Scanning", isSingleton: false },
-  { type: ProjectType.PAM, name: "PAM", isSingleton: false },
-  { type: ProjectType.AI, name: "AI", isSingleton: false }
+  { type: ProjectType.KMS, name: getProjectTitle(ProjectType.KMS), isSingleton: false },
+  { type: ProjectType.SSH, name: getProjectTitle(ProjectType.SSH), isSingleton: false },
+  {
+    type: ProjectType.SecretScanning,
+    name: getProjectTitle(ProjectType.SecretScanning),
+    isSingleton: false
+  },
+  { type: ProjectType.PAM, name: getProjectTitle(ProjectType.PAM), isSingleton: false },
+  { type: ProjectType.AI, name: getProjectTitle(ProjectType.AI), isSingleton: false }
 ];
-
-// Prefer the shared project title (matches the Projects pages, e.g. "Secrets Management"), falling
-// back to the definition name for types the util doesn't map (e.g. AI).
-const getProductLabel = (product: ProductDefinition) => {
-  const title = getProjectTitle(product.type);
-  return title === product.type ? product.name : title;
-};
 
 // Render each product with its shared project icon (getProjectLucideIcon) so the select matches the
 // Projects pages and the org sidebar.
@@ -446,7 +449,7 @@ export const AddOrgMemberModal = ({
                       setValue("projects", []);
                       setValue("projectRole", DEFAULT_PROJECT_ROLE);
                     }}
-                    getOptionLabel={(product) => getProductLabel(product)}
+                    getOptionLabel={(product) => product.name}
                     getOptionValue={(product) => product.type}
                     options={availableProducts}
                     placeholder="Select a product..."
@@ -564,11 +567,20 @@ export const AddOrgMemberModal = ({
           </form>
         )}
         {completeInviteLinks && (
-          <div className="space-y-3">
-            {completeInviteLinks.map((invite) => (
-              <OrgInviteLink key={`invite-${invite.email}`} invite={invite} />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3">
+              {completeInviteLinks.map((invite) => (
+                <OrgInviteLink key={`invite-${invite.email}`} invite={invite} />
+              ))}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="org">
+                  Done
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </>
         )}
       </DialogContent>
     </Dialog>
