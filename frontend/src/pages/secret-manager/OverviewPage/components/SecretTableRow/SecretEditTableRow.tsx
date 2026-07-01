@@ -1629,7 +1629,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuCheckboxItem
-                    checked={skipMultilineEncoding}
+                    checked={Boolean(skipMultilineEncoding)}
                     disabled={
                       isPendingDelete ||
                       isCreatable ||
