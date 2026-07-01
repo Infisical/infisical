@@ -686,6 +686,9 @@ import {
   TUserGroupMembership,
   TUserGroupMembershipInsert,
   TUserGroupMembershipUpdate,
+  TUserMfaRecoveryCodes,
+  TUserMfaRecoveryCodesInsert,
+  TUserMfaRecoveryCodesUpdate,
   TUsers,
   TUsersInsert,
   TUsersUpdate,
@@ -1826,6 +1829,11 @@ declare module "knex/types/tables" {
       TWebauthnCredentials,
       TWebauthnCredentialsInsert,
       TWebauthnCredentialsUpdate
+    >;
+    [TableName.UserMfaRecoveryCode]: KnexOriginal.CompositeTableType<
+      TUserMfaRecoveryCodes,
+      TUserMfaRecoveryCodesInsert,
+      TUserMfaRecoveryCodesUpdate
     >;
     [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
     [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<

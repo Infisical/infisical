@@ -13,7 +13,7 @@ type TMfaSessionServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
 };
 
 export type TMfaSessionServiceFactory = ReturnType<typeof mfaSessionServiceFactory>;

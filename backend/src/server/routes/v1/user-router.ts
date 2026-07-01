@@ -289,20 +289,50 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Account-level MFA recovery codes (shared across TOTP and WebAuthn/passkey)
+  server.route({
+    method: "GET",
+    url: "/me/mfa/recovery-codes",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getUserMfaRecoveryCodes",
+      response: {
+        200: z.object({
+          recoveryCodes: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const recoveryCodes = await server.services.mfaRecoveryCode.getRecoveryCodes({
+        userId: req.permission.id
+      });
+      return { recoveryCodes };
+    }
+  });
+
   server.route({
     method: "POST",
-    url: "/me/totp/recovery-codes",
+    url: "/me/mfa/recovery-codes",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "createUserTotpRecoveryCodes"
+      operationId: "regenerateUserMfaRecoveryCodes",
+      response: {
+        200: z.object({
+          recoveryCodes: z.string().array()
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.totp.createUserTotpRecoveryCodes({
+      const recoveryCodes = await server.services.mfaRecoveryCode.rotateRecoveryCodes({
         userId: req.permission.id
       });
+      return { recoveryCodes };
     }
   });
 
@@ -389,7 +419,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           credentialId: z.string(),
-          name: z.string().nullable().optional()
+          name: z.string().nullable().optional(),
+          recoveryCodes: z.string().array()
         })
       }
     },

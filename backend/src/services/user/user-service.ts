@@ -17,6 +17,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
 import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO, TVerifyCurrentEmailOTPDTO } from "./user-types";
@@ -44,6 +45,7 @@ type TUserServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "deleteRecoveryCodes" | "ensureRecoveryCodes">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -56,7 +58,8 @@ export const userServiceFactory = ({
   tokenService,
   smtpService,
   permissionService,
-  userAliasDAL
+  userAliasDAL,
+  mfaRecoveryCodeService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -112,6 +115,15 @@ export const userServiceFactory = ({
       mfaMethods,
       selectedMfaMethod
     });
+
+    // Recovery codes are account-level and tied to MFA being enabled, not to any
+    // specific method. Provision the pool as soon as MFA is turned on, and clear
+    // it when MFA is turned off so no usable codes are left behind.
+    if (isMfaEnabled === true) {
+      await mfaRecoveryCodeService.ensureRecoveryCodes({ userId });
+    } else if (isMfaEnabled === false) {
+      await mfaRecoveryCodeService.deleteRecoveryCodes({ userId });
+    }
 
     return updatedUser;
   };

@@ -9,7 +9,8 @@ import {
   TGenerateRegistrationOptionsResponse,
   TUpdateWebAuthnCredentialDTO,
   TVerifyAuthenticationDTO,
-  TVerifyRegistrationDTO
+  TVerifyRegistrationDTO,
+  TVerifyRegistrationResponse
 } from "./types";
 
 export const useGenerateRegistrationOptions = () =>
@@ -27,7 +28,7 @@ export const useVerifyRegistration = () => {
 
   return useMutation({
     mutationFn: async (dto: TVerifyRegistrationDTO) => {
-      const { data } = await apiRequest.post<{ credentialId: string; name?: string | null }>(
+      const { data } = await apiRequest.post<TVerifyRegistrationResponse>(
         "/api/v1/user/me/webauthn/register/verify",
         dto
       );

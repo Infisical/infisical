@@ -22,11 +22,13 @@ import { useGetUser, userKeys, useUpdateUserMfa } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import {
-  useCreateNewTotpRecoveryCodes,
   useDeleteUserTotpConfiguration,
+  useRotateMfaRecoveryCodes,
   useVerifyUserTotpRegistration
 } from "@app/hooks/api/users/mutation";
 import {
+  fetchMfaRecoveryCodes,
+  useGetMfaRecoveryCodes,
   useGetUserTotpConfiguration,
   useGetUserTotpRegistration
 } from "@app/hooks/api/users/queries";
@@ -57,6 +59,7 @@ export const MFASection = () => {
     "setUpEmail",
     "deleteTotpConfig",
     "downloadRecoveryCodes",
+    "regenerateRecoveryCodes",
     "deleteWebAuthnCredential",
     "renameWebAuthnCredential",
     "registerPasskey"
@@ -68,7 +71,6 @@ export const MFASection = () => {
       enabled: showMobileAuthSetup
     });
   const { mutateAsync: deleteTotpConfiguration } = useDeleteUserTotpConfiguration();
-  const { mutateAsync: createTotpRecoveryCodes } = useCreateNewTotpRecoveryCodes();
   const { mutateAsync: verifyUserTotp } = useVerifyUserTotpRegistration();
   const queryClient = useQueryClient();
   const { data: serverDetails } = useFetchServerStatus();
@@ -86,6 +88,18 @@ export const MFASection = () => {
   const [selectedCredentialId, setSelectedCredentialId] = useState<string>("");
   const [credentialName, setCredentialName] = useState<string>("");
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([]);
+
+  const hasPasskeys = Boolean(webAuthnCredentials && webAuthnCredentials.length > 0);
+  // Recovery codes are account-level and shared across every MFA method, so surface
+  // them whenever the user has MFA enabled or any MFA credential configured.
+  const shouldShowRecoveryCodesSection = Boolean(
+    user?.isMfaEnabled || totpConfiguration?.isVerified || hasPasskeys
+  );
+  const { data: mfaRecoveryCodes } = useGetMfaRecoveryCodes(shouldShowRecoveryCodesSection);
+  const hasRecoveryCodes = Boolean(mfaRecoveryCodes && mfaRecoveryCodes.length > 0);
+  const { mutateAsync: rotateMfaRecoveryCodes, isPending: isRotatingRecoveryCodes } =
+    useRotateMfaRecoveryCodes();
 
   // Update form data when user data changes
   useEffect(() => {
@@ -125,13 +139,32 @@ export const MFASection = () => {
     handlePopUpClose("deleteTotpConfig");
   };
 
-  const handleGenerateMoreRecoveryCodes = async () => {
-    await createTotpRecoveryCodes();
+  // Generates a fresh account-level recovery code pool and surfaces it for saving.
+  // `isRotation` distinguishes replacing an existing pool (confirmed via modal,
+  // invalidates the old codes) from first-time generation for users with none yet.
+  const generateAndShowRecoveryCodes = async (isRotation: boolean) => {
+    try {
+      const { recoveryCodes } = await rotateMfaRecoveryCodes();
 
-    createNotification({
-      text: "Successfully generated new recovery codes",
-      type: "success"
-    });
+      if (isRotation) {
+        handlePopUpClose("regenerateRecoveryCodes");
+      }
+
+      setNewRecoveryCodes(recoveryCodes);
+      handlePopUpOpen("downloadRecoveryCodes");
+
+      createNotification({
+        text: isRotation
+          ? "Generated a new set of recovery codes. Your previous codes no longer work."
+          : "Generated your recovery codes. Save them somewhere safe.",
+        type: "success"
+      });
+    } catch (error: any) {
+      createNotification({
+        text: error?.response?.data?.message || "Failed to generate recovery codes",
+        type: "error"
+      });
+    }
   };
 
   const handleRegisterPasskey = async () => {
@@ -166,7 +199,7 @@ export const MFASection = () => {
       const registrationResponse = await startRegistration({ optionsJSON: options });
 
       // Verify registration with server
-      await verifyRegistration({
+      const { recoveryCodes } = await verifyRegistration({
         registrationResponse,
         name: credentialName || "Passkey"
       });
@@ -178,6 +211,12 @@ export const MFASection = () => {
 
       handlePopUpClose("registerPasskey");
       setCredentialName("");
+
+      // Surface account-level recovery codes generated on the first passkey.
+      if (recoveryCodes && recoveryCodes.length > 0) {
+        setNewRecoveryCodes(recoveryCodes);
+        handlePopUpOpen("downloadRecoveryCodes");
+      }
     } catch (error: any) {
       console.error("Failed to register passkey:", error);
 
@@ -242,7 +281,7 @@ export const MFASection = () => {
     }
   };
 
-  const handleFormDataChange = async (field: string, value: any) => {
+  const handleFormDataChange = (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value
@@ -252,12 +291,13 @@ export const MFASection = () => {
     if (field === "selectedMfaMethod" && value === MfaMethod.TOTP && formData.isMfaEnabled) {
       setShowMobileAuthSetup(true);
     } else if (field === "selectedMfaMethod" && value !== MfaMethod.TOTP) {
+      // Switching the selected method away from TOTP is only a local form edit
+      // until the user saves. Do not delete the existing TOTP configuration here:
+      // it can coexist with another active method and is managed (removed)
+      // explicitly via the "Remove Authenticator" button.
       setShowMobileAuthSetup(false);
       setTotpCode("");
       setShouldShowRecoveryCodes.off();
-      if (totpConfiguration?.isVerified) {
-        await deleteTotpConfiguration().catch(console.error);
-      }
     } else if (field === "isMfaEnabled" && value && formData.selectedMfaMethod === MfaMethod.TOTP) {
       setShowMobileAuthSetup(true);
     } else if (field === "isMfaEnabled" && !value) {
@@ -270,6 +310,8 @@ export const MFASection = () => {
   const handleSaveChanges = async () => {
     try {
       if (!user) return;
+
+      const isEnablingMfa = !user.isMfaEnabled && formData.isMfaEnabled;
 
       if (user.authMethods.includes(AuthMethod.LDAP)) {
         createNotification({
@@ -317,10 +359,8 @@ export const MFASection = () => {
         try {
           await verifyUserTotp({ totp: totpCode });
 
-          handlePopUpOpen("downloadRecoveryCodes");
-
           createNotification({
-            text: "Successfully configured mobile authenticator. Please save your recovery codes!",
+            text: "Successfully configured mobile authenticator",
             type: "success"
           });
 
@@ -365,6 +405,18 @@ export const MFASection = () => {
           text: "Successfully updated two-factor authentication settings",
           type: "success"
         });
+      }
+
+      // Turning MFA on provisions a fresh account-level recovery code pool
+      // server-side (regardless of method). Surface it once so the user can save
+      // the codes before leaving the page.
+      if (isEnablingMfa) {
+        const recoveryCodes = await fetchMfaRecoveryCodes();
+        if (recoveryCodes.length > 0) {
+          setNewRecoveryCodes(recoveryCodes);
+          handlePopUpOpen("downloadRecoveryCodes");
+        }
+        await queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes });
       }
 
       // Reset form state
@@ -655,6 +707,66 @@ export const MFASection = () => {
       {/* Management Sections - Separate from configuration form */}
       {user && (
         <div className="mt-6 mb-6 space-y-6">
+          {/* Recovery Codes - account-level, shared across all MFA methods */}
+          {shouldShowRecoveryCodesSection && (
+            <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+              <h3 className="mb-1 text-lg font-medium text-mineshaft-100">Recovery Codes</h3>
+              <p className="mb-4 text-sm text-mineshaft-400">
+                Use a recovery code to sign in if you lose access to your two-factor authentication
+                method.
+              </p>
+
+              {hasRecoveryCodes ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      colorSchema="secondary"
+                      variant="outline_bg"
+                      onClick={setShouldShowRecoveryCodes.toggle}
+                    >
+                      {shouldShowRecoveryCodes ? "Hide recovery codes" : "Show recovery codes"}
+                    </Button>
+                    <Button
+                      colorSchema="secondary"
+                      variant="outline_bg"
+                      onClick={() => handlePopUpOpen("regenerateRecoveryCodes")}
+                    >
+                      Regenerate recovery codes
+                    </Button>
+                  </div>
+
+                  {shouldShowRecoveryCodes && (
+                    <div className="w-fit rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 pr-8">
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
+                        {(mfaRecoveryCodes || []).map((code, index) => (
+                          <div key={code} className="flex items-center text-mineshaft-200">
+                            <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
+                            <span className="pl-2">{code}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="mb-3 text-sm text-mineshaft-400">
+                    You don&apos;t have any recovery codes yet. Generate a set and store them
+                    somewhere safe.
+                  </p>
+                  <Button
+                    colorSchema="secondary"
+                    variant="outline_bg"
+                    onClick={() => generateAndShowRecoveryCodes(false)}
+                    isLoading={isRotatingRecoveryCodes}
+                  >
+                    Generate recovery codes
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Mobile Authenticator Management - Show if configured, regardless of active method */}
           {totpConfiguration?.isVerified && (
             <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -662,46 +774,17 @@ export const MFASection = () => {
                 Mobile Authenticator Management
               </h3>
               <p className="mb-4 text-sm text-mineshaft-400">
-                Manage your mobile authenticator configuration and recovery codes.
+                Manage your mobile authenticator configuration.
               </p>
 
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    colorSchema="secondary"
-                    variant="outline_bg"
-                    onClick={setShouldShowRecoveryCodes.toggle}
-                  >
-                    {shouldShowRecoveryCodes ? "Hide recovery codes" : "Show recovery codes"}
-                  </Button>
-                  <Button
-                    colorSchema="secondary"
-                    variant="outline_bg"
-                    onClick={handleGenerateMoreRecoveryCodes}
-                  >
-                    Generate more codes
-                  </Button>
-                  <Button
-                    colorSchema="danger"
-                    variant="outline_bg"
-                    onClick={() => handlePopUpOpen("deleteTotpConfig")}
-                  >
-                    Remove Authenticator
-                  </Button>
-                </div>
-
-                {shouldShowRecoveryCodes && (
-                  <div className="w-fit rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 pr-8">
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
-                      {totpConfiguration.recoveryCodes.map((code, index) => (
-                        <div key={code} className="flex items-center text-mineshaft-200">
-                          <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
-                          <span className="pl-2">{code}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  colorSchema="danger"
+                  variant="outline_bg"
+                  onClick={() => handlePopUpOpen("deleteTotpConfig")}
+                >
+                  Remove Authenticator
+                </Button>
               </div>
             </div>
           )}
@@ -819,13 +902,52 @@ export const MFASection = () => {
 
       <RecoveryCodesDownload
         isOpen={popUp.downloadRecoveryCodes?.isOpen || false}
-        onClose={() => handlePopUpClose("downloadRecoveryCodes")}
-        recoveryCodes={totpRegistration?.recoveryCodes || []}
-        onDownloadComplete={() => handlePopUpClose("downloadRecoveryCodes")}
+        onClose={() => {
+          handlePopUpClose("downloadRecoveryCodes");
+          setNewRecoveryCodes([]);
+        }}
+        recoveryCodes={
+          newRecoveryCodes.length > 0 ? newRecoveryCodes : totpRegistration?.recoveryCodes || []
+        }
+        onDownloadComplete={() => {
+          handlePopUpClose("downloadRecoveryCodes");
+          setNewRecoveryCodes([]);
+        }}
       />
 
       {registerPasskeyModal}
       {renamePasskeyModal}
+
+      {/* Regenerate (rotate) recovery codes confirmation */}
+      <Modal
+        isOpen={popUp.regenerateRecoveryCodes?.isOpen || false}
+        onOpenChange={(isOpen) => handlePopUpToggle("regenerateRecoveryCodes", isOpen)}
+      >
+        <ModalContent title="Regenerate recovery codes?">
+          <div className="space-y-4">
+            <p className="text-sm text-mineshaft-300">
+              This generates a brand-new set of recovery codes and immediately invalidates all of
+              your existing ones. Make sure to save the new codes.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                colorSchema="danger"
+                onClick={() => generateAndShowRecoveryCodes(true)}
+                isLoading={isRotatingRecoveryCodes}
+              >
+                Regenerate codes
+              </Button>
+              <Button
+                variant="outline_bg"
+                onClick={() => handlePopUpClose("regenerateRecoveryCodes")}
+                disabled={isRotatingRecoveryCodes}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </ModalContent>
+      </Modal>
 
       {/* Delete Passkey Modal */}
       <DeleteActionModal

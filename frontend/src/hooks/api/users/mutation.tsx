@@ -94,15 +94,20 @@ export const useDeleteUserTotpConfiguration = () => {
   });
 };
 
-export const useCreateNewTotpRecoveryCodes = () => {
+// Rotates the account-level recovery codes: issues a fresh set and invalidates
+// the old ones. Returns the new codes so the caller can display them once.
+export const useRotateMfaRecoveryCodes = () => {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<{ recoveryCodes: string[] }, unknown, void>({
     mutationFn: async () => {
-      await apiRequest.post("/api/v1/user/me/totp/recovery-codes");
+      const { data } = await apiRequest.post<{ recoveryCodes: string[] }>(
+        "/api/v1/user/me/mfa/recovery-codes"
+      );
 
-      return {};
+      return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes });
       queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
     }
   });
