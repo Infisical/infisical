@@ -2235,7 +2235,9 @@ export const registerRoutes = async (
     identityMembershipV2DAL,
     identityAccessTokenService,
     keyStore,
-    projectDAL
+    projectDAL,
+    orgDAL,
+    roleDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({
