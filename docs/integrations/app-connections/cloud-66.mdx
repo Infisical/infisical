@@ -1,0 +1,63 @@
+---
+title: "Cloud 66 Connection"
+description: "Learn how to configure a Cloud 66 Connection for Infisical using a Personal Access Token."
+---
+
+Infisical supports connecting to Cloud 66 using a **Personal Access Token**.
+
+## Create Cloud 66 Personal Access Token
+
+<Steps>
+  <Step title="Open your Cloud 66 account settings">
+    Log in to your [Cloud 66 account](https://app.cloud66.com) and click your account avatar in the top-right corner.
+    ![Open Account Menu](/images/app-connections/cloud66/step-1.png)
+
+    Select **Account Settings** from the dropdown.
+    ![Select Account Settings](/images/app-connections/cloud66/step-2.png)
+  </Step>
+  <Step title="Open Access Tokens settings">
+    In the account settings sidebar, select **Settings**.
+    ![Open Settings](/images/app-connections/cloud66/step-3.png)
+
+    Then select **Access Tokens**.
+    ![Open Access Tokens](/images/app-connections/cloud66/step-4.png)
+  </Step>
+  <Step title="Create a Personal Access Token">
+    Under **Personal Access Tokens (Classic)**, click **Add Token**.
+    ![Add Token](/images/app-connections/cloud66/step-5.png)
+
+    Give the token a name and select a scope that allows managing your stacks' environment variables, then click **Create Token**.
+    ![Configure Token](/images/app-connections/cloud66/step-6.png)
+
+  </Step>
+  <Step title="Copy your Personal Access Token">
+    Copy the token and store it somewhere safe. Cloud 66 will not show it again after you leave this page.
+    ![Copy Token](/images/app-connections/cloud66/step-7.png)
+  </Step>
+</Steps>
+
+## Setup Cloud 66 Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Cloud 66 Connection** option from the connection options modal.
+    ![Select Cloud 66 Connection](/images/app-connections/cloud66/step-8.png)
+  </Step>
+  <Step title="Configure Connection">
+    Enter a name for the connection, paste your Personal Access Token into the **Personal Access Token** field, then click **Connect to Cloud 66**.
+    ![Configure Cloud 66 Connection](/images/app-connections/cloud66/step-9.png)
+  </Step>
+  <Step title="Connection Created">
+    Your connection is now available for use.
+    ![Cloud 66 Connection Created](/images/app-connections/cloud66/step-10.png)
+  </Step>
+</Steps>
+
+<Info>
+  Personal Access Token connections require manual token rotation when your Cloud 66 token expires or is
+  regenerated. Monitor your connection status and update the token as needed.
+</Info>
