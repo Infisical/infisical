@@ -10,6 +10,10 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 - A [Snowflake account](https://app.snowflake.com/) with permission to create Programmatic Access Tokens.
 - The **account identifier** for your Snowflake instance, which combines your organization name and account name. You can find it in your Snowflake login URL (`https://app.snowflake.com/orgName/accountName/#/account/users`) or under **Account Details** in Snowsight.
 
+<Tip>
+    Create a dedicated Snowflake user (or role) for Infisical rather than reusing a personal account. This keeps the connection's blast radius small and makes it easy to rotate or revoke access independently.
+</Tip>
+
 ## Create a Snowflake Programmatic Access Token
 
 <Steps>
@@ -30,7 +34,10 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 
         ![Configure User](/images/app-connections/snowflake/step-3.png)
 
-        If you decide to go with a custom role, you just need to run the following snippet:
+        If you decide to go with a custom role, you just need to run the following snippet. To do this, select the **Projects** tab and click on **Workspaces** to open the query editor.
+
+
+        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
 
         ```SQL
         -- Grant INFISICAL user access to SECRET_SYNC_TEST
@@ -53,7 +60,6 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 
 
         ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
-        ![Create network policy](/images/app-connections/snowflake/step-4.png)
 
 
         ```SQL
@@ -64,19 +70,20 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
         ALTER USER INFISICAL set NETWORK_POLICY = 'INFISICAL_SYNC_POLICY';
         ```
 
-        <Note>
+        <Warning>
             Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
-        </Note>
+        </Warning>
     </Step>
     <Step title="Generate a Programmatic Access Token">
         Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
 
         ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
+        ![Fill up PAT info](/images/app-connections/snowflake/step-6.png)
     </Step>
     <Step title="Copy the Token">
         Copy the generated token. Snowflake only displays it once — store it somewhere secure for the next step.
 
-        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-6.png)
+        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-7.png)
     </Step>
 
     <Step title="Copy the Snowflake Account">
@@ -90,9 +97,6 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
     </Step>
 </Steps>
 
-<Tip>
-    Create a dedicated Snowflake user (or role) for Infisical rather than reusing a personal account. This keeps the connection's blast radius small and makes it easy to rotate or revoke access independently.
-</Tip>
 
 ## Create Snowflake Connection in Infisical
 

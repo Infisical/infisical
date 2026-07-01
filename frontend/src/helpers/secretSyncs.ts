@@ -282,6 +282,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Qovery.png",
     category: "HOSTING",
     description: "Environment secrets and variables for Qovery projects."
+  },
+  [SecretSync.Cloud66]: {
+    name: "Cloud 66",
+    image: "Cloud 66.png",
+    category: "HOSTING",
+    description: "Environment variables for Cloud 66 stacks."
   }
 };
 
@@ -336,7 +342,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
   [SecretSync.TriggerDev]: AppConnection.TriggerDev,
-  [SecretSync.Qovery]: AppConnection.Qovery
+  [SecretSync.Qovery]: AppConnection.Qovery,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

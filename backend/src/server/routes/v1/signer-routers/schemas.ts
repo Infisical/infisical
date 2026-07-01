@@ -1,8 +1,23 @@
 import { z } from "zod";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
+
+export const SignerExternalConfigurationSchema = z.discriminatedUnion("caType", [
+  z.object({
+    caType: z.literal(CaType.DIGICERT),
+    reissueFromExternalOrderId: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .describe(
+        "Reissue into this existing DigiCert order instead of placing a new order (reuses the subscription slot)."
+      )
+  })
+]);
 
 export const SignerKeyAlgorithm = {
   values: [

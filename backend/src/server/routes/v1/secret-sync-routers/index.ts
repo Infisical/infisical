@@ -13,6 +13,7 @@ import { registerBitbucketSyncRouter } from "./bitbucket-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCircleCISyncRouter } from "./circleci-sync-router";
+import { registerCloud66SyncRouter } from "./cloud66-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
@@ -91,5 +92,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Ona]: registerOnaSyncRouter,
   [SecretSync.TravisCI]: registerTravisCISyncRouter,
   [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
-  [SecretSync.Qovery]: registerQoverySyncRouter
+  [SecretSync.Qovery]: registerQoverySyncRouter,
+  [SecretSync.Cloud66]: registerCloud66SyncRouter
 };

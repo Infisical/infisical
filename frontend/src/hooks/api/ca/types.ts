@@ -55,6 +55,19 @@ export type TAwsPcaCertificateAuthority = {
   };
 };
 
+export enum DigiCertCaPurpose {
+  Ssl = "ssl",
+  CodeSigning = "code_signing"
+}
+
+export type TDigiCertVerifiedContact = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  jobTitle: string;
+  telephone: string;
+};
+
 export type TDigiCertCertificateAuthority = {
   id: string;
   projectId: string;
@@ -66,6 +79,8 @@ export type TDigiCertCertificateAuthority = {
     appConnectionId: string;
     organizationId: number;
     productNameId: string;
+    purpose?: DigiCertCaPurpose;
+    verifiedContact?: TDigiCertVerifiedContact;
   };
 };
 

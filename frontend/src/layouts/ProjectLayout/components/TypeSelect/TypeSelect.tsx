@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
-import { Lottie } from "@app/components/v2";
 import {
   Command,
   CommandGroup,
@@ -18,7 +17,7 @@ import {
 import { useOrganization } from "@app/context";
 import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
-  getProjectLottieIcon,
+  getProjectLucideIcon,
   getProjectTitle,
   projectTypeToUrlSlug,
   urlSlugToProjectType
@@ -99,6 +98,7 @@ const TypeSelectInner = ({
 
   const typeTitle = getProjectTitle(currentType);
   const pillLabel = currentProjectName ?? typeTitle;
+  const ProductIcon = getProjectLucideIcon(currentType);
 
   return (
     <div
@@ -120,7 +120,7 @@ const TypeSelectInner = ({
           }}
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
         >
-          <Lottie className="h-[14px] w-[14px] shrink-0" icon={getProjectLottieIcon(currentType)} />
+          <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
         </button>
         <PopoverTrigger asChild>
@@ -135,6 +135,7 @@ const TypeSelectInner = ({
                 {PRODUCT_TYPES.map((type) => {
                   const isCertManager = type === ProjectType.CertificateManager;
                   const count = projectCountsByType[type] || 0;
+                  const ItemIcon = getProjectLucideIcon(type);
 
                   return (
                     <CommandItem
@@ -144,7 +145,7 @@ const TypeSelectInner = ({
                       className="gap-2"
                     >
                       <Check className={currentType === type ? "opacity-100" : "opacity-0"} />
-                      <Lottie className="h-4 w-4 shrink-0" icon={getProjectLottieIcon(type)} />
+                      <ItemIcon className="h-4 w-4 shrink-0" />
                       <div className="flex min-w-0 flex-1 items-center justify-between">
                         <span className="truncate text-sm">{getProjectTitle(type)}</span>
                         {!isCertManager && count > 1 && (

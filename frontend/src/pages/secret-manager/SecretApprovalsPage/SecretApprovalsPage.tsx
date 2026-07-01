@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -40,6 +41,29 @@ export const SecretApprovalsPage = () => {
       : TabSection.SecretApprovalRequests;
 
   const selectedTab = searchTab || defaultTab;
+
+  // The default tab is derived from live request counts. Pin it into the URL
+  // once both counts have loaded so the active tab stops tracking the counts.
+  // Otherwise closing a request changes the counts and silently flips the
+  // visible tab (e.g. Change Requests to Access Requests). See PLATFOR-489.
+  useEffect(() => {
+    if (searchTab || !secretApprovalReqCount || !accessApprovalRequestCount) return;
+
+    navigate({
+      to: "/organizations/$orgId/projects/secret-management/$projectId/approval",
+      params: { orgId: currentOrg.id, projectId },
+      search: (prev) => ({ ...prev, selectedTab: defaultTab }),
+      replace: true
+    });
+  }, [
+    searchTab,
+    secretApprovalReqCount,
+    accessApprovalRequestCount,
+    defaultTab,
+    navigate,
+    currentOrg.id,
+    projectId
+  ]);
 
   const updateSelectedTab = (tab: string) => {
     navigate({

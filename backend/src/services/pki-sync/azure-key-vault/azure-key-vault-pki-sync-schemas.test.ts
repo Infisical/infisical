@@ -20,7 +20,8 @@ describe("Azure Key Vault certificateNameSchema validation", () => {
     expect(parseSchema("{{certificateId}}_x")).toBe(false);
   });
 
-  test("allows an empty/undefined schema (optional)", () => {
-    expect(AzureKeyVaultPkiSyncOptionsSchema.safeParse({}).success).toBe(true);
+  test("requires a schema (rejects empty/undefined)", () => {
+    expect(AzureKeyVaultPkiSyncOptionsSchema.safeParse({}).success).toBe(false);
+    expect(parseSchema("")).toBe(false);
   });
 });

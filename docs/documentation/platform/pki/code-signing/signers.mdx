@@ -43,7 +43,7 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
 
 ## Create a Signer
 
-In **Certificate Manager → Code Signing → Signers**, click **Create Signer**. The wizard walks you through four steps in order.
+In **Certificate Manager → Code Signing → Signers**, click **Create Signer**. The wizard walks you through five steps in order: Basics, Certificate, Signing Key, Members, and Approval Policy.
 
 <Steps>
   <Step title="Basics">
@@ -58,17 +58,30 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
   </Step>
 
   <Step title="Certificate">
-    Infisical issues a fresh code-signing certificate for the Signer from one of your Certificate Authorities.
+    Choose which Certificate Authority issues the Signer's certificate and the identity on it.
 
     | Field | Description |
     |-------|-------------|
-    | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS) issue asynchronously and the Signer enters **Pending** until the cert lands. |
-    | **Key source** | Where the signing key is generated. **Infisical** (default) lets Infisical generate and manage the key for you. **HSM** generates the key inside your own HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). |
-    | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. Fixed once the certificate is issued. To change it you must reissue. |
-    | **Key algorithm** | The signing key algorithm: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. When **Key source = HSM** the choice is restricted to `RSA-2048`, `RSA-4096`, `ECDSA P-256`, or `ECDSA P-384`. |
-    | **HSM Connector** | The HSM Connector Infisical uses to reach your HSM. Set the Connector up first under **Certificate Manager > Settings > HSM Connectors**. Shown only when **Key source = HSM**. See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors). |
+    | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS, DigiCert) issue asynchronously and the Signer enters **Pending** until the cert lands. |
+    | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. You can change it later; doing so reissues the certificate. |
     | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
     | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
+
+    <Note>
+      Some CAs add extra fields on this step. Check your CA's documentation for any CA-specific options.
+    </Note>
+
+    Click **Next** to choose the signing key.
+  </Step>
+
+  <Step title="Signing Key">
+    Decide where the signing key lives and which algorithm to use.
+
+    | Field | Description |
+    |-------|-------------|
+    | **Key source** | Where the signing key is generated. **Infisical** (default) lets Infisical generate and manage the key for you. **HSM** generates the key inside your own HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). Some CAs require an HSM-backed key and lock this to **HSM** (DigiCert code signing is one of them). |
+    | **HSM Connector** | The HSM Connector Infisical uses to reach your HSM. Set the Connector up first under **Certificate Manager > Settings > HSM Connectors**. Shown only when **Key source = HSM**. See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors). |
+    | **Key algorithm** | The signing key algorithm: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. When **Key source = HSM** the choice is restricted to `RSA-2048`, `RSA-4096`, `ECDSA P-256`, or `ECDSA P-384`. |
 
     Click **Next** to add members.
   </Step>
@@ -97,7 +110,7 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
 
 ## HSM-backed Signers
 
-When you pick **Key source = HSM** on the Certificate step, pick the [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical should use. The Key algorithm choices narrow to the HSM-supported subset. The private key never leaves the HSM and every sign operation routes through the linked Connector. Infisical only holds the public key and the issued certificate.
+When you pick **Key source = HSM** on the Signing Key step, pick the [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical should use. The Key algorithm choices narrow to the HSM-supported subset. The private key never leaves the HSM and every sign operation routes through the linked Connector. Infisical only holds the public key and the issued certificate.
 
 You can later switch an existing Signer between Infisical and HSM by reissuing the certificate with a different key source. Hit the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) with a `certificate.keySource` body, plus `hsmConnectorId` when switching to HSM. The signer keeps its name, members, policy, and CA. Only the underlying key and the cert wrapping it change.
 
@@ -115,11 +128,11 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 
 ## Edit a Signer
 
-Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through two steps.
+Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
 
 <Steps>
-  <Step title="Edit basics">
-    Update the Signer's identifying information.
+  <Step title="Basics">
+    Update the Signer's identifying information. These never reissue the certificate.
 
     - **Signer name**: rename freely. The PKCS#11 token label updates on the next refresh.
     - **Description**: edit at will.
@@ -127,22 +140,23 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     Click **Next** to edit the certificate.
   </Step>
 
-  <Step title="Edit certificate">
-    Change the certificate parameters. Saving here can trigger a fresh issuance, so what's editable depends on the Signer's current status.
-
-    **Always editable**
+  <Step title="Certificate">
+    Change which CA issues the certificate and its identity.
 
     - **Certificate Authority**: swap to another CA. Saving with a different CA reissues the certificate immediately from the new CA.
+    - **Reuse an existing order**: offered by some CAs (DigiCert code signing). Point the Signer at an existing order to reuse that order slot instead of placing a new one. Common Name and Validity are inherited from the order.
+    - **Common Name** and **Validity (days)**: edit them to change the identity on the certificate. Saving reissues the certificate with the new values, and the signer switches to the new certificate.
     - **Renew before (days)**: edit any time, 1 to 30, must be less than Validity.
 
-    **Locked once the Signer is Active**
+    Click **Next** to edit the signing key.
+  </Step>
 
-    Once a certificate is bound, the **Common Name**, **Validity (days)**, and **Key algorithm** are all locked together so the issued cert and the Signer's stored intent can't drift apart.
+  <Step title="Signing Key">
+    Change where the key lives or which algorithm it uses. Both reissue the certificate with a new key.
 
-    - While the Signer is **Pending** or **Failed** (no certificate bound yet), **Common Name** and **Validity (days)** are editable so you can fix bad inputs and try issuance again. **Key algorithm** is still read-only here.
-    - Once **Active**, all three fields show as read-only.
-
-    To change any of them on an Active Signer: swap the CA (reissues with the new CN/Validity if you also fix those before going Active again) or, for **Key algorithm**, create a new Signer with the algorithm you want.
+    - **Key source**: switch between Infisical and HSM. Switching to HSM requires picking an HSM Connector and a supported algorithm. CAs that require an HSM-backed key (such as DigiCert code signing) lock this to **HSM**.
+    - **HSM Connector**: shown when Key source is HSM.
+    - **Key algorithm**: pick a different algorithm. Changing it generates a new key and reissues the certificate.
 
     <Note>
       Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
@@ -172,13 +186,13 @@ To sign with a Signer, pick the integration that matches your tooling:
     **Delete** is permanent. The Signer and everything attached to it (members, policy, access records, audit log) is removed. The certificate object remains in the inventory unless you delete that separately.
   </Accordion>
   <Accordion title="Why is my new Signer stuck in Pending?">
-    External CAs (AWS Private CA, Azure AD CS) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. If it stays Pending for more than a few minutes, hover the badge. The failure reason appears there once the polling job gives up.
+    External CAs (AWS Private CA, Azure AD CS, DigiCert) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. AWS and Azure usually take seconds. DigiCert takes minutes to hours for an already-validated organization, and up to 3 business days the first time an organization is used for code signing while DigiCert validates it. If it stays Pending well beyond those windows, hover the badge. The failure reason appears there once the polling job gives up.
   </Accordion>
   <Accordion title="What happens to signed artifacts when I delete a Signer?">
     Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate. It does not invalidate past signatures.
   </Accordion>
   <Accordion title="Can I migrate an existing Signer between Infisical and an HSM?">
-    Yes. From the Signer detail page, open **Edit Signer > Certificate** and change **Key source**. When switching to HSM, pick an HSM Connector and a supported algorithm (RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384). Saving reissues the certificate with the new key. The signer keeps its name, members, approval policy, and CA. Only the key and the cert wrapping it change.
+    Yes. From the Signer detail page, open **Edit Signer > Signing Key** and change **Key source**. When switching to HSM, pick an HSM Connector and a supported algorithm (RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384). Saving reissues the certificate with the new key. The signer keeps its name, members, approval policy, and CA. Only the key and the cert wrapping it change.
 
     The same operation is available via the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) by passing `certificate.keySource` and (when switching to HSM) `hsmConnectorId`.
 

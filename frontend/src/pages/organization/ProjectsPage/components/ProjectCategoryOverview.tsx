@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FileKeyIcon, LockIcon, ScanSearchIcon, UsersIcon, VaultIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -26,7 +25,12 @@ import {
   getCertManagerActiveProjectCookie,
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
-import { getProjectDescription, getProjectTitle, projectTypeToUrlSlug } from "@app/helpers/project";
+import {
+  getProjectDescription,
+  getProjectLucideIcon,
+  getProjectTitle,
+  projectTypeToUrlSlug
+} from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
@@ -45,7 +49,6 @@ const PRODUCT_TYPES: ActiveProducts[] = [
 const PRODUCT_STYLES: Record<
   ActiveProducts,
   {
-    Icon: typeof VaultIcon;
     iconClassName: string;
     containerClassName: string;
     cardClassName: string;
@@ -53,7 +56,6 @@ const PRODUCT_STYLES: Record<
   }
 > = {
   [ProjectType.SecretManager]: {
-    Icon: VaultIcon,
     iconClassName: "h-4.5 w-4.5 text-product-sm",
     containerClassName:
       "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
@@ -61,7 +63,6 @@ const PRODUCT_STYLES: Record<
     titleUnderlineClassName: "decoration-product-sm/60"
   },
   [ProjectType.CertificateManager]: {
-    Icon: FileKeyIcon,
     iconClassName: "h-4.5 w-4.5 text-product-pki",
     containerClassName:
       "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
@@ -69,7 +70,6 @@ const PRODUCT_STYLES: Record<
     titleUnderlineClassName: "decoration-product-pki/60"
   },
   [ProjectType.KMS]: {
-    Icon: LockIcon,
     iconClassName: "h-4.5 w-4.5 text-product-kms",
     containerClassName:
       "border-product-kms/30 bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:border-product-kms/50 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
@@ -77,7 +77,6 @@ const PRODUCT_STYLES: Record<
     titleUnderlineClassName: "decoration-product-kms/60"
   },
   [ProjectType.SecretScanning]: {
-    Icon: ScanSearchIcon,
     iconClassName: "h-4.5 w-4.5 text-product-ss",
     containerClassName:
       "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:border-product-ss/50 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
@@ -85,7 +84,6 @@ const PRODUCT_STYLES: Record<
     titleUnderlineClassName: "decoration-product-ss/60"
   },
   [ProjectType.PAM]: {
-    Icon: UsersIcon,
     iconClassName: "h-4.5 w-4.5 text-product-pam",
     containerClassName:
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
@@ -296,13 +294,9 @@ export const ProjectCategoryOverview = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PRODUCT_TYPES.map((type) => {
           const stats = getStatsForType(type);
-          const {
-            Icon,
-            iconClassName,
-            containerClassName,
-            cardClassName,
-            titleUnderlineClassName
-          } = PRODUCT_STYLES[type];
+          const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
+            PRODUCT_STYLES[type];
+          const Icon = getProjectLucideIcon(type);
 
           const tileBody = (
             <>

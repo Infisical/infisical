@@ -1096,7 +1096,11 @@ export const CreatePolicyModal = ({
                             type="number"
                             placeholder="365"
                             className="w-full"
-                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === "" ? "" : Number(val));
+                            }}
                           />
                         </FormControl>
                       )}
