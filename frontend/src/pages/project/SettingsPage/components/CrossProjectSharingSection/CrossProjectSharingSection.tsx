@@ -129,7 +129,7 @@ export const CrossProjectSharingSection = () => {
               </div>
 
               {/* secret count */}
-              <div className="flex items-center justify-end gap-1.5 whitespace-nowrap text-xs text-mineshaft-400">
+              <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-mineshaft-400">
                 <KeyRound className="size-3 shrink-0" />
                 <span className="tabular-nums">
                   {grant.secretCount} shared {grant.secretCount === 1 ? "secret" : "secrets"}
