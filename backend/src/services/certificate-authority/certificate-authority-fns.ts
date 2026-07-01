@@ -13,6 +13,7 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
+  TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
@@ -58,6 +59,22 @@ export const createDistinguishedName = (parts: TDNParts) => {
   const name = new x509.Name(jsonName);
   return name.toString();
 };
+
+/**
+ * Build a Subject Alternative Name extension that honors RFC 5280 §4.1.2.6:
+ *
+ *   "If the subject field contains an empty sequence, then the issuing CA MUST
+ *    include a subjectAltName extension that is marked as critical."
+ *
+ * Standards-compliant ACME/EST/SCEP clients (Caddy/certmagic, certbot, lego,
+ * acme.sh) omit the Subject Common Name by default, producing an empty subject
+ * DN. In that case the SAN carries the only naming information and must be
+ * marked critical, otherwise RFC-conformant verifiers — notably Apple's Security
+ * framework on macOS/iOS — reject the leaf. The criticality is therefore derived
+ * from the resolved subject DN rather than hardcoded.
+ */
+export const createSubjectAltNameExtension = (altNames: TAltNameMapping[], subjectDn: string) =>
+  new x509.SubjectAlternativeNameExtension(altNames, !subjectDn);
 
 /**
  * Helper to get the last value of a DN attribute from an x509 Name object.
