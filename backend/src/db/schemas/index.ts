@@ -261,6 +261,7 @@ export * from "./user-actions";
 export * from "./user-aliases";
 export * from "./user-encryption-keys";
 export * from "./user-group-membership";
+export * from "./user-mfa-recovery-codes";
 export * from "./users";
 export * from "./vault-external-migration-configs";
 export * from "./webauthn-credentials";

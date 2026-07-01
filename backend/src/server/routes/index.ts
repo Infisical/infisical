@@ -400,6 +400,8 @@ import { membershipIdentityDALFactory } from "@app/services/membership-identity/
 import { membershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { mfaRecoveryCodeDALFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-dal";
+import { mfaRecoveryCodeServiceFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-service";
 import { mfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -728,6 +730,7 @@ export const registerRoutes = async (
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
   const totpConfigDAL = totpConfigDALFactory(db);
   const webAuthnCredentialDAL = webAuthnCredentialDALFactory(db);
+  const mfaRecoveryCodeDAL = mfaRecoveryCodeDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
@@ -1150,6 +1153,11 @@ export const registerRoutes = async (
     queueService
   });
 
+  const mfaRecoveryCodeService = mfaRecoveryCodeServiceFactory({
+    mfaRecoveryCodeDAL,
+    kmsService
+  });
+
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
@@ -1158,21 +1166,24 @@ export const registerRoutes = async (
     groupProjectDAL,
     smtpService,
     userAliasDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    mfaRecoveryCodeService
   });
 
   const totpService = totpServiceFactory({
     totpConfigDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    mfaRecoveryCodeService
   });
 
   const webAuthnService = webAuthnServiceFactory({
     webAuthnCredentialDAL,
     userDAL,
     tokenService,
-    keyStore
+    keyStore,
+    mfaRecoveryCodeService
   });
 
   const loginService = authLoginServiceFactory({
@@ -1182,6 +1193,7 @@ export const registerRoutes = async (
     tokenService,
     orgDAL,
     totpService,
+    mfaRecoveryCodeService,
     auditLogService,
     notificationService,
     membershipRoleDAL,
@@ -3868,6 +3880,7 @@ export const registerRoutes = async (
     projectTemplate: projectTemplateService,
     totp: totpService,
     webAuthn: webAuthnService,
+    mfaRecoveryCode: mfaRecoveryCodeService,
     appConnection: appConnectionService,
     hsmConnector: hsmConnectorService,
     secretSync: secretSyncService,

@@ -41,6 +41,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -76,7 +77,8 @@ type TAuthLoginServiceFactoryDep = {
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "verifyAndConsumeRecoveryCode">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
@@ -93,6 +95,7 @@ export const authLoginServiceFactory = ({
   smtpService,
   orgDAL,
   totpService,
+  mfaRecoveryCodeService,
   auditLogService,
   notificationService,
   membershipUserDAL,
@@ -698,36 +701,35 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userId);
 
     try {
-      if (mfaMethod !== requiredMfaMethod) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      // Recovery codes are account-level and bypass the configured second
+      // factor regardless of the required MFA method (email, TOTP or WebAuthn).
+      if (isRecoveryCode) {
+        await mfaRecoveryCodeService.verifyAndConsumeRecoveryCode({
+          userId,
+          recoveryCode: mfaToken
+        });
+      } else if (mfaMethod !== requiredMfaMethod) {
         throw new BadRequestError({
           message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
         });
-      }
-
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-      if (mfaMethod === MfaMethod.EMAIL) {
+      } else if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
           type: TokenType.TOKEN_EMAIL_MFA,
           userId,
           code: mfaToken
         });
       } else if (mfaMethod === MfaMethod.TOTP) {
-        if (isRecoveryCode) {
-          await totpService.verifyWithUserRecoveryCode({
-            userId,
-            recoveryCode: mfaToken
-          });
-        } else {
-          if (mfaToken.length !== 6) {
-            throw new BadRequestError({
-              message: "Please use a valid TOTP code."
-            });
-          }
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
+        if (mfaToken.length !== 6) {
+          throw new BadRequestError({
+            message: "Please use a valid TOTP code."
           });
         }
+        await totpService.verifyUserTotp({
+          userId,
+          totp: mfaToken
+        });
       } else if (mfaMethod === MfaMethod.WEBAUTHN) {
         if (!mfaToken) {
           throw new BadRequestError({

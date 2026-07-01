@@ -21,6 +21,12 @@ export type TVerifyRegistrationDTO = {
   name?: string;
 };
 
+export type TVerifyRegistrationResponse = {
+  credentialId: string;
+  name?: string | null;
+  recoveryCodes: string[];
+};
+
 export type TGenerateAuthenticationOptionsResponse = PublicKeyCredentialRequestOptionsJSON;
 
 export type TVerifyAuthenticationDTO = {
