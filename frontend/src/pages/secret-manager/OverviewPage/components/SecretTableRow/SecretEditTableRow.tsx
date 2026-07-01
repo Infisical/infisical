@@ -1549,31 +1549,43 @@ export const SecretEditTableRow = ({
               >
                 {(isAllowed) => (
                   <Tooltip
-                    open={isImportedSecret || isCreatable || !isAllowed ? undefined : false}
+                    open={
+                      isPendingBatchChange || isImportedSecret || isCreatable || !isAllowed
+                        ? undefined
+                        : false
+                    }
                     disableHoverableContent
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5 text-xs"
                         onClick={() => setIsVersionHistoryOpen(true)}
-                        isDisabled={!secretId || isCreatable || isImportedSecret || !isAllowed}
+                        isDisabled={
+                          isPendingBatchChange ||
+                          !secretId ||
+                          isCreatable ||
+                          isImportedSecret ||
+                          !isAllowed
+                        }
                       >
                         <HistoryIcon />
                         Version History
                       </DropdownMenuItem>
                     </TooltipTrigger>
                     <TooltipContent side="left">
-                      {!isAllowed
-                        ? "Access Denied"
-                        : isImportedSecret
-                          ? "Cannot View Version History for Imported Secret"
-                          : "Create Secret to View History"}
+                      {isPendingBatchChange
+                        ? "Discard Pending Changes First"
+                        : !isAllowed
+                          ? "Access Denied"
+                          : isImportedSecret
+                            ? "Cannot View Version History for Imported Secret"
+                            : "Create Secret to View History"}
                     </TooltipContent>
                   </Tooltip>
                 )}
               </ProjectPermissionCan>
               <Tooltip
-                open={isImportedSecret || isCreatable ? undefined : false}
+                open={isPendingBatchChange || isImportedSecret || isCreatable ? undefined : false}
                 disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
@@ -1586,16 +1598,20 @@ export const SecretEditTableRow = ({
                         setIsAccessInsightsOpen(true);
                       }
                     }}
-                    isDisabled={!secretId || isCreatable || isImportedSecret}
+                    isDisabled={
+                      isPendingBatchChange || !secretId || isCreatable || isImportedSecret
+                    }
                   >
                     <UsersIcon />
                     View Access
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  {isImportedSecret
-                    ? "Cannot View Access for Imported Secret"
-                    : "Create Secret to View Access"}
+                  {isPendingBatchChange
+                    ? "Discard Pending Changes First"
+                    : isImportedSecret
+                      ? "Cannot View Access for Imported Secret"
+                      : "Create Secret to View Access"}
                 </TooltipContent>
               </Tooltip>
 
@@ -1603,11 +1619,7 @@ export const SecretEditTableRow = ({
               <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">Manage</DropdownMenuLabel>
               <Tooltip
                 open={
-                  isPendingBatchChange ||
-                  isPendingDelete ||
-                  isCreatable ||
-                  isImportedSecret ||
-                  !canEditSecretValue
+                  isPendingDelete || isCreatable || isImportedSecret || !canEditSecretValue
                     ? undefined
                     : false
                 }
@@ -1617,7 +1629,6 @@ export const SecretEditTableRow = ({
                   <DropdownMenuCheckboxItem
                     checked={!skipMultilineEncoding}
                     disabled={
-                      isPendingBatchChange ||
                       isPendingDelete ||
                       isCreatable ||
                       isImportedSecret ||
@@ -1633,15 +1644,13 @@ export const SecretEditTableRow = ({
                   </DropdownMenuCheckboxItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  {isPendingBatchChange
-                    ? "Discard Pending Changes First"
-                    : isImportedSecret
-                      ? "Cannot Edit Multi-line Encoding on Imported Secret"
-                      : isCreatable
-                        ? "Create Secret to Edit Multi-line Encoding"
-                        : !canEditSecretValue
-                          ? "Access Denied"
-                          : ""}
+                  {isImportedSecret
+                    ? "Cannot Edit Multi-line Encoding on Imported Secret"
+                    : isCreatable
+                      ? "Create Secret to Edit Multi-line Encoding"
+                      : !canEditSecretValue
+                        ? "Access Denied"
+                        : ""}
                 </TooltipContent>
               </Tooltip>
               <ProjectPermissionCan
