@@ -23,7 +23,10 @@ import {
   IconButton
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useDeleteProjectFolderGrant, useListProjectFolderGrants } from "@app/hooks/api/projectFolderGrants";
+import {
+  useDeleteProjectFolderGrant,
+  useListProjectFolderGrants
+} from "@app/hooks/api/projectFolderGrants";
 
 import { ShareSecretsSheet } from "./ShareSecretsSheet";
 
@@ -105,7 +108,7 @@ export const CrossProjectSharingSection = () => {
             <div
               key={grant.id}
               className="grid items-center gap-x-3 px-4 py-3"
-              style={{ gridTemplateColumns: "minmax(7rem,max-content) 1fr 5.5rem 1.75rem" }}
+              style={{ gridTemplateColumns: "minmax(7rem,max-content) 1fr auto 1.75rem" }}
             >
               {/* env */}
               <Badge variant="neutral" className="gap-1.5">
@@ -126,10 +129,10 @@ export const CrossProjectSharingSection = () => {
               </div>
 
               {/* secret count */}
-              <div className="flex items-center justify-end gap-1.5 text-xs text-mineshaft-400">
+              <div className="flex items-center justify-end gap-1.5 whitespace-nowrap text-xs text-mineshaft-400">
                 <KeyRound className="size-3 shrink-0" />
                 <span className="tabular-nums">
-                  {grant.secretCount} {grant.secretCount === 1 ? "secret" : "secrets"}
+                  {grant.secretCount} shared {grant.secretCount === 1 ? "secret" : "secrets"}
                 </span>
               </div>
 
