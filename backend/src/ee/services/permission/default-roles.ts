@@ -7,6 +7,7 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
+  ProjectPermissionAuditReportActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -498,6 +499,15 @@ const buildAdminPermissionRules = () => {
 
   can([ProjectPermissionInsightsActions.Read], ProjectPermissionSub.Insights);
 
+  can(
+    [
+      ProjectPermissionAuditReportActions.Create,
+      ProjectPermissionAuditReportActions.Read,
+      ProjectPermissionAuditReportActions.Delete
+    ],
+    ProjectPermissionSub.AuditReports
+  );
+
   return rules;
 };
 
@@ -632,6 +642,7 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.Role);
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditReportActions.Read], ProjectPermissionSub.AuditReports);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   can([ProjectPermissionCertificateAuthorityActions.Read], ProjectPermissionSub.CertificateAuthorities);
@@ -762,6 +773,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionAuditReportActions.Read, ProjectPermissionSub.AuditReports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionCertificateAuthorityActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);

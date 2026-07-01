@@ -13,6 +13,7 @@ import {
   AccessPamRequestBypassedTemplate,
   AccountDeletionConfirmationTemplate,
   AuditLogMigrationAlertTemplate,
+  AuditReportTemplate,
   CredentialRotationFailedTemplate,
   EmailChangeRequestNotificationTemplate,
   EmailMfaTemplate,
@@ -54,11 +55,17 @@ import {
 import DynamicSecretLeaseRevocationFailedTemplate from "./emails/DynamicSecretLeaseRevocationFailedTemplate";
 
 export type TSmtpConfig = SMTPTransport.Options;
+export type TSmtpAttachment = {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+};
 export type TSmtpSendMail = {
   template: SmtpTemplates;
   subjectLine: string;
   recipients: string[];
   substitutions: object;
+  attachments?: TSmtpAttachment[];
 };
 export type TSmtpService = ReturnType<typeof smtpServiceFactory>;
 
@@ -106,7 +113,8 @@ export enum SmtpTemplates {
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
-  HoneyTokenTriggered = "honeyTokenTriggered"
+  HoneyTokenTriggered = "honeyTokenTriggered",
+  AuditReport = "auditReport"
 }
 
 export enum SmtpHost {
@@ -162,14 +170,15 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
-  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate
+  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
+  [SmtpTemplates.AuditReport]: AuditReportTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const smtp = createTransport(cfg);
   const isSmtpOn = Boolean(cfg.host);
 
-  const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
+  const sendMail = async ({ substitutions, recipients, template, subjectLine, attachments }: TSmtpSendMail) => {
     const appCfg = getConfig();
 
     const EmailTemplate = EmailTemplateMap[template];
@@ -191,7 +200,8 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
         from: cfg.from,
         to: recipients.join(", "),
         subject: subjectLine,
-        html: htmlToSend
+        html: htmlToSend,
+        attachments
       });
     } else {
       logger.info("SMTP is not configured. Outputting it in terminal");
