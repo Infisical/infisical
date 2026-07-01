@@ -21,7 +21,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
-import { canUseCrossProjectSecretSharing } from "@app/services/project-grant/project-grant-fns";
+import { canUseCrossProjectSecretSharing } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";

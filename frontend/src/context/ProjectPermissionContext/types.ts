@@ -329,7 +329,7 @@ export enum ProjectPermissionApprovalRequestGrantActions {
   Revoke = "revoke"
 }
 
-export enum ProjectPermissionProjectGrantActions {
+export enum ProjectPermissionProjectFolderGrantActions {
   ReadGrant = "read-grant",
   CreateGrant = "create-grant",
   RevokeGrant = "revoke-grant"
@@ -382,7 +382,7 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
   | ProjectPermissionSub.HoneyTokens
-  | ProjectPermissionSub.ProjectGrant;
+  | ProjectPermissionSub.ProjectFolderGrant;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -486,7 +486,7 @@ export enum ProjectPermissionSub {
   HoneyTokens = "honey-tokens",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
-  ProjectGrant = "project-grant",
+  ProjectFolderGrant = "project-folder-grant",
   Insights = "insights"
 }
 
@@ -526,7 +526,7 @@ export type HoneyTokenSubjectFields = {
   secretPath: string;
 };
 
-export type ProjectGrantSubjectFields = {
+export type ProjectFolderGrantSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -807,10 +807,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
-      ProjectPermissionProjectGrantActions,
+      ProjectPermissionProjectFolderGrantActions,
       (
-        | ProjectPermissionSub.ProjectGrant
-        | (ForcedSubject<ProjectPermissionSub.ProjectGrant> & ProjectGrantSubjectFields)
+        | ProjectPermissionSub.ProjectFolderGrant
+        | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
       )
     ];
 

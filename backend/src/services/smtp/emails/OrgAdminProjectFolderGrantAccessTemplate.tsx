@@ -4,16 +4,16 @@ import React from "react";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
-interface OrgAdminProjectGrantAccessTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview"> {
+interface OrgAdminProjectFolderGrantAccessTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview"> {
   email: string;
   projectName: string;
 }
 
-export const OrgAdminProjectGrantAccessTemplate = ({
+export const OrgAdminProjectFolderGrantAccessTemplate = ({
   email,
   siteUrl,
   projectName
-}: OrgAdminProjectGrantAccessTemplateProps) => {
+}: OrgAdminProjectFolderGrantAccessTemplateProps) => {
   return (
     <BaseEmailWrapper
       title="Project Access Granted to Organization Admin"
@@ -33,10 +33,10 @@ export const OrgAdminProjectGrantAccessTemplate = ({
   );
 };
 
-export default OrgAdminProjectGrantAccessTemplate;
+export default OrgAdminProjectFolderGrantAccessTemplate;
 
-OrgAdminProjectGrantAccessTemplate.PreviewProps = {
+OrgAdminProjectFolderGrantAccessTemplate.PreviewProps = {
   email: "kevin@infisical.com",
   projectName: "Example Project",
   siteUrl: "https://infisical.com"
-} as OrgAdminProjectGrantAccessTemplateProps;
+} as OrgAdminProjectFolderGrantAccessTemplateProps;

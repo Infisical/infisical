@@ -460,8 +460,8 @@ import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { projectEnvQueueFactory } from "@app/services/project-env/project-env-queue";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
-import { projectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
-import { projectGrantServiceFactory } from "@app/services/project-grant/project-grant-service";
+import { projectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
+import { projectFolderGrantServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-service";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -616,7 +616,7 @@ export const registerRoutes = async (
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
-  const projectGrantDAL = projectGrantDALFactory(db);
+  const projectFolderGrantDAL = projectFolderGrantDALFactory(db);
   const secretVersionDAL = secretVersionDALFactory(db);
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
@@ -1828,7 +1828,7 @@ export const registerRoutes = async (
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
     telemetryService,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     orgDAL
   });
 
@@ -1874,7 +1874,7 @@ export const registerRoutes = async (
     membershipUserDAL,
     telemetryService,
     projectEventsService,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     orgDAL
   });
 
@@ -1982,7 +1982,7 @@ export const registerRoutes = async (
   const secretImportService = secretImportServiceFactory({
     licenseService,
     projectBotService,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     orgDAL,
     projectEnvDAL,
     folderDAL,
@@ -1994,8 +1994,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     kmsService
   });
-  const projectGrantService = projectGrantServiceFactory({
-    projectGrantDAL,
+  const projectFolderGrantService = projectFolderGrantServiceFactory({
+    projectFolderGrantDAL,
     folderDAL,
     projectDAL,
     orgDAL,
@@ -2031,7 +2031,7 @@ export const registerRoutes = async (
     reminderDAL,
     keyStore,
     secretValidationRuleService,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     orgDAL
   });
 
@@ -2095,7 +2095,7 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     orgDAL,
-    projectGrantDAL
+    projectFolderGrantDAL
   });
 
   const folderService = secretFolderServiceFactory({
@@ -2191,7 +2191,7 @@ export const registerRoutes = async (
     secretVersionV2BridgeDAL,
     resourceMetadataDAL,
     folderCommitService,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     orgDAL
   });
 
@@ -2207,7 +2207,7 @@ export const registerRoutes = async (
     secretImportDAL,
     secretDAL,
     kmsService,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     orgDAL
   });
 
@@ -3830,7 +3830,7 @@ export const registerRoutes = async (
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
-    projectGrant: projectGrantService,
+    projectFolderGrant: projectFolderGrantService,
     projectBot: projectBotService,
     integration: integrationService,
     integrationAuth: integrationAuthService,

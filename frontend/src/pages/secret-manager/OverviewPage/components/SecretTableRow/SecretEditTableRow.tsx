@@ -169,7 +169,7 @@ type Props = {
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
-  revokedProjectGrant?: boolean;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -207,7 +207,7 @@ export const SecretEditTableRow = ({
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
-  revokedProjectGrant
+  revokedProjectFolderGrant
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -1114,7 +1114,7 @@ export const SecretEditTableRow = ({
             </div>
           </div>
         )}
-        {revokedProjectGrant && !isDirtyState && (
+        {revokedProjectFolderGrant && !isDirtyState && (
           <div
             className={twMerge(
               "ml-auto flex shrink-0 items-center",

@@ -23,7 +23,7 @@ import {
   IconButton
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useDeleteProjectGrant, useListProjectGrants } from "@app/hooks/api/projectGrants";
+import { useDeleteProjectFolderGrant, useListProjectFolderGrants } from "@app/hooks/api/projectFolderGrants";
 
 import { ShareSecretsSheet } from "./ShareSecretsSheet";
 
@@ -54,8 +54,8 @@ export const CrossProjectSharingSection = () => {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const { currentProject } = useProject();
 
-  const { data: grants = [] } = useListProjectGrants(currentProject.id);
-  const deleteGrant = useDeleteProjectGrant();
+  const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
+  const deleteGrant = useDeleteProjectFolderGrant();
 
   const handleDelete = async (grantId: string) => {
     try {

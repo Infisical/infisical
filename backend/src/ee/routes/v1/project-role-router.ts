@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
-import { ProjectPermissionSub, ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -12,7 +12,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { canUseCrossProjectSecretSharing } from "@app/services/project-grant/project-grant-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
@@ -55,12 +54,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const isCrossProjectEnabled = canUseCrossProjectSecretSharing(req.permission.orgId);
-      const permissions = isCrossProjectEnabled
-        ? req.body.permissions
-        : req.body.permissions.filter((p) => p.subject !== ProjectPermissionSub.ProjectGrant);
-
-      const stringifiedPermissions = JSON.stringify(packRules(permissions));
+      const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
 
       const role = await server.services.role.createRole({
         permission: req.permission,
@@ -149,12 +143,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const isCrossProjectEnabled = canUseCrossProjectSecretSharing(req.permission.orgId);
-      const filteredPermissions = req.body.permissions
-        ? req.body.permissions.filter((p) => isCrossProjectEnabled || p.subject !== ProjectPermissionSub.ProjectGrant)
-        : undefined;
-
-      const stringifiedPermissions = filteredPermissions ? JSON.stringify(packRules(filteredPermissions)) : undefined;
+      const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
       const role = await server.services.role.updateRole({
         permission: req.permission,
         scopeData: {

@@ -65,7 +65,7 @@ const Content = ({
     .filter(([subject]) => subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations)
     .filter(
       ([subject]) =>
-        subject !== ProjectPermissionSub.ProjectGrant || config?.isCrossProjectSecretSharingEnabled
+        subject !== ProjectPermissionSub.ProjectFolderGrant || config?.isCrossProjectSecretSharingEnabled
     )
     .filter(
       ([subject]) => !allowedSubjects || allowedSubjects.includes(subject as ProjectPermissionSub)

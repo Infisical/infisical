@@ -15,7 +15,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
-import { TProjectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -92,7 +92,7 @@ type TSecretReplicationServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
@@ -141,7 +141,7 @@ export const secretReplicationServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   folderCommitService,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
@@ -296,7 +296,7 @@ export const secretReplicationServiceFactory = ({
         viewSecretValue: true,
         hasSecretAccess: () => true,
         projectId,
-        projectGrantDAL,
+        projectFolderGrantDAL,
         actorOrgId: orgId,
         orgDAL,
         kmsService

@@ -7,23 +7,23 @@ type TBaseActor = {
   actorOrgId: string;
 };
 
-export type TCreateProjectGrantDTO = TBaseActor & {
+export type TCreateProjectFolderGrantDTO = TBaseActor & {
   sourceProjectId: string;
   environment: string;
   secretPath: string;
   targetProjectId: string;
 };
 
-export type TDeleteProjectGrantDTO = TBaseActor & {
+export type TDeleteProjectFolderGrantDTO = TBaseActor & {
   grantId: string;
   sourceProjectId: string;
 };
 
-export type TListProjectGrantsDTO = TBaseActor & {
+export type TListProjectFolderGrantsDTO = TBaseActor & {
   sourceProjectId: string;
 };
 
-export type TListProjectGrantsForTargetDTO = TBaseActor & {
+export type TListProjectFolderGrantsForTargetDTO = TBaseActor & {
   targetProjectId: string;
 };
 

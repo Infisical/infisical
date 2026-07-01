@@ -19,7 +19,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -46,7 +46,7 @@ type TIntegrationServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
@@ -64,7 +64,7 @@ export const integrationServiceFactory = ({
   secretImportDAL,
   kmsService,
   secretDAL,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL
 }: TIntegrationServiceFactoryDep) => {
   const createIntegration = async ({
@@ -331,7 +331,7 @@ export const integrationServiceFactory = ({
         secretImportDAL,
         secretDAL,
         kmsService,
-        projectGrantDAL,
+        projectFolderGrantDAL,
         orgDAL,
         actorOrgId
       });

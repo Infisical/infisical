@@ -6,8 +6,8 @@ import { groupBy, unique } from "@app/lib/fn";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -254,7 +254,7 @@ export const fnSecretsV2FromImports = async ({
   userId,
   personalOverridesBehavior,
   projectId,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   kmsService,
   actorOrgId,
   orgDAL
@@ -280,7 +280,7 @@ export const fnSecretsV2FromImports = async ({
   userId?: string;
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
-  projectGrantDAL?: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   actorOrgId: string;
 }) => {
@@ -393,12 +393,12 @@ export const fnSecretsV2FromImports = async ({
       cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));
     });
 
-    // Batch-check ProjectGrants for cross-project imports in this batch.
+    // Batch-check ProjectFolderGrants for cross-project imports in this batch.
     // Reserved (replication) imports are excluded: their secrets are already
     // stored locally and encrypted with the target project's key.
     const grantedFolderIds = new Set<string>();
     const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL);
-    if (projectId && projectGrantDAL && crossProjectAllowed) {
+    if (projectId && projectFolderGrantDAL && crossProjectAllowed) {
       const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
       for (const { importPath, importEnv, isReserved } of processedBatchImports) {
         if (!isReserved && importEnv.projectId && importEnv.projectId !== projectId) {
@@ -410,7 +410,7 @@ export const fnSecretsV2FromImports = async ({
       }
 
       if (crossProjectItems.length > 0) {
-        const grants = await projectGrantDAL.find({
+        const grants = await projectFolderGrantDAL.find({
           $in: { sourceFolderId: crossProjectItems.map((c) => c.sourceFolderId) },
           targetProjectId: projectId
         });
@@ -443,7 +443,7 @@ export const fnSecretsV2FromImports = async ({
           ? importAccessScopeByFolderId.get(folderId)!
           : { environment: importEnv.slug, secretPath: importPath };
 
-      // Skip cross-project imports that have no corresponding ProjectGrant
+      // Skip cross-project imports that have no corresponding ProjectFolderGrant
       if (isCrossProject && !grantedFolderIds.has(sourceImportFolder?.id || "")) {
         return;
       }

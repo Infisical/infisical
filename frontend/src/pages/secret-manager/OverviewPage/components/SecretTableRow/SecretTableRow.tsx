@@ -332,7 +332,7 @@ export const SecretTableRow = ({
             secretMetadata={singleEnvSecret?.secretMetadata}
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
             reminder={singleEnvSecret?.reminder}
-            revokedProjectGrant={singleEnvSecret?.revokedProjectGrant}
+            revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
           />
         ) : (
           <TableCell
@@ -352,7 +352,7 @@ export const SecretTableRow = ({
               </span>
               {!isFormExpanded &&
                 environments.some(
-                  ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectGrant
+                  ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
                 ) && (
                   <Badge variant="danger">
                     <BanIcon className="size-3.5" />
@@ -608,7 +608,7 @@ export const SecretTableRow = ({
                               secretMetadata={secret?.secretMetadata}
                               skipMultilineEncoding={secret?.skipMultilineEncoding}
                               reminder={secret?.reminder}
-                              revokedProjectGrant={secret?.revokedProjectGrant}
+                              revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
                             />
                           </TableCell>
                         </TableRow>

@@ -51,7 +51,7 @@ export type SecretV3RawSanitized = {
   reminder?: Reminder;
   isEmpty?: boolean;
   isOverrideEmpty?: boolean;
-  revokedProjectGrant?: boolean;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export type SecretV3Raw = {
@@ -80,7 +80,7 @@ export type SecretV3Raw = {
   secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
   isEmpty?: boolean;
-  revokedProjectGrant?: boolean;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export type SecretV3RawResponse = {

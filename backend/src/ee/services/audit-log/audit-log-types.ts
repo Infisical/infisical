@@ -940,8 +940,8 @@ export enum EventType {
   TRIGGER_HONEY_TOKEN = "trigger-honey-token",
 
   // Project Grants
-  CREATE_PROJECT_GRANT = "create-project-grant",
-  DELETE_PROJECT_GRANT = "delete-project-grant"
+  CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7561,8 +7561,8 @@ interface TriggerHoneyTokenEvent {
   };
 }
 
-interface CreateProjectGrantEvent {
-  type: EventType.CREATE_PROJECT_GRANT;
+interface CreateProjectFolderGrantEvent {
+  type: EventType.CREATE_PROJECT_FOLDER_GRANT;
   metadata: {
     grantId: string;
     sourceProjectId: string;
@@ -7572,8 +7572,8 @@ interface CreateProjectGrantEvent {
   };
 }
 
-interface DeleteProjectGrantEvent {
-  type: EventType.DELETE_PROJECT_GRANT;
+interface DeleteProjectFolderGrantEvent {
+  type: EventType.DELETE_PROJECT_FOLDER_GRANT;
   metadata: {
     grantId: string;
     sourceProjectId: string;
@@ -8265,5 +8265,5 @@ export type Event =
   | AddGroupToProjectEvent
   | UpdateGroupProjectMembershipEvent
   | RemoveGroupFromProjectEvent
-  | CreateProjectGrantEvent
-  | DeleteProjectGrantEvent;
+  | CreateProjectFolderGrantEvent
+  | DeleteProjectFolderGrantEvent;

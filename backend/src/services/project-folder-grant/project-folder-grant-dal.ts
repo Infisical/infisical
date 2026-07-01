@@ -4,9 +4,9 @@ import { TDbClient } from "@app/db";
 import { TableName, TProjectFolderGrants } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
 
-export type TProjectGrantDALFactory = ReturnType<typeof projectGrantDALFactory>;
+export type TProjectFolderGrantDALFactory = ReturnType<typeof projectFolderGrantDALFactory>;
 
-export const projectGrantDALFactory = (db: TDbClient) => {
+export const projectFolderGrantDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ProjectFolderGrant);
 
   const listBySourceProject = async (sourceProjectId: string, tx?: Knex) => {

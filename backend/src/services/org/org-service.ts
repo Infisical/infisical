@@ -55,7 +55,6 @@ import { TMembershipUserDALFactory } from "../membership-user/membership-user-da
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { canUseCrossProjectSecretSharing } from "../project-grant/project-grant-fns";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
@@ -620,8 +619,6 @@ export const orgServiceFactory = ({
       });
     }
 
-    const crossProjectSecretSharingEnabled = canUseCrossProjectSecretSharing(orgId) && allowCrossProjectSecretSharing;
-
     const org = await orgDAL.updateById(orgId, {
       name,
       slug: slug ? slugify(slug) : undefined,
@@ -643,7 +640,7 @@ export const orgServiceFactory = ({
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
-      allowCrossProjectSecretSharing: crossProjectSecretSharingEnabled,
+      allowCrossProjectSecretSharing,
       secretShareBrandConfig
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
