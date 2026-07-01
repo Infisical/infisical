@@ -236,7 +236,12 @@ export const expandSecretReferencesFactory = ({
       if (refs.length > 0) {
         // Batch-resolve all cross-project slugs from this value's refs in one query
         const crossProjectSlugs = refs
-          .map((r) => r.slice(2, r.length - 1).trim().split("."))
+          .map((r) =>
+            r
+              .slice(2, r.length - 1)
+              .trim()
+              .split(".")
+          )
           .filter((parts) => parts[0]?.startsWith("@"))
           .map((parts) => parts[0].slice(1));
         if (crossProjectSlugs.length > 0) {
@@ -279,7 +284,12 @@ export const expandSecretReferencesFactory = ({
           } else if (entities[0].startsWith("@")) {
             // Cross-project reference: ${@project-slug.env.path.KEY}
             // eslint-disable-next-line no-await-in-loop
-            if (!canExpandValue || !hasCrossProjectConfig || !projectFolderGrantDAL || !crossProjectSecretSharingEnabled) {
+            if (
+              !canExpandValue ||
+              !hasCrossProjectConfig ||
+              !projectFolderGrantDAL ||
+              !crossProjectSecretSharingEnabled
+            ) {
               // eslint-disable-next-line no-continue
               continue;
             }

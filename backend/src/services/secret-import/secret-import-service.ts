@@ -93,11 +93,9 @@ export const secretImportServiceFactory = ({
 
     // If org-level toggle is disabled, strip cross-project imports entirely
     if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
-      return (
-        imports
-          .filter((imp) => imp.importEnv.projectId === projectId)
-          .map((imp) => ({ ...imp, isAccessRevoked: false }))
-      );
+      return imports
+        .filter((imp) => imp.importEnv.projectId === projectId)
+        .map((imp) => ({ ...imp, isAccessRevoked: false }));
     }
 
     const sourceFolders = await folderDAL.findByManySecretPath(
@@ -173,7 +171,10 @@ export const secretImportServiceFactory = ({
         throw new NotFoundError({ message: "Source project not found" });
       }
 
-      const grant = await projectFolderGrantDAL.findOne({ sourceFolderId: importFolder.id, targetProjectId: projectId });
+      const grant = await projectFolderGrantDAL.findOne({
+        sourceFolderId: importFolder.id,
+        targetProjectId: projectId
+      });
       if (!grant) {
         throw new ForbiddenRequestError({
           message: "No project grant found allowing this cross-project import"

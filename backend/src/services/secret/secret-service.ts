@@ -3833,9 +3833,7 @@ export const secretServiceFactory = ({
     const slugToProjectId = new Map(resolvedProjects.map((p) => [p.slug, p.id]));
 
     const resolvedProjectIds = [...new Set(resolvedProjects.map((p) => p.id))];
-    const envs = resolvedProjectIds.length
-      ? await projectEnvDAL.find({ $in: { projectId: resolvedProjectIds } })
-      : [];
+    const envs = resolvedProjectIds.length ? await projectEnvDAL.find({ $in: { projectId: resolvedProjectIds } }) : [];
     const envLookup = new Map(envs.map((e) => [`${e.projectId}:${e.slug}`, e.id]));
 
     const refEntries = [...uniqueRefs.entries()];
@@ -3844,9 +3842,15 @@ export const secretServiceFactory = ({
 
     for (const [key, ref] of refEntries) {
       const sourceProjectId = slugToProjectId.get(ref.targetProjectSlug);
-      if (!sourceProjectId) continue;
+      if (!sourceProjectId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       const envId = envLookup.get(`${sourceProjectId}:${ref.environment}`);
-      if (!envId) continue;
+      if (!envId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       refToQueryIndex.set(key, folderQueries.length);
       folderQueries.push({ envId, secretPath: ref.secretPath });
     }
@@ -3856,7 +3860,7 @@ export const secretServiceFactory = ({
     const refKeyToFolderId = new Map<string, string | null>();
     for (const [key] of refEntries) {
       const idx = refToQueryIndex.get(key);
-      refKeyToFolderId.set(key, idx !== undefined ? folderResults[idx]?.id ?? null : null);
+      refKeyToFolderId.set(key, idx !== undefined ? (folderResults[idx]?.id ?? null) : null);
     }
 
     const folderIds = [...refKeyToFolderId.values()].filter((id): id is string => id !== null);
