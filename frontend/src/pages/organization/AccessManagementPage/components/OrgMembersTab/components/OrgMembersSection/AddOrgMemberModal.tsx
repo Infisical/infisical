@@ -349,7 +349,7 @@ export const AddOrgMemberModal = ({
         setCompleteInviteLinks(null);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Invite others to {currentOrg?.name}</DialogTitle>
           <DialogDescription>
