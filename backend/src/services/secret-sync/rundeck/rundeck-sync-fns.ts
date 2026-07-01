@@ -30,8 +30,10 @@ type TRundeckStorageListResponse = {
  */
 const getRundeckStoragePath = (project: string, path: string) => {
   const normalizedPath = path.replace(/^\/+|\/+$/g, "");
+  // Encode each segment individually so "/" separators are preserved
+  const encodedPath = normalizedPath.split("/").map(encodeURIComponent).join("/");
   const basePath = `keys/project/${encodeURIComponent(project)}`;
-  return normalizedPath ? `${basePath}/${normalizedPath}` : basePath;
+  return encodedPath ? `${basePath}/${encodedPath}` : basePath;
 };
 
 const getRundeckClientDetails = async (secretSync: TRundeckSyncWithCredentials) => {
@@ -63,7 +65,7 @@ const listRundeckSecretKeys = async (baseUrl: string, headers: Record<string, st
 
 const deleteRundeckSecret = async (baseUrl: string, key: string, headers: Record<string, string>) => {
   try {
-    await request.delete(`${baseUrl}/${key}`, { headers });
+    await request.delete(`${baseUrl}/${encodeURIComponent(key)}`, { headers });
   } catch (error) {
     throw new SecretSyncError({ error, secretKey: key });
   }
@@ -87,7 +89,7 @@ export const RundeckSyncFns = {
     const existingSecretKeySet = new Set(existingSecretKeys);
 
     for (const key of Object.keys(secretMap)) {
-      const url = `${baseUrl}/${key}`;
+      const url = `${baseUrl}/${encodeURIComponent(key)}`;
       const value = secretMap[key].value ?? "";
 
       // POST creates a new key; PUT overwrites an existing one
