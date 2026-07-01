@@ -58,3 +58,22 @@ Editing a signer's Common Name, validity, key source, key algorithm, or CA trigg
 ## Deleting a Signer
 
 Deleting a DigiCert code-signing signer revokes its DigiCert order, so the certificate can no longer be used to sign anywhere. Depending on your CertCentral account's revocation policy, DigiCert may queue the revocation for administrator approval.
+
+## Next steps
+
+Once your signer is **Active**, you can use it to sign artifacts through the Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module). The signing workflow is the same as any other Infisical signer—only the certificate backing it comes from DigiCert.
+
+<CardGroup cols={2}>
+  <Card title="Sign Windows Executables" icon="windows" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
+    Sign `.exe`, `.dll`, `.msi`, and other Windows artifacts with osslsigncode
+  </Card>
+  <Card title="Sign Java JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    Sign Java archives with jarsigner
+  </Card>
+  <Card title="Sign Container Images" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
+    Sign OCI container images with Sigstore cosign
+  </Card>
+  <Card title="Sign with OpenSSL" icon="lock" href="/documentation/platform/pki/guides/code-signing/openssl">
+    General-purpose signing with OpenSSL
+  </Card>
+</CardGroup>
