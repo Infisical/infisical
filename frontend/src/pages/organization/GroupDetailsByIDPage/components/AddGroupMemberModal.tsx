@@ -41,13 +41,6 @@ enum AddMemberType {
 const MEMBER_SEARCH_LIMIT = 100;
 const MEMBER_PREVIEW_LIMIT = 10;
 
-// The two endpoints validate the `search` param against different character sets: users allow
-// alphanumeric + - . @ and spaces (spaces enable full-name search); machine identities allow only
-// alphanumeric + -. A single search box must respect both, so we skip a type's query (and hide its
-// options) when the query isn't valid for that type — otherwise it 400s.
-const USER_SEARCH_REGEX = /^[a-zA-Z0-9\-.@\s]+$/;
-const IDENTITY_SEARCH_REGEX = /^[a-zA-Z0-9-]+$/;
-
 type MemberOption = {
   type: AddMemberType;
   // `id` is the mutation argument: username for users, identity id for machine identities.
@@ -116,12 +109,9 @@ export const AddGroupMembersModal = ({
   // Trim so a whitespace-only query isn't sent (the endpoints reject an all-spaces search).
   const trimmedSearch = debouncedSearch.trim();
 
-  // Only send the query to an endpoint when it's valid for that endpoint's charset (and
-  // only surface that type's options then) — otherwise skip it to avoid a 400 / stale rows.
-  const isUserSearchValid = !trimmedSearch || USER_SEARCH_REGEX.test(trimmedSearch);
-  const isIdentitySearchValid = !trimmedSearch || IDENTITY_SEARCH_REGEX.test(trimmedSearch);
-  const showUsers = !isOidcManageGroupMembershipsEnabled && isUserSearchValid;
-  const showIdentities = isIdentitySearchValid;
+  // Users can't be added when OIDC manages group membership, so skip that query entirely (an empty
+  // slug makes the hook's `enabled` guard false) instead of fetching and discarding the results.
+  const showUsers = !isOidcManageGroupMembershipsEnabled;
 
   const listLimit = trimmedSearch ? MEMBER_SEARCH_LIMIT : MEMBER_PREVIEW_LIMIT;
 
@@ -130,10 +120,10 @@ export const AddGroupMembersModal = ({
 
   const { data: usersData, isFetching: isUsersFetching } = useListGroupUsers({
     id: groupId,
-    groupSlug,
+    groupSlug: showUsers ? groupSlug : "",
     offset: 0,
     limit: listLimit,
-    search: isUserSearchValid ? trimmedSearch : "",
+    search: trimmedSearch,
     filter: FilterReturnedUsers.NON_MEMBERS
   });
 
@@ -142,7 +132,7 @@ export const AddGroupMembersModal = ({
     groupSlug,
     offset: 0,
     limit: listLimit,
-    search: isIdentitySearchValid ? trimmedSearch : "",
+    search: trimmedSearch,
     filter: FilterReturnedMachineIdentities.NON_ASSIGNED_MACHINE_IDENTITIES
   });
 
@@ -160,16 +150,16 @@ export const AddGroupMembersModal = ({
         })
       : [];
 
-    const identities: MemberOption[] = showIdentities
-      ? (identitiesData?.machineIdentities ?? []).map((identity) => ({
-          type: AddMemberType.MachineIdentities,
-          id: identity.id,
-          label: identity.name
-        }))
-      : [];
+    const identities: MemberOption[] = (identitiesData?.machineIdentities ?? []).map(
+      (identity) => ({
+        type: AddMemberType.MachineIdentities,
+        id: identity.id,
+        label: identity.name
+      })
+    );
 
     return [...users, ...identities];
-  }, [usersData, identitiesData, showUsers, showIdentities]);
+  }, [usersData, identitiesData, showUsers]);
 
   const {
     control,

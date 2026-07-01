@@ -31,6 +31,23 @@ const GroupWithRoleSchema = GroupsSchema.extend({
   roleId: z.string().nullish()
 });
 
+// Member/identity search matches free-form user names, emails, and machine-identity names, so allow
+// letters/digits (any script), spaces, and the punctuation those values commonly contain.
+const MEMBER_SEARCH_ALLOWED_CHARACTERS = [
+  CharacterType.UnicodeLettersAndDigits,
+  CharacterType.Spaces,
+  CharacterType.Hyphen,
+  CharacterType.Period,
+  CharacterType.Underscore,
+  CharacterType.At,
+  CharacterType.Plus,
+  CharacterType.SingleQuote,
+  CharacterType.ForwardSlash,
+  CharacterType.Colon
+];
+const MEMBER_SEARCH_INVALID_MESSAGE =
+  "Invalid search: only letters, numbers, spaces, and the characters - . _ @ + ' / : are allowed.";
+
 export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -306,19 +323,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         search: z
           .string()
           .trim()
-          .refine(
-            (val) =>
-              characterValidator([
-                CharacterType.AlphaNumeric,
-                CharacterType.Hyphen,
-                CharacterType.Period,
-                CharacterType.At,
-                CharacterType.Spaces
-              ])(val),
-            {
-              message: "Invalid pattern: only alphanumeric characters, -, ., @, and spaces are allowed."
-            }
-          )
+          .refine(characterValidator(MEMBER_SEARCH_ALLOWED_CHARACTERS), {
+            message: MEMBER_SEARCH_INVALID_MESSAGE
+          })
           .optional()
           .describe(GROUPS.LIST_USERS.search),
         filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
@@ -375,8 +382,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         search: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          .refine(characterValidator(MEMBER_SEARCH_ALLOWED_CHARACTERS), {
+            message: MEMBER_SEARCH_INVALID_MESSAGE
           })
           .optional()
           .describe(GROUPS.LIST_MACHINE_IDENTITIES.search),
