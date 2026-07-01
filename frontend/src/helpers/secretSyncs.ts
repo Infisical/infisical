@@ -276,6 +276,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "TriggerDev.png",
     category: "HOSTING",
     description: "Environment variables for Trigger.dev projects."
+  },
+  [SecretSync.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "HOSTING",
+    description: "Environment variables for Coolify Project."
   }
 };
 
@@ -329,7 +335,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
-  [SecretSync.TriggerDev]: AppConnection.TriggerDev
+  [SecretSync.TriggerDev]: AppConnection.TriggerDev,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

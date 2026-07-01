@@ -49,9 +49,9 @@ export const SecretSyncsBrowser = () => {
     {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
     {"name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases"},
     {"name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools"},
-
+    { "name": "Coolify", "slug": "coolify", "path": "/integrations/secret-syncs/coolify", "description": "Learn how to sync secrets from Infisical to Coolify applications.", "category": "Hosting" }
   ].sort(function(a, b) {
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
 
   const filteredSyncs = useMemo(() => {
@@ -99,11 +99,10 @@ export const SecretSyncsBrowser = () => {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
-                selectedCategory === category
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${selectedCategory === category
                   ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                   : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200'
-              }`}
+                }`}
             >
               {category}
             </button>
