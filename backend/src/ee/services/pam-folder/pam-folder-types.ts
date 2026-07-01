@@ -1,13 +1,28 @@
-// DTOs
-export interface TCreateFolderDTO {
+export type TCreatePamFolderDTO = {
   projectId: string;
-  parentId?: string | null;
   name: string;
-  description?: string | null;
-}
+  description?: string;
+};
 
-export interface TUpdateFolderDTO {
-  id: string;
+export type TUpdatePamFolderDTO = {
+  folderId: string;
+  projectId: string;
   name?: string;
   description?: string | null;
-}
+};
+
+export type TDeletePamFolderDTO = {
+  folderId: string;
+  projectId: string;
+};
+
+export type TGetPamFolderDTO = {
+  folderId: string;
+  projectId: string;
+};
+
+export type TListPamFoldersDTO = {
+  projectId: string;
+  search?: string;
+  onlyAccessible?: boolean;
+};

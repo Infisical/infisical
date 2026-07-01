@@ -22,8 +22,6 @@ export const CronJobName = {
   PkiSyncCleanup: "pki-sync-cleanup",
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
-  PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",
-  PamAccountRotation: "pam-account-rotation",
   DailySecretSyncRetry: "daily-secret-sync-retry",
   SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",

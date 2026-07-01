@@ -279,6 +279,8 @@ Enterprise code lives in `src/ee/`:
 
 EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
 
+**PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md). It documents the permission model, shared helpers, account type checklist, and session lifecycle. Any new PAM core logic or helpers must be documented there.
+
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:

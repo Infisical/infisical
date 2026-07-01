@@ -128,6 +128,7 @@ export * from "./organization-assets";
 export * from "./organizations";
 export * from "./pam-account-dependencies";
 export * from "./pam-account-policies";
+export * from "./pam-account-templates";
 export * from "./pam-accounts";
 export * from "./pam-discovery-source-accounts";
 export * from "./pam-discovery-source-dependencies";
