@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { useDebounce } from "@app/hooks";
 import {
   TBitbucketRepo,
   TBitbucketWorkspace,
@@ -28,16 +29,21 @@ export const BitbucketDataSourceConfigFields = () => {
     }
   >();
 
+  const [workspaceSearch, setWorkspaceSearch] = useState("");
+  const [debouncedWorkspaceSearch] = useDebounce(workspaceSearch, 300);
+
   const connectionId = useWatch({ control, name: "connection.id" });
   const isUpdate = Boolean(watch("id"));
 
   const selectedWorkspaceSlug = useWatch({ control, name: "config.workspaceSlug" });
 
   const { data: workspaces, isPending: areWorkspacesLoading } =
-    useBitbucketConnectionListWorkspaces(connectionId, { enabled: Boolean(connectionId) });
+    useBitbucketConnectionListWorkspaces(connectionId, debouncedWorkspaceSearch || undefined, {
+      enabled: Boolean(connectionId)
+    });
 
   const { data: repositories, isPending: areRepositoriesLoading } =
-    useBitbucketConnectionListRepositories(connectionId, selectedWorkspaceSlug, {
+    useBitbucketConnectionListRepositories(connectionId, selectedWorkspaceSlug, undefined, {
       enabled: Boolean(connectionId) && Boolean(selectedWorkspaceSlug)
     });
 
@@ -96,10 +102,15 @@ export const BitbucketDataSourceConfigFields = () => {
                   setValue("config.includeRepos", []);
                 }
               }}
+              onInputChange={(newValue) => setWorkspaceSearch(newValue)}
+              filterOption={null}
               options={workspaces}
-              placeholder="Select workspace..."
+              placeholder="Search for a workspace..."
               getOptionLabel={(option) => option.slug}
               getOptionValue={(option) => option.slug}
+              noOptionsMessage={({ inputValue }) =>
+                inputValue ? "No workspaces found matching your search." : "No workspaces found."
+              }
             />
           </FormControl>
         )}

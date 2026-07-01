@@ -12,6 +12,7 @@ import {
   MoreVerticalIcon,
   PencilIcon,
   PenTool,
+  RefreshCwIcon,
   RotateCwIcon,
   Trash2Icon
 } from "lucide-react";
@@ -55,11 +56,14 @@ import {
   SignerPermissionSub,
   useSignerPermission
 } from "@app/context/SignerPermissionContext";
+import { useListCasByProjectId } from "@app/hooks/api/ca";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   getSignerStatusBadgeVariant,
   SignerStatus,
   signerStatusLabels,
+  useCheckSignerIssuance,
   useDeleteSigner,
   useDisableSigner,
   useEnableSigner,
@@ -97,6 +101,9 @@ export const SignerDetailPage = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
+  const cas = useListCasByProjectId();
+  const isDigicertSigner =
+    (cas.data ?? []).find((ca) => ca.id === signer?.caId)?.type === CaType.DIGICERT;
   const { permission } = useSignerPermission();
   const can = (action: SignerPermissionActions) =>
     permission.can(action, SignerPermissionSub.Signer);
@@ -104,6 +111,7 @@ export const SignerDetailPage = () => {
   const disableSigner = useDisableSigner();
   const deleteSigner = useDeleteSigner();
   const reissueSigner = useReissueSignerCertificate();
+  const checkSignerIssuance = useCheckSignerIssuance();
 
   if (isLoading) return <PageLoader />;
   if (!signer)
@@ -121,6 +129,13 @@ export const SignerDetailPage = () => {
   };
 
   const onOpenExport = () => setIsExportOpen(true);
+
+  let statusTooltip: string | null = null;
+  if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
+    statusTooltip = signer.certificateFailureReason;
+  } else if (signer.status === SignerStatus.Pending && signer.externalOrder) {
+    statusTooltip = `DigiCert order #${signer.externalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
+  }
 
   return (
     <>
@@ -148,7 +163,7 @@ export const SignerDetailPage = () => {
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
-                  {signer.status === SignerStatus.Failed && signer.certificateFailureReason ? (
+                  {statusTooltip ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -159,7 +174,7 @@ export const SignerDetailPage = () => {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[260px] text-pretty break-words">
-                          {signer.certificateFailureReason}
+                          {statusTooltip}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -218,6 +233,18 @@ export const SignerDetailPage = () => {
                       Enable signer
                     </DropdownMenuItem>
                   ) : null}
+                  {signer.status === SignerStatus.Pending && (
+                    <DropdownMenuItem
+                      onClick={() => checkSignerIssuance.mutate(signer.id)}
+                      isDisabled={
+                        checkSignerIssuance.isPending ||
+                        !can(SignerPermissionActions.ReissueCertificate)
+                      }
+                    >
+                      <RefreshCwIcon />
+                      Check issuance now
+                    </DropdownMenuItem>
+                  )}
                   {signer.status === SignerStatus.Failed && signer.caId && (
                     <DropdownMenuItem
                       onClick={() =>
@@ -319,6 +346,12 @@ export const SignerDetailPage = () => {
             <AlertDialogDescription>
               This permanently removes the signer, its policy, members, requests, and signing
               history. The certificate is preserved for audit but signing will stop immediately.
+              {isDigicertSigner && (
+                <span className="mt-2 block font-medium text-warning">
+                  This also revokes the certificate&apos;s DigiCert order, so the certificate can no
+                  longer be used to sign anywhere.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

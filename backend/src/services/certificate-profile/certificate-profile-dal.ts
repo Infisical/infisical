@@ -78,13 +78,19 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteById = async (id: string, tx?: Knex): Promise<TCertificateProfile> => {
+  const deleteById = async (id: string, tx?: Knex): Promise<TCertificateProfile | undefined> => {
     try {
-      const [certificateProfile] = (await (tx || db)(TableName.PkiCertificateProfile)
-        .where({ id })
-        .del()
-        .returning("*")) as [TCertificateProfile];
-      return certificateProfile;
+      const [certificateProfile] = await (tx || db)(TableName.PkiCertificateProfile).where({ id }).del().returning("*");
+
+      if (!certificateProfile) return undefined;
+
+      return {
+        ...certificateProfile,
+        externalConfigs: certificateProfile.externalConfigs
+          ? (JSON.parse(certificateProfile.externalConfigs) as Record<string, unknown>)
+          : null,
+        defaults: (certificateProfile.defaults as TCertificateProfileDefaults) ?? null
+      } as TCertificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete certificate profile" });
     }

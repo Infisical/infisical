@@ -9,18 +9,22 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
     includeRootCa: z.boolean().default(false),
     certificateNameSchema: z
       .string()
-      .optional()
+      .trim()
+      .min(1, "Certificate name schema is required")
       .refine(
         (val) => {
-          if (!val) return true;
-
           const allowedOptionalPlaceholders = [
             "{{profileId}}",
             "{{applicationId}}",
+            "{{applicationName}}",
             "{{commonName}}"
           ];
 
-          const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+          const allowedPlaceholdersRegexPart = [
+            "{{certificateId}}",
+            "{{shortCertificateId}}",
+            ...allowedOptionalPlaceholders
+          ]
             .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
             .join("|");
 
@@ -29,17 +33,13 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
           );
           const contentIsValid = allowedContentRegex.test(val);
 
-          if (val.trim()) {
-            const certificateIdRegex = /\{\{certificateId\}\}/;
-            const certificateIdIsPresent = certificateIdRegex.test(val);
-            return contentIsValid && certificateIdIsPresent;
-          }
-
-          return contentIsValid;
+          const certificateIdIsPresent =
+            val.includes("{{certificateId}}") || val.includes("{{shortCertificateId}}");
+          return contentIsValid && certificateIdIsPresent;
         },
         {
           message:
-            "Certificate name schema must include the {{certificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+            "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
         }
       )
   });

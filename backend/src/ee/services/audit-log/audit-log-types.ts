@@ -54,6 +54,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
+import { TSignerExternalConfigurationInput } from "@app/services/signer/signer-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -1389,13 +1390,22 @@ interface DeleteServiceTokenEvent {
 }
 
 interface CreateIdentityEvent {
-  // note: currently not logging org-role
   type: EventType.CREATE_IDENTITY;
   metadata: {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
     metadata?: { key: string; value: string }[];
+    roles?: (
+      | { role: string; isTemporary: false }
+      | {
+          role: string;
+          isTemporary: true;
+          temporaryMode: string;
+          temporaryRange: string;
+          temporaryAccessStartTime: string;
+        }
+    )[];
   };
 }
 
@@ -2638,6 +2648,8 @@ interface SecretApprovalMerge {
     mergedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+    isMergedViaBypass?: boolean;
+    bypassReason?: string;
   };
 }
 
@@ -4887,6 +4899,7 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
 
@@ -4975,6 +4988,7 @@ interface ReissuePkiSignerCertificateEvent {
     keySource?: string;
     hsmConnectorId?: string;
     hsmKeyAlgorithm?: string;
+    externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
 
@@ -6322,6 +6336,8 @@ interface AccessApprovalRequestReviewEvent {
     requestId: string;
     policyId: string;
     reviewStatus: string;
+    isBypass?: boolean;
+    bypassReason?: string;
   };
 }
 

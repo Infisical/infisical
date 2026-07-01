@@ -12,7 +12,6 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -74,7 +73,6 @@ export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
   SecretReminder = "secret-reminder",
-  AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   PkiAlertV2Event = "pki-alert-v2-event",
@@ -117,7 +115,6 @@ export enum QueueName {
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
@@ -226,10 +223,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.AuditLog]: {
-    name: QueueJobs.AuditLog;
-    payload: TCreateAuditLogDTO;
   };
   [QueueName.PkiAlertV2Event]: {
     name: QueueJobs.PkiAlertV2ProcessEvent;
@@ -656,6 +649,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "queue-internal-recovery",
       "queue-internal-reconciliation",
       "secret-rotation",
+      // Legacy per-log audit queue, replaced by the unified Redis ingest stream. The compatibility
+      // shim that re-routed its jobs has been removed; obliterate any residue left in Redis.
+      "audit-log",
       // Queues replaced by cronJobFactory (src/lib/cron/cron-job.ts)
       "daily-resource-cleanup",
       "frequent-resource-cleanup",

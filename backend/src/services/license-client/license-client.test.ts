@@ -34,6 +34,10 @@ const createFakeKeyStore = () => {
     setItemWithExpiry: async (key: string, _ttl: number | string, value: string | number | Buffer) => {
       store.set(key, String(value));
       return "OK" as const;
+    },
+    deleteItem: async (key: string) => {
+      const existed = store.delete(key);
+      return existed ? 1 : 0;
     }
   };
 };

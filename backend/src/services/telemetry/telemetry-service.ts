@@ -1,6 +1,8 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -13,6 +15,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -62,6 +65,7 @@ export type TTelemetryServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -107,8 +111,27 @@ const getDeploymentType = (
   return DeploymentType.SelfHosted;
 };
 
-export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({
+  keyStore,
+  licenseService,
+  orgDAL,
+  emailDomainDAL
+}: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
+
+  let instanceIdPromise: Promise<string | undefined> | undefined;
+  const getInstanceId = (): Promise<string | undefined> => {
+    if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
+    if (!instanceIdPromise) {
+      instanceIdPromise = getServerCfg()
+        .then(({ instanceId }) => instanceId)
+        .catch(() => {
+          instanceIdPromise = undefined;
+          return undefined;
+        });
+    }
+    return instanceIdPromise;
+  };
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
     // eslint-disable-next-line
@@ -240,6 +263,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
 
+    try {
+      const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+      if (verifiedDomains.length > 0) {
+        properties.domain = verifiedDomains[0].domain;
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org domain for PostHog group properties");
+    }
+
     return properties;
   };
 
@@ -328,7 +360,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // `anonymous-<shareId>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
-      const properties = event.anonymous ? { ...event.properties, $process_person_profile: false } : event.properties;
+      const instanceId = await getInstanceId();
+      const baseProperties = event.anonymous
+        ? { ...event.properties, $process_person_profile: false }
+        : event.properties;
+      const properties = instanceId ? { ...baseProperties, instanceId } : baseProperties;
 
       postHog.capture({
         event: event.event,
@@ -457,6 +493,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // when multiple users share the same org within a bucket
       const orgPropertiesCache = new Map<string, Record<string, unknown>>();
 
+      const instanceId = await getInstanceId();
+
       for (const [eventsKey, events] of eventsGrouped) {
         const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
         if (key.org) {
@@ -500,6 +538,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         // Always attach orgId as a flat property so aggregated events are filterable by organization
         if (key.org) {
           properties.orgId = key.org;
+        }
+
+        if (instanceId) {
+          properties.instanceId = instanceId;
         }
 
         postHog.capture({

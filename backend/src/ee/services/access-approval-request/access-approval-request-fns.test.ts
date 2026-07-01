@@ -18,7 +18,7 @@ describe("verifyRequestedPermissions", () => {
     const result = verifyRequestedPermissions({ permissions });
     expect(result.envSlug).toBe("dev");
     expect(result.secretPath).toBe("/apps/team-a/*");
-    expect(result.accessTypes).toEqual(["Read Access"]);
+    expect(result.accessTypes).toEqual(["Secrets (Read)"]);
   });
 
   test("accepts multiple rules with same env and path", () => {
@@ -30,9 +30,7 @@ describe("verifyRequestedPermissions", () => {
     const result = verifyRequestedPermissions({ permissions });
     expect(result.envSlug).toBe("dev");
     expect(result.secretPath).toBe("/apps/team-a/*");
-    expect(result.accessTypes).toContain("Read Access");
-    expect(result.accessTypes).toContain("Edit Access");
-    expect(result.accessTypes).toContain("Create Access");
+    expect(result.accessTypes).toEqual(["Secrets (Read, Edit, Create)"]);
   });
 
   test("rejects rules with different environments", () => {

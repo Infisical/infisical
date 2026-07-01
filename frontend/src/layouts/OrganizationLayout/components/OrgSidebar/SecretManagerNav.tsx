@@ -16,7 +16,7 @@ export const SecretManagerNav = ({
 
   const generalItems: NavItem[] = [
     {
-      label: "Overview",
+      label: "Secrets",
       icon: ProjectIcon,
       pathSuffix: "overview",
       activeMatch: /\/secrets\/|\/commits\//
