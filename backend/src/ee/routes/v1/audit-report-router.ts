@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  DaysAheadInputsSchema,
+  NoInputsSchema,
+  SecretAccessLogInputsSchema,
+  StaleSecretsInputsSchema
+} from "@app/ee/services/audit-report/audit-report-generators";
+import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
   AuditReportType
@@ -9,6 +15,18 @@ import {
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+// Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
+// the generators use, so request validation and generation never drift.
+const AuditReportRequestConfigSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(AuditReportType.StaleSecrets), inputs: StaleSecretsInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.DuplicateSecrets), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.SecretValidationCompliance), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.UpcomingRotations), inputs: DaysAheadInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.FailedRotations), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.UpcomingReminders), inputs: DaysAheadInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.SecretAccessLog), inputs: SecretAccessLogInputsSchema.optional() })
+]);
 
 const AuditReportConfigSchema = z.object({
   type: z.nativeEnum(AuditReportType),
@@ -37,14 +55,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
       hide: true,
       body: z.object({
         projectId: z.string().trim(),
-        reports: z
-          .array(
-            z.object({
-              type: z.nativeEnum(AuditReportType),
-              inputs: z.record(z.unknown()).optional()
-            })
-          )
-          .min(1),
+        reports: AuditReportRequestConfigSchema.array().min(1),
         emailRecipients: z.array(z.string().email()).optional()
       }),
       response: {
@@ -86,7 +97,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
         200: z.object({ reports: z.array(AuditReportSchema), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { projectId, offset, limit } = req.query;
       const { reports, totalCount } = await server.services.auditReport.listReports(
@@ -109,15 +120,14 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: true,
       params: z.object({ auditReportId: z.string().uuid() }),
-      querystring: z.object({ projectId: z.string().trim() }),
       response: {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const report = await server.services.auditReport.getReportById(
-        { projectId: req.query.projectId, auditReportId: req.params.auditReportId },
+        { auditReportId: req.params.auditReportId },
         req.permission
       );
       await server.services.auditLog.createAuditLog({

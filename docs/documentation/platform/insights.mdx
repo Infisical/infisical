@@ -69,26 +69,9 @@ Stale secrets aren't necessarily a problem — long-lived configuration values a
 
 ![Secret Insights stale secrets](/images/platform/insights/stale.png)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## Audit Reports
 
-Audit Reports let you generate point-in-time compliance exports for a Secrets Management project — stale secrets, duplicate values, validation-rule violations, rotation status, upcoming reminders, and secret access history — and deliver them to one or more recipients as a single CSV file attached to an email.
+Audit Reports let you generate point-in-time compliance exports for a Secrets Management project — stale secrets, duplicate values, validation-rule violations, rotation status, upcoming reminders, and secret access history — and deliver them to one or more recipients as CSV attachments (one file per report type) in an email.
 
 Where the rest of the Insights dashboard is a live, read-only view, an Audit Report is a snapshot you can hand to an auditor, attach to a ticket, or archive for SOC 2 / ISO 27001 evidence. You'll find it as the **Audit Reports** card on the Insights page.
 
@@ -106,7 +89,7 @@ Where the rest of the Insights dashboard is a live, read-only view, an Audit Rep
 
 ![overview-screen](/images/platform/insights/audit-reports/generate-report.png)
 
-The request is queued and generated in the background. When it finishes, every recipient receives an email with a single CSV file attached. You can keep working — the report's status updates live in the history table.
+The request is queued and generated in the background. When it finishes, every recipient receives an email with one CSV file attached per requested report. You can keep working — the report's status updates live in the history table.
 
 <Note>
   Report generation is asynchronous. A project can have at most one report generating at once. 
@@ -146,21 +129,6 @@ A single request can include any combination of the following. Each becomes its 
 | **Failed Rotations** | Secret rotations currently in a failed state. |
 | **Upcoming Reminders** | Secret reminders due within the next 7 days. |
 | **Secret Access Log** | Who accessed secrets over the last 30 days (actor, event type, secret, environment, path, IP, timestamp). |
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## Rotation & Reminder Calendar
 

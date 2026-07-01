@@ -11,21 +11,17 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAuditReportDALFactory } from "./audit-report-dal";
 import { presentAuditReport } from "./audit-report-fns";
-import { AUDIT_REPORT_DEFINITIONS } from "./audit-report-generators";
 import {
   AuditReportStatus,
   MAX_CONCURRENT_AUDIT_REPORTS,
   TAuditReportConfig,
   TAuditReportServiceActor,
-  TDeleteAuditReportDTO,
-  TGetAuditReportDTO,
   TListAuditReportsDTO,
   TRequestAuditReportDTO
 } from "./audit-report-types";
@@ -53,58 +49,17 @@ export const auditReportServiceFactory = ({
   userDAL,
   queueService
 }: TAuditReportServiceFactoryDep) => {
-  const $checkPermission = async (
-    projectId: string,
-    actor: TAuditReportServiceActor,
-    action: ProjectPermissionAuditReportActions
-  ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.secretAccessInsights) {
-      throw new BadRequestError({
-        message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
-      });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AuditReports);
-  };
-
-  // Validate each requested report against its definition's input schema, applying defaults so the stored
-  // config is canonical. Rejects unknown/duplicate types and malformed inputs before anything is persisted.
+  // Report types and their inputs are validated at the request boundary by the router's discriminated
+  // union, so here we only enforce that each report type appears at most once per batch (the array schema
+  // can't express that) and normalize the stored shape.
   const $buildReportConfigs = (reports: TRequestAuditReportDTO["reports"]): TAuditReportConfig[] => {
-    if (!reports.length) {
-      throw new BadRequestError({ message: "At least one report must be requested" });
-    }
-
     const seenTypes = new Set<string>();
     return reports.map(({ type, inputs }) => {
-      const definition = AUDIT_REPORT_DEFINITIONS[type];
-      if (!definition) {
-        throw new BadRequestError({ message: `Unsupported report type: ${type}` });
-      }
       if (seenTypes.has(type)) {
         throw new BadRequestError({ message: `Each report type can only be requested once per batch: ${type}` });
       }
       seenTypes.add(type);
-
-      // Validate now so bad inputs are rejected before persistence; the raw inputs are stored as-is and the
-      // generation worker re-parses (applying defaults/coercion) against the same schema at run time.
-      const candidateInputs = inputs ?? {};
-      const result = definition.inputsSchema.safeParse(candidateInputs);
-      if (!result.success) {
-        throw new BadRequestError({
-          message: `Invalid inputs for ${type}: ${result.error.issues.map((issue) => issue.message).join(", ")}`
-        });
-      }
-      return { type, inputs: candidateInputs };
+      return { type, inputs: inputs ?? {} };
     });
   };
 
@@ -120,16 +75,35 @@ export const auditReportServiceFactory = ({
     }
 
     // Default to the requesting user's own email.
-    if (actor.type === ActorType.USER) {
-      const user = await userDAL.findById(actor.id);
-      if (user?.email) return [user.email];
+    const user = await userDAL.findById(actor.id);
+    if (user?.email) {
+      return [user.email];
     }
 
     throw new BadRequestError({ message: "At least one email recipient is required" });
   };
 
   const generateReport = async (dto: TRequestAuditReportDTO, actor: TAuditReportServiceActor) => {
-    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Create);
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: dto.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditReportActions.Create,
+      ProjectPermissionSub.AuditReports
+    );
 
     const project = await projectDAL.findById(dto.projectId);
     if (!project) {
@@ -159,7 +133,7 @@ export const auditReportServiceFactory = ({
       return auditReportDAL.create(
         {
           projectId: dto.projectId,
-          requestedByUserId: actor.type === ActorType.USER ? actor.id : null,
+          requestedByUserId: actor.id,
           status: AuditReportStatus.Pending,
           // jsonb columns must be serialized before insert — pg otherwise treats a top-level JS array as a
           // Postgres array literal rather than a JSON value.
@@ -189,7 +163,26 @@ export const auditReportServiceFactory = ({
   };
 
   const listReports = async (dto: TListAuditReportsDTO, actor: TAuditReportServiceActor) => {
-    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Read);
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: dto.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditReportActions.Read,
+      ProjectPermissionSub.AuditReports
+    );
 
     const reports = await auditReportDAL.findByProject(dto.projectId, {
       offset: dto.offset,
@@ -199,26 +192,62 @@ export const auditReportServiceFactory = ({
     return { reports: reports.map(presentAuditReport), totalCount };
   };
 
-  const getReportById = async (dto: TGetAuditReportDTO, actor: TAuditReportServiceActor) => {
-    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Read);
+  const getReportById = async (auditReportId: string, actor: TAuditReportServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
+      });
+    }
 
-    const report = await auditReportDAL.findById(dto.auditReportId);
-    if (!report || report.projectId !== dto.projectId) {
-      throw new NotFoundError({ message: `Audit report with ID '${dto.auditReportId}' not found` });
+    const report = await auditReportDAL.findById(auditReportId);
+
+    if (!report) {
+      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: report.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditReportActions.Read,
+      ProjectPermissionSub.AuditReports
+    );
+
+    if (!permission.can(ProjectPermissionAuditReportActions.Read, ProjectPermissionSub.AuditReports)) {
+      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
     return presentAuditReport(report);
   };
 
-  const deleteReport = async (dto: TDeleteAuditReportDTO, actor: TAuditReportServiceActor) => {
-    await $checkPermission(dto.projectId, actor, ProjectPermissionAuditReportActions.Delete);
+  const deleteReport = async (auditReportId: string, actor: TAuditReportServiceActor) => {
+    const report = await auditReportDAL.findById(auditReportId);
 
-    const report = await auditReportDAL.findById(dto.auditReportId);
-    if (!report || report.projectId !== dto.projectId) {
-      throw new NotFoundError({ message: `Audit report with ID '${dto.auditReportId}' not found` });
+    if (!report) {
+      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
-    await auditReportDAL.deleteById(dto.auditReportId);
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: report.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    if (!permission.can(ProjectPermissionAuditReportActions.Delete, ProjectPermissionSub.AuditReports)) {
+      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
+    }
+
+    await auditReportDAL.deleteById(report.id);
     return presentAuditReport(report);
   };
 

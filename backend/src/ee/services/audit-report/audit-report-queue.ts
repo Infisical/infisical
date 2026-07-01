@@ -4,7 +4,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAuditReportDALFactory } from "./audit-report-dal";
-import { presentAuditReport, serializeReportBundle, TAuditReportSection } from "./audit-report-fns";
+import { csvFileNameFromLabel, presentAuditReport, serializeReport } from "./audit-report-fns";
 import {
   AUDIT_REPORT_DEFINITIONS,
   TAuditReportGeneratorDALs,
@@ -78,20 +78,20 @@ export const auditReportQueueServiceFactory = ({
           dal: generatorDAL
         };
 
-        const sections: TAuditReportSection[] = [];
+        const attachments: { filename: string; content: Buffer; contentType: string }[] = [];
         const resultSummary: TAuditReportResultEntry[] = [];
 
         for (const config of reportConfigs) {
           const definition = AUDIT_REPORT_DEFINITIONS[config.type];
           // eslint-disable-next-line no-await-in-loop
           const generated = await definition.run(context, config.inputs);
-          sections.push({ title: definition.label, report: generated });
+          attachments.push({
+            filename: csvFileNameFromLabel(definition.label),
+            content: serializeReport(generated),
+            contentType: "text/csv"
+          });
           resultSummary.push({ type: config.type, rowCount: generated.rows.length, truncated: generated.truncated });
         }
-
-        // All requested reports are combined into a single sectioned CSV attachment.
-        const generatedAt = new Date();
-        const csv = serializeReportBundle({ projectName: project.name, generatedAt, sections });
 
         await smtpService.sendMail({
           template: SmtpTemplates.AuditReport,
@@ -105,13 +105,7 @@ export const auditReportQueueServiceFactory = ({
               truncated: entry.truncated
             }))
           },
-          attachments: [
-            {
-              filename: `infisical-audit-report-${generatedAt.toISOString().slice(0, 10)}.csv`,
-              content: csv,
-              contentType: "text/csv"
-            }
-          ]
+          attachments
         });
 
         const truncatedAny = resultSummary.some((entry) => entry.truncated);

@@ -59,16 +59,6 @@ export type TListAuditReportsDTO = {
   limit?: number;
 };
 
-export type TGetAuditReportDTO = {
-  projectId: string;
-  auditReportId: string;
-};
-
-export type TDeleteAuditReportDTO = {
-  projectId: string;
-  auditReportId: string;
-};
-
 export type TAuditReportServiceActor = OrgServiceActor;
 
 // Job payload for the generation queue.

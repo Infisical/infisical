@@ -143,10 +143,10 @@ const parseRecord = <T>(schema: z.ZodType<T>, raw: unknown, fallback: T): T => {
 
 // ─── Input schemas ──────────────────────────────────────────────────────────────
 
-const NoInputsSchema = z.object({}).default({});
-const StaleSecretsInputsSchema = z.object({ staleDays: z.number().int().min(1).max(3650).default(90) });
-const DaysAheadInputsSchema = z.object({ daysAhead: z.number().int().min(1).max(365).default(7) });
-const SecretAccessLogInputsSchema = z
+export const NoInputsSchema = z.object({}).default({});
+export const StaleSecretsInputsSchema = z.object({ staleDays: z.number().int().min(1).max(3650).default(90) });
+export const DaysAheadInputsSchema = z.object({ daysAhead: z.number().int().min(1).max(365).default(7) });
+export const SecretAccessLogInputsSchema = z
   .object({
     fromDate: z.coerce.date().optional(),
     toDate: z.coerce.date().optional()

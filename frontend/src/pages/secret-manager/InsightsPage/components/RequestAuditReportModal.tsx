@@ -64,7 +64,7 @@ export const RequestAuditReportModal = ({ isOpen, onOpenChange, projectId }: Pro
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    defaultValues: { reportTypes: [...AUDIT_REPORT_TYPES_ORDERED], emailRecipients: "" }
+    defaultValues: { reportTypes: [], emailRecipients: "" }
   });
 
   const handleClose = (open: boolean) => {

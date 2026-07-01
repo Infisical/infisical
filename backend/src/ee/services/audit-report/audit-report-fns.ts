@@ -13,7 +13,6 @@ import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
   AuditReportType,
-  MAX_AUDIT_REPORT_ROWS,
   TGeneratedReport,
   TSecretToValidate
 } from "./audit-report-types";
@@ -37,46 +36,17 @@ const escapeCsvCell = (value: string | number | null): string => {
 
 const toCsvRow = (cells: (string | number | null)[]): string => cells.map(escapeCsvCell).join(",");
 
-export type TAuditReportSection = {
-  title: string;
-  report: TGeneratedReport;
-};
-
-export const serializeReportBundle = ({
-  projectName,
-  generatedAt,
-  sections
-}: {
-  projectName: string;
-  generatedAt: Date;
-  sections: TAuditReportSection[];
-}): Buffer => {
-  const lines: string[] = [
-    toCsvRow(["Infisical Audit Report"]),
-    toCsvRow(["Project", projectName]),
-    toCsvRow(["Generated At", generatedAt.toISOString()])
-  ];
-
-  sections.forEach(({ title, report }) => {
-    lines.push("");
-    // The section title occupies the first column; the report's own column headers sit on the SAME row,
-    // shifted one column to the right. Data/notes are indented by one empty leading column so they line up
-    // beneath those headers when opened in a spreadsheet (the title column acts as a left-margin label).
-    lines.push(toCsvRow([title.toUpperCase(), ...report.columns]));
-    if (report.rows.length === 0) {
-      lines.push(toCsvRow(["", "No matching records"]));
-    } else {
-      report.rows.forEach((row) => {
-        lines.push(toCsvRow(["", ...report.columns.map((column) => row[column] ?? null)]));
-      });
-    }
-    if (report.truncated) {
-      lines.push(toCsvRow(["", `Note: results truncated at ${MAX_AUDIT_REPORT_ROWS.toLocaleString()} rows`]));
-    }
-  });
-
+// Serialize a single report into its own standalone CSV — a header row followed by its data rows.
+export const serializeReport = ({ columns, rows }: TGeneratedReport): Buffer => {
+  const lines = [toCsvRow(columns), ...rows.map((row) => toCsvRow(columns.map((column) => row[column] ?? null)))];
   return Buffer.from(lines.join(CSV_LINE_BREAK), "utf8");
 };
+
+export const csvFileNameFromLabel = (label: string): string =>
+  `${label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}.csv`;
 
 // Resolve folder ids to their human-readable secret paths in a single batched query.
 export const buildFolderPathMap = async (
