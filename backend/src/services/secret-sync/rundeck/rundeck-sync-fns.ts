@@ -3,8 +3,7 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { getRundeckInstanceUrl } from "@app/services/app-connection/rundeck";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -38,9 +37,7 @@ const getRundeckStoragePath = (project: string, path: string) => {
 const getRundeckClientDetails = async (secretSync: TRundeckSyncWithCredentials) => {
   const { connection, destinationConfig } = secretSync;
 
-  const instanceUrl = removeTrailingSlash(connection.credentials.instanceUrl);
-  await blockLocalAndPrivateIpAddresses(instanceUrl);
-
+  const instanceUrl = await getRundeckInstanceUrl(connection);
   const storagePath = getRundeckStoragePath(destinationConfig.project, destinationConfig.path);
 
   return {
@@ -64,6 +61,14 @@ const listRundeckSecretKeys = async (baseUrl: string, headers: Record<string, st
   }
 };
 
+const deleteRundeckSecret = async (baseUrl: string, key: string, headers: Record<string, string>) => {
+  try {
+    await request.delete(`${baseUrl}/${key}`, { headers });
+  } catch (error) {
+    throw new SecretSyncError({ error, secretKey: key });
+  }
+};
+
 export const RundeckSyncFns = {
   async getSecrets(secretSync: TRundeckSyncWithCredentials): Promise<TSecretMap> {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
@@ -76,23 +81,21 @@ export const RundeckSyncFns = {
     } = secretSync;
 
     const { baseUrl, headers } = await getRundeckClientDetails(secretSync);
+    const writeHeaders = { ...headers, "Content-Type": RUNDECK_SECRET_CONTENT_TYPE };
 
     const existingSecretKeys = await listRundeckSecretKeys(baseUrl, headers);
     const existingSecretKeySet = new Set(existingSecretKeys);
 
     for (const key of Object.keys(secretMap)) {
-      const value = secretMap[key].value ?? "";
       const url = `${baseUrl}/${key}`;
+      const value = secretMap[key].value ?? "";
 
+      // POST creates a new key; PUT overwrites an existing one
       try {
         if (existingSecretKeySet.has(key)) {
-          await request.put(url, value, {
-            headers: { ...headers, "Content-Type": RUNDECK_SECRET_CONTENT_TYPE }
-          });
+          await request.put(url, value, { headers: writeHeaders });
         } else {
-          await request.post(url, value, {
-            headers: { ...headers, "Content-Type": RUNDECK_SECRET_CONTENT_TYPE }
-          });
+          await request.post(url, value, { headers: writeHeaders });
         }
       } catch (error) {
         throw new SecretSyncError({ error, secretKey: key });
@@ -106,11 +109,7 @@ export const RundeckSyncFns = {
       if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
       if (!(key in secretMap)) {
-        try {
-          await request.delete(`${baseUrl}/${key}`, { headers });
-        } catch (error) {
-          throw new SecretSyncError({ error, secretKey: key });
-        }
+        await deleteRundeckSecret(baseUrl, key, headers);
       }
     }
   },
@@ -121,12 +120,8 @@ export const RundeckSyncFns = {
     const existingSecretKeys = await listRundeckSecretKeys(baseUrl, headers);
 
     for (const key of existingSecretKeys) {
-      if (!(key in secretMap)) continue;
-
-      try {
-        await request.delete(`${baseUrl}/${key}`, { headers });
-      } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+      if (key in secretMap) {
+        await deleteRundeckSecret(baseUrl, key, headers);
       }
     }
   }

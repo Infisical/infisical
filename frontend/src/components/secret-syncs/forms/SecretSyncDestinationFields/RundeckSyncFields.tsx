@@ -20,6 +20,9 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 
+const PATH_HELP_TEXT =
+  "Path must start with '/'. Secrets are stored in Rundeck Key Storage under keys/project/<project><path>.";
+
 export const RundeckSyncFields = () => {
   const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.Rundeck }
@@ -79,11 +82,7 @@ export const RundeckSyncFields = () => {
                 placeholder="/production"
                 isError={Boolean(error)}
               />
-              <FieldDescription>
-                {
-                  "Path must start with '/'. Secrets are stored in Rundeck Key Storage under keys/project/<project><path>."
-                }
-              </FieldDescription>
+              <FieldDescription>{PATH_HELP_TEXT}</FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>
