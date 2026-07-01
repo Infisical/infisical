@@ -14,26 +14,29 @@ import { TCloud66EnvVar, TCloud66SyncWithCredentials } from "./cloud66-sync-type
 const isModifiable = (envVar: TCloud66EnvVar) => !envVar.readonly && !envVar.is_generated;
 
 const listCloud66EnvVars = (accessToken: string, stackId: string): Promise<TCloud66EnvVar[]> =>
-  paginateCloud66<TCloud66EnvVar>(accessToken, `/3/stacks/${stackId}/environments`);
+  paginateCloud66<TCloud66EnvVar>(accessToken, `/3/stacks/${encodeURIComponent(stackId)}/environments`);
 
 const createCloud66EnvVar = (accessToken: string, stackId: string, key: string, value: string) =>
   request.post(
-    `${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments`,
+    `${CLOUD_66_API_BASE_URL}/3/stacks/${encodeURIComponent(stackId)}/environments`,
     { key, value },
     { headers: getCloud66Headers(accessToken) }
   );
 
 const updateCloud66EnvVar = (accessToken: string, stackId: string, key: string, value: string) =>
   request.put(
-    `${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments/${encodeURIComponent(key)}`,
+    `${CLOUD_66_API_BASE_URL}/3/stacks/${encodeURIComponent(stackId)}/environments/${encodeURIComponent(key)}`,
     { value },
     { headers: getCloud66Headers(accessToken) }
   );
 
 const deleteCloud66EnvVar = (accessToken: string, stackId: string, key: string) =>
-  request.delete(`${CLOUD_66_API_BASE_URL}/3/stacks/${stackId}/environments/${encodeURIComponent(key)}`, {
-    headers: getCloud66Headers(accessToken)
-  });
+  request.delete(
+    `${CLOUD_66_API_BASE_URL}/3/stacks/${encodeURIComponent(stackId)}/environments/${encodeURIComponent(key)}`,
+    {
+      headers: getCloud66Headers(accessToken)
+    }
+  );
 
 export const Cloud66SyncFns = {
   async syncSecrets(secretSync: TCloud66SyncWithCredentials, secretMap: TSecretMap) {
