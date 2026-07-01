@@ -1862,6 +1862,8 @@ describe("CertificateV3Service", () => {
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
       expect(result).toHaveProperty("certificateId", "cert-456");
+      // The renewed certificate's freshly issued private key must be returned to the caller.
+      expect(result).toHaveProperty("privateKey", "private-key");
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
         "cert-456",
         {
