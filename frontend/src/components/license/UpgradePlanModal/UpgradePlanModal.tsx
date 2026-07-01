@@ -84,7 +84,8 @@ export const UpgradePlanModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      {/* z-[70] keeps this above legacy v2 modals (z-[60]) that open it, e.g. RoleModal */}
+      <DialogContent className="z-[70] sm:max-w-xl" overlayClassName="z-[70]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
             <SparklesIcon className="size-5 text-muted" />
