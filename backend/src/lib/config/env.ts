@@ -240,8 +240,14 @@ const envSchema = z
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
-    JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
+    // JWT_AUTH_LIFETIME: Controls how long user login sessions are valid before requiring re-authentication.
+    // Can be customized via JWT_AUTH_LIFETIME env var. Affects both CLI and web UI sessions.
+    // Default: 30 days. Examples: "7d", "14d", "30d", "90d", "1y"
+    JWT_AUTH_LIFETIME: zpStr(z.string().default("30d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
+    // JWT_REFRESH_LIFETIME: Controls how long refresh tokens are valid. Used to issue new access tokens.
+    // Can be customized via JWT_REFRESH_LIFETIME env var. Should typically be longer than JWT_AUTH_LIFETIME.
+    // Default: 90 days
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
     JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
