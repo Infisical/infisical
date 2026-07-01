@@ -5,7 +5,8 @@ import { apiRequest } from "@app/config/request";
 import { TProjectFolderGrant, TProjectFolderGrantReceived } from "./types";
 
 export const projectFolderGrantKeys = {
-  listByProject: (sourceProjectId: string) => [{ sourceProjectId }, "project-folder-grants"] as const,
+  listByProject: (sourceProjectId: string) =>
+    [{ sourceProjectId }, "project-folder-grants"] as const,
   listReceived: (targetProjectId: string) =>
     [{ targetProjectId }, "project-folder-grants-received"] as const
 };
@@ -14,9 +15,12 @@ export const useListProjectFolderGrants = (sourceProjectId: string) =>
   useQuery({
     queryKey: projectFolderGrantKeys.listByProject(sourceProjectId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ grants: TProjectFolderGrant[] }>("/api/v1/project-folder-grants", {
-        params: { sourceProjectId }
-      });
+      const { data } = await apiRequest.get<{ grants: TProjectFolderGrant[] }>(
+        "/api/v1/project-folder-grants",
+        {
+          params: { sourceProjectId }
+        }
+      );
       return data.grants;
     },
     enabled: Boolean(sourceProjectId)

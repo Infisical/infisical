@@ -3,7 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { projectFolderGrantKeys } from "./queries";
-import { TCreateProjectFolderGrantDTO, TDeleteProjectFolderGrantDTO, TProjectFolderGrant } from "./types";
+import {
+  TCreateProjectFolderGrantDTO,
+  TDeleteProjectFolderGrantDTO,
+  TProjectFolderGrant
+} from "./types";
 
 const invalidateTargetProjectSecrets = (
   queryClient: ReturnType<typeof useQueryClient>,
