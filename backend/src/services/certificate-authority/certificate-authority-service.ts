@@ -12,6 +12,7 @@ import {
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -26,6 +27,7 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../certificate-request/certificate-request-types";
+import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { MaxInternalCas } from "../license-client";
 import { TUsageMeteringServiceFactory } from "../license-client/usage";
@@ -68,6 +70,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
   TCreateCertificateAuthorityDTO,
@@ -142,6 +145,8 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -166,7 +171,9 @@ export const certificateAuthorityServiceFactory = ({
   resourceMetadataDAL,
   gatewayV2Service,
   gatewayPoolService,
-  usageMeteringService
+  usageMeteringService,
+  hsmConnectorService,
+  certificateAuthoritySecretDAL
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -282,8 +289,21 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     if (type === CaType.INTERNAL) {
+      const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
+
+      if (internalConfig.keySource === CertKeySource.Hsm) {
+        if (!internalConfig.hsmConnectorId) {
+          throw new BadRequestError({ message: "An HSM Connector is required when the key source is HSM." });
+        }
+        await hsmConnectorService.assertAttachPermission(
+          { type: actor.type, id: actor.id, authMethod: actor.authMethod, orgId: actor.orgId },
+          internalConfig.hsmConnectorId,
+          projectId
+        );
+      }
+
       const ca = await internalCertificateAuthorityService.createCa({
-        ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
+        ...internalConfig,
         isInternal: true,
         projectId,
         name
@@ -407,6 +427,8 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: id });
+
       return {
         id: certificateAuthority.id,
         type,
@@ -414,7 +436,12 @@ export const certificateAuthorityServiceFactory = ({
         subject: ProjectPermissionSub.CertificateAuthorities,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: {
+          ...certificateAuthority.internalCa,
+          keySource: (caSecret?.keySource as CertKeySource | undefined) ?? CertKeySource.Infisical,
+          hsmConnectorId: caSecret?.hsmConnectorId ?? undefined,
+          hsmKeyLabel: caSecret?.hsmKeyLabel ?? undefined
+        },
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }

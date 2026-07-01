@@ -3118,6 +3118,8 @@ interface CreateCa {
     caId: string;
     name: string;
     dn?: string;
+    keySource?: string;
+    hsmConnectorId?: string;
   };
 }
 
