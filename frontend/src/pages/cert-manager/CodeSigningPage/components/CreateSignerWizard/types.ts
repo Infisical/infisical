@@ -1,9 +1,17 @@
+import { CaType } from "@app/hooks/api/ca/enums";
 import { CertKeySource, SignerKeyAlgorithm, SignerMemberRole } from "@app/hooks/api/signers";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 
 export type CaGroup = "internal" | "external";
-export type CaOption = { id: string; name: string; groupType: CaGroup };
+export type CaOption = {
+  id: string;
+  name: string;
+  groupType: CaGroup;
+  caType: CaType;
+  digicert?: { appConnectionId: string; organizationId: number; productNameId: string };
+};
+
 export type MemberOption = { value: string; label: string };
 export type ApproverOption = { value: string; label: string; kind: "user" | "group" };
 
@@ -43,6 +51,7 @@ export type WizardState = {
   keyAlgorithm: SignerKeyAlgorithm;
   keySource: CertKeySource;
   hsmConnectorId: string | null;
+  reissueFromExternalOrderId: string | null;
   pendingMembers: PendingMember[];
   policySteps: PolicyStep[];
   maxSignings: number | null;
@@ -59,6 +68,7 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
   keySource: CertKeySource.Infisical,
   hsmConnectorId: null,
+  reissueFromExternalOrderId: null,
   pendingMembers: [],
   policySteps: [],
   maxSignings: null,
@@ -80,20 +90,30 @@ export const STEPS: WizardStep[] = [
     name: "Basics",
     shortDescription: "Name and description",
     title: "Basics",
-    subtitle: "A short name and what this signer is for.",
+    subtitle: "Name this signer and note what it's for.",
     rightLabel: "BASICS",
     rightDescription:
-      "Set the signer's name and a short description so your team knows what it signs (for example, mobile-app-prod for production iOS and Android bundles).",
+      "A clear name and description help your team identify what this signer is used for.",
     docsUrl: PkiDocsUrls.codeSigning.signers.basics
   },
   {
     name: "Certificate",
-    shortDescription: "How it signs",
+    shortDescription: "CA and identity",
     title: "Certificate",
-    subtitle: "Pick the Certificate Authority and the name on the certificate.",
+    subtitle: "Select the issuing CA and the certificate's name and validity.",
     rightLabel: "CERTIFICATE",
     rightDescription:
-      "Tells Infisical which CA issues the signing certificate, the name shown on it, and how long it stays valid. The Common Name is fixed once issued. Pick the key source: Infisical or HSM (the keypair stays inside your own HSM).",
+      "Select the CA that issues the certificate and the name shown on it. You can change the name or validity later; doing so reissues the certificate.",
+    docsUrl: PkiDocsUrls.codeSigning.signers.certificate
+  },
+  {
+    name: "Signing Key",
+    shortDescription: "Key storage and algorithm",
+    title: "Signing Key",
+    subtitle: "Select the key source and algorithm.",
+    rightLabel: "SIGNING KEY",
+    rightDescription:
+      "Choose the key source and algorithm. Some CAs require an HSM-backed key and lock this selection.",
     docsUrl: PkiDocsUrls.codeSigning.signers.certificate
   },
   {
