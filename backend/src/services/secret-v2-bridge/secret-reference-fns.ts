@@ -9,8 +9,8 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
@@ -101,8 +101,8 @@ type TInterpolateSecretArg = {
   // Omit them for same-project-only expansion; cross-project refs then fail closed.
   actorOrgId?: string;
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
-  projectGrantDAL?: Pick<TProjectGrantDALFactory, "find">;
-  projectDAL?: Pick<TProjectDALFactory, "findProjectBySlug">;
+  projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
+  projectDAL?: Pick<TProjectDALFactory, "find">;
   kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   // Optional raw DAL for cross-project secret fetching. This is only distinct from
   // secretDAL when the caller wraps secretDAL with import-aware behavior for
@@ -121,27 +121,30 @@ export const expandSecretReferencesFactory = ({
   userId,
   actorOrgId,
   orgDAL,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   projectDAL,
   kmsService,
   crossProjectSecretDAL
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectGrantDAL && projectDAL && kmsService);
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
     if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
     crossProjectAllowedCache = await isCrossProjectEnabled(actorOrgId, orgDAL);
     return crossProjectAllowedCache;
   };
-  const resolveProjectSlug = async (slug: string) => {
-    if (!projectDAL || !actorOrgId) return null;
-    try {
-      const sourceProject = await projectDAL.findProjectBySlug(slug, actorOrgId);
-      return sourceProject.id;
-    } catch {
-      return null;
+  const slugToProjectId = new Map<string, string | null>();
+  const resolveProjectSlugs = async (slugs: string[]) => {
+    if (!projectDAL || !actorOrgId) return;
+    const uncached = slugs.filter((s) => !slugToProjectId.has(s));
+    if (!uncached.length) return;
+
+    const projects = await projectDAL.find({ orgId: actorOrgId, $in: { slug: uncached } });
+    const found = new Map(projects.map((p) => [p.slug, p.id]));
+    for (const s of uncached) {
+      slugToProjectId.set(s, found.get(s) ?? null);
     }
   };
   const getProjectDecryptor = async (sourceProjectId: string) => {
@@ -231,6 +234,16 @@ export const expandSecretReferencesFactory = ({
       }
 
       if (refs.length > 0) {
+        // Batch-resolve all cross-project slugs from this value's refs in one query
+        const crossProjectSlugs = refs
+          .map((r) => r.slice(2, r.length - 1).trim().split("."))
+          .filter((parts) => parts[0]?.startsWith("@"))
+          .map((parts) => parts[0].slice(1));
+        if (crossProjectSlugs.length > 0) {
+          // eslint-disable-next-line no-await-in-loop
+          await resolveProjectSlugs(crossProjectSlugs);
+        }
+
         for (const interpolationSyntax of refs) {
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
           const entities = interpolationKey.trim().split(".");
@@ -266,7 +279,7 @@ export const expandSecretReferencesFactory = ({
           } else if (entities[0].startsWith("@")) {
             // Cross-project reference: ${@project-slug.env.path.KEY}
             // eslint-disable-next-line no-await-in-loop
-            if (!hasCrossProjectConfig || !projectGrantDAL || !crossProjectSecretSharingEnabled) {
+            if (!canExpandValue || !hasCrossProjectConfig || !projectFolderGrantDAL || !crossProjectSecretSharingEnabled) {
               // eslint-disable-next-line no-continue
               continue;
             }
@@ -277,8 +290,7 @@ export const expandSecretReferencesFactory = ({
             const crossProjPath = path.join("/", ...entities.slice(2, entities.length - 1));
             const crossProjKey = entities[entities.length - 1];
 
-            // eslint-disable-next-line no-await-in-loop
-            const sourceProjectId = await resolveProjectSlug(crossProjSlug);
+            const sourceProjectId = slugToProjectId.get(crossProjSlug) ?? null;
             if (!sourceProjectId) {
               // eslint-disable-next-line no-continue
               continue;
@@ -299,7 +311,7 @@ export const expandSecretReferencesFactory = ({
                 } else {
                   // Verify that a folder grant exists: source folder → current target project
                   // eslint-disable-next-line no-await-in-loop
-                  const [grant] = await projectGrantDAL.find({
+                  const [grant] = await projectFolderGrantDAL.find({
                     sourceProjectId,
                     sourceFolderId: sourceFolder.id,
                     targetProjectId: projectId

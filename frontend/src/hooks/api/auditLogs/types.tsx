@@ -955,8 +955,8 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
-interface CreateProjectGrantEvent {
-  type: EventType.CREATE_PROJECT_GRANT;
+interface CreateProjectFolderGrantEvent {
+  type: EventType.CREATE_PROJECT_FOLDER_GRANT;
   metadata: {
     grantId: string;
     sourceProjectId: string;
@@ -966,8 +966,8 @@ interface CreateProjectGrantEvent {
   };
 }
 
-interface DeleteProjectGrantEvent {
-  type: EventType.DELETE_PROJECT_GRANT;
+interface DeleteProjectFolderGrantEvent {
+  type: EventType.DELETE_PROJECT_FOLDER_GRANT;
   metadata: {
     grantId: string;
     sourceProjectId: string;
@@ -1065,8 +1065,8 @@ export type Event =
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
-  | CreateProjectGrantEvent
-  | DeleteProjectGrantEvent;
+  | CreateProjectFolderGrantEvent
+  | DeleteProjectFolderGrantEvent;
 
 export type AuditLog = {
   id: string;

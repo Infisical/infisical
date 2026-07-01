@@ -52,7 +52,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -113,7 +113,7 @@ import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "find">;
   secretVersionDAL: TSecretVersionV2DALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -149,7 +149,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
@@ -181,7 +181,7 @@ export const secretV2BridgeServiceFactory = ({
   reminderService,
   reminderDAL,
   secretValidationRuleService,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
@@ -1489,7 +1489,7 @@ export const secretV2BridgeServiceFactory = ({
           : undefined,
       actorOrgId,
       orgDAL,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       projectDAL,
       kmsService,
       // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
@@ -1633,7 +1633,7 @@ export const secretV2BridgeServiceFactory = ({
         return viewSecretValue ? canDescribe && canReadValue : canDescribe;
       },
       projectId,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
       kmsService
@@ -1839,7 +1839,7 @@ export const secretV2BridgeServiceFactory = ({
       userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
       actorOrgId,
       orgDAL,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       projectDAL,
       kmsService
     });
@@ -1871,7 +1871,7 @@ export const secretV2BridgeServiceFactory = ({
           });
         },
         projectId,
-        projectGrantDAL,
+        projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
         kmsService
@@ -3178,7 +3178,7 @@ export const secretV2BridgeServiceFactory = ({
         }),
       actorOrgId,
       orgDAL,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       projectDAL,
       kmsService
     });

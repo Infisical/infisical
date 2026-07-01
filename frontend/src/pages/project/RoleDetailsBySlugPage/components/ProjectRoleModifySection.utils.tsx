@@ -37,7 +37,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
-  ProjectPermissionProjectGrantActions,
+  ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -323,10 +323,10 @@ const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
 });
 
-const ProjectGrantPolicyActionSchema = z.object({
-  [ProjectPermissionProjectGrantActions.ReadGrant]: z.boolean().optional(),
-  [ProjectPermissionProjectGrantActions.CreateGrant]: z.boolean().optional(),
-  [ProjectPermissionProjectGrantActions.RevokeGrant]: z.boolean().optional()
+const ProjectFolderGrantPolicyActionSchema = z.object({
+  [ProjectPermissionProjectFolderGrantActions.ReadGrant]: z.boolean().optional(),
+  [ProjectPermissionProjectFolderGrantActions.CreateGrant]: z.boolean().optional(),
+  [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: z.boolean().optional()
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
@@ -885,7 +885,7 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
         ApprovalRequestGrantPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.ProjectGrant]: ProjectGrantPolicyActionSchema.extend({
+      [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -948,7 +948,7 @@ type TConditionalFields =
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
   | ProjectPermissionSub.HoneyTokens
-  | ProjectPermissionSub.ProjectGrant;
+  | ProjectPermissionSub.ProjectFolderGrant;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -978,7 +978,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Groups ||
   subject === ProjectPermissionSub.Commits ||
   subject === ProjectPermissionSub.HoneyTokens ||
-  subject === ProjectPermissionSub.ProjectGrant;
+  subject === ProjectPermissionSub.ProjectFolderGrant;
 
 const CONDITION_DISPLAY_ORDER = [
   "userEmail",
@@ -1128,7 +1128,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.McpServers,
         ProjectPermissionSub.McpActivityLogs,
         ProjectPermissionSub.Insights,
-        ProjectPermissionSub.ProjectGrant
+        ProjectPermissionSub.ProjectFolderGrant
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -1474,16 +1474,16 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
-        if (subject === ProjectPermissionSub.ProjectGrant) {
+        if (subject === ProjectPermissionSub.ProjectFolderGrant) {
           formVal[subject]!.push({
-            [ProjectPermissionProjectGrantActions.ReadGrant]: action.includes(
-              ProjectPermissionProjectGrantActions.ReadGrant
+            [ProjectPermissionProjectFolderGrantActions.ReadGrant]: action.includes(
+              ProjectPermissionProjectFolderGrantActions.ReadGrant
             ),
-            [ProjectPermissionProjectGrantActions.CreateGrant]: action.includes(
-              ProjectPermissionProjectGrantActions.CreateGrant
+            [ProjectPermissionProjectFolderGrantActions.CreateGrant]: action.includes(
+              ProjectPermissionProjectFolderGrantActions.CreateGrant
             ),
-            [ProjectPermissionProjectGrantActions.RevokeGrant]: action.includes(
-              ProjectPermissionProjectGrantActions.RevokeGrant
+            [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: action.includes(
+              ProjectPermissionProjectFolderGrantActions.RevokeGrant
             ),
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -3567,23 +3567,23 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
-  [ProjectPermissionSub.ProjectGrant]: {
-    title: "Project Grant",
+  [ProjectPermissionSub.ProjectFolderGrant]: {
+    title: "Project Folder Grants",
     description: "Grant or revoke access to secrets in specific environments and paths",
     actions: [
       {
         label: "Read",
-        value: ProjectPermissionProjectGrantActions.ReadGrant,
-        description: "View existing project grants"
+        value: ProjectPermissionProjectFolderGrantActions.ReadGrant,
+        description: "View existing project folder grants"
       },
       {
         label: "Create Grant",
-        value: ProjectPermissionProjectGrantActions.CreateGrant,
+        value: ProjectPermissionProjectFolderGrantActions.CreateGrant,
         description: "Grant access to secrets in specified environments and secret paths"
       },
       {
         label: "Revoke Grant",
-        value: ProjectPermissionProjectGrantActions.RevokeGrant,
+        value: ProjectPermissionProjectFolderGrantActions.RevokeGrant,
         description: "Revoke previously granted access to secrets"
       }
     ]
@@ -3694,7 +3694,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
   [ProjectPermissionSub.SecretApprovalRequest]: enabled,
-  [ProjectPermissionSub.ProjectGrant]: enabled
+  [ProjectPermissionSub.ProjectFolderGrant]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({

@@ -9,8 +9,8 @@ import {
 
 import { useProject } from "@app/context";
 import { useGetProjectFolders, useGetProjectSecrets, useGetWorkspaceById } from "@app/hooks/api";
-import { useListProjectGrantsReceived } from "@app/hooks/api/projectGrants";
-import { TProjectGrantReceived } from "@app/hooks/api/projectGrants/types";
+import { useListProjectFolderGrantsReceived } from "@app/hooks/api/projectFolderGrants";
+import { TProjectFolderGrantReceived } from "@app/hooks/api/projectFolderGrants/types";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../generic/Tabs";
 import { cn } from "../../utils";
@@ -20,7 +20,7 @@ type WizardTab = "this-project" | "another-project";
 type WizardState = {
   tab: WizardTab;
   step: "project" | "env" | "browse";
-  selectedProjectGrant: TProjectGrantReceived | null;
+  selectedProjectFolderGrant: TProjectFolderGrantReceived | null;
   env: { slug: string; name: string } | null;
   secretPath: string;
 };
@@ -35,7 +35,7 @@ type Props = {
 const INITIAL_STATE: WizardState = {
   tab: "this-project",
   step: "env",
-  selectedProjectGrant: null,
+  selectedProjectFolderGrant: null,
   env: null,
   secretPath: "/"
 };
@@ -51,15 +51,15 @@ export const SecretReferenceWizard = ({
 
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
 
-  const { data: receivedGrants } = useListProjectGrantsReceived(projectId);
+  const { data: receivedGrants } = useListProjectFolderGrantsReceived(projectId);
 
   const { data: selectedSourceProject } = useGetWorkspaceById(
-    state.selectedProjectGrant?.sourceProjectId || ""
+    state.selectedProjectFolderGrant?.sourceProjectId || ""
   );
 
   const browseProjectId =
-    state.step === "browse" && state.selectedProjectGrant
-      ? state.selectedProjectGrant.sourceProjectId
+    state.step === "browse" && state.selectedProjectFolderGrant
+      ? state.selectedProjectFolderGrant.sourceProjectId
       : projectId;
 
   const { data: secrets } = useGetProjectSecrets({
@@ -148,7 +148,7 @@ export const SecretReferenceWizard = ({
       setState({
         tab: "another-project",
         step: "env",
-        selectedProjectGrant: matchedGrant,
+        selectedProjectFolderGrant: matchedGrant,
         env: null,
         secretPath: "/"
       });
@@ -165,7 +165,7 @@ export const SecretReferenceWizard = ({
       setState({
         tab: "another-project",
         step: "env",
-        selectedProjectGrant: matchedGrant,
+        selectedProjectFolderGrant: matchedGrant,
         env: null,
         secretPath: "/"
       });
@@ -177,7 +177,7 @@ export const SecretReferenceWizard = ({
     setState({
       tab: "another-project",
       step: "browse",
-      selectedProjectGrant: matchedGrant,
+      selectedProjectFolderGrant: matchedGrant,
       env: { slug: matchedEnv.environmentSlug, name: matchedEnv.environmentName },
       secretPath
     });
@@ -214,7 +214,7 @@ export const SecretReferenceWizard = ({
     setState({
       tab: "this-project",
       step: "browse",
-      selectedProjectGrant: null,
+      selectedProjectFolderGrant: null,
       env: { slug: matchedEnv.slug, name: matchedEnv.name },
       secretPath
     });
@@ -249,20 +249,20 @@ export const SecretReferenceWizard = ({
     if (state.tab === "this-project") {
       return (currentProject?.environments || []).map((e) => ({ name: e.name, slug: e.slug }));
     }
-    if (!state.selectedProjectGrant) return [];
-    const projectGrants =
+    if (!state.selectedProjectFolderGrant) return [];
+    const projectFolderGrants =
       receivedGrants?.filter(
-        (g) => g.sourceProjectId === state.selectedProjectGrant!.sourceProjectId
+        (g) => g.sourceProjectId === state.selectedProjectFolderGrant!.sourceProjectId
       ) || [];
     const seen = new Set<string>();
-    return projectGrants
+    return projectFolderGrants
       .filter((g) => {
         if (seen.has(g.environmentSlug)) return false;
         seen.add(g.environmentSlug);
         return true;
       })
       .map((g) => ({ name: g.environmentName, slug: g.environmentSlug }));
-  }, [state.tab, state.selectedProjectGrant, currentProject, receivedGrants]);
+  }, [state.tab, state.selectedProjectFolderGrant, currentProject, receivedGrants]);
 
   const breadcrumbs = useMemo(() => {
     if (state.step !== "browse" || !state.env) return [];
@@ -279,8 +279,8 @@ export const SecretReferenceWizard = ({
     });
   };
 
-  const handleSelectProject = (grant: TProjectGrantReceived) => {
-    setState((prev) => ({ ...prev, step: "env", selectedProjectGrant: grant }));
+  const handleSelectProject = (grant: TProjectFolderGrantReceived) => {
+    setState((prev) => ({ ...prev, step: "env", selectedProjectFolderGrant: grant }));
   };
 
   const handleSelectEnv = (envSlug: string, envName: string) => {
@@ -306,7 +306,7 @@ export const SecretReferenceWizard = ({
     const segments = [state.env.slug, ...pathParts, secretKey];
 
     let reference: string;
-    if (state.selectedProjectGrant && selectedSourceProject?.slug) {
+    if (state.selectedProjectFolderGrant && selectedSourceProject?.slug) {
       reference = `@${selectedSourceProject.slug}.${segments.join(".")}`;
     } else {
       reference = segments.join(".");
@@ -346,7 +346,7 @@ export const SecretReferenceWizard = ({
         ) : (
           <>
             <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
-              Projects that shared with you
+              Available projects
             </div>
             {filteredProjects.map((grant) => (
               <button
@@ -381,7 +381,7 @@ export const SecretReferenceWizard = ({
 
     return (
       <div className="flex flex-col">
-        {state.selectedProjectGrant && (
+        {state.selectedProjectFolderGrant && (
           <button
             type="button"
             aria-label="suggestion-item"
@@ -392,7 +392,7 @@ export const SecretReferenceWizard = ({
             className="flex items-center gap-1.5 border-b border-border px-2 py-1.5 text-xs text-muted transition-colors hover:text-foreground"
           >
             <ArrowLeftIcon className="size-3 shrink-0" />
-            <span className="truncate">{state.selectedProjectGrant.sourceProjectName}</span>
+            <span className="truncate">{state.selectedProjectFolderGrant.sourceProjectName}</span>
           </button>
         )}
         <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
@@ -555,7 +555,7 @@ export const SecretReferenceWizard = ({
           value="another-project"
           className="flex-1 rounded-none rounded-tr-md border-0 py-2 text-xs"
         >
-          Another project @
+          Another project
         </TabsTrigger>
       </TabsList>
       <TabsContent value="this-project" className="mt-0">

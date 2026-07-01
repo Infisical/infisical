@@ -14,7 +14,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -44,7 +44,7 @@ const getIntegrationSecretsV2 = async (
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">,
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
   orgDAL: Pick<TOrgDALFactory, "findOrgById">
 ) => {
   const content: Record<string, boolean> = {};
@@ -77,7 +77,7 @@ const getIntegrationSecretsV2 = async (
     hasSecretAccess: () => true,
     viewSecretValue: true,
     projectId: dto.projectId,
-    projectGrantDAL,
+    projectFolderGrantDAL,
     actorOrgId: dto.actorOrgId,
     orgDAL,
     kmsService
@@ -296,7 +296,7 @@ export const deleteIntegrationSecrets = async ({
   secretDAL,
   secretImportDAL,
   kmsService,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL,
   actorOrgId
 }: {
@@ -317,7 +317,7 @@ export const deleteIntegrationSecrets = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   actorOrgId: string;
 }) => {
@@ -360,7 +360,7 @@ export const deleteIntegrationSecrets = async ({
         folderDAL,
         secretImportDAL,
         kmsService,
-        projectGrantDAL,
+        projectFolderGrantDAL,
         orgDAL
       )
     : await getIntegrationSecretsV1(

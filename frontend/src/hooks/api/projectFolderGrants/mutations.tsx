@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { projectGrantKeys } from "./queries";
-import { TCreateProjectGrantDTO, TDeleteProjectGrantDTO, TProjectGrant } from "./types";
+import { projectFolderGrantKeys } from "./queries";
+import { TCreateProjectFolderGrantDTO, TDeleteProjectFolderGrantDTO, TProjectFolderGrant } from "./types";
 
 const invalidateTargetProjectSecrets = (
   queryClient: ReturnType<typeof useQueryClient>,
@@ -31,45 +31,45 @@ const invalidateTargetProjectSecrets = (
   });
 };
 
-export const useCreateProjectGrant = () => {
+export const useCreateProjectFolderGrant = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: TCreateProjectGrantDTO) => {
-      const { data } = await apiRequest.post<{ grant: TProjectGrant }>(
-        "/api/v1/project-grants",
+    mutationFn: async (dto: TCreateProjectFolderGrantDTO) => {
+      const { data } = await apiRequest.post<{ grant: TProjectFolderGrant }>(
+        "/api/v1/project-folder-grants",
         dto
       );
       return data.grant;
     },
     onSuccess: (_, { sourceProjectId, targetProjectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectGrantKeys.listByProject(sourceProjectId)
+        queryKey: projectFolderGrantKeys.listByProject(sourceProjectId)
       });
       queryClient.invalidateQueries({
-        queryKey: projectGrantKeys.listReceived(targetProjectId)
+        queryKey: projectFolderGrantKeys.listReceived(targetProjectId)
       });
       invalidateTargetProjectSecrets(queryClient, targetProjectId);
     }
   });
 };
 
-export const useDeleteProjectGrant = () => {
+export const useDeleteProjectFolderGrant = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ grantId, sourceProjectId }: TDeleteProjectGrantDTO) => {
-      const { data } = await apiRequest.delete<{ grant: TProjectGrant }>(
-        `/api/v1/project-grants/${grantId}`,
+    mutationFn: async ({ grantId, sourceProjectId }: TDeleteProjectFolderGrantDTO) => {
+      const { data } = await apiRequest.delete<{ grant: TProjectFolderGrant }>(
+        `/api/v1/project-folder-grants/${grantId}`,
         { params: { sourceProjectId } }
       );
       return data.grant;
     },
     onSuccess: (grant, { sourceProjectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectGrantKeys.listByProject(sourceProjectId)
+        queryKey: projectFolderGrantKeys.listByProject(sourceProjectId)
       });
       if (grant.targetProjectId) {
         queryClient.invalidateQueries({
-          queryKey: projectGrantKeys.listReceived(grant.targetProjectId)
+          queryKey: projectFolderGrantKeys.listReceived(grant.targetProjectId)
         });
         invalidateTargetProjectSecrets(queryClient, grant.targetProjectId);
       }

@@ -33,7 +33,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
-  ProjectPermissionProjectGrantActions,
+  ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -499,11 +499,11 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionProjectGrantActions.ReadGrant,
-      ProjectPermissionProjectGrantActions.CreateGrant,
-      ProjectPermissionProjectGrantActions.RevokeGrant
+      ProjectPermissionProjectFolderGrantActions.ReadGrant,
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      ProjectPermissionProjectFolderGrantActions.RevokeGrant
     ],
-    ProjectPermissionSub.ProjectGrant
+    ProjectPermissionSub.ProjectFolderGrant
   );
 
   can([ProjectPermissionInsightsActions.Read], ProjectPermissionSub.Insights);

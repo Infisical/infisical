@@ -54,7 +54,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { createProjectKey } from "../project/project-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
@@ -129,7 +129,7 @@ type TSecretQueueFactoryDep = {
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
@@ -199,7 +199,7 @@ export const secretQueueFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   telemetryService,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
@@ -404,7 +404,7 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       projectDAL,
       kmsService
     });
@@ -453,7 +453,7 @@ export const secretQueueFactory = ({
       hasSecretAccess: () => true,
       viewSecretValue: true,
       projectId: dto.projectId,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
       kmsService

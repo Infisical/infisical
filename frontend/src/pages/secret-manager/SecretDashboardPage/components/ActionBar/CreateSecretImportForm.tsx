@@ -41,7 +41,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
-import { useListProjectGrantsReceived } from "@app/hooks/api/projectGrants";
+import { useListProjectFolderGrantsReceived } from "@app/hooks/api/projectFolderGrants";
 
 const typeSchema = z.object({
   environment: z.object({ name: z.string(), slug: z.string() }),
@@ -93,7 +93,7 @@ export const CreateSecretImportForm = ({
 
   const { mutateAsync: createSecretImport, isPending: isCreatingImport } = useCreateSecretImport();
 
-  const { data: receivedGrants = [] } = useListProjectGrantsReceived(
+  const { data: receivedGrants = [] } = useListProjectFolderGrantsReceived(
     currentOrg?.allowCrossProjectSecretSharing ? projectId : ""
   );
 

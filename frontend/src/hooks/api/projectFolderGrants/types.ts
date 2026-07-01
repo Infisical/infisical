@@ -1,4 +1,4 @@
-export type TProjectGrant = {
+export type TProjectFolderGrant = {
   id: string;
   sourceProjectId: string;
   sourceFolderId: string;
@@ -12,7 +12,7 @@ export type TProjectGrant = {
   secretCount: number;
 };
 
-export type TProjectGrantReceived = {
+export type TProjectFolderGrantReceived = {
   id: string;
   sourceProjectId: string;
   sourceFolderId: string;
@@ -27,14 +27,14 @@ export type TProjectGrantReceived = {
   secretCount: number;
 };
 
-export type TCreateProjectGrantDTO = {
+export type TCreateProjectFolderGrantDTO = {
   sourceProjectId: string;
   environment: string;
   secretPath: string;
   targetProjectId: string;
 };
 
-export type TDeleteProjectGrantDTO = {
+export type TDeleteProjectFolderGrantDTO = {
   grantId: string;
   sourceProjectId: string;
 };

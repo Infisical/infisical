@@ -17,6 +17,8 @@ import {
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -24,8 +26,8 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -52,7 +54,7 @@ type TSecretImportServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "findOne" | "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "findOne" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
@@ -67,7 +69,7 @@ export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceF
 export const secretImportServiceFactory = ({
   secretImportDAL,
   projectEnvDAL,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL,
   permissionService,
   folderDAL,
@@ -87,7 +89,6 @@ export const secretImportServiceFactory = ({
     actorOrgId: string
   ): Promise<(T & { isAccessRevoked: boolean })[]> => {
     const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
-    // TODO: Do we need isAccessRemoved?
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
     // If org-level toggle is disabled, strip cross-project imports entirely
@@ -95,7 +96,6 @@ export const secretImportServiceFactory = ({
       return (
         imports
           .filter((imp) => imp.importEnv.projectId === projectId)
-          // TODO: Do we need isAccessRemoved?
           .map((imp) => ({ ...imp, isAccessRevoked: false }))
       );
     }
@@ -106,7 +106,7 @@ export const secretImportServiceFactory = ({
     const grantedFolderIds = new Set<string>();
     const validSourceFolderIds = sourceFolders.filter(Boolean).map((f) => f!.id);
     if (validSourceFolderIds.length) {
-      const grants = await projectGrantDAL.find({
+      const grants = await projectFolderGrantDAL.find({
         $in: { sourceFolderId: validSourceFolderIds },
         targetProjectId: projectId
       });
@@ -145,7 +145,7 @@ export const secretImportServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // check if user has permission to import into destination  path
+    // check if user has permission to import into destination path
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -161,19 +161,19 @@ export const secretImportServiceFactory = ({
         });
       }
 
-      const sourceProject = await projectDAL.findById(sourceProjectId);
+      const sourceProject = await requestMemoize(requestMemoKeys.projectFindById(sourceProjectId), () =>
+        projectDAL.findById(sourceProjectId)
+      );
       if (!sourceProject || sourceProject.orgId !== actorOrgId) {
         throw new NotFoundError({ message: "Source project not found" });
       }
 
       const importFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
       if (!importFolder) {
-        throw new NotFoundError({
-          message: `Folder with path '${data.path}' in environment '${data.environment}' not found in source project`
-        });
+        throw new NotFoundError({ message: "Source project not found" });
       }
 
-      const grant = await projectGrantDAL.findOne({ sourceFolderId: importFolder.id, targetProjectId: projectId });
+      const grant = await projectFolderGrantDAL.findOne({ sourceFolderId: importFolder.id, targetProjectId: projectId });
       if (!grant) {
         throw new ForbiddenRequestError({
           message: "No project grant found allowing this cross-project import"
@@ -907,7 +907,7 @@ export const secretImportServiceFactory = ({
             secretTags: expandSecretTags
           }),
         projectId,
-        projectGrantDAL,
+        projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
         kmsService
@@ -1031,7 +1031,9 @@ export const secretImportServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     const importedBy = await secretImportDAL.getFolderIsImportedBy(
       secretPath,
       folder.envId,
@@ -1051,7 +1053,7 @@ export const secretImportServiceFactory = ({
           .map((el) => el.projectId)
           .filter((targetProjectId): targetProjectId is string => Boolean(targetProjectId));
         const grants = targetProjectIds.length
-          ? await projectGrantDAL.find({
+          ? await projectFolderGrantDAL.find({
               sourceFolderId: folder.id,
               $in: { targetProjectId: targetProjectIds }
             })

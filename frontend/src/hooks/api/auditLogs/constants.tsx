@@ -461,8 +461,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.KMIP_SERVER_DELETE]: "Delete KMIP server",
   [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token",
 
-  [EventType.CREATE_PROJECT_GRANT]: "Create project grant",
-  [EventType.DELETE_PROJECT_GRANT]: "Delete project grant"
+  [EventType.CREATE_PROJECT_FOLDER_GRANT]: "Create project grant",
+  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

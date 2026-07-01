@@ -133,7 +133,7 @@ export const renderConditionalComponents = (
       return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
     }
 
-    if (subject === ProjectPermissionSub.ProjectGrant) {
+    if (subject === ProjectPermissionSub.ProjectFolderGrant) {
       return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
     }
 
@@ -190,7 +190,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
     const permissionsForm = { ...el.permissions };
     if (!config?.isCrossProjectSecretSharingEnabled) {
-      permissionsForm[ProjectPermissionSub.ProjectGrant] = [];
+      permissionsForm[ProjectPermissionSub.ProjectFolderGrant] = [];
     }
 
     await updateRole({
@@ -295,7 +295,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     )
                     .filter(
                       (subject) =>
-                        subject !== ProjectPermissionSub.ProjectGrant ||
+                        subject !== ProjectPermissionSub.ProjectFolderGrant ||
                         config?.isCrossProjectSecretSharingEnabled
                     )
                     .map((subject) => (

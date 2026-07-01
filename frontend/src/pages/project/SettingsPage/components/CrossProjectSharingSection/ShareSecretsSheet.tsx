@@ -27,7 +27,7 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useCreateProjectGrant } from "@app/hooks/api/projectGrants";
+import { useCreateProjectFolderGrant } from "@app/hooks/api/projectFolderGrants";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetSecretImports } from "@app/hooks/api/secretImports";
@@ -52,7 +52,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
     path: folderPath,
     options: { enabled: Boolean(environment) && Boolean(folderPath) }
   });
-  const createGrant = useCreateProjectGrant();
+  const createGrant = useCreateProjectFolderGrant();
 
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 

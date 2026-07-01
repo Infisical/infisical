@@ -54,9 +54,9 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TProjectGrantDALFactory } from "../project-grant/project-grant-dal";
-import { isCrossProjectEnabled } from "../project-grant/project-grant-fns";
-import { TCheckRevokedGrantsDTO } from "../project-grant/project-grant-types";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
+import { TCheckRevokedGrantsDTO } from "../project-folder-grant/project-folder-grant-types";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -117,8 +117,8 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById" | "find">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
@@ -152,7 +152,7 @@ type TSecretServiceFactoryDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -183,7 +183,7 @@ export const secretServiceFactory = ({
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
   orgDAL,
-  projectGrantDAL
+  projectFolderGrantDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -3792,7 +3792,7 @@ export const secretServiceFactory = ({
     return secretV2BridgeService.redactSecretVersionValue({ versionId, ...rest });
   };
 
-  const getSecretsWithRevokedProjectGrant = async ({
+  const getSecretsWithRevokedProjectFolderGrant = async ({
     targetProjectId,
     actorOrgId,
     secrets
@@ -3828,37 +3828,41 @@ export const secretServiceFactory = ({
       }
     }
 
-    const slugToProjectId = new Map<string, Promise<string | null>>();
-    const resolveSlug = (slug: string) => {
-      if (!slugToProjectId.has(slug)) {
-        slugToProjectId.set(
-          slug,
-          projectDAL
-            .findProjectBySlug(slug, actorOrgId)
-            .then((p) => p.id)
-            .catch(() => null)
-        );
-      }
-      return slugToProjectId.get(slug)!;
-    };
+    const uniqueSlugs = [...new Set([...uniqueRefs.values()].map((ref) => ref.targetProjectSlug))];
+    const resolvedProjects = await projectDAL.find({ orgId: actorOrgId, $in: { slug: uniqueSlugs } });
+    const slugToProjectId = new Map(resolvedProjects.map((p) => [p.slug, p.id]));
+
+    const resolvedProjectIds = [...new Set(resolvedProjects.map((p) => p.id))];
+    const envs = resolvedProjectIds.length
+      ? await projectEnvDAL.find({ $in: { projectId: resolvedProjectIds } })
+      : [];
+    const envLookup = new Map(envs.map((e) => [`${e.projectId}:${e.slug}`, e.id]));
+
+    const refEntries = [...uniqueRefs.entries()];
+    const folderQueries: Array<{ envId: string; secretPath: string }> = [];
+    const refToQueryIndex = new Map<string, number>();
+
+    for (const [key, ref] of refEntries) {
+      const sourceProjectId = slugToProjectId.get(ref.targetProjectSlug);
+      if (!sourceProjectId) continue;
+      const envId = envLookup.get(`${sourceProjectId}:${ref.environment}`);
+      if (!envId) continue;
+      refToQueryIndex.set(key, folderQueries.length);
+      folderQueries.push({ envId, secretPath: ref.secretPath });
+    }
+
+    const folderResults = folderQueries.length ? await folderDAL.findByManySecretPath(folderQueries) : [];
 
     const refKeyToFolderId = new Map<string, string | null>();
-    await Promise.all(
-      [...uniqueRefs.entries()].map(async ([key, ref]) => {
-        const sourceProjectId = await resolveSlug(ref.targetProjectSlug);
-        if (!sourceProjectId) {
-          refKeyToFolderId.set(key, null);
-          return;
-        }
-        const folder = await folderDAL.findBySecretPath(sourceProjectId, ref.environment, ref.secretPath);
-        refKeyToFolderId.set(key, folder?.id ?? null);
-      })
-    );
+    for (const [key] of refEntries) {
+      const idx = refToQueryIndex.get(key);
+      refKeyToFolderId.set(key, idx !== undefined ? folderResults[idx]?.id ?? null : null);
+    }
 
     const folderIds = [...refKeyToFolderId.values()].filter((id): id is string => id !== null);
     let grantedFolderIds = new Set<string>();
     if (folderIds.length > 0) {
-      const grants = await projectGrantDAL.find({ $in: { sourceFolderId: folderIds }, targetProjectId });
+      const grants = await projectFolderGrantDAL.find({ $in: { sourceFolderId: folderIds }, targetProjectId });
       grantedFolderIds = new Set(grants.map((g) => g.sourceFolderId));
     }
 
@@ -3909,6 +3913,6 @@ export const secretServiceFactory = ({
     getChangeVersions,
     redactSecretVersionValue,
     getSecretReferenceDependencyTree,
-    getSecretsWithRevokedProjectGrant
+    getSecretsWithRevokedProjectFolderGrant
   };
 };

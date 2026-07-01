@@ -77,7 +77,7 @@ import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
-import { registerProjectGrantRouter } from "./project-grant-router";
+import { registerProjectFolderGrantRouter } from "./project-folder-grant-router";
 import { registerProjectGroupMembershipsRouter } from "./project-group-memberships-router";
 import { registerProjectIdentityRouter } from "./project-identity-router";
 import { registerProjectKeyRouter } from "./project-key-router";
@@ -141,7 +141,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerDeprecatedSecretImportRouter, { prefix: "/secret-imports" });
-  await server.register(registerProjectGrantRouter, { prefix: "/project-grants" });
+  await server.register(registerProjectFolderGrantRouter, { prefix: "/project-folder-grants" });
   await server.register(registerDeprecatedSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(

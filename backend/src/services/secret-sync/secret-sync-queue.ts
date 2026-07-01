@@ -24,7 +24,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
-import { TProjectGrantDALFactory } from "@app/services/project-grant/project-grant-dal";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -134,7 +134,7 @@ type TSecretSyncQueueFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  projectGrantDAL: Pick<TProjectGrantDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
@@ -188,7 +188,7 @@ export const secretSyncQueueFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   telemetryService,
-  projectGrantDAL,
+  projectFolderGrantDAL,
   orgDAL
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
@@ -294,7 +294,7 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId,
       orgDAL,
-      projectGrantDAL,
+      projectFolderGrantDAL,
       projectDAL,
       kmsService
     });
@@ -343,7 +343,7 @@ export const secretSyncQueueFactory = ({
         hasSecretAccess: () => true,
         viewSecretValue: true,
         projectId,
-        projectGrantDAL,
+        projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
         kmsService

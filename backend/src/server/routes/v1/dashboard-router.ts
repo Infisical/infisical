@@ -147,7 +147,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               reminder: RemindersSchema.extend({
                 recipients: z.string().array().optional()
               }).nullish(),
-              revokedProjectGrant: z.boolean().optional()
+              revokedProjectFolderGrant: z.boolean().optional()
             })
             .array()
             .optional(),
@@ -557,7 +557,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               ? await server.services.reminder.getRemindersForDashboard(rawSecrets.map((s) => s.id))
               : {};
 
-          const revokedGrantSecretIds = await server.services.secret.getSecretsWithRevokedProjectGrant({
+          const revokedGrantSecretIds = await server.services.secret.getSecretsWithRevokedProjectFolderGrant({
             targetProjectId: projectId,
             actorOrgId: req.permission.orgId,
             secrets: rawSecrets.map((s) => ({
@@ -571,7 +571,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             ...secret,
             isEmpty: !secret.secretValue,
             reminder: reminders[secret.id] ?? null,
-            revokedProjectGrant: revokedGrantSecretIds.has(secret.id) ? true : undefined
+            revokedProjectFolderGrant: revokedGrantSecretIds.has(secret.id) ? true : undefined
           }));
         }
       }
