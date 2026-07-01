@@ -75,7 +75,7 @@ export const CrossProjectSharingSection = () => {
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2">
           <p className="text-xl font-medium">Cross-Project Secret Sharing</p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/cross-project-sharing" />
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
         </div>
         <Button variant="project" size="sm" onClick={() => setIsShareSheetOpen(true)}>
           <Plus className="size-3.5" />
