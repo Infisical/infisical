@@ -8,15 +8,27 @@ Infisical supports connecting to Rundeck using an **API Token**.
 ## Generate a Rundeck API Token
 
 <Steps>
-    <Step title="Navigate to your User API Tokens">
-        Log in to your Rundeck instance, click your username in the top-right corner, and select **Profile**.
-        On the profile page, locate the **User API Tokens** section.
-        ![Rundeck User API Tokens](/images/app-connections/rundeck/rundeck-user-api-tokens.png)
+    <Step title="Open your Rundeck profile menu">
+        Log in to your Rundeck instance and click the user icon in the top-right corner.
+        ![Rundeck profile menu](/images/app-connections/rundeck/step-1.png)
     </Step>
-    <Step title="Generate a New Token">
-        Click **+ Generate New Token** and provide a name for your token (e.g., "Infisical Integration").
-        Optionally set the roles and an expiration duration for the token.
-        ![Rundeck Generate Token](/images/app-connections/rundeck/rundeck-generate-token.png)
+    <Step title="Go to your Profile">
+        Select **Profile** from the dropdown.
+        ![Select Profile](/images/app-connections/rundeck/step-2.png)
+    </Step>
+    <Step title="Add a new User API Token">
+        In the **User API Tokens** section, click the **+** button.
+        ![User API Tokens](/images/app-connections/rundeck/step-3.png)
+    </Step>
+    <Step title="Generate the token">
+        In the **Generate New Token** dialog, enter:
+        - **Name**: a label to identify the token (e.g., `INFISICAL_TOKEN`)
+        - **User**: the username associated with the token
+        - **Roles**: comma-separated roles/groups, or leave blank to use all of your current roles
+        - **Expiration in**: an optional lifetime; set to `0` for the maximum allowed duration
+
+        Click **Generate New Token**.
+        ![Generate New Token](/images/app-connections/rundeck/step-4.png)
 
         <Note>
             The API token inherits the access of the user and roles it is generated with. Grant only the
@@ -24,9 +36,9 @@ Infisical supports connecting to Rundeck using an **API Token**.
         </Note>
     </Step>
     <Step title="Copy the API Token">
-        After generating the token, copy it immediately and store it securely, as you won't be able to
-        view it again after leaving this page.
-        ![Rundeck Token Created](/images/app-connections/rundeck/rundeck-token-created.png)
+        Copy the generated token and store it securely, as you won't be able to view it again after
+        closing the dialog. Click **Close** when done.
+        ![Save Your new Token](/images/app-connections/rundeck/step-5.png)
 
         <Note>
             If you configure an expiration for your API token, you must manually rotate to a new token
@@ -40,29 +52,26 @@ Infisical supports connecting to Rundeck using an **API Token**.
 <Tabs>
     <Tab title="Infisical UI">
         <Steps>
-            <Step title="Navigate to App Connections">
+            <Step title="Add a Rundeck Connection">
                 In your Infisical dashboard, navigate to the **Integrations** tab in the desired project,
-                then select **App Connections**.
-                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+                select **App Connections**, and click **+ Add Connection**. Search for and select the
+                **Rundeck** option.
+                ![Select Rundeck Connection](/images/app-connections/rundeck/step-6.png)
             </Step>
-            <Step title="Add Connection">
-                Click the **+ Add Connection** button and select the **Rundeck Connection** option from
-                the available integrations.
-                ![Select Rundeck Connection](/images/app-connections/rundeck/rundeck-app-connection-option.png)
-            </Step>
-            <Step title="Fill out the Rundeck Connection Modal">
-                Complete the Rundeck Connection form by entering:
-                - A descriptive **Name** for the connection
+            <Step title="Fill out the Rundeck Connection form">
+                Complete the connection form by entering:
+                - A descriptive **Name** for the connection (must be slug-friendly)
                 - An optional **Description** for future reference
+                - The **Method** (**API Token**)
                 - The **Rundeck Instance URL** (e.g., `https://rundeck.example.com`)
                 - The **Rundeck API Token** you generated above
 
-                ![Rundeck Connection Modal](/images/app-connections/rundeck/rundeck-app-connection-modal.png)
+                Click **Connect to Rundeck**.
+                ![Rundeck Connection Form](/images/app-connections/rundeck/step-7.png)
             </Step>
             <Step title="Connection Created">
-                After clicking **Connect to Rundeck**, your **Rundeck Connection** is established and
-                ready to use with your Infisical project.
-                ![Rundeck Connection Created](/images/app-connections/rundeck/rundeck-app-connection-created.png)
+                Your **Rundeck Connection** is established and ready to use with your Infisical project.
+                ![Rundeck Connection Created](/images/app-connections/rundeck/step-8.png)
             </Step>
         </Steps>
     </Tab>

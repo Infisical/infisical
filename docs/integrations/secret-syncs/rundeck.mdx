@@ -10,14 +10,11 @@ description: "Learn how to configure a Rundeck Sync for Infisical."
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
-        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click the **Add Sync** button, then choose **Rundeck** as the destination.
+        ![Choose Rundeck Destination](/images/secret-syncs/rundeck/step-1.png)
 
-        2. Select the **Rundeck** option.
-        ![Select Rundeck](/images/secret-syncs/rundeck/select-rundeck-option.png)
-
-        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
-        ![Configure Source](/images/secret-syncs/rundeck/rundeck-sync-source.png)
+        2. Configure the **Source** to specify where secrets should be retrieved from, then click **Continue**.
+        ![Configure Source](/images/secret-syncs/rundeck/step-2.png)
 
             - **Environment**: The project environment to retrieve secrets from.
             - **Secret Path**: The folder path to retrieve secrets from.
@@ -26,8 +23,8 @@ description: "Learn how to configure a Rundeck Sync for Infisical."
             If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
         </Tip>
 
-        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
-        ![Configure Destination](/images/secret-syncs/rundeck/rundeck-sync-destination.png)
+        3. Configure the **Destination** to specify where secrets should be deployed, then click **Continue**.
+        ![Configure Destination](/images/secret-syncs/rundeck/step-3.png)
 
             - **Rundeck Connection**: The Rundeck Connection to authenticate with.
             - **Project**: The Rundeck project to sync secrets to.
@@ -39,33 +36,33 @@ description: "Learn how to configure a Rundeck Sync for Infisical."
                 `keys/project/web-app/production/API_KEY`.
             </Note>
 
-        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
-        ![Configure Options](/images/secret-syncs/rundeck/rundeck-sync-options.png)
+        4. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then click **Continue**.
+        ![Configure Initial Sync](/images/secret-syncs/rundeck/step-4.png)
 
-            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
-                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+            - **Overwrite Destination Secrets**: On the initial sync, Infisical writes its secrets to Rundeck. No secrets are imported from Rundeck, and depending on your configuration this can remove secrets from Rundeck.
 
-                <Note>
-                    Rundeck Syncs do not support importing secrets from the destination.
-                </Note>
-            - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
             <Note>
-                We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                Rundeck Syncs do not support importing secrets from the destination — only overwrite is available.
             </Note>
-            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
-            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
-        6. Configure the **Details** of your Rundeck Sync, then click **Next**.
-        ![Configure Details](/images/secret-syncs/rundeck/rundeck-sync-details.png)
+        5. Configure the **Sync Options** to control how secrets are written, then click **Continue**.
+        ![Configure Sync Options](/images/secret-syncs/rundeck/step-5.png)
+
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from Rundeck during a sync. Enable this if you intend to manage some secrets manually outside of Infisical.
+            - **Auto-Sync on Changes**: If enabled, secrets are automatically synced to Rundeck whenever they change in the source. Turn off to sync manually only.
+            - **Customize Key Names**: Add a prefix or suffix so Infisical can identify which keys in Rundeck it manages — anything else is left untouched.
+
+        6. Configure the **Details** of your Rundeck Sync, then click **Continue**.
+        ![Configure Details](/images/secret-syncs/rundeck/step-6.png)
 
             - **Name**: The name of your sync. Must be slug-friendly.
             - **Description**: An optional description for your sync.
 
         7. Review your Rundeck Sync configuration, then click **Create Sync**.
-        ![Confirm Configuration](/images/secret-syncs/rundeck/rundeck-sync-review.png)
+        ![Review Configuration](/images/secret-syncs/rundeck/step-7.png)
 
-        8. If enabled, your Rundeck Sync will begin syncing your secrets to the destination endpoint.
-        ![Sync Secrets](/images/secret-syncs/rundeck/rundeck-sync-created.png)
+        8. Your Rundeck Sync is created and will begin syncing your secrets to the destination.
+        ![Sync Created](/images/secret-syncs/rundeck/step-8.png)
 
     </Tab>
     <Tab title="API">
