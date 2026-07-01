@@ -152,12 +152,16 @@ export const useCheckSignerIssuance = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      const stillPending = signer.status === SignerStatus.Pending;
+      let text = "Issuance status updated";
+      if (stillPending) {
+        text = signer.externalOrder
+          ? `Still pending. DigiCert order #${signer.externalOrder.orderId} is awaiting approval in DigiCert.`
+          : "Issuance still pending. Checked just now.";
+      }
       createNotification({
-        text:
-          signer.status === SignerStatus.Pending
-            ? "Issuance still pending. Checked just now."
-            : "Issuance status updated",
-        type: signer.status === SignerStatus.Pending ? "info" : "success"
+        text,
+        type: stillPending ? "info" : "success"
       });
     }
   });

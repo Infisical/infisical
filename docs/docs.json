@@ -790,6 +790,7 @@
                       {
                         "group": "Code Signing",
                         "pages": [
+                          "documentation/platform/pki/guides/code-signing/digicert-code-signing",
                           "documentation/platform/pki/guides/code-signing/jarsigner",
                           "documentation/platform/pki/guides/code-signing/apksigner",
                           "documentation/platform/pki/guides/code-signing/osslsigncode",
@@ -852,14 +853,8 @@
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
                       "documentation/platform/pki/code-signing/approvals",
-                      {
-                        "group": "Guides",
-                        "pages": [
-                          "documentation/platform/pki/code-signing/digicert-code-signing",
-                          "documentation/platform/pki/code-signing/pkcs11-module",
-                          "documentation/platform/pki/code-signing/windows-ksp"
-                        ]
-                      }
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      "documentation/platform/pki/code-signing/windows-ksp"
                     ]
                   },
                   {

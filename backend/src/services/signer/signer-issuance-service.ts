@@ -774,12 +774,17 @@ export const signerIssuanceServiceFactory = ({
   const getLatestIssuanceKeyConfig = async (signerId: string) => {
     const job = await signerIssuanceJobDAL.findLatestForSigner(signerId);
     if (!job) return null;
+    const digicert = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
     return {
       keySource: job.keySource as CertKeySource,
       keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
       hsmConnectorId: job.hsmConnectorId ?? null,
       hsmKeyLabel: job.hsmKeyLabel ?? null,
-      hsmPublicKeySpki: job.hsmPublicKeySpki ?? null
+      hsmPublicKeySpki: job.hsmPublicKeySpki ?? null,
+      externalOrder:
+        digicert?.orderId != null
+          ? { provider: CaType.DIGICERT, orderId: digicert.orderId, status: digicert.lastStatus ?? null }
+          : null
     };
   };
 

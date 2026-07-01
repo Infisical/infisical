@@ -109,6 +109,11 @@ export type TSigner = {
   certificateHsmConnectorId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
+  externalOrder?: {
+    provider: string;
+    orderId: number;
+    status?: string | null;
+  } | null;
 };
 
 export enum SigningActorType {

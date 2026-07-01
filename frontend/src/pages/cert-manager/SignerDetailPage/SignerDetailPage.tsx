@@ -130,6 +130,13 @@ export const SignerDetailPage = () => {
 
   const onOpenExport = () => setIsExportOpen(true);
 
+  let statusTooltip: string | null = null;
+  if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
+    statusTooltip = signer.certificateFailureReason;
+  } else if (signer.status === SignerStatus.Pending && signer.externalOrder) {
+    statusTooltip = `DigiCert order #${signer.externalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
+  }
+
   return (
     <>
       <Helmet>
@@ -156,7 +163,7 @@ export const SignerDetailPage = () => {
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
-                  {signer.status === SignerStatus.Failed && signer.certificateFailureReason ? (
+                  {statusTooltip ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -167,7 +174,7 @@ export const SignerDetailPage = () => {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[260px] text-pretty break-words">
-                          {signer.certificateFailureReason}
+                          {statusTooltip}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

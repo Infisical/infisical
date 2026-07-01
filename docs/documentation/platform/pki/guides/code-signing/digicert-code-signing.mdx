@@ -1,5 +1,6 @@
 ---
-title: "Code Signing with DigiCert"
+title: "Sign with DigiCert"
+sidebarTitle: "Sign with DigiCert"
 description: "Issue code-signing certificates from DigiCert CertCentral with an HSM-backed key."
 ---
 
@@ -18,13 +19,13 @@ This guide covers using such a CA from the **Code Signing** product. To set up t
 
 Once a CA is configured for code signing, it appears in the **Code Signing → Create Signer** wizard's CA picker. The Signer is created in **Pending** state while DigiCert processes the order, and flips to **Active** once the certificate issues.
 
-DigiCert's code-signing workflow includes an out-of-band step for the first order against a new organization: DigiCert emails the organization's verified contact a link they must click to approve the order. This step cannot be skipped by the API. Subsequent orders against the same already-validated organization go from `pending` to `issued` without human action.
+DigiCert's code-signing workflow includes an out-of-band approval step that the API cannot skip: DigiCert emails an approval link to the order's approver, and the order stays **Pending** until someone opens that link and approves it in DigiCert. Depending on your CertCentral account's settings this can apply per order, so a Signer can sit in Pending even after the organization is validated.
 
 <Note>
   Code-signing certificates require an HSM-backed key. When you select a DigiCert code-signing CA, the Signer wizard locks the key source to **HSM** and you must pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors).
 </Note>
 
-A **Pending** signer is checked on a schedule. To poll DigiCert immediately instead of waiting for the next check, use **Check issuance now** from the signer's actions menu.
+A **Pending** signer is checked on a schedule. To poll DigiCert immediately, use **Check issuance now** from the signer's actions menu. Hovering the **Pending** status on the signer's detail page shows the DigiCert **order number** so you can open that order in DigiCert to approve it or resend the approval email.
 
 ### Reuse an existing order
 

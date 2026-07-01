@@ -29,7 +29,15 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateHsmConnectorId: z.string().nullable().optional(),
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
-  approvalPolicyName: z.string().nullable().optional()
+  approvalPolicyName: z.string().nullable().optional(),
+  externalOrder: z
+    .object({
+      provider: z.string(),
+      orderId: z.number(),
+      status: z.string().nullable()
+    })
+    .nullable()
+    .optional()
 });
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {

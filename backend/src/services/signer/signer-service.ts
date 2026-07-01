@@ -808,16 +808,18 @@ export const signerServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
 
+    let externalOrder: { provider: string; orderId: number; status: string | null } | null = null;
     if (!signer.certificateId) {
       const keyConfig = await signerIssuanceService.getLatestIssuanceKeyConfig(signer.id);
       if (keyConfig) {
         signer.certificateKeySource = signer.certificateKeySource ?? keyConfig.keySource;
         signer.certificateHsmConnectorId = signer.certificateHsmConnectorId ?? keyConfig.hsmConnectorId;
         signer.certificateKeyAlgorithm = signer.certificateKeyAlgorithm ?? keyConfig.keyAlgorithm;
+        externalOrder = keyConfig.externalOrder;
       }
     }
 
-    return { ...signer, status: computeEffectiveStatus(signer) };
+    return { ...signer, status: computeEffectiveStatus(signer), externalOrder };
   };
 
   const checkIssuanceNow = async (dto: TGetSignerDTO) => {
