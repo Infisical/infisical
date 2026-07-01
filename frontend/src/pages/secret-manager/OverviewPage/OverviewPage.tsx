@@ -2360,16 +2360,17 @@ const OverviewPageContent = () => {
     if (environments.length === 0) return [];
 
     const allImportedBy = environments.flatMap((env) => env.importedBy);
-    const groupedBySlug: Record<string, ProjectSecretsImportedBy[]> = {};
+    // Group by (projectId, envSlug) so cross-project items with the same env name stay separate
+    const groupedByKey: Record<string, ProjectSecretsImportedBy[]> = {};
 
     allImportedBy.forEach((item) => {
-      const { slug } = item.environment;
-      if (!groupedBySlug[slug]) groupedBySlug[slug] = [];
-      groupedBySlug[slug].push(item);
+      const key = `${item.project?.id ?? ""}::${item.environment.slug}`;
+      if (!groupedByKey[key]) groupedByKey[key] = [];
+      groupedByKey[key].push(item);
     });
 
-    const mergedImportedBy = Object.values(groupedBySlug).map((group) => {
-      const { environment } = group[0];
+    const mergedImportedBy = Object.values(groupedByKey).map((group) => {
+      const { environment, project } = group[0];
       const allFolders = group.flatMap((item) => item.folders);
 
       const foldersByName: Record<string, (typeof allFolders)[number][]> = {};
@@ -2412,6 +2413,7 @@ const OverviewPageContent = () => {
 
       return {
         environment,
+        ...(project ? { project } : {}),
         folders: mergedFolders.filter(
           (folder) => folder.isImported || (folder.secrets && folder.secrets.length > 0)
         )

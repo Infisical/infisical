@@ -16,7 +16,7 @@ export * from "./IntegrationSyncFailedTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OAuthPasswordResetTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";
-export * from "./OrgAdminProjectGrantAccessTemplate";
+export * from "./OrgAdminProjectFolderGrantAccessTemplate";
 export * from "./OrganizationAssignmentTemplate";
 export * from "./OrganizationInvitationTemplate";
 export * from "./PasswordResetTemplate";

@@ -53,6 +53,23 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
     await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
+
+    // When a source project's secrets change, target projects that consume them
+    // via cross-project grants must also be invalidated so they don't serve
+    // stale source values from cache.
+    const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
+      .where("sourceProjectId", projectId)
+      .select("targetProjectId")
+      .groupBy("targetProjectId");
+
+    const stamp = utcDayStamp();
+    await Promise.all(
+      targetGrants.map(async ({ targetProjectId }) => {
+        const targetVersionKey = SecretServiceCacheKeys.getSecretDalVersion(targetProjectId);
+        await keyStore.pgIncrementBy(targetVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
+        await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(targetProjectId, stamp));
+      })
+    );
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
@@ -903,7 +920,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const upsertSecretReferences = async (
     data: {
       secretId: string;
-      references: Array<{ environment: string; secretPath: string; secretKey: string }>;
+      references: Array<{ environment: string; secretPath: string; secretKey: string; targetProjectSlug?: string }>;
     }[] = [],
     tx?: Knex
   ) => {
@@ -919,11 +936,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       const newSecretReferences = data
         .filter(({ references }) => references.length)
         .flatMap(({ secretId, references }) =>
-          references.map(({ environment, secretPath, secretKey }) => ({
+          references.map(({ environment, secretPath, secretKey, targetProjectSlug }) => ({
             secretPath,
             secretId,
             environment,
-            secretKey
+            secretKey,
+            ...(targetProjectSlug ? { targetProjectSlug } : {})
           }))
         );
       if (!newSecretReferences.length) return;

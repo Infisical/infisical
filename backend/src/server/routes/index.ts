@@ -457,6 +457,8 @@ import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { projectEnvQueueFactory } from "@app/services/project-env/project-env-queue";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { projectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
+import { projectFolderGrantServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-service";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -611,6 +613,7 @@ export const registerRoutes = async (
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
+  const projectFolderGrantDAL = projectFolderGrantDALFactory(db);
   const secretVersionDAL = secretVersionDALFactory(db);
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
@@ -1821,7 +1824,9 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
-    telemetryService
+    telemetryService,
+    projectFolderGrantDAL,
+    orgDAL
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1865,7 +1870,9 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     telemetryService,
-    projectEventsService
+    projectEventsService,
+    projectFolderGrantDAL,
+    orgDAL
   });
 
   const projectService = projectServiceFactory({
@@ -1972,6 +1979,8 @@ export const registerRoutes = async (
   const secretImportService = secretImportServiceFactory({
     licenseService,
     projectBotService,
+    projectFolderGrantDAL,
+    orgDAL,
     projectEnvDAL,
     folderDAL,
     permissionService,
@@ -1981,6 +1990,14 @@ export const registerRoutes = async (
     secretQueueService,
     secretV2BridgeDAL,
     kmsService
+  });
+  const projectFolderGrantService = projectFolderGrantServiceFactory({
+    projectFolderGrantDAL,
+    folderDAL,
+    projectDAL,
+    orgDAL,
+    permissionService,
+    secretV2BridgeDAL
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -2010,7 +2027,9 @@ export const registerRoutes = async (
     reminderService,
     reminderDAL,
     keyStore,
-    secretValidationRuleService
+    secretValidationRuleService,
+    projectFolderGrantDAL,
+    orgDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -2071,7 +2090,9 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     kmsService,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    orgDAL,
+    projectFolderGrantDAL
   });
 
   const folderService = secretFolderServiceFactory({
@@ -2166,7 +2187,9 @@ export const registerRoutes = async (
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
     secretVersionV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    projectFolderGrantDAL,
+    orgDAL
   });
 
   const integrationService = integrationServiceFactory({
@@ -2180,7 +2203,9 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretImportDAL,
     secretDAL,
-    kmsService
+    kmsService,
+    projectFolderGrantDAL,
+    orgDAL
   });
 
   const accessTokenQueue = accessTokenQueueServiceFactory({
@@ -3777,6 +3802,7 @@ export const registerRoutes = async (
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
+    projectFolderGrant: projectFolderGrantService,
     projectBot: projectBotService,
     integration: integrationService,
     integrationAuth: integrationAuthService,

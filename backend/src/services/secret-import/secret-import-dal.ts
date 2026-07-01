@@ -91,12 +91,15 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId"),
+          db.ref("name").withSchema(TableName.Project).as("sourceProjectName")
         )
         .orderBy("position", "asc");
 
@@ -106,9 +109,10 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
       const docs = await query;
 
-      return docs.map(({ envId, slug, name, ...el }) => ({
+      return docs.map(({ envId, envProjectId, slug, name, sourceProjectName, ...el }) => ({
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId },
+        sourceProjectName: sourceProjectName ?? undefined
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
@@ -120,12 +124,15 @@ export const secretImportDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.SecretImport)
         .where({ [`${TableName.SecretImport}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId"),
+          db.ref("name").withSchema(TableName.Project).as("sourceProjectName")
         )
         .first();
 
@@ -133,11 +140,12 @@ export const secretImportDALFactory = (db: TDbClient) => {
         return null;
       }
 
-      const { envId, slug, name, ...el } = doc;
+      const { envId, envProjectId, slug, name, sourceProjectName, ...el } = doc;
 
       return {
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId },
+        sourceProjectName: sourceProjectName ?? undefined
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
@@ -154,12 +162,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId")
         );
 
-      return docs.map(({ envId, slug, name, ...el }) => ({
+      return docs.map(({ envId, envProjectId, slug, name, ...el }) => ({
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports by ids" });
@@ -167,11 +176,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
   };
 
   const getProjectImportCount = async (
-    { search, ...filter }: Partial<TSecretImports & { projectId: string; search?: string }>,
+    { search, projectId, ...filter }: Partial<TSecretImports & { projectId: string; search?: string }>,
     tx?: Knex
   ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+      const query = (tx || db.replicaNode())(TableName.SecretImport)
         .where(filter)
         .where("isReplication", false)
         .where((bd) => {
@@ -180,9 +189,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
-        .count();
+        .whereNull(`${TableName.Environment}.deleteAfter`);
 
+      if (projectId) {
+        void query.where(`${TableName.Environment}.projectId`, projectId);
+      }
+
+      const docs = await query.count();
       return Number(docs[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "get secret imports count" });
@@ -221,12 +234,13 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
           db.ref("slug").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.Environment),
-          db.ref("id").withSchema(TableName.Environment).as("envId")
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("projectId").withSchema(TableName.Environment).as("envProjectId")
         )
         .orderBy("position", "asc");
-      return docs.map(({ envId, slug, name, ...el }) => ({
+      return docs.map(({ envId, envProjectId, slug, name, ...el }) => ({
         ...el,
-        importEnv: { id: envId, slug, name }
+        importEnv: { id: envId, slug, name, projectId: envProjectId }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
@@ -269,6 +283,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     environmentId: string,
     environment: string,
     projectId: string,
+    projectSlug: string,
     tx?: Knex
   ) => {
     try {
@@ -286,6 +301,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
 
       const secretReferences = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
         .where({ secretPath, environment })
+        .whereNull(`${TableName.SecretReferenceV2}.targetProjectSlug`)
         .join(TableName.SecretV2, `${TableName.SecretReferenceV2}.secretId`, `${TableName.SecretV2}.id`)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
@@ -300,6 +316,28 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
           db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey"),
           db.ref("environment").withSchema(TableName.SecretReferenceV2).as("referencedSecretEnv")
+        );
+
+      const crossProjectSecretReferences = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .where({ secretPath, environment })
+        .where(`${TableName.SecretReferenceV2}.targetProjectSlug`, projectSlug)
+        .join(TableName.SecretV2, `${TableName.SecretReferenceV2}.secretId`, `${TableName.SecretV2}.id`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(`${TableName.SecretFolder}.isReserved`, false)
+        .select(
+          db.ref("key").withSchema(TableName.SecretV2).as("secretId"),
+          db.ref("name").withSchema(TableName.SecretFolder).as("folderName"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
+          db.ref("secretKey").withSchema(TableName.SecretReferenceV2).as("referencedSecretKey"),
+          db.ref("environment").withSchema(TableName.SecretReferenceV2).as("referencedSecretEnv"),
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("slug").withSchema(TableName.Project).as("sourceProjectSlug"),
+          db.ref("id").withSchema(TableName.Project).as("sourceProjectId")
         );
 
       const folderResults = folderImports.map(({ envName, envSlug, folderName, folderId }) => ({
@@ -397,7 +435,71 @@ export const secretImportDALFactory = (db: TDbClient) => {
         };
       });
 
-      return formattedResult;
+      // Group cross-project references by (sourceProjectId, envName)
+      type CrossProjEnvFolderMap = {
+        [key: string]: {
+          envName: string;
+          envSlug: string;
+          projectName: string;
+          projectSlug: string;
+          projectId: string;
+          folders: {
+            [folderId: string]: {
+              secrets: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
+              folderId: string;
+              folderName: string;
+            };
+          };
+        };
+      };
+
+      const groupedCrossProj = crossProjectSecretReferences.reduce<CrossProjEnvFolderMap>((acc, item) => {
+        const key = `${item.sourceProjectId}::${item.envName}`;
+        const updatedAcc = { ...acc };
+
+        if (!updatedAcc[key]) {
+          updatedAcc[key] = {
+            envName: item.envName,
+            envSlug: item.envSlug,
+            projectName: item.projectName,
+            projectSlug: item.sourceProjectSlug,
+            projectId: item.sourceProjectId,
+            folders: {}
+          };
+        }
+
+        if (!updatedAcc[key].folders[item.folderId]) {
+          updatedAcc[key].folders[item.folderId] = {
+            secrets: [],
+            folderId: item.folderId,
+            folderName: item.folderName
+          };
+        }
+
+        updatedAcc[key].folders[item.folderId].secrets.push({
+          secretId: item.secretId,
+          referencedSecretKey: item.referencedSecretKey,
+          referencedSecretEnv: item.referencedSecretEnv
+        });
+
+        return updatedAcc;
+      }, {});
+
+      const crossProjResult: EnvironmentInfo[] = Object.values(groupedCrossProj).map((group) => ({
+        envName: group.envName,
+        envSlug: group.envSlug,
+        projectName: group.projectName,
+        projectSlug: group.projectSlug,
+        projectId: group.projectId,
+        folders: Object.values(group.folders).map((folderData) => ({
+          folderName: folderData.folderName,
+          folderId: folderData.folderId,
+          folderImported: false,
+          ...(folderData.secrets.length > 0 && { secrets: folderData.secrets })
+        }))
+      }));
+
+      return [...formattedResult, ...crossProjResult];
     } catch (error) {
       throw new DatabaseError({ error, name: "GetSecretImportsAndReferences" });
     }

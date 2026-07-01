@@ -330,6 +330,12 @@ export enum ProjectPermissionApprovalRequestGrantActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionProjectFolderGrantActions {
+  ReadGrant = "read-grant",
+  CreateGrant = "create-grant",
+  RevokeGrant = "revoke-grant"
+}
+
 export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
 }
@@ -399,6 +405,7 @@ export enum ProjectPermissionSub {
   Application = "certificate-application",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
+  ProjectFolderGrant = "project-folder-grant",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
@@ -572,6 +579,11 @@ export type McpEndpointSubjectFields = {
 };
 
 export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type ProjectFolderGrantSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -776,7 +788,14 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
-  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights];
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
+  | [
+      ProjectPermissionProjectFolderGrantActions,
+      (
+        | ProjectPermissionSub.ProjectFolderGrant
+        | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
+      )
+    ];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -958,6 +977,23 @@ const SecretImportConditionSchema = z
   .partial();
 
 const HoneyTokenConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const ProjectFolderGrantConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1961,6 +1997,16 @@ const GeneralPermissionSchema = [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretApprovalRequestActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ProjectFolderGrant).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionProjectFolderGrantActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: ProjectFolderGrantConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   })
 ];
 

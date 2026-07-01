@@ -3,11 +3,19 @@ import path from "node:path";
 import RE2 from "re2";
 
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
-const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
+// Supports standard refs like ${ENV.path.KEY} and cross-project refs like ${@project-slug.ENV.path.KEY}
+const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.@]+)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REGEX.test(value);
@@ -41,7 +49,18 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
   const nestedReferences = references
     .filter((el) => el.includes("."))
     .map((el) => {
-      const [environment, ...secretPathList] = el.split(".");
+      const parts = el.split(".");
+      // Cross-project reference: @project-slug.env.path.SECRET
+      if (parts[0].startsWith("@")) {
+        const [projectSlugWithAt, environment, ...rest] = parts;
+        return {
+          targetProjectSlug: projectSlugWithAt.slice(1),
+          environment,
+          secretPath: path.join("/", ...rest.slice(0, -1)),
+          secretKey: rest[rest.length - 1]
+        };
+      }
+      const [environment, ...secretPathList] = parts;
       return {
         environment,
         secretPath: path.join("/", ...secretPathList.slice(0, -1)),
@@ -64,6 +83,8 @@ export type TSecretReferenceTraceNode = {
   value?: string;
   environment: string;
   secretPath: string;
+  // Present when this node references a secret from a different project
+  projectSlug?: string;
   children: TSecretReferenceTraceNode[];
 };
 
@@ -76,6 +97,18 @@ type TInterpolateSecretArg = {
   // When provided, personal secret overrides for this user will be preferred
   // over shared secrets when resolving references during expansion.
   userId?: string;
+  // Supplying all cross-project fields enables @project-slug.env.path.KEY refs.
+  // Omit them for same-project-only expansion; cross-project refs then fail closed.
+  actorOrgId?: string;
+  orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
+  projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
+  projectDAL?: Pick<TProjectDALFactory, "find">;
+  kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  // Optional raw DAL for cross-project secret fetching. This is only distinct from
+  // secretDAL when the caller wraps secretDAL with import-aware behavior for
+  // same-project relative references; cross-project reads must stay raw so source
+  // project imports are not resolved through the target project context.
+  crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
@@ -85,10 +118,46 @@ export const expandSecretReferencesFactory = ({
   secretDAL,
   folderDAL,
   canExpandValue,
-  userId
+  userId,
+  actorOrgId,
+  orgDAL,
+  projectFolderGrantDAL,
+  projectDAL,
+  kmsService,
+  crossProjectSecretDAL
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
-  const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
+  let crossProjectAllowedCache: boolean | undefined;
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
+  const checkCrossProjectAllowed = async () => {
+    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
+    if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
+    crossProjectAllowedCache = await isCrossProjectEnabled(actorOrgId, orgDAL);
+    return crossProjectAllowedCache;
+  };
+  const slugToProjectId = new Map<string, string | null>();
+  const resolveProjectSlugs = async (slugs: string[]) => {
+    if (!projectDAL || !actorOrgId) return;
+    const uncached = slugs.filter((s) => !slugToProjectId.has(s));
+    if (!uncached.length) return;
+
+    const projects = await projectDAL.find({ orgId: actorOrgId, $in: { slug: uncached } });
+    const found = new Map(projects.map((p) => [p.slug, p.id]));
+    for (const s of uncached) {
+      slugToProjectId.set(s, found.get(s) ?? null);
+    }
+  };
+  const getProjectDecryptor = async (sourceProjectId: string) => {
+    if (!kmsService) return undefined;
+    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sourceProjectId
+    });
+    return (value: Buffer | null | undefined) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+  };
+  // Cache key includes project to avoid collisions between same-named envs across projects
+  const getCacheUniqueKey = (environment: string, secretPath: string, srcProjectId?: string) =>
+    srcProjectId ? `${srcProjectId}:${environment}-${secretPath}` : `${environment}-${secretPath}`;
 
   const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
@@ -147,6 +216,8 @@ export const expandSecretReferencesFactory = ({
     const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
     let expandedValue = dto.value;
 
+    const crossProjectSecretSharingEnabled = await checkCrossProjectAllowed();
+
     while (stack.length) {
       const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
 
@@ -163,6 +234,21 @@ export const expandSecretReferencesFactory = ({
       }
 
       if (refs.length > 0) {
+        // Batch-resolve all cross-project slugs from this value's refs in one query
+        const crossProjectSlugs = refs
+          .map((r) =>
+            r
+              .slice(2, r.length - 1)
+              .trim()
+              .split(".")
+          )
+          .filter((parts) => parts[0]?.startsWith("@"))
+          .map((parts) => parts[0].slice(1));
+        if (crossProjectSlugs.length > 0) {
+          // eslint-disable-next-line no-await-in-loop
+          await resolveProjectSlugs(crossProjectSlugs);
+        }
+
         for (const interpolationSyntax of refs) {
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
           const entities = interpolationKey.trim().split(".");
@@ -174,6 +260,8 @@ export const expandSecretReferencesFactory = ({
           let referencedSecretKey = "";
           let referencedSecretEnvironmentSlug = "";
           let referencedSecretValue = "";
+          let referencedProjectSlug: string | undefined;
+          let isCrossProjectRef = false;
 
           if (entities.length === 1) {
             const [secretKey] = entities;
@@ -193,6 +281,105 @@ export const expandSecretReferencesFactory = ({
             referencedSecretKey = secretKey;
             referencedSecretPath = secretPath;
             referencedSecretEnvironmentSlug = environment;
+          } else if (entities[0].startsWith("@")) {
+            // Cross-project reference: ${@project-slug.env.path.KEY}
+            // eslint-disable-next-line no-await-in-loop
+            if (
+              !canExpandValue ||
+              !hasCrossProjectConfig ||
+              !projectFolderGrantDAL ||
+              !crossProjectSecretSharingEnabled
+            ) {
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+
+            isCrossProjectRef = true;
+            const crossProjSlug = entities[0].slice(1);
+            const crossProjEnv = entities[1];
+            const crossProjPath = path.join("/", ...entities.slice(2, entities.length - 1));
+            const crossProjKey = entities[entities.length - 1];
+
+            const sourceProjectId = slugToProjectId.get(crossProjSlug) ?? null;
+            if (!sourceProjectId) {
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+
+            const crossProjCacheKey = getCacheUniqueKey(crossProjEnv, crossProjPath, sourceProjectId);
+
+            let crossProjSecretData: { value: string; tags: string[] };
+            if (secretCache?.[crossProjCacheKey]) {
+              crossProjSecretData = secretCache[crossProjCacheKey][crossProjKey] || { value: "", tags: [] };
+            } else {
+              try {
+                // eslint-disable-next-line no-await-in-loop
+                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath);
+                if (!sourceFolder) {
+                  secretCache[crossProjCacheKey] = {};
+                  crossProjSecretData = { value: "", tags: [] };
+                } else {
+                  // Verify that a folder grant exists: source folder → current target project
+                  // eslint-disable-next-line no-await-in-loop
+                  const [grant] = await projectFolderGrantDAL.find({
+                    sourceProjectId,
+                    sourceFolderId: sourceFolder.id,
+                    targetProjectId: projectId
+                  });
+
+                  if (!grant) {
+                    secretCache[crossProjCacheKey] = {};
+                    crossProjSecretData = { value: "", tags: [] };
+                  } else {
+                    // eslint-disable-next-line no-await-in-loop
+                    const sourceDecrypt = await getProjectDecryptor(sourceProjectId);
+                    if (!sourceDecrypt) {
+                      secretCache[crossProjCacheKey] = {};
+                      crossProjSecretData = { value: "", tags: [] };
+                      // eslint-disable-next-line no-continue
+                      continue;
+                    }
+                    // Use the explicit raw DAL when same-project resolution wraps secretDAL
+                    // with import-aware behavior.
+                    // eslint-disable-next-line no-await-in-loop
+                    const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
+                      folderId: sourceFolder.id
+                    });
+
+                    const crossProjDecrypted = sourceSecrets.reduce<Record<string, { value: string; tags: string[] }>>(
+                      (prev, secret) => {
+                        // Only shared secrets (no personal overrides) from source project
+                        if (!secret.userId) {
+                          // eslint-disable-next-line no-param-reassign
+                          prev[secret.key] = {
+                            value: sourceDecrypt(secret.encryptedValue) || "",
+                            tags: secret.tags?.map((el) => el.slug) || []
+                          };
+                        }
+                        return prev;
+                      },
+                      {}
+                    );
+
+                    secretCache[crossProjCacheKey] = crossProjDecrypted;
+                    crossProjSecretData = crossProjDecrypted[crossProjKey] || { value: "", tags: [] };
+                  }
+                }
+              } catch (error) {
+                logger.error(
+                  { err: error, crossProjSlug, crossProjEnv, crossProjPath, crossProjKey },
+                  `Failed to expand cross-project reference [slug=${crossProjSlug}] [env=${crossProjEnv}] [path=${crossProjPath}] [key=${crossProjKey}]`
+                );
+                secretCache[crossProjCacheKey] = {};
+                crossProjSecretData = { value: "", tags: [] };
+              }
+            }
+
+            referencedSecretValue = crossProjSecretData.value;
+            referencedSecretKey = crossProjKey;
+            referencedSecretPath = crossProjPath;
+            referencedSecretEnvironmentSlug = crossProjEnv;
+            referencedProjectSlug = crossProjSlug;
           } else {
             const secretReferenceEnvironment = entities[0];
             const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
@@ -219,6 +406,7 @@ export const expandSecretReferencesFactory = ({
             value: referencedSecretValue,
             secretPath: referencedSecretPath,
             environment: referencedSecretEnvironmentSlug,
+            ...(referencedProjectSlug ? { projectSlug: referencedProjectSlug } : {}),
             depth: depth + 1,
             secretKey: referencedSecretKey,
             trace
@@ -234,7 +422,9 @@ export const expandSecretReferencesFactory = ({
 
           const newVisitedSecrets = new Set([...visitedSecrets, referencedSecretId]);
 
-          const shouldExpandMore = INTERPOLATION_TEST_REGEX.test(referencedSecretValue) && !isCircular;
+          // Cross-project secrets are not recursively expanded (no source-project context in this factory)
+          const shouldExpandMore =
+            INTERPOLATION_TEST_REGEX.test(referencedSecretValue) && !isCircular && !isCrossProjectRef;
           if (dto.shouldStackTrace) {
             const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
             trace?.children.push(stackTraceNode);

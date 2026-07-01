@@ -6,7 +6,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 import { cn } from "../../utils";
 
-const REGEX = /(\${([a-zA-Z0-9-_. ]+)})/g;
+const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
 
 const syntaxHighlight = (
   content?: string | null,

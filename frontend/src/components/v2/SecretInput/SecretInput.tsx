@@ -5,7 +5,7 @@ import { twMerge } from "tailwind-merge";
 import { useToggle } from "@app/hooks";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
-const REGEX = /(\${([a-zA-Z0-9-_. ]+)})/g;
+const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
 
 const syntaxHighlight = (
   content?: string | null,

@@ -48,11 +48,13 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { createProjectKey } from "../project/project-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
@@ -127,6 +129,8 @@ type TSecretQueueFactoryDep = {
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TGetSecrets = {
@@ -194,7 +198,9 @@ export const secretQueueFactory = ({
   licenseService,
   membershipUserDAL,
   membershipRoleDAL,
-  telemetryService
+  telemetryService,
+  projectFolderGrantDAL,
+  orgDAL
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -375,6 +381,7 @@ export const secretQueueFactory = ({
    */
   const getIntegrationSecretsV2 = async (dto: {
     projectId: string;
+    orgId: string;
     environment: string;
     secretPath: string;
     folderId: string;
@@ -394,7 +401,12 @@ export const secretQueueFactory = ({
       folderDAL,
       projectId: dto.projectId,
       // on integration expand all secrets
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      actorOrgId: dto.orgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
     // process secrets in current folder
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId });
@@ -439,7 +451,12 @@ export const secretQueueFactory = ({
       secretImportDAL,
       secretImports,
       hasSecretAccess: () => true,
-      viewSecretValue: true
+      viewSecretValue: true,
+      projectId: dto.projectId,
+      projectFolderGrantDAL,
+      actorOrgId: dto.orgId,
+      orgDAL,
+      kmsService
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -936,6 +953,7 @@ export const secretQueueFactory = ({
           ? await getIntegrationSecretsV2({
               environment,
               projectId,
+              orgId: project.orgId,
               folderId: folder.id,
               depth: 1,
               secretPath,
