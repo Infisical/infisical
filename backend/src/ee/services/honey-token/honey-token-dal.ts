@@ -59,7 +59,13 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
   };
 
   const countByFolderIds = async (folderIds: string[], search?: string, tx?: Knex) => {
-    const query = (tx || db.replicaNode())(TableName.HoneyToken).whereIn(`${TableName.HoneyToken}.folderId`, folderIds);
+    const query = (tx || db.replicaNode())(TableName.HoneyToken)
+      .whereIn(`${TableName.HoneyToken}.folderId`, folderIds)
+      .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
+      .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`);
 
     if (search) {
       void query.where(`${TableName.HoneyToken}.name`, "ilike", `%${search}%`);
