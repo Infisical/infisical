@@ -23,7 +23,7 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => st
       return;
     }
 
-    const url = new URL(`/v1/${orgId}/usage-snapshots`, serverUrl);
+    const url = new URL(`/v1/${encodeURIComponent(orgId)}/usage-snapshots`, serverUrl);
     const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${getBearerToken()}`, "Content-Type": "application/json" },
