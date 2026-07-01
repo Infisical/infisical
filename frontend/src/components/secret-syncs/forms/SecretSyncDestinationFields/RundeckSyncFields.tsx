@@ -76,11 +76,13 @@ export const RundeckSyncFields = () => {
               <Input
                 value={value}
                 onChange={onChange}
-                placeholder="production"
+                placeholder="/production"
                 isError={Boolean(error)}
               />
               <FieldDescription>
-                {`Secrets are stored in this project's Rundeck Key Storage under keys/project/<project>/<path>.`}
+                {
+                  "Path must start with '/'. Secrets are stored in Rundeck Key Storage under keys/project/<project><path>."
+                }
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>

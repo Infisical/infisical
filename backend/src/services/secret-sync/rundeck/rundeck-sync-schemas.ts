@@ -13,7 +13,7 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const RundeckSyncDestinationConfigSchema = z.object({
   project: z.string().min(1, "Project is required").max(255),
-  path: z.string().min(1, "Path is required").max(255)
+  path: z.string().min(1, "Path is required").max(255).startsWith("/", "Path must start with '/'")
 });
 
 const RundeckSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };

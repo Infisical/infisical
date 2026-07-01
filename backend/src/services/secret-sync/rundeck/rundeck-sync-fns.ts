@@ -31,7 +31,8 @@ type TRundeckStorageListResponse = {
  */
 const getRundeckStoragePath = (project: string, path: string) => {
   const normalizedPath = path.replace(/^\/+|\/+$/g, "");
-  return `keys/project/${project}/${normalizedPath}`;
+  const basePath = `keys/project/${encodeURIComponent(project)}`;
+  return normalizedPath ? `${basePath}/${normalizedPath}` : basePath;
 };
 
 const getRundeckClientDetails = async (secretSync: TRundeckSyncWithCredentials) => {
