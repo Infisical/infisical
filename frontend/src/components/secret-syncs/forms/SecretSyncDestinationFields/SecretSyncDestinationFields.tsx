@@ -38,6 +38,7 @@ import { OvhSyncFields } from "./OvhSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { SnowflakeSyncFields } from "./SnowflakeSyncFields";
+import { RundeckSyncFields } from "./RundeckSyncFields";
 import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
@@ -107,6 +108,8 @@ export const SecretSyncDestinationFields = () => {
       return <ChecklySyncFields />;
     case SecretSync.Supabase:
       return <SupabaseSyncFields />;
+    case SecretSync.Rundeck:
+      return <RundeckSyncFields />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncFields />;
     case SecretSync.Netlify:

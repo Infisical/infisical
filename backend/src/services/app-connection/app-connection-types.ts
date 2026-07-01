@@ -330,6 +330,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TRundeckConnection,
+  TRundeckConnectionConfig,
+  TRundeckConnectionInput,
+  TValidateRundeckConnectionCredentialsSchema
+} from "./rundeck";
+import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
   TSalesforceConnectionInput,
@@ -487,6 +493,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TRundeckConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -568,6 +575,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TRundeckConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -680,7 +688,8 @@ export type TAppConnectionConfig =
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
-  | TConvexConnectionConfig;
+  | TConvexConnectionConfig
+  | TRundeckConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -752,7 +761,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
-  | TValidateConvexConnectionCredentialsSchema;
+  | TValidateConvexConnectionCredentialsSchema
+  | TValidateRundeckConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

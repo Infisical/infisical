@@ -173,6 +173,10 @@ import {
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
 import {
+  RundeckConnectionListItemSchema,
+  SanitizedRundeckConnectionSchema
+} from "@app/services/app-connection/rundeck";
+import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
 } from "@app/services/app-connection/salesforce";
@@ -286,7 +290,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSnowflakeConnectionSchema.options,
   ...SanitizedDatadogConnectionSchema.options,
   ...SanitizedF5BigIpConnectionSchema.options,
-  ...SanitizedConvexConnectionSchema.options
+  ...SanitizedConvexConnectionSchema.options,
+  ...SanitizedRundeckConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -359,7 +364,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SnowflakeConnectionListItemSchema,
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
-  ConvexConnectionListItemSchema
+  ConvexConnectionListItemSchema,
+  RundeckConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

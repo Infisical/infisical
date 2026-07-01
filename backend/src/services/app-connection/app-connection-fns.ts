@@ -210,6 +210,7 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
   getSalesforceConnectionListItem,
   SalesforceConnectionMethod,
@@ -363,7 +364,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSnowflakeConnectionListItem(),
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
-    getConvexConnectionListItem()
+    getConvexConnectionListItem(),
+    getRundeckConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -604,7 +606,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -655,6 +658,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
+    case RundeckConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -847,7 +851,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
-  [AppConnection.Convex]: platformManagedCredentialsNotSupported
+  [AppConnection.Convex]: platformManagedCredentialsNotSupported,
+  [AppConnection.Rundeck]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

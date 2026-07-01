@@ -56,6 +56,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TRundeckConnection } from "./rundeck-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
@@ -124,6 +125,7 @@ export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./rundeck-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
@@ -209,7 +211,8 @@ export type TAppConnection =
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
-  | TTriggerDevConnection;
+  | TTriggerDevConnection
+  | TRundeckConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

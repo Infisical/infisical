@@ -36,6 +36,7 @@ import { TOvhSync } from "./ovh-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
 import { TSnowflakeSync } from "./snowflake-sync";
+import { TRundeckSync } from "./rundeck-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
@@ -83,6 +84,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync

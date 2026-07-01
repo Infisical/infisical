@@ -59,6 +59,7 @@ import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
+import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -184,6 +185,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Supabase:
       DestinationFieldsComponent = <SupabaseSyncReviewFields />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationFieldsComponent = <RundeckSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;

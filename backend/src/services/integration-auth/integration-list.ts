@@ -414,7 +414,7 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "Rundeck",
+      name: "RundecRundeckk",
       slug: "rundeck",
       image: "Rundeck.svg",
       isAvailable: true,

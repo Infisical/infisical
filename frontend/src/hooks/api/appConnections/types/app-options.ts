@@ -290,6 +290,10 @@ export type TConvexConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Convex;
 };
 
+export type TRundeckConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Rundeck;
+};
+
 export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
@@ -364,7 +368,8 @@ export type TAppConnectionOption =
   | TDatadogConnectionOption
   | TF5BigIpConnectionOption
   | TConvexConnectionOption
-  | TTriggerDevConnectionOption;
+  | TTriggerDevConnectionOption
+  | TRundeckConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -437,4 +442,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
+  [AppConnection.Rundeck]: TRundeckConnectionOption;
 };
