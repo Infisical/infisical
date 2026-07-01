@@ -1124,6 +1124,19 @@ export const secretRotationV2ServiceFactory = ({
       }
 
       if (conflictingDestinationSecrets.length && overwriteDestination) {
+        // Require secret-level delete permission.
+        conflictingDestinationSecrets.forEach((conflictingSecret) => {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretActions.Delete,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: destinationEnvironment,
+              secretPath: destinationSecretPath,
+              secretName: conflictingSecret.key,
+              secretTags: conflictingSecret.tags?.map((el) => el.slug)
+            })
+          );
+        });
+
         await secretV2BridgeDAL.deleteMany(
           conflictingDestinationSecrets.map((s) => ({ key: s.key, type: SecretType.Shared })),
           destinationFolder.id,

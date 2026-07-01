@@ -1,7 +1,15 @@
+import { CaType } from "@app/hooks/api/ca/enums";
+
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 
 export type CaGroup = "internal" | "external";
-export type CaOption = { id: string; name: string; groupType: CaGroup };
+export type CaOption = {
+  id: string;
+  name: string;
+  groupType: CaGroup;
+  caType: CaType;
+  digicert?: { appConnectionId: string; organizationId: number; productNameId: string };
+};
 
 export type StepConfig = {
   name: string;
@@ -26,12 +34,22 @@ export const STEPS: StepConfig[] = [
   },
   {
     name: "Certificate",
-    shortDescription: "Validity and CA",
+    shortDescription: "CA and identity",
     title: "Certificate",
     subtitle: "The certificate behind this signer.",
     rightLabel: "CERTIFICATE",
     rightDescription:
-      "Adjust how early to auto-renew, and which CA issues the certificate. Swapping the CA reissues the certificate right away.",
+      "Choose which CA issues the certificate and review its name and validity. Swapping the CA reissues the certificate right away.",
+    docsUrl: PkiDocsUrls.codeSigning.signers.editCertificate
+  },
+  {
+    name: "Signing Key",
+    shortDescription: "Key storage and algorithm",
+    title: "Signing Key",
+    subtitle: "Where the signing key lives and which algorithm to use.",
+    rightLabel: "SIGNING KEY",
+    rightDescription:
+      "Changing the key source or algorithm reissues the certificate with a new key. Some CAs require an HSM-backed key.",
     docsUrl: PkiDocsUrls.codeSigning.signers.editCertificate
   }
 ];

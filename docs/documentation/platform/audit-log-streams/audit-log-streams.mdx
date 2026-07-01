@@ -336,6 +336,52 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
             </Step>
         </Steps>
     </Accordion>
+    <Accordion title="Sumo Logic">
+        You can stream to Sumo Logic using the dedicated **Sumo Logic** provider log stream. Infisical delivers audit logs to Sumo Logic's **HTTP Logs and Metrics Source** as a newline-delimited JSON (NDJSON) batch, where each line is ingested as an individual log message.
+
+        <Steps>
+            <Step title="Create an HTTP Source in Sumo Logic">
+                In Sumo Logic, navigate to **Manage Data > Collection > Collection**.
+
+                If you don't already have a hosted collector, click **Add Collector**, choose **Hosted Collector**, and save it. Otherwise, you can reuse an existing hosted collector.
+
+                On your hosted collector, click **Add Source** and select **HTTP Logs & Metrics**.
+
+                Configure the source:
+
+                | Field | Value |
+                |-------|-------|
+                | **Name** | A descriptive name, e.g. `Infisical Audit Logs` |
+                | **Source Host** | Your Infisical instance URL, e.g. `https://app.infisical.com` |
+                | **Source Category** | A category to query against, e.g. `infisical/audit-logs` |
+
+                ![sumo source](/images/platform/audit-log-streams/sumo-source.png)
+
+                Click **Save**. When prompted to generate the URL, select the **Auth Header** option (_"Use a base URL with separate authentication header"_). Sumo Logic will display two values:
+
+                - **URL**: the base endpoint, e.g. `https://endpoint4.collection.sumologic.com/receiver/v1/http`
+                - **Header**: the authentication header, shown as `x-sumo-token: <token>`
+
+                ![sumo auth](/images/platform/audit-log-streams/sumo-auth.png)
+
+                Copy both for the next step.
+
+                <Warning>
+                    The **Header** field includes the header name prefix (`x-sumo-token: `). When copying the token, copy **only the token value** that comes after `x-sumo-token: ` — do **not** include the `x-sumo-token: ` prefix itself.
+                </Warning>
+            </Step>
+            <Step title="Create Audit Log Stream on Infisical">
+                On Infisical, create a new audit log stream and select the **Sumo Logic** provider option.
+
+                - **HTTP Source Address**: The **URL** from Step 1 (e.g. `https://endpoint4.collection.sumologic.com/receiver/v1/http`).
+                - **Auth Token**: The token value from the **Header** field in Step 1 — only the part after `x-sumo-token: `, not the prefix. Infisical sends it as the `x-sumo-token` header.
+
+                ![sumo stream](/images/platform/audit-log-streams/sumo-stream.png)
+
+                Once you're finished, click **Create Log Stream**.
+            </Step>
+        </Steps>
+    </Accordion>
 </AccordionGroup>
 
 ## Delivery Reliability and Failure Handling
@@ -384,10 +430,10 @@ For **Custom** streams, each request is an HTTP `POST` with a body containing a 
 ]
 ```
 
-Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk) are batched automatically using each provider's native bulk-ingestion format.
+Your endpoint must be able to accept a JSON array. Batches are bounded — your receiver should be prepared to handle up to **500 events** or **1 MB** per request. The managed providers (Azure, Cribl, Datadog, Splunk, Sumo Logic) are batched automatically using each provider's native bulk-ingestion format.
 
 <Note>
-    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, and Splunk providers always batch and have no single-event mode.
+    **Legacy single-event delivery.** **Custom** and **Cribl** streams created before batch delivery was introduced continue to receive **one event per request** as a single JSON object, so existing receivers keep working unchanged. You can upgrade such a stream to batch delivery by editing it and enabling **Batch delivery** in the form. This switch is **one-way** — once a stream is on batch delivery it cannot be reverted to single-event delivery, so confirm your endpoint accepts batched events first (a JSON array for Custom, or newline-delimited JSON (NDJSON) for Cribl). The Azure, Datadog, Splunk, and Sumo Logic providers always batch and have no single-event mode.
 </Note>
 
 ### Example Log Entry

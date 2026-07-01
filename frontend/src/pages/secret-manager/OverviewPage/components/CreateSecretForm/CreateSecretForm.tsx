@@ -1,4 +1,4 @@
-import { ClipboardEvent, useMemo, useRef, useState } from "react";
+import { ClipboardEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -322,9 +322,23 @@ export const CreateSecretForm = ({
     });
   };
 
+  const submitForm = handleSubmit(handleFormSubmit);
+
+  const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
+    // Allow Cmd+Enter (macOS) / Ctrl+Enter (other OSes) to submit the form.
+    // react-hook-form's handleSubmit wrapper still runs validation, so this
+    // does not bypass the required key/value checks.
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isSubmitting) {
+      e.preventDefault();
+      submitForm();
+    }
+  };
+
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
-      onSubmit={handleSubmit(handleFormSubmit)}
+      onSubmit={submitForm}
+      onKeyDown={handleFormKeyDown}
       noValidate
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >

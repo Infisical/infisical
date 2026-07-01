@@ -234,17 +234,14 @@ const isTelemetryEnabled = () => getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED;
 
 /**
  * Pull only the keys that survive the InfisicalCore View allowlist (see instrumentation.ts):
- * organization.id, project.id. Returns an empty object when no request context is available
- * (e.g. queue workers / cron handlers) — those call sites pass their own tenant labels.
+ * organization.id. Returns an empty object when no request context is
+ * available (e.g. queue workers / cron handlers) — those call sites pass their own tenant labels.
  */
 export const buildBaseAttributes = (): Record<string, string> => {
   const attributes: Record<string, string> = {};
 
   const orgId = requestContext.get(RequestContextKey.OrgId);
   if (orgId) attributes["infisical.organization.id"] = orgId;
-
-  const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
-  if (projectDetails?.id) attributes["infisical.project.id"] = projectDetails.id;
 
   return attributes;
 };

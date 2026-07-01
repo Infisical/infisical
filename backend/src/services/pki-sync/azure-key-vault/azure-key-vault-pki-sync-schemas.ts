@@ -19,12 +19,11 @@ export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   enableVersioning: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
-
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -38,7 +37,7 @@ export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
@@ -54,7 +53,7 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
-  syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AzureKeyVaultPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

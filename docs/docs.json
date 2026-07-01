@@ -122,6 +122,7 @@
                       "integrations/app-connections/checkly",
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
+                      "integrations/app-connections/cloud-66",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
@@ -635,6 +636,7 @@
                       "integrations/secret-syncs/checkly",
                       "integrations/secret-syncs/chef",
                       "integrations/secret-syncs/circleci",
+                      "integrations/secret-syncs/cloud-66",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -778,7 +780,8 @@
                         "group": "Applications",
                         "pages": [
                           "documentation/platform/pki/guides/applications/infisical-agent",
-                          "documentation/platform/pki/guides/applications/k8s-cert-manager",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-acme",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-issuer",
                           "documentation/platform/pki/guides/applications/nginx-certbot",
                           "documentation/platform/pki/guides/applications/apache-certbot",
                           "documentation/platform/pki/guides/applications/tomcat-certbot",
@@ -791,6 +794,7 @@
                       {
                         "group": "Code Signing",
                         "pages": [
+                          "documentation/platform/pki/guides/code-signing/digicert-code-signing",
                           "documentation/platform/pki/guides/code-signing/jarsigner",
                           "documentation/platform/pki/guides/code-signing/apksigner",
                           "documentation/platform/pki/guides/code-signing/osslsigncode",
@@ -1512,6 +1516,18 @@
                       "api-reference/endpoints/app-connections/chef/create",
                       "api-reference/endpoints/app-connections/chef/update",
                       "api-reference/endpoints/app-connections/chef/delete"
+                    ]
+                  },
+                  {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/cloud-66/list",
+                      "api-reference/endpoints/app-connections/cloud-66/available",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-id",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-name",
+                      "api-reference/endpoints/app-connections/cloud-66/create",
+                      "api-reference/endpoints/app-connections/cloud-66/update",
+                      "api-reference/endpoints/app-connections/cloud-66/delete"
                     ]
                   },
                   {
@@ -2758,6 +2774,20 @@
                     ]
                   },
                   {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloud-66/list",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloud-66/create",
+                      "api-reference/endpoints/secret-syncs/cloud-66/update",
+                      "api-reference/endpoints/secret-syncs/cloud-66/delete",
+                      "api-reference/endpoints/secret-syncs/cloud-66/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/import-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare Pages",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
@@ -3959,6 +3989,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",
+      "destination": "/documentation/platform/pki/guides/applications/k8s-cert-manager-acme"
+    },
     {
       "source": "/sdks/languages/csharp",
       "destination": "/sdks/languages/dotnet"

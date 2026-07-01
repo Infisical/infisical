@@ -994,11 +994,13 @@ export const scimServiceFactory = ({
     // no mapping, user will have default org membership
     if (!externalGroupMapping) return;
 
-    // only get org memberships that are new (invites)
+    // only get org memberships that are new (invites), scoped to the group's organization
+    // (consistent with the other membership lookups in this service)
     const newOrgMemberships = await membershipUserDAL.find(
       {
         status: "invited",
         scope: AccessScope.Organization,
+        scopeOrgId: group.orgId,
         $in: {
           id: members.map((member) => member.value)
         }

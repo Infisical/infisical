@@ -120,7 +120,11 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
         .del()
         .returning("*")) as Record<string, unknown>[];
 
-      return certificatePolicy;
+      if (!certificatePolicy) {
+        return null;
+      }
+
+      return parseJsonFields(certificatePolicy);
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete certificate policy" });
     }

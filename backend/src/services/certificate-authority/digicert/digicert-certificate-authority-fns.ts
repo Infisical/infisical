@@ -10,10 +10,8 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
-import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
+import { DIGICERT_CS_PRODUCT_NAME_IDS } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -36,12 +34,21 @@ import {
   DigiCertOrderStatus,
   DigiCertPollOutcome
 } from "./digicert-certificate-authority-enums";
+import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
+import {
+  castDbEntryToDigiCertCertificateAuthority,
+  extractLeafAndChain,
+  getDigiCertClientCredentials
+} from "./digicert-certificate-authority-shared";
 import {
   TCreateDigiCertCertificateAuthorityDTO,
-  TDigiCertCertificateAuthority,
   TDigiCertCertificateRequestMetadata,
+  TPlaceOrderResponse,
   TUpdateDigiCertCertificateAuthorityDTO
 } from "./digicert-certificate-authority-types";
+import { digiCertCodeSigningFns } from "./digicert-code-signing-fns";
+
+export { castDbEntryToDigiCertCertificateAuthority, getDigiCertClientCredentials };
 
 type TDigiCertCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -61,73 +68,20 @@ type TDigiCertCertificateAuthorityFnsDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
-export const castDbEntryToDigiCertCertificateAuthority = (
-  ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
-): TDigiCertCertificateAuthority & { credentials: Buffer | null | undefined } => {
-  if (!ca.externalCa?.id) {
-    throw new BadRequestError({ message: "Malformed DigiCert certificate authority" });
-  }
-
-  if (!ca.externalCa.appConnectionId) {
+const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, productNameId: string): void => {
+  const effectivePurpose = purpose ?? DigiCertCaPurpose.Ssl;
+  const isCsProduct = DIGICERT_CS_PRODUCT_NAME_IDS.has(productNameId);
+  if (effectivePurpose === DigiCertCaPurpose.CodeSigning && !isCsProduct) {
     throw new BadRequestError({
-      message: "DigiCert app connection ID is missing from certificate authority configuration"
+      message: `Product '${productNameId}' is not a code-signing product. Pick one of: ${[...DIGICERT_CS_PRODUCT_NAME_IDS].join(", ")}`
     });
   }
-
-  const config = (ca.externalCa.configuration ?? {}) as {
-    organizationId?: number;
-    productNameId?: string;
-  };
-
-  if (typeof config.organizationId !== "number" || !config.productNameId) {
+  if (effectivePurpose === DigiCertCaPurpose.Ssl && isCsProduct) {
     throw new BadRequestError({
-      message: "DigiCert certificate authority configuration is missing organization ID or product"
+      message: `Product '${productNameId}' is a code-signing product but this CA is configured for SSL`
     });
   }
-
-  return {
-    id: ca.id,
-    type: CaType.DIGICERT,
-    enableDirectIssuance: ca.enableDirectIssuance,
-    name: ca.name,
-    projectId: ca.projectId,
-    credentials: ca.externalCa.credentials,
-    configuration: {
-      appConnectionId: ca.externalCa.appConnectionId,
-      organizationId: config.organizationId,
-      productNameId: config.productNameId
-    },
-    status: ca.status as CaStatus
-  };
 };
-
-export const getDigiCertClientCredentials = async (
-  appConnectionId: string,
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<{ apiKey: string; baseUrl: string }> => {
-  const appConnection = await appConnectionDAL.findById(appConnectionId);
-  if (!appConnection) {
-    throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
-  }
-  if (appConnection.app !== AppConnection.DigiCert) {
-    throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not a DigiCert connection` });
-  }
-
-  const credentials = (await decryptAppConnectionCredentials({
-    orgId: appConnection.orgId,
-    projectId: appConnection.projectId,
-    encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
-  })) as TDigiCertConnection["credentials"];
-
-  return {
-    apiKey: credentials.apiKey,
-    baseUrl: getDigiCertApiBaseUrl(credentials.region)
-  };
-};
-
-const PEM_CERTIFICATE_RE2 = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g");
 
 const TTL_RE2 = new RE2("^(\\d+)([dhm])$");
 const parseTtlToDays = (ttl: string): number => {
@@ -152,40 +106,6 @@ const parseTtlToDays = (ttl: string): number => {
   }
 };
 
-const extractLeafAndChain = (pemBundle: string): { leaf: string; chain: string } => {
-  const matches = pemBundle.match(PEM_CERTIFICATE_RE2);
-  if (!matches || matches.length === 0) {
-    throw new BadRequestError({ message: "DigiCert returned an empty certificate bundle" });
-  }
-
-  if (matches.length < 2) {
-    throw new BadRequestError({
-      message: `DigiCert returned an incomplete certificate bundle (${matches.length} entry, expected leaf + chain)`
-    });
-  }
-
-  let leafIndex = -1;
-  matches.forEach((pem, index) => {
-    if (leafIndex !== -1) return;
-    try {
-      const cert = new x509.X509Certificate(pem);
-      const basicConstraints = cert.getExtension(x509.BasicConstraintsExtension);
-      if (!basicConstraints?.ca) leafIndex = index;
-    } catch {
-      // skip unparseable entries
-    }
-  });
-
-  if (leafIndex === -1) leafIndex = 0;
-
-  const leaf = matches[leafIndex].trim();
-  const chain = matches
-    .filter((_, index) => index !== leafIndex)
-    .map((cert) => cert.trim())
-    .join("\n");
-  return { leaf, chain };
-};
-
 export const DigiCertCertificateAuthorityFns = ({
   appConnectionDAL,
   appConnectionService,
@@ -197,6 +117,15 @@ export const DigiCertCertificateAuthorityFns = ({
   kmsService,
   projectDAL
 }: TDigiCertCertificateAuthorityFnsDeps) => {
+  const codeSigningFns = digiCertCodeSigningFns({
+    appConnectionDAL,
+    certificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    kmsService,
+    projectDAL
+  });
+
   const createCertificateAuthority = async ({
     name,
     projectId,
@@ -210,7 +139,7 @@ export const DigiCertCertificateAuthorityFns = ({
     configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
     actor: OrgServiceActor;
   }) => {
-    const { appConnectionId, organizationId, productNameId } = configuration;
+    const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
@@ -227,6 +156,17 @@ export const DigiCertCertificateAuthorityFns = ({
       { connectionId: appConnectionId, projectId },
       actor
     );
+
+    assertPurposeMatchesProduct(purpose, productNameId);
+
+    if (purpose === DigiCertCaPurpose.CodeSigning) {
+      await codeSigningFns.assertCsOrgValidatedOrContactProvided({
+        appConnectionId,
+        organizationId,
+        productNameId,
+        verifiedContact
+      });
+    }
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
       try {
@@ -247,7 +187,9 @@ export const DigiCertCertificateAuthorityFns = ({
             type: CaType.DIGICERT,
             configuration: {
               organizationId,
-              productNameId
+              productNameId,
+              purpose: purpose ?? DigiCertCaPurpose.Ssl,
+              ...(verifiedContact ? { verifiedContact } : {})
             }
           },
           tx
@@ -286,30 +228,44 @@ export const DigiCertCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    if (configuration) {
+      const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+      }
+      if (appConnection.app !== AppConnection.DigiCert) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not a DigiCert connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+
+      assertPurposeMatchesProduct(purpose, productNameId);
+
+      if (purpose === DigiCertCaPurpose.CodeSigning) {
+        await codeSigningFns.assertCsOrgValidatedOrContactProvided({
+          appConnectionId,
+          organizationId,
+          productNameId,
+          verifiedContact
+        });
+      }
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { appConnectionId, organizationId, productNameId } = configuration;
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-        if (!appConnection) {
-          throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
-        }
-        if (appConnection.app !== AppConnection.DigiCert) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not a DigiCert connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
-
+        const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -319,7 +275,9 @@ export const DigiCertCertificateAuthorityFns = ({
             appConnectionId,
             configuration: {
               organizationId,
-              productNameId
+              productNameId,
+              purpose: purpose ?? DigiCertCaPurpose.Ssl,
+              ...(verifiedContact ? { verifiedContact } : {})
             }
           },
           tx
@@ -463,9 +421,9 @@ export const DigiCertCertificateAuthorityFns = ({
       "cannot_renew_expired_order",
       "product_not_eligible_for_renewal"
     ];
-    let orderResponse: Awaited<ReturnType<typeof client.placeOrder>>;
+    let orderResponse: TPlaceOrderResponse;
     try {
-      orderResponse = await client.placeOrder(productNameId, {
+      orderResponse = await client.placeOrder<TPlaceOrderResponse>(productNameId, {
         ...baseOrderPayload,
         ...(renewalOfOrderId ? { renewal_of_order_id: renewalOfOrderId } : {})
       });
@@ -477,7 +435,7 @@ export const DigiCertCertificateAuthorityFns = ({
         logger.warn(
           `DigiCert rejected renewal linkage (renewal_of_order_id=${renewalOfOrderId}) as not eligible; retrying as a fresh order [caId=${caId}]`
         );
-        orderResponse = await client.placeOrder(productNameId, baseOrderPayload);
+        orderResponse = await client.placeOrder<TPlaceOrderResponse>(productNameId, baseOrderPayload);
       } else {
         throw err;
       }
@@ -728,7 +686,13 @@ export const DigiCertCertificateAuthorityFns = ({
     orderCertificate,
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
-    revokeCertificate
+    revokeCertificate,
+    orderCodeSigningCertificate: codeSigningFns.orderCodeSigningCertificate,
+    reissueCodeSigningCertificate: codeSigningFns.reissueCodeSigningCertificate,
+    findCodeSigningOrderByReference: codeSigningFns.findCodeSigningOrderByReference,
+    assertCodeSigningOrderReusable: codeSigningFns.assertCodeSigningOrderReusable,
+    getCodeSigningOrderStatus: codeSigningFns.getCodeSigningOrderStatus,
+    downloadCodeSigningCertificate: codeSigningFns.downloadCodeSigningCertificate
   };
 };
 

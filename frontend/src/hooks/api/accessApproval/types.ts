@@ -80,6 +80,8 @@ export type TAccessApprovalRequest = {
     isApproved: boolean;
   } | null;
   status: ApprovalStatus;
+  // Set when the request was approved via break-glass without the required reviews.
+  bypassReason?: string | null;
   policy: {
     id: string;
     name: string;

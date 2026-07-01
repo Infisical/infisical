@@ -435,6 +435,11 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                       <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
                     </li>
                     <li>
+                      <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of the
+                      certificate ID. Use it instead of <code>{"{{certificateId}}"}</code> when the
+                      destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63 characters).
+                    </li>
+                    <li>
                       <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
                     </li>
                     <li>
@@ -445,12 +450,17 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                       <code>{"{{applicationId}}"}</code> - The ID of the application the sync
                       belongs to
                     </li>
+                    <li>
+                      <code>{"{{applicationName}}"}</code> - The name of the application the sync
+                      belongs to
+                    </li>
                   </ul>
                   <span className="mt-1 text-xs text-bunker-300">
-                    The schema must include <code>{"{{certificateId}}"}</code> so each certificate
-                    gets a unique name. The template itself can only contain letters, numbers, and
-                    the separators allowed by the destination. When placeholders resolve, any
-                    characters the destination doesn&apos;t support are replaced with hyphens.
+                    The schema must include <code>{"{{certificateId}}"}</code> or{" "}
+                    <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique name.
+                    The template itself can only contain letters, numbers, and the separators
+                    allowed by the destination. When placeholders resolve, any characters the
+                    destination doesn&apos;t support are replaced with hyphens.
                   </span>
                 </div>
                 {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
@@ -467,10 +477,14 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
               </div>
             }
             isError={Boolean(error)}
-            isOptional
+            isOptional={currentDestination === PkiSync.AwsElasticLoadBalancer}
             errorText={error?.message}
             label="Certificate Name Schema"
-            helperText="Infisical strongly advises setting a Certificate Name Schema to ensure that Infisical only manages the specific certificates you intend to manage, keeping everything else untouched."
+            helperText={
+              currentDestination === PkiSync.AwsElasticLoadBalancer
+                ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+                : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+            }
           >
             <Input
               value={value || ""}

@@ -2915,6 +2915,9 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    CLOUD66: {
+      accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
+    },
     CONVEX: {
       accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
       instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
@@ -3245,6 +3248,10 @@ export const SecretSyncs = {
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
       dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+    },
+    CLOUD66: {
+      stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
+      stackName: "The name of the Cloud 66 stack to sync secrets to."
     },
     NORTHFLANK: {
       projectId: "The ID of the Northflank project to sync secrets to.",

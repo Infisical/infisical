@@ -15,6 +15,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -117,6 +118,20 @@ export const telemetryServiceFactory = ({
   emailDomainDAL
 }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
+
+  let instanceIdPromise: Promise<string | undefined> | undefined;
+  const getInstanceId = (): Promise<string | undefined> => {
+    if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
+    if (!instanceIdPromise) {
+      instanceIdPromise = getServerCfg()
+        .then(({ instanceId }) => instanceId)
+        .catch(() => {
+          instanceIdPromise = undefined;
+          return undefined;
+        });
+    }
+    return instanceIdPromise;
+  };
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
     // eslint-disable-next-line
@@ -345,7 +360,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // `anonymous-<shareId>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
-      const properties = event.anonymous ? { ...event.properties, $process_person_profile: false } : event.properties;
+      const instanceId = await getInstanceId();
+      const baseProperties = event.anonymous
+        ? { ...event.properties, $process_person_profile: false }
+        : event.properties;
+      const properties = instanceId ? { ...baseProperties, instanceId } : baseProperties;
 
       postHog.capture({
         event: event.event,
@@ -474,6 +493,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // when multiple users share the same org within a bucket
       const orgPropertiesCache = new Map<string, Record<string, unknown>>();
 
+      const instanceId = await getInstanceId();
+
       for (const [eventsKey, events] of eventsGrouped) {
         const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
         if (key.org) {
@@ -517,6 +538,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         // Always attach orgId as a flat property so aggregated events are filterable by organization
         if (key.org) {
           properties.orgId = key.org;
+        }
+
+        if (instanceId) {
+          properties.instanceId = instanceId;
         }
 
         postHog.capture({
