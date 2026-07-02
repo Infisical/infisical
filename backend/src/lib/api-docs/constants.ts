@@ -2943,6 +2943,10 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    GITEA: {
+      personalAccessToken: "The Personal Access Token used to authenticate with Gitea.",
+      instanceUrl: "The URL of the Gitea instance to connect to."
     }
   }
 };

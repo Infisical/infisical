@@ -110,6 +110,7 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
+import { ValidateGiteaConnectionCredentialsSchema } from "./gitea";
 import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
@@ -266,7 +267,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
-  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
+  [AppConnection.Gitea]: ValidateGiteaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

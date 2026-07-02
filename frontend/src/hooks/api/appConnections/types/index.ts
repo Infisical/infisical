@@ -30,6 +30,7 @@ import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TF5BigIpConnection } from "./f5-big-ip-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
+import { TGiteaConnection } from "./gitea-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { TGitLabConnection } from "./gitlab-connection";
@@ -209,7 +210,8 @@ export type TAppConnection =
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
-  | TTriggerDevConnection;
+  | TTriggerDevConnection
+  | TGiteaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

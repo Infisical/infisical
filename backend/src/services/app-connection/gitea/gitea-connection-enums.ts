@@ -1,3 +1,3 @@
 export enum GiteaConnectionMethod {
-  AccessToken = "access-token"
+  PersonalAccessToken = "personal-access-token"
 }

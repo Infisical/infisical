@@ -197,6 +197,12 @@ import {
   TValidateGcpConnectionCredentialsSchema
 } from "./gcp";
 import {
+  TGiteaConnection,
+  TGiteaConnectionConfig,
+  TGiteaConnectionInput,
+  TValidateGiteaConnectionCredentialsSchema
+} from "./gitea";
+import {
   TGitHubConnection,
   TGitHubConnectionConfig,
   TGitHubConnectionInput,
@@ -487,6 +493,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TGiteaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -568,6 +575,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TGiteaConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -680,7 +688,8 @@ export type TAppConnectionConfig =
   | TSnowflakeConnectionConfig
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
-  | TConvexConnectionConfig;
+  | TConvexConnectionConfig
+  | TGiteaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -752,7 +761,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSnowflakeConnectionCredentialsSchema
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
-  | TValidateConvexConnectionCredentialsSchema;
+  | TValidateConvexConnectionCredentialsSchema
+  | TValidateGiteaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

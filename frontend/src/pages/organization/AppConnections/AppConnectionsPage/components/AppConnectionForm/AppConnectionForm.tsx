@@ -85,6 +85,7 @@ import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
+import { GiteaConnectionForm } from "./GiteaConnectionForm";
 
 type AppConnectionFormData = DiscriminativePick<
   TAppConnection,
@@ -324,6 +325,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Gitea:
+        return <GiteaConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -575,6 +578,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Gitea:
+        return <GiteaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

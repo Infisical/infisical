@@ -442,4 +442,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
+  [AppConnection.Gitea]: TGiteaConnectionOption;
 };

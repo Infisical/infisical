@@ -64,6 +64,7 @@ import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
+import { GiteaConnectionMethod } from "@app/hooks/api/appConnections/types/gitea-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -670,6 +671,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Certificate", icon: faCertificate };
     case F5BigIpConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case GiteaConnectionMethod.PersonalAccessToken:
+      return { name: "Personal Access Token", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
