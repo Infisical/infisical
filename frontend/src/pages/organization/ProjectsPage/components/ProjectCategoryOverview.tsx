@@ -183,8 +183,8 @@ export const ProjectCategoryOverview = () => {
       case ProjectType.PAM:
         return [
           { label: "accounts", value: productStats.pam.accountsCount },
-          { label: "resources", value: productStats.pam.resourcesCount },
-          { label: "projects", value: productStats.pam.projectsCount }
+          { label: "account templates", value: productStats.pam.accountTemplatesCount },
+          { label: "folders", value: productStats.pam.foldersCount }
         ];
       default:
         return [];

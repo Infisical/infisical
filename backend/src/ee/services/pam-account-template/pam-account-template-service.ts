@@ -132,9 +132,9 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     } catch (err) {
       if (
         err instanceof DatabaseError &&
-        (err as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
-        throw new BadRequestError({ message: `A template named "${name}" already exists` });
+        throw new BadRequestError({ message: `An account template named "${name}" already exists in this project` });
       }
       throw err;
     }
@@ -184,9 +184,9 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     } catch (err) {
       if (
         err instanceof DatabaseError &&
-        (err as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
-        throw new BadRequestError({ message: `A template named "${name}" already exists` });
+        throw new BadRequestError({ message: `An account template named "${name}" already exists in this project` });
       }
       throw err;
     }
