@@ -182,7 +182,7 @@ export const SecretImportItem = ({
         <div className="flex items-center space-x-4 py-2 pr-4">
           {isAccessRevoked && (
             <span className="rounded border border-red-700/40 bg-red-900/20 px-1.5 py-0.5 text-xs text-red-400">
-              Access revoked
+              Secret share revoked
             </span>
           )}
           {lastReplicated && (
@@ -316,8 +316,8 @@ export const SecretImportItem = ({
                     </EmptyTitle>
                   </div>
                   <EmptyDescription className="text-danger/70">
-                    Imported values can no longer be resolved and any reference to them will fail at
-                    build time. Re-request access from the source project, or remove this import.
+                    Import can no longer be resolved. Re-request access from the source project or
+                    remove this import.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

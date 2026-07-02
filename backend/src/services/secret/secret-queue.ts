@@ -95,7 +95,10 @@ type TSecretQueueFactoryDep = {
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: TSecretDALFactory;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
+  secretImportDAL: Pick<
+    TSecretImportDALFactory,
+    "find" | "findByFolderIds" | "findByIds" | "findCrossProjectImportsBySourceFolder"
+  >;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;
@@ -902,6 +905,78 @@ export const secretQueueFactory = ({
               })
             )
         );
+      }
+
+      // Cross-project imports: find imports from other projects that import from this folder
+      const crossProjectImports = await secretImportDAL.findCrossProjectImportsBySourceFolder(
+        folder.environment.id,
+        secretPath,
+        projectId
+      );
+      if (crossProjectImports.length) {
+        logger.info(
+          `getIntegrationSecrets: Syncing cross-project imports [jobId=${job.id}] [sourceProjectId=${projectId}] [environment=${environment}] [secretPath=${secretPath}] [targetCount=${crossProjectImports.length}]`
+        );
+        const crossProjectGroups = groupBy(crossProjectImports, (i) => i.targetProjectId);
+        for await (const [targetProjectId, groupImports] of Object.entries(crossProjectGroups)) {
+          const targetFolderIds = unique(groupImports, (i) => i.folderId).map(({ folderId }) => folderId);
+          const targetFolders = await folderDAL.findSecretPathByFolderIds(targetProjectId, targetFolderIds);
+          const targetFoldersGroupedById = groupBy(targetFolders.filter(Boolean), (i) => i?.id as string);
+          const { targetOrgId } = groupImports[0];
+
+          await Promise.all(
+            targetFolderIds
+              .filter((folderId) => Boolean(targetFoldersGroupedById[folderId]?.[0]?.path))
+              .map((folderId) =>
+                syncSecrets({
+                  projectId: targetProjectId,
+                  orgId: targetOrgId,
+                  secretPath: targetFoldersGroupedById[folderId][0]?.path as string,
+                  environmentSlug: targetFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                  environmentName: targetFoldersGroupedById[folderId][0]?.environmentName as string,
+                  _depth: depth + 1,
+                  excludeReplication: true
+                })
+              )
+          );
+        }
+      }
+
+      // Cross-project references: find secrets in other projects that reference secrets in this folder
+      if (shouldUseSecretV2Bridge) {
+        const crossProjectRefs = await secretV2BridgeDAL.findCrossProjectSecretReferencesByTargetFolder(
+          project.slug,
+          environment,
+          secretPath
+        );
+        if (crossProjectRefs.length) {
+          logger.info(
+            `getIntegrationSecrets: Syncing cross-project references [jobId=${job.id}] [sourceProjectId=${projectId}] [environment=${environment}] [secretPath=${secretPath}] [refCount=${crossProjectRefs.length}]`
+          );
+          const crossRefProjectGroups = groupBy(crossProjectRefs, (i) => i.referencingProjectId);
+          for await (const [referencingProjectId, groupRefs] of Object.entries(crossRefProjectGroups)) {
+            const refFolderIds = unique(groupRefs, (i) => i.folderId).map(({ folderId }) => folderId);
+            const refFolders = await folderDAL.findSecretPathByFolderIds(referencingProjectId, refFolderIds);
+            const refFoldersGroupedById = groupBy(refFolders.filter(Boolean), (i) => i?.id as string);
+            const { referencingOrgId } = groupRefs[0];
+
+            await Promise.all(
+              refFolderIds
+                .filter((folderId) => Boolean(refFoldersGroupedById[folderId]?.[0]?.path))
+                .map((folderId) =>
+                  syncSecrets({
+                    projectId: referencingProjectId,
+                    orgId: referencingOrgId,
+                    secretPath: refFoldersGroupedById[folderId][0]?.path as string,
+                    environmentSlug: refFoldersGroupedById[folderId][0]?.environmentSlug as string,
+                    environmentName: refFoldersGroupedById[folderId][0]?.environmentName as string,
+                    _depth: depth + 1,
+                    excludeReplication: true
+                  })
+                )
+            );
+          }
+        }
       }
 
       const lock = await keyStore.acquireLock(

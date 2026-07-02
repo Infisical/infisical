@@ -18,6 +18,7 @@ import { isCrossProjectEnabled } from "./project-folder-grant-fns";
 import {
   TCreateProjectFolderGrantDTO,
   TDeleteProjectFolderGrantDTO,
+  TGetGrantUsageDTO,
   TListProjectFolderGrantsDTO,
   TListProjectFolderGrantsForTargetDTO
 } from "./project-folder-grant-types";
@@ -197,5 +198,50 @@ export const projectFolderGrantServiceFactory = ({
     return projectFolderGrantDAL.listByTargetProject(targetProjectId);
   };
 
-  return { createGrant, deleteGrant, listGrantsByProject, listGrantsForTargetProject };
+  const getGrantUsage = async ({
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    grantId,
+    sourceProjectId
+  }: TGetGrantUsageDTO) => {
+    const grant = await projectFolderGrantDAL.findById(grantId);
+    if (!grant || grant.sourceProjectId !== sourceProjectId) {
+      throw new NotFoundError({ message: "Grant not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId: sourceProjectId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionProjectFolderGrantActions.ReadGrant,
+      ProjectPermissionSub.ProjectFolderGrant
+    );
+
+    const [folderInfo] = await folderDAL.findSecretPathByFolderIds(sourceProjectId, [grant.sourceFolderId]);
+    if (!folderInfo) {
+      return { importCount: 0, referenceCount: 0 };
+    }
+
+    const sourceProject = await projectDAL.findById(sourceProjectId);
+    if (!sourceProject) {
+      return { importCount: 0, referenceCount: 0 };
+    }
+
+    return projectFolderGrantDAL.countUsageByGrant({
+      targetProjectId: grant.targetProjectId,
+      sourceEnvId: folderInfo.envId,
+      sourcePath: folderInfo.path,
+      sourceProjectSlug: sourceProject.slug,
+      sourceEnvSlug: folderInfo.environmentSlug
+    });
+  };
+
+  return { createGrant, deleteGrant, listGrantsByProject, listGrantsForTargetProject, getGrantUsage };
 };

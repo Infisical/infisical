@@ -27,6 +27,11 @@ export type TListProjectFolderGrantsForTargetDTO = TBaseActor & {
   targetProjectId: string;
 };
 
+export type TGetGrantUsageDTO = TBaseActor & {
+  grantId: string;
+  sourceProjectId: string;
+};
+
 export type TCheckRevokedGrantsDTO = {
   targetProjectId: string;
   actorOrgId: string;

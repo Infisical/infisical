@@ -443,8 +443,10 @@ export const CreateSecretImportForm = ({
                 <TabsTrigger value="another-project">Another Project</TabsTrigger>
               </TabsList>
               <Tooltip>
-                <TooltipTrigger>
-                  <InfoIcon size={16} className="text-mineshaft-400" />
+                <TooltipTrigger asChild>
+                  <span className="flex cursor-default items-center">
+                    <InfoIcon size={16} className="text-mineshaft-400" />
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="right" align="start" className="max-w-sm">
                   <p className="mb-2 text-mineshaft-300">

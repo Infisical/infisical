@@ -360,6 +360,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           return;
         }
 
+        if (allSegments[0]?.startsWith("@")) return;
+
         if (allSegments.length === 1) {
           const canReadSecretValue = hasSecretReadValueOrDescribePermission(
             permission,

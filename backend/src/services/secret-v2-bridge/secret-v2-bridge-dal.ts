@@ -1039,6 +1039,40 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findCrossProjectSecretReferencesByTargetFolder = async (
+    targetProjectSlug: string,
+    envSlug: string,
+    secretPath: string,
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .where({
+          [`${TableName.SecretReferenceV2}.secretPath` as "secretPath"]: secretPath,
+          [`${TableName.SecretReferenceV2}.environment` as "environment"]: envSlug,
+          [`${TableName.SecretReferenceV2}.targetProjectSlug` as "targetProjectSlug"]: targetProjectSlug
+        })
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where({
+          [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false
+        })
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(
+          db.ref("folderId").withSchema(TableName.SecretV2),
+          db.ref("projectId").withSchema(TableName.Environment).as("referencingProjectId"),
+          db.ref("orgId").withSchema(TableName.Project).as("referencingOrgId")
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCrossProjectSecretReferencesByTargetFolder" });
+    }
+  };
+
   const updateSecretReferenceEnvAndPath = async (
     projectId: string,
     oldEnvSlug: string,
@@ -1485,6 +1519,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findSecretsWithReminderRecipientsOld,
     findReferencedSecretReferencesBySecretKey,
     findCrossProjectSecretReferencesByTargetSecretKey,
+    findCrossProjectSecretReferencesByTargetFolder,
     updateSecretReferenceSecretKey,
     updateSecretReferenceEnvAndPath
   };

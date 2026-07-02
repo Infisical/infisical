@@ -119,6 +119,37 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
   });
 
   server.route({
+    method: "GET",
+    url: "/:grantId/usage",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({
+        grantId: z.string().uuid()
+      }),
+      querystring: z.object({
+        sourceProjectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          importCount: z.number(),
+          referenceCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.projectFolderGrant.getGrantUsage({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        grantId: req.params.grantId,
+        sourceProjectId: req.query.sourceProjectId
+      });
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/:grantId",
     config: { rateLimit: writeLimit },

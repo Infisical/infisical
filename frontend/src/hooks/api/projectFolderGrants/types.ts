@@ -38,3 +38,8 @@ export type TDeleteProjectFolderGrantDTO = {
   grantId: string;
   sourceProjectId: string;
 };
+
+export type TProjectFolderGrantUsage = {
+  importCount: number;
+  referenceCount: number;
+};

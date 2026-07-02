@@ -482,8 +482,8 @@ export const SecretImportTableRow = ({
           </EmptyTitle>
         </div>
         <EmptyDescription>
-          Imported values can no longer be resolved and any reference to them will fail at build
-          time. Re-request access from the source project, or remove this import.
+          Import can no longer be resolved. Re-request access from the source project or remove
+          this import.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -729,7 +729,7 @@ export const SecretImportTableRow = ({
               >
                 <Badge variant="danger">
                   <BanIcon />
-                  Access revoked
+                  Secret share revoked
                 </Badge>
               </div>
             )}

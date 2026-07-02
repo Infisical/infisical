@@ -524,6 +524,41 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCrossProjectImportsBySourceFolder = async (
+    sourceEnvId: string,
+    sourceSecretPath: string,
+    sourceProjectId: string,
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where({
+          [`${TableName.SecretImport}.importEnv` as "importEnv"]: sourceEnvId,
+          [`${TableName.SecretImport}.importPath` as "importPath"]: sourceSecretPath
+        })
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretImport}.isReplication`, false)
+            .orWhereNull(`${TableName.SecretImport}.isReplication`);
+        })
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNot(`${TableName.Environment}.projectId`, sourceProjectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(
+          db.ref("folderId").withSchema(TableName.SecretImport),
+          db.ref("projectId").withSchema(TableName.Environment).as("targetProjectId"),
+          db.ref("orgId").withSchema(TableName.Project).as("targetOrgId")
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCrossProjectImportsBySourceFolder" });
+    }
+  };
+
   return {
     ...secretImportOrm,
     find,
@@ -537,6 +572,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     getProjectImportCount,
     getUniqueImportCountByFolderIds,
     getFolderIsImportedBy,
-    getFolderImports
+    getFolderImports,
+    findCrossProjectImportsBySourceFolder
   };
 };

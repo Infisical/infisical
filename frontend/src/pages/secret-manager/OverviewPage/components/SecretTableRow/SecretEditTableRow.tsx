@@ -1124,7 +1124,7 @@ export const SecretEditTableRow = ({
           >
             <Badge variant="danger">
               <BanIcon className="size-3.5" />
-              Access Revoked
+              Secret share revoked
             </Badge>
           </div>
         )}

@@ -12,6 +12,14 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Breadcrumb,
   BreadcrumbItem,
@@ -20,11 +28,14 @@ import {
   BreadcrumbSeparator,
   Button,
   DocumentationLinkBadge,
-  IconButton
+  IconButton,
+  Input
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
+  TProjectFolderGrant,
   useDeleteProjectFolderGrant,
+  useGetProjectFolderGrantUsage,
   useListProjectFolderGrants
 } from "@app/hooks/api/projectFolderGrants";
 
@@ -53,22 +64,119 @@ const FolderPath = ({ folderName }: FolderPathProps) => {
   );
 };
 
-export const CrossProjectSharingSection = () => {
-  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-  const { currentProject } = useProject();
+type DeleteGrantDialogProps = {
+  grant: TProjectFolderGrant | null;
+  onOpenChange: (open: boolean) => void;
+  sourceProjectId: string;
+};
 
-  const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
+const CONFIRMATION_KEYWORD = "confirm";
+
+const DeleteGrantDialog = ({ grant, onOpenChange, sourceProjectId }: DeleteGrantDialogProps) => {
+  const [confirmation, setConfirmation] = useState("");
   const deleteGrant = useDeleteProjectFolderGrant();
+  const { data: usage, isLoading: isLoadingUsage } = useGetProjectFolderGrantUsage(
+    grant?.id ?? "",
+    sourceProjectId,
+    Boolean(grant)
+  );
 
-  const handleDelete = async (grantId: string) => {
+  const totalUsage = (usage?.importCount ?? 0) + (usage?.referenceCount ?? 0);
+  const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
+
+  const handleConfirmDelete = async () => {
+    if (!grant || !isConfirmed) return;
     try {
-      await deleteGrant.mutateAsync({ grantId, sourceProjectId: currentProject.id });
+      await deleteGrant.mutateAsync({ grantId: grant.id, sourceProjectId });
       createNotification({ text: "Grant removed", type: "success" });
+      onOpenChange(false);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to remove grant", type: "error" });
     }
   };
+
+  const renderDescription = () => {
+    if (isLoadingUsage) {
+      return "Checking for active usage...";
+    }
+
+    if (totalUsage > 0) {
+      const parts: string[] = [];
+      if (usage!.importCount > 0) {
+        parts.push(
+          `${usage!.importCount} secret ${usage!.importCount === 1 ? "import" : "imports"}`
+        );
+      }
+      if (usage!.referenceCount > 0) {
+        parts.push(
+          `${usage!.referenceCount} secret ${usage!.referenceCount === 1 ? "reference" : "references"}`
+        );
+      }
+      return (
+        <>
+          This grant is actively used by {parts.join(" and ")} in{" "}
+          <strong>{grant?.targetProjectName}</strong>. Removing it will break{" "}
+          {totalUsage === 1 ? "that link" : "those links"}.
+        </>
+      );
+    }
+
+    return (
+      <>
+        This will revoke <strong>{grant?.targetProjectName}</strong>&apos;s access to the shared
+        secrets. This action cannot be undone.
+      </>
+    );
+  };
+
+  return (
+    <AlertDialog
+      open={Boolean(grant)}
+      onOpenChange={(open) => {
+        if (!open) setConfirmation("");
+        onOpenChange(open);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove Grant</AlertDialogTitle>
+          <AlertDialogDescription>{renderDescription()}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="w-full pb-4">
+          <p className="mb-2 text-sm text-muted">
+            Type <span className="font-medium text-foreground">{CONFIRMATION_KEYWORD}</span> to
+            proceed
+          </p>
+          <Input
+            value={confirmation}
+            onChange={(e) => setConfirmation(e.target.value)}
+            placeholder={CONFIRMATION_KEYWORD}
+            autoComplete="off"
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="danger"
+            onClick={handleConfirmDelete}
+            isPending={deleteGrant.isPending}
+            disabled={!isConfirmed || isLoadingUsage}
+          >
+            Remove
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+export const CrossProjectSharingSection = () => {
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [grantToDelete, setGrantToDelete] = useState<TProjectFolderGrant | null>(null);
+  const { currentProject } = useProject();
+
+  const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -137,18 +245,20 @@ export const CrossProjectSharingSection = () => {
               </div>
 
               {/* delete */}
-              <IconButton
-                variant="ghost-muted"
-                size="xs"
-                isPending={deleteGrant.isPending}
-                onClick={() => handleDelete(grant.id)}
-              >
+              <IconButton variant="ghost-muted" size="xs" onClick={() => setGrantToDelete(grant)}>
                 <Trash2 />
               </IconButton>
             </div>
           ))}
         </div>
       )}
+      <DeleteGrantDialog
+        grant={grantToDelete}
+        onOpenChange={(open) => {
+          if (!open) setGrantToDelete(null);
+        }}
+        sourceProjectId={currentProject.id}
+      />
     </div>
   );
 };
