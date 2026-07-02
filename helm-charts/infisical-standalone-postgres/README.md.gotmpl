@@ -1,0 +1,50 @@
+{{- /* Infisical Helm Chart Documentation Template */ -}}
+{{- /* Produces HashiCorp-style grouped parameter reference */ -}}
+---
+title: "{{ template "chart.name" . }}"
+---
+
+{{ template "chart.header" . }}
+
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ if .Description }}{{ .Description }}{{ end }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Table of content
+
+Use these links to navigate to a particular top-level stanza.
+
+{{- $defined := dict }}
+{{- range .Values }}
+  {{- $top := index (splitList "." .Key) 0 }}
+  {{- if not (hasKey $defined $top) }}
+    {{- $_ := set $defined $top true }}
+  {{- end }}
+{{- end }}
+{{- range $key, $_ := $defined }}
+- [`{{ $key }}`](#{{ $key }})
+{{- end }}
+
+## All values
+
+{{- range $stanza, $_ := $defined }}
+
+### {{ $stanza }}
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+{{- range $.Values }}
+  {{- if or (eq .Key $stanza) (hasPrefix (printf "%s." $stanza) .Key) }}
+| `{{ .Key }}` | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}`nil`{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+{{- end }}
