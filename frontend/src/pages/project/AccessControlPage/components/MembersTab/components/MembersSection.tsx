@@ -26,7 +26,6 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
-import { InviteMembersModal } from "./InviteMembersModal";
 import { MembersTable } from "./MembersTable";
 
 export const MembersSection = () => {
@@ -39,7 +38,6 @@ export const MembersSection = () => {
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
-    "inviteMembers",
     "removeMember",
     "assumePrivileges"
   ] as const);
@@ -74,38 +72,21 @@ export const MembersSection = () => {
             {`Invite and manage ${productLabel.toLowerCase()} users`}
           </CardDescription>
           <CardAction>
-            <div className="flex items-center gap-2">
-              {/* TEMP: preview trigger for the Invite Members modal. Replace with the real action later. */}
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Create}
-                a={ProjectPermissionSub.Member}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    onClick={() => handlePopUpOpen("inviteMembers")}
-                    isDisabled={!isAllowed}
-                  >
-                    Invite team (preview)
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Create}
-                a={ProjectPermissionSub.Member}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="project"
-                    onClick={() => handlePopUpOpen("addMember")}
-                    isDisabled={!isAllowed}
-                  >
-                    <UserPlusIcon />
-                    {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-            </div>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Member}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="project"
+                  onClick={() => handlePopUpOpen("addMember")}
+                  isDisabled={!isAllowed}
+                >
+                  <UserPlusIcon />
+                  {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
+                </Button>
+              )}
+            </ProjectPermissionCan>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -113,7 +94,6 @@ export const MembersSection = () => {
         </CardContent>
       </Card>
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <InviteMembersModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         deleteKey="remove"

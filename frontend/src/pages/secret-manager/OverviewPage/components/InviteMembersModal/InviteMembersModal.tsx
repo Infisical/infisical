@@ -23,7 +23,9 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const inviteMembersFormSchema = z.object({
@@ -43,20 +45,6 @@ type TInviteMembersForm = z.infer<typeof inviteMembersFormSchema>;
 type Props = {
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
-};
-
-const getInitials = (user: {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  username?: string;
-}) => {
-  const first = user.firstName?.trim();
-  const last = user.lastName?.trim();
-  if (first || last) {
-    return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase();
-  }
-  return (user.email || user.username || "?").charAt(0).toUpperCase();
 };
 
 export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
@@ -82,12 +70,11 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { append } = useFieldArray<TInviteMembersForm>({ control, name: "members" });
 
+  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+
   // Org members that are not already part of this project, shown as suggestions.
   const suggestionList = useMemo(() => {
-    const wsUserUsernames = new Map();
-    members?.forEach((member) => {
-      wsUserUsernames.set(member.user.username, true);
-    });
+    const wsUserUsernames = new Set(members?.map((member) => member.user.username));
     return (orgUsers || [])
       .filter(({ user: u }) => !wsUserUsernames.has(u.username))
       .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
@@ -99,15 +86,53 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       }));
   }, [orgUsers, members]);
 
-  const teammates = useMemo(() => (members ?? []).slice(0, 3), [members]);
-  const teammateCount = members?.length ?? 0;
-
   const selectedMembers = watch("members");
 
-  const onInvite = () => {
-    // Submit is intentionally UI only for now. The triggering action and the real
-    // invite request are wired later (see the modal plan for how to reuse
-    // useAddUserToWsNonE2EE with the default Member role).
+  const onInvite = async ({ members: selectedPeople }: TInviteMembersForm) => {
+    if (!currentProject) return;
+    if (!currentOrg?.id) return;
+
+    if (currentProject.version === ProjectVersion.V1) {
+      createNotification({
+        type: "error",
+        text: "Please upgrade your project to invite new members to the project."
+      });
+      return;
+    }
+
+    // Suggested org members carry their membership id in `value`; resolve those back to an
+    // email/username. Typed-in invitees carry their email directly in `value`.
+    const existingOrgUsers = selectedPeople
+      .filter((person) => !person.isNewInvitee)
+      .map((person) => orgUsers?.find((orgUser) => orgUser.id === person.value));
+
+    const newInviteeEmails = selectedPeople
+      .filter((person) => person.isNewInvitee)
+      .map((person) => person.value);
+
+    const existingUserEmails = existingOrgUsers
+      .map((member) => member?.user.username || member?.user.email || null)
+      .filter(Boolean) as string[];
+
+    if (existingUserEmails.length !== existingOrgUsers.length) {
+      createNotification({
+        type: "error",
+        text: "Failed to send invites. One or more selected users were invalid."
+      });
+      return;
+    }
+
+    const usernames = [...existingUserEmails, ...newInviteeEmails];
+    if (usernames.length) {
+      await addUserToProject({
+        usernames,
+        orgId: currentOrg.id,
+        projectId: currentProject.id,
+        projectType: currentProject.type,
+        roleSlugs: [ProjectMembershipRole.Member]
+      });
+    }
+
     createNotification({
       type: "success",
       text: "Invites sent. Your teammates will get an email to join."
@@ -124,28 +149,13 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
         if (!isOpen) reset();
       }}
     >
-      <DialogContent className="overflow-visible sm:max-w-md">
+      <DialogContent
+        className="overflow-visible sm:max-w-md"
+        showCloseButton={false}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          {teammateCount > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex">
-                {teammates.map((member, idx) => (
-                  <span
-                    key={member.id}
-                    className={`flex size-7 items-center justify-center rounded-full border-2 border-popover bg-project/15 text-[11px] font-semibold text-project ${
-                      idx > 0 ? "-ml-2" : ""
-                    }`}
-                  >
-                    {getInitials(member.user)}
-                  </span>
-                ))}
-              </div>
-              <span className="text-xs text-muted">
-                {teammateCount} {teammateCount === 1 ? "teammate" : "teammates"} already on this
-                project
-              </span>
-            </div>
-          )}
           <DialogTitle>Invite your team</DialogTitle>
           <DialogDescription>
             Everyone has secrets, even your colleagues. Bring your team in to review, rotate, and
@@ -186,21 +196,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isValidNewOption={(input) =>
                       Boolean(input) &&
                       z.string().email().safeParse(input).success &&
-                      !orgUsers
-                        ?.flatMap(({ user }) => {
-                          const emails: string[] = [];
-
-                          if (user.email) {
-                            emails.push(user.email);
-                          }
-
-                          if (user.username) {
-                            emails.push(user.username);
-                          }
-
-                          return emails;
-                        })
-                        .includes(input)
+                      !orgUsers?.some(({ user }) => user.email === input || user.username === input)
                     }
                     placeholder="teammate@company.com"
                     isMulti
@@ -219,7 +215,10 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Button
               variant="ghost"
               type="button"
-              onClick={() => handlePopUpToggle("inviteMembers", false)}
+              onClick={() => {
+                handlePopUpToggle("inviteMembers", false);
+                reset();
+              }}
             >
               Maybe later
             </Button>

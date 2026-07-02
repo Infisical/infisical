@@ -122,6 +122,7 @@ import {
   usePagination,
   usePopUp,
   useResetPageHelper,
+  useSecretsActivationNudge,
   useToggle
 } from "@app/hooks";
 import {
@@ -216,6 +217,7 @@ import {
 } from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { InviteMembersModal } from "./components/InviteMembersModal";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -690,6 +692,27 @@ const OverviewPageContent = () => {
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
+
+  // Growth nudge: once the project has secrets (on load) or the user creates one, ask the backend
+  // whether to surface the "Invite your team" modal. The check runs at most once per session,
+  // opens the modal only if the backend says so, and is a no-op on failure.
+  const {
+    popUp: invitePopUp,
+    handlePopUpToggle: handleInvitePopUpToggle,
+    checkActivation: checkSecretsActivation
+  } = useSecretsActivationNudge();
+
+  const hasSecrets = !isPlaceholderData && Boolean(totalSecretCount);
+  useEffect(() => {
+    const projectName = currentProject?.name;
+
+    const shouldShowOnExampleProject =
+      projectName === "Example Project" && totalSecretCount && totalSecretCount > 5;
+
+    if (hasSecrets && shouldShowOnExampleProject) {
+      checkSecretsActivation();
+    }
+  }, [hasSecrets, checkSecretsActivation]);
 
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
@@ -3860,6 +3883,9 @@ const OverviewPageContent = () => {
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
           secretPath={pathPolicies[0].secretPath}
         />
+      )}
+      {invitePopUp.inviteMembers.isOpen && (
+        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
       )}
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm

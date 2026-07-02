@@ -3,6 +3,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/pe
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserActivationDALFactory } from "./user-activation-dal";
 import { TGetSecretsActivationStatusDTO } from "./user-activation-types";
 
@@ -16,6 +17,7 @@ type TUserActivationServiceFactoryDep = {
   userActivationDAL: TUserActivationDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByUserId">;
 };
 
 export type TUserActivationServiceFactory = ReturnType<typeof userActivationServiceFactory>;
