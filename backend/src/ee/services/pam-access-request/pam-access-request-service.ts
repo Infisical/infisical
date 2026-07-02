@@ -1,12 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TApprovalRequestGrants } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -36,12 +37,15 @@ import {
   createApprovalRequestWithSteps,
   notifyApproversForStep
 } from "@app/services/approval-policy/approval-request-fns";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TSmtpService } from "@app/services/smtp/smtp-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamProductRole } from "../pam/pam-enums";
+import { resolveAccountByPath } from "../pam/pam-fns";
 import { checkAccountAccess, checkFolderPermission, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
@@ -92,10 +96,12 @@ type TPamAccessRequestServiceFactoryDep = {
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "findOne" | "create" | "updateById">;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find" | "findOne">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
-  pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find">;
+  pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -118,6 +124,8 @@ export const pamAccessRequestServiceFactory = ({
   pamAccountTemplateDAL,
   pamFolderDAL,
   pamSessionDAL,
+  membershipDAL,
+  projectDAL,
   permissionService,
   notificationService,
   smtpService,
@@ -186,17 +194,26 @@ export const pamAccessRequestServiceFactory = ({
     });
   };
 
-  // Attach the access grant's expiry (when granted access ends) to each request. Requests
-  // themselves carry no expiry; the meaningful "expires" is the grant created on approval.
+  // Attach the access grant's expiry and status to each request. Requests themselves carry no expiry
+  // or revocation state; the meaningful "expires"/"revoked" lives on the grant created on approval.
   const attachGrantExpiry = async <T extends { id: string }>(requests: T[]) => {
-    if (requests.length === 0) return requests.map((r) => ({ ...r, grantExpiresAt: null as Date | null }));
+    if (requests.length === 0)
+      return requests.map((r) => ({
+        ...r,
+        grantExpiresAt: null as Date | null,
+        grantStatus: null as string | null
+      }));
 
     const grants = await approvalRequestGrantsDAL.find({ $in: { requestId: requests.map((r) => r.id) } });
-    const grantExpiryByRequestId = new Map<string, Date | null>(
-      grants.filter((g) => g.requestId).map((g) => [g.requestId as string, g.expiresAt ?? null])
-    );
+    const grantByRequestId = new Map<string, { expiresAt: Date | null; status: string }>();
+    grants
+      .filter((g) => g.requestId)
+      .forEach((g) => grantByRequestId.set(g.requestId as string, { expiresAt: g.expiresAt ?? null, status: g.status }));
 
-    return requests.map((r) => ({ ...r, grantExpiresAt: grantExpiryByRequestId.get(r.id) ?? null }));
+    return requests.map((r) => {
+      const grant = grantByRequestId.get(r.id);
+      return { ...r, grantExpiresAt: grant?.expiresAt ?? null, grantStatus: grant?.status ?? null };
+    });
   };
 
   const isUserEligibleApprover = (
@@ -225,10 +242,33 @@ export const pamAccessRequestServiceFactory = ({
 
   const setApprovalConfiguration = async ({ folderId, projectId, steps, ...ctx }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
-    await assertFolderPolicyManagement(folderId, projectId, ctx);
+    const folder = await assertFolderPolicyManagement(folderId, projectId, ctx);
 
     if (steps.length > 1) {
       throw new BadRequestError({ message: "Phase 1 only supports a single approval step" });
+    }
+
+    // Approvers must be members of the folder. This keeps the approver list in sync with membership so
+    // that removing someone from the folder (which strips their approver rows) can't be circumvented by
+    // designating a non-member as an approver.
+    const requestedApprovers = steps.flatMap((s) => s.approvers);
+    if (requestedApprovers.length > 0) {
+      const memberships = await membershipDAL.find({
+        scope: RESOURCE_SCOPE,
+        scopeProjectId: projectId,
+        scopeResourceType: ResourceType.PamFolder,
+        scopeResourceId: folderId
+      });
+      const memberUserIds = new Set(memberships.map((m) => m.actorUserId).filter(Boolean));
+      const memberGroupIds = new Set(memberships.map((m) => m.actorGroupId).filter(Boolean));
+
+      for (const approver of requestedApprovers) {
+        const isMember =
+          approver.type === ApproverType.User ? memberUserIds.has(approver.id) : memberGroupIds.has(approver.id);
+        if (!isMember) {
+          throw new BadRequestError({ message: "Approvers must be members of the folder" });
+        }
+      }
     }
 
     const existingPolicy = await findFolderPolicy(folderId);
@@ -322,17 +362,24 @@ export const pamAccessRequestServiceFactory = ({
     return { policyId: newPolicy.id };
   };
 
-  const createRequest = async ({ accountId, projectId, note, duration, ...ctx }: TCreateAccessRequestDTO) => {
+  const createRequest = async ({ accountId, path, projectId, note, duration, ...ctx }: TCreateAccessRequestDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!accountId && !path) {
+      throw new BadRequestError({ message: "Either 'accountId' or 'path' is required" });
+    }
+
+    // The CLI supplies a 'folderName/accountName' path; the dashboard supplies an accountId.
+    const account = path
+      ? await resolveAccountByPath({ pamFolderDAL, pamAccountDAL }, projectId, path)
+      : await pamAccountDAL.findByIdWithDetails(accountId as string);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: "Account not found" });
     }
 
     await checkAccountAccess(
       permissionService,
-      accountId,
+      account.id,
       account.folderId,
       projectId,
       ResourcePermissionPamResourceActions.RequestAccess,
@@ -362,7 +409,7 @@ export const pamAccessRequestServiceFactory = ({
 
     const hasPendingForAccount = existingPending.some((r) => {
       const data = r.requestData as { version: number; requestData: TPamAccessRequestData } | null;
-      return data?.requestData?.accountId === accountId;
+      return data?.requestData?.accountId === account.id;
     });
 
     if (hasPendingForAccount) {
@@ -381,7 +428,7 @@ export const pamAccessRequestServiceFactory = ({
     const requesterName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || user.email;
 
     const requestData = {
-      accountId,
+      accountId: account.id,
       folderId: account.folderId,
       note,
       duration
@@ -418,6 +465,50 @@ export const pamAccessRequestServiceFactory = ({
         });
       } catch (err) {
         logger.error(err, `Failed to send in-app notifications for PAM access request [requestId=${request.id}]`);
+      }
+
+      if (firstStep.notifyApprovers) {
+        try {
+          const approverUserIds = new Set<string>();
+          firstStep.approvers
+            .filter((a) => a.type === ApproverType.User)
+            .forEach((a) => approverUserIds.add(a.id));
+
+          const groupMemberLists = await Promise.all(
+            firstStep.approvers
+              .filter((a) => a.type === ApproverType.Group)
+              .map((a) => userGroupMembershipDAL.find({ groupId: a.id }))
+          );
+          groupMemberLists.forEach((members) => members.forEach((m) => approverUserIds.add(m.userId)));
+
+          const approverUsers =
+            approverUserIds.size > 0 ? await userDAL.find({ $in: { id: [...approverUserIds] } }) : [];
+          const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
+
+          if (recipients.length > 0) {
+            const project = await projectDAL.findById(projectId);
+            const cfg = getConfig();
+            const approvalUrl = `${cfg.SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
+
+            await smtpService.sendMail({
+              recipients,
+              subjectLine: "PAM Access Request",
+              template: SmtpTemplates.AccessPamRequest,
+              substitutions: {
+                projectName: project?.name ?? "PAM",
+                requesterFullName: requesterName || "Unknown",
+                requesterEmail: user.email ?? "",
+                accountName: account.name,
+                folderName: account.folderName ?? undefined,
+                accessDuration: duration,
+                note,
+                approvalUrl
+              }
+            });
+          }
+        } catch (err) {
+          logger.error(err, `Failed to send approval emails for PAM access request [requestId=${request.id}]`);
+        }
       }
     }
 
@@ -538,7 +629,9 @@ export const pamAccessRequestServiceFactory = ({
       throw new BadRequestError({ message: "Request has expired" });
     }
 
-    if (request.requesterId === ctx.actorId) {
+    // Self-approval is a conflict of interest and always blocked. Denying your own request is harmless
+    // (it only withdraws your own pending access), so it is allowed.
+    if (status === "approved" && request.requesterId === ctx.actorId) {
       throw new ForbiddenRequestError({ message: "You cannot approve your own request" });
     }
 

@@ -4,6 +4,7 @@ import { Check, Clock, ShieldCheck, X } from "lucide-react";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
+import { DeleteActionModal } from "@app/components/v2";
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, TextArea } from "@app/components/v3";
 import { useReviewPamAccessRequest, useRevokePamAccessRequest } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
@@ -29,6 +30,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
   const reviewMutation = useReviewPamAccessRequest();
   const revokeMutation = useRevokePamAccessRequest();
   const [comment, setComment] = useState("");
+  const [isRevokeConfirmOpen, setIsRevokeConfirmOpen] = useState(false);
 
   useEffect(() => {
     setComment("");
@@ -37,7 +39,8 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
   const status = getRequestStatusInfo(request ?? { status: "pending", grantExpiresAt: null });
   const requestData = request?.requestData?.requestData;
   const isPending = request?.status === "pending";
-  const isApproved = request?.status === "approved";
+  // Revocation is only possible while the grant is still active (not already revoked or expired).
+  const isGrantActive = status.label === "Approved";
 
   const handleReview = (decision: "approved" | "rejected") => {
     if (!request) return;
@@ -59,21 +62,26 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
     );
   };
 
-  const handleRevoke = () => {
+  const handleRevoke = async () => {
     if (!request) return;
-    revokeMutation.mutate(
-      { requestId: request.id },
-      {
-        onSuccess: () => {
-          createNotification({ text: "Access revoked", type: "success" });
-          onOpenChange(false);
-        }
-      }
-    );
+    await revokeMutation.mutateAsync({ requestId: request.id });
+    createNotification({ text: "Access revoked", type: "success" });
+    setIsRevokeConfirmOpen(false);
+    onOpenChange(false);
   };
 
   return (
-    <PamDetailSheet
+    <>
+      <DeleteActionModal
+        isOpen={isRevokeConfirmOpen}
+        onChange={setIsRevokeConfirmOpen}
+        title="Revoke Access"
+        subTitle="Are you sure you want to revoke this grant? Any active session using it will be terminated immediately."
+        deleteKey="revoke"
+        buttonText="Revoke"
+        onDeleteApproved={handleRevoke}
+      />
+      <PamDetailSheet
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isLoading={!request}
@@ -143,14 +151,14 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
               </div>
             </div>
 
-            {!isPending && !isApproved && (
+            {!isPending && !isGrantActive && (
               <p className="text-sm text-muted">
                 This request has been {status.label.toLowerCase()} and can no longer be actioned.
               </p>
             )}
           </div>
 
-          {(isPending || isApproved) && (
+          {(isPending || isGrantActive) && (
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               {isPending && (
                 <>
@@ -172,12 +180,8 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                   </Button>
                 </>
               )}
-              {isApproved && (
-                <Button
-                  variant="danger"
-                  onClick={handleRevoke}
-                  isPending={revokeMutation.isPending}
-                >
+              {isGrantActive && (
+                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
                   Revoke Access
                 </Button>
               )}
@@ -185,6 +189,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
           )}
         </TabsContent>
       </Tabs>
-    </PamDetailSheet>
+      </PamDetailSheet>
+    </>
   );
 };

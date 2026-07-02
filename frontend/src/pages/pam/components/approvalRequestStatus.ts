@@ -6,18 +6,20 @@ const STATUS_BADGE: Record<string, StatusInfo> = {
   pending: { variant: "warning", label: "Pending Review" },
   approved: { variant: "success", label: "Approved" },
   rejected: { variant: "danger", label: "Rejected" },
-  expired: { variant: "neutral", label: "Expired" }
+  expired: { variant: "neutral", label: "Expired" },
+  revoked: { variant: "danger", label: "Revoked" }
 };
 
-// An approved request whose grant has passed its expiry no longer confers access, so it is
-// surfaced as "Expired" even though the underlying request status stays "approved".
+// The underlying request status stays "approved" after approval; the grant carries the real
+// post-approval state. A revoked grant shows "Revoked", and a grant past its expiry shows "Expired".
 export const getRequestStatusInfo = (
-  request: Pick<TPamAccessRequest, "status" | "grantExpiresAt">
+  request: Pick<TPamAccessRequest, "status" | "grantExpiresAt" | "grantStatus">
 ): StatusInfo => {
-  const grantExpired =
-    request.status === "approved" &&
-    !!request.grantExpiresAt &&
-    new Date(request.grantExpiresAt).getTime() <= Date.now();
+  if (request.status === "approved") {
+    if (request.grantStatus === "revoked") return STATUS_BADGE.revoked;
+    const grantExpired = !!request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now();
+    if (grantExpired) return STATUS_BADGE.expired;
+  }
 
-  return STATUS_BADGE[grantExpired ? "expired" : request.status] ?? STATUS_BADGE.pending;
+  return STATUS_BADGE[request.status] ?? STATUS_BADGE.pending;
 };

@@ -21,6 +21,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
@@ -318,39 +319,8 @@ export const pamSessionServiceFactory = ({
     };
   };
 
-  const resolveAccountByPath = async (projectId: string, path: string) => {
-    const separatorIdx = path.indexOf("/");
-    if (separatorIdx === -1) {
-      throw new BadRequestError({
-        message: "Path must be in the format 'folderName/accountName'"
-      });
-    }
-
-    const folderName = path.slice(0, separatorIdx);
-    const accountName = path.slice(separatorIdx + 1);
-    if (!folderName || !accountName) {
-      throw new BadRequestError({
-        message: "Path must be in the format 'folderName/accountName'"
-      });
-    }
-
-    const folder = await pamFolderDAL.findOne({ projectId, name: folderName });
-    if (!folder) {
-      throw new NotFoundError({ message: `Folder '${folderName}' not found` });
-    }
-
-    const accountRow = await pamAccountDAL.findOne({ folderId: folder.id, name: accountName });
-    if (!accountRow) {
-      throw new NotFoundError({ message: `Account '${accountName}' not found in folder '${folderName}'` });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(accountRow.id);
-    if (!account) {
-      throw new NotFoundError({ message: `Account '${accountName}' not found` });
-    }
-
-    return account;
-  };
+  const resolveAccountByPath = (projectId: string, path: string) =>
+    resolveAccountByPathFn({ pamFolderDAL, pamAccountDAL }, projectId, path);
 
   const access = async ({
     path,

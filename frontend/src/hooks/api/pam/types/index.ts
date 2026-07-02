@@ -488,6 +488,7 @@ export type TPamAccessRequest = {
   folderName?: string;
   host?: string;
   grantExpiresAt?: string | null;
+  grantStatus?: string | null;
 };
 
 export type TPamApprovalConfig = {

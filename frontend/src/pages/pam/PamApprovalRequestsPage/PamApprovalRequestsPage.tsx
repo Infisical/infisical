@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FolderOpen, SearchIcon, ShieldCheck } from "lucide-react";
 
@@ -167,6 +168,24 @@ export const PamApprovalRequestsPage = () => {
 
   const { data: pendingRequests, isPending } = useListPamPendingMyApproval();
 
+  const navigate = useNavigate();
+  const searchParams = useSearch({ strict: false }) as Record<string, unknown>;
+  const requestId = searchParams.requestId as string | undefined;
+
+  // Deep link from approval emails: open the sheet for the request named in the URL once it loads.
+  useEffect(() => {
+    if (!requestId || !pendingRequests) return;
+    const match = pendingRequests.find((r) => r.id === requestId);
+    if (match) setSelectedRequest(match);
+  }, [requestId, pendingRequests]);
+
+  const clearRequestIdParam = () => {
+    if (!requestId) return;
+    const rest = Object.fromEntries(Object.entries(searchParams).filter(([k]) => k !== "requestId"));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    navigate({ search: rest as any, replace: true });
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1);
@@ -268,7 +287,10 @@ export const PamApprovalRequestsPage = () => {
         request={selectedRequest}
         isOpen={!!selectedRequest}
         onOpenChange={(open) => {
-          if (!open) setSelectedRequest(null);
+          if (!open) {
+            setSelectedRequest(null);
+            clearRequestIdParam();
+          }
         }}
       />
     </div>

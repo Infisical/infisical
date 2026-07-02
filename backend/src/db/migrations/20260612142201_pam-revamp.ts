@@ -376,7 +376,11 @@ export async function up(knex: Knex): Promise<void> {
         const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
 
         const isAdmin = roles.some((r: { role: string }) => r.role === ProjectMembershipRole.Admin);
-        const resourceRole = isAdmin ? PamResourceRole.Admin : PamResourceRole.Requester;
+
+        // Migrated non-admins get product membership only (no standing folder/account access); they
+        // request access through the approval flow. Only old-project admins keep a folder-Admin
+        // membership so the migrated folder remains manageable.
+        if (!isAdmin) continue;
 
         const [folderMembership] = await knex(TableName.Membership)
           .insert({
@@ -392,7 +396,7 @@ export async function up(knex: Knex): Promise<void> {
 
         await knex(TableName.MembershipRole).insert({
           membershipId: folderMembership.id,
-          role: resourceRole
+          role: PamResourceRole.Admin
         });
       }
     }

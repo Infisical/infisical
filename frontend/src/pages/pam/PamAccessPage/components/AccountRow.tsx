@@ -79,7 +79,7 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
                     {isPending ? (
                       <>
                         <Clock className="size-3" />
-                        Pending
+                        Pending Approval
                       </>
                     ) : (
                       <>

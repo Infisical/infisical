@@ -9,7 +9,8 @@ const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
   accountName: z.string().nullable(),
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
-  grantExpiresAt: z.date().nullable()
+  grantExpiresAt: z.date().nullable(),
+  grantStatus: z.string().nullable()
 });
 
 export const registerPamAccessRequestRouter = async (server: FastifyZodProvider) => {
@@ -18,11 +19,16 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
-      body: z.object({
-        accountId: z.string().uuid(),
-        note: z.string().max(500).optional(),
-        duration: z.string().min(1)
-      }),
+      body: z
+        .object({
+          accountId: z.string().uuid().optional(),
+          path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
+          note: z.string().max(500).optional(),
+          duration: z.string().min(1)
+        })
+        .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
+          message: "Either 'accountId' or 'path' is required"
+        }),
       response: {
         200: z.object({
           request: ApprovalRequestsSchema
@@ -33,6 +39,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.createRequest({
         accountId: req.body.accountId,
+        path: req.body.path,
         projectId: req.internalPamProjectId,
         note: req.body.note,
         duration: req.body.duration,

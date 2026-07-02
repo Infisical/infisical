@@ -17,13 +17,8 @@ const DEFAULT_RESOURCE_ROLES = [
     slug: PamResourceRole.Connector,
     name: "Connector",
     isDefault: true,
-    description: "Launch sessions and view own session history; cannot view credentials or other users' sessions"
-  },
-  {
-    slug: PamResourceRole.Requester,
-    name: "Requester",
-    isDefault: true,
-    description: "Submit access requests; cannot view credentials directly"
+    description:
+      "Launch sessions, request access to gated accounts, and view own session history; cannot view credentials or other users' sessions"
   },
   {
     slug: PamResourceRole.Auditor,

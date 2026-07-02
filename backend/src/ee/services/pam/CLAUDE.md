@@ -78,7 +78,7 @@ PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, e
 ### Roles
 
 - **Product roles** (`PamProductRole`): `Admin`, `Member`
-- **Resource roles** (`PamResourceRole`): `Admin`, `Requester`, `Auditor`, `Connector`
+- **Resource roles** (`PamResourceRole`): `Admin`, `Connector`, `Auditor`. `Connector` grants `ReadFolder` + `ReadAccounts` + `LaunchSessions` + `RequestAccess` (direct launch on non-gated accounts, and can request approval on gated ones).
 
 Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via the generic membership system (`ResourceType.PamFolder` / `ResourceType.PamAccount`).
 

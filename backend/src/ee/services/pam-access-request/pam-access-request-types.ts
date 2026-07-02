@@ -14,7 +14,8 @@ export type TSetApprovalConfigurationDTO = {
 } & TActorContext;
 
 export type TCreateAccessRequestDTO = {
-  accountId: string;
+  accountId?: string;
+  path?: string;
   projectId: string;
   note?: string;
   duration: string;

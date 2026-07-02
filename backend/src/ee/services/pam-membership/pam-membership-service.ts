@@ -537,7 +537,7 @@ export const pamMembershipServiceFactory = ({
 
   const listResourceMembers = async (projectId: string, resourceType: ResourceType, resourceId: string) => {
     const memberships = await membershipDAL.find(resourceScope(projectId, resourceType, resourceId));
-    return resolveMemberships(memberships, PamResourceRole.Requester);
+    return resolveMemberships(memberships, PamResourceRole.Connector);
   };
 
   const addResourceMember = async (

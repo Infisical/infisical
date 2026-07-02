@@ -1823,6 +1823,8 @@ export const registerRoutes = async (
     pamAccountTemplateDAL,
     pamFolderDAL,
     pamSessionDAL,
+    membershipDAL,
+    projectDAL,
     permissionService,
     notificationService,
     smtpService,

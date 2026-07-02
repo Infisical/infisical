@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
 import { format } from "date-fns";
-import { FilterIcon, Trash2, User as UserIcon, Users as UsersIcon } from "lucide-react";
+import { Ban, FilterIcon, Trash2, User as UserIcon, Users as UsersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -44,6 +45,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   useGetPamApprovalConfig,
+  useListFolderMembers,
   useListPamAccessRequests,
   usePamFolderPermission,
   useRevokePamAccessRequest,
@@ -107,6 +109,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
+  const { data: folderMembers } = useListFolderMembers(folderId);
   const setConfig = useSetPamApprovalConfig();
 
   const [requestsPage, setRequestsPage] = useState(1);
@@ -129,6 +132,14 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     PamResourcePermissionSub.PamResource
   );
   const revokeMutation = useRevokePamAccessRequest();
+  const [requestToRevoke, setRequestToRevoke] = useState<TPamAccessRequest | null>(null);
+
+  const confirmRevoke = async () => {
+    if (!requestToRevoke) return;
+    await revokeMutation.mutateAsync({ requestId: requestToRevoke.id });
+    createNotification({ text: "Access revoked", type: "success" });
+    setRequestToRevoke(null);
+  };
 
   const [approvers, setApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -174,13 +185,23 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     [orgGroups]
   );
 
+  // Approvers must be members of the folder, so the picker only offers folder members.
+  const memberUserIds = useMemo(
+    () => new Set((folderMembers?.users ?? []).map((m) => m.userId).filter(Boolean)),
+    [folderMembers]
+  );
+  const memberGroupIds = useMemo(
+    () => new Set((folderMembers?.groups ?? []).map((m) => m.groupId).filter(Boolean)),
+    [folderMembers]
+  );
+
   const approverOptions = useMemo<ApproverOption[]>(() => {
     const groups: ApproverOption[] = (orgGroups ?? [])
-      .filter((g) => !selectedIds.has(`group:${g.id}`))
+      .filter((g) => memberGroupIds.has(g.id) && !selectedIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: "group" as const, subtitle: "Group" }));
 
     const users: ApproverOption[] = (orgUsers ?? [])
-      .filter((ou) => ou.user.id && !selectedIds.has(`user:${ou.user.id}`))
+      .filter((ou) => ou.user.id && memberUserIds.has(ou.user.id) && !selectedIds.has(`user:${ou.user.id}`))
       .map((ou) => {
         const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
         return {
@@ -192,7 +213,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       });
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedIds]);
+  }, [orgGroups, orgUsers, selectedIds, memberUserIds, memberGroupIds]);
 
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
@@ -367,15 +388,15 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
               No access requests have been submitted for this folder.
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Requester</TableHead>
                   <TableHead>Account</TableHead>
                   <TableHead>Requested</TableHead>
-                  <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
-                  {canRevoke && <TableHead className="w-24" />}
+                  {canRevoke && <TableHead className="w-12" />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -408,39 +429,26 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                           {duration && <span className="text-xs text-muted">for {duration}</span>}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {request.grantExpiresAt ? (
-                          <RelativeTime date={request.grantExpiresAt} />
-                        ) : (
-                          <span className="text-muted">-</span>
-                        )}
-                      </TableCell>
                       <TableCell>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </TableCell>
                       {canRevoke && (
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {status.label === "Approved" && (
-                            <Button
-                              variant="danger"
-                              size="xs"
-                              isPending={revokeMutation.isPending}
-                              onClick={() =>
-                                revokeMutation.mutate(
-                                  { requestId: request.id },
-                                  {
-                                    onSuccess: () => {
-                                      createNotification({
-                                        text: "Access revoked",
-                                        type: "success"
-                                      });
-                                    }
-                                  }
-                                )
-                              }
-                            >
-                              Revoke
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <IconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  aria-label="Revoke access"
+                                  className="text-muted hover:text-danger"
+                                  onClick={() => setRequestToRevoke(request)}
+                                >
+                                  <Ban className="size-4" />
+                                </IconButton>
+                              </TooltipTrigger>
+                              <TooltipContent>Revoke access</TooltipContent>
+                            </Tooltip>
                           )}
                         </TableCell>
                       )}
@@ -449,6 +457,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
           {requestsTotalCount > requestsPerPage && (
             <Pagination
@@ -476,6 +485,18 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onOpenChange={(open) => {
           if (!open) setSelectedRequest(null);
         }}
+      />
+
+      <DeleteActionModal
+        isOpen={!!requestToRevoke}
+        onChange={(open) => {
+          if (!open) setRequestToRevoke(null);
+        }}
+        title="Revoke Access"
+        subTitle="Are you sure you want to revoke this grant? Any active session using it will be terminated immediately."
+        deleteKey="revoke"
+        buttonText="Revoke"
+        onDeleteApproved={confirmRevoke}
       />
 
       <div aria-hidden className="h-8 shrink-0" />
