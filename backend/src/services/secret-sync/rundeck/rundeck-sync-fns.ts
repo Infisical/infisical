@@ -17,6 +17,7 @@ import { TRundeckSyncWithCredentials } from "./rundeck-sync-types";
 const RUNDECK_SECRET_CONTENT_TYPE = "application/x-rundeck-data-password";
 
 type TRundeckStorageResource = {
+  type: string;
   name: string;
 };
 
@@ -53,7 +54,7 @@ const getRundeckClientDetails = async (secretSync: TRundeckSyncWithCredentials) 
 const listRundeckSecretKeys = async (baseUrl: string, headers: Record<string, string>): Promise<string[]> => {
   try {
     const { data } = await request.get<TRundeckStorageListResponse>(baseUrl, { headers });
-    return data.resources.map((resource) => resource.name);
+    return data.resources.filter((resource) => resource.type === "file").map((resource) => resource.name);
   } catch (error) {
     // The storage path does not exist until the first secret is written - treat as empty
     if (error instanceof AxiosError && error.response?.status === 404) {
