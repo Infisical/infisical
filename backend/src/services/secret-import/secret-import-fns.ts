@@ -395,14 +395,10 @@ export const fnSecretsV2FromImports = async ({
           _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
         }));
 
-      if (deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
-        stack.push({
-          secretImports: deeperImportsGroupByFolderId[sourceImportFolder?.id || ""],
-          depth: depth + 1,
-          parentImportedSecrets: secretsWithDuplicate
-        });
-      }
-
+      // On the first iteration `secretsWithDuplicate` is the array stored on the top-level
+      // processed import; deeper iterations append into their ancestor's `parentImportedSecrets`,
+      // which is that same top-level array. Either way, secrets discovered at this level must
+      // land in the live array that ultimately reaches the caller.
       if (isFirstIteration) {
         processedImports.push({
           secretPath: importPath,
@@ -415,6 +411,17 @@ export const fnSecretsV2FromImports = async ({
         });
       } else {
         parentImportedSecrets.push(...secretsWithDuplicate);
+      }
+
+      // Pass the live array (the first-iteration array IS the top-level `secrets`; deeper ones
+      // forward their ancestor's array) down to deeper imports so secrets nested more than two
+      // levels deep keep accumulating into it instead of being dropped into a detached array.
+      if (deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
+        stack.push({
+          secretImports: deeperImportsGroupByFolderId[sourceImportFolder?.id || ""],
+          depth: depth + 1,
+          parentImportedSecrets: isFirstIteration ? secretsWithDuplicate : parentImportedSecrets
+        });
       }
     });
   }
