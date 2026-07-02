@@ -155,7 +155,7 @@ export const NativeIntegrationsTab = () => {
           <div className="mb-4 flex items-center justify-between">
             <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
             <Button variant="project" type="submit" onClick={() => setView(IntegrationView.New)}>
-              <PlusIcon className="size-4" />
+              <PlusIcon />
               Add Integration
             </Button>
           </div>
