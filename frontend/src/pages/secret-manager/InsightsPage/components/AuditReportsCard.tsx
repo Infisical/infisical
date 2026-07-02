@@ -170,11 +170,11 @@ export const AuditReportsCard = () => {
             <Table containerClassName="overflow-x-hidden" className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="h-10 w-[30%]">REPORTS</TableHead>
-                  <TableHead className="h-10 w-[28%]">RECIPIENTS</TableHead>
-                  <TableHead className="h-10 w-[14%]">STATUS</TableHead>
-                  <TableHead className="h-10">REQUESTED</TableHead>
-                  <TableHead className="h-10 w-12" />
+                  <TableHead className="w-[30%]">Reports</TableHead>
+                  <TableHead className="w-[28%]">Recipients</TableHead>
+                  <TableHead className="w-[14%]">Status</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,9 +210,7 @@ export const AuditReportsCard = () => {
                     </TableCell>
                     <TableCell isTruncatable className="max-w-0">
                       {report.emailRecipients.length <= 1 ? (
-                        <span className="block truncate text-muted">
-                          {report.emailRecipients[0] ?? ""}
-                        </span>
+                        <span className="block truncate">{report.emailRecipients[0] ?? ""}</span>
                       ) : (
                         <TooltipProvider>
                           <Tooltip>
@@ -237,9 +235,7 @@ export const AuditReportsCard = () => {
                       <ReportStatusBadge report={report} />
                     </TableCell>
                     <TableCell>
-                      <span className="text-muted">
-                        {formatRelative(new Date(report.createdAt), new Date())}
-                      </span>
+                      <span>{formatRelative(new Date(report.createdAt), new Date())}</span>
                     </TableCell>
                     <TableCell className="pr-5">
                       <ProjectPermissionCan
