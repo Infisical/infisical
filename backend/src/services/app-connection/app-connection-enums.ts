@@ -69,6 +69,7 @@ export enum AppConnection {
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
   Convex = "convex",
+  Qovery = "qovery",
   Cloud66 = "cloud-66"
 }
 

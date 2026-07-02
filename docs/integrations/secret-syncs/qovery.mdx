@@ -1,0 +1,185 @@
+---
+title: "Qovery Sync"
+description: "Learn how to configure a Qovery Sync for Infisical."
+---
+
+**Prerequisites:**
+- Create a [Qovery Connection](/integrations/app-connections/qovery)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/revamped-secret-syncs-tab.png)
+            </Step>
+            <Step title="Select 'Qovery'">
+                ![Select Qovery](/images/secret-syncs/qovery/step-1-search-sync.png)
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then click **Continue**.
+
+                ![Configure Source](/images/secret-syncs/qovery/step-2-source.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then click **Continue**.
+
+                ![Configure Destination](/images/secret-syncs/qovery/step-3-destination.png)
+
+                - **Qovery Connection**: The Qovery App Connection to authenticate with.
+                - **Organization**: The organization inside Qovery.
+                - **Project**: The Qovery  project to sync secrets to.
+                - **Environment** (optional): The environment to sync secrets to. Leave empty to sync at the **project** level, or select an environment to sync at the **environment** level.
+            </Step>
+            <Step title="Configure initial sync behavior">
+                Choose how Infisical should reconcile existing secrets in Qovery the first time this sync runs, then click **Continue**.
+
+                ![Configure Initial Sync Behavior](/images/secret-syncs/qovery/step-4-initial-sync.png)
+
+                - **Overwrite Qovery**: On the initial sync, Infisical writes its secrets to Qovery. Depending on your configuration, this can lead to removal of secrets from Qovery.
+                <Note>
+                    Qovery does not support importing secrets, as the Qovery API never returns secret values. Overwrite is the only supported initial sync behavior.
+                </Note>
+            </Step>
+            <Step title="Configure sync options">
+                Configure the **Sync Options** to specify how secrets should be synced, then click **Continue**.
+
+                ![Configure Sync Options](/images/secret-syncs/qovery/step-5-sync-options.png)
+
+                - **Disable secret deletion**: If enabled, Infisical will not remove secrets from Qovery during a sync. Enable this if you intend to manage some secrets manually outside of Infisical.
+                - **Auto-sync on changes**: If enabled, secrets will automatically be synced to Qovery when changes occur in the source. Disable to enforce manual syncing only.
+                - **Customize key names**: Add a prefix or suffix so Infisical can identify which keys in Qovery it manages. Anything else is left untouched.
+                - **Sync as environment variables**: When enabled, values are written as Qovery environment variables, whose values are readable. When disabled, they are written as environment secrets, whose values are hidden.
+
+                <Note>
+                    We highly recommend customizing key names to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your Qovery Sync, then click **Continue**.
+
+                ![Configure Details](/images/secret-syncs/qovery/step-6-details.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review and create">
+                Review your Qovery Sync configuration, then click **Create Sync**.
+
+                ![Review Configuration](/images/secret-syncs/qovery/step-7-review.png)
+            </Step>
+            <Step title="Confirm sync behavior">
+                Infisical is the source of truth for synced destinations. Secrets in the destination will be overwritten, and any direct edits there may be overwritten by future syncs. Click **I Understand** to confirm.
+
+                ![Confirm Sync Behavior](/images/secret-syncs/qovery/step-8-sync-behavior.png)
+            </Step>
+            <Step title="Sync created">
+                If enabled, your Qovery Sync will begin syncing your secrets to the destination endpoint.
+
+                ![Sync Created](/images/secret-syncs/qovery/step-9-created-sync.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a **Qovery Sync**, make an API request to the [Create Qovery Sync](/api-reference/endpoints/secret-syncs/qovery/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/qovery \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-qovery-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/my-secrets",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination",
+                        "autoSyncEnabled": true,
+                        "disableSecretDeletion": false
+                    },
+                    "destinationConfig": {
+                        "organizationId": "dev-organization-id",
+                        "organizationName": "My Organization",
+                        "projectId": "dev-project-id",
+                        "projectName": "Development Project",
+                        "environmentId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                        "environmentName": "Development",
+                        "variableType": "secret"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-qovery-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination",
+                    "autoSyncEnabled": true,
+                    "disableSecretDeletion": false
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "qovery",
+                    "name": "my-qovery-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "qovery",
+                "destinationConfig": {
+                    "organizationId": "dev-organization-id",
+                    "organizationName": "My Organization",
+                    "projectId": "dev-project-id",
+                    "projectName": "Development Project",
+                    "environmentId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environmentName": "Development",
+                    "variableType": "secret"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

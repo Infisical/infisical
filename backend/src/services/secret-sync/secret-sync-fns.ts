@@ -75,6 +75,7 @@ import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
 import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
+import { QOVERY_SYNC_LIST_OPTION, QoverySyncFns } from "./qovery";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
@@ -133,6 +134,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
   [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
   [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
+  [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION,
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION
 };
 
@@ -431,6 +433,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Qovery:
+        return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
         return Cloud66SyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
@@ -594,6 +598,9 @@ export const SecretSyncFns = {
       case SecretSync.Snowflake:
         secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Qovery:
+        secretMap = await QoverySyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Cloud66:
         secretMap = await Cloud66SyncFns.getSecrets(secretSync);
         break;
@@ -741,6 +748,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Qovery:
+        return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
         return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:

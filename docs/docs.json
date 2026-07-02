@@ -161,6 +161,7 @@
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/ovh",
                       "integrations/app-connections/postgres",
+                      "integrations/app-connections/qovery",
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
@@ -656,6 +657,7 @@
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/ovh",
+                      "integrations/secret-syncs/qovery",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
                       "integrations/secret-syncs/snowflake",
@@ -1913,6 +1915,18 @@
                     ]
                   },
                   {
+                    "group": "Qovery",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/qovery/list",
+                      "api-reference/endpoints/app-connections/qovery/available",
+                      "api-reference/endpoints/app-connections/qovery/get-by-id",
+                      "api-reference/endpoints/app-connections/qovery/get-by-name",
+                      "api-reference/endpoints/app-connections/qovery/create",
+                      "api-reference/endpoints/app-connections/qovery/update",
+                      "api-reference/endpoints/app-connections/qovery/delete"
+                    ]
+                  },
+                  {
                     "group": "Railway",
                     "pages": [
                       "api-reference/endpoints/app-connections/railway/list",
@@ -3024,6 +3038,19 @@
                       "api-reference/endpoints/secret-syncs/octopus-deploy/delete",
                       "api-reference/endpoints/secret-syncs/octopus-deploy/sync-secrets",
                       "api-reference/endpoints/secret-syncs/octopus-deploy/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Qovery",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/qovery/list",
+                      "api-reference/endpoints/secret-syncs/qovery/get-by-id",
+                      "api-reference/endpoints/secret-syncs/qovery/get-by-name",
+                      "api-reference/endpoints/secret-syncs/qovery/create",
+                      "api-reference/endpoints/secret-syncs/qovery/update",
+                      "api-reference/endpoints/secret-syncs/qovery/delete",
+                      "api-reference/endpoints/secret-syncs/qovery/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/qovery/remove-secrets"
                     ]
                   },
                   {
