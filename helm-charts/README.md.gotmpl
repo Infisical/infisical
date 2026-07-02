@@ -8,7 +8,13 @@ title: "{{ template "chart.name" . }}"
 
 {{ template "chart.deprecationWarning" . }}
 
-{{ template "chart.badgesSection" . }}
+<div style={{ "{{" }} display: 'flex', gap: '6px', alignItems: 'center' {{ "}}" }}>
+{{ template "chart.versionBadge" . }}
+
+{{ template "chart.appVersionBadge" . }}
+
+{{ template "chart.typeBadge" . }}
+</div>
 
 {{ if .Description }}{{ .Description }}{{ end }}
 
