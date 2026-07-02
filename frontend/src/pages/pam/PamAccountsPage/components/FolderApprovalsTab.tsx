@@ -54,7 +54,7 @@ import {
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
-import { getRequestStatusInfo } from "../../components/approvalRequestStatus";
+import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import { formatRelativeExpiry } from "../../components/PamDetailSheet";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { ApprovalRequestDetailSheet } from "../../PamApprovalRequestsPage/components/ApprovalRequestDetailSheet";
@@ -201,7 +201,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       .map((g) => ({ value: g.id, label: g.name, kind: "group" as const, subtitle: "Group" }));
 
     const users: ApproverOption[] = (orgUsers ?? [])
-      .filter((ou) => ou.user.id && memberUserIds.has(ou.user.id) && !selectedIds.has(`user:${ou.user.id}`))
+      .filter(
+        (ou) =>
+          ou.user.id && memberUserIds.has(ou.user.id) && !selectedIds.has(`user:${ou.user.id}`)
+      )
       .map((ou) => {
         const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
         return {
@@ -389,74 +392,74 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Requester</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Requested</TableHead>
-                  <TableHead>Status</TableHead>
-                  {canRevoke && <TableHead className="w-12" />}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {folderRequests.map((request) => {
-                  const status = getRequestStatusInfo(request);
-                  const duration = request.requestData?.requestData?.duration;
-                  return (
-                    <TableRow
-                      key={request.id}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedRequest(request)}
-                    >
-                      <TableCell className="h-[50px]">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">{request.requesterName}</span>
-                          <span className="text-xs text-muted">{request.requesterEmail}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="flex items-center gap-2">
-                          {request.accountType && (
-                            <AccountPlatformIcon accountType={request.accountType} size={16} />
-                          )}
-                          {request.accountName ?? "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="flex flex-col">
-                          <RelativeTime date={request.createdAt} />
-                          {duration && <span className="text-xs text-muted">for {duration}</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </TableCell>
-                      {canRevoke && (
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          {status.label === "Approved" && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <IconButton
-                                  variant="ghost"
-                                  size="xs"
-                                  aria-label="Revoke access"
-                                  className="text-muted hover:text-danger"
-                                  onClick={() => setRequestToRevoke(request)}
-                                >
-                                  <Ban className="size-4" />
-                                </IconButton>
-                              </TooltipTrigger>
-                              <TooltipContent>Revoke access</TooltipContent>
-                            </Tooltip>
-                          )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Requester</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead>Status</TableHead>
+                    {canRevoke && <TableHead className="w-12" />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {folderRequests.map((request) => {
+                    const status = getRequestStatusInfo(request);
+                    const duration = request.requestData?.requestData?.duration;
+                    return (
+                      <TableRow
+                        key={request.id}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedRequest(request)}
+                      >
+                        <TableCell className="h-[50px]">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{request.requesterName}</span>
+                            <span className="text-xs text-muted">{request.requesterEmail}</span>
+                          </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        <TableCell className="text-sm">
+                          <div className="flex items-center gap-2">
+                            {request.accountType && (
+                              <AccountPlatformIcon accountType={request.accountType} size={16} />
+                            )}
+                            {request.accountName ?? "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <div className="flex flex-col">
+                            <RelativeTime date={request.createdAt} />
+                            {duration && <span className="text-xs text-muted">for {duration}</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={status.variant}>{status.label}</Badge>
+                        </TableCell>
+                        {canRevoke && (
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            {isGrantActive(request) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <IconButton
+                                    variant="ghost"
+                                    size="xs"
+                                    aria-label="Revoke access"
+                                    className="text-muted hover:text-danger"
+                                    onClick={() => setRequestToRevoke(request)}
+                                  >
+                                    <Ban className="size-4" />
+                                  </IconButton>
+                                </TooltipTrigger>
+                                <TooltipContent>Revoke access</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           )}
           {requestsTotalCount > requestsPerPage && (

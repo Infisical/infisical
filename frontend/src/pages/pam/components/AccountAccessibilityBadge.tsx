@@ -7,7 +7,8 @@ const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
   [PamAccountAccessibilityIssue.NoGateway]: "No gateway is configured",
   [PamAccountAccessibilityIssue.NoRecordingConfig]: "No recording bucket is configured",
   [PamAccountAccessibilityIssue.NoCredential]: "No password is set",
-  [PamAccountAccessibilityIssue.NoApprovalConfig]: "No approval policy is configured for this folder"
+  [PamAccountAccessibilityIssue.NoApprovalConfig]:
+    "No approval policy is configured for this folder"
 };
 
 type Props = {

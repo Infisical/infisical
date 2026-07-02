@@ -35,12 +35,12 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
-import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";

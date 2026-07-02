@@ -181,7 +181,9 @@ export const PamApprovalRequestsPage = () => {
 
   const clearRequestIdParam = () => {
     if (!requestId) return;
-    const rest = Object.fromEntries(Object.entries(searchParams).filter(([k]) => k !== "requestId"));
+    const rest = Object.fromEntries(
+      Object.entries(searchParams).filter(([k]) => k !== "requestId")
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     navigate({ search: rest as any, replace: true });
   };

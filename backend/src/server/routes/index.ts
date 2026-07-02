@@ -1650,13 +1650,6 @@ export const registerRoutes = async (
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
   const pamFolderDAL = pamFolderDALFactory(db);
 
-  const pamFolderService = pamFolderServiceFactory({
-    pamFolderDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService
-  });
-
   const pamMembershipService = pamMembershipServiceFactory({
     membershipDAL,
     membershipRoleDAL,
@@ -1825,12 +1818,21 @@ export const registerRoutes = async (
     pamFolderDAL,
     pamSessionDAL,
     membershipDAL,
+    membershipRoleDAL,
     projectDAL,
     permissionService,
     notificationService,
     smtpService,
     userGroupMembershipDAL,
     userDAL
+  });
+
+  const pamFolderService = pamFolderServiceFactory({
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    pamAccessRequestService
   });
 
   const pamAccountService = pamAccountServiceFactory({

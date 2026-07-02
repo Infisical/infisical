@@ -5,10 +5,6 @@ import { projectKeys } from "@app/hooks/api/projects/query-keys";
 
 import { pamKeys } from "./queries";
 import {
-  TCreatePamAccessRequestDTO,
-  TReviewPamAccessRequestDTO,
-  TRevokePamAccessRequestDTO,
-  TSetPamApprovalConfigDTO,
   TAddAccountGroupMemberDTO,
   TAddAccountIdentityMemberDTO,
   TAddAccountUserMemberDTO,
@@ -16,6 +12,7 @@ import {
   TAddFolderIdentityMemberDTO,
   TAddFolderUserMemberDTO,
   TAddPamProductIdentityMemberDTO,
+  TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
   TCreatePamFolderDTO,
@@ -33,6 +30,9 @@ import {
   TRemoveFolderIdentityMemberDTO,
   TRemoveFolderMemberDTO,
   TRemovePamProductIdentityMemberDTO,
+  TReviewPamAccessRequestDTO,
+  TRevokePamAccessRequestDTO,
+  TSetPamApprovalConfigDTO,
   TUpdateAccountGroupMemberRoleDTO,
   TUpdateAccountIdentityMemberRoleDTO,
   TUpdateAccountMemberRoleDTO,
@@ -585,10 +585,10 @@ export const useReviewPamAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ requestId, status, comment }: TReviewPamAccessRequestDTO) => {
-      const { data } = await apiRequest.post(
-        `/api/v1/pam/access-requests/${requestId}/review`,
-        { status, comment }
-      );
+      const { data } = await apiRequest.post(`/api/v1/pam/access-requests/${requestId}/review`, {
+        status,
+        comment
+      });
       return data;
     },
     onSuccess: () => {
@@ -602,9 +602,7 @@ export const useRevokePamAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ requestId }: TRevokePamAccessRequestDTO) => {
-      const { data } = await apiRequest.post(
-        `/api/v1/pam/access-requests/${requestId}/revoke`
-      );
+      const { data } = await apiRequest.post(`/api/v1/pam/access-requests/${requestId}/revoke`);
       return data;
     },
     onSuccess: () => {

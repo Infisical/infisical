@@ -380,6 +380,7 @@ export async function up(knex: Knex): Promise<void> {
         // Migrated non-admins get product membership only (no standing folder/account access); they
         // request access through the approval flow. Only old-project admins keep a folder-Admin
         // membership so the migrated folder remains manageable.
+        // eslint-disable-next-line no-continue
         if (!isAdmin) continue;
 
         const [folderMembership] = await knex(TableName.Membership)

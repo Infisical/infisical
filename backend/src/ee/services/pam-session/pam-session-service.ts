@@ -38,6 +38,7 @@ import {
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   buildSessionGatewayConnectionDetails,
@@ -53,7 +54,6 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
-import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
@@ -412,14 +412,17 @@ export const pamSessionServiceFactory = ({
           message: "Access request required"
         });
       }
-      const grantRemainingMs = new Date(grant.expiresAt!).getTime() - Date.now();
-      if (grantRemainingMs <= 0) {
-        throw new ForbiddenRequestError({
-          name: "PAM_APPROVAL_REQUIRED",
-          message: "Access grant has expired"
-        });
+      // A null expiresAt means a never-expiring grant per the checkGrant contract
+      if (grant.expiresAt) {
+        const grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
+        if (grantRemainingMs <= 0) {
+          throw new ForbiddenRequestError({
+            name: "PAM_APPROVAL_REQUIRED",
+            message: "Access grant has expired"
+          });
+        }
+        sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
       }
-      sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
     }
 
     // AWS IAM: no gateway, no proxy -- generate STS credentials directly

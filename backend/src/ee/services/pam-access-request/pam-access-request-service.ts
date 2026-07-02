@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -11,7 +12,6 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { OrgServiceActor } from "@app/lib/types";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
@@ -38,15 +38,20 @@ import {
   notifyApproversForStep
 } from "@app/services/approval-policy/approval-request-fns";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamProductRole } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
-import { checkAccountAccess, checkFolderPermission, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import {
+  checkAccountAccess,
+  checkFolderPermission,
+  TActorContext,
+  verifyProductMembership
+} from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
@@ -88,6 +93,7 @@ type TPamAccessRequestServiceFactoryDep = {
     | "findById"
     | "findByIdForUpdate"
     | "create"
+    | "update"
     | "updateById"
     | "transaction"
     | "findStepsByRequestId"
@@ -102,6 +108,7 @@ type TPamAccessRequestServiceFactoryDep = {
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -126,6 +133,7 @@ export const pamAccessRequestServiceFactory = ({
   pamFolderDAL,
   pamSessionDAL,
   membershipDAL,
+  membershipRoleDAL,
   projectDAL,
   permissionService,
   notificationService,
@@ -171,6 +179,27 @@ export const pamAccessRequestServiceFactory = ({
   const getUserGroupIds = async (userId: string, orgId: string): Promise<Set<string>> => {
     const memberships = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(userId, orgId);
     return new Set(memberships.map((m) => m.groupId));
+  };
+
+  // Temporary membership expiry is enforced lazily (rows are not deleted when access lapses), so
+  // approver eligibility must filter to memberships that still carry an active role.
+  const findActiveFolderMemberships = async (projectId: string, folderId: string) => {
+    const memberships = await membershipDAL.find({
+      scope: RESOURCE_SCOPE,
+      scopeProjectId: projectId,
+      scopeResourceType: ResourceType.PamFolder,
+      scopeResourceId: folderId
+    });
+    if (!memberships.length) return [];
+
+    const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } });
+    const now = new Date();
+    const activeMembershipIds = new Set(
+      roles
+        .filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime)))
+        .map((r) => r.membershipId)
+    );
+    return memberships.filter((m) => m.isActive && activeMembershipIds.has(m.id));
   };
 
   const enrichRequestsWithNames = async <T extends { requestData?: unknown }>(requests: T[]) => {
@@ -220,7 +249,9 @@ export const pamAccessRequestServiceFactory = ({
     const grantByRequestId = new Map<string, { expiresAt: Date | null; status: string }>();
     grants
       .filter((g) => g.requestId)
-      .forEach((g) => grantByRequestId.set(g.requestId as string, { expiresAt: g.expiresAt ?? null, status: g.status }));
+      .forEach((g) =>
+        grantByRequestId.set(g.requestId as string, { expiresAt: g.expiresAt ?? null, status: g.status })
+      );
 
     return requests.map((r) => {
       const grant = grantByRequestId.get(r.id);
@@ -260,17 +291,12 @@ export const pamAccessRequestServiceFactory = ({
       throw new BadRequestError({ message: "Phase 1 only supports a single approval step" });
     }
 
-    // Approvers must be members of the folder. This keeps the approver list in sync with membership so
-    // that removing someone from the folder (which strips their approver rows) can't be circumvented by
-    // designating a non-member as an approver.
+    // Approvers must be active members of the folder. This keeps the approver list in sync with
+    // membership so that removing someone from the folder (which strips their approver rows) can't be
+    // circumvented by designating a non-member or expired member as an approver.
     const requestedApprovers = steps.flatMap((s) => s.approvers);
     if (requestedApprovers.length > 0) {
-      const memberships = await membershipDAL.find({
-        scope: RESOURCE_SCOPE,
-        scopeProjectId: projectId,
-        scopeResourceType: ResourceType.PamFolder,
-        scopeResourceId: folderId
-      });
+      const memberships = await findActiveFolderMemberships(projectId, folderId);
       const memberUserIds = new Set(memberships.map((m) => m.actorUserId).filter(Boolean));
       const memberGroupIds = new Set(memberships.map((m) => m.actorGroupId).filter(Boolean));
 
@@ -302,7 +328,8 @@ export const pamAccessRequestServiceFactory = ({
       await approvalPolicyDAL.transaction(async (tx) => {
         await approvalPolicyStepsDAL.delete({ policyId: existingPolicy.id }, tx);
 
-        for (let i = 0; i < steps.length; i++) {
+        for (let i = 0; i < steps.length; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
           const newStep = await approvalPolicyStepsDAL.create(
             {
               policyId: existingPolicy.id,
@@ -314,6 +341,7 @@ export const pamAccessRequestServiceFactory = ({
           );
 
           for (const approver of steps[i].approvers) {
+            // eslint-disable-next-line no-await-in-loop
             await approvalPolicyStepApproversDAL.create(
               {
                 policyStepId: newStep.id,
@@ -345,7 +373,8 @@ export const pamAccessRequestServiceFactory = ({
         tx
       );
 
-      for (let i = 0; i < steps.length; i++) {
+      for (let i = 0; i < steps.length; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
         const step = await approvalPolicyStepsDAL.create(
           {
             policyId: policy.id,
@@ -357,6 +386,7 @@ export const pamAccessRequestServiceFactory = ({
         );
 
         for (const approver of steps[i].approvers) {
+          // eslint-disable-next-line no-await-in-loop
           await approvalPolicyStepApproversDAL.create(
             {
               policyStepId: step.id,
@@ -442,9 +472,17 @@ export const pamAccessRequestServiceFactory = ({
     }
 
     const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
+
+    // A step with no approvers can never be reviewed, wedging the request forever. The dashboard hides
+    // the request action in this case, but that guard must also hold for the CLI and direct API callers.
+    if (policySteps.length === 0 || policySteps.some((s) => s.approvers.length === 0)) {
+      throw new BadRequestError({ message: "This folder's approval policy has no approvers configured" });
+    }
+
     const stepsForRequest = policySteps.map((s) => ({
       name: s.name ?? null,
       requiredApprovals: s.requiredApprovals,
+      notifyApprovers: s.notifyApprovers ?? true,
       approvers: s.approvers
     }));
 
@@ -493,9 +531,7 @@ export const pamAccessRequestServiceFactory = ({
 
       try {
         const approverUserIds = new Set<string>();
-        firstStep.approvers
-          .filter((a) => a.type === ApproverType.User)
-          .forEach((a) => approverUserIds.add(a.id));
+        firstStep.approvers.filter((a) => a.type === ApproverType.User).forEach((a) => approverUserIds.add(a.id));
 
         const groupMemberLists = await Promise.all(
           firstStep.approvers
@@ -504,8 +540,7 @@ export const pamAccessRequestServiceFactory = ({
         );
         groupMemberLists.forEach((members) => members.forEach((m) => approverUserIds.add(m.userId)));
 
-        const approverUsers =
-          approverUserIds.size > 0 ? await userDAL.find({ $in: { id: [...approverUserIds] } }) : [];
+        const approverUsers = approverUserIds.size > 0 ? await userDAL.find({ $in: { id: [...approverUserIds] } }) : [];
         const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
 
         if (recipients.length > 0) {
@@ -576,30 +611,22 @@ export const pamAccessRequestServiceFactory = ({
 
     const userGroupIds = await getUserGroupIds(ctx.actorId, ctx.actorOrgId);
 
+    const requests = await approvalRequestDAL.findByProjectId(ApprovalPolicyType.PamAccess, projectId);
+
     // Only requests still awaiting a response belong in an approver's queue.
-    const filter: Record<string, unknown> = {
-      type: ApprovalPolicyType.PamAccess,
-      projectId,
-      status: ApprovalRequestStatus.Pending
-    };
+    const result = requests.filter((request) => {
+      if (request.status !== ApprovalRequestStatus.Pending) return false;
 
-    const requests = await approvalRequestDAL.find(filter);
-
-    const result = [];
-    for (const request of requests) {
       if (folderId) {
         const data = request.requestData as { version: number; requestData: TPamAccessRequestData } | null;
-        if (data?.requestData?.folderId !== folderId) continue;
+        if (data?.requestData?.folderId !== folderId) return false;
       }
 
-      const steps = await approvalRequestDAL.findStepsByRequestId(request.id);
-      const currentStep = steps.find((s) => s.stepNumber === request.currentStep);
-      if (!currentStep) continue;
+      const currentStep = request.steps.find((s) => s.stepNumber === request.currentStep);
+      if (!currentStep) return false;
 
-      if (isUserEligibleApprover(currentStep.approvers, ctx.actorId, userGroupIds)) {
-        result.push({ ...request, steps });
-      }
-    }
+      return isUserEligibleApprover(currentStep.approvers, ctx.actorId, userGroupIds);
+    });
 
     return { requests: await attachGrantExpiry(await enrichRequestsWithNames(result)) };
   };
@@ -687,6 +714,16 @@ export const pamAccessRequestServiceFactory = ({
         isUserEligibleApprover(step.approvers, ctx.actorId, userGroupIds)
       );
       if (!isCurrentApprover) {
+        throw new ForbiddenRequestError({ message: "You are no longer an eligible approver for this folder" });
+      }
+
+      // Approver rows are only stripped on explicit removal from the folder, not when a temporary
+      // membership lapses, so re-check that the actor still holds an active folder membership.
+      const activeMemberships = await findActiveFolderMemberships(projectId, folderId);
+      const hasActiveMembership = activeMemberships.some(
+        (m) => m.actorUserId === ctx.actorId || (m.actorGroupId && userGroupIds.has(m.actorGroupId))
+      );
+      if (!hasActiveMembership) {
         throw new ForbiddenRequestError({ message: "You are no longer an eligible approver for this folder" });
       }
     }
@@ -825,6 +862,41 @@ export const pamAccessRequestServiceFactory = ({
     return { request: updatedRequest };
   };
 
+  // Marks a grant Revoked and terminates the grantee's live sessions on the granted account. An
+  // undefined userId in the session filter would throw in knex; granteeUserId is null when the
+  // grantee user was deleted, and their sessions carry a null userId too.
+  const revokeGrantRow = async (
+    grant: TApprovalRequestGrants,
+    actorId: string,
+    reason: string,
+    tx?: Knex
+  ): Promise<TApprovalRequestGrants> => {
+    const revoked = await approvalRequestGrantsDAL.updateById(
+      grant.id,
+      {
+        status: ApprovalRequestGrantStatus.Revoked,
+        revokedByUserId: actorId,
+        revokedAt: new Date(),
+        revocationReason: reason
+      },
+      tx
+    );
+
+    const attrs = grant.attributes as { accountId?: string } | null;
+    if (attrs?.accountId) {
+      const activeSessions = await pamSessionDAL.find(
+        { accountId: attrs.accountId, userId: grant.granteeUserId ?? null, status: "active" },
+        { tx }
+      );
+      for (const session of activeSessions) {
+        // eslint-disable-next-line no-await-in-loop
+        await pamSessionDAL.terminateSessionById(session.id, tx);
+      }
+    }
+
+    return revoked;
+  };
+
   const revokeGrant = async ({ requestId, projectId, ...ctx }: TRevokeAccessRequestDTO) => {
     const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
 
@@ -861,28 +933,80 @@ export const pamAccessRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to revoke this grant" });
     }
 
-    const revokedGrant = await approvalRequestGrantsDAL.updateById(grant.id, {
-      status: ApprovalRequestGrantStatus.Revoked,
-      revokedByUserId: ctx.actorId,
-      revokedAt: new Date(),
-      revocationReason: "Revoked by admin"
-    });
+    const revokedGrant = await revokeGrantRow(grant, ctx.actorId, "Revoked by admin");
 
-    // An undefined userId in the filter would throw in knex; granteeUserId is null when the
-    // grantee user was deleted, and their sessions carry a null userId too
-    if (accountId) {
-      const activeSessions = await pamSessionDAL.find({
-        accountId,
-        userId: grant.granteeUserId ?? null,
-        status: "active"
-      });
+    return { grant: revokedGrant };
+  };
 
-      for (const session of activeSessions) {
-        await pamSessionDAL.terminateSessionById(session.id);
+  // Approval policies, requests, and grants reference folders/accounts by scopeId or by a JSON id
+  // with no FK, so deleting a folder or account leaves them orphaned. These run inside the folder/
+  // account delete transaction to keep the approval state consistent.
+
+  const cleanupFolderResources = async (folderId: string, tx: Knex) => {
+    // Deleting the policy cascades to its steps and approvers, which also stops the now-defunct
+    // folder from keeping its approvers "active" for approver-eligibility scans.
+    const policy = await approvalPolicyDAL.findOne(
+      { type: ApprovalPolicyType.PamAccess, scopeType: PAM_FOLDER_SCOPE_TYPE, scopeId: folderId },
+      tx
+    );
+    if (policy) {
+      await approvalPolicyDAL.deleteById(policy.id, tx);
+    }
+
+    await approvalRequestDAL.update(
+      {
+        type: ApprovalPolicyType.PamAccess,
+        scopeType: PAM_FOLDER_SCOPE_TYPE,
+        scopeId: folderId,
+        status: ApprovalRequestStatus.Pending
+      },
+      { status: ApprovalRequestStatus.Cancelled },
+      tx
+    );
+  };
+
+  const cleanupAccountResources = async (
+    {
+      accountId,
+      folderId,
+      projectId,
+      actorId
+    }: { accountId: string; folderId: string | null | undefined; projectId: string; actorId: string },
+    tx: Knex
+  ) => {
+    // Requests are folder-scoped with the account id in requestData JSON, so filter in memory.
+    if (folderId) {
+      const pending = await approvalRequestDAL.find(
+        {
+          type: ApprovalPolicyType.PamAccess,
+          scopeType: PAM_FOLDER_SCOPE_TYPE,
+          scopeId: folderId,
+          status: ApprovalRequestStatus.Pending
+        },
+        { tx }
+      );
+      const staleIds = pending
+        .filter((r) => {
+          const data = r.requestData as { version: number; requestData: TPamAccessRequestData } | null;
+          return data?.requestData?.accountId === accountId;
+        })
+        .map((r) => r.id);
+      if (staleIds.length > 0) {
+        await approvalRequestDAL.update({ $in: { id: staleIds } }, { status: ApprovalRequestStatus.Cancelled }, tx);
       }
     }
 
-    return { grant: revokedGrant };
+    const activeGrants = await approvalRequestGrantsDAL.find(
+      { type: ApprovalPolicyType.PamAccess, status: ApprovalRequestGrantStatus.Active, projectId },
+      { tx }
+    );
+    for (const grant of activeGrants) {
+      const attrs = grant.attributes as { accountId?: string } | null;
+      if (attrs?.accountId === accountId) {
+        // eslint-disable-next-line no-await-in-loop
+        await revokeGrantRow(grant, actorId, "Account deleted", tx);
+      }
+    }
   };
 
   const checkGrant = async ({
@@ -925,9 +1049,9 @@ export const pamAccessRequestServiceFactory = ({
     });
 
     for (const grant of activeGrants) {
-      if (grant.expiresAt && new Date(grant.expiresAt) <= now) continue;
+      const isExpired = Boolean(grant.expiresAt && new Date(grant.expiresAt) <= now);
       const attrs = grant.attributes as { accountId?: string } | null;
-      if (attrs?.accountId && accountIds.includes(attrs.accountId)) {
+      if (!isExpired && attrs?.accountId && accountIds.includes(attrs.accountId)) {
         result.set(attrs.accountId, {
           accessStatus: "granted",
           grantExpiresAt: grant.expiresAt ? new Date(grant.expiresAt) : null
@@ -976,6 +1100,8 @@ export const pamAccessRequestServiceFactory = ({
     revokeGrant,
     checkGrant,
     getAccessStatusBatch,
-    getFolderPolicyConfigured
+    getFolderPolicyConfigured,
+    cleanupFolderResources,
+    cleanupAccountResources
   };
 };

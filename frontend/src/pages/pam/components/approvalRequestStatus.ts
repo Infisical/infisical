@@ -17,9 +17,18 @@ export const getRequestStatusInfo = (
 ): StatusInfo => {
   if (request.status === "approved") {
     if (request.grantStatus === "revoked") return STATUS_BADGE.revoked;
-    const grantExpired = !!request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now();
+    const grantExpired =
+      !!request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now();
     if (grantExpired) return STATUS_BADGE.expired;
   }
 
   return STATUS_BADGE[request.status] ?? STATUS_BADGE.pending;
 };
+
+// A grant is revocable while the request is approved and the grant is neither revoked nor expired.
+export const isGrantActive = (
+  request: Pick<TPamAccessRequest, "status" | "grantExpiresAt" | "grantStatus"> | null
+): boolean =>
+  request?.status === "approved" &&
+  request.grantStatus !== "revoked" &&
+  !(request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now());

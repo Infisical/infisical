@@ -35,9 +35,9 @@ import {
   validateGatewayAttachment,
   validateRecordingConnection
 } from "../pam/pam-validators";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
@@ -74,7 +74,7 @@ type TPamAccountServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
-    "getAccessStatusBatch" | "getFolderPolicyConfigured"
+    "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources"
   >;
 };
 
@@ -482,6 +482,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
         await membershipDAL.delete({ $in: { id: ids } }, tx);
       }
+
+      await deps.pamAccessRequestService.cleanupAccountResources(
+        { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
+        tx
+      );
 
       return pamAccountDAL.deleteById(accountId, tx);
     });

@@ -189,9 +189,12 @@ export const pamWebAccessServiceFactory = ({
       if (!grant) {
         throw new ForbiddenRequestError({ name: "PAM_APPROVAL_REQUIRED", message: "Access request required" });
       }
-      grantRemainingMs = new Date(grant.expiresAt!).getTime() - Date.now();
-      if (grantRemainingMs <= 0) {
-        throw new ForbiddenRequestError({ name: "PAM_APPROVAL_REQUIRED", message: "Access grant has expired" });
+      // A null expiresAt means a never-expiring grant per the checkGrant contract
+      if (grant.expiresAt) {
+        grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
+        if (grantRemainingMs <= 0) {
+          throw new ForbiddenRequestError({ name: "PAM_APPROVAL_REQUIRED", message: "Access grant has expired" });
+        }
       }
     }
 
