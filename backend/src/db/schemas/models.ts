@@ -61,6 +61,7 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ProjectSshConfig = "project_ssh_configs",
