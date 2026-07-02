@@ -1174,6 +1174,9 @@ export const registerRoutes = async (
     smtpService,
     userAliasDAL,
     membershipUserDAL,
+    totpConfigDAL,
+    webAuthnCredentialDAL,
+    keyStore,
     mfaRecoveryCodeService
   });
 
@@ -1181,16 +1184,14 @@ export const registerRoutes = async (
     totpConfigDAL,
     userDAL,
     kmsService,
-    keyStore,
-    mfaRecoveryCodeService
+    keyStore
   });
 
   const webAuthnService = webAuthnServiceFactory({
     webAuthnCredentialDAL,
     userDAL,
     tokenService,
-    keyStore,
-    mfaRecoveryCodeService
+    keyStore
   });
 
   const loginService = authLoginServiceFactory({

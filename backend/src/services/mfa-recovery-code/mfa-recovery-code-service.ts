@@ -6,7 +6,6 @@ import { TMfaRecoveryCodeDALFactory } from "./mfa-recovery-code-dal";
 import { generateRecoveryCode } from "./mfa-recovery-code-fns";
 import {
   TDeleteRecoveryCodesDTO,
-  TEnsureRecoveryCodesDTO,
   TGetRecoveryCodesDTO,
   TRotateRecoveryCodesDTO,
   TVerifyAndConsumeRecoveryCodeDTO
@@ -36,27 +35,6 @@ export const mfaRecoveryCodeServiceFactory = ({
     return { recoveryCodes, encryptedRecoveryCodes };
   };
 
-  /**
-   * Ensures the user has an account-level recovery code pool. Idempotent: if a
-   * pool already exists (e.g. from a prior TOTP setup) the existing codes are
-   * returned unchanged; otherwise a fresh pool of codes is generated.
-   * Called from both TOTP and passkey registration.
-   */
-  const ensureRecoveryCodes = async ({ userId }: TEnsureRecoveryCodesDTO) => {
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-
-    return mfaRecoveryCodeDAL.transaction(async (tx) => {
-      const existing = await mfaRecoveryCodeDAL.findOne({ userId }, tx);
-      if (existing) {
-        return decryptWithRoot(existing.encryptedRecoveryCodes).toString().split(",");
-      }
-
-      const { recoveryCodes, encryptedRecoveryCodes } = generateEncryptedRecoveryCodes();
-      await mfaRecoveryCodeDAL.create({ userId, encryptedRecoveryCodes }, tx);
-      return recoveryCodes;
-    });
-  };
-
   const getRecoveryCodes = async ({ userId }: TGetRecoveryCodesDTO) => {
     const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOne({ userId });
 
@@ -67,9 +45,6 @@ export const mfaRecoveryCodeServiceFactory = ({
     }
 
     const decryptWithRoot = kmsService.decryptWithRootKey();
-    // Once every code is consumed the stored value is the empty string, which
-    // split(",") turns into [""]. Filter out empties so an exhausted pool
-    // reads as [] rather than a single blank code.
     const recoveryCodes = decryptWithRoot(recoveryCodeConfig.encryptedRecoveryCodes)
       .toString()
       .split(",")
@@ -145,7 +120,6 @@ export const mfaRecoveryCodeServiceFactory = ({
   };
 
   return {
-    ensureRecoveryCodes,
     getRecoveryCodes,
     verifyAndConsumeRecoveryCode,
     rotateRecoveryCodes,

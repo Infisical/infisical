@@ -467,9 +467,7 @@ export const useGetUserTotpRegistration = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: userKeys.totpRegistration,
     queryFn: async () => {
-      const { data } = await apiRequest.post<{ otpUrl: string; recoveryCodes: string[] }>(
-        "/api/v1/user/me/totp/register"
-      );
+      const { data } = await apiRequest.post<{ otpUrl: string }>("/api/v1/user/me/totp/register");
 
       return data;
     },
@@ -482,16 +480,13 @@ export const useGetUserTotpConfiguration = () => {
     queryKey: userKeys.totpConfiguration,
     queryFn: async () => {
       try {
-        const { data } = await apiRequest.get<{ isVerified: boolean; recoveryCodes: string[] }>(
-          "/api/v1/user/me/totp"
-        );
+        const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v1/user/me/totp");
 
         return data;
       } catch (error) {
         if (error instanceof AxiosError && [404, 400].includes(error.response?.data?.statusCode)) {
           return {
-            isVerified: false,
-            recoveryCodes: []
+            isVerified: false
           };
         }
         throw error;

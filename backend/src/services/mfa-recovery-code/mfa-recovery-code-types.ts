@@ -1,7 +1,3 @@
-export type TEnsureRecoveryCodesDTO = {
-  userId: string;
-};
-
 export type TGetRecoveryCodesDTO = {
   userId: string;
 };

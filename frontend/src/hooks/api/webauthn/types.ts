@@ -24,7 +24,6 @@ export type TVerifyRegistrationDTO = {
 export type TVerifyRegistrationResponse = {
   credentialId: string;
   name?: string | null;
-  recoveryCodes: string[];
 };
 
 export type TGenerateAuthenticationOptionsResponse = PublicKeyCredentialRequestOptionsJSON;

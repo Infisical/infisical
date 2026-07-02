@@ -1,17 +1,24 @@
 export {
   useAddUserToWsNonE2EE,
+  useDeleteUserTotpConfiguration,
   useRemoveMyDuplicateAccounts,
   useRequestEmailChangeOTP,
   useRevokeMySessionById,
+  useRotateMfaRecoveryCodes,
+  useSendEmailMfaSetupCode,
   useSendEmailVerificationCode,
   useUpdateUserEmail,
-  useVerifyCurrentEmailOTP
+  useVerifyCurrentEmailOTP,
+  useVerifyEmailMfaSetupCode,
+  useVerifyUserTotpRegistration
 } from "./mutation";
 export {
+  fetchMfaRecoveryCodes,
   fetchOrgUsers,
   useAddUsersToOrg,
   useDeleteMe,
   useDeleteOrgMembership,
+  useGetMfaRecoveryCodes,
   useGetMyDuplicateAccount,
   useGetMyIp,
   useGetMyOrganizationProjects,
@@ -21,6 +28,7 @@ export {
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,
+  useGetUserTotpConfiguration,
   useGetUserTotpRegistration,
   useListUserGroupMemberships,
   useLogoutUser,

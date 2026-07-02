@@ -66,15 +66,37 @@ export const useUpdateUserProjectFavorites = () => {
 };
 
 export const useVerifyUserTotpRegistration = () => {
-  return useMutation<{ recoveryCodes: string[] }, unknown, { totp: string }>({
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, unknown, { totp: string }>({
     mutationFn: async ({ totp }: { totp: string }) => {
-      const { data } = await apiRequest.post<{ recoveryCodes: string[] }>(
-        "/api/v1/user/me/totp/verify",
-        {
-          totp
-        }
-      );
+      const { data } = await apiRequest.post<{ success: boolean }>("/api/v1/user/me/totp/verify", {
+        totp
+      });
 
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
+    }
+  });
+};
+
+export const useSendEmailMfaSetupCode = () => {
+  return useMutation<{ message: string }, unknown, void>({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post<{ message: string }>("/api/v1/user/me/mfa/email/send");
+      return data;
+    }
+  });
+};
+
+export const useVerifyEmailMfaSetupCode = () => {
+  return useMutation<{ success: boolean }, unknown, { code: string }>({
+    mutationFn: async ({ code }: { code: string }) => {
+      const { data } = await apiRequest.post<{ success: boolean }>(
+        "/api/v1/user/me/mfa/email/verify",
+        { code }
+      );
       return data;
     }
   });
@@ -94,8 +116,6 @@ export const useDeleteUserTotpConfiguration = () => {
   });
 };
 
-// Rotates the account-level recovery codes: issues a fresh set and invalidates
-// the old ones. Returns the new codes so the caller can display them once.
 export const useRotateMfaRecoveryCodes = () => {
   const queryClient = useQueryClient();
   return useMutation<{ recoveryCodes: string[] }, unknown, void>({

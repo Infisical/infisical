@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
-import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
+import { startAuthentication } from "@simplewebauthn/browser";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 
 import Error from "@app/components/basic/Error";
-import { RecoveryCodesDownload } from "@app/components/mfa/RecoveryCodesDownload";
-import TotpRegistration from "@app/components/mfa/TotpRegistration";
+import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Input, Tooltip } from "@app/components/v2";
+import { Button, Tooltip } from "@app/components/v2";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
@@ -20,12 +19,7 @@ import {
 } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
-import {
-  useGenerateAuthenticationOptions,
-  useGenerateRegistrationOptions,
-  useVerifyAuthentication,
-  useVerifyRegistration
-} from "@app/hooks/api/webauthn";
+import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
 // The style for the verification code input
 const codeInputProps = {
@@ -83,17 +77,12 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
   const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
   const [shouldShowWebAuthnRegistration, setShouldShowWebAuthnRegistration] = useState(false);
-  const [credentialName, setCredentialName] = useState("");
-  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
-  const [registrationRecoveryCodes, setRegistrationRecoveryCodes] = useState<string[]>([]);
   const logout = useLogoutUser();
 
   const { mutateAsync: generateWebAuthnAuthenticationOptions } = useGenerateAuthenticationOptions();
   const { mutateAsync: verifyWebAuthnAuthentication } = useVerifyAuthentication();
 
   const sendMfaToken = useSendMfaToken();
-  const generateRegistrationOptions = useGenerateRegistrationOptions();
-  const verifyRegistration = useVerifyRegistration();
 
   useEffect(() => {
     if (method === MfaMethod.TOTP) {
@@ -263,142 +252,18 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   };
 
-  const handleRegisterPasskey = async () => {
-    try {
-      setIsRegisteringPasskey(true);
-
-      // Check if WebAuthn is supported
-      if (
-        !window.PublicKeyCredential ||
-        !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-      ) {
-        createNotification({
-          text: "WebAuthn is not supported on this browser",
-          type: "error"
-        });
-        return;
-      }
-
-      // Check if platform authenticator is available
-      const available =
-        await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-      if (!available) {
-        createNotification({
-          text: "No passkey-compatible authenticator found on this device",
-          type: "error"
-        });
-        return;
-      }
-
-      // Temporarily clear MFA token so the regular access token is used for registration endpoints
-      const mfaToken = getMfaTempToken();
-      SecurityClient.setMfaToken("");
-
-      try {
-        // Generate registration options from server (using regular user endpoint)
-        const options = await generateRegistrationOptions.mutateAsync();
-        const registrationResponse = await startRegistration({ optionsJSON: options });
-
-        // Verify registration with server (using regular user endpoint)
-        const { recoveryCodes } = await verifyRegistration.mutateAsync({
-          registrationResponse,
-          name: credentialName || "Passkey"
-        });
-
-        createNotification({
-          text: "Successfully registered passkey",
-          type: "success"
-        });
-
-        // Surface account-level recovery codes generated on first passkey so the
-        // user can save them before continuing. If none were returned (a pool
-        // already existed), proceed immediately.
-        if (recoveryCodes && recoveryCodes.length > 0) {
-          setRegistrationRecoveryCodes(recoveryCodes);
-        } else {
-          setShouldShowWebAuthnRegistration(false);
-          await successCallback();
-        }
-      } finally {
-        // Restore MFA token
-        SecurityClient.setMfaToken(mfaToken);
-      }
-    } catch (error: any) {
-      console.error("Failed to register passkey:", error);
-
-      let errorMessage = "Failed to register passkey";
-      if (error.name === "NotAllowedError") {
-        errorMessage = "Passkey registration was cancelled or timed out";
-      } else if (error.name === "InvalidStateError") {
-        errorMessage = "This passkey has already been registered";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
-    } finally {
-      setIsRegisteringPasskey(false);
-    }
-  };
-
-  if (shouldShowTotpRegistration) {
+  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
     return (
-      <>
-        <div className="mb-6 text-center text-lg font-bold text-white">
-          Your organization requires mobile authentication to be configured.
-        </div>
-        <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
-          <TotpRegistration
-            shouldCenterQr
-            onComplete={async () => {
-              setShouldShowTotpRegistration(false);
-              await successCallback();
-            }}
-          />
-        </div>
-      </>
-    );
-  }
-
-  if (shouldShowWebAuthnRegistration) {
-    return (
-      <>
-        <div className="mb-6 text-center text-lg font-bold text-white">
-          Your organization requires passkey authentication to be configured.
-        </div>
-        <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
-          <div className="flex max-w-lg flex-col text-bunker-200">
-            <div className="mb-8">
-              1. Click the button below to register your passkey. You&apos;ll be prompted to use
-              your device&apos;s biometric authentication (Touch ID, Face ID, Windows Hello, etc.).
-            </div>
-            <div className="mb-4">2. Optionally, give your passkey a name to identify it later</div>
-            <div className="mb-4 flex flex-col gap-2">
-              <Input
-                onChange={(e) => setCredentialName(e.target.value)}
-                value={credentialName}
-                placeholder="Passkey name (optional)"
-              />
-              <Button onClick={handleRegisterPasskey} isLoading={isRegisteringPasskey}>
-                Register Passkey
-              </Button>
-            </div>
-          </div>
-        </div>
-        <RecoveryCodesDownload
-          isOpen={registrationRecoveryCodes.length > 0}
-          recoveryCodes={registrationRecoveryCodes}
-          onClose={() => setRegistrationRecoveryCodes([])}
-          onDownloadComplete={async () => {
-            setRegistrationRecoveryCodes([]);
+      <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
+        <MfaEnrollment
+          method={method}
+          onComplete={async () => {
+            setShouldShowTotpRegistration(false);
             setShouldShowWebAuthnRegistration(false);
             await successCallback();
           }}
         />
-      </>
+      </div>
     );
   }
 

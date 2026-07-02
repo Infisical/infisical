@@ -4,7 +4,6 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTotpConfigDALFactory } from "./totp-config-dal";
 import {
@@ -20,20 +19,13 @@ type TTotpServiceFactoryDep = {
   totpConfigDAL: TTotpConfigDALFactory;
   kmsService: TKmsServiceFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "ensureRecoveryCodes" | "getRecoveryCodes">;
 };
 
 authenticator.options = { window: 1 };
 
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
-export const totpServiceFactory = ({
-  totpConfigDAL,
-  kmsService,
-  userDAL,
-  keyStore,
-  mfaRecoveryCodeService
-}: TTotpServiceFactoryDep) => {
+export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStore }: TTotpServiceFactoryDep) => {
   const getUserTotpConfig = async ({ userId }: TGetUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
       userId
@@ -51,11 +43,8 @@ export const totpServiceFactory = ({
       });
     }
 
-    const recoveryCodes = await mfaRecoveryCodeService.getRecoveryCodes({ userId });
-
     return {
-      isVerified: totpConfig.isVerified,
-      recoveryCodes
+      isVerified: totpConfig.isVerified
     };
   };
 
@@ -97,9 +86,6 @@ export const totpServiceFactory = ({
       return newTotpConfig;
     });
 
-    // Recovery codes are account-level and shared across MFA methods.
-    const recoveryCodes = await mfaRecoveryCodeService.ensureRecoveryCodes({ userId });
-
     const user = await userDAL.findById(userId);
     const decryptWithRoot = kmsService.decryptWithRootKey();
 
@@ -107,8 +93,7 @@ export const totpServiceFactory = ({
     const otpUrl = authenticator.keyuri(user.username, "Infisical", secret);
 
     return {
-      otpUrl,
-      recoveryCodes
+      otpUrl
     };
   };
 
@@ -146,9 +131,8 @@ export const totpServiceFactory = ({
       isVerified: true
     });
 
-    const recoveryCodes = await mfaRecoveryCodeService.ensureRecoveryCodes({ userId });
     return {
-      recoveryCodes
+      success: true
     };
   };
 

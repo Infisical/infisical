@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -18,7 +19,9 @@ import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
+import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { TWebAuthnCredentialDALFactory } from "../webauthn/webauthn-credential-dal";
 import { TUserDALFactory } from "./user-dal";
 import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO, TVerifyCurrentEmailOTPDTO } from "./user-types";
 
@@ -45,7 +48,10 @@ type TUserServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
-  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "deleteRecoveryCodes" | "ensureRecoveryCodes">;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
+  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "delete">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "deleteRecoveryCodes" | "rotateRecoveryCodes">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -59,6 +65,9 @@ export const userServiceFactory = ({
   smtpService,
   permissionService,
   userAliasDAL,
+  totpConfigDAL,
+  webAuthnCredentialDAL,
+  keyStore,
   mfaRecoveryCodeService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
@@ -103,6 +112,26 @@ export const userServiceFactory = ({
 
     if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
 
+    const wasMfaEnabled = user.isMfaEnabled;
+
+    // MFA cannot be turned off while any organization the user belongs to enforces
+    // it — doing so would lock them out of that org on the next login.
+    if (isMfaEnabled === false) {
+      const userOrgMemberships = await membershipUserDAL.find({
+        actorUserId: userId,
+        scope: AccessScope.Organization
+      });
+      if (userOrgMemberships.length) {
+        const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
+        const organizations = await orgDAL.find({ $in: { id: orgIds } });
+        if (organizations.some((org) => org.enforceMfa)) {
+          throw new ForbiddenRequestError({
+            message: "Two-factor authentication is required by your organization and cannot be disabled"
+          });
+        }
+      }
+    }
+
     let mfaMethods;
     if (isMfaEnabled === undefined) {
       mfaMethods = undefined;
@@ -116,16 +145,66 @@ export const userServiceFactory = ({
       selectedMfaMethod
     });
 
-    // Recovery codes are account-level and tied to MFA being enabled, not to any
-    // specific method. Provision the pool as soon as MFA is turned on, and clear
-    // it when MFA is turned off so no usable codes are left behind.
-    if (isMfaEnabled === true) {
-      await mfaRecoveryCodeService.ensureRecoveryCodes({ userId });
+    if (isMfaEnabled === true && !wasMfaEnabled) {
+      await mfaRecoveryCodeService.rotateRecoveryCodes({ userId });
     } else if (isMfaEnabled === false) {
-      await mfaRecoveryCodeService.deleteRecoveryCodes({ userId });
+      await Promise.all([
+        mfaRecoveryCodeService.deleteRecoveryCodes({ userId }),
+        totpConfigDAL.delete({ userId }),
+        webAuthnCredentialDAL.delete({ userId })
+      ]);
     }
 
     return updatedUser;
+  };
+
+  // Sends a one-time code to the account email so the user can prove control of
+  // the inbox while adding email as a second factor from account settings.
+  const sendEmailMfaSetupCode = async ({ userId }: { userId: string }) => {
+    const user = await userDAL.findById(userId);
+    if (!user || !user.email) throw new BadRequestError({ message: "No email address is set on this account" });
+
+    const cooldownKey = KeyStorePrefixes.MfaEmailSetupResendCooldown(userId);
+    const acquired = await keyStore.setItemWithExpiryNX(
+      cooldownKey,
+      KeyStoreTtls.MfaEmailSetupResendCooldownInSeconds,
+      "1"
+    );
+    if (!acquired) {
+      const remaining = await keyStore.ttl(cooldownKey);
+      throw new BadRequestError({
+        message: "Please wait before requesting another code",
+        details: { cooldownSeconds: Math.max(1, remaining) }
+      });
+    }
+
+    const code = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_MFA,
+      userId
+    });
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.EmailMfa,
+      subjectLine: "Infisical MFA code",
+      recipients: [user.email],
+      substitutions: {
+        code
+      }
+    });
+  };
+
+  // Verifies the email setup code so the caller can confirm the method works
+  // before enabling account MFA (which mints the recovery codes).
+  const verifyEmailMfaSetupCode = async ({ userId, code }: { userId: string; code: string }) => {
+    try {
+      await tokenService.validateTokenForUser({
+        type: TokenType.TOKEN_EMAIL_MFA,
+        userId,
+        code
+      });
+    } catch (error) {
+      throw new BadRequestError({ message: "Invalid verification code" });
+    }
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
@@ -555,6 +634,8 @@ export const userServiceFactory = ({
   return {
     sendEmailVerificationCode,
     updateUserMfa,
+    sendEmailMfaSetupCode,
+    verifyEmailMfaSetupCode,
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,

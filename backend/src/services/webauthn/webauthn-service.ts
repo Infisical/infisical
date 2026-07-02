@@ -14,7 +14,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TWebAuthnCredentialDALFactory } from "./webauthn-credential-dal";
 import {
@@ -32,7 +31,6 @@ type TWebAuthnServiceFactoryDep = {
   webAuthnCredentialDAL: TWebAuthnCredentialDALFactory;
   tokenService: TAuthTokenServiceFactory;
   keyStore: TKeyStoreFactory;
-  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "ensureRecoveryCodes">;
 };
 
 export type TWebAuthnServiceFactory = ReturnType<typeof webAuthnServiceFactory>;
@@ -41,8 +39,7 @@ export const webAuthnServiceFactory = ({
   userDAL,
   webAuthnCredentialDAL,
   tokenService,
-  keyStore,
-  mfaRecoveryCodeService
+  keyStore
 }: TWebAuthnServiceFactoryDep) => {
   const storeChallenge = async (userId: string, challenge: string) => {
     const challengeKey = KeyStorePrefixes.WebAuthnChallenge(userId);
@@ -181,15 +178,9 @@ export const webAuthnServiceFactory = ({
     // Clear the challenge
     await clearChallenge(userId);
 
-    // Ensure the user has account-level recovery codes as a passkey fallback.
-    // Idempotent: only the first registered passkey (or a pre-existing TOTP
-    // setup) generates codes; subsequent passkeys reuse the same pool.
-    const recoveryCodes = await mfaRecoveryCodeService.ensureRecoveryCodes({ userId });
-
     return {
       credentialId: credential.credentialId,
-      name: credential.name,
-      recoveryCodes
+      name: credential.name
     };
   };
 
