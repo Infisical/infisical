@@ -26,6 +26,7 @@ jobs:
 
       - name: Generate and collect docs
         env:
+          TEMPLATE_FILE: helm-charts/README.md.gotmpl
           TARGETS: |
             [
               {
@@ -36,6 +37,12 @@ jobs:
               }
             ]
         run: |
+          template_src="${GITHUB_WORKSPACE}/${TEMPLATE_FILE}"
+          if [ ! -f "$template_src" ]; then
+            echo "::error::Shared template not found at $template_src"
+            exit 1
+          fi
+
           echo "$TARGETS" | jq -c '.[]' | while read -r target; do
             name=$(echo "$target" | jq -r '.name')
             repo=$(echo "$target" | jq -r '.repo // empty')
@@ -57,6 +64,8 @@ jobs:
               echo "::error::Chart.yaml not found in $chart_dir"
               exit 1
             fi
+
+            cp "$template_src" "$chart_dir/README.md.gotmpl"
 
             echo "Running helm-docs in $chart_dir"
             helm-docs --chart-search-root "$chart_dir"
