@@ -35,11 +35,13 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { FolderAccountGroup } from "./components/FolderAccountGroup";
 import { LaunchSessionSheet } from "./components/LaunchSessionSheet";
+import { RequestAccessModal } from "./components/RequestAccessModal";
 
 export const PamAccessPage = () => {
   const { t } = useTranslation();
 
   const [sheetAccount, setSheetAccount] = useState<TAccessiblePamAccount | null>(null);
+  const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
@@ -197,6 +199,7 @@ export const PamAccessPage = () => {
                     accountType={selectedAccountType}
                     filterActive={filterActive}
                     onLaunch={setSheetAccount}
+                    onRequestAccess={setRequestAccount}
                     onResultCount={handleResultCount}
                   />
                 ))}
@@ -211,6 +214,14 @@ export const PamAccessPage = () => {
         isOpen={!!sheetAccount}
         onOpenChange={(open) => {
           if (!open) setSheetAccount(null);
+        }}
+      />
+
+      <RequestAccessModal
+        account={requestAccount}
+        isOpen={!!requestAccount}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccount(null);
         }}
       />
     </>

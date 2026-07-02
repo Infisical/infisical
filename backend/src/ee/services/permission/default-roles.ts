@@ -1097,6 +1097,7 @@ const buildPamResourceAdminPermissionRules = () => {
       ResourcePermissionPamResourceActions.ViewCredentials,
       ResourcePermissionPamResourceActions.RequestAccess,
       ResourcePermissionPamResourceActions.ApproveRequests,
+      ResourcePermissionPamResourceActions.RevokeGrants,
       ResourcePermissionPamResourceActions.ManagePolicies,
       ResourcePermissionPamResourceActions.ManageRotation,
       ResourcePermissionPamResourceActions.ManageMembers,

@@ -5,6 +5,10 @@ import { projectKeys } from "@app/hooks/api/projects/query-keys";
 
 import { pamKeys } from "./queries";
 import {
+  TCreatePamAccessRequestDTO,
+  TReviewPamAccessRequestDTO,
+  TRevokePamAccessRequestDTO,
+  TSetPamApprovalConfigDTO,
   TAddAccountGroupMemberDTO,
   TAddAccountIdentityMemberDTO,
   TAddAccountUserMemberDTO,
@@ -529,6 +533,72 @@ export const useRemoveFolderIdentityMember = () => {
     },
     onSuccess: (_, { folderId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+    }
+  });
+};
+
+// Access Requests / Approvals
+
+export const useCreatePamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreatePamAccessRequestDTO) => {
+      const { data } = await apiRequest.post("/api/v1/pam/access-requests", params);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useReviewPamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, status, comment }: TReviewPamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/access-requests/${requestId}/review`,
+        { status, comment }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useRevokePamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId }: TRevokePamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/access-requests/${requestId}/revoke`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useSetPamApprovalConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId, steps }: TSetPamApprovalConfigDTO) => {
+      const { data } = await apiRequest.put(
+        `/api/v1/pam/folders/${folderId}/approval-configuration`,
+        { steps }
+      );
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.approvalConfig(folderId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };

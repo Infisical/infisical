@@ -6,7 +6,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -51,6 +51,7 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -82,6 +83,7 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -99,7 +101,8 @@ export const pamSessionServiceFactory = ({
   userDAL,
   pamSessionExpirationService,
   mfaSessionService,
-  orgDAL
+  orgDAL,
+  pamAccessRequestService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -376,13 +379,16 @@ export const pamSessionServiceFactory = ({
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
-    await checkAccount(
-      account.id,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      actor
-    );
+    const templateSettings = account.templateSettings as { requiresApproval?: boolean } | null;
+    const requiresApproval = Boolean(templateSettings?.requiresApproval);
+
+    // Gated accounts are launched via a just-in-time approval grant rather than standing
+    // LaunchSessions permission, so an approved Requester can launch without holding it.
+    const launchAuthorizationAction = requiresApproval
+      ? ResourcePermissionPamResourceActions.ReadAccounts
+      : ResourcePermissionPamResourceActions.LaunchSessions;
+
+    await checkAccount(account.id, account.folderId, projectId, launchAuthorizationAction, actor);
 
     const trimmedReason = reason?.trim() || null;
 
@@ -415,15 +421,31 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
-    await checkAccount(
-      account.id,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      actor
-    );
+    await checkAccount(account.id, account.folderId, projectId, launchAuthorizationAction, actor);
 
     enforceRecordingConfig(account);
+
+    if (requiresApproval) {
+      const grant = await pamAccessRequestService.checkGrant({
+        userId: actor.actorId,
+        accountId: account.id,
+        projectId
+      });
+      if (!grant) {
+        throw new ForbiddenRequestError({
+          name: "PAM_APPROVAL_REQUIRED",
+          message: "Access request required"
+        });
+      }
+      const grantRemainingMs = new Date(grant.expiresAt!).getTime() - Date.now();
+      if (grantRemainingMs <= 0) {
+        throw new ForbiddenRequestError({
+          name: "PAM_APPROVAL_REQUIRED",
+          message: "Access grant has expired"
+        });
+      }
+      sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
+    }
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,

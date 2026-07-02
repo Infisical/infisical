@@ -20,6 +20,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   GatewayPicker,
   Input,
   Select,
@@ -30,6 +31,7 @@ import {
   TextArea
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { Switch } from "@app/components/v3/generic/Switch";
 import { useProject } from "@app/context";
 import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import {
@@ -64,6 +66,7 @@ const settingsSchema = z
     s3Bucket: z.string().optional(),
     s3Region: z.string().optional(),
     s3KeyPrefix: z.string().optional(),
+    requiresApproval: z.boolean(),
     policies: z.record(z.unknown()),
     settings: z.object({
       sessionLogMaskingPatterns: z.string().optional()
@@ -229,6 +232,7 @@ const SettingsTab = ({
     defaultValues: {
       gatewayId: null,
       gatewayPoolId: null,
+      requiresApproval: false,
       recordingStorageBackend: "postgres",
       recordingConnectionId: null,
       s3Bucket: "",
@@ -252,6 +256,7 @@ const SettingsTab = ({
       reset({
         gatewayId: template.gatewayId ?? null,
         gatewayPoolId: template.gatewayPoolId ?? null,
+        requiresApproval: Boolean(settings.requiresApproval),
         recordingStorageBackend: savedBackend ?? "postgres",
         recordingConnectionId: template.recordingConnectionId ?? null,
         s3Bucket: s3Config.bucket ?? "",
@@ -290,6 +295,7 @@ const SettingsTab = ({
   const onSubmit = (data: SettingsForm) => {
     const settings: Record<string, unknown> = {
       ...((template.settings ?? {}) as Record<string, unknown>),
+      requiresApproval: data.requiresApproval,
       recordingStorageBackend: data.recordingStorageBackend
     };
 
@@ -379,35 +385,49 @@ const SettingsTab = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
-      {applicablePolicies.length > 0 && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="text-base">Policies</CardTitle>
-            <CardDescription>
-              Policies available for {typeName} accounts using this template.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            {applicablePolicies.map((p) => {
-              const Editor = POLICY_EDITORS[p.key]!;
-              return (
-                <Editor
-                  key={p.key}
-                  label={p.label}
-                  description={p.description}
-                  value={policies[p.key]}
-                  onChange={(value) => {
-                    const next = { ...policies };
-                    if (value === null || value === undefined) delete next[p.key];
-                    else next[p.key] = value;
-                    setValue("policies", next, { shouldDirty: true });
-                  }}
-                />
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Policies</CardTitle>
+          <CardDescription>
+            Policies available for {typeName} accounts using this template.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <Controller
+            control={control}
+            name="requiresApproval"
+            render={({ field }) => (
+              <Field orientation="horizontal" className="items-center!">
+                <FieldContent>
+                  <FieldTitle>Require Approval</FieldTitle>
+                  <FieldDescription>
+                    Users must request and receive approval before launching sessions on accounts
+                    using this template.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch checked={field.value} variant="pam" onCheckedChange={field.onChange} />
+              </Field>
+            )}
+          />
+          {applicablePolicies.map((p) => {
+            const Editor = POLICY_EDITORS[p.key]!;
+            return (
+              <Editor
+                key={p.key}
+                label={p.label}
+                description={p.description}
+                value={policies[p.key]}
+                onChange={(value) => {
+                  const next = { ...policies };
+                  if (value === null || value === undefined) delete next[p.key];
+                  else next[p.key] = value;
+                  setValue("policies", next, { shouldDirty: true });
+                }}
+              />
+            );
+          })}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="border-b">

@@ -391,7 +391,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               templateName: true,
               accountType: true
             }).extend({
-              canLaunch: z.boolean().describe("Whether the caller can launch a session for this account")
+              canLaunch: z.boolean().describe("Whether the caller can launch a session for this account"),
+              requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
+              accessStatus: z
+                .enum(["none", "pending", "granted"])
+                .describe("Current approval status for the caller"),
+              grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+              disabledReason: z.string().nullable().describe("Why this account is disabled, or null if usable")
             })
           ),
           totalCount: z.number()

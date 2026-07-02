@@ -10,6 +10,8 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -41,6 +43,7 @@ type TPamMembershipServiceFactoryDep = {
     "create" | "find" | "findById" | "delete" | "deleteById" | "findResourceMembershipsForActor" | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
@@ -77,6 +80,7 @@ const resourceScope = (projectId: string, resourceType: ResourceType, resourceId
 export const pamMembershipServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
+  approvalPolicyDAL,
   pamFolderDAL,
   pamAccountDAL,
   userDAL,
@@ -505,6 +509,19 @@ export const pamMembershipServiceFactory = ({
         })
       );
 
+      // A user/group removed from the product must no longer be an approver on any folder policy.
+      if (kind !== "identity") {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            userId: kind === "user" ? id : undefined,
+            groupId: kind === "group" ? id : undefined
+          },
+          tx
+        );
+      }
+
       await membershipDAL.deleteById(membership.id, tx);
 
       return {
@@ -739,7 +756,52 @@ export const pamMembershipServiceFactory = ({
 
   const removeFolderMember = async ({ projectId, folderId, ...dto }: TRemovePamFolderMemberDTO & TActorContext) => {
     await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, dto);
-    return removeResourceMember(projectId, ResourceType.PamFolder, folderId, "folderId", dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    const [membership] = await membershipDAL.find({
+      ...resourceScope(projectId, ResourceType.PamFolder, folderId),
+      [column]: id
+    });
+    if (!membership) {
+      throw new NotFoundError({
+        message: `${kindLabel(kind)} is not a member of this folderId`
+      });
+    }
+
+    await membershipDAL.transaction(async (tx) => {
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      await membershipDAL.deleteById(membership.id, tx);
+
+      if (kind !== "identity") {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            scopeId: folderId,
+            userId: kind === "user" ? id : undefined,
+            groupId: kind === "group" ? id : undefined
+          },
+          tx
+        );
+      }
+    });
+
+    return {
+      membershipId: membership.id,
+      folderId,
+      userId: kind === "user" ? id : undefined,
+      groupId: kind === "group" ? id : undefined,
+      identityId: kind === "identity" ? id : undefined
+    };
   };
 
   // Account members

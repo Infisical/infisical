@@ -1,17 +1,28 @@
-import { ClipboardList, FileText, FolderOpen, KeyRound, Shield, Video } from "lucide-react";
+import {
+  ClipboardList,
+  FileText,
+  FolderOpen,
+  KeyRound,
+  Shield,
+  ShieldCheck,
+  Video
+} from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
-import { useGetPamAccessCapabilities } from "@app/hooks/api/pam";
+import { useGetPamAccessCapabilities, useGetPamAccessRequestCount } from "@app/hooks/api/pam";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import type { NavItem, Submenu } from "./types";
 
 export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
   const { data: capabilities } = useGetPamAccessCapabilities();
+  const { data: accessRequestCount } = useGetPamAccessRequestCount();
   const isProductAdmin = Boolean(capabilities?.isProductAdmin);
   const isResourceAdmin = Boolean(capabilities?.isResourceAdmin);
   const canViewSessions = Boolean(capabilities?.canViewSessions);
   const canViewAuditLogs = Boolean(capabilities?.canViewAuditLogs);
+  const isApprover = Boolean(accessRequestCount?.isApprover);
+  const pendingCount = accessRequestCount?.pendingCount ?? 0;
 
   const accessItems: NavItem[] = [
     { label: "My Access", icon: KeyRound, pathSuffix: "access", exactPath: true }
@@ -28,6 +39,17 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
 
   const monitorItems: NavItem[] = [
     ...(canViewSessions ? [{ label: "Sessions", icon: Video, pathSuffix: "sessions" }] : []),
+    ...(isApprover
+      ? [
+          {
+            label: "Approval Requests",
+            icon: ShieldCheck,
+            pathSuffix: "approval-requests",
+            badgeCount: pendingCount,
+            badgeVariant: "pam" as const
+          }
+        ]
+      : []),
     ...(canViewAuditLogs ? [{ label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }] : [])
   ];
 

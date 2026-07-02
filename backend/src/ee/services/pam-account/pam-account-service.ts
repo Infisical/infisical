@@ -21,7 +21,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { PamAccountType, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -37,10 +37,12 @@ import {
 } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
   isCredentialConfigured,
+  PamAccountAccessibilityIssue,
   parseInternalMetadata,
   sanitizeCredentials,
   type TSshInternalMetadata,
@@ -70,6 +72,10 @@ type TPamAccountServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
+  pamAccessRequestService: Pick<
+    TPamAccessRequestServiceFactory,
+    "getAccessStatusBatch" | "getFolderPolicyConfigured"
+  >;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -138,23 +144,43 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       search
     });
 
-    return accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      folderId: a.folderId,
-      folderName: a.folderName,
-      templateId: a.templateId,
-      templateName: a.templateName,
-      accountType: a.accountType,
-      projectId: a.projectId,
-      gatewayId: a.gatewayId,
-      gatewayPoolId: a.gatewayPoolId,
-      recordingConnectionId: a.recordingConnectionId,
-      ...computeAccessibility(a),
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt
-    }));
+    const approvalFolderIds = [
+      ...new Set(
+        accounts
+          .filter((a) => {
+            const settings = a.templateSettings as { requiresApproval?: boolean } | null;
+            return settings?.requiresApproval && a.folderId;
+          })
+          .map((a) => a.folderId!)
+      )
+    ];
+    const configuredFolders = await deps.pamAccessRequestService.getFolderPolicyConfigured(approvalFolderIds);
+
+    return accounts.map((a) => {
+      const { accessibilityIssues, isAccessible } = computeAccessibility(a);
+      const settings = a.templateSettings as { requiresApproval?: boolean } | null;
+      if (settings?.requiresApproval && a.folderId && !configuredFolders.has(a.folderId)) {
+        accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
+      }
+      return {
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        folderId: a.folderId,
+        folderName: a.folderName,
+        templateId: a.templateId,
+        templateName: a.templateName,
+        accountType: a.accountType,
+        projectId: a.projectId,
+        gatewayId: a.gatewayId,
+        gatewayPoolId: a.gatewayPoolId,
+        recordingConnectionId: a.recordingConnectionId,
+        isAccessible: isAccessible && accessibilityIssues.length === 0,
+        accessibilityIssues,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt
+      };
+    });
   };
 
   const checkAccount = (
@@ -342,6 +368,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       if (!folder || folder.projectId !== projectId) {
         throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
       }
+      // Moving an account into a different folder requires create rights on the destination: folder
+      // roles cascade to the accounts inside, so EditAccounts alone must not relocate an account into a
+      // folder where the actor would gain ViewCredentials/LaunchSessions.
+      if (folderId !== existing.folderId) {
+        const { permission } = await checkFolder(folderId, projectId, ctx);
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionPamResourceActions.CreateAccounts,
+          ResourcePermissionSub.PamResource
+        );
+      }
     }
 
     if (templateId) {
@@ -353,6 +389,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         throw new BadRequestError({
           message: `Template '${templateId}' is for type '${template.type}', not '${accountType}'`
         });
+      }
+      // A template carries governance settings (e.g. requiresApproval) and is product-admin-managed, so
+      // re-pointing an account's template is an admin-only action to prevent bypassing those controls.
+      if (templateId !== existing.templateId) {
+        const { hasRole } = await verifyMembership(projectId, ctx);
+        if (!hasRole(PamProductRole.Admin)) {
+          throw new ForbiddenRequestError({ message: "Only PAM admins can change an account's template" });
+        }
       }
     }
 
@@ -482,21 +526,47 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       onlyAccessible: true
     });
 
+    const approvalAccounts = accounts.filter((a) => {
+      const settings = a.templateSettings as { requiresApproval?: boolean } | null;
+      return settings?.requiresApproval;
+    });
+    const approvalAccountIds = approvalAccounts.map((a) => a.id);
+
+    const approvalFolderIds = [...new Set(approvalAccounts.map((a) => a.folderId).filter(Boolean) as string[])];
+    const [accessStatusMap, configuredFolders] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, approvalAccountIds, projectId),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(approvalFolderIds)
+    ]);
+
     return {
-      accounts: accounts.map((a) => ({
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        folderId: a.folderId,
-        folderName: a.folderName,
-        templateId: a.templateId,
-        templateName: a.templateName,
-        accountType: a.accountType,
-        projectId: a.projectId,
-        canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
-        createdAt: a.createdAt,
-        updatedAt: a.updatedAt
-      })),
+      accounts: accounts.map((a) => {
+        const settings = a.templateSettings as { requiresApproval?: boolean } | null;
+        const requiresApproval = settings?.requiresApproval ?? false;
+        const statusEntry = accessStatusMap.get(a.id);
+        const hasPolicyConfigured = a.folderId ? configuredFolders.has(a.folderId) : false;
+        let disabledReason: string | null = null;
+        if (requiresApproval && !hasPolicyConfigured) {
+          disabledReason = "No approval policy configured for this folder";
+        }
+        return {
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          folderId: a.folderId,
+          folderName: a.folderName,
+          templateId: a.templateId,
+          templateName: a.templateName,
+          accountType: a.accountType,
+          projectId: a.projectId,
+          canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
+          requiresApproval,
+          accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? "none") : ("none" as const),
+          grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+          disabledReason,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt
+        };
+      }),
       totalCount
     };
   };

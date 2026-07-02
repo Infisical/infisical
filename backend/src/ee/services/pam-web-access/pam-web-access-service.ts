@@ -10,7 +10,7 @@ import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -25,6 +25,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   extractGatewayTarget,
@@ -51,6 +52,7 @@ import {
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
+  pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -92,6 +94,7 @@ type THandleWebSocketConnectionDTO = {
 
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
+  pamAccessRequestService,
   permissionService,
   auditLogService,
   tokenService,
@@ -164,19 +167,33 @@ export const pamWebAccessServiceFactory = ({
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
-    await checkAccountAccess(
-      permissionService,
-      accountId,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      {
-        actorId: actor.id,
-        actor: actor.type,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod
+    const templateSettings = account.templateSettings as { requiresApproval?: boolean } | null;
+    const requiresApproval = Boolean(templateSettings?.requiresApproval);
+
+    // Gated accounts are launched via a just-in-time approval grant rather than standing
+    // LaunchSessions permission, so an approved Requester can launch without holding it.
+    const launchAuthorizationAction = requiresApproval
+      ? ResourcePermissionPamResourceActions.ReadAccounts
+      : ResourcePermissionPamResourceActions.LaunchSessions;
+
+    await checkAccountAccess(permissionService, accountId, account.folderId, projectId, launchAuthorizationAction, {
+      actorId: actor.id,
+      actor: actor.type,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod
+    });
+
+    let grantRemainingMs: number | null = null;
+    if (requiresApproval) {
+      const grant = await pamAccessRequestService.checkGrant({ userId: actor.id, accountId, projectId });
+      if (!grant) {
+        throw new ForbiddenRequestError({ name: "PAM_APPROVAL_REQUIRED", message: "Access request required" });
       }
-    );
+      grantRemainingMs = new Date(grant.expiresAt!).getTime() - Date.now();
+      if (grantRemainingMs <= 0) {
+        throw new ForbiddenRequestError({ name: "PAM_APPROVAL_REQUIRED", message: "Access grant has expired" });
+      }
+    }
 
     enforceRecordingConfig(account);
 
@@ -201,9 +218,12 @@ export const pamWebAccessServiceFactory = ({
       );
     }
 
-    const maxSessionDurationMs = policy.maxSessionDurationSeconds
+    let maxSessionDurationMs = policy.maxSessionDurationSeconds
       ? policy.maxSessionDurationSeconds * 1000
       : DEFAULT_WEB_SESSION_DURATION_MS;
+    if (grantRemainingMs !== null) {
+      maxSessionDurationMs = Math.min(maxSessionDurationMs, grantRemainingMs);
+    }
 
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
     const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);

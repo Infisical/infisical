@@ -1,4 +1,4 @@
-import { Rocket } from "lucide-react";
+import { Clock, LockKeyhole, Rocket } from "lucide-react";
 
 import { HighlightText } from "@app/components/v2/HighlightText";
 import {
@@ -18,18 +18,27 @@ type Props = {
   account: TAccessiblePamAccount;
   search: string;
   onLaunch: (account: TAccessiblePamAccount) => void;
+  onRequestAccess: (account: TAccessiblePamAccount) => void;
   indented?: boolean;
 };
 
-export const AccountRow = ({ account, search, onLaunch, indented }: Props) => {
+export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indented }: Props) => {
   const { map } = usePamAccountTypeMap();
   const typeName = map[account.accountType as PamAccountType]?.name ?? account.accountType;
-  const { canLaunch } = account;
+  const { canLaunch, requiresApproval, accessStatus, disabledReason } = account;
+
+  const isDisabled = !!disabledReason;
+  const isGranted = accessStatus === "granted";
+  const needsApproval = requiresApproval && !isGranted && !isDisabled;
+  const isPending = accessStatus === "pending";
+  // A granted approval authorizes launching even without standing LaunchSessions permission.
+  const canLaunchNow = canLaunch || isGranted;
+  const canClick = canLaunchNow && !needsApproval && !isDisabled;
 
   return (
     <TableRow
-      className={canLaunch ? "cursor-pointer" : ""}
-      onClick={canLaunch ? () => onLaunch(account) : undefined}
+      className={canClick ? "cursor-pointer" : ""}
+      onClick={canClick ? () => onLaunch(account) : undefined}
     >
       <TableCell>
         <div className={`flex items-center gap-2.5 ${indented ? "pl-[26px]" : ""}`}>
@@ -40,31 +49,76 @@ export const AccountRow = ({ account, search, onLaunch, indented }: Props) => {
           <Badge variant="neutral">{typeName}</Badge>
         </div>
       </TableCell>
-      <TableCell className="w-20">
+      <TableCell className="w-32">
         <div className="flex items-center justify-end">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <Button
-                  variant="pam"
-                  size="xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLaunch(account);
-                  }}
-                  isDisabled={!canLaunch}
-                >
-                  <Rocket className="size-3" />
-                  Launch
-                </Button>
-              </div>
-            </TooltipTrigger>
-            {!canLaunch && (
-              <TooltipContent>
-                You don&apos;t have permission to launch sessions for this account
-              </TooltipContent>
-            )}
-          </Tooltip>
+          {isDisabled ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button variant="neutral" size="xs" isDisabled>
+                    <Rocket className="size-3" />
+                    Launch
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>{disabledReason}</TooltipContent>
+            </Tooltip>
+          ) : needsApproval ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button
+                    variant="neutral"
+                    size="xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isPending) onRequestAccess(account);
+                    }}
+                    isDisabled={isPending}
+                  >
+                    {isPending ? (
+                      <>
+                        <Clock className="size-3" />
+                        Pending
+                      </>
+                    ) : (
+                      <>
+                        <LockKeyhole className="size-3" />
+                        Request Access
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {isPending && (
+                <TooltipContent>Your access request is awaiting approval</TooltipContent>
+              )}
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button
+                    variant="pam"
+                    size="xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onLaunch(account);
+                    }}
+                    isDisabled={!canLaunchNow}
+                  >
+                    <Rocket className="size-3" />
+                    Launch
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {!canLaunchNow && (
+                <TooltipContent>
+                  You don&apos;t have permission to launch sessions for this account
+                </TooltipContent>
+              )}
+            </Tooltip>
+          )}
         </div>
       </TableCell>
     </TableRow>

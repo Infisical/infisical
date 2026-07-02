@@ -400,6 +400,7 @@ const pamRoutes = route("/organizations/$orgId/pam", [
     route("/accounts", "pam/PamAccountsPage/route.tsx"),
     route("/templates", "pam/PamTemplatesPage/route.tsx"),
     route("/sessions", "pam/PamSessionsPage/route.tsx"),
+    route("/approval-requests", "pam/PamApprovalRequestsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
 
     // Access Management

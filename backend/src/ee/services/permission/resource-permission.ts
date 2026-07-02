@@ -38,6 +38,7 @@ export enum ResourcePermissionPamResourceActions {
   ViewCredentials = "view-credentials",
   RequestAccess = "request-access",
   ApproveRequests = "approve-requests",
+  RevokeGrants = "revoke-grants",
   ManagePolicies = "manage-policies",
   ManageRotation = "manage-rotation",
   ManageMembers = "manage-members",

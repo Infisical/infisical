@@ -53,8 +53,9 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | List sessions | `ViewSessions` (via `getResourceIdsWithActions`) |
 | List folder/account members | `ManageMembers` (via `checkManageMembers`) |
 | Get account by ID | `ReadAccounts` (via `checkAccountAccess`) |
-| Launch session / web access | `LaunchSessions` (via `checkAccountAccess`) |
+| Launch session / web access | Non-gated account: `LaunchSessions`. Gated account (`requiresApproval`): `ReadAccounts` + a valid approval grant (just-in-time), enforced in both `pam-session-service.access()` and `pam-web-access-service.issueWebSocketTicket()`. `LaunchSessions` holders do not bypass the approval gate. |
 | View recording | `ViewSessions` (via `checkAccountAccess`) |
+| Revoke access grant | `RevokeGrants` on the grant's account (via `checkAccountAccess`) |
 | Create account | `CreateAccounts` (via folder permission) |
 | Edit/delete account | `EditAccounts`/`DeleteAccounts` (via `checkAccountAccess`) |
 | Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
