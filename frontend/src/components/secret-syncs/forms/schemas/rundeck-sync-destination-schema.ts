@@ -8,7 +8,12 @@ export const RundeckSyncDestinationSchema = BaseSecretSyncSchema().merge(
     destination: z.literal(SecretSync.Rundeck),
     destinationConfig: z.object({
       project: z.string().trim().min(1, "Project is required"),
-      path: z.string().trim().min(1, "Path is required").startsWith("/", "Path must start with '/'")
+      path: z
+        .string()
+        .trim()
+        .min(1, "Path is required")
+        .startsWith("/", "Path must start with '/'")
+        .refine((val) => !val.includes(".."), "Path cannot contain '..'")
     })
   })
 );
