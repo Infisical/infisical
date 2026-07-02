@@ -37,9 +37,13 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
   const [selectedMethod, setSelectedMethod] = useState<MfaMethod>(MfaMethod.TOTP);
   const [hasDownloaded, setHasDownloaded] = useState(false);
 
-  const { data: recoveryCodes = [], isPending: isRecoveryCodesLoading } = useGetMfaRecoveryCodes(
-    isOpen && step === 2
-  );
+  const {
+    data: recoveryCodes = [],
+    isFetching: isRecoveryCodesFetching,
+    refetch: refetchRecoveryCodes
+  } = useGetMfaRecoveryCodes(isOpen && step === 2);
+
+  const hasRecoveryCodes = recoveryCodes.length > 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,26 +105,41 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
             <MethodStep selectedMethod={selectedMethod} onSelect={setSelectedMethod} />
           )}
           {step === 1 && <VerifyStep method={selectedMethod} onVerified={handleVerified} />}
-          {step === 2 && (
-            <div className="flex flex-col gap-4">
-              <Alert variant="warning">
-                <TriangleAlertIcon />
-                <AlertTitle>Save your recovery codes</AlertTitle>
-                <AlertDescription>
-                  Store these somewhere safe. Each code works once and lets you sign in if you lose
-                  access to your other methods.
-                </AlertDescription>
-              </Alert>
-              {isRecoveryCodesLoading ? (
-                <ContentLoader />
-              ) : (
-                <RecoveryCodesView
-                  recoveryCodes={recoveryCodes}
-                  onDownloaded={() => setHasDownloaded(true)}
-                />
-              )}
-            </div>
-          )}
+          {step === 2 &&
+            (isRecoveryCodesFetching ? (
+              <ContentLoader />
+            ) : (
+              <div className="flex flex-col gap-4">
+                {hasRecoveryCodes ? (
+                  <>
+                    <Alert variant="warning">
+                      <TriangleAlertIcon />
+                      <AlertTitle>Save your recovery codes</AlertTitle>
+                      <AlertDescription>
+                        Store these somewhere safe. Each code works once and lets you sign in if you
+                        lose access to your other methods.
+                      </AlertDescription>
+                    </Alert>
+                    <RecoveryCodesView
+                      recoveryCodes={recoveryCodes}
+                      onDownloaded={() => setHasDownloaded(true)}
+                    />
+                  </>
+                ) : (
+                  <Alert variant="danger">
+                    <TriangleAlertIcon />
+                    <AlertTitle>Couldn&apos;t load recovery codes</AlertTitle>
+                    <AlertDescription className="flex flex-col items-start gap-3">
+                      Two-factor authentication is enabled, but we couldn&apos;t retrieve your
+                      recovery codes. Generate them before closing so you don&apos;t get locked out.
+                      <Button variant="outline" size="sm" onClick={() => refetchRecoveryCodes()}>
+                        Try again
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            ))}
         </div>
 
         <SheetFooter className="items-center justify-between border-t">
@@ -139,7 +158,11 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
               </Button>
             )}
             {step === 2 && (
-              <Button variant="org" isDisabled={!hasDownloaded} onClick={handleDone}>
+              <Button
+                variant="org"
+                isDisabled={!hasRecoveryCodes || !hasDownloaded}
+                onClick={handleDone}
+              >
                 Done
               </Button>
             )}

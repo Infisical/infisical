@@ -85,7 +85,11 @@ export const MFASection = () => {
     ...(totpConfiguration?.isVerified ? [MfaMethod.TOTP] : []),
     ...(webAuthnCredentials.length > 0 ? [MfaMethod.WEBAUTHN] : [])
   ];
-  const selectedMethod = user.selectedMfaMethod || MfaMethod.EMAIL;
+
+  const preferredMethod = user.selectedMfaMethod || MfaMethod.EMAIL;
+  const selectedMethod = availableMethods.includes(preferredMethod)
+    ? preferredMethod
+    : availableMethods[0];
 
   const handlePreferredMethodChange = async (method: MfaMethod) => {
     try {

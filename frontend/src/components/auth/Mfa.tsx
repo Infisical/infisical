@@ -411,6 +411,23 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           </div>
         </form>
       )}
+      {method === MfaMethod.EMAIL && !showRecoveryCodeInput && (
+        <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
+          <div className="flex flex-row items-baseline gap-1 text-sm">
+            <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
+            <div className="text-md mt-2 flex flex-row text-bunker-400">
+              <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
+                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+                  {isLoadingResend
+                    ? t("signup.step2-resend-progress")
+                    : t("signup.step2-resend-submit")}
+                </span>
+              </button>
+            </div>
+          </div>
+          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
+        </div>
+      )}
       {(method === MfaMethod.EMAIL ||
         method === MfaMethod.TOTP ||
         method === MfaMethod.WEBAUTHN) && (
@@ -455,23 +472,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
               </span>
             </Tooltip>
           </div>
-        </div>
-      )}
-      {method === MfaMethod.EMAIL && !showRecoveryCodeInput && (
-        <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-          <div className="flex flex-row items-baseline gap-1 text-sm">
-            <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-            <div className="text-md mt-2 flex flex-row text-bunker-400">
-              <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                  {isLoadingResend
-                    ? t("signup.step2-resend-progress")
-                    : t("signup.step2-resend-submit")}
-                </span>
-              </button>
-            </div>
-          </div>
-          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
         </div>
       )}
     </div>

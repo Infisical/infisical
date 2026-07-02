@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
@@ -22,8 +23,11 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
   const { mutateAsync: updateUserMfa } = useUpdateUserMfa();
   const [phase, setPhase] = useState<"preparing" | "verify" | "recovery">("preparing");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [isLoadingCodes, setIsLoadingCodes] = useState(false);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const hasPrepared = useRef(false);
+
+  const hasRecoveryCodes = recoveryCodes.length > 0;
 
   useEffect(() => {
     if (hasPrepared.current) return;
@@ -49,15 +53,25 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
     prepare();
   }, [updateUserMfa]);
 
+  const loadRecoveryCodes = async () => {
+    setIsLoadingCodes(true);
+    try {
+      setRecoveryCodes(await fetchMfaRecoveryCodes());
+    } catch {
+      setRecoveryCodes([]);
+    } finally {
+      setIsLoadingCodes(false);
+    }
+  };
+
   const handleVerified = async () => {
     try {
       await updateUserMfa({ selectedMfaMethod: method });
     } catch {
       // preference update is best-effort
     }
-    const codes = await fetchMfaRecoveryCodes();
-    setRecoveryCodes(codes);
     setPhase("recovery");
+    await loadRecoveryCodes();
   };
 
   const handleContinue = async () => {
@@ -79,23 +93,49 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
 
       {phase === "verify" && <VerifyStep method={method} onVerified={handleVerified} />}
 
-      {phase === "recovery" && (
-        <div className="flex flex-col gap-4">
-          <Alert variant="warning">
-            <AlertTitle>Save your recovery codes</AlertTitle>
-            <AlertDescription>
-              Store these somewhere safe. Each works once if you lose access to your other methods.
-            </AlertDescription>
-          </Alert>
-          <RecoveryCodesView
-            recoveryCodes={recoveryCodes}
-            onDownloaded={() => setHasDownloaded(true)}
-          />
-          <Button variant="org" isFullWidth isDisabled={!hasDownloaded} onClick={handleContinue}>
-            Continue
-          </Button>
-        </div>
-      )}
+      {phase === "recovery" &&
+        (isLoadingCodes ? (
+          <ContentLoader />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {hasRecoveryCodes ? (
+              <>
+                <Alert variant="warning">
+                  <TriangleAlertIcon />
+                  <AlertTitle>Save your recovery codes</AlertTitle>
+                  <AlertDescription>
+                    Store these somewhere safe. Each works once if you lose access to your other
+                    methods.
+                  </AlertDescription>
+                </Alert>
+                <RecoveryCodesView
+                  recoveryCodes={recoveryCodes}
+                  onDownloaded={() => setHasDownloaded(true)}
+                />
+              </>
+            ) : (
+              <Alert variant="danger">
+                <TriangleAlertIcon />
+                <AlertTitle>Couldn&apos;t load recovery codes</AlertTitle>
+                <AlertDescription className="flex flex-col items-start gap-3">
+                  Two-factor authentication is enabled, but we couldn&apos;t retrieve your recovery
+                  codes. Generate them before continuing so you don&apos;t get locked out.
+                  <Button variant="outline" size="sm" onClick={loadRecoveryCodes}>
+                    Try again
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            <Button
+              variant="org"
+              isFullWidth
+              isDisabled={!hasRecoveryCodes || !hasDownloaded}
+              onClick={handleContinue}
+            >
+              Continue
+            </Button>
+          </div>
+        ))}
     </div>
   );
 };
