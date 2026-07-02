@@ -1,9 +1,8 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { RundeckConnectionMethod } from "./rundeck-connection-enums";
@@ -11,13 +10,10 @@ import { TRundeckConnection, TRundeckConnectionConfig, TRundeckProject } from ".
 
 export const RUNDECK_API_VERSION = "58";
 
-export const getRundeckInstanceUrl = async (config: TRundeckConnectionConfig) => {
-  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
-
-  await blockLocalAndPrivateIpAddresses(instanceUrl);
-
-  return instanceUrl;
-};
+// URL validation and private-IP blocking happen at request time inside `safeRequest`, which
+// also pins the connection to the validated IPs, preventing DNS rebinding between check and request.
+export const getRundeckInstanceUrl = (config: TRundeckConnectionConfig) =>
+  removeTrailingSlash(config.credentials.instanceUrl);
 
 export const getRundeckConnectionListItem = () => {
   return {
@@ -28,11 +24,11 @@ export const getRundeckConnectionListItem = () => {
 };
 
 export const validateRundeckConnectionCredentials = async (config: TRundeckConnectionConfig) => {
-  const instanceUrl = await getRundeckInstanceUrl(config);
+  const instanceUrl = getRundeckInstanceUrl(config);
   const { apiToken } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/api/${RUNDECK_API_VERSION}/projects`, {
+    await safeRequest.get(`${instanceUrl}/api/${RUNDECK_API_VERSION}/projects`, {
       headers: {
         "X-Rundeck-Auth-Token": apiToken,
         Accept: "application/json"
@@ -45,6 +41,10 @@ export const validateRundeckConnectionCredentials = async (config: TRundeckConne
       });
     }
 
+    if (error instanceof BadRequestError) {
+      throw error;
+    }
+
     throw new BadRequestError({
       message: `Failed to validate Rundeck credentials - verify the instance URL and API token are correct`
     });
@@ -54,11 +54,11 @@ export const validateRundeckConnectionCredentials = async (config: TRundeckConne
 };
 
 export const listRundeckProjects = async (appConnection: TRundeckConnection): Promise<TRundeckProject[]> => {
-  const instanceUrl = await getRundeckInstanceUrl(appConnection);
+  const instanceUrl = getRundeckInstanceUrl(appConnection);
   const { apiToken } = appConnection.credentials;
 
   try {
-    const { data } = await request.get<TRundeckProject[]>(`${instanceUrl}/api/${RUNDECK_API_VERSION}/projects`, {
+    const { data } = await safeRequest.get<TRundeckProject[]>(`${instanceUrl}/api/${RUNDECK_API_VERSION}/projects`, {
       headers: {
         "X-Rundeck-Auth-Token": apiToken,
         Accept: "application/json"
