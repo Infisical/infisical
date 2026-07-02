@@ -27,7 +27,7 @@ jobs:
             [
               {
                 "name": "secrets-operator",
-                "repo": "https://github.com/Infisical/infisical-operator.git",
+                "repo": "https://github.com/infisical/kubernetes-operator.git",
                 "chart_path": "helm-charts/secrets-operator",
                 "output_path": "docs/integrations/platforms/kubernetes/components/operator/helm-chart-reference.mdx"
               }
