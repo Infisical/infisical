@@ -95,7 +95,7 @@ export const auditReportQueueServiceFactory = ({
 
         await smtpService.sendMail({
           template: SmtpTemplates.AuditReport,
-          subjectLine: `Your Infisical audit report for ${project.name}`,
+          subjectLine: `Your Infisical report for ${project.name}`,
           recipients: emailRecipients,
           substitutions: {
             projectName: project.name,

@@ -266,13 +266,9 @@ export enum ProjectPermissionAuditLogsActions {
 }
 
 export enum ProjectPermissionInsightsActions {
-  Read = "read"
-}
-
-export enum ProjectPermissionAuditReportActions {
-  Create = "create",
   Read = "read",
-  Delete = "delete"
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum ProjectPermissionPamAccountActions {
@@ -409,8 +405,7 @@ export enum ProjectPermissionSub {
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
   HoneyTokens = "honey-tokens",
-  Insights = "insights",
-  AuditReports = "audit-reports"
+  Insights = "insights"
 }
 
 // Structure: { [subject]: { [action]: allowedConditionKeys[] } }
@@ -783,8 +778,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
-  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [ProjectPermissionAuditReportActions, ProjectPermissionSub.AuditReports];
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -1713,12 +1707,6 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Insights).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionInsightsActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.AuditReports).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAuditReportActions).describe(
       "Describe what action an entity can take."
     )
   }),

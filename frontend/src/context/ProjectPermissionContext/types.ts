@@ -230,13 +230,9 @@ export enum ProjectPermissionAuditLogsActions {
 }
 
 export enum ProjectPermissionInsightsActions {
-  Read = "read"
-}
-
-export enum ProjectPermissionAuditReportActions {
-  Create = "create",
   Read = "read",
-  Delete = "delete"
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum ProjectPermissionAppConnectionActions {
@@ -483,8 +479,7 @@ export enum ProjectPermissionSub {
   HoneyTokens = "honey-tokens",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
-  Insights = "insights",
-  AuditReports = "audit-reports"
+  Insights = "insights"
 }
 
 export type SecretSubjectFields = {
@@ -782,7 +777,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [ProjectPermissionAuditReportActions, ProjectPermissionSub.AuditReports]
   | [
       ProjectPermissionHoneyTokenActions,
       (

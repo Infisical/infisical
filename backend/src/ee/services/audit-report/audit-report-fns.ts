@@ -36,9 +36,25 @@ const escapeCsvCell = (value: string | number | null): string => {
 
 const toCsvRow = (cells: (string | number | null)[]): string => cells.map(escapeCsvCell).join(",");
 
-// Serialize a single report into its own standalone CSV — a header row followed by its data rows.
+// Common acronyms that should stay fully uppercased in humanized headers rather than title-cased.
+const HEADER_ACRONYMS: Record<string, string> = { id: "ID", ip: "IP", url: "URL" };
+
+// Turn a camelCase column key into a human-friendly header, e.g. "actorEmail" -> "Actor Email",
+// "ipAddress" -> "IP Address". Used only for the displayed header; row values are still keyed by the
+// raw column name.
+const humanizeColumn = (column: string): string =>
+  column
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(" ")
+    .map((word) => HEADER_ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+// Serialize a single report into its own standalone CSV — a humanized header row followed by its data rows.
 export const serializeReport = ({ columns, rows }: TGeneratedReport): Buffer => {
-  const lines = [toCsvRow(columns), ...rows.map((row) => toCsvRow(columns.map((column) => row[column] ?? null)))];
+  const lines = [
+    toCsvRow(columns.map(humanizeColumn)),
+    ...rows.map((row) => toCsvRow(columns.map((column) => row[column] ?? null)))
+  ];
   return Buffer.from(lines.join(CSV_LINE_BREAK), "utf8");
 };
 

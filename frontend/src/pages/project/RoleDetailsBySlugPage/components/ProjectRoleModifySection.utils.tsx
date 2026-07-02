@@ -16,7 +16,6 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
-  ProjectPermissionAuditReportActions,
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -65,13 +64,9 @@ const AuditLogsPolicyActionSchema = z.object({
 });
 
 const InsightsPolicyActionSchema = z.object({
-  [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
-});
-
-const AuditReportPolicyActionSchema = z.object({
-  [ProjectPermissionAuditReportActions.Create]: z.boolean().optional(),
-  [ProjectPermissionAuditReportActions.Read]: z.boolean().optional(),
-  [ProjectPermissionAuditReportActions.Delete]: z.boolean().optional()
+  [ProjectPermissionInsightsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionInsightsActions.GenerateReport]: z.boolean().optional(),
+  [ProjectPermissionInsightsActions.DeleteReport]: z.boolean().optional()
 });
 
 const HoneyTokenPolicyActionSchema = z.object({
@@ -741,7 +736,6 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Insights]: InsightsPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.AuditReports]: AuditReportPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: CertificateAuthorityPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
@@ -1120,8 +1114,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
         ProjectPermissionSub.McpActivityLogs,
-        ProjectPermissionSub.Insights,
-        ProjectPermissionSub.AuditReports
+        ProjectPermissionSub.Insights
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -2629,33 +2622,22 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Insights]: {
     title: "Insights",
-    description: "View project analytics and insights dashboards",
+    description: "View project analytics and insights dashboards, and generate reports",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionInsightsActions.Read,
-        description: "View secret access volume, locations, auth methods, and calendar insights"
-      }
-    ]
-  },
-  [ProjectPermissionSub.AuditReports]: {
-    title: "Audit Reports",
-    description: "Generate and manage exportable compliance reports",
-    actions: [
-      {
-        label: "Generate",
-        value: ProjectPermissionAuditReportActions.Create,
-        description: "Generate new audit reports"
+        description: "View secret access volume, locations, auth methods, calendar insights, and reports"
       },
       {
-        label: "Read",
-        value: ProjectPermissionAuditReportActions.Read,
-        description: "List audit reports and their status"
+        label: "Generate Report",
+        value: ProjectPermissionInsightsActions.GenerateReport,
+        description: "Generate new reports"
       },
       {
-        label: "Delete",
-        value: ProjectPermissionAuditReportActions.Delete,
-        description: "Delete audit reports"
+        label: "Delete Report",
+        value: ProjectPermissionInsightsActions.DeleteReport,
+        description: "Delete reports"
       }
     ]
   },
@@ -3668,7 +3650,6 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.HoneyTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
-  [ProjectPermissionSub.AuditReports]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
   [ProjectPermissionSub.SecretApprovalRequest]: enabled
 });

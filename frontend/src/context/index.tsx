@@ -18,7 +18,6 @@ export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
-  ProjectPermissionAuditReportActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,

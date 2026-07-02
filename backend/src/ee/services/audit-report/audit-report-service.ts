@@ -4,7 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionAuditReportActions,
+  ProjectPermissionInsightsActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -101,8 +101,8 @@ export const auditReportServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAuditReportActions.Create,
-      ProjectPermissionSub.AuditReports
+      ProjectPermissionInsightsActions.GenerateReport,
+      ProjectPermissionSub.Insights
     );
 
     const project = await projectDAL.findById(dto.projectId);
@@ -180,8 +180,8 @@ export const auditReportServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAuditReportActions.Read,
-      ProjectPermissionSub.AuditReports
+      ProjectPermissionInsightsActions.Read,
+      ProjectPermissionSub.Insights
     );
 
     const reports = await auditReportDAL.findByProject(dto.projectId, {
@@ -216,13 +216,9 @@ export const auditReportServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAuditReportActions.Read,
-      ProjectPermissionSub.AuditReports
+      ProjectPermissionInsightsActions.Read,
+      ProjectPermissionSub.Insights
     );
-
-    if (!permission.can(ProjectPermissionAuditReportActions.Read, ProjectPermissionSub.AuditReports)) {
-      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
-    }
 
     return presentAuditReport(report);
   };
@@ -243,7 +239,7 @@ export const auditReportServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    if (!permission.can(ProjectPermissionAuditReportActions.Delete, ProjectPermissionSub.AuditReports)) {
+    if (!permission.can(ProjectPermissionInsightsActions.DeleteReport, ProjectPermissionSub.Insights)) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 

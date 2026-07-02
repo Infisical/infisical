@@ -40,7 +40,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  ProjectPermissionAuditReportActions,
+  ProjectPermissionInsightsActions,
   ProjectPermissionSub,
   useProject,
   useProjectPermission
@@ -92,8 +92,8 @@ export const AuditReportsCard = () => {
   ] as const);
 
   const canReadReports = permission.can(
-    ProjectPermissionAuditReportActions.Read,
-    ProjectPermissionSub.AuditReports
+    ProjectPermissionInsightsActions.Read,
+    ProjectPermissionSub.Insights
   );
 
   const { offset, limit, page, perPage, setPage, setPerPage } = usePagination("createdAt", {
@@ -115,20 +115,20 @@ export const AuditReportsCard = () => {
     const report = popUp.deleteReport.data as TAuditReport;
     try {
       await deleteAuditReport.mutateAsync(report.id);
-      createNotification({ type: "success", text: "Successfully deleted audit report" });
+      createNotification({ type: "success", text: "Successfully deleted report" });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete audit report";
+      const message = error instanceof Error ? error.message : "Failed to delete report";
       createNotification({ type: "error", text: message });
     }
   };
 
-  // Audit reports has its own permission subject; hide the card entirely without read access.
+  // Reports read access is part of the Insights read permission; hide the card entirely without it.
   if (!canReadReports) return null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Audit Reports</CardTitle>
+        <CardTitle>Reports</CardTitle>
         <CardDescription>
           <span>
             Generate compliance reports and have them emailed to your team as CSV attachments
@@ -136,8 +136,8 @@ export const AuditReportsCard = () => {
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
-            I={ProjectPermissionAuditReportActions.Create}
-            a={ProjectPermissionSub.AuditReports}
+            I={ProjectPermissionInsightsActions.GenerateReport}
+            a={ProjectPermissionSub.Insights}
           >
             {(isAllowed) => (
               <Button
@@ -158,7 +158,7 @@ export const AuditReportsCard = () => {
         {!isPending && totalCount === 0 && (
           <Empty className="border">
             <EmptyHeader>
-              <EmptyTitle>No audit reports yet</EmptyTitle>
+              <EmptyTitle>No reports yet</EmptyTitle>
               <EmptyDescription>
                 Generate a report to have it emailed to your team as a CSV attachment.
               </EmptyDescription>
@@ -243,8 +243,8 @@ export const AuditReportsCard = () => {
                     </TableCell>
                     <TableCell className="pr-5">
                       <ProjectPermissionCan
-                        I={ProjectPermissionAuditReportActions.Delete}
-                        a={ProjectPermissionSub.AuditReports}
+                        I={ProjectPermissionInsightsActions.DeleteReport}
+                        a={ProjectPermissionSub.Insights}
                       >
                         {(isAllowed) => (
                           <TooltipProvider>
@@ -295,7 +295,7 @@ export const AuditReportsCard = () => {
             <AlertDialogMedia>
               <Trash2Icon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Delete this audit report?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this report?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes the report record from the history. This action cannot be undone.
             </AlertDialogDescription>

@@ -97,7 +97,7 @@ export const RequestAuditReportModal = ({ isOpen, onOpenChange, projectId }: Pro
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Generate Audit Report</DialogTitle>
+          <DialogTitle>Generate Report</DialogTitle>
           <DialogDescription>
             Select the reports to generate. They will be emailed as CSV attachments once ready.
           </DialogDescription>
