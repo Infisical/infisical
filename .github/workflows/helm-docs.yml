@@ -1,7 +1,87 @@
 name: Helm Docs
+
 on: workflow_dispatch
+
+env:
+  HELM_DOCS_VERSION: "1.14.2"
+
 jobs:
   generate-helm-docs:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "TODO"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install helm-docs
+        run: |
+          curl -fsSL -o helm-docs.tar.gz \
+            "https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf helm-docs.tar.gz helm-docs
+          sudo mv helm-docs /usr/local/bin/
+          rm helm-docs.tar.gz
+          helm-docs --version
+
+      - name: Generate and collect docs
+        env:
+          TARGETS: |
+            [
+              {
+                "name": "secrets-operator",
+                "repo": "https://github.com/Infisical/infisical-operator.git",
+                "chart_path": "helm-charts/secrets-operator",
+                "output_path": "docs/integrations/platforms/kubernetes/components/operator/helm-chart-reference.mdx"
+              }
+            ]
+        run: |
+          echo "$TARGETS" | jq -c '.[]' | while read -r target; do
+            name=$(echo "$target" | jq -r '.name')
+            repo=$(echo "$target" | jq -r '.repo // empty')
+            chart_path=$(echo "$target" | jq -r '.chart_path')
+            output_path=$(echo "$target" | jq -r '.output_path')
+
+            echo "::group::Processing $name"
+
+            if [ -n "$repo" ]; then
+              workdir=$(mktemp -d)
+              echo "Cloning $repo into $workdir"
+              git clone --depth 1 "$repo" "$workdir"
+              chart_dir="$workdir/$chart_path"
+            else
+              chart_dir="${GITHUB_WORKSPACE}/$chart_path"
+            fi
+
+            if [ ! -f "$chart_dir/Chart.yaml" ]; then
+              echo "::error::Chart.yaml not found in $chart_dir"
+              exit 1
+            fi
+
+            echo "Running helm-docs in $chart_dir"
+            helm-docs --chart-search-root "$chart_dir"
+
+            generated_file="$chart_dir/README.md"
+            if [ ! -f "$generated_file" ]; then
+              echo "::error::helm-docs did not produce $generated_file"
+              exit 1
+            fi
+
+            mkdir -p "$(dirname "${GITHUB_WORKSPACE}/$output_path")"
+            cp "$generated_file" "${GITHUB_WORKSPACE}/$output_path"
+            echo "Copied docs to $output_path"
+
+            echo "::endgroup::"
+          done
+
+      - name: Push changes to branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          branch="auto/helm-docs-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$branch"
+          git add .
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "docs: update helm chart reference docs"
+          git push origin "$branch"
+          echo "Pushed branch: $branch"
