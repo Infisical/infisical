@@ -3128,8 +3128,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
-      throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
+    if (!folder) throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
     const folderId = folder.id;
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -3242,6 +3241,11 @@ export const secretV2BridgeServiceFactory = ({
       secretTags: (secret?.tags || []).map((el) => el.slug)
     });
 
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: "Project not found" });
+    }
+
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
@@ -3320,6 +3324,63 @@ export const secretV2BridgeServiceFactory = ({
       return results;
     };
 
+    const findCrossProjectSecretsReferencingSecret = async (env: string, path: string, key: string) => {
+      const crossProjectRefs = await secretDAL.findCrossProjectSecretReferencesByTargetSecretKey(
+        project.slug,
+        env,
+        path,
+        key
+      );
+
+      if (!crossProjectRefs.length) return [];
+
+      const refsByProject = new Map<string, typeof crossProjectRefs>();
+      for (const ref of crossProjectRefs) {
+        const refProjectId = ref.referencingProjectId;
+        const existing = refsByProject.get(refProjectId) || [];
+        existing.push(ref);
+        refsByProject.set(refProjectId, existing);
+      }
+
+      const results: Array<{
+        key: string;
+        environment: string;
+        secretPath: string;
+        project: { id: string; slug: string; name: string };
+      }> = [];
+
+      const refProjectIds = [...refsByProject.keys()];
+      const refProjects = refProjectIds.length > 0 ? await projectDAL.find({ $in: { id: refProjectIds } }) : [];
+      const projectInfoMap = new Map(refProjects.map((p) => [p.id, { id: p.id, slug: p.slug, name: p.name }]));
+
+      for (const [refProjectId, refs] of refsByProject) {
+        const projectInfo = projectInfoMap.get(refProjectId);
+        if (!projectInfo) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const folderIds = [...new Set(refs.map((r) => r.folderId))];
+        // eslint-disable-next-line no-await-in-loop
+        const folderPaths = await folderDAL.findSecretPathByFolderIds(refProjectId, folderIds);
+        const folderPathMap = new Map(folderPaths.filter(Boolean).map((fp) => [fp!.id, fp]));
+
+        for (const ref of refs) {
+          const folderPath = folderPathMap.get(ref.folderId);
+          if (folderPath) {
+            results.push({
+              key: ref.secretVKey,
+              environment: folderPath.environmentSlug,
+              secretPath: folderPath.path,
+              project: projectInfo
+            });
+          }
+        }
+      }
+
+      return results;
+    };
+
     const createSecretId = (env: string, path: string, key: string) => `${env}:${path}:${key}`;
     const visitedSecrets = new Set<string>();
     const MAX_DEPTH = 10;
@@ -3328,6 +3389,7 @@ export const secretV2BridgeServiceFactory = ({
       key: string;
       environment: string;
       secretPath: string;
+      project?: { id: string; slug: string; name: string };
       children: DependencyNode[];
     };
 
@@ -3375,6 +3437,17 @@ export const secretV2BridgeServiceFactory = ({
           );
           node.children.push(childNode);
         }
+      }
+
+      const crossProjectRefs = await findCrossProjectSecretsReferencingSecret(env, path, key);
+      for (const crossRef of crossProjectRefs) {
+        node.children.push({
+          key: crossRef.key,
+          environment: crossRef.environment,
+          secretPath: crossRef.secretPath,
+          project: crossRef.project,
+          children: []
+        });
       }
 
       return node;

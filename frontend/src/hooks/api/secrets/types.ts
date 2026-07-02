@@ -333,6 +333,7 @@ export type TSecretDependencyTreeNode = {
   key: string;
   environment: string;
   secretPath: string;
+  project?: { id: string; slug: string; name: string };
   children: TSecretDependencyTreeNode[];
 };
 
