@@ -1161,6 +1161,7 @@ export const registerRoutes = async (
 
   const mfaRecoveryCodeService = mfaRecoveryCodeServiceFactory({
     mfaRecoveryCodeDAL,
+    userDAL,
     kmsService
   });
 

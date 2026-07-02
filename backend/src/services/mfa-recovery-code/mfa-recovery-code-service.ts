@@ -1,6 +1,7 @@
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TUserDALFactory } from "../user/user-dal";
 import { TMfaRecoveryCodeDALFactory } from "./mfa-recovery-code-dal";
 import { generateRecoveryCode } from "./mfa-recovery-code-fns";
 import {
@@ -13,6 +14,7 @@ import {
 
 type TMfaRecoveryCodeServiceFactoryDep = {
   mfaRecoveryCodeDAL: TMfaRecoveryCodeDALFactory;
+  userDAL: Pick<TUserDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey">;
 };
 
@@ -22,6 +24,7 @@ const MAX_RECOVERY_CODE_LIMIT = 10;
 
 export const mfaRecoveryCodeServiceFactory = ({
   mfaRecoveryCodeDAL,
+  userDAL,
   kmsService
 }: TMfaRecoveryCodeServiceFactoryDep) => {
   // Generates a fresh pool of recovery codes alongside its root-key ciphertext.
@@ -74,7 +77,9 @@ export const mfaRecoveryCodeServiceFactory = ({
     const encryptWithRoot = kmsService.encryptWithRootKey();
 
     return mfaRecoveryCodeDAL.transaction(async (tx) => {
-      const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOne({ userId }, tx);
+      // Lock the row FOR UPDATE so concurrent logins presenting the same code
+      // can't both read the pre-consumption pool and each succeed on one code.
+      const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOneByUserIdForUpdate(userId, tx);
 
       if (!recoveryCodeConfig) {
         throw new NotFoundError({
@@ -91,9 +96,13 @@ export const mfaRecoveryCodeServiceFactory = ({
       }
 
       const encryptedRecoveryCodes = encryptWithRoot(Buffer.from(remainingRecoveryCodes.join(",")));
-      await mfaRecoveryCodeDAL.updateById(recoveryCodeConfig.id, {
-        encryptedRecoveryCodes
-      });
+      await mfaRecoveryCodeDAL.updateById(
+        recoveryCodeConfig.id,
+        {
+          encryptedRecoveryCodes
+        },
+        tx
+      );
     });
   };
 
@@ -103,6 +112,13 @@ export const mfaRecoveryCodeServiceFactory = ({
    * pool exists yet it is created.
    */
   const rotateRecoveryCodes = async ({ userId }: TRotateRecoveryCodesDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user?.isMfaEnabled) {
+      throw new BadRequestError({
+        message: "Cannot regenerate recovery codes: MFA is not enabled for this account"
+      });
+    }
+
     const { recoveryCodes, encryptedRecoveryCodes } = generateEncryptedRecoveryCodes();
 
     await mfaRecoveryCodeDAL.transaction(async (tx) => {
