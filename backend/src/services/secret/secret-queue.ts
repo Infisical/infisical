@@ -947,7 +947,8 @@ export const secretQueueFactory = ({
         const crossProjectRefs = await secretV2BridgeDAL.findCrossProjectSecretReferencesByTargetFolder(
           project.slug,
           environment,
-          secretPath
+          secretPath,
+          project.orgId
         );
         if (crossProjectRefs.length) {
           logger.info(

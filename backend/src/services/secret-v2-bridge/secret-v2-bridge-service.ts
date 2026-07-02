@@ -3325,18 +3325,32 @@ export const secretV2BridgeServiceFactory = ({
     };
 
     const findCrossProjectSecretsReferencingSecret = async (env: string, path: string, key: string) => {
+      const sourceFolder = await folderDAL.findBySecretPath(projectId, env, path);
+      if (!sourceFolder) return [];
+
       const crossProjectRefs = await secretDAL.findCrossProjectSecretReferencesByTargetSecretKey(
         project.slug,
         env,
         path,
-        key
+        key,
+        project.orgId
       );
 
       if (!crossProjectRefs.length) return [];
 
+      const grants = await projectFolderGrantDAL.find({
+        sourceProjectId: projectId,
+        sourceFolderId: sourceFolder.id
+      });
+      const grantedTargetProjectIds = new Set(grants.map((g) => g.targetProjectId));
+
       const refsByProject = new Map<string, typeof crossProjectRefs>();
       for (const ref of crossProjectRefs) {
         const refProjectId = ref.referencingProjectId;
+        if (!grantedTargetProjectIds.has(refProjectId)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
         const existing = refsByProject.get(refProjectId) || [];
         existing.push(ref);
         refsByProject.set(refProjectId, existing);
