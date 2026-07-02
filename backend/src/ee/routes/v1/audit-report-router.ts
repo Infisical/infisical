@@ -126,10 +126,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const report = await server.services.auditReport.getReportById(
-        { auditReportId: req.params.auditReportId },
-        req.permission
-      );
+      const report = await server.services.auditReport.getReportById(req.params.auditReportId, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {
@@ -156,10 +153,7 @@ export const registerAuditReportRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const report = await server.services.auditReport.deleteReport(
-        { projectId: req.query.projectId, auditReportId: req.params.auditReportId },
-        req.permission
-      );
+      const report = await server.services.auditReport.deleteReport(req.params.auditReportId, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {

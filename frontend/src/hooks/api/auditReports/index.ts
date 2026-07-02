@@ -6,7 +6,6 @@ export {
   type TAuditReport,
   type TAuditReportConfig,
   type TAuditReportResultEntry,
-  type TDeleteAuditReportDTO,
   type TGetAuditReportsDTO,
   type TRequestAuditReportDTO
 } from "./types";
