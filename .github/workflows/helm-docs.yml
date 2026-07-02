@@ -2,6 +2,9 @@ name: Helm Docs
 
 on: workflow_dispatch
 
+permissions:
+  contents: write
+
 env:
   HELM_DOCS_VERSION: "1.14.2"
 
