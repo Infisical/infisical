@@ -325,7 +325,7 @@ export const pamAccessRequestServiceFactory = ({
     }
 
     if (!hasApprovers) {
-      return { policyId: null };
+      return { policyId: null, folderId, stepCount: 0 };
     }
 
     if (existingPolicy) {
@@ -930,7 +930,7 @@ export const pamAccessRequestServiceFactory = ({
       );
     }
 
-    return { request: updatedRequest };
+    return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };
   };
 
   // Marks a grant Revoked and terminates the grantee's live sessions on the granted account. An

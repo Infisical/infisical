@@ -6122,7 +6122,7 @@ interface PamApprovalConfigUpdateEvent {
   type: EventType.PAM_APPROVAL_CONFIG_UPDATE;
   metadata: {
     folderId: string;
-    policyId: string;
+    policyId: string | null;
     stepCount: number;
   };
 }
