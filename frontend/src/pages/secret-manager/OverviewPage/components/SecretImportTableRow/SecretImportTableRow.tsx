@@ -482,8 +482,8 @@ export const SecretImportTableRow = ({
           </EmptyTitle>
         </div>
         <EmptyDescription>
-          Import can no longer be resolved. Re-request access from the source project or remove
-          this import.
+          Import can no longer be resolved. Re-request access from the source project or remove this
+          import.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
