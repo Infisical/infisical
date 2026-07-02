@@ -9,7 +9,12 @@ import {
   Button,
   ButtonGroup,
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -45,6 +50,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { PamDocsUrls } from "../pam-docs-urls";
 import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
 import { CreateAccountSheet } from "./components/CreateAccountSheet";
@@ -146,14 +152,49 @@ export const PamAccountsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Accounts" })}</title>
       </Helmet>
-      <PageHeader
-        title="Accounts"
-        description="Privileged accounts grouped into folders."
-        scope={ProjectType.PAM}
-        icon={FolderOpen}
-      />
+      <PageHeader title="Accounts" scope={ProjectType.PAM} icon={FolderOpen} />
 
       <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>
+            Accounts
+            <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
+          </CardTitle>
+          <CardDescription>Privileged accounts grouped into folders.</CardDescription>
+          <CardAction>
+            <ButtonGroup>
+              <Button
+                variant="pam"
+                className="rounded-r-none"
+                onClick={() => handlePopUpOpen("createAccount")}
+              >
+                <Plus />
+                Add Account
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    variant="pam"
+                    aria-label="More create options"
+                    className="border-l-transparent"
+                  >
+                    <ChevronDown />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={4}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
+                    <FolderPlus />
+                    Add Folder
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ButtonGroup>
+          </CardAction>
+        </CardHeader>
         <CardContent className="flex items-center gap-3">
           <InputGroup className="flex-1">
             <InputGroupAddon align="inline-start">
@@ -204,34 +245,6 @@ export const PamAccountsPage = () => {
               ))}
             </SelectContent>
           </Select>
-
-          <ButtonGroup>
-            <Button
-              variant="pam"
-              className="rounded-r-none"
-              onClick={() => handlePopUpOpen("createAccount")}
-            >
-              <Plus />
-              Add Account
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  variant="pam"
-                  aria-label="More create options"
-                  className="border-l-transparent"
-                >
-                  <ChevronDown />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
-                  <FolderPlus />
-                  Add Folder
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </ButtonGroup>
         </CardContent>
 
         {isLoadingFolders && (
