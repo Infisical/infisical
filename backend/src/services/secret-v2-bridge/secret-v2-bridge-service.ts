@@ -29,7 +29,7 @@ import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -1273,19 +1273,19 @@ export const secretV2BridgeServiceFactory = ({
       try {
         await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
         const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: Buffer.from(encryptedCachedSecrets, "base64") });
+        // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
+        // the same ETag without re-serializing the object.
+        const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
         const { secrets, imports = [] } = JSON.parse(cachedSecrets.toString("utf8")) as {
           secrets: typeof decryptedSecrets;
           imports: typeof importedSecrets;
         };
-        const payload = {
-          secrets: secrets.map((el) => ({
-            ...el,
-            createdAt: new Date(el.createdAt),
-            updatedAt: new Date(el.updatedAt)
-          })),
-          imports
-        };
-        const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
+        // Parsed array is owned here, so rehydrate dates in place instead of cloning every secret.
+        for (const secret of secrets) {
+          secret.createdAt = new Date(secret.createdAt);
+          secret.updatedAt = new Date(secret.updatedAt);
+        }
+        const payload = { secrets, imports };
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
         recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
@@ -1531,9 +1531,9 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!includeImports) {
       const payload = { secrets: decryptedSecrets, imports: [] };
-      const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
-        plainText: Buffer.from(JSON.stringify(payload))
-      }).cipherTextBlob;
+      const serializedPayload = Buffer.from(JSON.stringify(payload));
+      const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
+      const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
       const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
       if (stored) {
@@ -1541,7 +1541,6 @@ export const secretV2BridgeServiceFactory = ({
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
-      const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
@@ -1609,9 +1608,9 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
-    const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
-      plainText: Buffer.from(JSON.stringify(payload))
-    }).cipherTextBlob;
+    const serializedPayload = Buffer.from(JSON.stringify(payload));
+    const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
+    const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
     const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
     if (stored) {
@@ -1619,7 +1618,6 @@ export const secretV2BridgeServiceFactory = ({
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
-    const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };

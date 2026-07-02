@@ -19,7 +19,7 @@ const checkboxVariants = cva(
     variants: {
       variant: {
         outline:
-          "data-[state=checked]:border-border data-[state=checked]:bg-foreground/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
+          "data-[state=checked]:border-foreground/25 data-[state=checked]:bg-foreground/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
         neutral:
           "data-[state=checked]:border-neutral/25 data-[state=checked]:bg-neutral/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-neutral/15 data-[state=checked]:hover:border-neutral/30",
         project:

@@ -8,6 +8,7 @@ import {
   FileText,
   HardDrive,
   IdCardLanyard,
+  Layers,
   Lock,
   MapPin,
   Plug,
@@ -15,6 +16,7 @@ import {
   Search,
   Server,
   Shield,
+  Tag,
   User,
   Users,
   Webhook
@@ -65,7 +67,9 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
   defaultTab: "tab-project-general",
   items: [
     { label: "General", icon: Cog, tab: "tab-project-general" },
-    { label: "Secrets Management", icon: FileKey, tab: "tab-secret-general" },
+    { label: "Environments", icon: Layers, tab: "tab-secret-environments" },
+    { label: "Tags", icon: Tag, tab: "tab-secret-tags" },
+    { label: "Policies", icon: Shield, tab: "tab-secret-policies" },
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
     { label: "Webhooks", icon: Webhook, tab: "tab-project-webhooks" }

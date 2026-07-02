@@ -156,13 +156,6 @@ export default function InitialSignupStep({
               </div>
             </>
           )}
-          <div className="mt-6 flex flex-row justify-center text-xs text-label">
-            <Link to="/login">
-              <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                Already have an account? Log in
-              </span>
-            </Link>
-          </div>
           <p className="mt-4 text-center text-xs text-pretty text-label">
             By signing up, you agree to our{" "}
             <a
@@ -201,6 +194,14 @@ export default function InitialSignupStep({
           </span>
           <CircleChevronRightIcon className="size-4.5 opacity-75" />
         </a>
+      </div>
+      <div className="mt-4 flex flex-row items-center justify-center gap-1.5 text-sm">
+        <span className="text-label">Already have an account?</span>
+        <Link to="/login">
+          <span className="cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project">
+            Log in
+          </span>
+        </Link>
       </div>
     </div>
   );

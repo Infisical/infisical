@@ -47,9 +47,16 @@ export type TPamAccountTypeMetadata = {
   name: string;
   icon: string;
   supportsWebAccess: boolean;
+  requiresGateway: boolean;
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
   applicablePolicies: TPamPolicyDescriptor[];
+};
+
+export type TPamAccessResponse = {
+  sessionId: string;
+  accountType: string;
+  metadata?: Record<string, string>;
 };
 
 // New model types

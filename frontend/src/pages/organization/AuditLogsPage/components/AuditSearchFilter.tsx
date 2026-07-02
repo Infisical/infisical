@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { faClose, faMagnifyingGlass, faPlus, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Plus, Search, TriangleAlert, X } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import {
@@ -297,21 +296,23 @@ export const AuditSearchFilter = ({
     isKeyboardNav.current = false;
   };
 
+  const dropdownHeadingClass = "px-2 py-1.5 text-xs font-medium text-muted";
+
   const dropdownRowClass = (active: boolean) =>
-    `flex w-full items-center gap-3 px-3 py-1.5 text-sm transition-colors ${
-      active ? "bg-mineshaft-600" : "hover:bg-mineshaft-700"
+    `flex w-full items-center gap-3 rounded-sm px-2 py-1.5 text-sm transition-colors ${
+      active ? "bg-foreground/5" : "hover:bg-foreground/5"
     }`;
 
   const composingInput = (
     <span
       key="composing"
-      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-mineshaft-400 py-1 pr-1 pl-1.5 font-mono text-xs"
+      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border py-1 pr-1 pl-1.5 font-mono text-xs"
     >
-      <span className="text-mineshaft-400">{getDisplayLabel(propertyKey || "")}:</span>
+      <span className="text-muted">{getDisplayLabel(propertyKey || "")}:</span>
       <input
         ref={inputRef}
         type="text"
-        className="w-auto bg-transparent font-mono text-xs text-bunker-200 outline-none"
+        className="w-auto bg-transparent font-mono text-xs text-foreground outline-none"
         style={{ width: `${Math.max(typedValue.length, 1)}ch` }}
         value={typedValue}
         onChange={(inputEvent) => {
@@ -327,9 +328,9 @@ export const AuditSearchFilter = ({
           clickEvent.stopPropagation();
           resetQuery();
         }}
-        className="ml-0.5 text-mineshaft-400 transition-colors hover:text-mineshaft-200"
+        className="ml-0.5 text-muted transition-colors hover:text-foreground"
       >
-        <FontAwesomeIcon icon={faClose} className="h-2.5 w-2.5" />
+        <X className="size-2.5" />
       </button>
     </span>
   );
@@ -364,21 +365,19 @@ export const AuditSearchFilter = ({
       <span
         key={`${filter.property}-${filter.value}`}
         className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 font-mono text-xs ${
-          warning
-            ? "border-yellow-700/60 bg-yellow-900/20"
-            : "border-mineshaft-500 bg-mineshaft-700"
+          warning ? "border-warning/40 bg-warning/10" : "border-border bg-container"
         }`}
       >
-        {warning && <FontAwesomeIcon icon={faWarning} className="h-2.5 w-2.5 text-yellow-600" />}
+        {warning && <TriangleAlert className="size-2.5 text-warning" />}
         <button
           type="button"
-          className="text-bunker-200 transition-colors hover:text-mineshaft-100"
+          className="text-foreground transition-colors hover:text-foreground"
           onClick={(clickEvent) => {
             clickEvent.stopPropagation();
             editFilter(index);
           }}
         >
-          <span className="text-mineshaft-400">{getDisplayLabel(filter.property)}:</span>
+          <span className="text-muted">{getDisplayLabel(filter.property)}:</span>
           {filter.label || filter.value}
         </button>
         <button
@@ -387,17 +386,18 @@ export const AuditSearchFilter = ({
             clickEvent.stopPropagation();
             removeFilter(index);
           }}
-          className="ml-0.5 text-mineshaft-400 transition-colors hover:text-mineshaft-200"
+          className="ml-0.5 text-muted transition-colors hover:text-foreground"
         >
-          <FontAwesomeIcon icon={faClose} className="h-2.5 w-2.5" />
+          <X className="size-2.5" />
         </button>
       </span>
     );
 
     if (warning) {
       return (
-        <Tooltip key={`${filter.property}-${filter.value}`} content={warning} size="sm">
-          {chip}
+        <Tooltip key={`${filter.property}-${filter.value}`}>
+          <TooltipTrigger asChild>{chip}</TooltipTrigger>
+          <TooltipContent>{warning}</TooltipContent>
         </Tooltip>
       );
     }
@@ -408,7 +408,7 @@ export const AuditSearchFilter = ({
   return (
     <div ref={containerRef} className="relative w-full">
       <div
-        className="flex cursor-text flex-wrap items-center gap-2 rounded-md border border-mineshaft-500 bg-mineshaft-900 px-3 py-2 transition-colors focus-within:border-mineshaft-400"
+        className="flex cursor-text flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-2 transition-colors focus-within:border-foreground/30"
         role="button"
         tabIndex={-1}
         onClick={() => inputRef.current?.focus()}
@@ -416,10 +416,7 @@ export const AuditSearchFilter = ({
           if (wrapperEvent.key === "Enter" || wrapperEvent.key === " ") inputRef.current?.focus();
         }}
       >
-        <FontAwesomeIcon
-          icon={faMagnifyingGlass}
-          className="h-3.5 w-3.5 shrink-0 text-mineshaft-400"
-        />
+        <Search className="size-3.5 shrink-0 text-muted" />
 
         {filters.map((filter, index) =>
           isComposing && editingIndex === index ? composingInput : renderChip(filter, index)
@@ -432,7 +429,7 @@ export const AuditSearchFilter = ({
             ref={inputRef}
             type="text"
             placeholder={filters.length > 0 ? "Add filter..." : "Search audit logs..."}
-            className="min-w-[120px] flex-1 bg-transparent text-sm text-bunker-200 outline-none placeholder:text-mineshaft-400"
+            className="min-w-[120px] flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
             value={query}
             onChange={(inputEvent) => {
               setQuery(inputEvent.target.value);
@@ -446,9 +443,9 @@ export const AuditSearchFilter = ({
       </div>
 
       {showPropertyDropdown && (
-        <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg">
-          <div className="py-2">
-            <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">Add a filter</div>
+        <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-md">
+          <div className="p-1">
+            <div className={dropdownHeadingClass}>Add a filter</div>
             {filteredProperties.map((prop, index) => (
               <button
                 key={prop.key}
@@ -458,27 +455,27 @@ export const AuditSearchFilter = ({
                 onMouseMove={handleMouseMove}
                 onMouseEnter={() => handleMouseEnter(index)}
               >
-                <FontAwesomeIcon icon={faPlus} className="h-3 w-3 shrink-0 text-mineshaft-400" />
-                <span className="font-mono text-xs font-medium text-bunker-200">
+                <Plus className="size-3 shrink-0 text-muted" />
+                <span className="font-mono text-xs font-medium text-foreground">
                   {prop.displayLabel || prop.key}:
                 </span>
-                <span className="truncate text-xs text-mineshaft-400">{prop.hints}</span>
+                <span className="truncate text-xs text-muted">{prop.hints}</span>
               </button>
             ))}
           </div>
-          <div className="flex items-center justify-end gap-4 border-t border-mineshaft-600 px-3 py-2">
-            <span className="text-xs text-mineshaft-400">
+          <div className="flex items-center justify-end gap-4 border-t border-border px-3 py-2">
+            <span className="text-xs text-muted">
               Press{" "}
-              <kbd className="rounded border border-mineshaft-500 bg-mineshaft-700 px-1.5 py-0.5 font-mono text-[10px] text-bunker-200">
+              <kbd className="rounded border border-border bg-container px-1.5 py-0.5 font-mono text-[10px] text-foreground">
                 enter
               </kbd>{" "}
               to select
             </span>
-            <span className="text-xs text-mineshaft-400">
-              <kbd className="rounded border border-mineshaft-500 bg-mineshaft-700 px-1 py-0.5 font-mono text-[10px] text-bunker-200">
+            <span className="text-xs text-muted">
+              <kbd className="rounded border border-border bg-container px-1 py-0.5 font-mono text-[10px] text-foreground">
                 ↑
               </kbd>{" "}
-              <kbd className="rounded border border-mineshaft-500 bg-mineshaft-700 px-1 py-0.5 font-mono text-[10px] text-bunker-200">
+              <kbd className="rounded border border-border bg-container px-1 py-0.5 font-mono text-[10px] text-foreground">
                 ↓
               </kbd>{" "}
               to navigate
@@ -490,16 +487,16 @@ export const AuditSearchFilter = ({
       {showSuggestionDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-lg"
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-64 thin-scrollbar overflow-hidden overflow-y-auto rounded-md border border-border bg-popover shadow-md"
         >
-          <div className="py-2">
+          <div className="p-1">
             {propertyKey === "actor_id" && !currentActorType ? (
               <>
                 {(valueSuggestions as ActorSuggestion[]).some(
                   (s) => s.actorType === ActorType.USER
                 ) && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">Users</div>
+                    <div className={dropdownHeadingClass}>Users</div>
                     {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
                       suggestion.actorType === ActorType.USER ? (
                         <button
@@ -511,11 +508,8 @@ export const AuditSearchFilter = ({
                           onMouseMove={handleMouseMove}
                           onMouseEnter={() => handleMouseEnter(index)}
                         >
-                          <FontAwesomeIcon
-                            icon={faPlus}
-                            className="h-3 w-3 shrink-0 text-mineshaft-400"
-                          />
-                          <span className="font-mono text-xs text-bunker-200">
+                          <Plus className="size-3 shrink-0 text-muted" />
+                          <span className="font-mono text-xs text-foreground">
                             <span className="font-medium">
                               {getDisplayLabel(propertyKey || "")}:
                             </span>
@@ -530,9 +524,7 @@ export const AuditSearchFilter = ({
                   (s) => s.actorType === ActorType.IDENTITY
                 ) && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">
-                      Identities
-                    </div>
+                    <div className={dropdownHeadingClass}>Identities</div>
                     {(valueSuggestions as ActorSuggestion[]).map((suggestion, index) =>
                       suggestion.actorType === ActorType.IDENTITY ? (
                         <button
@@ -544,11 +536,8 @@ export const AuditSearchFilter = ({
                           onMouseMove={handleMouseMove}
                           onMouseEnter={() => handleMouseEnter(index)}
                         >
-                          <FontAwesomeIcon
-                            icon={faPlus}
-                            className="h-3 w-3 shrink-0 text-mineshaft-400"
-                          />
-                          <span className="font-mono text-xs text-bunker-200">
+                          <Plus className="size-3 shrink-0 text-muted" />
+                          <span className="font-mono text-xs text-foreground">
                             <span className="font-medium">
                               {getDisplayLabel(propertyKey || "")}:
                             </span>
@@ -562,9 +551,7 @@ export const AuditSearchFilter = ({
               </>
             ) : (
               <>
-                <div className="px-3 py-1.5 text-xs font-medium text-mineshaft-400">
-                  Suggestions
-                </div>
+                <div className={dropdownHeadingClass}>Suggestions</div>
                 {valueSuggestions.map((suggestion, index) => (
                   <button
                     key={suggestion.value}
@@ -575,11 +562,8 @@ export const AuditSearchFilter = ({
                     onMouseMove={handleMouseMove}
                     onMouseEnter={() => handleMouseEnter(index)}
                   >
-                    <FontAwesomeIcon
-                      icon={faPlus}
-                      className="h-3 w-3 shrink-0 text-mineshaft-400"
-                    />
-                    <span className="font-mono text-xs text-bunker-200">
+                    <Plus className="size-3 shrink-0 text-muted" />
+                    <span className="font-mono text-xs text-foreground">
                       <span className="font-medium">{getDisplayLabel(propertyKey || "")}:</span>
                       <span className="ml-0.5">{suggestion.label}</span>
                     </span>

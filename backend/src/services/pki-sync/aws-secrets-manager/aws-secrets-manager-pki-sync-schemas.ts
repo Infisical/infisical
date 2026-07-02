@@ -28,12 +28,11 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
   updateExistingCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
-
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -52,7 +51,7 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-512 characters long for AWS Secrets Manager."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-512 characters long for AWS Secrets Manager."
       }
     ),
   fieldMappings: AwsSecretsManagerFieldMappingsSchema.optional().default({
@@ -74,7 +73,7 @@ export const CreateAwsSecretsManagerPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsSecretsManagerPkiSyncConfigSchema,
-  syncOptions: AwsSecretsManagerPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AwsSecretsManagerPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

@@ -1,6 +1,5 @@
-import { faAsterisk, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { Ellipsis, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -9,10 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  TableCell,
+  TableRow
+} from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
@@ -35,11 +33,8 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
   const products = logStream.filters?.products ?? [];
 
   return (
-    <Tr
-      className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
-      key={`log-stream-${id}`}
-    >
-      <Td>
+    <TableRow className="group" key={`log-stream-${id}`}>
+      <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative">
             {providerDetails.image ? (
@@ -50,69 +45,57 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
               />
             ) : (
               providerDetails.icon && (
-                <FontAwesomeIcon
-                  icon={providerDetails.icon}
-                  className="size-5 text-mineshaft-300"
-                />
+                <FontAwesomeIcon icon={providerDetails.icon} className="size-5 text-muted" />
               )
             )}
           </div>
           <span className="hidden lg:inline">{providerDetails.name}</span>
         </div>
-      </Td>
-      <Td className="max-w-0 min-w-32!">
+      </TableCell>
+      <TableCell className="max-w-0 min-w-32!">
         <div className="flex w-full items-center gap-2">
           <p className="truncate">{url}</p>
         </div>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <AuditLogStreamProductBadges products={products} />
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <div className="flex items-center justify-end gap-2">
-          <Tooltip className="max-w-sm text-center" content="Options">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Options"
-                  colorSchema="secondary"
-                  className="w-6"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent sideOffset={2} align="end">
-                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      isDisabled={!isAllowed}
-                      icon={<FontAwesomeIcon icon={faAsterisk} />}
-                      onClick={() => onEditCredentials(logStream)}
-                    >
-                      Edit Credentials
-                    </DropdownMenuItem>
-                  )}
-                </OrgPermissionCan>
-                <OrgPermissionCan
-                  I={OrgPermissionActions.Delete}
-                  a={OrgPermissionSubjects.Settings}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      isDisabled={!isAllowed}
-                      icon={<FontAwesomeIcon icon={faTrash} />}
-                      onClick={() => onDelete(logStream)}
-                    >
-                      Delete Stream
-                    </DropdownMenuItem>
-                  )}
-                </OrgPermissionCan>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Tooltip>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label="Options" variant="ghost" size="xs">
+                <Ellipsis />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={2} align="end">
+              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed}
+                    onClick={() => onEditCredentials(logStream)}
+                  >
+                    <PencilIcon />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+              </OrgPermissionCan>
+              <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Settings}>
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    variant="danger"
+                    isDisabled={!isAllowed}
+                    onClick={() => onDelete(logStream)}
+                  >
+                    <Trash2Icon />
+                    Delete Stream
+                  </DropdownMenuItem>
+                )}
+              </OrgPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

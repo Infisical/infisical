@@ -15,6 +15,7 @@ import { CamundaSyncFields } from "./CamundaSyncFields";
 import { ChecklySyncFields } from "./ChecklySyncFields";
 import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
+import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
@@ -139,6 +140,8 @@ export const SecretSyncDestinationFields = () => {
       return <SnowflakeSyncFields />;
     case SecretSync.TriggerDev:
       return <TriggerDevSyncFields />;
+    case SecretSync.Cloud66:
+      return <Cloud66SyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

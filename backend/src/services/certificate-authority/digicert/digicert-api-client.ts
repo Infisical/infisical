@@ -1,14 +1,16 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { DIGICERT_AUTH_HEADER } from "@app/services/app-connection/digicert/digicert-connection-constants";
 import { extractDigiCertErrorMessage } from "@app/services/app-connection/digicert/digicert-connection-errors";
 
 import {
   TCheckValidationResponse,
+  TDigiCertAlternateOrdersResponse,
   TOrderResponse,
   TOrderStatusChangesResponse,
+  TOrganizationValidationsResponse,
   TPlaceOrderRequest,
   TPlaceOrderResponse
 } from "./digicert-certificate-authority-types";
@@ -24,20 +26,39 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
   const wrap = <T>(fn: () => Promise<T>, action: string) =>
     fn().catch((error: unknown) => {
       if (error instanceof AxiosError) {
-        throw new BadRequestError({
-          message: `DigiCert ${action} failed: ${extractDigiCertErrorMessage(error)}`
+        const status = error.response?.status;
+        // 4xx (except 408/429) is terminal; everything else is transient and retried by the poller.
+        if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+          throw new BadRequestError({
+            message: `DigiCert ${action} failed: ${extractDigiCertErrorMessage(error)}`
+          });
+        }
+        // Throw a sanitized error, never the raw AxiosError whose config headers carry the API key.
+        throw new InternalServerError({
+          message: `DigiCert ${action} failed${status ? ` (status ${status})` : " (no response)"}`
         });
       }
       throw error;
     });
 
-  const placeOrder = async (productSlug: string, body: TPlaceOrderRequest) =>
+  const placeOrder = async <TResp = TPlaceOrderResponse>(
+    productSlug: string,
+    body: TPlaceOrderRequest | Record<string, unknown>
+  ) =>
     wrap(async () => {
-      const { data } = await request.post<TPlaceOrderResponse>(`${baseURL}/order/certificate/${productSlug}`, body, {
-        headers
-      });
+      const { data } = await request.post<TResp>(
+        `${baseURL}/order/certificate/${encodeURIComponent(productSlug)}`,
+        body,
+        { headers }
+      );
       return data;
     }, `order placement for product ${productSlug}`);
+
+  const reissueOrder = async <TResp = TPlaceOrderResponse>(orderId: number, body: Record<string, unknown>) =>
+    wrap(async () => {
+      const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${orderId}/reissue`, body, { headers });
+      return data;
+    }, `order reissue for ${orderId}`);
 
   const getOrder = async (orderId: number) =>
     wrap(async () => {
@@ -67,6 +88,31 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       return data;
     }, `certificate download for ${certificateId}`);
 
+  const getOrganizationValidations = async (organizationId: number) =>
+    wrap(async () => {
+      const { data } = await request.get<TOrganizationValidationsResponse>(
+        `${baseURL}/organization/${organizationId}/validation`,
+        { headers }
+      );
+      return data;
+    }, `organization validation lookup for ${organizationId}`);
+
+  const getOrdersByAlternativeId = async (alternativeOrderId: string) =>
+    wrap(async () => {
+      try {
+        const { data } = await request.get<TDigiCertAlternateOrdersResponse>(
+          `${baseURL}/order/alternate/${encodeURIComponent(alternativeOrderId)}`,
+          { headers }
+        );
+        return data;
+      } catch (error) {
+        if (error instanceof AxiosError && error.response?.status === 404) {
+          return { orders: [] };
+        }
+        throw error;
+      }
+    }, `alternate order lookup for ${alternativeOrderId}`);
+
   const revokeOrder = async (orderId: number, comments: string) =>
     wrap(async () => {
       await request.put(`${baseURL}/order/certificate/${orderId}/revoke`, { comments }, { headers });
@@ -84,9 +130,12 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
 
   return {
     placeOrder,
+    reissueOrder,
     getOrder,
     checkValidation,
+    getOrganizationValidations,
     downloadCertificatePem,
+    getOrdersByAlternativeId,
     revokeOrder,
     listOrderStatusChanges
   };

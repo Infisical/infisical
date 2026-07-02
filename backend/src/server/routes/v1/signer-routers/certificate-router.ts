@@ -8,7 +8,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
-import { HSM_SUPPORTED_KEY_ALGORITHMS, SignerIdParamsSchema, SignerKeyAlgorithm } from "./schemas";
+import {
+  HSM_SUPPORTED_KEY_ALGORITHMS,
+  SignerExternalConfigurationSchema,
+  SignerIdParamsSchema,
+  SignerKeyAlgorithm
+} from "./schemas";
 
 export const registerSignerCertificateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,7 +37,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
               keySource: z.nativeEnum(CertKeySource),
               hsmConnectorId: z.string().uuid().optional()
             })
-            .optional()
+            .optional(),
+          externalConfiguration: SignerExternalConfigurationSchema.optional()
         })
         .superRefine((data, ctx) => {
           if (data.certificate?.keySource !== CertKeySource.Hsm) return;
@@ -76,7 +82,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             commonName: req.body.commonName,
             keyAlgorithm: req.body.keyAlgorithm,
             keySource: req.body.certificate?.keySource,
-            hsmConnectorId: req.body.certificate?.hsmConnectorId
+            hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            externalConfiguration: req.body.externalConfiguration
           }
         }
       });

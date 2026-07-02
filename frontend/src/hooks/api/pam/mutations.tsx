@@ -22,6 +22,7 @@ import {
   TDeletePamAccountDTO,
   TDeletePamAccountTemplateDTO,
   TDeletePamFolderDTO,
+  TPamAccessResponse,
   TPamAccountTemplate,
   TPamFolder,
   TPamSession,
@@ -387,6 +388,33 @@ export const useRemoveFolderGroupMember = () => {
     },
     onSuccess: (_, { folderId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+    }
+  });
+};
+
+export const useAccessPamAccount = () => {
+  return useMutation({
+    mutationFn: async ({
+      path,
+      reason,
+      duration,
+      mfaSessionId,
+      accessMethod
+    }: {
+      path: string;
+      reason?: string;
+      duration?: string;
+      mfaSessionId?: string;
+      accessMethod?: "cli" | "web";
+    }) => {
+      const { data } = await apiRequest.post<TPamAccessResponse>("/api/v1/pam/accounts/access", {
+        path,
+        reason,
+        duration,
+        mfaSessionId,
+        accessMethod
+      });
+      return data;
     }
   });
 };

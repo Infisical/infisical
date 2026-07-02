@@ -1,4 +1,5 @@
 import net from "net";
+import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -53,6 +54,12 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import {
+  AWS_STS_MIN_DURATION_SECONDS,
+  exchangeCredentialsForConsoleUrl,
+  extractAwsAccountIdFromArn,
+  generateAwsIamSessionCredentials
+} from "./aws-iam/aws-iam-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -333,6 +340,7 @@ export const pamSessionServiceFactory = ({
     reason,
     duration,
     mfaSessionId,
+    accessMethod = PamAccessMethod.Cli,
     targetHost
   }: {
     path: string;
@@ -345,6 +353,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    accessMethod?: PamAccessMethod;
     targetHost?: string;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
@@ -391,10 +400,6 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
-    await checkAccount(account.id, account.folderId, projectId, launchAuthorizationAction, actor);
-
-    enforceRecordingConfig(account);
-
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
         userId: actor.actorId,
@@ -416,6 +421,84 @@ export const pamSessionServiceFactory = ({
       }
       sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
     }
+
+    // AWS IAM: no gateway, no proxy -- generate STS credentials directly
+    if (account.accountType === PamAccountType.AwsIam) {
+      const stsDurationSeconds = Math.floor(sessionDurationMs / 1000);
+
+      if (stsDurationSeconds < AWS_STS_MIN_DURATION_SECONDS) {
+        throw new BadRequestError({
+          message: `AWS IAM sessions require a minimum duration of ${AWS_STS_MIN_DURATION_SECONDS} seconds (15 minutes)`
+        });
+      }
+
+      const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+      const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
+
+      const stsCredentials = await generateAwsIamSessionCredentials({
+        connectionDetails: { roleArn: rawConnectionDetails.roleArn as string },
+        targetRoleArn: rawCredentials.targetRoleArn as string,
+        roleSessionName: actorEmail.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64),
+        projectId,
+        sessionDuration: stsDurationSeconds
+      });
+
+      const { expiresAt } = stsCredentials;
+
+      const metadata: Record<string, string> = {};
+
+      if (accessMethod === PamAccessMethod.Web) {
+        const consoleUrl = await exchangeCredentialsForConsoleUrl({
+          accessKeyId: stsCredentials.accessKeyId,
+          secretAccessKey: stsCredentials.secretAccessKey,
+          sessionToken: stsCredentials.sessionToken
+        });
+        metadata.consoleUrl = consoleUrl;
+      } else {
+        metadata.accessKeyId = stsCredentials.accessKeyId;
+        metadata.secretAccessKey = stsCredentials.secretAccessKey;
+        metadata.sessionToken = stsCredentials.sessionToken;
+        metadata.expiresAt = expiresAt.toISOString();
+        metadata.targetRoleArn = rawCredentials.targetRoleArn as string;
+        metadata.federatedUsername = actorEmail;
+
+        const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
+        if (awsAccountId) {
+          metadata.awsAccountId = awsAccountId;
+        }
+      }
+
+      const session = await pamSessionDAL.create({
+        status: PamSessionStatus.Active,
+        accessMethod,
+        expiresAt,
+        startedAt: new Date(),
+        accountName: account.name,
+        accountType: account.accountType,
+        actorEmail,
+        actorIp,
+        actorName,
+        actorUserAgent,
+        projectId,
+        accountId: account.id,
+        userId: actor.actorId,
+        reason: trimmedReason,
+        folderName: account.folderName
+      });
+
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+
+      return {
+        sessionId: session.id,
+        accountId: account.id,
+        accountType: account.accountType as PamAccountType,
+        accountName: account.name,
+        metadata,
+        sessionDurationMs
+      };
+    }
+
+    enforceRecordingConfig(account);
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
