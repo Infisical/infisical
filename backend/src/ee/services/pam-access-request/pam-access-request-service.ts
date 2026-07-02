@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -11,7 +12,7 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ms } from "@app/lib/ms";
+import { formatDuration, ms } from "@app/lib/ms";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
@@ -44,7 +45,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamProductRole } from "../pam/pam-enums";
+import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
 import {
   checkAccountAccess,
@@ -56,6 +57,7 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { sendPamSessionCancellationSignal } from "../pam-session/pam-session-fns";
 import {
   TCheckGrantDTO,
   TCreateAccessRequestDTO,
@@ -107,6 +109,7 @@ type TPamAccessRequestServiceFactoryDep = {
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -132,6 +135,7 @@ export const pamAccessRequestServiceFactory = ({
   pamAccountTemplateDAL,
   pamFolderDAL,
   pamSessionDAL,
+  gatewayV2Service,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
@@ -317,7 +321,7 @@ export const pamAccessRequestServiceFactory = ({
         await approvalPolicyStepsDAL.delete({ policyId: existingPolicy.id }, tx);
         await approvalPolicyDAL.deleteById(existingPolicy.id, tx);
       });
-      return { policyId: existingPolicy.id };
+      return { policyId: existingPolicy.id, folderId, stepCount: steps.length };
     }
 
     if (!hasApprovers) {
@@ -354,7 +358,7 @@ export const pamAccessRequestServiceFactory = ({
         }
       });
 
-      return { policyId: existingPolicy.id };
+      return { policyId: existingPolicy.id, folderId, stepCount: steps.length };
     }
 
     const newPolicy = await approvalPolicyDAL.transaction(async (tx) => {
@@ -401,7 +405,7 @@ export const pamAccessRequestServiceFactory = ({
       return policy;
     });
 
-    return { policyId: newPolicy.id };
+    return { policyId: newPolicy.id, folderId, stepCount: steps.length };
   };
 
   const createRequest = async ({ accountId, path, projectId, reason, duration, ...ctx }: TCreateAccessRequestDTO) => {
@@ -558,7 +562,7 @@ export const pamAccessRequestServiceFactory = ({
               requesterEmail: user.email ?? "",
               accountName: account.name,
               folderName: account.folderName ?? undefined,
-              accessDuration: duration,
+              accessDuration: formatDuration(duration),
               reason,
               approvalUrl
             }
@@ -569,7 +573,7 @@ export const pamAccessRequestServiceFactory = ({
       }
     }
 
-    return { request };
+    return { request, accountId: account.id, folderId: account.folderId };
   };
 
   const listRequests = async ({ projectId, folderId, status, offset, limit, ...ctx }: TListAccessRequestsDTO) => {
@@ -606,15 +610,46 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
+  // Whether the actor is currently an approver on the folder's live policy AND still holds an active
+  // folder membership. This is the same authority reviewRequest enforces, so the approver queue and
+  // the review action agree; the creation-time snapshot alone would leak requests (and requester PII)
+  // to users removed as approvers after the request was created.
+  const isLiveFolderApprover = async (
+    projectId: string,
+    folderId: string,
+    actorId: string,
+    userGroupIds: Set<string>
+  ): Promise<boolean> => {
+    const policy = await findFolderPolicy(folderId);
+    if (!policy) return false;
+    const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
+    const onLivePolicy = steps.some((step) => isUserEligibleApprover(step.approvers, actorId, userGroupIds));
+    if (!onLivePolicy) return false;
+    const activeMemberships = await findActiveFolderMemberships(projectId, folderId);
+    return activeMemberships.some(
+      (m) => m.actorUserId === actorId || (m.actorGroupId && userGroupIds.has(m.actorGroupId))
+    );
+  };
+
   const listPendingMyApproval = async ({ projectId, folderId, ...ctx }: TListPendingMyApprovalDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
     const userGroupIds = await getUserGroupIds(ctx.actorId, ctx.actorOrgId);
 
+    // Fast reject for users who are not a live approver on any PAM policy in the project.
+    const isApprover = await approvalPolicyDAL.isProjectApprover({
+      projectId,
+      userId: ctx.actorId,
+      groupIds: [...userGroupIds],
+      type: ApprovalPolicyType.PamAccess,
+      scopeType: PAM_FOLDER_SCOPE_TYPE
+    });
+    if (!isApprover) return { requests: [] };
+
     const requests = await approvalRequestDAL.findByProjectId(ApprovalPolicyType.PamAccess, projectId);
 
-    // Only requests still awaiting a response belong in an approver's queue.
-    const result = requests.filter((request) => {
+    // Only pending requests whose creation-time snapshot lists the actor belong in the queue...
+    const candidates = requests.filter((request) => {
       if (request.status !== ApprovalRequestStatus.Pending) return false;
 
       if (folderId) {
@@ -626,6 +661,28 @@ export const pamAccessRequestServiceFactory = ({
       if (!currentStep) return false;
 
       return isUserEligibleApprover(currentStep.approvers, ctx.actorId, userGroupIds);
+    });
+
+    // ...but the snapshot is re-validated against each folder's live policy so requests whose approver
+    // set changed after creation (e.g. the actor was removed) drop out rather than leaking.
+    const involvedFolderIds = [
+      ...new Set(
+        candidates
+          .map((r) => (r.requestData as { requestData?: TPamAccessRequestData } | null)?.requestData?.folderId)
+          .filter((id): id is string => Boolean(id))
+      )
+    ];
+    const liveApproverFolders = new Set<string>();
+    for (const fId of involvedFolderIds) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await isLiveFolderApprover(projectId, fId, ctx.actorId, userGroupIds)) {
+        liveApproverFolders.add(fId);
+      }
+    }
+
+    const result = candidates.filter((r) => {
+      const fId = (r.requestData as { requestData?: TPamAccessRequestData } | null)?.requestData?.folderId;
+      return Boolean(fId && liveApproverFolders.has(fId));
     });
 
     return { requests: await attachGrantExpiry(await enrichRequestsWithNames(result)) };
@@ -687,6 +744,20 @@ export const pamAccessRequestServiceFactory = ({
     const requestData = request.requestData as { version: number; requestData: TPamAccessRequestData } | null;
     const folderId = requestData?.requestData?.folderId;
 
+    // The request snapshots the account's folder at creation time, but the account may have since been
+    // moved or deleted. Approving would then grant access governed by the old folder's approvers,
+    // bypassing the account's current folder policy, so block approval of a stale request. Rejection
+    // stays allowed so the stale request can be cleared.
+    if (status === "approved") {
+      const requestedAccountId = requestData?.requestData?.accountId;
+      const account = requestedAccountId ? await pamAccountDAL.findOne({ id: requestedAccountId }) : undefined;
+      if (!account || account.projectId !== projectId || account.folderId !== folderId) {
+        throw new BadRequestError({
+          message: "This request is no longer valid because the account has moved or been removed"
+        });
+      }
+    }
+
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
     const currentStepIndex = steps.findIndex((s) => s.stepNumber === request.currentStep);
     if (currentStepIndex === -1) {
@@ -736,7 +807,7 @@ export const pamAccessRequestServiceFactory = ({
     }
 
     if (status === "rejected") {
-      await approvalRequestDAL.transaction(async (tx) => {
+      const updatedRequest = await approvalRequestDAL.transaction(async (tx) => {
         // Row lock serializes concurrent reviews; the pre-transaction checks may be stale by now
         const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
         if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
@@ -760,10 +831,10 @@ export const pamAccessRequestServiceFactory = ({
           tx
         );
         await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Rejected }, tx);
+        return approvalRequestDAL.findById(requestId, tx);
       });
 
-      const updatedRequest = await approvalRequestDAL.findById(requestId);
-      return { request: updatedRequest };
+      return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };
     }
 
     const { updatedRequest, nextStepToNotify } = await approvalRequestDAL.transaction(async (tx) => {
@@ -884,13 +955,33 @@ export const pamAccessRequestServiceFactory = ({
 
     const attrs = grant.attributes as { accountId?: string } | null;
     if (attrs?.accountId) {
-      const activeSessions = await pamSessionDAL.find(
-        { accountId: attrs.accountId, userId: grant.granteeUserId ?? null, status: "active" },
+      // Cover both active and starting sessions; a session mid-handshake would otherwise slip past
+      // revocation and go live. terminateSessionById flips the row, and the ALPN signal cuts the live
+      // tunnel, since neither the gateway nor the web-access loop watches the status column.
+      const liveSessions = await pamSessionDAL.find(
+        {
+          accountId: attrs.accountId,
+          userId: grant.granteeUserId ?? null,
+          $in: { status: [PamSessionStatus.Active, PamSessionStatus.Starting] }
+        },
         { tx }
       );
-      for (const session of activeSessions) {
-        // eslint-disable-next-line no-await-in-loop
-        await pamSessionDAL.terminateSessionById(session.id, tx);
+      if (liveSessions.length > 0) {
+        const actor = await userDAL.findById(actorId);
+        for (const session of liveSessions) {
+          // eslint-disable-next-line no-await-in-loop
+          await pamSessionDAL.terminateSessionById(session.id, tx);
+          if (session.gatewayId) {
+            sendPamSessionCancellationSignal({
+              sessionId: session.id,
+              gatewayId: session.gatewayId,
+              accountType: session.accountType,
+              actorId,
+              actorEmail: actor?.email ?? "",
+              gatewayV2Service
+            });
+          }
+        }
       }
     }
 
@@ -935,7 +1026,7 @@ export const pamAccessRequestServiceFactory = ({
 
     const revokedGrant = await revokeGrantRow(grant, ctx.actorId, "Revoked by admin");
 
-    return { grant: revokedGrant };
+    return { grant: revokedGrant, accountId, folderId: requestData?.requestData?.folderId, grantId: grant.id };
   };
 
   // Approval policies, requests, and grants reference folders/accounts by scopeId or by a JSON id

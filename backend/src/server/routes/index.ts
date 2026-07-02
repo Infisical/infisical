@@ -1817,6 +1817,7 @@ export const registerRoutes = async (
     pamAccountTemplateDAL,
     pamFolderDAL,
     pamSessionDAL,
+    gatewayV2Service,
     membershipDAL,
     membershipRoleDAL,
     projectDAL,

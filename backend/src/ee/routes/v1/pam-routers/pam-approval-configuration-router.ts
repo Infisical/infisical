@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -83,7 +84,22 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      return result;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_APPROVAL_CONFIG_UPDATE,
+          metadata: {
+            folderId: req.params.folderId,
+            policyId: result.policyId,
+            stepCount: result.stepCount
+          }
+        }
+      });
+
+      return { policyId: result.policyId };
     }
   });
 };

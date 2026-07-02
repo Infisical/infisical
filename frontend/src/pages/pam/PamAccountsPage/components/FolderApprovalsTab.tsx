@@ -55,6 +55,7 @@ import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
+import { formatDuration } from "../../components/formatDuration";
 import { formatRelativeExpiry } from "../../components/PamDetailSheet";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { ApprovalRequestDetailSheet } from "../../PamApprovalRequestsPage/components/ApprovalRequestDetailSheet";
@@ -429,7 +430,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         <TableCell className="text-sm">
                           <div className="flex flex-col">
                             <RelativeTime date={request.createdAt} />
-                            {duration && <span className="text-xs text-muted">for {duration}</span>}
+                            {duration && (
+                              <span className="text-xs text-muted">
+                                for {formatDuration(duration)}
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>

@@ -41,6 +41,7 @@ import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { getRequestStatusInfo } from "../components/approvalRequestStatus";
+import { formatDuration } from "../components/formatDuration";
 import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { ApprovalRequestDetailSheet } from "./components/ApprovalRequestDetailSheet";
 
@@ -74,7 +75,7 @@ const RequestRow = ({
       <TableCell className="max-w-[200px] truncate text-sm">
         {request.requestData?.requestData?.reason || "-"}
       </TableCell>
-      <TableCell className="text-sm">{duration ?? "-"}</TableCell>
+      <TableCell className="text-sm">{formatDuration(duration)}</TableCell>
       <TableCell className="text-sm">
         {format(new Date(request.createdAt), "MMM d, yyyy h:mm a")}
       </TableCell>

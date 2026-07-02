@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { ApprovalRequestsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -48,7 +49,24 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      return result;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCESS_REQUEST_CREATE,
+          metadata: {
+            requestId: result.request.id,
+            accountId: result.accountId,
+            folderId: result.folderId,
+            duration: req.body.duration,
+            reason: req.body.reason
+          }
+        }
+      });
+
+      return { request: result.request };
     }
   });
 
@@ -170,7 +188,24 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      return result;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCESS_REQUEST_REVIEW,
+          metadata: {
+            requestId: req.params.requestId,
+            accountId: result.accountId,
+            folderId: result.folderId,
+            status: req.body.status,
+            comment: req.body.comment
+          }
+        }
+      });
+
+      return { request: result.request };
     }
   });
 
@@ -202,6 +237,22 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCESS_GRANT_REVOKE,
+          metadata: {
+            requestId: req.params.requestId,
+            grantId: result.grant.id,
+            accountId: result.accountId,
+            folderId: result.folderId
+          }
+        }
+      });
+
       return {
         grant: {
           id: result.grant.id,

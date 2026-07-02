@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Check, Clock, ShieldCheck, X } from "lucide-react";
-import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
@@ -10,15 +9,9 @@ import { useReviewPamAccessRequest, useRevokePamAccessRequest } from "@app/hooks
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
+import { formatDuration } from "../../components/formatDuration";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-
-const formatDuration = (duration?: string) => {
-  if (!duration) return "-";
-  const parsed = ms(duration);
-  if (typeof parsed !== "number") return duration;
-  return ms(parsed, { long: true });
-};
 
 type Props = {
   request: TPamAccessRequest | null;

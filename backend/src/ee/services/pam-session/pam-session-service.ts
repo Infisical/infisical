@@ -1,4 +1,3 @@
-import net from "net";
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -8,9 +7,6 @@ import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certif
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -63,6 +59,7 @@ import {
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
+import { sendPamSessionCancellationSignal } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -631,46 +628,15 @@ export const pamSessionServiceFactory = ({
     }
 
     if (session.gatewayId) {
-      void (async () => {
-        let relayConn: net.Socket | null = null;
-        try {
-          const user = await userDAL.findById(ctx.actorId);
-          const certs = await gatewayV2Service.getPAMConnectionDetails({
-            gatewayId: session.gatewayId!,
-            sessionId,
-            accountType: session.accountType as PamAccountType,
-            host: "0.0.0.0",
-            port: 0,
-            actorMetadata: { id: ctx.actorId, type: ActorType.USER, name: user?.email ?? "" }
-          });
-          if (!certs) {
-            logger.error(
-              { sessionId, gatewayId: session.gatewayId },
-              `Failed to get gateway [gatewayId=${session.gatewayId}] connection details for PAM session [sessionId=${sessionId}] termination`
-            );
-            return;
-          }
-          relayConn = await createRelayConnection({
-            relayHost: certs.relayHost,
-            clientCertificate: certs.relay.clientCertificate,
-            clientPrivateKey: certs.relay.clientPrivateKey,
-            serverCertificateChain: certs.relay.serverCertificateChain
-          });
-          const cancelConn = await createGatewayConnection(
-            relayConn,
-            certs.gateway,
-            GatewayProxyProtocol.PamSessionCancellation
-          );
-          cancelConn.end();
-        } catch (err) {
-          logger.error(
-            { sessionId, err },
-            `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`
-          );
-        } finally {
-          relayConn?.destroy();
-        }
-      })();
+      const user = await userDAL.findById(ctx.actorId);
+      sendPamSessionCancellationSignal({
+        sessionId,
+        gatewayId: session.gatewayId,
+        accountType: session.accountType,
+        actorId: ctx.actorId,
+        actorEmail: user?.email ?? "",
+        gatewayV2Service
+      });
     }
 
     return { session: updated, projectId: session.projectId, accountName: session.accountName };
