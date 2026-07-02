@@ -34,23 +34,30 @@ const createFakeKeyStore = () => {
     setItemWithExpiry: async (key: string, _ttl: number | string, value: string | number | Buffer) => {
       store.set(key, String(value));
       return "OK" as const;
+    },
+    deleteItem: async (key: string) => {
+      const existed = store.delete(key);
+      return existed ? 1 : 0;
     }
   };
 };
 
 const createStubBackend = (response: TEntitlementsResponse, opts: { fail?: boolean } = {}) => {
   let calls = 0;
+  const orgs: { id: string; name?: string | null; slug?: string | null }[] = [];
   return {
     backend: {
-      fetchEntitlements: async () => {
+      fetchEntitlements: async (org: { id: string; name?: string | null; slug?: string | null }) => {
         calls += 1;
+        orgs.push(org);
         if (opts.fail) {
           throw new Error("license server unreachable");
         }
         return response;
       }
     },
-    getCalls: () => calls
+    getCalls: () => calls,
+    getOrgs: () => orgs
   };
 };
 
@@ -62,11 +69,11 @@ describe("entitlementResolverFactory", () => {
     );
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
-    const first = await resolver.getEntitlements(ORG_ID);
+    const first = await resolver.getEntitlements({ id: ORG_ID });
     expect(first?.features.max_identities.value).toBe(100);
     expect(getCalls()).toBe(1);
 
-    await resolver.getEntitlements(ORG_ID);
+    await resolver.getEntitlements({ id: ORG_ID });
     expect(getCalls()).toBe(1); // served from the cache
   });
 
@@ -75,7 +82,37 @@ describe("entitlementResolverFactory", () => {
     const { backend } = createStubBackend(makeEntitlements({}), { fail: true });
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
-    expect(await resolver.getEntitlements(ORG_ID)).toBeNull();
+    expect(await resolver.getEntitlements({ id: ORG_ID })).toBeNull();
+  });
+
+  test("forwards org identity to the backend even after an identity-less call seeded the cache", async () => {
+    const keyStore = createFakeKeyStore();
+    const { backend, getCalls, getOrgs } = createStubBackend(
+      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
+    );
+    const resolver = entitlementResolverFactory({ keyStore, backend });
+
+    await resolver.getEntitlements({ id: ORG_ID }); // feature-check style, identity-less
+    expect(getCalls()).toBe(1);
+    expect(getOrgs()[0]).toEqual({ id: ORG_ID });
+
+    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
+    expect(getCalls()).toBe(2); // bypassed the identity-less cache entry
+    expect(getOrgs()[1]).toEqual({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
+  });
+
+  test("syncs org identity once per ttl window then serves from the cache", async () => {
+    const keyStore = createFakeKeyStore();
+    const { backend, getCalls } = createStubBackend(
+      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
+    );
+    const resolver = entitlementResolverFactory({ keyStore, backend });
+
+    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
+    expect(getCalls()).toBe(1);
+
+    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
+    expect(getCalls()).toBe(1); // identity already synced, served from the cache
   });
 });
 
@@ -123,9 +160,10 @@ describe("featureReaderFactory", () => {
 describe("licenseClientFactory (usage example)", () => {
   const licenseClient = licenseClientFactory({
     envConfig: {
-      LICENSE_SERVER_V2_ENABLED: false,
+      LICENSE_SERVER_V2_MODE: "off",
       LICENSE_SERVER_V2_URL: undefined,
-      LICENSE_SERVER_V2_SERVICE_KEY: undefined
+      LICENSE_SERVER_V2_SERVICE_KEY: undefined,
+      INTERNAL_REGION: undefined
     },
     keyStore: createFakeKeyStore()
   });

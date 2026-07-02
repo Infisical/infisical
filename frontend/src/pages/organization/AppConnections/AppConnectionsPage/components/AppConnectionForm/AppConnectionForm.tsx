@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { useScopeVariant } from "@app/hooks";
 import {
   TAppConnection,
   useCreateAppConnection,
@@ -13,9 +14,9 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
-import { AppConnectionHeader } from "../AppConnectionHeader";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
+import { AppConnectionFormProvider } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
@@ -30,6 +31,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
+import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -78,6 +80,7 @@ import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { TravisCIConnectionForm } from "./TravisCIConnectionForm";
+import { TriggerDevConnectionForm } from "./TriggerDevConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
@@ -108,35 +111,39 @@ const RotationConfirmation = ({
   onConfirm: () => void;
   onCancel: () => void;
   isSubmitting: boolean;
-}) => (
-  <div>
-    <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
-      <div className="mb-1 flex items-center text-sm">
-        <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
-        Automatic Credential Rotation
+}) => {
+  const scopeVariant = useScopeVariant();
+
+  return (
+    <div className="p-4">
+      <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+        <div className="mb-1 flex items-center text-sm">
+          <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+          Automatic Credential Rotation
+        </div>
+        <p className="bor mt-1 text-sm text-bunker-200">
+          Enabling automatic credential rotation will give Infisical full control over the lifecycle
+          of this credential. Infisical will automatically rotate the credential on the schedule you
+          configured and you will no longer be able to manage it manually. The original credential
+          provided will be revoked and replaced.
+        </p>
       </div>
-      <p className="bor mt-1 text-sm text-bunker-200">
-        Enabling automatic credential rotation will give Infisical full control over the lifecycle
-        of this credential. Infisical will automatically rotate the credential on the schedule you
-        configured and you will no longer be able to manage it manually. The original credential
-        provided will be revoked and replaced.
-      </p>
+      <div className="mt-4 flex gap-3">
+        <Button
+          onClick={onConfirm}
+          variant={scopeVariant}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          I Understand
+        </Button>
+        <Button variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+          Cancel
+        </Button>
+      </div>
     </div>
-    <div className="mt-4 flex gap-4">
-      <Button
-        onClick={onConfirm}
-        colorSchema="secondary"
-        isLoading={isSubmitting}
-        isDisabled={isSubmitting}
-      >
-        I Understand
-      </Button>
-      <Button variant="plain" onClick={onCancel} colorSchema="secondary" isDisabled={isSubmitting}>
-        Cancel
-      </Button>
-    </div>
-  </div>
-);
+  );
+};
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -236,6 +243,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <LaravelForgeConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Flyio:
         return <FlyioConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.TriggerDev:
+        return <TriggerDevConnectionForm onSubmit={onSubmit} />;
       case AppConnection.GitLab:
         return <GitLabConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.Cloudflare:
@@ -284,6 +293,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Cloud66:
+        return <Cloud66ConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} />;
       case AppConnection.VenafiTpp:
@@ -339,7 +350,15 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
           isSubmitting={isConfirmSubmitting}
         />
       )}
-      <div className={pendingFormData ? "hidden" : undefined}>{renderForm()}</div>
+      <div
+        className={
+          pendingFormData
+            ? "hidden"
+            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+        }
+      >
+        {renderForm()}
+      </div>
     </>
   );
 };
@@ -471,6 +490,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <LaravelForgeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Flyio:
         return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.TriggerDev:
+        return <TriggerDevConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.GitLab:
         return (
           <GitLabConnectionForm
@@ -523,6 +544,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Cloud66:
+        return <Cloud66ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ExternalInfisical:
         return (
           <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
@@ -555,6 +578,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Netlify:
+        return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }
@@ -578,31 +603,36 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
           isSubmitting={isConfirmSubmitting}
         />
       )}
-      <div className={pendingFormData ? "hidden" : undefined}>{renderForm()}</div>
+      <div
+        className={
+          pendingFormData
+            ? "hidden"
+            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+        }
+      >
+        {renderForm()}
+      </div>
     </>
   );
 };
 
-type Props = { onBack?: () => void; projectId?: string } & Pick<FormProps, "onComplete"> &
+type Props = { onCancel: () => void; projectId?: string } & Pick<FormProps, "onComplete"> &
   (
     | { app: AppConnection; appConnection?: undefined }
     | { app?: undefined; appConnection: TAppConnection }
   );
-export const AppConnectionForm = ({ onBack, projectId, ...props }: Props) => {
+export const AppConnectionForm = ({ onCancel, projectId, ...props }: Props) => {
   const { app, appConnection } = props;
 
+  const contextValue = useMemo(() => ({ onCancel }), [onCancel]);
+
   return (
-    <div>
-      <AppConnectionHeader
-        isConnected={Boolean(appConnection)}
-        app={appConnection?.app ?? app!}
-        onBack={onBack}
-      />
+    <AppConnectionFormProvider value={contextValue}>
       {appConnection ? (
         <UpdateForm {...props} appConnection={appConnection} />
       ) : (
         <CreateForm {...props} app={app} projectId={projectId} />
       )}
-    </div>
+    </AppConnectionFormProvider>
   );
 };

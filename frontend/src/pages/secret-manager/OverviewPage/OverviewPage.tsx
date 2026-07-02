@@ -218,6 +218,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
+import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
   DownloadEnvButton,
@@ -442,8 +443,22 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
+  // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
+  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
+  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
+  // (rather than two racing effects) guarantees every param is cleared after it's applied. That
+  // matters most for `environments`: re-selecting the same environment from the reference tree
+  // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
+  // (not mount-only) because the tree is rendered inside this page, so navigating from a node
+  // updates the params without remounting.
   useEffect(() => {
-    const envSlugs = routerSearch.environments;
+    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const hasEnvLink = Boolean(envSlugs?.length);
+
+    if (!search && !filterBy && !hasEnvLink) return;
+    // Env link present but envs not loaded yet → wait so we don't strip it before applying.
+    if (hasEnvLink && userAvailableEnvs.length === 0) return;
+
     if (envSlugs && envSlugs.length > 0) {
       const envIds = userAvailableEnvs
         .filter((env) => envSlugs.includes(env.slug))
@@ -452,7 +467,29 @@ const OverviewPageContent = () => {
         setStoredEnvIds(envIds);
       }
     }
-  }, []);
+
+    if (search || filterBy) {
+      const initialFilter = { ...DEFAULT_FILTER_STATE };
+      if (filterBy) {
+        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
+        if (rowType) {
+          initialFilter[rowType] = true;
+        }
+      }
+      setFilter(initialFilter);
+
+      if (search) {
+        setSearchFilter(search as string);
+      }
+    }
+
+    navigate({ search: query, replace: true });
+  }, [
+    routerSearch.search,
+    routerSearch.filterBy,
+    routerSearch.environments?.join(","),
+    userAvailableEnvs.length
+  ]);
 
   const filteredEnvs = useMemo(() => {
     if (!storedEnvIds.length) return [];
@@ -816,6 +853,7 @@ const OverviewPageContent = () => {
     "misc",
     "updateFolder",
     "deleteFolder",
+    "moveFolder",
     "addDynamicSecret",
     "addSecretRotation",
     "addHoneyToken",
@@ -865,28 +903,6 @@ const OverviewPageContent = () => {
       }
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
-
-  // Apply search and/or resource type filter when linked via notification/email
-  useEffect(() => {
-    if (routerSearch.search || routerSearch.filterBy) {
-      const { search, filterBy, ...query } = routerSearch;
-      // temp workaround until we transition state to query params
-      navigate({ search: query, replace: true });
-
-      const initialFilter = { ...DEFAULT_FILTER_STATE };
-      if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
-      }
-      setFilter(initialFilter);
-
-      if (search) {
-        setSearchFilter(search as string);
-      }
-    }
-  }, [routerSearch.search, routerSearch.filterBy]);
 
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
     if (!subscription?.pitRecovery) {
@@ -2090,7 +2106,7 @@ const OverviewPageContent = () => {
         text: requiresApproval
           ? "Requested changes have been sent for review"
           : "Changes saved successfully",
-        type: "success"
+        type: requiresApproval ? "info" : "success"
       });
     },
     [singleVisibleEnv, projectId, secretPath, isProtectedBranch, queryClient, createCommit]
@@ -2250,6 +2266,21 @@ const OverviewPageContent = () => {
       getSecretRotationByName,
       getHoneyTokenByName
     ]
+  );
+
+  // folders move one at a time from the inline row action. build the per-env record (same shape the
+  // bulk move uses) for just this folder and open the move modal, which runs the eligibility check.
+  const handleMoveFolder = useCallback(
+    (folderName: string) => {
+      const folderByEnv: Record<string, TSecretFolder> = {};
+      userAvailableEnvs.forEach((env) => {
+        const folder = getFolderByNameAndEnv(folderName, env.slug);
+        if (folder) folderByEnv[env.slug] = folder;
+      });
+
+      handlePopUpOpen("moveFolder", { folders: { [folderName]: folderByEnv } });
+    },
+    [userAvailableEnvs, getFolderByNameAndEnv, handlePopUpOpen]
   );
 
   const toggleSelectAllRows = () => {
@@ -2595,7 +2626,6 @@ const OverviewPageContent = () => {
                 />
                 {userAvailableEnvs.length > 0 && (
                   <AddResourceButtons
-                    requiresApproval={isProtectedBranch}
                     onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
                     onAddFolder={() => {
                       handlePopUpOpen("addFolder");
@@ -2684,10 +2714,10 @@ const OverviewPageContent = () => {
                       to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
                       params={{ orgId, projectId }}
                       search={{ selectedTab: "approval-requests", requestId: "" }}
-                      className="ml-auto flex shrink-0 items-center gap-1 text-sm text-info underline underline-offset-2"
+                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-white underline underline-offset-2"
                     >
                       Review
-                      <ChevronRightIcon className="size-3.5" />
+                      <ChevronRightIcon className="mt-px size-4" />
                     </Link>
                   )}
                 </AlertTitle>
@@ -3175,6 +3205,7 @@ const OverviewPageContent = () => {
                                 onToggleFolderEdit={(name: string) =>
                                   handlePopUpOpen("updateFolder", { name, description })
                                 }
+                                onToggleFolderMove={(name: string) => handleMoveFolder(name)}
                                 onToggleFolderDelete={(name: string) =>
                                   handlePopUpOpen("deleteFolder", { name })
                                 }
@@ -3777,6 +3808,22 @@ const OverviewPageContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MoveSecretsModal
+        isOpen={popUp.moveFolder.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("moveFolder", isOpen)}
+        environments={userAvailableEnvs}
+        visibleEnvs={visibleEnvs}
+        projectId={projectId}
+        projectSlug={projectSlug}
+        sourceSecretPath={secretPath}
+        secrets={{}}
+        rotations={{}}
+        folders={
+          (popUp.moveFolder?.data as { folders: Record<string, Record<string, TSecretFolder>> })
+            ?.folders ?? {}
+        }
+        onComplete={() => handlePopUpClose("moveFolder")}
+      />
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}

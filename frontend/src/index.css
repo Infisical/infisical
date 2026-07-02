@@ -52,7 +52,7 @@
 }
 
 @theme {
-  --breakpoint-dashboard: 1100px;
+  --breakpoint-dashboard: 1400px;
 
   /* Fonts */
   --font-inter: "Inter", sans-serif;

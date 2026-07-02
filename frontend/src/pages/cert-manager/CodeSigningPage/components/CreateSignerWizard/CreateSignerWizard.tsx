@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShieldIcon } from "lucide-react";
+import { PenTool } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -15,15 +15,23 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useOrganization, useUser } from "@app/context";
-import { useListCasByProjectId } from "@app/hooks/api/ca";
+import { useOrganization, useSubscription, useUser } from "@app/context";
+import { getCaIssuanceCapabilities, useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
+import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
+import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization";
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { SignerKeyAlgorithm, SignerMemberRole, useCreateSigner } from "@app/hooks/api/signers";
+import {
+  CertKeySource,
+  SignerKeyAlgorithm,
+  SignerMemberRole,
+  useCreateSigner
+} from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
 
+import { SignerKeyStep } from "../../../components/SignerKeyStep";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { ApprovalPolicyStep } from "./ApprovalPolicyStep";
 import { BasicsStep } from "./BasicsStep";
@@ -61,6 +69,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     limit: 1000
   });
   const groupsQuery = useGetOrganizationGroups(orgId);
+  const { subscription } = useSubscription();
+  const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors({
+    enabled: Boolean(subscription?.hsm)
+  });
 
   const createSigner = useCreateSigner();
 
@@ -68,16 +80,28 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     const list = cas.data ?? [];
     return list
       .filter((ca) => ca.status === CaStatus.ACTIVE)
-      .filter(
-        (ca) =>
-          ca.type === CaType.INTERNAL ||
-          ca.type === CaType.AWS_PCA ||
-          ca.type === CaType.AZURE_AD_CS
-      )
+      .filter((ca) => {
+        if (ca.type === CaType.INTERNAL) return true;
+        if (ca.type === CaType.AWS_PCA) return true;
+        if (ca.type === CaType.AZURE_AD_CS) return true;
+        if (ca.type === CaType.DIGICERT) {
+          return ca.configuration?.purpose === DigiCertCaPurpose.CodeSigning;
+        }
+        return false;
+      })
       .map((ca) => ({
         id: ca.id,
         name: ca.name,
-        groupType: ca.type === CaType.INTERNAL ? "internal" : "external"
+        groupType: ca.type === CaType.INTERNAL ? "internal" : "external",
+        caType: ca.type,
+        digicert:
+          ca.type === CaType.DIGICERT
+            ? {
+                appConnectionId: ca.configuration.appConnectionId,
+                organizationId: ca.configuration.organizationId,
+                productNameId: ca.configuration.productNameId
+              }
+            : undefined
       }));
   }, [cas.data]);
 
@@ -103,6 +127,16 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     return groups.map((g) => ({ value: g.id, label: g.name }));
   }, [groupsQuery.data]);
 
+  const hsmConnectorOptions = useMemo(
+    () =>
+      hsmConnectors.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slotLabel: c.slotLabel
+      })),
+    [hsmConnectors]
+  );
+
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),
     values: { name: state.name, description: state.description || undefined }
@@ -115,9 +149,22 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       commonName: state.commonName,
       certificateTtlDays: state.certificateTtlDays,
       certificateRenewBeforeDays: state.certificateRenewBeforeDays,
-      keyAlgorithm: state.keyAlgorithm
+      keyAlgorithm: state.keyAlgorithm,
+      keySource: state.keySource,
+      hsmConnectorId: state.hsmConnectorId,
+      reissueFromExternalOrderId: state.reissueFromExternalOrderId
     }
   });
+
+  const selectedCaId = certificateForm.watch("caId");
+  const selectedCa = caOptions.find((o) => o.id === selectedCaId) ?? null;
+  const caCaps = getCaIssuanceCapabilities(selectedCa?.caType);
+
+  useEffect(() => {
+    if (caCaps.requiresHsm && certificateForm.getValues("keySource") !== CertKeySource.Hsm) {
+      certificateForm.setValue("keySource", CertKeySource.Hsm, { shouldValidate: false });
+    }
+  }, [caCaps.requiresHsm, certificateForm]);
 
   const reset = () => {
     setStep(0);
@@ -128,7 +175,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       commonName: "",
       certificateTtlDays: 365,
       certificateRenewBeforeDays: null,
-      keyAlgorithm: SignerKeyAlgorithm.RSA_2048
+      keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
+      keySource: CertKeySource.Infisical,
+      hsmConnectorId: null,
+      reissueFromExternalOrderId: null
     });
   };
 
@@ -157,6 +207,14 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
             }
           : undefined;
 
+      const certificate =
+        state.keySource === CertKeySource.Hsm && state.hsmConnectorId
+          ? {
+              keySource: CertKeySource.Hsm,
+              hsmConnectorId: state.hsmConnectorId
+            }
+          : undefined;
+
       await createSigner.mutateAsync({
         projectId,
         name: state.name,
@@ -171,7 +229,14 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
           id: m.id,
           role: m.role
         })),
-        approvalPolicy
+        approvalPolicy,
+        certificate,
+        externalConfiguration: state.reissueFromExternalOrderId
+          ? {
+              caType: CaType.DIGICERT,
+              reissueFromExternalOrderId: state.reissueFromExternalOrderId
+            }
+          : undefined
       });
 
       handleClose(false);
@@ -185,6 +250,23 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     }
   };
 
+  const isLast = step === STEPS.length - 1;
+
+  const persistCertificateForm = () => {
+    const values = certificateForm.getValues();
+    setState((prev) => ({
+      ...prev,
+      caId: values.caId,
+      commonName: values.commonName,
+      certificateTtlDays: values.certificateTtlDays,
+      certificateRenewBeforeDays: values.certificateRenewBeforeDays,
+      keyAlgorithm: values.keyAlgorithm,
+      keySource: values.keySource,
+      hsmConnectorId: values.hsmConnectorId ?? null,
+      reissueFromExternalOrderId: values.reissueFromExternalOrderId ?? null
+    }));
+  };
+
   const goNext = async () => {
     if (step === 0) {
       const ok = await basicsForm.trigger();
@@ -195,25 +277,30 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       return;
     }
     if (step === 1) {
-      const ok = await certificateForm.trigger();
+      const ok = await certificateForm.trigger([
+        "caId",
+        "commonName",
+        "certificateTtlDays",
+        "certificateRenewBeforeDays",
+        "reissueFromExternalOrderId"
+      ]);
       if (!ok) return;
-      const values = certificateForm.getValues();
-      setState((prev) => ({
-        ...prev,
-        caId: values.caId,
-        commonName: values.commonName,
-        certificateTtlDays: values.certificateTtlDays,
-        certificateRenewBeforeDays: values.certificateRenewBeforeDays,
-        keyAlgorithm: values.keyAlgorithm
-      }));
+      persistCertificateForm();
       setStep(2);
       return;
     }
     if (step === 2) {
+      const ok = await certificateForm.trigger(["keySource", "keyAlgorithm", "hsmConnectorId"]);
+      if (!ok) return;
+      persistCertificateForm();
       setStep(3);
       return;
     }
     if (step === 3) {
+      setStep(4);
+      return;
+    }
+    if (step === 4) {
       await onCreate();
     }
   };
@@ -230,7 +317,6 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     state.policySteps.length > 0;
 
   const currentStep = STEPS[step];
-  const isLast = step === STEPS.length - 1;
   const ctaLabel = isLast ? "Create Signer" : "Continue";
   const firstEmptyPolicyStepIndex = state.policySteps.findIndex(
     (s) => s.approverUserIds.length + s.approverGroupIds.length === 0
@@ -246,8 +332,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
-                <ShieldIcon className="h-5 w-5" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
+                <PenTool className="h-5 w-5" />
               </div>
               <div>
                 <div className="flex items-center gap-x-2 text-mineshaft-300">
@@ -255,8 +341,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
                 </div>
                 <p className="text-sm leading-4 text-mineshaft-400">
-                  A Signer bundles a code-signing certificate, the members allowed to use it, and an
-                  approval policy.
+                  A code-signing certificate with the members and approval policy that govern its
+                  use.
                 </p>
               </div>
             </div>
@@ -304,6 +390,15 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 />
               )}
               {step === 2 && (
+                <SignerKeyStep
+                  control={certificateForm.control}
+                  requiresHsm={caCaps.requiresHsm}
+                  minRsaKeyBits={caCaps.minRsaKeyBits}
+                  hsmConnectorOptions={hsmConnectorOptions}
+                  isHsmConnectorsLoading={isHsmConnectorsLoading}
+                />
+              )}
+              {step === 3 && (
                 <MembersStep
                   userOptions={userOptions.filter((u) => u.value !== user.id)}
                   identityOptions={identityOptions}
@@ -316,7 +411,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                   creator={{ id: user.id, label: creatorLabel }}
                 />
               )}
-              {step === 3 && (
+              {step === 4 && (
                 <ApprovalPolicyStep
                   state={state}
                   setState={setState}

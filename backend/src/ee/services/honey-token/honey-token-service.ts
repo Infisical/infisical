@@ -21,6 +21,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -32,6 +33,9 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { TWebhookDALFactory } from "@app/services/webhook/webhook-dal";
+import { fnTriggerWebhook } from "@app/services/webhook/webhook-fns";
+import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
@@ -106,6 +110,8 @@ export type THoneyTokenServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
+  webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
@@ -150,6 +156,8 @@ export const honeyTokenServiceFactory = ({
   resourceMetadataDAL,
   snapshotService,
   secretQueueService,
+  webhookDAL,
+  projectEnvDAL,
   telemetryService,
   auditLogService
 }: THoneyTokenServiceFactoryDep) => {
@@ -175,6 +183,8 @@ export const honeyTokenServiceFactory = ({
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
+    webhookDAL,
+    projectEnvDAL,
     telemetryService,
     auditLogService
   });
@@ -980,6 +990,52 @@ export const honeyTokenServiceFactory = ({
     }
   };
 
+  const $triggerWebhookNotification = async ({ orgId, honeyToken, eventMetadata }: TSendTriggerNotificationInput) => {
+    try {
+      const [project, folderInfo] = await Promise.all([
+        projectDAL.findById(honeyToken.projectId),
+        folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]).then((res) => res[0])
+      ]);
+
+      if (!project || !folderInfo) return;
+
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: honeyToken.projectId
+      });
+
+      await fnTriggerWebhook({
+        projectId: honeyToken.projectId,
+        environment: folderInfo.environmentSlug,
+        secretPath: folderInfo.path || "/",
+        webhookDAL,
+        projectEnvDAL,
+        projectDAL,
+        auditLogService,
+        secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString(),
+        event: {
+          type: WebhookEvents.HoneyTokenTriggered,
+          payload: {
+            honeyTokenName: honeyToken.name,
+            projectId: honeyToken.projectId,
+            projectName: project.name,
+            environment: folderInfo.environmentSlug,
+            environmentName: folderInfo.environmentName,
+            secretPath: folderInfo.path || "/",
+            eventName: eventMetadata.eventName,
+            sourceIp: eventMetadata.sourceIp ?? "Unknown",
+            awsRegion: eventMetadata.awsRegion
+          }
+        }
+      });
+    } catch (err) {
+      logger.error(
+        { err, orgId, honeyTokenId: honeyToken.id },
+        `Failed to trigger honey token webhook [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+      );
+    }
+  };
+
   const handleTrigger = async ({ type, signature, rawBody, payload }: THandleTriggerInput) => {
     logger.info({ signature, type }, `Honey token trigger received [type=${type}]`);
 
@@ -1093,6 +1149,7 @@ export const honeyTokenServiceFactory = ({
       .catch(() => {});
     if (updatedToken) {
       void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata });
+      void $triggerWebhookNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata });
 
       await auditLogService.createAuditLog({
         actor: {

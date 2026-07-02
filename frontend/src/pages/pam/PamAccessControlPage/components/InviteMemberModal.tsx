@@ -15,6 +15,9 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+
+import { ProductRoleOptionList } from "./ProductRoleOptionList";
 
 type Props = {
   isOpen: boolean;
@@ -26,27 +29,13 @@ type SelectOption = {
   value: string;
 };
 
-const ROLE_OPTIONS = [
-  {
-    value: "admin",
-    label: "Admin",
-    description:
-      "Full administrative access: manage accounts, account templates, settings, and access control."
-  },
-  {
-    value: "member",
-    label: "Member",
-    description: "Access limited to assigned folders and accounts."
-  }
-];
-
 export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const { mutateAsync: addUser, isPending } = useAddUserToWsNonE2EE();
+  const { mutate: addUser, isPending } = useAddUserToWsNonE2EE();
 
   const [selectedUsers, setSelectedUsers] = useState<SelectOption[]>([]);
-  const [selectedRole, setSelectedRole] = useState("member");
+  const [selectedRole, setSelectedRole] = useState<string>(ProjectMembershipRole.Member);
 
   const { data: members } = useGetWorkspaceUsers(currentProject.id);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
@@ -66,11 +55,11 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
 
   const handleClose = () => {
     setSelectedUsers([]);
-    setSelectedRole("member");
+    setSelectedRole(ProjectMembershipRole.Member);
     onOpenChange(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedUsers.length) return;
 
     const usernames = selectedUsers
@@ -80,22 +69,24 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
       })
       .filter(Boolean) as string[];
 
-    try {
-      await addUser({
+    addUser(
+      {
         usernames,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
         roleSlugs: [selectedRole]
-      });
-      createNotification({
-        text: `Successfully added ${selectedUsers.length === 1 ? "member" : "members"}`,
-        type: "success"
-      });
-      handleClose();
-    } catch {
-      createNotification({ text: "Failed to add member", type: "error" });
-    }
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: `Successfully added ${selectedUsers.length === 1 ? "member" : "members"}`,
+            type: "success"
+          });
+          handleClose();
+        }
+      }
+    );
   };
 
   return (
@@ -125,35 +116,7 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
             <FieldLabel>
               Product role <span className="text-product-pam">*</span>
             </FieldLabel>
-            <div className="flex flex-col gap-2">
-              {ROLE_OPTIONS.map((option) => {
-                const isSelected = selectedRole === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSelectedRole(option.value)}
-                    className={`flex items-start gap-3 rounded-md border p-3 text-left transition-colors ${
-                      isSelected
-                        ? "border-product-pam/40 bg-product-pam/5"
-                        : "border-border bg-container hover:bg-container-hover"
-                    }`}
-                  >
-                    <div
-                      className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                        isSelected ? "border-product-pam bg-product-pam" : "border-muted"
-                      }`}
-                    >
-                      {isSelected && <div className="size-1.5 rounded-full bg-white" />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{option.label}</p>
-                      <p className="text-xs text-muted">{option.description}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <ProductRoleOptionList value={selectedRole} onChange={setSelectedRole} />
           </Field>
         </div>
 

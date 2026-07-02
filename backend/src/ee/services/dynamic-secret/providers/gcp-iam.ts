@@ -1,10 +1,12 @@
-import { gaxios, Impersonated, JWT } from "google-auth-library";
+import { gaxios, Impersonated } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 
 import { DynamicSecretGcpIamSchema, TDynamicProviderFns } from "./models";
 
@@ -22,16 +24,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
       });
     }
 
-    const credJson = JSON.parse(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) as {
-      client_email: string;
-      private_key: string;
-    };
-
-    const sourceClient = new JWT({
-      email: credJson.client_email,
-      key: credJson.private_key,
-      scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-    });
+    const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
     const impersonatedCredentials = new Impersonated({
       sourceClient,
@@ -45,13 +38,13 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
     try {
       tokenResponse = await impersonatedCredentials.getAccessToken();
     } catch (error) {
-      let message = "Unable to validate connection";
-      if (error instanceof gaxios.GaxiosError) {
-        message = error.message;
-      }
+      logger.error(
+        { err: error },
+        `Failed to obtain GCP impersonated access token [serviceAccountEmail=${serviceAccountEmail}]`
+      );
 
       throw new BadRequestError({
-        message
+        message: error instanceof gaxios.GaxiosError ? error.message : "Unable to validate connection"
       });
     }
 

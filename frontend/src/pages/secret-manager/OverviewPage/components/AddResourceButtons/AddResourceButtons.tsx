@@ -44,7 +44,6 @@ type Props = {
   isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
-  requiresApproval: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
 };
@@ -66,7 +65,6 @@ export function AddResourceButtons({
   isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
-  requiresApproval,
   hasVaultConnection,
   hasDopplerConnection
 }: Props) {
@@ -83,7 +81,7 @@ export function AddResourceButtons({
                 onClick={onAddSecret}
               >
                 <PlusIcon />
-                {requiresApproval ? "Add Secret Request" : "Add Secret"}
+                Add Secret
               </Button>
             </TooltipTrigger>
             <TooltipContent>Access Denied</TooltipContent>
@@ -97,7 +95,7 @@ export function AddResourceButtons({
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>NEW</DropdownMenuLabel>
+          <DropdownMenuLabel>New</DropdownMenuLabel>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.SecretFolders}
@@ -160,7 +158,7 @@ export function AddResourceButtons({
             )}
           </ProjectPermissionCan>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel>BULK</DropdownMenuLabel>
+          <DropdownMenuLabel>Bulk</DropdownMenuLabel>
           <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
             <TooltipTrigger className="block w-full">
               <DropdownMenuItem

@@ -3,10 +3,7 @@ import z from "zod";
 import { PamAccountTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import {
-  PamTemplateAccessPolicySchema,
-  PamTemplateSettingsSchema
-} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { PamTemplateSettingsInputSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -20,7 +17,7 @@ const SanitizedTemplateSchema = PamAccountTemplatesSchema.pick({
   name: true,
   description: true,
   type: true,
-  accessPolicy: true,
+  policies: true,
   settings: true,
   gatewayId: true,
   gatewayPoolId: true,
@@ -42,11 +39,13 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         type: z.nativeEnum(PamAccountType).optional().describe("Filter by account type")
       }),
       response: {
-        200: z.object({ templates: z.array(SanitizedTemplateSchema) })
+        200: z.object({
+          templates: z.array(SanitizedTemplateSchema.extend({ accountCount: z.number() }))
+        })
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const templates = await server.services.pamAccountTemplate.list({
         projectId: req.internalPamProjectId,
@@ -80,7 +79,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.getById({
         templateId: req.params.templateId,
@@ -105,20 +104,23 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         name: slugSchema({ field: "Name" }).describe("Name for the template"),
         description: z.string().trim().max(256).optional().describe("Optional description"),
         type: z.nativeEnum(PamAccountType).describe("The account type this template applies to"),
-        accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Access policy configuration"),
-        settings: PamTemplateSettingsSchema.optional().describe("Template settings"),
+        policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
+        settings: PamTemplateSettingsInputSchema.optional().describe("Template settings"),
         gatewayId: z.string().uuid().optional().describe("Default gateway ID for accounts using this template"),
         gatewayPoolId: z.string().uuid().optional().describe("Default gateway pool ID"),
         recordingConnectionId: z.string().uuid().optional().describe("Recording storage connection ID")
       }),
       response: {
-        200: z.object({ template: SanitizedTemplateSchema })
+        200: z.object({
+          template: SanitizedTemplateSchema,
+          corsProbeUrl: z.string().nullable().optional()
+        })
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const template = await server.services.pamAccountTemplate.create({
+      const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.create({
         ...req.body,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -130,6 +132,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_TEMPLATE_CREATE,
           metadata: {
@@ -152,7 +155,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         })
         .catch(() => {});
 
-      return { template };
+      return { template, corsProbeUrl };
     }
   });
 
@@ -169,20 +172,23 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       body: z.object({
         name: slugSchema({ field: "Name" }).optional().describe("New name"),
         description: z.string().trim().max(256).nullable().optional().describe("New description"),
-        accessPolicy: PamTemplateAccessPolicySchema.optional().describe("Updated access policy"),
-        settings: PamTemplateSettingsSchema.optional().describe("Updated settings"),
+        policies: z.record(z.unknown()).optional().describe("Policy values keyed by policy type"),
+        settings: PamTemplateSettingsInputSchema.optional().describe("Updated settings"),
         gatewayId: z.string().uuid().nullable().optional().describe("New gateway ID"),
         gatewayPoolId: z.string().uuid().nullable().optional().describe("New gateway pool ID"),
         recordingConnectionId: z.string().uuid().nullable().optional().describe("New recording connection ID")
       }),
       response: {
-        200: z.object({ template: SanitizedTemplateSchema })
+        200: z.object({
+          template: SanitizedTemplateSchema,
+          corsProbeUrl: z.string().nullable().optional()
+        })
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const template = await server.services.pamAccountTemplate.update({
+      const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.update({
         templateId: req.params.templateId,
         ...req.body,
         projectId: req.internalPamProjectId,
@@ -195,6 +201,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_TEMPLATE_UPDATE,
           metadata: {
@@ -204,7 +211,19 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         }
       });
 
-      return { template };
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountTemplateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: template.type,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
+
+      return { template, corsProbeUrl };
     }
   });
 
@@ -223,7 +242,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.deleteTemplate({
         templateId: req.params.templateId,
@@ -237,6 +256,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_TEMPLATE_DELETE,
           metadata: {

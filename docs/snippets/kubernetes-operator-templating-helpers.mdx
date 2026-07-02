@@ -274,6 +274,36 @@ The Infisical Secrets Operator exposes a wide range of helper functions to make 
   ```
 </Accordion>
 
+<Accordion title="secretFrom">
+  <Note>This function is only available in `v1beta1` resources (e.g. `InfisicalStaticSecret`).</Note>
+
+  Resolves a secret from a specific folder path within the Infisical project. Takes a path and a secret name as parameters, and returns the secret's value by default. You can optionally use `.Value` or `.SecretPath` accessors on the result -- if omitted, `.Value` is used.
+
+  This is especially useful when multiple secrets share the same key, either from recursive fetches across different paths or from multiple sources. In both cases, the merge strategy only keeps the first occurrence (read more [here](/integrations/platforms/kubernetes/infisical-static-secret-crd#sources)), so `secretFrom` lets you explicitly select the one you need by its full path.
+
+  <Note>
+    If multiple sources contain a secret with the same name and path, the secret from the first source listed in the `sources` array will be used.
+  </Note>
+
+  **Signature**
+  ```go
+  secretFrom(path string, secretName string) string
+  ```
+
+  **Template usage**
+  ```yaml
+  template:
+    data:
+      # .Value is implicit when no accessor is specified
+      DB_PASSWORD: '{{ secretFrom "/databases/postgres" "DB_PASSWORD" }}'
+      # Explicit .Value accessor (same result as above)
+      STRIPE_API_KEY: '{{ (secretFrom "/services/payments" "API_KEY").Value }}'
+      # Using .SecretPath to get the folder path instead of the value
+      DATADOG_API_KEY: '{{ (secretFrom "/services/observability" "API_KEY").Value }}'
+      DATADOG_API_KEY_PATH: '{{ (secretFrom "/services/observability" "API_KEY").SecretPath }}'
+  ```
+</Accordion>
+
 </AccordionGroup>
 
 ### Sprig functions

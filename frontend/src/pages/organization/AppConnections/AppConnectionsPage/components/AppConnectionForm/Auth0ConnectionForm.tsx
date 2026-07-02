@@ -1,20 +1,28 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { Auth0ConnectionMethod, TAuth0Connection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -54,11 +62,7 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -68,31 +72,36 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Auth0].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(Auth0ConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.Auth0].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(Auth0ConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -100,13 +109,16 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Domain"
-            >
-              <Input {...field} placeholder="xxxxxxxxxxxx.xx.auth0.com" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="domain">Domain</FieldLabel>
+              <Input
+                id="domain"
+                {...field}
+                placeholder="xxxxxxxxxxxx.xx.auth0.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -114,13 +126,16 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client ID"
-            >
-              <Input {...field} placeholder="djfh67bpCZAw7HBCPoNml3CcYEUrU0os" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="client-id">Client ID</FieldLabel>
+              <Input
+                id="client-id"
+                {...field}
+                placeholder="djfh67bpCZAw7HBCPoNml3CcYEUrU0os"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -128,17 +143,11 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client Secret"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="client-secret">Client Secret</FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -146,33 +155,31 @@ export const Auth0ConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Audience"
-              tooltipText="The unique identifier of the target API you want to access."
-            >
-              <Input {...field} placeholder="Your API identifier" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="audience">
+                Audience
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The unique identifier of the target API you want to access.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="audience"
+                {...field}
+                placeholder="Your API identifier"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Auth0"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Auth0"}
+        />
       </form>
     </FormProvider>
   );

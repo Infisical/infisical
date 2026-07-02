@@ -4,38 +4,14 @@ import Cursor from "pg-cursor";
 
 import { logger } from "@app/lib/logger";
 
-import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
+import { type ControllerParams } from "../pam-data-explorer-session-handler";
 import {
-  PostgresClientMessageType,
-  PostgresServerMessageType,
-  type TPostgresClientMessage,
-  type TPostgresCorrelatedServerMessage
-} from "./pam-postgres-ws-types";
-
-type ControllerParams = {
-  relayPort: number;
-  username: string;
-  database: string;
-  sessionId: string;
-  connectionId: string;
-  sendResponse: (msg: TPostgresCorrelatedServerMessage) => void;
-  onUnexpectedTermination: (reason: string) => void;
-};
-
-type TTabScopedMessage = Extract<
-  TPostgresClientMessage,
-  {
-    type: PostgresClientMessageType.GetTableDetail | PostgresClientMessageType.Query | PostgresClientMessageType.Cancel;
-  }
->;
-
-export type TPostgresConnectionController = {
-  connectionId: string;
-  backendPid: number | null;
-  handleMessage: (msg: TTabScopedMessage) => void;
-  dispose: () => void;
-  isDisposing: () => boolean;
-};
+  DataExplorerClientMessageType,
+  DataExplorerServerMessageType,
+  type TConnectionController,
+  type TTabScopedMessage
+} from "../pam-data-explorer-ws-types";
+import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
 
 const pgTypes = {
   getTypeParser: (oid: number) => {
@@ -48,9 +24,7 @@ const pgTypes = {
   }
 };
 
-export const createPostgresConnectionController = async (
-  params: ControllerParams
-): Promise<TPostgresConnectionController> => {
+export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
   const pgClient = new pg.Client({
@@ -68,7 +42,7 @@ export const createPostgresConnectionController = async (
   await pgClient.connect();
 
   const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const backendPid = pidRows[0]?.pid ?? null;
+  const nativeConnectionId = pidRows[0]?.pid ?? null;
 
   let isInTransaction = false;
   let disposing = false;
@@ -85,7 +59,7 @@ export const createPostgresConnectionController = async (
     isInTransaction = false;
 
     sendResponse({
-      type: PostgresServerMessageType.Error,
+      type: DataExplorerServerMessageType.Error,
       id,
       connectionId,
       transactionOpen: false,
@@ -96,7 +70,7 @@ export const createPostgresConnectionController = async (
   };
 
   const cancelRunningQuery = async () => {
-    if (!backendPid) return;
+    if (!nativeConnectionId) return;
     const cancelClient = new pg.Client({
       host: "localhost",
       port: relayPort,
@@ -111,7 +85,7 @@ export const createPostgresConnectionController = async (
     });
     try {
       await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [backendPid]);
+      await cancelClient.query("SELECT pg_cancel_backend($1)", [nativeConnectionId]);
     } catch (err) {
       logger.debug(err, `Failed to cancel backend query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
     } finally {
@@ -122,7 +96,7 @@ export const createPostgresConnectionController = async (
   let processingPromise: Promise<void> = Promise.resolve();
 
   const handleMessage = (message: TTabScopedMessage) => {
-    if (message.type === PostgresClientMessageType.Cancel) {
+    if (message.type === DataExplorerClientMessageType.Cancel) {
       if (disposing) return;
       void cancelRunningQuery();
       return;
@@ -133,14 +107,14 @@ export const createPostgresConnectionController = async (
         if (disposing) return;
 
         switch (message.type) {
-          case PostgresClientMessageType.GetTableDetail: {
+          case DataExplorerClientMessageType.GetTableDetail: {
             try {
               const query = getTableDetailQuery(message.schema, message.table);
               const result = await pgClient.query<{ result: string }>(query.text, query.values);
               const rawDetail = result.rows[0]?.result;
               if (!rawDetail) {
                 sendResponse({
-                  type: PostgresServerMessageType.Error,
+                  type: DataExplorerServerMessageType.Error,
                   id: message.id,
                   connectionId,
                   transactionOpen: isInTransaction,
@@ -153,7 +127,7 @@ export const createPostgresConnectionController = async (
                   ? (JSON.parse(rawDetail) as Record<string, unknown>)
                   : (rawDetail as unknown as Record<string, unknown>);
               sendResponse({
-                type: PostgresServerMessageType.TableDetail,
+                type: DataExplorerServerMessageType.TableDetail,
                 id: message.id,
                 connectionId,
                 transactionOpen: isInTransaction,
@@ -180,7 +154,7 @@ export const createPostgresConnectionController = async (
             break;
           }
 
-          case PostgresClientMessageType.Query: {
+          case DataExplorerClientMessageType.Query: {
             try {
               const startTime = performance.now();
               const MAX_ROWS = 1000;
@@ -225,7 +199,7 @@ export const createPostgresConnectionController = async (
 
               const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
-                type: PostgresServerMessageType.QueryResult,
+                type: DataExplorerServerMessageType.QueryResult,
                 id: message.id,
                 connectionId,
                 rows: lastRows,
@@ -274,7 +248,7 @@ export const createPostgresConnectionController = async (
 
   return {
     connectionId,
-    backendPid,
+    nativeConnectionId,
     handleMessage,
     dispose,
     isDisposing: () => disposing

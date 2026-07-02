@@ -1,11 +1,11 @@
 import {
   FileKeyIcon,
+  KeyIcon,
   LockIcon,
   LucideIcon,
-  ScanSearchIcon,
+  RadarIcon,
   TerminalIcon,
-  UsersIcon,
-  VaultIcon
+  UsersIcon
 } from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
@@ -85,6 +85,15 @@ export const urlSlugToProjectType = (slug: string): ProjectType | null => {
   return slug as ProjectType;
 };
 
+// Org-wide resource pages (KMIP servers, Secret Sharing) live at literal
+// /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out of the
+// pathname so the sidebar can resolve the active product when the route param is absent.
+const ORG_RESOURCE_PROJECT_SLUG_RE =
+  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings)/;
+
+export const parseProjectSlugFromPath = (pathname: string): string | undefined =>
+  pathname.match(ORG_RESOURCE_PROJECT_SLUG_RE)?.[1];
+
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
   ProjectType.KMS,
@@ -139,15 +148,15 @@ export const getProjectTitle = (type: ProjectType) => {
 export const getProjectDescription = (type: ProjectType) => {
   const descriptions: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]:
-      "Centralized secrets across environments — sync, rotation, dynamic credentials, and lifecycle policies.",
+      "Centralize secrets across environments with automatic secret syncs, secret rotations, short-lived dynamic credentials, and lifecycle policies.",
     [ProjectType.CertificateManager]:
       "Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.",
     [ProjectType.KMS]:
-      "Key Management — generate, store, and use cryptographic keys. Encrypt, decrypt, sign, and verify against managed CMKs.",
+      "Generate, store, and use cryptographic keys to encrypt, decrypt, sign, and verify against managed CMKs.",
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Privileged Access Management — just-in-time access, session brokering, and credential vaulting for privileged users and machines."
+      "Grant privileged users and machines just-in-time access with session brokering and credential vaulting."
   };
   return descriptions[type] ?? "";
 };
@@ -177,28 +186,16 @@ export const collapseCertManagerProjects = (
   ];
 };
 
-export const getProjectLottieIcon = (type: ProjectType) => {
-  const iconConvert: Partial<Record<ProjectType, string>> = {
-    [ProjectType.SecretManager]: "vault",
-    [ProjectType.KMS]: "unlock",
-    [ProjectType.CertificateManager]: "note",
-    [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan",
-    [ProjectType.PAM]: "groups"
-  };
-  return iconConvert[type] || "vault";
-};
-
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
   const iconConvert: Partial<Record<ProjectType, LucideIcon>> = {
-    [ProjectType.SecretManager]: VaultIcon,
+    [ProjectType.SecretManager]: KeyIcon,
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SSH]: TerminalIcon,
-    [ProjectType.SecretScanning]: ScanSearchIcon,
+    [ProjectType.SecretScanning]: RadarIcon,
     [ProjectType.PAM]: UsersIcon
   };
-  return iconConvert[type] || VaultIcon;
+  return iconConvert[type] || KeyIcon;
 };
 
 export type ProjectTileStyle = {

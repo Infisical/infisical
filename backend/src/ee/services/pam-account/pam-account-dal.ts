@@ -5,6 +5,45 @@ import { TableName, TPamAccounts } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
+import { PamAccountType } from "../pam/pam-enums";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { ACCOUNT_TYPE_CONFIGS } from "./pam-account-schemas";
+
+const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
+  .map((type) => `'${type}'`)
+  .join(", ");
+
+const gatewayExemptAccountTypes = (Object.entries(ACCOUNT_TYPE_CONFIGS) as [string, { requiresGateway?: boolean }][])
+  .filter(([, config]) => config.requiresGateway === false)
+  .map(([type]) => `'${type}'`)
+  .join(", ");
+
+export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
+  `(
+    ("${templateTable}"."type" in (${gatewayExemptAccountTypes})
+      or "${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
+      or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
+    and "${accountTable}"."credentialConfigured" = true
+    and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})
+      or (
+        "${templateTable}"."settings"->>'recordingStorageBackend' = '${PamRecordingStorageBackend.AwsS3}'
+        and ("${accountTable}"."recordingConnectionId" is not null
+          or "${templateTable}"."recordingConnectionId" is not null)
+        and coalesce(
+          "${accountTable}"."settingsOverrides"->'recordingS3Config',
+          "${templateTable}"."settings"->'recordingS3Config'
+        ) is not null
+      ))
+  )`;
+
+type TPamAccountTemplateInheritedFields = {
+  credentialConfigured: boolean;
+  templateGatewayId: string | null;
+  templateGatewayPoolId: string | null;
+  templateRecordingConnectionId: string | null;
+  templateSettings: unknown;
+};
+
 export type TPamAccountListItem = Pick<
   TPamAccounts,
   | "id"
@@ -16,21 +55,24 @@ export type TPamAccountListItem = Pick<
   | "gatewayId"
   | "gatewayPoolId"
   | "recordingConnectionId"
+  | "settingsOverrides"
   | "createdAt"
   | "updatedAt"
-> & {
-  accountType: string;
-  templateName: string;
-  folderName: string | null;
-};
+> &
+  TPamAccountTemplateInheritedFields & {
+    accountType: string;
+    templateName: string;
+    folderName: string | null;
+  };
 
-export type TPamAccountDetail = TPamAccounts & {
-  accountType: string;
-  templateName: string;
-  templateAccessPolicy: unknown;
-  templateSettings: unknown;
-  folderName: string | null;
-};
+export type TPamAccountDetail = TPamAccounts &
+  TPamAccountTemplateInheritedFields & {
+    accountType: string;
+    templateName: string;
+    templatePolicies: unknown;
+    templateSettings: unknown;
+    folderName: string | null;
+  };
 
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
@@ -46,6 +88,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       templateId?: string;
       accountType?: string;
       search?: string;
+      onlyAccessible?: boolean;
       offset?: number;
       limit?: number;
     },
@@ -75,11 +118,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
     if (filters?.search) {
       const pattern = `%${sanitizeSqlLikeString(filters.search)}%`;
-      void baseQuery.where((qb) => {
-        void qb
-          .whereILike(`${TableName.PamAccount}.name`, pattern)
-          .orWhereILike(`${TableName.PamFolder}.name`, pattern);
-      });
+      void baseQuery.whereILike(`${TableName.PamAccount}.name`, pattern);
+    }
+    if (filters?.onlyAccessible) {
+      void baseQuery.whereRaw(accountAccessibilitySql(TableName.PamAccount, TableName.PamAccountTemplate));
     }
 
     const countQuery = baseQuery
@@ -100,10 +142,16 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccount}.gatewayId`,
         `${TableName.PamAccount}.gatewayPoolId`,
         `${TableName.PamAccount}.recordingConnectionId`,
+        `${TableName.PamAccount}.settingsOverrides`,
+        `${TableName.PamAccount}.credentialConfigured`,
         `${TableName.PamAccount}.createdAt`,
         `${TableName.PamAccount}.updatedAt`,
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
+        `${TableName.PamAccountTemplate}.settings as templateSettings`,
+        `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
+        `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
+        `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
         `${TableName.PamFolder}.name as folderName`
       )
       .orderBy(`${TableName.PamFolder}.name`, "asc")
@@ -129,8 +177,11 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccount}.*`,
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
-        `${TableName.PamAccountTemplate}.accessPolicy as templateAccessPolicy`,
+        `${TableName.PamAccountTemplate}.policies as templatePolicies`,
         `${TableName.PamAccountTemplate}.settings as templateSettings`,
+        `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
+        `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
+        `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
         `${TableName.PamFolder}.name as folderName`
       )) as unknown as TPamAccountDetail[];
 

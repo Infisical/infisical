@@ -539,7 +539,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     return cas.map(castDbEntryToVenafiTppCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -962,6 +962,6 @@ export const VenafiTppCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile
+    orderCertificate
   };
 };

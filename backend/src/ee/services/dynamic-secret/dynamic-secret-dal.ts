@@ -63,6 +63,7 @@ export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.Dynamic
     }>
   >;
   countByGatewayPoolId: (gatewayPoolId: string, tx?: Knex) => Promise<number>;
+  countByProject: (projectId: string, tx?: Knex) => Promise<number>;
 }
 
 export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory => {
@@ -273,6 +274,22 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     return parseInt(String(result?.count || "0"), 10);
   };
 
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.DynamicSecret)
+        .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count by Project - Dynamic Secret" });
+    }
+  };
+
   return {
     ...orm,
     listDynamicSecretsByFolderIds,
@@ -281,6 +298,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     findByGatewayId,
     countByGatewayId,
     findByGatewayPoolId,
-    countByGatewayPoolId
+    countByGatewayPoolId,
+    countByProject
   };
 };

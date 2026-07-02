@@ -32,8 +32,8 @@ export const ROUTE_PATHS = Object.freeze({
       )
     },
     SecretSharing: setRoute(
-      "/organizations/$orgId/secret-sharing",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing/"
+      "/organizations/$orgId/projects/secret-management/secret-sharing",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/"
     ),
     ProjectsPage: setRoute(
       "/organizations/$orgId/projects",
@@ -62,6 +62,18 @@ export const ROUTE_PATHS = Object.freeze({
     RoleByIDPage: setRoute(
       "/organizations/$orgId/roles/$roleId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId"
+    ),
+    IntegrationsPage: setRoute(
+      "/organizations/$orgId/integrations",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
+    ),
+    AuditLogsPage: setRoute(
+      "/organizations/$orgId/audit-logs",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/audit-logs"
+    ),
+    SsoPage: setRoute(
+      "/organizations/$orgId/sso",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso"
     ),
     AppConnections: {
       OauthCallbackPage: setRoute(
@@ -343,6 +355,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/$policyId"
     ),
+    HsmConnectorDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/hsm-connectors/$connectorId"
+    ),
     SubscribersPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
@@ -412,6 +428,14 @@ export const ROUTE_PATHS = Object.freeze({
     PamAccountAccessPage: setRoute(
       "/organizations/$orgId/pam/accounts/$accountType/$accountId/access",
       "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
+    ),
+    AccountsPage: setRoute(
+      "/organizations/$orgId/pam/accounts",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+    ),
+    TemplatesPage: setRoute(
+      "/organizations/$orgId/pam/templates",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates"
     )
   },
   Public: {

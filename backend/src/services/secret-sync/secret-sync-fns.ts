@@ -8,7 +8,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "@app/ee/services/secret-sync/chef";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
-import { awsSyncPreSaveTransformDestinationConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
   AwsParameterStoreSyncFns
@@ -52,6 +51,7 @@ import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
+import { CLOUD66_SYNC_LIST_OPTION, Cloud66SyncFns } from "./cloud66";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
@@ -84,6 +84,7 @@ import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { TRAVIS_CI_SYNC_LIST_OPTION, TravisCISyncFns } from "./travis-ci";
+import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
@@ -109,6 +110,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
+  [SecretSync.TriggerDev]: TRIGGER_DEV_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
@@ -130,7 +132,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
   [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
-  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
+  [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -142,9 +145,7 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 };
 
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
-  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
-  [SecretSync.AWSSecretsManager]: awsSyncPreSaveTransformDestinationConfig,
-  [SecretSync.AWSParameterStore]: awsSyncPreSaveTransformDestinationConfig
+  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (
@@ -382,6 +383,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
@@ -428,6 +431,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Cloud66:
+        return Cloud66SyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -520,6 +525,9 @@ export const SecretSyncFns = {
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.TriggerDev:
+        secretMap = await TriggerDevSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.GitLab:
         secretMap = await GitLabSyncFns.getSecrets(secretSync);
         break;
@@ -585,6 +593,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Snowflake:
         secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Cloud66:
+        secretMap = await Cloud66SyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -682,6 +693,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitLab:
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
@@ -728,6 +741,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Cloud66:
+        return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

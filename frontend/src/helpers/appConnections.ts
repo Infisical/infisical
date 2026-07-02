@@ -56,6 +56,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
 import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
@@ -82,6 +83,7 @@ import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/s
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
+import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -91,105 +93,462 @@ export const APP_CONNECTION_MAP: Record<
   {
     name: string;
     image: string;
+    category: string;
+    description: string;
     size?: number;
     icon?: IconDefinition;
     enterprise?: boolean;
     aliases?: string[];
   }
 > = {
-  [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
-  [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" },
+  [AppConnection.AWS]: {
+    name: "AWS",
+    image: "Amazon Web Services.png",
+    category: "AWS",
+    description: "Connect using IAM access keys or role assumption."
+  },
+  [AppConnection.GitHub]: {
+    name: "GitHub",
+    image: "GitHub.png",
+    category: "VERSION CONTROL",
+    description: "Authenticate via GitHub App, OAuth, or a personal access token."
+  },
   [AppConnection.GitHubRadar]: {
     name: "GitHub Radar",
     image: "GitHub.png",
-    icon: faBullseye
+    icon: faBullseye,
+    category: "SECURITY",
+    description: "GitHub App connection used for secret scanning."
   },
   [AppConnection.GCP]: {
     name: "GCP",
-    image: "Google Cloud Platform.png"
+    image: "Google Cloud Platform.png",
+    category: "GOOGLE CLOUD",
+    description: "Authenticate via service account impersonation."
   },
-  [AppConnection.AzureKeyVault]: { name: "Azure Key Vault", image: "Microsoft Azure.png" },
+  [AppConnection.AzureKeyVault]: {
+    name: "Azure Key Vault",
+    image: "Microsoft Azure.png",
+    category: "AZURE",
+    description: "Cloud-managed keys, secrets, and certificates."
+  },
   [AppConnection.AzureAppConfiguration]: {
     name: "Azure App Configuration",
-    image: "Microsoft Azure.png"
+    image: "Microsoft Azure.png",
+    category: "AZURE",
+    description: "Centralized application settings on Azure."
   },
   [AppConnection.AzureClientSecrets]: {
     name: "Azure Client Secrets",
-    image: "Microsoft Azure.png"
+    image: "Microsoft Azure.png",
+    category: "AZURE",
+    description: "Manage Entra ID application client secrets."
   },
-  [AppConnection.AzureDevOps]: { name: "Azure DevOps", image: "Microsoft Azure.png" },
-  [AppConnection.AzureADCS]: { name: "Azure ADCS", image: "Microsoft Azure.png" },
-  [AppConnection.AzureDNS]: { name: "Azure DNS", image: "Microsoft Azure.png" },
-  [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
-  [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
-  [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
-  [AppConnection.Vercel]: { name: "Vercel", image: "Vercel.png" },
-  [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
-  [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
-  [AppConnection.MySql]: { name: "MySQL", image: "MySql.png" },
-  [AppConnection.OracleDB]: { name: "OracleDB", image: "Oracle.png", enterprise: true },
-  [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
-  [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
-  [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
-  [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png", size: 65 },
-  [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
-  [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
-  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
-  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
-  [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
-  [AppConnection.Render]: { name: "Render", image: "Render.png" },
-  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
-  [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" },
-  [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
-  [AppConnection.DNSMadeEasy]: { name: "DNS Made Easy", image: "DNSMadeEasy.svg", size: 120 },
-  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
-  [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
-  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
-  [AppConnection.Checkly]: { name: "Checkly", image: "Checkly.png" },
-  [AppConnection.Supabase]: { name: "Supabase", image: "Supabase.png" },
+  [AppConnection.AzureDevOps]: {
+    name: "Azure DevOps",
+    image: "Microsoft Azure.png",
+    category: "AZURE",
+    description: "Pipeline and project access for Azure DevOps."
+  },
+  [AppConnection.AzureADCS]: {
+    name: "Azure ADCS",
+    image: "Microsoft Azure.png",
+    category: "CERTIFICATES",
+    description: "Issue certificates via Active Directory Certificate Services."
+  },
+  [AppConnection.AzureDNS]: {
+    name: "Azure DNS",
+    image: "Microsoft Azure.png",
+    category: "AZURE",
+    description: "Manage DNS zones and records on Azure."
+  },
+  [AppConnection.Databricks]: {
+    name: "Databricks",
+    image: "Databricks.png",
+    category: "DATA",
+    description: "Workspace access for jobs, notebooks, and secrets."
+  },
+  [AppConnection.Humanitec]: {
+    name: "Humanitec",
+    image: "Humanitec.png",
+    category: "PLATFORM",
+    description: "Platform orchestrator for application configuration."
+  },
+  [AppConnection.TerraformCloud]: {
+    name: "Terraform Cloud",
+    image: "Terraform Cloud.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage variables across Terraform Cloud workspaces."
+  },
+  [AppConnection.Vercel]: {
+    name: "Vercel",
+    image: "Vercel.png",
+    category: "HOSTING",
+    description: "Project and environment access for Vercel."
+  },
+  [AppConnection.Postgres]: {
+    name: "PostgreSQL",
+    image: "Postgres.png",
+    category: "DATABASE",
+    description: "Connect to a PostgreSQL database."
+  },
+  [AppConnection.MsSql]: {
+    name: "Microsoft SQL Server",
+    image: "MsSql.png",
+    category: "DATABASE",
+    description: "Connect to a Microsoft SQL Server database."
+  },
+  [AppConnection.MySql]: {
+    name: "MySQL",
+    image: "MySql.png",
+    category: "DATABASE",
+    description: "Connect to a MySQL database."
+  },
+  [AppConnection.OracleDB]: {
+    name: "OracleDB",
+    image: "Oracle.png",
+    enterprise: true,
+    category: "DATABASE",
+    description: "Connect to an Oracle database."
+  },
+  [AppConnection.Camunda]: {
+    name: "Camunda",
+    image: "Camunda.png",
+    category: "PLATFORM",
+    description: "Cluster and client access for Camunda 8."
+  },
+  [AppConnection.Windmill]: {
+    name: "Windmill",
+    image: "Windmill.png",
+    category: "PLATFORM",
+    description: "Workspace access for Windmill scripts and flows."
+  },
+  [AppConnection.Auth0]: {
+    name: "Auth0",
+    image: "Auth0.png",
+    size: 40,
+    category: "IDENTITY",
+    description: "Manage an Auth0 tenant via client credentials."
+  },
+  [AppConnection.HCVault]: {
+    name: "Hashicorp Vault",
+    image: "Vault.png",
+    size: 65,
+    category: "SECRET MANAGER",
+    description: "Connect to a self-managed HashiCorp Vault."
+  },
+  [AppConnection.LDAP]: {
+    name: "LDAP",
+    image: "LDAP.png",
+    size: 65,
+    category: "IDENTITY",
+    description: "Bind to an LDAP directory server."
+  },
+  [AppConnection.TeamCity]: {
+    name: "TeamCity",
+    image: "TeamCity.png",
+    category: "CI/CD",
+    description: "Project and build access for JetBrains TeamCity."
+  },
+  [AppConnection.OCI]: {
+    name: "OCI",
+    image: "Oracle.png",
+    enterprise: true,
+    category: "ORACLE CLOUD",
+    description: "Authenticate to Oracle Cloud Infrastructure."
+  },
+  [AppConnection.OnePass]: {
+    name: "1Password",
+    image: "1Password.png",
+    category: "PASSWORD MANAGER",
+    description: "Read and manage items in 1Password vaults."
+  },
+  [AppConnection.Heroku]: {
+    name: "Heroku",
+    image: "Heroku.png",
+    category: "HOSTING",
+    description: "App and config var access for Heroku."
+  },
+  [AppConnection.Render]: {
+    name: "Render",
+    image: "Render.png",
+    category: "HOSTING",
+    description: "Service and environment access for Render."
+  },
+  [AppConnection.Flyio]: {
+    name: "Fly.io",
+    image: "Flyio.svg",
+    category: "HOSTING",
+    description: "App and secret access for Fly.io."
+  },
+  [AppConnection.GitLab]: {
+    name: "GitLab",
+    image: "GitLab.png",
+    category: "VERSION CONTROL",
+    description: "Authenticate via OAuth or an access token."
+  },
+  [AppConnection.Cloudflare]: {
+    name: "Cloudflare",
+    image: "Cloudflare.png",
+    category: "NETWORKING",
+    description: "Manage Cloudflare account resources via API token."
+  },
+  [AppConnection.DNSMadeEasy]: {
+    name: "DNS Made Easy",
+    image: "DNSMadeEasy.svg",
+    size: 120,
+    category: "DNS",
+    description: "Manage DNS records on DNS Made Easy."
+  },
+  [AppConnection.Zabbix]: {
+    name: "Zabbix",
+    image: "Zabbix.png",
+    category: "MONITORING",
+    description: "Monitoring and host access for Zabbix."
+  },
+  [AppConnection.Railway]: {
+    name: "Railway",
+    image: "Railway.png",
+    category: "HOSTING",
+    description: "Project and environment access for Railway."
+  },
+  [AppConnection.Bitbucket]: {
+    name: "Bitbucket",
+    image: "Bitbucket.png",
+    category: "VERSION CONTROL",
+    description: "Repository and workspace access for Bitbucket."
+  },
+  [AppConnection.Checkly]: {
+    name: "Checkly",
+    image: "Checkly.png",
+    category: "MONITORING",
+    description: "Synthetic monitoring access for Checkly."
+  },
+  [AppConnection.Supabase]: {
+    name: "Supabase",
+    image: "Supabase.png",
+    category: "PLATFORM",
+    description: "Project access for the Supabase platform."
+  },
   [AppConnection.DigitalOcean]: {
     name: "Digital Ocean",
-    image: "Digital Ocean.png"
+    image: "Digital Ocean.png",
+    category: "CLOUD",
+    description: "Account and resource access for DigitalOcean."
   },
   [AppConnection.Netlify]: {
     name: "Netlify",
-    image: "Netlify.png"
+    image: "Netlify.png",
+    category: "HOSTING",
+    description: "Site and environment access for Netlify."
   },
-  [AppConnection.Northflank]: { name: "Northflank", image: "Northflank.png" },
-  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
-  [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
-  [AppConnection.MongoDB]: { name: "MongoDB", image: "MongoDB.png" },
+  [AppConnection.Northflank]: {
+    name: "Northflank",
+    image: "Northflank.png",
+    category: "HOSTING",
+    description: "Project and service access for Northflank."
+  },
+  [AppConnection.Okta]: {
+    name: "Okta",
+    image: "Okta.png",
+    category: "IDENTITY",
+    description: "Manage an Okta org via API token."
+  },
+  [AppConnection.Redis]: {
+    name: "Redis",
+    image: "Redis.png",
+    category: "DATABASE",
+    description: "Connect to a Redis instance."
+  },
+  [AppConnection.MongoDB]: {
+    name: "MongoDB",
+    image: "MongoDB.png",
+    category: "DATABASE",
+    description: "Connect to a MongoDB database."
+  },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
     image: "Laravel Forge.png",
-    size: 65
+    size: 65,
+    category: "HOSTING",
+    description: "Server and site access for Laravel Forge."
   },
-  [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
-  [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
-  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
-  [AppConnection.Dbt]: { name: "DBT", image: "DBT.png" },
-  [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
-  [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
-  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
-  [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
-  [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
-  [AppConnection.VenafiTpp]: { name: "Venafi TPP", image: "Venafi.png" },
-  [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
-  [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
-  [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
-  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
-  [AppConnection.OVH]: { name: "OVH Cloud", image: "OVH.png" },
-  [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
-  [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
-  [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
-  [AppConnection.GoDaddy]: { name: "GoDaddy", image: "GoDaddy.png" },
-  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
-  [AppConnection.Salesforce]: { name: "Salesforce", image: "Salesforce.png" },
-  [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
-  [AppConnection.Datadog]: { name: "Datadog", image: "DatadogWhite.png" },
-  [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" },
-  [AppConnection.Convex]: { name: "Convex", image: "Convex.png" }
+  [AppConnection.Chef]: {
+    name: "Chef",
+    image: "Chef.png",
+    enterprise: true,
+    category: "INFRASTRUCTURE",
+    description: "Node and data bag access for Chef Infra."
+  },
+  [AppConnection.OctopusDeploy]: {
+    name: "Octopus Deploy",
+    image: "Octopus Deploy.png",
+    category: "CI/CD",
+    description: "Project and deployment access for Octopus Deploy."
+  },
+  [AppConnection.SSH]: {
+    name: "SSH",
+    image: "SSH.png",
+    category: "INFRASTRUCTURE",
+    description: "Connect to a host over SSH."
+  },
+  [AppConnection.Dbt]: {
+    name: "DBT",
+    image: "DBT.png",
+    category: "DATA",
+    description: "Account and job access for dbt."
+  },
+  [AppConnection.SMB]: {
+    name: "SMB",
+    image: "SMB.png",
+    size: 50,
+    category: "STORAGE",
+    description: "Connect to an SMB/CIFS file share."
+  },
+  [AppConnection.OpenRouter]: {
+    name: "OpenRouter",
+    image: "OpenRouter.png",
+    category: "AI",
+    description: "Route requests across LLM providers."
+  },
+  [AppConnection.CircleCI]: {
+    name: "CircleCI",
+    image: "CircleCI.png",
+    category: "CI/CD",
+    description: "Project and pipeline access for CircleCI."
+  },
+  [AppConnection.Cloud66]: {
+    name: "Cloud 66",
+    image: "Cloud 66.png",
+    category: "HOSTING",
+    description: "App and deployment access for Cloud 66."
+  },
+  [AppConnection.AzureEntraId]: {
+    name: "Azure Entra ID",
+    image: "Microsoft Azure.png",
+    category: "IDENTITY",
+    description: "Manage users and groups in Entra ID."
+  },
+  [AppConnection.Venafi]: {
+    name: "Venafi TLS Protect Cloud",
+    image: "Venafi.png",
+    category: "CERTIFICATES",
+    description: "Issue and manage certificates via Venafi Cloud."
+  },
+  [AppConnection.VenafiTpp]: {
+    name: "Venafi TPP",
+    image: "Venafi.png",
+    category: "CERTIFICATES",
+    description: "Issue certificates via Venafi Trust Protection Platform."
+  },
+  [AppConnection.ExternalInfisical]: {
+    name: "Infisical",
+    image: "Infisical.png",
+    category: "SECRET MANAGER",
+    description: "Connect to another Infisical instance."
+  },
+  [AppConnection.Doppler]: {
+    name: "Doppler",
+    image: "Doppler.png",
+    category: "SECRET MANAGER",
+    description: "Project and config access for Doppler."
+  },
+  [AppConnection.NetScaler]: {
+    name: "NetScaler",
+    image: "NetScaler.png",
+    category: "NETWORKING",
+    description: "Manage a Citrix NetScaler appliance."
+  },
+  [AppConnection.Anthropic]: {
+    name: "Anthropic",
+    image: "Anthropic.png",
+    category: "AI",
+    description: "Manage Anthropic API access."
+  },
+  [AppConnection.OVH]: {
+    name: "OVH Cloud",
+    image: "OVH.png",
+    category: "CLOUD",
+    description: "Account and service access for OVHcloud."
+  },
+  [AppConnection.Devin]: {
+    name: "Devin",
+    image: "Devin.png",
+    size: 55,
+    category: "AI",
+    description: "Manage Devin API access."
+  },
+  [AppConnection.Ona]: {
+    name: "Ona",
+    image: "Ona.png",
+    aliases: ["gitpod"],
+    category: "PLATFORM",
+    description: "Workspace access for Ona (formerly Gitpod)."
+  },
+  [AppConnection.DigiCert]: {
+    name: "DigiCert",
+    image: "DigiCert.png",
+    category: "CERTIFICATES",
+    description: "Issue and manage certificates via DigiCert."
+  },
+  [AppConnection.GoDaddy]: {
+    name: "GoDaddy",
+    image: "GoDaddy.png",
+    category: "DNS",
+    description: "Manage DNS records on GoDaddy."
+  },
+  [AppConnection.TravisCI]: {
+    name: "Travis CI",
+    image: "Travis CI.png",
+    category: "CI/CD",
+    description: "Repository and build access for Travis CI."
+  },
+  [AppConnection.Salesforce]: {
+    name: "Salesforce",
+    image: "Salesforce.png",
+    category: "CRM",
+    description: "Org access via connected app client credentials."
+  },
+  [AppConnection.Snowflake]: {
+    name: "Snowflake",
+    image: "Snowflake.png",
+    category: "DATA",
+    description: "Connect to a Snowflake data warehouse."
+  },
+  [AppConnection.Datadog]: {
+    name: "Datadog",
+    image: "DatadogWhite.png",
+    category: "MONITORING",
+    description: "Metrics and monitoring access for Datadog."
+  },
+  [AppConnection.F5BigIp]: {
+    name: "F5 BIG-IP",
+    image: "F5 BIG-IP.png",
+    category: "NETWORKING",
+    description: "Manage an F5 BIG-IP appliance."
+  },
+  [AppConnection.Convex]: {
+    name: "Convex",
+    image: "Convex.png",
+    category: "PLATFORM",
+    description: "Project and deployment access for Convex."
+  },
+  [AppConnection.TriggerDev]: {
+    name: "Trigger.dev",
+    image: "TriggerDev.png",
+    category: "INFRASTRUCTURE",
+    description: "Trigger.dev access."
+  }
 };
+
+export const POPULAR_APP_CONNECTIONS: AppConnection[] = [
+  AppConnection.AWS,
+  AppConnection.GitHub,
+  AppConnection.GCP,
+  AppConnection.AzureKeyVault,
+  AppConnection.Postgres,
+  AppConnection.Vercel
+];
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
   switch (method) {
@@ -254,6 +613,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case FlyioConnectionMethod.AccessToken:
     case NetlifyConnectionMethod.AccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case Cloud66ConnectionMethod.AccessToken:
       return { name: "Personal Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
     case SalesforceConnectionMethod.ClientCredentials:
@@ -278,6 +638,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
+    case TriggerDevConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

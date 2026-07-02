@@ -1,37 +1,3 @@
-export enum PamResourceType {
-  Postgres = "postgres",
-  MySQL = "mysql",
-  SSH = "ssh",
-  Kubernetes = "kubernetes",
-  OracleDB = "oracledb",
-  SQLite = "sqlite",
-  MsSQL = "mssql",
-  MCP = "mcp",
-  Redis = "redis",
-  MongoDB = "mongodb",
-  WebApp = "webapp",
-  Cassandra = "cassandra",
-  CockroachDB = "cockroachdb",
-  Elasticsearch = "elasticsearch",
-  Snowflake = "snowflake",
-  DynamoDB = "dynamodb",
-  AwsIam = "aws-iam",
-  Windows = "windows"
-}
-
-export enum SessionChannelType {
-  Terminal = "terminal",
-  Exec = "exec",
-  Sftp = "sftp"
-}
-
-export enum PamSessionStatus {
-  Starting = "starting",
-  Active = "active",
-  Ended = "ended",
-  Terminated = "terminated"
-}
-
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
@@ -43,7 +9,28 @@ export enum PamAccountType {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   Windows = "windows",
-  ActiveDirectory = "active-directory"
+  WindowsAd = "windows-ad"
+}
+
+export enum PamPolicyType {
+  RequireMfa = "require-mfa",
+  RequireReason = "require-reason",
+  MaxSessionDuration = "max-session-duration",
+  CommandBlocking = "command-blocking"
+}
+
+export enum SessionChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp",
+  Rdp = "rdp"
+}
+
+export enum PamSessionStatus {
+  Starting = "starting",
+  Active = "active",
+  Ended = "ended",
+  Terminated = "terminated"
 }
 
 export enum PamAccountOrderBy {

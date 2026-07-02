@@ -12,6 +12,7 @@ import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema"
 import { ChecklySyncDestinationSchema } from "./checkly-sync-destination-schema";
 import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 import { CircleCISyncDestinationSchema } from "./circleci-sync-destination-schema";
+import { Cloud66SyncDestinationSchema } from "./cloud-66-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
@@ -39,6 +40,7 @@ import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schem
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { TravisCISyncDestinationSchema } from "./travis-ci-sync-destination-schema";
+import { TriggerDevSyncDestinationSchema } from "./trigger-dev-sync-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
 import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
@@ -85,7 +87,9 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   DevinSyncDestinationSchema,
   OnaSyncDestinationSchema,
   TravisCISyncDestinationSchema,
-  SnowflakeSyncDestinationSchema
+  SnowflakeSyncDestinationSchema,
+  TriggerDevSyncDestinationSchema,
+  Cloud66SyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

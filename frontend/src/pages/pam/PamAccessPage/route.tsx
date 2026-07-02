@@ -10,7 +10,7 @@ export const Route = createFileRoute(
 )({
   validateSearch: zodValidator(pamSheetSearchParams),
   search: {
-    middlewares: [stripSearchParams({ accountId: undefined, action: undefined })]
+    middlewares: [stripSearchParams({ accountId: undefined, tab: undefined })]
   },
   beforeLoad: ({ context }) => {
     return {

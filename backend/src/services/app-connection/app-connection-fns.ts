@@ -100,6 +100,11 @@ import {
   getCircleCIConnectionListItem,
   validateCircleCIConnectionCredentials
 } from "./circleci";
+import {
+  Cloud66ConnectionMethod,
+  getCloud66ConnectionListItem,
+  validateCloud66ConnectionCredentials
+} from "./cloud-66";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -242,6 +247,11 @@ import {
   TravisCIConnectionMethod,
   validateTravisCIConnectionCredentials
 } from "./travis-ci";
+import {
+  getTriggerDevConnectionListItem,
+  TriggerDevConnectionMethod,
+  validateTriggerDevConnectionCredentials
+} from "./trigger-dev";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import {
   getVenafiTppConnectionListItem,
@@ -319,6 +329,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getLaravelForgeConnectionListItem(),
     getOctopusDeployConnectionListItem(),
     getFlyioConnectionListItem(),
+    getTriggerDevConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
     getDNSMadeEasyConnectionListItem(),
@@ -342,6 +353,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAnthropicConnectionListItem(),
     getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
+    getCloud66ConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
     getVenafiTppConnectionListItem(),
@@ -520,9 +532,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
       validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
         gitHubAppDAL: deps.gitHubAppDAL,
-        kmsService: deps.kmsService,
-        keyStore: deps.keyStore,
-        actorId: deps.actorId
+        kmsService: deps.kmsService
       })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -552,6 +562,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LaravelForge]: validateLaravelForgeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TriggerDev]: validateTriggerDevConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -576,6 +587,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Cloud66]: validateCloud66ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
@@ -613,6 +625,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case Cloud66ConnectionMethod.AccessToken:
       return "Personal Access Token";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -695,6 +708,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DigiCertConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
+    case TriggerDevConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -800,6 +814,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
+  [AppConnection.TriggerDev]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,
@@ -825,6 +840,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
   [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Cloud66]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,

@@ -28,6 +28,7 @@ export enum AppConnection {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
+  TriggerDev = "trigger-dev",
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
@@ -67,7 +68,8 @@ export enum AppConnection {
   Datadog = "datadog",
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
-  Convex = "convex"
+  Convex = "convex",
+  Cloud66 = "cloud-66"
 }
 
 export enum AWSRegion {

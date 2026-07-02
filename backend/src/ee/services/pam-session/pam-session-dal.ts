@@ -145,6 +145,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .clone()
       .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
       .select(selectAllTableCols(TableName.PamSession))
+      .select(db.ref("folderId").withSchema(TableName.PamAccount).as("folderId"))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
       .orderBy(`${TableName.PamSession}.createdAt`, "desc");

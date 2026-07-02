@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -12,14 +12,22 @@ import {
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
 
+import { PamAccountType, PamResourcePermissionActions, PamResourcePermissionSub } from "./enums";
 import {
+  PamAccountAccessibilityIssue,
   PamFolderPermissionSet,
   TAccessiblePamAccount,
   TListAccessiblePamAccountsDTO,
-  TListPamAccountsDTO,
+  TListPamAccountTemplatesDTO,
   TPamAccount,
-  TPamSession,
-  TPamSessionLogsPage
+  TPamAccountTemplateDetail,
+  TPamAccountTemplateWithCount,
+  TPamAccountTypeMetadata,
+  TPamFolderWithCount,
+  TPamMember,
+  TPamMembersData,
+  TPamResourceRole,
+  TPamSession
 } from "./types";
 
 export const pamKeys = {
@@ -27,27 +35,34 @@ export const pamKeys = {
   account: () => [...pamKeys.all, "account"] as const,
   session: () => [...pamKeys.all, "session"] as const,
   accessibleFolders: () => [...pamKeys.account(), "accessible-folders"] as const,
-  listAccounts: ({ projectId, ...params }: TListPamAccountsDTO) => [
-    ...pamKeys.account(),
-    "list",
-    projectId,
-    params
-  ],
-  listAccessibleAccounts: (params?: TListAccessiblePamAccountsDTO) => [
-    ...pamKeys.account(),
-    "accessible",
-    params
-  ],
-  getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
-  getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
+  listAccessibleAccounts: (params?: TListAccessiblePamAccountsDTO) =>
+    [...pamKeys.account(), "accessible", params] as const,
+  getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId] as const,
+  getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId] as const,
   listSessions: (
     projectId: string,
     params?: { offset?: number; limit?: number; search?: string; status?: string }
-  ) => [...pamKeys.session(), "list", projectId, params],
+  ) => [...pamKeys.session(), "list", projectId, params] as const,
   folderPermissions: (folderId: string) =>
     [...pamKeys.all, "folder-permissions", folderId] as const,
   accountPermissions: (accountId: string) =>
-    [...pamKeys.all, "account-permissions", accountId] as const
+    [...pamKeys.all, "account-permissions", accountId] as const,
+  template: () => [...pamKeys.all, "template"] as const,
+  listTemplates: (params?: TListPamAccountTemplatesDTO) =>
+    [...pamKeys.template(), "list", params] as const,
+  getTemplate: (templateId: string) => [...pamKeys.template(), "get", templateId] as const,
+  folder: () => [...pamKeys.all, "folder"] as const,
+  listFolders: (params?: { search?: string }) => [...pamKeys.folder(), "list", params] as const,
+  adminListAccounts: (params?: { folderId?: string; templateId?: string; search?: string }) =>
+    [...pamKeys.account(), "admin-list", params] as const,
+  accountMembers: (accountId: string) => [...pamKeys.all, "account-members", accountId] as const,
+  folderMembers: (folderId: string) => [...pamKeys.all, "folder-members", folderId] as const,
+  productMembers: () => [...pamKeys.all, "product-members"] as const,
+  productGroups: () => [...pamKeys.all, "product-groups"] as const,
+  productIdentities: () => [...pamKeys.all, "product-identities"] as const,
+  resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
+  accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
+  accountTypes: () => [...pamKeys.all, "account-types"] as const
 };
 
 const fetchFolderPermissions = async (folderId: string) => {
@@ -74,6 +89,26 @@ export const usePamAccountPermission = createResourcePermissionQueryHook<PamFold
   fetchFn: fetchAccountPermissions
 });
 
+export const usePamFolderActions = (folderId: string, enabled = true) => {
+  const { data, isLoading } = usePamFolderPermission(folderId, enabled);
+  const can = useCallback(
+    (action: PamResourcePermissionActions) =>
+      data?.permission.can(action, PamResourcePermissionSub.PamResource) ?? false,
+    [data]
+  );
+  return { can, isLoading };
+};
+
+export const usePamAccountActions = (accountId: string, enabled = true) => {
+  const { data, isLoading } = usePamAccountPermission(accountId, enabled);
+  const can = useCallback(
+    (action: PamResourcePermissionActions) =>
+      data?.permission.can(action, PamResourcePermissionSub.PamResource) ?? false,
+    [data]
+  );
+  return { can, isLoading };
+};
+
 // Accessible Accounts (user-facing)
 type TListAccessiblePamAccountsResponse = {
   accounts: TAccessiblePamAccount[];
@@ -83,7 +118,8 @@ type TListAccessiblePamAccountsResponse = {
 const ACCESSIBLE_ACCOUNTS_PAGE_SIZE = 50;
 
 export const useListAccessiblePamAccounts = (
-  filters?: Omit<TListAccessiblePamAccountsDTO, "offset" | "limit">
+  filters?: Omit<TListAccessiblePamAccountsDTO, "offset" | "limit">,
+  options?: { enabled?: boolean }
 ) => {
   return useInfiniteQuery({
     queryKey: pamKeys.listAccessibleAccounts(filters),
@@ -99,12 +135,13 @@ export const useListAccessiblePamAccounts = (
       const fetched = allPages.reduce((sum, p) => sum + p.accounts.length, 0);
       return fetched < lastPage.totalCount ? fetched : undefined;
     },
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData
   });
 };
 
 // Accessible Folders (user-facing)
-type TAccessiblePamFolder = {
+export type TAccessiblePamFolder = {
   id: string;
   name: string;
   accountCount: number;
@@ -115,43 +152,92 @@ export const useListAccessiblePamFolders = () => {
     queryKey: pamKeys.accessibleFolders(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ folders: TAccessiblePamFolder[] }>(
-        "/api/v1/pam/folders"
+        "/api/v1/pam/folders",
+        { params: { onlyAccessible: "true" } }
       );
       return data.folders;
     }
   });
 };
 
-// Accounts (admin)
-type TListPamAccountsResponse = {
-  accounts: TPamAccount[];
-  totalCount: number;
+type TAdminListAccountsParams = {
+  folderId?: string;
+  templateId?: string;
+  search?: string;
 };
 
-export const useListPamAccounts = (
-  params: TListPamAccountsDTO,
-  options?: Omit<
-    UseQueryOptions<
-      TListPamAccountsResponse,
-      unknown,
-      TListPamAccountsResponse,
-      ReturnType<typeof pamKeys.listAccounts>
-    >,
-    "queryKey" | "queryFn"
-  >
+type TAdminAccountListItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  folderId: string;
+  templateId: string;
+  folderName: string | null;
+  templateName: string;
+  accountType: string;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  recordingConnectionId: string | null;
+  isAccessible: boolean;
+  accessibilityIssues: PamAccountAccessibilityIssue[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const useListPamAccountsAdmin = (
+  params?: TAdminListAccountsParams,
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
-    queryKey: pamKeys.listAccounts(params),
+    queryKey: pamKeys.adminListAccounts(params),
     queryFn: async () => {
-      const { data } = await apiRequest.post<TListPamAccountsResponse>(
-        "/api/v1/pam/accounts/search",
-        params
+      const { data } = await apiRequest.get<{ accounts: TAdminAccountListItem[] }>(
+        "/api/v1/pam/accounts",
+        { params }
       );
-
-      return data;
+      return data.accounts;
     },
-    placeholderData: (prev) => prev,
-    ...options
+    enabled: options?.enabled ?? true,
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamFoldersAdmin = (params?: { search?: string }) => {
+  return useQuery({
+    queryKey: pamKeys.listFolders(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ folders: TPamFolderWithCount[] }>(
+        "/api/v1/pam/folders",
+        { params }
+      );
+      return data.folders;
+    }
+  });
+};
+
+export const useListPamAccountTemplates = (params?: TListPamAccountTemplatesDTO) => {
+  return useQuery({
+    queryKey: pamKeys.listTemplates(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ templates: TPamAccountTemplateWithCount[] }>(
+        "/api/v1/pam/account-templates",
+        { params }
+      );
+      return data.templates;
+    }
+  });
+};
+
+export const useGetPamAccountTemplate = (templateId?: string) => {
+  return useQuery({
+    queryKey: pamKeys.getTemplate(templateId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ template: TPamAccountTemplateDetail }>(
+        `/api/v1/pam/account-templates/${templateId}`
+      );
+      return data.template;
+    },
+    enabled: !!templateId
   });
 };
 
@@ -198,111 +284,6 @@ export const useGetPamSessionById = (
   });
 };
 
-const LOGS_BATCH_FETCH_SIZE = 100;
-const LOGS_EVENT_PAGE_SIZE = 1000;
-const LOGS_POLL_INTERVAL_MS = 5000;
-
-const fetchUntilEventTarget = async (
-  sessionId: string,
-  startCursor: number,
-  targetEventCount: number
-) => {
-  let cursor = startCursor;
-  let totalEvents = 0;
-  let hasMore = false;
-  const accumulatedLogs: TPamSessionLogsPage["logs"] = [];
-
-  do {
-    // eslint-disable-next-line no-await-in-loop
-    const { data } = await apiRequest.get<TPamSessionLogsPage>(
-      `/api/v1/pam/sessions/${sessionId}/logs`,
-      { params: { offset: cursor, limit: LOGS_BATCH_FETCH_SIZE } }
-    );
-    accumulatedLogs.push(...data.logs);
-    cursor += data.batchCount;
-    totalEvents += data.logs.length;
-    hasMore = data.hasMore;
-  } while (hasMore && totalEvents < targetEventCount);
-
-  return { logs: accumulatedLogs, cursor, hasMore };
-};
-
-export const useGetPamSessionLogs = (sessionId: string, isActive: boolean, enabled: boolean) => {
-  const [logs, setLogs] = useState<TPamSessionLogsPage["logs"]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const batchCursorRef = useRef(0);
-
-  useEffect(() => {
-    if (!enabled || !sessionId) return undefined;
-    let cancelled = false;
-
-    const fetchInitial = async () => {
-      setIsLoading(true);
-      batchCursorRef.current = 0;
-      try {
-        const targetEvents = isActive ? 0 : LOGS_EVENT_PAGE_SIZE;
-        const result = await fetchUntilEventTarget(sessionId, 0, targetEvents);
-        if (!cancelled) {
-          setLogs(result.logs);
-          batchCursorRef.current = result.cursor;
-          setHasMore(result.hasMore);
-        }
-      } catch {
-        // ignore
-      }
-      if (!cancelled) setIsLoading(false);
-    };
-
-    fetchInitial().catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, isActive, enabled]);
-
-  useEffect(() => {
-    if (!enabled || !isActive || !sessionId) return undefined;
-
-    const interval = setInterval(async () => {
-      try {
-        const { data } = await apiRequest.get<TPamSessionLogsPage>(
-          `/api/v1/pam/sessions/${sessionId}/logs`,
-          { params: { offset: batchCursorRef.current, limit: LOGS_BATCH_FETCH_SIZE } }
-        );
-        if (data.batchCount > 0) {
-          batchCursorRef.current += data.batchCount;
-          setLogs((prev) => [...prev, ...data.logs]);
-          setHasMore(data.hasMore);
-        }
-      } catch {
-        // ignore transient errors
-      }
-    }, LOGS_POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [sessionId, isActive, enabled]);
-
-  const loadMore = async () => {
-    setIsLoadingMore(true);
-    try {
-      const result = await fetchUntilEventTarget(
-        sessionId,
-        batchCursorRef.current,
-        LOGS_EVENT_PAGE_SIZE
-      );
-      batchCursorRef.current = result.cursor;
-      setLogs((prev) => [...prev, ...result.logs]);
-      setHasMore(result.hasMore);
-    } catch {
-      // ignore
-    }
-    setIsLoadingMore(false);
-  };
-
-  return { logs, isLoading, hasMore, loadMore, isLoadingMore };
-};
-
 type TListPamSessionsResponse = {
   sessions: TPamSession[];
   totalCount: number;
@@ -316,12 +297,136 @@ export const useListPamSessions = (
     queryKey: pamKeys.listSessions(projectId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListPamSessionsResponse>("/api/v1/pam/sessions", {
-        params: { projectId, ...params }
+        params
       });
 
       return data;
     },
     refetchInterval: 30_000,
     placeholderData: (prev) => prev
+  });
+};
+
+export const useListAccountMembers = (accountId: string) => {
+  return useQuery({
+    queryKey: pamKeys.accountMembers(accountId),
+    queryFn: async (): Promise<TPamMembersData> => {
+      const [usersRes, groupsRes, identitiesRes] = await Promise.all([
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/users`),
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/groups`),
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/accounts/${accountId}/identities`)
+      ]);
+      return {
+        users: usersRes.data.members,
+        groups: groupsRes.data.members,
+        identities: identitiesRes.data.members
+      };
+    },
+    enabled: !!accountId
+  });
+};
+
+export const useListFolderMembers = (folderId: string) => {
+  return useQuery({
+    queryKey: pamKeys.folderMembers(folderId),
+    queryFn: async (): Promise<TPamMembersData> => {
+      const [usersRes, groupsRes, identitiesRes] = await Promise.all([
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/users`),
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/groups`),
+        apiRequest.get<{ members: TPamMember[] }>(`/api/v1/pam/folders/${folderId}/identities`)
+      ]);
+      return {
+        users: usersRes.data.members,
+        groups: groupsRes.data.members,
+        identities: identitiesRes.data.members
+      };
+    },
+    enabled: !!folderId
+  });
+};
+
+export const useListPamProductMembers = () => {
+  return useQuery({
+    queryKey: pamKeys.productMembers(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+        "/api/v1/pam/memberships/users"
+      );
+      return data.members;
+    }
+  });
+};
+
+export const useListPamProductGroups = () => {
+  return useQuery({
+    queryKey: pamKeys.productGroups(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+        "/api/v1/pam/memberships/groups"
+      );
+      return data.members;
+    }
+  });
+};
+
+export const useListPamProductIdentities = () => {
+  return useQuery({
+    queryKey: pamKeys.productIdentities(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+        "/api/v1/pam/memberships/identities"
+      );
+      return data.members;
+    }
+  });
+};
+
+export const useListPamResourceRoles = () => {
+  return useQuery({
+    queryKey: pamKeys.resourceRoles(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ roles: TPamResourceRole[] }>("/api/v1/pam/roles");
+      return data.roles;
+    },
+    staleTime: Infinity
+  });
+};
+
+export const useListPamAccountTypes = () => {
+  return useQuery({
+    queryKey: pamKeys.accountTypes(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ accountTypes: TPamAccountTypeMetadata[] }>(
+        "/api/v1/pam/accounts/types"
+      );
+      return data.accountTypes;
+    },
+    staleTime: Infinity
+  });
+};
+
+// Account type metadata keyed by type for synchronous lookups
+export const usePamAccountTypeMap = () => {
+  const { data: accountTypes = [], ...rest } = useListPamAccountTypes();
+  const map = useMemo(
+    () => Object.fromEntries(accountTypes.map((meta) => [meta.type, meta])),
+    [accountTypes]
+  ) as Partial<Record<PamAccountType, TPamAccountTypeMetadata>>;
+
+  return { map, ...rest };
+};
+
+export const useGetPamAccessCapabilities = () => {
+  return useQuery({
+    queryKey: pamKeys.accessCapabilities(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        isProductAdmin: boolean;
+        isResourceAdmin: boolean;
+        canViewSessions: boolean;
+        canViewAuditLogs: boolean;
+      }>("/api/v1/pam/memberships/capabilities");
+      return data;
+    }
   });
 };

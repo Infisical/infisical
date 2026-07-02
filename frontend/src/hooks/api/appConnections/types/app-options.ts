@@ -224,6 +224,10 @@ export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
 };
 
+export type TCloud66ConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Cloud66;
+};
+
 export type TVenafiConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Venafi;
 };
@@ -290,6 +294,10 @@ export type TConvexConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Convex;
 };
 
+export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TriggerDev;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -331,6 +339,7 @@ export type TAppConnectionOption =
   | TOktaConnectionOption
   | TOpenRouterConnectionOption
   | TCircleCISyncConnectionOption
+  | TCloud66ConnectionOption
   | TAzureAdCsConnectionOption
   | TLaravelForgeConnectionOption
   | TRedisConnectionOption
@@ -359,7 +368,8 @@ export type TAppConnectionOption =
   | TSnowflakeConnectionOption
   | TDatadogConnectionOption
   | TF5BigIpConnectionOption
-  | TConvexConnectionOption;
+  | TConvexConnectionOption
+  | TTriggerDevConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -413,6 +423,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
+  [AppConnection.Cloud66]: TCloud66ConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.VenafiTpp]: TVenafiTppConnectionOption;
@@ -431,4 +442,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Datadog]: TDatadogConnectionOption;
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
+  [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
 };

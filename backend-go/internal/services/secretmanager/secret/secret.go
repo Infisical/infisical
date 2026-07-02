@@ -39,7 +39,7 @@ const (
 type SecretTag struct {
 	ID    uuid.UUID
 	Slug  string
-	Color string
+	Color sql.Null[string]
 }
 
 type SecretMetadata struct {
@@ -77,6 +77,8 @@ type Secret struct {
 	FolderID              uuid.UUID
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	ReminderNote          sql.Null[string]
+	ReminderRepeatDays    sql.Null[int32]
 
 	Tags                     []SecretTag
 	SecretMetadata           []SecretMetadata
@@ -254,13 +256,14 @@ func (s *Service) FindByFolderIds(
 	}
 
 	// Build ORDER BY clause with orthogonal column and direction selection
+	// Include secondary ordering by createdAt for deterministic results with LEFT JOINs
 	orderCol, orderDir := "secret.key", "ASC"
 	if filters != nil {
 		if filters.OrderDirection != nil && *filters.OrderDirection == OrderByDirectionDESC {
 			orderDir = "DESC"
 		}
 	}
-	orderBy := orderCol + " " + orderDir
+	orderBy := orderCol + " " + orderDir + `, meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 
 	limitClause := ""
 	if filters != nil && filters.Limit != nil {
@@ -274,6 +277,7 @@ func (s *Service) FindByFolderIds(
 			tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
 			meta.id AS meta_id, meta.key AS meta_key, meta.value AS meta_value, meta."encryptedValue" AS meta_encrypted_value,
 			rotationMapping."rotationId",
+			reminder.message AS reminder_note, reminder."repeatDays" AS reminder_repeat_days,
 			recipient.id AS recipient_id, recipientUser.id AS recipient_user_id, recipientUser.username AS recipient_username, recipientUser.email AS recipient_email
 		FROM secrets_v2 secret
 		LEFT JOIN secret_v2_tag_junction tagJunction ON secret.id = tagJunction."secrets_v2Id"
@@ -358,6 +362,7 @@ func (s *Service) FindByKey(
 			tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
 			meta.id AS meta_id, meta.key AS meta_key, meta.value AS meta_value, meta."encryptedValue" AS meta_encrypted_value,
 			rotationMapping."rotationId",
+			reminder.message AS reminder_note, reminder."repeatDays" AS reminder_repeat_days,
 			recipient.id AS recipient_id, recipientUser.id AS recipient_user_id, recipientUser.username AS recipient_username, recipientUser.email AS recipient_email
 		FROM secrets_v2 secret
 		LEFT JOIN secret_v2_tag_junction tagJunction ON secret.id = tagJunction."secrets_v2Id"
@@ -367,7 +372,8 @@ func (s *Service) FindByKey(
 		LEFT JOIN reminders reminder ON secret.id = reminder."secretId"
 		LEFT JOIN reminders_recipients recipient ON reminder.id = recipient."reminderId"
 		LEFT JOIN users recipientUser ON recipient."userId" = recipientUser.id
-		WHERE ` + where.String()
+		WHERE ` + where.String() + `
+		ORDER BY meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 
 	args := pgx.NamedArgs{
 		"folderID":   folderID,
@@ -416,6 +422,8 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 		metaValue             sql.Null[string]
 		metaEncryptedValue    []byte
 		rotationID            sql.Null[uuid.UUID]
+		reminderNote          sql.Null[string]
+		reminderRepeatDays    sql.Null[int32]
 		recipientID           sql.Null[uuid.UUID]
 		recipientUserID       sql.Null[uuid.UUID]
 		recipientUsername     sql.Null[string]
@@ -428,6 +436,7 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 		&tagID, &tagSlug, &tagColor,
 		&metaID, &metaKey, &metaValue, &metaEncryptedValue,
 		&rotationID,
+		&reminderNote, &reminderRepeatDays,
 		&recipientID, &recipientUserID, &recipientUsername, &recipientEmail,
 	); err != nil {
 		return Secret{}, err
@@ -446,13 +455,15 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 		FolderID:              folderID,
 		CreatedAt:             createdAt,
 		UpdatedAt:             updatedAt,
+		ReminderNote:          reminderNote,
+		ReminderRepeatDays:    reminderRepeatDays,
 	}
 
 	if tagID.Valid {
 		secret.Tags = []SecretTag{{
 			ID:    tagID.V,
 			Slug:  tagSlug.V,
-			Color: tagColor.V,
+			Color: tagColor,
 		}}
 	}
 

@@ -35,6 +35,7 @@ import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
+import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -63,6 +64,10 @@ import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { TravisCISyncReviewFields } from "./TravisCISyncReviewFields";
+import {
+  TriggerDevSyncOptionsReviewFields,
+  TriggerDevSyncReviewFields
+} from "./TriggerDevSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
@@ -225,6 +230,13 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Snowflake:
       DestinationFieldsComponent = <SnowflakeSyncReviewFields />;
+      break;
+    case SecretSync.TriggerDev:
+      DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Cloud66:
+      DestinationFieldsComponent = <Cloud66SyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

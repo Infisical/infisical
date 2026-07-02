@@ -15,10 +15,7 @@ import {
   CardHeader,
   CardTitle,
   FieldError,
-  Input,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Input
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
@@ -44,6 +41,11 @@ export default function InitialSignupStep({
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
+
+  const hasSsoSignupMethod =
+    shouldDisplaySignupMethod(LoginMethod.GITHUB) ||
+    shouldDisplaySignupMethod(LoginMethod.GOOGLE) ||
+    shouldDisplaySignupMethod(LoginMethod.GITLAB);
 
   const handleEmailSignup = async () => {
     const isValid = z.string().email().safeParse(email);
@@ -79,6 +81,51 @@ export default function InitialSignupStep({
           </CardAction>
         </CardHeader>
         <CardContent>
+          <div className="flex w-full flex-col gap-2">
+            {shouldDisplaySignupMethod(LoginMethod.GITHUB) && (
+              <Button
+                aria-label="Continue with GitHub"
+                variant="project"
+                size="lg"
+                isFullWidth
+                onClick={() => handleSocialSignup(LoginMethod.GITHUB)}
+              >
+                <FontAwesomeIcon icon={faGithub} className="!size-4" />
+                Continue with GitHub
+              </Button>
+            )}
+            {shouldDisplaySignupMethod(LoginMethod.GOOGLE) && (
+              <Button
+                aria-label={t("signup.continue-with-google")}
+                variant="outline"
+                size="lg"
+                isFullWidth
+                onClick={() => handleSocialSignup(LoginMethod.GOOGLE)}
+              >
+                <FontAwesomeIcon icon={faGoogle} className="!size-4" />
+                {t("signup.continue-with-google")}
+              </Button>
+            )}
+            {shouldDisplaySignupMethod(LoginMethod.GITLAB) && (
+              <Button
+                aria-label="Continue with GitLab"
+                variant="outline"
+                size="lg"
+                isFullWidth
+                onClick={() => handleSocialSignup(LoginMethod.GITLAB)}
+              >
+                <FontAwesomeIcon icon={faGitlab} className="!size-4" />
+                Continue with GitLab
+              </Button>
+            )}
+          </div>
+          {hasSsoSignupMethod && shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
+            <div className="my-4 flex w-full flex-row items-center py-2">
+              <div className="w-full border-t border-mineshaft-400/60" />
+              <span className="mx-2 text-xs text-mineshaft-400">or</span>
+              <div className="w-full border-t border-mineshaft-400/60" />
+            </div>
+          )}
           {shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
             <>
               <div className="w-full">
@@ -98,7 +145,7 @@ export default function InitialSignupStep({
                 <Button
                   type="submit"
                   onClick={handleEmailSignup}
-                  variant="project"
+                  variant="outline"
                   size="lg"
                   isFullWidth
                   isDisabled={isPending}
@@ -109,78 +156,6 @@ export default function InitialSignupStep({
               </div>
             </>
           )}
-          {(!config.enabledLoginMethods ||
-            (shouldDisplaySignupMethod(LoginMethod.EMAIL) &&
-              config.enabledLoginMethods.length > 1)) && (
-            <div className="my-4 flex w-full flex-row items-center py-2">
-              <div className="w-full border-t border-mineshaft-400/60" />
-              <span className="mx-2 text-xs text-mineshaft-400">or</span>
-              <div className="w-full border-t border-mineshaft-400/60" />
-            </div>
-          )}
-          <div className="flex w-full gap-2">
-            {shouldDisplaySignupMethod(LoginMethod.GOOGLE) && (
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger asChild>
-                  <div className="relative w-full">
-                    <Button
-                      aria-label={t("signup.continue-with-google")}
-                      variant="outline"
-                      size="lg"
-                      isFullWidth
-                      onClick={() => handleSocialSignup(LoginMethod.GOOGLE)}
-                    >
-                      <FontAwesomeIcon icon={faGoogle} className="!size-4" />
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">{t("signup.continue-with-google")}</TooltipContent>
-              </Tooltip>
-            )}
-            {shouldDisplaySignupMethod(LoginMethod.GITHUB) && (
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger asChild>
-                  <div className="relative w-full">
-                    <Button
-                      aria-label="Continue with GitHub"
-                      variant="outline"
-                      size="lg"
-                      isFullWidth
-                      onClick={() => handleSocialSignup(LoginMethod.GITHUB)}
-                    >
-                      <FontAwesomeIcon icon={faGithub} className="!size-4" />
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">Continue with GitHub</TooltipContent>
-              </Tooltip>
-            )}
-            {shouldDisplaySignupMethod(LoginMethod.GITLAB) && (
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger asChild>
-                  <div className="relative w-full">
-                    <Button
-                      aria-label="Continue with GitLab"
-                      variant="outline"
-                      size="lg"
-                      isFullWidth
-                      onClick={() => handleSocialSignup(LoginMethod.GITLAB)}
-                    >
-                      <FontAwesomeIcon icon={faGitlab} className="!size-4" />
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">Continue with GitLab</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-          <div className="mt-6 flex flex-row justify-center text-xs text-label">
-            <Link to="/login">
-              <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                Already have an account? Log in
-              </span>
-            </Link>
-          </div>
           <p className="mt-4 text-center text-xs text-pretty text-label">
             By signing up, you agree to our{" "}
             <a
@@ -202,22 +177,32 @@ export default function InitialSignupStep({
             </a>
             .
           </p>
-          <a
-            href="https://infisical.com/talk-to-us?utm_source=signup&utm_medium=referral"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-project/35 bg-project/5 px-4 py-3 transition-colors hover:border-project/40 hover:bg-project/10"
-          >
-            <span className="min-w-0 flex-1 text-xs text-foreground/75">
-              Have a complex company use case?{" "}
-              <span className="font-medium">
-                Get <span className="text-white/90">Enterprise grade</span> assistance
-              </span>
-            </span>
-            <CircleChevronRightIcon className="size-4.5 opacity-75" />
-          </a>
         </CardContent>
       </Card>
+      <div className="mt-6 w-full max-w-sm rounded-lg bg-background">
+        <a
+          href="https://infisical.com/talk-to-us?utm_source=signup&utm_medium=referral"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-project/35 bg-project/10 px-4 py-3 text-foreground transition-colors hover:border-project/40 hover:bg-project/15"
+        >
+          <span className="min-w-0 flex-1 text-xs text-foreground/75">
+            Have a complex company use case?{" "}
+            <span className="font-medium">
+              Get <span className="text-white/90">Enterprise grade</span> assistance
+            </span>
+          </span>
+          <CircleChevronRightIcon className="size-4.5 opacity-75" />
+        </a>
+      </div>
+      <div className="mt-4 flex flex-row items-center justify-center gap-1.5 text-sm">
+        <span className="text-label">Already have an account?</span>
+        <Link to="/login">
+          <span className="cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project">
+            Log in
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }

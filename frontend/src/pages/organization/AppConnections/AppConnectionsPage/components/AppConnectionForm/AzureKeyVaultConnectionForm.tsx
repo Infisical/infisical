@@ -3,19 +3,27 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { useSubscription } from "@app/context";
 import {
@@ -28,6 +36,7 @@ import {
   useGetAppConnectionOauthReturnUrl
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -37,6 +46,7 @@ import {
 
 import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -169,6 +179,7 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
 
 export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
@@ -190,6 +201,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  const scopeVariant = useScopeVariant();
 
   const selectedMethod = watch("method");
   const gatewayId = watch("gatewayId");
@@ -255,39 +268,48 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.AzureKeyVault].name
-              }. This field cannot be changed after creation.`}
-              errorText={
-                !isLoading && isMissingConfig
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.AzureKeyVault].name}. This field cannot be
+                    changed after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger
+                  id="method"
+                  className="w-full"
+                  isError={Boolean(error) || isMissingConfig}
+                >
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(AzureKeyVaultConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <FieldError>
+                {!isLoading && isMissingConfig
                   ? `Environment variables have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
                         : `See documentation to configure Azure ${methodDetails.name} Connections.`
                     }`
-                  : error?.message
-              }
-              isError={Boolean(error?.message) || isMissingConfig}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(AzureKeyVaultConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+                  : error?.message}
+              </FieldError>
+            </Field>
           )}
         />
 
@@ -297,23 +319,32 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             a={OrgPermissionSubjects.Gateway}
           >
             {(isAllowed) => (
-              <FormControl label="Gateway">
-                <Tooltip
-                  isDisabled={isAllowed}
-                  content="Restricted access. You don't have permission to attach gateways to resources."
-                >
-                  <div>
-                    <GatewayPicker
-                      isDisabled={!isAllowed}
-                      value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                      onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                        setValue("gatewayId", newGwId, { shouldDirty: true });
-                        setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                      }}
-                    />
-                  </div>
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GatewayPicker
+                        isDisabled={!isAllowed}
+                        value={{
+                          gatewayId: gatewayId ?? null,
+                          gatewayPoolId: gatewayPoolId ?? null
+                        }}
+                        onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                          setValue("gatewayId", newGwId, { shouldDirty: true });
+                          setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  {!isAllowed && (
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  )}
                 </Tooltip>
-              </FormControl>
+              </Field>
             )}
           </OrgPermissionCan>
         )}
@@ -323,14 +354,26 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
             name="tenantId"
             control={control}
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
-                isError={Boolean(error?.message)}
-                label="Tenant ID"
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel htmlFor="tenantId">
+                  Tenant ID
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The Azure Active Directory (Entra ID) Tenant ID.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="tenantId"
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
         )}
@@ -342,44 +385,59 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
               name="credentials.tenantId"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
-                  isError={Boolean(error?.message)}
-                  label="Tenant ID"
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                </FormControl>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.tenantId">
+                    Tenant ID
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The Azure Active Directory (Entra ID) Tenant ID.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.tenantId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.clientId"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Client ID"
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                </FormControl>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.clientId">Client ID</FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.clientId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.clientSecret"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Client Secret"
-                  errorText={error?.message}
-                >
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.clientSecret">Client Secret</FieldLabel>
                   <Input
                     {...field}
+                    id="credentials.clientSecret"
                     type="password"
                     placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
+                    isError={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <CredentialRotationForm>
@@ -387,14 +445,28 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                 name="credentials.clientSecretKeyId"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    label="Client Secret Key ID"
-                    errorText={error?.message}
-                    tooltipText="The Key ID of the client secret provided above. Found in Azure Portal under App Registrations > Certificates & Secrets. Required so Infisical can revoke the original secret after rotation."
-                  >
-                    <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                  </FormControl>
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="credentials.clientSecretKeyId">
+                      Client Secret Key ID
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          The Key ID of the client secret provided above. Found in Azure Portal
+                          under App Registrations &gt; Certificates &amp; Secrets. Required so
+                          Infisical can revoke the original secret after rotation.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="credentials.clientSecretKeyId"
+                      placeholder="00000000-0000-0000-0000-000000000000"
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
               />
             </CredentialRotationForm>
@@ -408,77 +480,104 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
               name="credentials.tenantId"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
-                  isError={Boolean(error?.message)}
-                  label="Tenant ID"
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                </FormControl>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.tenantId">
+                    Tenant ID
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The Azure Active Directory (Entra ID) Tenant ID.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.tenantId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.clientId"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Client ID"
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-                </FormControl>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.clientId">Client ID</FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.clientId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.certificateBody"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Certificate"
-                  errorText={error?.message}
-                  tooltipText="The PEM-encoded public certificate uploaded to your Azure App Registration."
-                >
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.certificateBody">
+                    Certificate
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The PEM-encoded public certificate uploaded to your Azure App Registration.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <SecretInput
-                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN CERTIFICATE-----..."
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               name="credentials.privateKey"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  label="Private Key"
-                  errorText={error?.message}
-                  tooltipText="The PEM-encoded private key matching the certificate. The private key is never transmitted to Azure; it is only used locally to sign the client assertion."
-                >
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.privateKey">
+                    Private Key
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The PEM-encoded private key matching the certificate. The private key is
+                        never transmitted to Azure; it is only used locally to sign the client
+                        assertion.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <SecretInput
-                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN PRIVATE KEY-----..."
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
           </>
         )}
 
-        <div className="mt-8 flex items-center">
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting || isRedirecting}
+            variant={scopeVariant}
+            isPending={isSubmitting || isRedirecting}
             isDisabled={
               isSubmitting ||
               (!isUpdate && !isDirty && selectedMethod !== AzureKeyVaultConnectionMethod.OAuth) ||
@@ -488,12 +587,15 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
           >
             {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            isDisabled={isSubmitting || isRedirecting}
+          >
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

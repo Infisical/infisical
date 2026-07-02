@@ -43,13 +43,13 @@ export const createResourcePermissionQueryHook = <TPermissionSet extends Ability
     return { permission, memberships: data.memberships };
   };
 
-  const useResourcePermissionQuery = (resourceId: string) =>
+  const useResourcePermissionQuery = (resourceId: string, enabled = true) =>
     useQuery({
       queryKey: resourceId
         ? opts.queryKey(resourceId)
         : (["resource-permissions", "disabled"] as const),
       queryFn: () => opts.fetchFn(resourceId),
-      enabled: Boolean(resourceId),
+      enabled: enabled && Boolean(resourceId),
       staleTime: RESOURCE_PERMISSION_STALE_TIME_MS,
       select
     });

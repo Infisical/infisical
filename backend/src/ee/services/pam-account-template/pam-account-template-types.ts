@@ -1,12 +1,12 @@
 import { PamAccountType } from "../pam/pam-enums";
-import { TPamTemplateAccessPolicy, TPamTemplateSettings } from "./pam-account-template-schemas";
+import { TPamTemplateSettings } from "./pam-account-template-schemas";
 
 export type TCreatePamAccountTemplateDTO = {
   projectId: string;
   name: string;
   description?: string;
   type: PamAccountType;
-  accessPolicy?: TPamTemplateAccessPolicy;
+  policies?: Record<string, unknown>;
   settings?: TPamTemplateSettings;
   gatewayId?: string;
   gatewayPoolId?: string;
@@ -18,7 +18,7 @@ export type TUpdatePamAccountTemplateDTO = {
   projectId: string;
   name?: string;
   description?: string | null;
-  accessPolicy?: TPamTemplateAccessPolicy;
+  policies?: Record<string, unknown>;
   settings?: TPamTemplateSettings;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;

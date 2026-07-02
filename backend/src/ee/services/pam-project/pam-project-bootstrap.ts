@@ -8,7 +8,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { PamAccountType } from "../pam/pam-enums";
-import { TPamTemplateAccessPolicy, TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
+import { TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 type TBootstrapDeps = {
@@ -25,21 +25,13 @@ type TBootstrapInput = {
 export type TDefaultTemplate = {
   name: string;
   type: PamAccountType;
-  accessPolicy: TPamTemplateAccessPolicy;
   settings: TPamTemplateSettings;
-};
-
-const DEFAULT_ACCESS_POLICY: TPamTemplateAccessPolicy = {
-  maxSessionDurationSeconds: 3600,
-  requireReason: false,
-  requireMfa: false
 };
 
 export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "ssh",
     type: PamAccountType.SSH,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
@@ -48,7 +40,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "postgres",
     type: PamAccountType.Postgres,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,
@@ -65,7 +56,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "mysql",
     type: PamAccountType.MySQL,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,
@@ -82,7 +72,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "mssql",
     type: PamAccountType.MsSQL,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,
@@ -99,7 +88,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "oracledb",
     type: PamAccountType.OracleDB,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,
@@ -116,7 +104,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "mongodb",
     type: PamAccountType.MongoDB,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,
@@ -133,7 +120,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "redis",
     type: PamAccountType.Redis,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres,
@@ -150,7 +136,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "kubernetes",
     type: PamAccountType.Kubernetes,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
@@ -159,7 +144,6 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "aws-iam",
     type: PamAccountType.AwsIam,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
@@ -168,10 +152,9 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
   {
     name: "windows",
     type: PamAccountType.Windows,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
       passwordConstraints: {
         minLength: 14,
         maxLength: 127,
@@ -183,12 +166,11 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
-    name: "active-directory",
-    type: PamAccountType.ActiveDirectory,
-    accessPolicy: DEFAULT_ACCESS_POLICY,
+    name: "windows-ad",
+    type: PamAccountType.WindowsAd,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.AwsS3,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
       passwordConstraints: {
         minLength: 14,
         maxLength: 127,
@@ -215,7 +197,7 @@ export const bootstrapPamProject = async (
 
   const project = await projectDAL.create(
     {
-      name: "Access Management",
+      name: "Privileged Access Manager",
       slug,
       type: ProjectType.PAM,
       orgId,
@@ -254,7 +236,6 @@ export const bootstrapPamProject = async (
       projectId: project.id,
       name: template.name,
       type: template.type,
-      accessPolicy: template.accessPolicy,
       settings: template.settings
     });
   }

@@ -8,15 +8,15 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 
 | Directory | Purpose |
 |---|---|
-| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`, `PamAccessMethod`), shared permission helpers (`pam-permission.ts`), validators (`pam-validators.ts`), and this CLAUDE.md |
+| `pam/` | Shared enums (`PamAccountType`, `PamResourceRole`, `PamProductRole`, `PamSessionStatus`, `PamAccessMethod`), permission helpers (`pam-permission.ts`), validators (`pam-validators.ts`), the policy registry (`pam-policies.ts`), and this CLAUDE.md |
 | `pam-folder/` | Folder CRUD, folder-level permission checks |
 | `pam-account/` | Account CRUD, credential encryption, gateway attachment, SSH CA management |
-| `pam-account-template/` | Account templates (type + access policy + settings), template config schemas (`pam-account-template-schemas.ts`) |
+| `pam-account-template/` | Account templates (type + policies + settings), template config schemas (`pam-account-template-schemas.ts`); policy values live in the `policies` column, see [Policies](#policies) |
 | `pam-session/` | Session lifecycle (DAL, service, types) |
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
 | `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
-| `pam-web-access/` | WebSocket session handlers (Postgres, SSH), ticket-based auth |
+| `pam-web-access/` | WebSocket session handlers (Postgres, SSH, RDP), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.
 
@@ -46,6 +46,7 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 
 | Endpoint | Required Permission |
 |---|---|
+| Get access capabilities | Product membership (returns `isProductAdmin` / `isResourceAdmin` / `canViewSessions` / `canViewAuditLogs` flags for sidebar gating) |
 | List folders | `ReadFolder` (via `getResourceIdsWithActions`) |
 | List accounts | `ReadAccounts` (via `getResourceIdsWithActions`) |
 | List accessible accounts | `ReadAccounts` AND (`LaunchSessions` OR `ViewCredentials`) |
@@ -59,10 +60,19 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
 | Template list/getById | Product membership only (templates are project-wide config) |
 | Template create/update/delete | Product Admin |
+| View audit logs | `ViewAuditLogs` per resource for account/folder logs; Product Admin for resource-less (product-level) logs |
+
+### Audit Log Scoping
+
+PAM audit logs are served through the shared `GET /organization/audit-logs` endpoint, but scoped by the PAM permission model rather than the generic project `AuditLogs` permission. `pamAuditLogScopeResolverFactory` (`pam/pam-audit-log-fns.ts`) is injected into `auditLogServiceFactory` as `resolvePamAuditScope`; for a PAM project it returns `{ accountIds, folderIds, includeProductLevel }` and the shared service skips its generic permission check and passes the scope to `auditLogDAL.find`. Returns `null` for non-PAM projects (generic check still applies).
+
+Scoping rules (enforced via `eventMetadata` json): account-scoped logs (have `accountId`) and folder-scoped logs (have `folderId`) are returned only when the actor has `ViewAuditLogs` on that resource — a folder grant cascades to the accounts inside it. Resource-less logs (neither id, e.g. template/product-member events) are returned only to product admins. Admins are **not** exempt from the resource check. The scope filter is implemented in both audit-log backends (Postgres `auditLogDAL` and `clickhouseAuditLogDAL`), so it holds regardless of `CLICKHOUSE_AUDIT_LOG_ENABLED`.
+
+**Requirement for new PAM events:** any account- or folder-scoped audit event must put `accountId`/`folderId` in its `eventMetadata`, or it falls into the product-level bucket and is hidden from resource viewers.
 
 ### Auth Modes
 
-All PAM endpoints use `AuthMode.JWT` only (user access). `IDENTITY_ACCESS_TOKEN` is not supported. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, except session launch and web-access which are JWT-only. Gateway-facing endpoints (chunk upload, session credentials) use `AuthMode.GATEWAY_ACCESS_TOKEN`.
 
 ### Roles
 
@@ -73,23 +83,76 @@ Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via th
 
 ## Account Types
 
-Defined in `pam/pam-enums.ts` as `PamAccountType`. Validation schemas per type live in `pam-account/pam-account-schemas.ts` in the `ACCOUNT_TYPE_CONFIGS` map.
+Defined in `pam/pam-enums.ts` as `PamAccountType`. Each type's full config lives in `pam-account/pam-account-schemas.ts` in the `ACCOUNT_TYPE_CONFIGS` map. A config entry holds everything the backend and frontend need for that type:
+
+- `name` -- human-readable label (e.g. `"PostgreSQL"`), served to the frontend
+- `icon` -- icon filename under the frontend's account-platform icons (e.g. `"Postgres.png"`)
+- `connectionDetails` -- Zod schema for the non-secret connection fields
+- `credentials` -- Zod schema for the secret credentials (a `ZodObject` or a `ZodDiscriminatedUnion`)
+- `sanitizedCredentials` -- Zod allowlist of credential fields that are safe to return in API responses (e.g. `username` but never `password`). This is the single source of truth for what's a secret -- there is no string-matching denylist.
+- `ui` -- optional sparse per-field hints (`{ label?, widget?, secret? }`) for fields whose label/widget can't be inferred from the schema. Anything not listed is inferred.
+
+### Schema-Driven Forms
+
+The frontend renders the create/edit account forms entirely from backend metadata -- there are **no per-type frontend components**. `buildPamAccountTypeMetadata(webAccessSupportedTypes)` walks each config's Zod schemas and emits `PamFieldDescriptor`s (`{ key, label, widget, required, secret, options?, defaultValue?, showWhen? }`). The `GET /pam/accounts/types` endpoint serves these as `PamAccountTypeMetadata` (`{ type, name, icon, supportsWebAccess, connectionFields, credentialFields }`). `supportsWebAccess` is derived from the `SESSION_HANDLERS` keys (passed in by the route) -- the single source of truth for browser-session support -- so the frontend gates Browser vs CLI launch without a separate list to maintain.
+
+How descriptors are derived:
+- **Label** -- `ui[key].label`, else humanized from the field key.
+- **Widget** -- `ui[key].widget`, else inferred from the Zod base type (`ZodNumber` -> `number`, `ZodBoolean` -> `boolean`, `ZodEnum` -> `select` with `options`, else `text`). `password`/`textarea` must be set via `ui` since they're not inferable.
+- **Required** -- a field is optional if its schema is `ZodOptional`/`ZodDefault`/nullable (the builder peels these via `unwrapField`).
+- **Secret** -- `ui[key].secret`, else `true` when the widget is `password`. Secret fields use the write-only `PamPasswordInput` (sentinel-based, see below).
+- **Discriminated unions** (e.g. SSH `authMethod`) -- the discriminator becomes a `select`; each variant's non-shared fields get a `showWhen: { field, equals }` so the renderer reveals them conditionally.
 
 ### Key Helpers
 
-- **`extractGatewayTarget(accountType, rawConnectionDetails)`** -- validated extraction of `{ host, port }` from decrypted connection details, dispatched by account type. Use this instead of raw type casts.
+- **`extractGatewayTarget(accountType, rawConnectionDetails)`** -- validated extraction of `{ host, port }` from decrypted connection details, dispatched by account type. Used to set the cert routing extension (`getPAMConnectionDetails`) and the session's `selectedHost`. Use this instead of raw type casts.
+- **`buildSessionGatewayConnectionDetails(accountType, rawConnectionDetails, selectedHost?)`** -- reshapes decrypted connection details into the blob the gateway reads for a live session (returned from `getSessionCredentials`). Most types pass through their validated connection details unchanged. Windows AD is the exception: it is brokered through the **Windows** RDP gateway protocol (`gatewayAccountType: Windows`), so it must be reduced to the Windows shape `{ host, port }` -- `host` is the `selectedHost` (the chosen entry from the account's `hosts` list) and `port` is `rdpPort`. The AD-only fields (FQDN/`domain`, `dcAddress`, the LDAP `port`, ldap settings) are intentionally **not** forwarded: they are not part of the RDP leg, and a stray `domain` alongside a `DOMAIN\username` credential makes the gateway's NLA credential resolution ambiguous and fails the session. Domain login is carried by the `DOMAIN\username` credential format (mirrors how `main`'s domain accounts brokered RDP through the Windows resource's `{ host, port }`). When adding a type that reuses another type's gateway protocol, reshape it here.
+- **`getSelectableHosts(accountType, rawConnectionDetails)`** / **`resolveSelectedHost(accountType, rawConnectionDetails, requestedHost?)`** -- host-selection support for account types that hold a host list (Windows AD). `getSelectableHosts` returns the candidate hosts (or `null` for single-host types); `resolveSelectedHost` validates a launcher-requested host against that allow-list and returns the host to connect to (falling back to the first). The web-access ticket (`issueWebSocketTicket`) resolves the host **at issuance** and bakes it into the signed ticket payload, so the WS connection can't target an arbitrary host. The frontend `RdpLauncher` prompts for the host when there's more than one.
+- **`sanitizeCredentials(accountType, decrypted)`** -- strips secret fields from decrypted credentials using the type's `sanitizedCredentials` allowlist; used by `getById` before returning credentials to the client.
+- **`buildPamAccountTypeMetadata()`** -- builds the field descriptors served by `GET /pam/accounts/types`.
 - **`PamAccessMethod`** enum (`Web`, `Cli`) -- use instead of hardcoded `"web"`/`"cli"` strings.
 
 ### Adding a New Account Type
 
-1. Add the enum value to `PamAccountType` in `pam/pam-enums.ts`
-2. Add `connectionDetails` and `credentials` Zod schemas to `ACCOUNT_TYPE_CONFIGS` in `pam-account/pam-account-schemas.ts`
-3. Add a case to `extractGatewayTarget` in `pam-account-schemas.ts`
-4. If it supports web access: add a session handler in `pam-web-access/` and register it in `pam-session-handler-registry.ts`
-5. Add the corresponding frontend enum value and any UI components
-6. Update `PamAccountType` on the frontend enum in `frontend/src/hooks/api/pam/enums.ts`
+Most types need only backend changes -- the frontend auto-renders from metadata.
 
-The router's `ConnectionDetailsSchema` and `SanitizedAccountDetailSchema` auto-derive from `ACCOUNT_TYPE_CONFIGS`, so no router changes are needed for new types.
+1. Add the enum value to `PamAccountType` in `pam/pam-enums.ts` (and the matching frontend enum in `frontend/src/hooks/api/pam/enums.ts` -- the one shared string both sides need).
+2. Add a config entry to `ACCOUNT_TYPE_CONFIGS` in `pam-account/pam-account-schemas.ts`: `name`, `icon`, `connectionDetails`, `credentials`, `sanitizedCredentials`, and any `ui` hints (set `widget: "password"`/`"textarea"` and `secret: true` where the schema can't express it).
+3. Drop the icon image into `frontend/public/images/integrations/` matching the `icon` filename in the config. No component edit -- `AccountPlatformIcon` and the type pickers resolve the name/icon from `GET /pam/accounts/types`.
+4. Add a case to `extractGatewayTarget` in `pam-account-schemas.ts`.
+5. If it supports web access: add a session handler in `pam-web-access/` (export the handler function) and add an entry for it to the `SESSION_HANDLERS` map in `pam-session-handlers.ts`. If the entry reuses another type's `gatewayAccountType` (e.g. Windows AD → `Windows` for RDP), add a case to `buildSessionGatewayConnectionDetails` so the session credentials blob matches the shape that gateway protocol expects.
+
+No changes to the account form components, router schemas, or field renderers are needed. The per-type route bodies use `config.connectionDetails`/`config.credentials` directly, the detail response (`SanitizedAccountDetailSchema`) is a discriminated union auto-derived from `ACCOUNT_TYPE_CONFIGS` (each variant pulls `connectionDetails` and `sanitizedCredentials` from the config), and the frontend forms render from `GET /pam/accounts/types`.
+
+## Policies
+
+Policies are the governance controls applied to a template (require MFA, require reason, max session duration). They are registry-driven, defined once in `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts`, keyed by `PamPolicyType`. Each entry is `{ label, description, appliesTo, schema }` where `appliesTo` is an account-type list or `"all"`, and `schema` is the Zod schema for that policy's value (a primitive or object).
+
+"Access policy" is the category, not a type: MFA, reason, and duration are individual peer policies that each `appliesTo: "all"`. `appliesTo` can also be a list to scope a policy to specific account types. This is distinct from **settings** (recording, password constraints), which are NOT policies, they live in the template's separate `settings` column with their own schema and bespoke UI.
+
+In the template detail sheet (`frontend/src/pages/pam/PamTemplatesPage/components/TemplateDetailSheet.tsx`), the **"General"** tab is for policies and system settings (gateway, session recording / storage backend, and similar template-level defaults); the **"Configuration"** tab is only for generic template metadata like name and description. When adding a new policy or setting, it belongs on the General tab, not Configuration.
+
+Storage: a template's `policies` jsonb column is a flat map keyed by `PamPolicyType`, e.g. `{ "require-mfa": true, "max-session-duration": 3600 }`. No DB defaults and no per-policy migration: absence resolves to the policy's natural default in the resolver (a missing boolean is `false`, a missing duration falls back to `DEFAULT_SESSION_DURATION_MS`).
+
+A registry entry flows automatically to:
+- **`GET /pam/accounts/types`** (`applicablePolicies`), so the frontend renders the right editors per account type with no per-type wiring.
+- **`validatePolicyValues`**, used by template create/update to reject policies that don't apply to the type or fail their schema (returns a result object; the caller maps `ok: false` to a `BadRequestError`).
+
+Policies are either server-enforced or gateway-enforced:
+- **Server-enforced** (MFA, reason, duration): `resolveAccessControls` reads the values and they're applied in `pam-session`/`pam-web-access` before the session starts.
+- **Gateway-enforced** (command blocking): the value is read via `resolvePolicy` in `getSessionCredentials` and included in the `policyRules` response. The gateway compiles the patterns and enforces them during the session.
+
+Command blocking (`PamPolicyType.CommandBlocking`) is the first gateway-enforced policy. It applies only to SSH (`appliesTo: [PamAccountType.SSH]`). Stored as a newline-separated string of regex patterns, split into an array at the credentials endpoint before sending to the gateway.
+
+Session log masking (`sessionLogMaskingPatterns`) is a **setting**, not a policy. It lives in `PamTemplateSettingsSchema` and is read from `account.templateSettings` in `getSessionCredentials`. It also flows to the gateway via the `policyRules` response alongside command blocking patterns.
+
+### Adding a New Policy
+
+1. Add the value to `PamPolicyType` and an entry to `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts` (`label`, `description`, `appliesTo`, `schema`). Mirror the enum value in `frontend/src/hooks/api/pam/enums.ts`.
+2. Register the policy in `POLICY_EDITORS` (`frontend/src/pages/pam/components/policyEditors/`), keyed by the new `PamPolicyType`. Reuse an existing editor when the value shape matches (`BooleanPolicyEditor` for a `z.boolean()`, `DurationPolicyEditor` for a number); only write a new editor component for a novel value shape. Each editor receives `{ label, description, value, onChange }` and owns its own layout, booleans render inline, others vertical.
+3. Enforcement: read it where it's enforced. A server-enforced policy extends `resolveAccessControls` and is applied in `pam-session`/`pam-web-access`. A gateway-enforced policy is read via `resolvePolicy` in `getSessionCredentials`, split/transformed as needed, and included in the `policyRules` response (see command blocking for the pattern). Both the service return and the router response schema must be updated atomically -- Fastify's Zod serializer strips unknown keys.
+
+No migration, no router or response-schema change (beyond `policyRules` for gateway-enforced policies), and no DB default.
 
 ## Session Lifecycle
 

@@ -8,10 +8,10 @@ import {
   TLimitFeatureDescriptor
 } from "./feature";
 import { isLimitFeature, resolveFeatureValue } from "./license-client-fns";
-import { TEntitlementsResponse } from "./license-client-types";
+import { TEntitlementOrg, TEntitlementsResponse } from "./license-client-types";
 
 type TFeatureReaderDep = {
-  getEntitlements: (orgId: string) => Promise<TEntitlementsResponse | null>;
+  getEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse | null>;
 };
 
 export type TFeatureReader = ReturnType<typeof featureReaderFactory>;
@@ -38,7 +38,7 @@ export const featureReaderFactory = ({ getEntitlements }: TFeatureReaderDep) => 
   });
 
   const getFeature = async <D extends TFeatureDescriptor>(orgId: string, feature: D): Promise<TFeatureResult<D>> => {
-    const entitlements = await getEntitlements(orgId);
+    const entitlements = await getEntitlements({ id: orgId });
     const value = resolveFeatureValue(feature, entitlements);
 
     if (isLimitFeature(feature)) {

@@ -8,9 +8,37 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { ApprovalPolicyBodySchema, SignerIdParamsSchema, SignerKeyAlgorithm } from "./schemas";
+import {
+  ApprovalPolicyBodySchema,
+  HSM_SUPPORTED_KEY_ALGORITHMS,
+  SignerExternalConfigurationSchema,
+  SignerIdParamsSchema,
+  SignerKeyAlgorithm
+} from "./schemas";
+
+const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
+  certificateCommonName: z.string().nullable().optional(),
+  certificateSerialNumber: z.string().nullable().optional(),
+  certificateNotAfter: z.date().nullable().optional(),
+  certificateNotBefore: z.date().nullable().optional(),
+  certificateKeyAlgorithm: z.string().nullable().optional(),
+  certificateKeySource: z.string().nullable().optional(),
+  certificateHsmConnectorId: z.string().nullable().optional(),
+  certificateStatus: z.string().nullable().optional(),
+  certificateCaId: z.string().nullable().optional(),
+  approvalPolicyName: z.string().nullable().optional(),
+  externalOrder: z
+    .object({
+      provider: z.string(),
+      orderId: z.number(),
+      status: z.string().nullable()
+    })
+    .nullable()
+    .optional()
+});
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -22,28 +50,53 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       operationId: "createSigner",
       tags: [ApiDocsTags.PkiSigners],
       description: "Create a code signing signer",
-      body: z.object({
-        projectId: z.string().trim().optional().describe(openApiHidden()),
-        name: slugSchema({ min: 1, max: 64, field: "name" }),
-        description: z.string().trim().max(256).optional(),
-        caId: z.string().uuid().optional(),
-        commonName: z.string().trim().min(1).max(256).optional(),
-        certificateTtlDays: z.number().int().min(1).max(3650).optional(),
-        certificateRenewBeforeDays: z.number().int().min(1).max(30).nullable().optional(),
-        keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
-        certificateId: z.string().uuid().optional(),
-        approvalPolicyId: z.string().uuid().optional(),
-        members: z
-          .array(
-            z.object({
-              kind: z.enum(["user", "identity", "group"]),
-              id: z.string().uuid(),
-              role: z.string().min(1)
+      body: z
+        .object({
+          projectId: z.string().trim().optional().describe(openApiHidden()),
+          name: slugSchema({ min: 1, max: 64, field: "name" }),
+          description: z.string().trim().max(256).optional(),
+          caId: z.string().uuid().optional(),
+          commonName: z.string().trim().min(1).max(256).optional(),
+          certificateTtlDays: z.number().int().min(1).max(3650).optional(),
+          certificateRenewBeforeDays: z.number().int().min(1).max(30).nullable().optional(),
+          keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
+          certificateId: z.string().uuid().optional(),
+          certificate: z
+            .object({
+              keySource: z.nativeEnum(CertKeySource).optional().default(CertKeySource.Infisical),
+              hsmConnectorId: z.string().uuid().optional()
             })
-          )
-          .optional(),
-        approvalPolicy: ApprovalPolicyBodySchema.optional()
-      }),
+            .optional(),
+          externalConfiguration: SignerExternalConfigurationSchema.optional(),
+          approvalPolicyId: z.string().uuid().optional(),
+          members: z
+            .array(
+              z.object({
+                kind: z.enum(["user", "identity", "group"]),
+                id: z.string().uuid(),
+                role: z.string().min(1)
+              })
+            )
+            .optional(),
+          approvalPolicy: ApprovalPolicyBodySchema.optional()
+        })
+        .superRefine((data, ctx) => {
+          if (data.certificate?.keySource !== CertKeySource.Hsm) return;
+          if (!data.certificate.hsmConnectorId) {
+            ctx.addIssue({
+              code: "custom",
+              message: `hsmConnectorId is required when keySource = '${CertKeySource.Hsm}'`,
+              path: ["certificate", "hsmConnectorId"]
+            });
+          }
+          if (!data.keyAlgorithm || !HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm)) {
+            ctx.addIssue({
+              code: "custom",
+              message: `keyAlgorithm must be one of ${HSM_SUPPORTED_KEY_ALGORITHMS.join(", ")} when keySource = '${CertKeySource.Hsm}'`,
+              path: ["keyAlgorithm"]
+            });
+          }
+        }),
       response: {
         200: PkiSignersSchema
       }
@@ -68,7 +121,10 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
             signerId: signer.id,
             name: signer.name,
             certificateId: signer.certificateId,
-            approvalPolicyId: signer.approvalPolicyId
+            approvalPolicyId: signer.approvalPolicyId,
+            keySource: req.body.certificate?.keySource,
+            hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            externalConfiguration: req.body.externalConfiguration
           }
         }
       });
@@ -155,16 +211,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       description: "Get a code signing signer by ID",
       params: SignerIdParamsSchema,
       response: {
-        200: PkiSignersSchema.extend({
-          certificateCommonName: z.string().nullable().optional(),
-          certificateSerialNumber: z.string().nullable().optional(),
-          certificateNotAfter: z.date().nullable().optional(),
-          certificateNotBefore: z.date().nullable().optional(),
-          certificateKeyAlgorithm: z.string().nullable().optional(),
-          certificateStatus: z.string().nullable().optional(),
-          certificateCaId: z.string().nullable().optional(),
-          approvalPolicyName: z.string().nullable().optional()
-        })
+        200: SignerWithCertificateResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -230,6 +277,34 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         actorOrgId: req.permission.orgId
       });
       return { data };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/issuance/check",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "checkSignerIssuance",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Poll the upstream CA for a pending signer's certificate immediately instead of waiting for the next scheduled check.",
+      params: SignerIdParamsSchema,
+      response: {
+        200: SignerWithCertificateResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const signer = await server.services.pkiSigner.checkIssuanceNow({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return signer;
     }
   });
 

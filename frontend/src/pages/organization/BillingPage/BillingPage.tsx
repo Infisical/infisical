@@ -3,12 +3,18 @@ import { useTranslation } from "react-i18next";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects, useServerConfig } from "@app/context";
 
+import { BillingV2Page } from "../BillingV2Page";
 import { BillingTabGroup } from "./components";
 
 export const BillingPage = () => {
   const { t } = useTranslation();
+  const { config } = useServerConfig();
+
+  if (config.licenseServerV2Enabled) {
+    return <BillingV2Page />;
+  }
 
   return (
     <div className="h-full bg-bunker-800">

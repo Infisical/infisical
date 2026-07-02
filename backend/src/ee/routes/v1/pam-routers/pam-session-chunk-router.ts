@@ -54,6 +54,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
             metadata: { sessionId: req.params.sessionId, chunkIndex: req.body.chunkIndex }
@@ -81,6 +82,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             orgId: req.permission.orgId,
+            projectId: req.internalPamProjectId,
             event: {
               type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
               metadata: { sessionId: req.params.sessionId, chunkIndex: req.body.chunkIndex }
@@ -123,6 +125,15 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const uploadToken = req.headers[GATEWAY_TOKEN_HEADER];
       if (typeof uploadToken !== "string" || !uploadToken) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
+            metadata: { sessionId: req.params.sessionId, chunkIndex: req.body.chunkIndex }
+          }
+        });
         throw new BadRequestError({
           message: `Missing ${GATEWAY_TOKEN_HEADER} header: required for chunk upload`
         });
@@ -137,22 +148,39 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         ciphertextBuf = Buffer.from(req.body.ciphertext, "base64");
       }
 
-      const result = await server.services.pamSessionChunk.recordChunk(
-        {
-          sessionId: req.params.sessionId,
-          chunkIndex: req.body.chunkIndex,
-          startElapsedMs: req.body.startElapsedMs,
-          endElapsedMs: req.body.endElapsedMs,
-          ciphertextSha256Base64: req.body.ciphertextSha256,
-          ciphertextBytes: req.body.ciphertextBytes,
-          ivBase64: req.body.iv,
-          keyframeObjectKey: req.body.keyframeObjectKey ?? undefined,
-          keyframeSizeBytes: req.body.keyframeSizeBytes ?? undefined,
-          ciphertext: ciphertextBuf,
-          uploadToken
-        },
-        req.permission
-      );
+      let result;
+      try {
+        result = await server.services.pamSessionChunk.recordChunk(
+          {
+            sessionId: req.params.sessionId,
+            chunkIndex: req.body.chunkIndex,
+            startElapsedMs: req.body.startElapsedMs,
+            endElapsedMs: req.body.endElapsedMs,
+            ciphertextSha256Base64: req.body.ciphertextSha256,
+            ciphertextBytes: req.body.ciphertextBytes,
+            ivBase64: req.body.iv,
+            keyframeObjectKey: req.body.keyframeObjectKey ?? undefined,
+            keyframeSizeBytes: req.body.keyframeSizeBytes ?? undefined,
+            ciphertext: ciphertextBuf,
+            uploadToken
+          },
+          req.permission
+        );
+      } catch (err) {
+        const msg = (err as Error)?.message ?? "";
+        if (msg.includes("Invalid upload token")) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: req.internalPamProjectId,
+            event: {
+              type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
+              metadata: { sessionId: req.params.sessionId, chunkIndex: req.body.chunkIndex }
+            }
+          });
+        }
+        throw err;
+      }
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -162,6 +190,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
           type: EventType.PAM_SESSION_CHUNK_UPLOAD,
           metadata: {
             sessionId: req.params.sessionId,
+            accountId: result.accountId ?? undefined,
             chunkIndex: req.body.chunkIndex,
             storageBackend: result.storageBackend,
             ciphertextBytes: req.body.ciphertextBytes
@@ -184,23 +213,18 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
       response: {
         200: z.object({
-          legacy: z.boolean(),
           sessionComplete: z.boolean(),
-          sessionKey: z.string().nullable(),
-          projectId: z.string().optional(),
-          storageBackend: z.string().optional(),
+          sessionKey: z.string(),
+          projectId: z.string(),
+          storageBackend: z.string(),
           chunks: z.array(ChunkPlaybackSchema)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.pamSessionChunk.getPlaybackBundle(req.params.sessionId, req.permission);
-      if (result.legacy) {
-        return { legacy: true, sessionComplete: result.sessionComplete, sessionKey: null, chunks: [] };
-      }
+      const result = await server.services.pamSessionChunk.getSessionPlayback(req.params.sessionId, req.permission);
       return {
-        legacy: false,
         sessionComplete: result.sessionComplete,
         sessionKey: result.sessionKey,
         projectId: result.projectId,
@@ -223,7 +247,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         chunkIndex: z.coerce.number().int().nonnegative().max(999999).describe("The chunk index to retrieve")
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       const { ciphertext } = await server.services.pamSessionChunk.getChunkCiphertext(
         req.params.sessionId,
@@ -250,7 +274,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async () => ({
       backends: Object.values(PamRecordingStorageBackend)
     })

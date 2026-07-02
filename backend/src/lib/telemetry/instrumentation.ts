@@ -32,9 +32,8 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "http.request.method",
   "http.route",
   "http.response.status_code",
-  // Tenant scope — bounded by org/project count
+  // Tenant scope — bounded by org count
   "infisical.organization.id",
-  "infisical.project.id",
   "infisical.environment",
   // Bounded enums
   "infisical.auth.method",
@@ -57,6 +56,9 @@ const INFISICAL_CORE_METER_ATTRIBUTES = [
   "db.pool.state",
   "cache.result",
   "rate_limit.bucket",
+  // License Server v2 dual-read comparison (bounded: feature key set + a small set of diff kinds)
+  "license.feature",
+  "license.dual_read.kind",
   // Build info gauge labels — single-value per deploy, no cardinality concern
   "service.version",
   "git.commit.sha",

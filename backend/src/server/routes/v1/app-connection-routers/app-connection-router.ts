@@ -66,6 +66,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  Cloud66ConnectionListItemSchema,
+  SanitizedCloud66ConnectionSchema
+} from "@app/services/app-connection/cloud-66";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -198,6 +202,10 @@ import {
   SanitizedTravisCIConnectionSchema,
   TravisCIConnectionListItemSchema
 } from "@app/services/app-connection/travis-ci";
+import {
+  SanitizedTriggerDevConnectionSchema,
+  TriggerDevConnectionListItemSchema
+} from "@app/services/app-connection/trigger-dev";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import {
   SanitizedVenafiTppConnectionSchema,
@@ -240,6 +248,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
+  ...SanitizedTriggerDevConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options,
   ...SanitizedBitbucketConnectionSchema.options,
@@ -247,6 +256,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedCircleCIConnectionSchema.options,
+  ...SanitizedCloud66ConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
@@ -312,6 +322,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
+  TriggerDevConnectionListItemSchema,
   GitLabConnectionListItemSchema,
   CloudflareConnectionListItemSchema,
   BitbucketConnectionListItemSchema,
@@ -319,6 +330,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
   CircleCIConnectionListItemSchema,
+  Cloud66ConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,

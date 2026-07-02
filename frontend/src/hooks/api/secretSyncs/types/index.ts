@@ -13,6 +13,7 @@ import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
 import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
+import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -40,6 +41,7 @@ import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TTravisCISync } from "./travis-ci-sync";
+import { TTriggerDevSync } from "./trigger-dev-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
@@ -96,7 +98,9 @@ export type TSecretSync =
   | TDevinSync
   | TOnaSync
   | TTravisCISync
-  | TSnowflakeSync;
+  | TSnowflakeSync
+  | TTriggerDevSync
+  | TCloud66Sync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

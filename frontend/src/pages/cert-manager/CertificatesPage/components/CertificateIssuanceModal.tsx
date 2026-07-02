@@ -300,6 +300,7 @@ export const CertificateIssuanceModal = ({
       const handleIssuanceResponse = (response: Awaited<ReturnType<typeof issueCertificate>>) => {
         if ("certificate" in response && response.certificate) {
           createNotification({ text: "Successfully created certificate", type: "success" });
+          resetAllState();
           handlePopUpToggle("issueCertificate", false);
           if (currentOrg?.id && currentProject?.id && response.certificate.certificateId) {
             navigate({
@@ -320,12 +321,14 @@ export const CertificateIssuanceModal = ({
             text: "Certificate request submitted successfully. Approval is required before the certificate can be issued.",
             type: "success"
           });
+          resetAllState();
           handlePopUpToggle("issueCertificate", false);
         } else {
           createNotification({
             text: `Certificate request submitted successfully. This may take a few minutes to process. Certificate Request ID: ${response.certificateRequestId}`,
             type: "success"
           });
+          resetAllState();
           handlePopUpToggle("issueCertificate", false);
         }
       };
@@ -481,7 +484,8 @@ export const CertificateIssuanceModal = ({
       constraints.templateRequiresCA,
       actualSelectedProfile?.defaults,
       handlePopUpToggle,
-      navigate
+      navigate,
+      resetAllState
     ]
   );
 

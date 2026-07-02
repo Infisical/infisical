@@ -13,6 +13,7 @@ import { registerBitbucketSyncRouter } from "./bitbucket-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCircleCISyncRouter } from "./circleci-sync-router";
+import { registerCloud66SyncRouter } from "./cloud66-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
@@ -39,6 +40,7 @@ import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerTravisCISyncRouter } from "./travis-ci-sync-router";
+import { registerTriggerDevSyncRouter } from "./trigger-dev-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
 import { registerWindmillSyncRouter } from "./windmill-sync-router";
 import { registerZabbixSyncRouter } from "./zabbix-sync-router";
@@ -66,6 +68,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Heroku]: registerHerokuSyncRouter,
   [SecretSync.Render]: registerRenderSyncRouter,
   [SecretSync.Flyio]: registerFlyioSyncRouter,
+  [SecretSync.TriggerDev]: registerTriggerDevSyncRouter,
   [SecretSync.GitLab]: registerGitLabSyncRouter,
   [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter,
   [SecretSync.CloudflareWorkers]: registerCloudflareWorkersSyncRouter,
@@ -87,5 +90,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Devin]: registerDevinSyncRouter,
   [SecretSync.Ona]: registerOnaSyncRouter,
   [SecretSync.TravisCI]: registerTravisCISyncRouter,
-  [SecretSync.Snowflake]: registerSnowflakeSyncRouter
+  [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
+  [SecretSync.Cloud66]: registerCloud66SyncRouter
 };

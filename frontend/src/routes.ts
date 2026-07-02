@@ -313,6 +313,7 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       route("/$policyId", "cert-manager/CertificatePolicyDetailsByIDPage/route.tsx")
     ]),
     route("/certificates/$certificateId", "cert-manager/CertificateDetailsByIDPage/route.tsx"),
+    route("/hsm-connectors/$connectorId", "cert-manager/HsmConnectorDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/integrations", [
       index("cert-manager/IntegrationsListPage/route.tsx"),
@@ -396,6 +397,8 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
 const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
     route("/access", [index("pam/PamAccessPage/route.tsx")]),
+    route("/accounts", "pam/PamAccountsPage/route.tsx"),
+    route("/templates", "pam/PamTemplatesPage/route.tsx"),
     route("/sessions", "pam/PamSessionsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
 
@@ -420,10 +423,20 @@ const organizationRoutes = route("/organizations/$orgId", [
     index("organization/KmipServersPage/route.tsx"),
     route("/$kmipServerId", "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx")
   ]),
+  route("/projects/secret-management/secret-sharing", [
+    index("organization/SecretSharingPage/route.tsx")
+  ]),
+  route("/projects/secret-management/product-settings", [
+    index("organization/ProductSettingsPage/SecretsManagement/route.tsx"),
+    route(
+      "/project-templates/$templateId",
+      "organization/ProductSettingsPage/SecretsManagement/project-templates/route.tsx"
+    )
+  ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
-  route("/secret-sharing", [index("organization/SecretSharingPage/route.tsx")]),
+  route("/secret-sharing", "organization/SecretSharingPage/SecretSharingRedirectRoute.tsx"),
   route("/settings", [
     index("organization/SettingsPage/route.tsx"),
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
@@ -432,6 +445,9 @@ const organizationRoutes = route("/organizations/$orgId", [
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
   route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
   route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
+  route("/integrations", "organization/IntegrationsPage/route.tsx"),
+  route("/sso", "organization/SsoPage/route.tsx"),
+  route("/oauth-applications", "organization/OauthApplicationsPage/route.tsx"),
   route("/app-connections", [
     index("organization/AppConnections/AppConnectionsPage/route.tsx"),
     route(

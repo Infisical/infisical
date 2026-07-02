@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -78,7 +79,8 @@ export const checkAccountAccess = async (
       ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
       return;
     } catch (err) {
-      if (!(err instanceof ForbiddenError)) throw err;
+      // No folder access: fall back to direct account access
+      if (!(err instanceof ForbiddenError) && !(err instanceof ForbiddenRequestError)) throw err;
     }
   }
 

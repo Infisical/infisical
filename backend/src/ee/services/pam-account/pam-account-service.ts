@@ -29,12 +29,20 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
-import { validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
+import {
+  mintCorsProbeUrl,
+  resolveOverridesS3Config,
+  validateGatewayAttachment,
+  validateRecordingConnection
+} from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  getAccountAccessibilityIssues,
+  isCredentialConfigured,
   parseInternalMetadata,
+  sanitizeCredentials,
   type TSshInternalMetadata,
   validateConnectionDetails,
   validateCredentials
@@ -61,7 +69,7 @@ type TPamAccountServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -88,6 +96,22 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await getProjectCipher(projectId);
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
+  };
+
+  const computeAccessibility = (a: {
+    accountType: string;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    recordingConnectionId?: string | null;
+    templateGatewayId: string | null;
+    templateGatewayPoolId: string | null;
+    templateRecordingConnectionId: string | null;
+    settingsOverrides?: unknown;
+    templateSettings: unknown;
+    credentialConfigured: boolean;
+  }) => {
+    const accessibilityIssues = getAccountAccessibilityIssues(a);
+    return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
   };
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
@@ -127,6 +151,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayId: a.gatewayId,
       gatewayPoolId: a.gatewayPoolId,
       recordingConnectionId: a.recordingConnectionId,
+      ...computeAccessibility(a),
       createdAt: a.createdAt,
       updatedAt: a.updatedAt
     }));
@@ -149,6 +174,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const credentials = sanitizeCredentials(
+      account.accountType as PamAccountType,
+      await decrypt(projectId, account.encryptedCredentials)
+    );
 
     return {
       id: account.id,
@@ -158,14 +187,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       folderName: account.folderName,
       templateId: account.templateId,
       templateName: account.templateName,
-      templateAccessPolicy: account.templateAccessPolicy,
+      templatePolicies: account.templatePolicies,
       templateSettings: account.templateSettings,
       accountType: account.accountType,
       projectId: account.projectId,
       gatewayId: account.gatewayId,
       gatewayPoolId: account.gatewayPoolId,
       recordingConnectionId: account.recordingConnectionId,
+      settingsOverrides: account.settingsOverrides ?? null,
       connectionDetails,
+      credentials,
+      ...computeAccessibility(account),
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };
@@ -183,6 +215,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
+    settingsOverrides,
     ...ctx
   }: TCreatePamAccountDTO & TActorContext) => {
     const { permission } = await checkFolder(folderId, projectId, ctx);
@@ -209,6 +242,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
+    const resolvedS3Config = await resolveOverridesS3Config(
+      deps,
+      settingsOverrides,
+      recordingConnectionId ?? template.recordingConnectionId,
+      ctx
+    );
+
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
 
@@ -224,10 +264,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         templateId,
         encryptedConnectionDetails,
         encryptedCredentials,
+        credentialConfigured: isCredentialConfigured(accountType, validatedCredentials),
         gatewayId,
         gatewayPoolId,
-        recordingConnectionId
+        recordingConnectionId,
+        settingsOverrides: settingsOverrides ?? null
       });
+
+      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
 
       return {
         id: account.id,
@@ -239,12 +283,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         gatewayId: account.gatewayId,
         gatewayPoolId: account.gatewayPoolId,
         recordingConnectionId: account.recordingConnectionId,
+        settingsOverrides: account.settingsOverrides ?? null,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt,
         accountType,
         folderName: folder.name,
         templateName: template.name,
-        connectionDetails: validatedConnectionDetails
+        connectionDetails: validatedConnectionDetails,
+        corsProbeUrl
       };
     } catch (err) {
       if (err instanceof DatabaseError) {
@@ -275,6 +321,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
+    settingsOverrides,
     ...ctx
   }: TUpdatePamAccountDTO & TActorContext) => {
     const existing = await pamAccountDAL.findByIdWithDetails(accountId);
@@ -312,6 +359,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
+    const resolvedS3Config = await resolveOverridesS3Config(
+      deps,
+      settingsOverrides,
+      (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
+        existing.templateRecordingConnectionId,
+      ctx
+    );
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -320,6 +375,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
+    if (settingsOverrides !== undefined) updateData.settingsOverrides = settingsOverrides;
 
     if (connectionDetails) {
       const validated = validateConnectionDetails(accountType, connectionDetails);
@@ -327,12 +383,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     if (credentials) {
-      const validated = validateCredentials(accountType, credentials);
+      const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
+      const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
       updateData.encryptedCredentials = await encrypt(projectId, validated);
+      updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
     }
 
     try {
-      return await pamAccountDAL.updateById(accountId, updateData);
+      const account = await pamAccountDAL.updateById(accountId, updateData);
+      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      return { ...account, corsProbeUrl };
     } catch (err) {
       if (err instanceof DatabaseError) {
         const code = (err.error as { code?: string })?.code;
@@ -403,12 +463,23 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
     if (folderIds.length === 0 && accountIds.length === 0) return { accounts: [], totalCount: 0 };
 
+    const launchScopes = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      { allOf: [ResourcePermissionPamResourceActions.LaunchSessions] },
+      ctx
+    );
+    const launchFolderIds = new Set(launchScopes.folderIds);
+    const launchAccountIds = new Set(launchScopes.accountIds);
+
     const { accounts, totalCount } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
       offset,
       limit,
       search,
       folderId,
-      accountType
+      accountType,
+      onlyAccessible: true
     });
 
     return {
@@ -422,6 +493,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         templateName: a.templateName,
         accountType: a.accountType,
         projectId: a.projectId,
+        canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
       })),

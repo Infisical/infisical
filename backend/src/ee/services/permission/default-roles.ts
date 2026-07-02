@@ -17,6 +17,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
+  ProjectPermissionHsmConnectorActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
@@ -276,6 +277,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
       ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.Rotate,
       ProjectPermissionCmekActions.ExportPrivateKey
     ],
     ProjectPermissionSub.Cmek
@@ -397,6 +399,18 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionAppConnectionActions.RotateCredentials
     ],
     ProjectPermissionSub.AppConnections
+  );
+
+  can(
+    [
+      ProjectPermissionHsmConnectorActions.Read,
+      ProjectPermissionHsmConnectorActions.Create,
+      ProjectPermissionHsmConnectorActions.Edit,
+      ProjectPermissionHsmConnectorActions.Delete,
+      ProjectPermissionHsmConnectorActions.Test,
+      ProjectPermissionHsmConnectorActions.Attach
+    ],
+    ProjectPermissionSub.HsmConnectors
   );
 
   can(
@@ -596,7 +610,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Encrypt,
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
+      ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.Rotate
     ],
     ProjectPermissionSub.Cmek
   );
@@ -642,6 +657,11 @@ const buildMemberPermissionRules = () => {
   );
 
   can(ProjectPermissionAppConnectionActions.Connect, ProjectPermissionSub.AppConnections);
+
+  can(
+    [ProjectPermissionHsmConnectorActions.Read, ProjectPermissionHsmConnectorActions.Test],
+    ProjectPermissionSub.HsmConnectors
+  );
 
   can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);

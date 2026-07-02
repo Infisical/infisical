@@ -2,7 +2,8 @@ import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
-import { SignerStatus, SigningOperationStatus } from "./signer-enums";
+import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
 
@@ -17,6 +18,16 @@ export type TCreateSignerApprovalPolicyInput = {
   constraints?: TSignerPolicyConstraints;
 };
 
+export type TSignerCertificateInput = {
+  keySource?: CertKeySource;
+  hsmConnectorId?: string;
+};
+
+export type TSignerExternalConfigurationInput = {
+  caType: CaType.DIGICERT;
+  reissueFromExternalOrderId?: string;
+};
+
 export type TCreateSignerDTO = {
   name: string;
   description?: string;
@@ -29,6 +40,8 @@ export type TCreateSignerDTO = {
   approvalPolicyId?: string;
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
+  certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfigurationInput;
 } & TProjectPermission;
 
 export type TUpdateSignerDTO = {
@@ -89,6 +102,9 @@ export type TReissueCertificateDTO = {
   caId: string;
   commonName?: string;
   certificateTtlDays?: number;
+  keyAlgorithm?: CertKeyAlgorithm;
+  certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfigurationInput;
 } & TActorPermission;
 
 export type TExportCertificateDTO = {

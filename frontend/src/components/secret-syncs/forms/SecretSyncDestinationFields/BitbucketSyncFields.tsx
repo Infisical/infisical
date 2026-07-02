@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
@@ -10,6 +11,7 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
+import { useDebounce } from "@app/hooks";
 import {
   TBitbucketEnvironment,
   TBitbucketRepo,
@@ -27,19 +29,28 @@ export const BitbucketSyncFields = () => {
     TSecretSyncForm & { destination: SecretSync.Bitbucket }
   >();
 
+  const [workspaceSearch, setWorkspaceSearch] = useState("");
+  const [debouncedWorkspaceSearch] = useDebounce(workspaceSearch, 300);
+  const [repoSearch, setRepoSearch] = useState("");
+  const [debouncedRepoSearch] = useDebounce(repoSearch, 300);
   const connectionId = useWatch({ name: "connection.id", control });
   const workspace = useWatch({ name: "destinationConfig.workspaceSlug", control });
   const repository = useWatch({ name: "destinationConfig.repositorySlug", control });
 
   const { data: workspaces = [], isPending: isWorkspacesLoading } =
-    useBitbucketConnectionListWorkspaces(connectionId, {
+    useBitbucketConnectionListWorkspaces(connectionId, debouncedWorkspaceSearch || undefined, {
       enabled: Boolean(connectionId)
     });
 
   const { data: repositories = [], isPending: isRepositoriesLoading } =
-    useBitbucketConnectionListRepositories(connectionId, workspace ?? "", {
-      enabled: Boolean(connectionId) && Boolean(workspace)
-    });
+    useBitbucketConnectionListRepositories(
+      connectionId,
+      workspace ?? "",
+      debouncedRepoSearch || undefined,
+      {
+        enabled: Boolean(connectionId) && Boolean(workspace)
+      }
+    );
 
   const { data: environments = [], isPending: isEnvironmentsLoading } =
     useBitbucketConnectionListEnvironments(connectionId, workspace ?? "", repository ?? "", {
@@ -73,10 +84,15 @@ export const BitbucketSyncFields = () => {
                   setValue("destinationConfig.repositorySlug", "");
                   setValue("destinationConfig.environmentId", "");
                 }}
+                onInputChange={(newValue) => setWorkspaceSearch(newValue)}
+                filterOption={null}
                 options={workspaces}
-                placeholder="Select workspace..."
+                placeholder="Search for a workspace..."
                 getOptionLabel={(option) => option.slug}
                 getOptionValue={(option) => option.slug}
+                noOptionsMessage={({ inputValue }) =>
+                  inputValue ? "No workspaces found matching your search." : "No workspaces found."
+                }
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -100,10 +116,17 @@ export const BitbucketSyncFields = () => {
                   onChange(v?.slug ?? "");
                   setValue("destinationConfig.environmentId", "");
                 }}
+                onInputChange={(newValue) => setRepoSearch(newValue)}
+                filterOption={null}
                 options={repositories}
-                placeholder="Select repository..."
+                placeholder="Search for a repository..."
                 getOptionLabel={(option) => option.full_name}
                 getOptionValue={(option) => option.slug}
+                noOptionsMessage={({ inputValue }) =>
+                  inputValue
+                    ? "No repositories found matching your search."
+                    : "No repositories found."
+                }
               />
               <FieldError errors={[error]} />
             </FieldContent>

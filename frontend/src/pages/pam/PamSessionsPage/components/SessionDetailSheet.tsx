@@ -1,42 +1,53 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
+  AlertTriangleIcon,
+  Ban,
   ChevronRightIcon,
   ClipboardListIcon,
-  SearchIcon,
-  SquareIcon,
-  TerminalIcon
+  MonitorPlayIcon,
+  MoreHorizontalIcon,
+  SearchIcon
 } from "lucide-react";
 
+import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Badge,
-  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Sheet,
-  SheetContent,
-  Skeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
+  Skeleton
 } from "@app/components/v3";
 import {
-  PAM_ACCOUNT_TYPE_MAP,
   PamAccountType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
-  useGetPamSessionLogs
+  useGetPamSessionById,
+  usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
+import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback/queries";
+import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback/types";
 import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
 
+import { LiveDot } from "../../components/LiveDot";
+import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
 
+const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
+
 type Props = {
-  session: TPamSession | null;
+  sessionId?: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onTerminate: (session: TPamSession) => void;
@@ -47,7 +58,12 @@ const getLogText = (log: TPamSessionLog): string => {
     return [log.input, log.output].filter(Boolean).join(" ");
   }
   if ("data" in log) {
-    return log.data;
+    try {
+      const bytes = Uint8Array.from(atob(log.data), (c) => c.charCodeAt(0));
+      return new TextDecoder("utf-8").decode(bytes);
+    } catch {
+      return log.data;
+    }
   }
   if ("method" in log) {
     return `${log.method} ${log.url}`;
@@ -65,13 +81,13 @@ const isDestructiveQuery = (text: string): boolean => {
   return DESTRUCTIVE_PREFIXES.some((prefix) => upper.startsWith(prefix));
 };
 
-const LogEntry = ({ log }: { log: TPamSessionLog }) => {
+const LogEntry = ({ log, highlight }: { log: TPamSessionLog; highlight: string }) => {
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   const text = getLogText(log);
 
   const textRef = useCallback(
-    (node: HTMLParagraphElement | null) => {
+    (node: HTMLElement | null) => {
       if (node && !expanded) {
         setOverflows(node.scrollWidth > node.clientWidth);
       }
@@ -82,57 +98,68 @@ const LogEntry = ({ log }: { log: TPamSessionLog }) => {
   if (!text) return null;
 
   const destructive = isDestructiveQuery(text);
-  const toggleExpand = overflows ? () => setExpanded((prev) => !prev) : undefined;
+  const expandable = overflows || expanded;
 
-  const content = (
+  const body = (
     <>
-      <p className="mb-1 text-xs text-muted">
-        {format(new Date(log.timestamp), "M/d/yyyy, h:mm:ss a")}
-      </p>
-      <div className="flex items-start gap-1.5">
-        {overflows && (
+      <div className="mb-1 flex items-center gap-2">
+        <span className="font-mono text-[11px] tracking-tight text-muted">
+          {format(new Date(log.timestamp), "MMM d, h:mm:ss a")}
+        </span>
+        {destructive && (
+          <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
+            <AlertTriangleIcon className="size-3" />
+            Destructive
+          </span>
+        )}
+      </div>
+      <div className="flex items-start gap-2">
+        {expandable && (
           <ChevronRightIcon
             className={`mt-0.5 size-3.5 shrink-0 text-muted transition-transform ${expanded ? "rotate-90" : ""}`}
           />
         )}
-        <p
+        <code
           ref={textRef}
-          className={`font-mono text-xs ${expanded ? "break-all whitespace-pre-wrap" : "truncate"} ${destructive ? "text-red-400" : ""}`}
+          className={`min-w-0 flex-1 font-mono text-xs leading-relaxed ${
+            expanded ? "break-all whitespace-pre-wrap" : "truncate"
+          } ${destructive ? "text-danger" : "text-foreground"}`}
         >
-          {text}
-        </p>
+          <HighlightText text={text} highlight={highlight} />
+        </code>
       </div>
     </>
   );
 
-  if (overflows) {
+  const rowClass = `border-b border-border px-4 py-2.5 transition-colors last:border-b-0 ${
+    destructive ? "bg-danger/5" : ""
+  }`;
+
+  if (expandable) {
     return (
       <button
         type="button"
-        className="w-full cursor-pointer border-b border-border px-4 py-3 text-left transition-colors hover:bg-white/[0.06]"
-        onClick={toggleExpand}
+        className={`block w-full cursor-pointer text-left hover:bg-container-hover ${rowClass}`}
+        onClick={() => setExpanded((prev) => !prev)}
       >
-        {content}
+        {body}
       </button>
     );
   }
 
-  return <div className="border-b border-border px-4 py-3">{content}</div>;
+  return <div className={rowClass}>{body}</div>;
 };
 
-const InfoRow = ({ label, value }: { label: string; value: string | null | undefined }) => (
-  <div>
-    <p className="text-xs font-medium tracking-wider text-muted uppercase">{label}</p>
-    <p className="mt-0.5 text-sm">{value || "-"}</p>
-  </div>
-);
-
-export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate }: Props) => {
+export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminate }: Props) => {
+  const { map: accountTypeMap } = usePamAccountTypeMap();
   const [logSearch, setLogSearch] = useState("");
 
   useEffect(() => {
     setLogSearch("");
-  }, [session?.id]);
+  }, [sessionId]);
+
+  const { data: session, isLoading } = useGetPamSessionById(sessionId ?? "");
+  const isActive = session?.status === PamSessionStatus.Active;
 
   const { data: accountPerm } = usePamAccountPermission(session?.accountId ?? "");
   const canTerminate = accountPerm?.permission.can(
@@ -141,123 +168,191 @@ export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate 
   );
 
   const {
-    logs,
-    isLoading: isLogsLoading,
-    hasMore,
-    loadMore,
-    isLoadingMore
-  } = useGetPamSessionLogs(
-    session?.id ?? "",
-    session?.status === PamSessionStatus.Active,
-    isOpen && !!session
-  );
+    events,
+    loading: isLogsLoading,
+    error: logsError
+  } = useDecryptedSessionLogs(sessionId ?? "", isOpen && !!sessionId, isActive);
 
-  const filteredLogs = useMemo(() => {
-    if (!logSearch.trim()) return logs;
+  const filteredEvents = useMemo(() => {
     const term = logSearch.trim().toLowerCase();
-    return logs.filter((log) => getLogText(log).toLowerCase().includes(term));
-  }, [logs, logSearch]);
+    if (!term) return events;
+    return events.filter(
+      (event) =>
+        !isBrokenChunkMarker(event) &&
+        getLogText(event as TPamSessionLog)
+          .toLowerCase()
+          .includes(term)
+    );
+  }, [events, logSearch]);
 
-  if (!session) return null;
+  if (!session) {
+    return <PamDetailSheet isOpen={isOpen} onOpenChange={onOpenChange} isLoading={isLoading} />;
+  }
 
   const statusConfig = STATUS_BADGE[session.status];
-  const accountTypeDetails =
-    session.accountType && PAM_ACCOUNT_TYPE_MAP[session.accountType as PamAccountType];
-  const shortId = session.id.slice(0, 8);
+  const typeName = accountTypeMap[session.accountType]?.name ?? session.accountType;
 
-  const handleTerminate = () => {
-    onTerminate(session);
-  };
+  const emptyValue = <span className="text-muted">—</span>;
+  const duration = formatDuration(session);
 
-  return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col gap-0 p-0 sm:max-w-5xl">
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border p-6">
-            <div className="flex size-12 items-center justify-center rounded-md bg-bunker-700">
-              {accountTypeDetails ? (
-                <img
-                  src={`/images/integrations/${accountTypeDetails.image}`}
-                  alt={accountTypeDetails.name}
-                  className="size-7 rounded-sm"
-                />
-              ) : (
-                <TerminalIcon className="size-6 text-muted" />
-              )}
-            </div>
+  const metadata: { label: string; value: ReactNode }[] = [
+    {
+      label: "Status",
+      value: (
+        <Badge variant={statusConfig.variant}>
+          {isActive && <LiveDot />}
+          {capitalize(session.status)}
+        </Badge>
+      )
+    },
+    { label: "Email", value: session.actorEmail },
+    { label: "Folder", value: session.folderName || emptyValue },
+    {
+      label: "Started",
+      value: session.startedAt
+        ? format(new Date(session.startedAt), "MMM d, yyyy h:mm a")
+        : emptyValue
+    },
+    {
+      label: "Ended",
+      value: session.endedAt ? format(new Date(session.endedAt), "MMM d, yyyy h:mm a") : "Ongoing"
+    },
+    { label: "Duration", value: duration === "—" ? emptyValue : duration },
+    { label: "IP Address", value: session.actorIp },
+    ...(session.reason ? [{ label: "Reason", value: session.reason }] : [])
+  ];
 
-            <div className="flex flex-col gap-2">
-              <div>
-                <h3 className="text-base font-semibold">
-                  Session · <span className="font-mono">{shortId}</span>
-                </h3>
-                <p className="text-xs text-muted">{session.actorName}</p>
-              </div>
-              <Badge variant={statusConfig.variant}>
-                {session.status === PamSessionStatus.Active && (
-                  <span className="mr-1.5 inline-block size-1.5 rounded-full bg-product-pam" />
-                )}
-                {capitalize(session.status)}
-              </Badge>
-            </div>
+  const actions =
+    isActive && canTerminate ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton variant="ghost" size="xs" aria-label="Session actions" className="text-muted">
+            <MoreHorizontalIcon className="size-4" />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem variant="danger" onClick={() => onTerminate(session)}>
+            <Ban />
+            Terminate Session
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : undefined;
 
-            <div className="flex flex-col gap-4 border-t border-border pt-4">
-              <InfoRow
-                label="Account"
-                value={
-                  accountTypeDetails
-                    ? `${session.accountName} (${accountTypeDetails.name})`
-                    : session.accountName
-                }
-              />
-              <InfoRow label="Folder" value={session.folderName} />
-              <InfoRow label="Host" value={session.selectedHost ?? session.resourceName} />
-              <InfoRow
-                label="Started"
-                value={
-                  session.startedAt
-                    ? format(new Date(session.startedAt), "MMM d, yyyy HH:mm:ss")
-                    : null
-                }
-              />
-              <InfoRow
-                label="Ended"
-                value={
-                  session.endedAt
-                    ? format(new Date(session.endedAt), "MMM d, yyyy HH:mm:ss")
-                    : "Ongoing"
-                }
-              />
-              <InfoRow label="Duration" value={formatDuration(session)} />
-              <InfoRow label="IP Address" value={session.actorIp} />
-              {session.reason && <InfoRow label="Reason" value={session.reason} />}
-              {session.status === PamSessionStatus.Active && canTerminate && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="mt-2 w-full"
-                  onClick={handleTerminate}
-                >
-                  <SquareIcon className="mr-1.5 size-3.5" />
-                  Terminate session
-                </Button>
-              )}
-            </div>
-          </div>
+  const showLogSkeleton = isLogsLoading && filteredEvents.length === 0;
 
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <Tabs defaultValue="logs" className="flex flex-1 flex-col overflow-hidden">
-              <TabsList variant="pam" className="border-b border-border px-4 pt-4">
-                <TabsTrigger value="logs">
-                  <ClipboardListIcon className="mr-1.5 size-3.5" />
-                  Session Logs
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent
-                value="logs"
-                className="flex flex-1 flex-col overflow-hidden p-4 data-[state=active]:mt-0"
+  let logContent: ReactNode;
+  if (logsError) {
+    logContent = (
+      <div className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+        <AlertTriangleIcon className="size-6 text-danger" />
+        <p className="text-sm text-muted">Failed to load session logs.</p>
+      </div>
+    );
+  } else if (showLogSkeleton) {
+    logContent = (
+      <div className="flex flex-col gap-2 p-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={`log-skeleton-${i + 1}`} className="h-4 w-full" />
+        ))}
+      </div>
+    );
+  } else if (filteredEvents.length === 0) {
+    logContent = (
+      <div className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+        <ClipboardListIcon className="size-6 text-muted" />
+        <p className="text-sm text-muted">
+          {logSearch ? "No logs match your search" : "No logs recorded for this session"}
+        </p>
+      </div>
+    );
+  } else {
+    logContent = (
+      <div>
+        {filteredEvents.map((event, i) => {
+          if (isBrokenChunkMarker(event)) {
+            return (
+              <div
+                key={`broken-chunk-${event.chunkIndex}`}
+                className="flex items-center gap-2 border-b border-border bg-warning/5 px-4 py-2 text-xs text-warning last:border-b-0"
               >
-                <div className="mb-3">
+                <AlertTriangleIcon className="size-3.5 shrink-0" />
+                <span>{event.message}</span>
+              </div>
+            );
+          }
+
+          const log = event as TPamSessionLog;
+          return <LogEntry key={`log-${log.timestamp}-${i + 1}`} log={log} highlight={logSearch} />;
+        })}
+      </div>
+    );
+  }
+
+  const isRdpSession =
+    session.accountType === PamAccountType.Windows ||
+    session.accountType === PamAccountType.WindowsAd;
+
+  const tabs = isRdpSession
+    ? [
+        {
+          value: "recording",
+          label: "Session Recording",
+          icon: <MonitorPlayIcon className="mr-1.5 size-4" />,
+          content: (
+            <div className="flex flex-1 flex-col gap-4 p-4">
+              <Card>
+                <CardHeader className="flex items-center justify-between border-b">
+                  <CardTitle className="text-base">Session Recording</CardTitle>
+                  {isActive && (
+                    <Badge variant="pam">
+                      <LiveDot className="bg-product-pam" />
+                      Live
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {showLogSkeleton ? (
+                    <div className="flex flex-col gap-2 p-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={`rec-skeleton-${i + 1}`} className="h-4 w-full" />
+                      ))}
+                    </div>
+                  ) : (
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center p-10 text-sm text-muted">
+                          Loading player...
+                        </div>
+                      }
+                    >
+                      <RdpReplayView events={filteredEvents} isStreaming={isActive} />
+                    </Suspense>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )
+        }
+      ]
+    : [
+        {
+          value: "logs",
+          label: "Session Logs",
+          icon: <ClipboardListIcon className="mr-1.5 size-4" />,
+          content: (
+            <div className="flex flex-1 flex-col gap-4 p-4">
+              <Card>
+                <CardHeader className="flex items-center justify-between border-b">
+                  <CardTitle className="text-base">Session Logs</CardTitle>
+                  {isActive && (
+                    <Badge variant="pam">
+                      <LiveDot className="bg-product-pam" />
+                      Live
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
                   <InputGroup>
                     <InputGroupAddon>
                       <SearchIcon />
@@ -268,48 +363,27 @@ export const SessionDetailSheet = ({ session, isOpen, onOpenChange, onTerminate 
                       placeholder="Search logs..."
                     />
                   </InputGroup>
-                </div>
+                  <div className="overflow-hidden rounded-md border border-border bg-popover">
+                    {logContent}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )
+        }
+      ];
 
-                <div className="flex-1 overflow-y-auto rounded-md border border-border bg-bunker-800">
-                  {isLogsLoading && (
-                    <div className="flex flex-col gap-2 p-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Skeleton key={`log-skeleton-${i + 1}`} className="h-4 w-full" />
-                      ))}
-                    </div>
-                  )}
-                  {!isLogsLoading && filteredLogs.length === 0 && (
-                    <div className="flex items-center justify-center p-8 text-sm text-muted">
-                      {logSearch
-                        ? "No logs match your search"
-                        : "No logs recorded for this session"}
-                    </div>
-                  )}
-                  {!isLogsLoading && filteredLogs.length > 0 && (
-                    <div>
-                      {filteredLogs.map((log, i) => (
-                        <LogEntry key={`log-${log.timestamp}-${i + 1}`} log={log} />
-                      ))}
-                      {hasMore && (
-                        <div className="flex justify-center p-3">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            isPending={isLoadingMore}
-                            onClick={loadMore}
-                          >
-                            Load more
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+  return (
+    <PamDetailSheet
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      accountType={session.accountType}
+      title={session.accountName}
+      subtitle={session.actorName}
+      typeBadge={typeName}
+      actions={actions}
+      metadata={metadata}
+      tabs={tabs}
+    />
   );
 };

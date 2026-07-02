@@ -30,6 +30,7 @@ import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
+import { Cloud66SyncListItemSchema, Cloud66SyncSchema } from "@app/services/secret-sync/cloud66";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
@@ -68,6 +69,7 @@ import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/se
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
 import { TravisCISyncListItemSchema, TravisCISyncSchema } from "@app/services/secret-sync/travis-ci";
+import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/services/secret-sync/trigger-dev";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
@@ -93,6 +95,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   HerokuSyncSchema,
   RenderSyncSchema,
   FlyioSyncSchema,
+  TriggerDevSyncSchema,
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
@@ -114,7 +117,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   DevinSyncSchema,
   OnaSyncSchema,
   TravisCISyncSchema,
-  SnowflakeSyncSchema
+  SnowflakeSyncSchema,
+  Cloud66SyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -138,6 +142,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   HerokuSyncListItemSchema,
   RenderSyncListItemSchema,
   FlyioSyncListItemSchema,
+  TriggerDevSyncListItemSchema,
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
@@ -159,7 +164,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
-  SnowflakeSyncListItemSchema
+  SnowflakeSyncListItemSchema,
+  Cloud66SyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

@@ -24,6 +24,32 @@ type RateLimits struct {
 	SecretsLimit int `json:"secretsLimit"`
 }
 
+// IntOrBool handles JSON fields that can be either an integer or a boolean.
+// When the value is true, it unmarshals as 1. When false or missing, it unmarshals as 0.
+// auditLogsRetentionDays returns the number of days to retain audit logs or sometimes as true
+type IntOrBool int
+
+func (i *IntOrBool) UnmarshalJSON(data []byte) error {
+	var intVal int
+	if err := json.Unmarshal(data, &intVal); err == nil {
+		*i = IntOrBool(intVal)
+		return nil
+	}
+
+	var boolVal bool
+	if err := json.Unmarshal(data, &boolVal); err == nil {
+		if boolVal {
+			*i = 1
+		} else {
+			*i = 0
+		}
+		return nil
+	}
+
+	*i = 0
+	return nil
+}
+
 type FeatureSet struct {
 	ID                           *string    `json:"_id"`
 	Slug                         *string    `json:"slug"`
@@ -44,7 +70,7 @@ type FeatureSet struct {
 	CustomRateLimits             bool       `json:"customRateLimits"`
 	CustomAlerts                 bool       `json:"customAlerts"`
 	AuditLogs                    bool       `json:"auditLogs"`
-	AuditLogsRetentionDays       int        `json:"auditLogsRetentionDays"`
+	AuditLogsRetentionDays       IntOrBool  `json:"auditLogsRetentionDays"`
 	AuditLogStreams              bool       `json:"auditLogStreams"`
 	AuditLogStreamLimit          int        `json:"auditLogStreamLimit"`
 	GithubOrgSync                bool       `json:"githubOrgSync"`
@@ -58,8 +84,6 @@ type FeatureSet struct {
 	Groups                       bool       `json:"groups"`
 	SubOrganization              bool       `json:"subOrganization"`
 	Status                       *string    `json:"status"`
-	TrialEnd                     *string    `json:"trial_end"`
-	HasUsedTrial                 bool       `json:"has_used_trial"`
 	SecretApproval               bool       `json:"secretApproval"`
 	SecretRotation               bool       `json:"secretRotation"`
 	CaCrl                        bool       `json:"caCrl"`
@@ -88,10 +112,9 @@ func DefaultFeatures() FeatureSet {
 	return FeatureSet{
 		Tier:                   -1,
 		SecretVersioning:       true,
-		HasUsedTrial:           true,
 		AuditLogStreamLimit:    3,
-		AuditLogs:              true,
-		AuditLogsRetentionDays: 1,
+		AuditLogs:              false,
+		AuditLogsRetentionDays: 0,
 		RateLimits: RateLimits{
 			ReadLimit:    60,
 			WriteLimit:   200,

@@ -1,10 +1,12 @@
+import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -20,6 +22,8 @@ enum TabSection {
 
 export const SecretApprovalsPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
   const projectSlug = currentProject?.slug || "";
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
@@ -38,6 +42,39 @@ export const SecretApprovalsPage = () => {
 
   const selectedTab = searchTab || defaultTab;
 
+  // The default tab is derived from live request counts. Pin it into the URL
+  // once both counts have loaded so the active tab stops tracking the counts.
+  // Otherwise closing a request changes the counts and silently flips the
+  // visible tab (e.g. Change Requests to Access Requests). See PLATFOR-489.
+  useEffect(() => {
+    if (searchTab || !secretApprovalReqCount || !accessApprovalRequestCount) return;
+
+    navigate({
+      to: "/organizations/$orgId/projects/secret-management/$projectId/approval",
+      params: { orgId: currentOrg.id, projectId },
+      search: (prev) => ({ ...prev, selectedTab: defaultTab }),
+      replace: true
+    });
+  }, [
+    searchTab,
+    secretApprovalReqCount,
+    accessApprovalRequestCount,
+    defaultTab,
+    navigate,
+    currentOrg.id,
+    projectId
+  ]);
+
+  const updateSelectedTab = (tab: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/secret-management/$projectId/approval",
+      params: { orgId: currentOrg.id, projectId },
+      // Clear any open request detail when switching tabs so returning to
+      // Change Requests does not reopen a stale requestId.
+      search: { selectedTab: tab, requestId: "" }
+    });
+  };
+
   return (
     <div>
       <Helmet>
@@ -51,7 +88,28 @@ export const SecretApprovalsPage = () => {
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
         />
-        <Tabs orientation="vertical" value={selectedTab}>
+        <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+          <TabList>
+            <Tab variant="project" value={TabSection.SecretApprovalRequests}>
+              Change Requests
+              {Boolean(secretApprovalReqCount?.open) && (
+                <Badge variant="warning" className="ml-2">
+                  {secretApprovalReqCount?.open}
+                </Badge>
+              )}
+            </Tab>
+            <Tab variant="project" value={TabSection.ResourceApprovalRequests}>
+              Access Requests
+              {Boolean(accessApprovalRequestCount?.pendingCount) && (
+                <Badge variant="warning" className="ml-2">
+                  {accessApprovalRequestCount?.pendingCount}
+                </Badge>
+              )}
+            </Tab>
+            <Tab variant="project" value={TabSection.Policies}>
+              Policies
+            </Tab>
+          </TabList>
           <TabPanel value={TabSection.SecretApprovalRequests}>
             <SecretApprovalRequest />
           </TabPanel>

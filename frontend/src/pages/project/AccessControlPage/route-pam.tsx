@@ -2,10 +2,13 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { PamAccessControlPage } from "@app/pages/pam/PamAccessControlPage/PamAccessControlPage";
+import {
+  PamAccessControlPage,
+  PamAccessControlTab
+} from "@app/pages/pam/PamAccessControlPage/PamAccessControlPage";
 
 const PamAccessControlQuerySchema = z.object({
-  selectedTab: z.enum(["members", "groups"]).catch("members"),
+  selectedTab: z.nativeEnum(PamAccessControlTab).catch(PamAccessControlTab.Members),
   requesterEmail: z.string().catch("")
 });
 

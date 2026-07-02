@@ -680,8 +680,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           }),
           pam: z.object({
             accountsCount: z.number(),
-            resourcesCount: z.number(),
-            projectsCount: z.number()
+            accountTemplatesCount: z.number(),
+            foldersCount: z.number()
           })
         })
       }

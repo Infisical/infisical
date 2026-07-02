@@ -113,6 +113,12 @@ import {
   TValidateCircleCIConnectionCredentialsSchema
 } from "./circleci";
 import {
+  TCloud66Connection,
+  TCloud66ConnectionConfig,
+  TCloud66ConnectionInput,
+  TValidateCloud66ConnectionCredentialsSchema
+} from "./cloud-66";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -378,6 +384,12 @@ import {
   TValidateTravisCIConnectionCredentialsSchema
 } from "./travis-ci";
 import {
+  TTriggerDevConnection,
+  TTriggerDevConnectionConfig,
+  TTriggerDevConnectionInput,
+  TValidateTriggerDevConnectionCredentialsSchema
+} from "./trigger-dev";
+import {
   TValidateVenafiConnectionCredentialsSchema,
   TVenafiConnection,
   TVenafiConnectionConfig,
@@ -440,6 +452,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TRenderConnection
   | TLaravelForgeConnection
   | TFlyioConnection
+  | TTriggerDevConnection
   | TGitLabConnection
   | TCloudflareConnection
   | TBitbucketConnection
@@ -462,6 +475,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TCloud66Connection
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TVenafiTppConnection
@@ -520,6 +534,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRenderConnectionInput
   | TLaravelForgeConnectionInput
   | TFlyioConnectionInput
+  | TTriggerDevConnectionInput
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
@@ -542,6 +557,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TVenafiTppConnectionInput
@@ -632,6 +648,7 @@ export type TAppConnectionConfig =
   | TRenderConnectionConfig
   | TLaravelForgeConnectionConfig
   | TFlyioConnectionConfig
+  | TTriggerDevConnectionConfig
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
@@ -654,6 +671,7 @@ export type TAppConnectionConfig =
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig
+  | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
   | TVenafiTppConnectionConfig
@@ -703,6 +721,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateRenderConnectionCredentialsSchema
   | TValidateLaravelForgeConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
+  | TValidateTriggerDevConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
@@ -725,6 +744,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateVenafiTppConnectionCredentialsSchema

@@ -3,11 +3,12 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
-import { SessionLogsPageSchema, TSessionLogsPage } from "@app/ee/services/pam-session/pam-session-log-schemas";
+import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
+import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
+import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -38,6 +39,7 @@ const SanitizedSessionSchema = PamSessionsSchema.pick({
   folderName: true,
   selectedHost: true
 }).extend({
+  folderId: z.string().nullable().optional(),
   gatewayName: z.string().nullable().optional(),
   gatewayIdentityId: z.string().nullable().optional()
 });
@@ -52,7 +54,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       description: "List PAM sessions for a project",
       tags: [ApiDocsTags.PamSessions],
       querystring: z.object({
-        projectId: z.string().describe("The ID of the project"),
         offset: z.coerce.number().min(0).default(0).optional().describe("The offset to start from for pagination"),
         limit: z.coerce
           .number()
@@ -72,10 +73,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ sessions: SanitizedSessionSchema.array(), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { sessions, totalCount } = await server.services.pamSession.listSessions(
-        req.query.projectId,
+        req.internalPamProjectId,
         {
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -103,7 +104,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ session: SanitizedSessionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
         actor: req.permission.type,
@@ -112,45 +113,9 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
       });
       if (!session) {
-        throw new BadRequestError({ message: "Session not found" });
+        throw new NotFoundError({ message: "Session not found" });
       }
       return { session };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:sessionId/logs",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "getPamSessionLogs",
-      description: "Get paginated logs for a PAM session",
-      tags: [ApiDocsTags.PamSessions],
-      params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session")
-      }),
-      querystring: z.object({
-        offset: z.coerce.number().int().nonnegative().default(0),
-        limit: z.coerce.number().int().min(1).max(100).default(20)
-      }),
-      response: {
-        200: SessionLogsPageSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const result = await server.services.pamSession.getSessionLogs(
-        req.params.sessionId,
-        req.query.offset,
-        req.query.limit,
-        {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
-      );
-      return result as TSessionLogsPage;
     }
   });
 
@@ -176,7 +141,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
               projectId: z.string(),
               sessionId: z.string()
             })
-            .nullable()
+            .nullable(),
+          policyRules: PamPolicyRulesSchema
         })
       }
     },
@@ -193,15 +159,29 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_SESSION_START,
             metadata: {
               sessionId: req.params.sessionId,
+              accountId: result.accountId ?? undefined,
               accountName: result.accountName
             }
           }
         });
+
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamSessionStarted,
+            distinctId: result.actorEmail || getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              accountType: result.accountType,
+              orgId: req.permission.orgId
+            }
+          })
+          .catch(() => {});
       }
 
       return {
         credentials: result.credentials,
-        recording: result.recording
+        recording: result.recording,
+        policyRules: result.policyRules ?? null
       };
     }
   });
@@ -223,10 +203,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, accountName, alreadyEnded } = await server.services.pamSession.endSessionFromGateway(
-        req.params.sessionId,
-        req.permission.id
-      );
+      const { projectId, accountId, accountName, alreadyEnded } =
+        await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.permission.id);
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
@@ -237,6 +215,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_SESSION_END,
             metadata: {
               sessionId: req.params.sessionId,
+              accountId: accountId ?? undefined,
               accountName
             }
           }
@@ -262,7 +241,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ session: SanitizedSessionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { session, projectId, accountName } = await server.services.pamSession.terminateSession(
         req.params.sessionId,
@@ -282,10 +261,23 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_SESSION_TERMINATE,
           metadata: {
             sessionId: req.params.sessionId,
+            accountId: session.accountId ?? undefined,
             accountName
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamSessionTerminated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: session.accountType,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
 
       return { session };
     }
@@ -308,20 +300,35 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .string()
           .trim()
           .optional()
-          .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration.")
+          .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        accessMethod: z.enum(["cli", "web"]).optional().default("cli").describe("Access method (cli or web)"),
+        targetHost: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(hostPattern, "Must be a valid hostname or IP address")
+          .optional()
+          .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
       response: {
         200: z.object({
           sessionId: z.string().describe("The ID of the created session"),
           accountType: z.nativeEnum(PamAccountType).describe("The account type"),
           metadata: z.record(z.string()).optional().describe("Account-type-specific metadata (e.g., username)"),
-          relayHost: z.string().describe("The relay host to connect to"),
-          relayClientCertificate: z.string().describe("Client certificate for the relay connection"),
-          relayClientPrivateKey: z.string().describe("Client private key for the relay connection"),
-          relayServerCertificateChain: z.string().describe("Server certificate chain for the relay connection"),
-          gatewayClientCertificate: z.string().describe("Client certificate for the gateway connection"),
-          gatewayClientPrivateKey: z.string().describe("Client private key for the gateway connection"),
-          gatewayServerCertificateChain: z.string().describe("Server certificate chain for the gateway connection")
+          relayHost: z.string().optional().describe("The relay host to connect to"),
+          relayClientCertificate: z.string().optional().describe("Client certificate for the relay connection"),
+          relayClientPrivateKey: z.string().optional().describe("Client private key for the relay connection"),
+          relayServerCertificateChain: z
+            .string()
+            .optional()
+            .describe("Server certificate chain for the relay connection"),
+          gatewayClientCertificate: z.string().optional().describe("Client certificate for the gateway connection"),
+          gatewayClientPrivateKey: z.string().optional().describe("Client private key for the gateway connection"),
+          gatewayServerCertificateChain: z
+            .string()
+            .optional()
+            .describe("Server certificate chain for the gateway connection")
         })
       }
     },
@@ -345,7 +352,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorIp: req.realIp ?? "",
         actorUserAgent: req.headers["user-agent"] ?? "",
         reason: req.body.reason,
-        duration: req.body.duration
+        duration: req.body.duration,
+        mfaSessionId: req.body.mfaSessionId,
+        accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
+        targetHost: req.body.targetHost
       });
 
       await server.services.auditLog.createAuditLog({
@@ -403,7 +413,15 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         accountId: z.string().uuid().describe("The ID of the account")
       }),
       body: z.object({
-        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session")
+        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        selectedHost: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(hostPattern, "Must be a valid hostname or IP address")
+          .optional()
+          .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -423,19 +441,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         auditLogInfo: req.auditLogInfo,
-        reason: req.body.reason
+        reason: req.body.reason,
+        mfaSessionId: req.body.mfaSessionId,
+        selectedHost: req.body.selectedHost
       });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.PamSessionStarted,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            orgId: req.permission.orgId
-          }
-        })
-        .catch(() => {});
 
       return { ticket };
     }
@@ -512,15 +521,16 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
 
         const payload = z
           .object({
-            accountId: z.string(),
-            projectId: z.string(),
-            orgId: z.string(),
+            accountId: z.string().uuid(),
+            projectId: z.string().uuid(),
+            orgId: z.string().uuid(),
             accountName: z.string(),
             accountType: z.string(),
             actorEmail: z.string(),
             actorName: z.string(),
             reason: z.string().nullable().optional(),
             maxSessionDurationMs: z.number().optional(),
+            selectedHost: z.string().nullable().optional(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
               userAgent: z.string().optional(),
@@ -555,6 +565,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           actorUserAgent: req.headers["user-agent"] ?? "",
           reason: payload.reason,
           maxSessionDurationMs: payload.maxSessionDurationMs,
+          selectedHost: payload.selectedHost,
           preAuthMessages,
           preAuthHandler
         });

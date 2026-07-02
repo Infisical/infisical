@@ -23,6 +23,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Heroku]: "Heroku",
   [SecretSync.Render]: "Render",
   [SecretSync.Flyio]: "Fly.io",
+  [SecretSync.TriggerDev]: "Trigger.dev",
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
@@ -44,7 +45,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Devin]: "Devin",
   [SecretSync.Ona]: "Ona",
   [SecretSync.TravisCI]: "Travis CI",
-  [SecretSync.Snowflake]: "Snowflake"
+  [SecretSync.Snowflake]: "Snowflake",
+  [SecretSync.Cloud66]: "Cloud 66"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -68,6 +70,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
+  [SecretSync.TriggerDev]: AppConnection.TriggerDev,
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
@@ -89,7 +92,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Devin]: AppConnection.Devin,
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI,
-  [SecretSync.Snowflake]: AppConnection.Snowflake
+  [SecretSync.Snowflake]: AppConnection.Snowflake,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -113,6 +117,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Heroku]: SecretSyncPlanType.Regular,
   [SecretSync.Render]: SecretSyncPlanType.Regular,
   [SecretSync.Flyio]: SecretSyncPlanType.Regular,
+  [SecretSync.TriggerDev]: SecretSyncPlanType.Regular,
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
@@ -134,7 +139,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Devin]: SecretSyncPlanType.Regular,
   [SecretSync.Ona]: SecretSyncPlanType.Regular,
   [SecretSync.TravisCI]: SecretSyncPlanType.Regular,
-  [SecretSync.Snowflake]: SecretSyncPlanType.Regular
+  [SecretSync.Snowflake]: SecretSyncPlanType.Regular,
+  [SecretSync.Cloud66]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -158,6 +164,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Heroku]: ["appName"],
   [SecretSync.Render]: [],
   [SecretSync.Flyio]: [],
+  [SecretSync.TriggerDev]: [],
   [SecretSync.GitLab]: [
     "projectName",
     "shouldProtectSecrets",
@@ -188,7 +195,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Devin]: [],
   [SecretSync.Ona]: ["projectName"],
   [SecretSync.TravisCI]: ["repositorySlug"],
-  [SecretSync.Snowflake]: []
+  [SecretSync.Snowflake]: [],
+  [SecretSync.Cloud66]: ["stackName"]
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -214,6 +222,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Heroku]: defaultDuplicateCheck,
   [SecretSync.Render]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
+  [SecretSync.TriggerDev]: defaultDuplicateCheck,
   [SecretSync.GitLab]: (existingConfig, newConfig) => {
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
@@ -259,7 +268,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Devin]: defaultDuplicateCheck,
   [SecretSync.Ona]: defaultDuplicateCheck,
   [SecretSync.TravisCI]: defaultDuplicateCheck,
-  [SecretSync.Snowflake]: defaultDuplicateCheck
+  [SecretSync.Snowflake]: defaultDuplicateCheck,
+  [SecretSync.Cloud66]: defaultDuplicateCheck
 };
 
 /**

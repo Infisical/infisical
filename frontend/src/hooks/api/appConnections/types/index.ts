@@ -16,6 +16,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -64,6 +65,7 @@ import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TTravisCIConnection } from "./travis-ci-connection";
+import { TTriggerDevConnection } from "./trigger-dev-connection";
 import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -85,6 +87,7 @@ export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
+export * from "./cloud-66-connection";
 export * from "./cloudflare-connection";
 export * from "./convex-connection";
 export * from "./databricks-connection";
@@ -131,6 +134,7 @@ export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./travis-ci-connection";
+export * from "./trigger-dev-connection";
 export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
@@ -190,6 +194,7 @@ export type TAppConnection =
   | TOpenRouterConnection
   | TAnthropicConnection
   | TCircleCIConnection
+  | TCloud66Connection
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TVenafiTppConnection
@@ -206,7 +211,8 @@ export type TAppConnection =
   | TSnowflakeConnection
   | TDatadogConnection
   | TF5BigIpConnection
-  | TConvexConnection;
+  | TConvexConnection
+  | TTriggerDevConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

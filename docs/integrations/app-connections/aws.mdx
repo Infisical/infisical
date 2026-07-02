@@ -71,7 +71,7 @@ Infisical supports two methods for connecting to AWS.
                     This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
 
                     Infisical automatically sends the correct External ID based on the connection’s scope:
-                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project.
+                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project. **Certificate Manager** connections use the **Organization ID** as the External ID.
                     - **Organization-scoped connections** use the **Organization ID** as the External ID.
 
                     <strong>Always enable "Require external ID" when setting up the IAM Role, and use the ID that matches your connection’s scope.</strong>

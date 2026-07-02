@@ -18,6 +18,7 @@ import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
+import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
@@ -64,6 +65,7 @@ import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
+import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -104,6 +106,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Render]: registerRenderConnectionRouter,
     [AppConnection.LaravelForge]: registerLaravelForgeConnectionRouter,
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
+    [AppConnection.TriggerDev]: registerTriggerDevConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
@@ -125,6 +128,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
+    [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.VenafiTpp]: registerVenafiTppConnectionRouter,

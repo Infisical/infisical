@@ -12,6 +12,7 @@ import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
 import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
+import { Cloud66SyncDestinationCol } from "./Cloud66SyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
@@ -39,6 +40,7 @@ import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { TravisCISyncDestinationCol } from "./TravisCISyncDestinationCol";
+import { TriggerDevSyncDestinationCol } from "./TriggerDevSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
@@ -133,6 +135,10 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <TravisCISyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Snowflake:
       return <SnowflakeSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.TriggerDev:
+      return <TriggerDevSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Cloud66:
+      return <Cloud66SyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

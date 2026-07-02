@@ -1,58 +1,72 @@
 import { Rocket } from "lucide-react";
 
-import { Badge, Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { HighlightText } from "@app/components/v2/HighlightText";
 import {
-  PAM_ACCOUNT_TYPE_MAP,
-  PamResourcePermissionActions,
-  PamResourcePermissionSub,
-  TAccessiblePamAccount
-} from "@app/hooks/api/pam";
-import { usePamAccountPermission } from "@app/hooks/api/pam/queries";
+  Badge,
+  Button,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { PamAccountType, TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
 type Props = {
   account: TAccessiblePamAccount;
+  search: string;
   onLaunch: (account: TAccessiblePamAccount) => void;
+  indented?: boolean;
 };
 
-export const AccountRow = ({ account, onLaunch }: Props) => {
-  const typeName = PAM_ACCOUNT_TYPE_MAP[account.accountType]?.name ?? account.accountType;
-
-  const { data: accountPermission } = usePamAccountPermission(account.id);
-  const canLaunch = accountPermission?.permission.can(
-    PamResourcePermissionActions.LaunchSessions,
-    PamResourcePermissionSub.PamResource
-  );
+export const AccountRow = ({ account, search, onLaunch, indented }: Props) => {
+  const { map } = usePamAccountTypeMap();
+  const typeName = map[account.accountType as PamAccountType]?.name ?? account.accountType;
+  const { canLaunch } = account;
 
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-2 last:border-b-0">
-      <AccountPlatformIcon accountType={account.accountType} size={24} />
-      <span className="truncate text-sm text-foreground">{account.name}</span>
-      <Badge variant="info">{typeName}</Badge>
-      <span className="flex-1" />
-      <div className="flex shrink-0 items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <Button
-                variant="pam"
-                size="xs"
-                onClick={() => onLaunch(account)}
-                isDisabled={!canLaunch}
-              >
-                <Rocket className="size-3" />
-                Launch
-              </Button>
-            </div>
-          </TooltipTrigger>
-          {!canLaunch && (
-            <TooltipContent>
-              You don&apos;t have permission to launch sessions for this account
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </div>
-    </div>
+    <TableRow
+      className={canLaunch ? "cursor-pointer" : ""}
+      onClick={canLaunch ? () => onLaunch(account) : undefined}
+    >
+      <TableCell>
+        <div className={`flex items-center gap-2.5 ${indented ? "pl-[26px]" : ""}`}>
+          <AccountPlatformIcon accountType={account.accountType} size={20} />
+          <span className="font-medium text-foreground">
+            <HighlightText text={account.name} highlight={search} />
+          </span>
+          <Badge variant="neutral">{typeName}</Badge>
+        </div>
+      </TableCell>
+      <TableCell className="w-20">
+        <div className="flex items-center justify-end">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Button
+                  variant="pam"
+                  size="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLaunch(account);
+                  }}
+                  isDisabled={!canLaunch}
+                >
+                  <Rocket className="size-3" />
+                  Launch
+                </Button>
+              </div>
+            </TooltipTrigger>
+            {!canLaunch && (
+              <TooltipContent>
+                You don&apos;t have permission to launch sessions for this account
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -6,8 +6,14 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
-import { SignerIdParamsSchema } from "./schemas";
+import {
+  HSM_SUPPORTED_KEY_ALGORITHMS,
+  SignerExternalConfigurationSchema,
+  SignerIdParamsSchema,
+  SignerKeyAlgorithm
+} from "./schemas";
 
 export const registerSignerCertificateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -18,13 +24,39 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "reissueSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
-      description: "Re-issue the signer's certificate (optionally from a different CA)",
+      description: "Re-issue the signer's certificate (optionally from a different CA or with a different key source)",
       params: SignerIdParamsSchema,
-      body: z.object({
-        caId: z.string().uuid(),
-        commonName: z.string().trim().min(1).max(256).optional(),
-        certificateTtlDays: z.number().int().min(1).max(3650).optional()
-      }),
+      body: z
+        .object({
+          caId: z.string().uuid(),
+          commonName: z.string().trim().min(1).max(256).optional(),
+          certificateTtlDays: z.number().int().min(1).max(3650).optional(),
+          keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
+          certificate: z
+            .object({
+              keySource: z.nativeEnum(CertKeySource),
+              hsmConnectorId: z.string().uuid().optional()
+            })
+            .optional(),
+          externalConfiguration: SignerExternalConfigurationSchema.optional()
+        })
+        .superRefine((data, ctx) => {
+          if (data.certificate?.keySource !== CertKeySource.Hsm) return;
+          if (!data.certificate.hsmConnectorId) {
+            ctx.addIssue({
+              code: "custom",
+              message: `hsmConnectorId is required when keySource = '${CertKeySource.Hsm}'`,
+              path: ["certificate", "hsmConnectorId"]
+            });
+          }
+          if (!data.keyAlgorithm || !HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm)) {
+            ctx.addIssue({
+              code: "custom",
+              message: `keyAlgorithm must be one of ${HSM_SUPPORTED_KEY_ALGORITHMS.join(", ")} when keySource = '${CertKeySource.Hsm}'`,
+              path: ["keyAlgorithm"]
+            });
+          }
+        }),
       response: { 200: PkiSignersSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -47,7 +79,11 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             signerId: signer.id,
             name: signer.name,
             caId: req.body.caId,
-            commonName: req.body.commonName
+            commonName: req.body.commonName,
+            keyAlgorithm: req.body.keyAlgorithm,
+            keySource: req.body.certificate?.keySource,
+            hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            externalConfiguration: req.body.externalConfiguration
           }
         }
       });

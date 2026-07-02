@@ -2,10 +2,21 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { PamProductRole } from "../pam/pam-enums";
+import { PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { TPamValidatorDeps, validateGatewayAttachment, validateRecordingConnection } from "../pam/pam-validators";
+import { validatePolicyValues } from "../pam/pam-policies";
+import {
+  mintCorsProbeUrl,
+  TPamValidatorDeps,
+  validateGatewayAttachment,
+  validateRecordingConnection,
+  validateRecordingS3Config
+} from "../pam/pam-validators";
+import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
+import { PamRecordingS3ConfigSchema, TPamTemplateSettings } from "./pam-account-template-schemas";
 import {
   TCreatePamAccountTemplateDTO,
   TDeletePamAccountTemplateDTO,
@@ -13,6 +24,8 @@ import {
   TListPamAccountTemplatesDTO,
   TUpdatePamAccountTemplateDTO
 } from "./pam-account-template-types";
+
+const SUPPORTED_ACCOUNT_TYPES = new Set<string>(Object.keys(ACCOUNT_TYPE_CONFIGS));
 
 type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
@@ -27,6 +40,13 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
 
+  const validateTemplatePolicies = (accountType: string, policies: unknown): Record<string, unknown> | undefined => {
+    if (!policies || typeof policies !== "object") return undefined;
+    const result = validatePolicyValues(accountType as PamAccountType, policies as Record<string, unknown>);
+    if (!result.ok) throw new BadRequestError({ message: result.message });
+    return result.data;
+  };
+
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
     const { hasRole } = await verifyMembership(projectId, ctx);
     if (!hasRole(PamProductRole.Admin)) {
@@ -34,9 +54,34 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     }
   };
 
+  const validateTemplateRecordingS3Config = async (
+    recordingConnectionId: string | null | undefined,
+    settings: TPamTemplateSettings | undefined,
+    ctx: TActorContext
+  ): Promise<TPamRecordingResolvedConfig | null> => {
+    const isS3Backend = settings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
+
+    let resolvedS3Config = null;
+    if (recordingConnectionId && settings) {
+      const s3Parsed = PamRecordingS3ConfigSchema.safeParse(settings.recordingS3Config);
+      if (s3Parsed.success) {
+        resolvedS3Config = await validateRecordingS3Config(deps, recordingConnectionId, s3Parsed.data, ctx);
+      }
+    }
+
+    if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
+      throw new BadRequestError({
+        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
+      });
+    }
+
+    return resolvedS3Config;
+  };
+
   const list = async ({ projectId, search, type, ...ctx }: TListPamAccountTemplatesDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
-    return pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
+    const templates = await pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
+    return templates.filter((template) => SUPPORTED_ACCOUNT_TYPES.has(template.type));
   };
 
   const getById = async ({ templateId, projectId, ...ctx }: TGetPamAccountTemplateDTO & TActorContext) => {
@@ -56,7 +101,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     name,
     description,
     type,
-    accessPolicy,
+    policies,
     settings,
     gatewayId,
     gatewayPoolId,
@@ -66,25 +111,30 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await verifyProductAdmin(projectId, ctx);
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
+    const validatedPolicies = validateTemplatePolicies(type, policies);
+
+    const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
     try {
-      return await pamAccountTemplateDAL.create({
+      const template = await pamAccountTemplateDAL.create({
         projectId,
         name,
         description,
         type,
-        accessPolicy: accessPolicy ?? undefined,
+        policies: validatedPolicies,
         settings: settings ?? undefined,
         gatewayId,
         gatewayPoolId,
         recordingConnectionId
       });
+      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      return { ...template, corsProbeUrl };
     } catch (err) {
       if (
         err instanceof DatabaseError &&
-        (err as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
-        throw new BadRequestError({ message: `A template named "${name}" already exists` });
+        throw new BadRequestError({ message: `An account template named "${name}" already exists in this project` });
       }
       throw err;
     }
@@ -95,7 +145,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     projectId,
     name,
     description,
-    accessPolicy,
+    policies,
     settings,
     gatewayId,
     gatewayPoolId,
@@ -111,23 +161,32 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
 
+    const validatedPolicies = validateTemplatePolicies(existing.type, policies);
+
+    const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
+    const resolvedSettings = (settings !== undefined ? settings : existing.settings) as TPamTemplateSettings;
+
+    const resolvedS3Config = await validateTemplateRecordingS3Config(resolvedConnId, resolvedSettings, ctx);
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (accessPolicy !== undefined) updateData.accessPolicy = accessPolicy;
+    if (policies !== undefined) updateData.policies = validatedPolicies;
     if (settings !== undefined) updateData.settings = settings;
     if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
     if (gatewayPoolId !== undefined) updateData.gatewayPoolId = gatewayPoolId;
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
 
     try {
-      return await pamAccountTemplateDAL.updateById(templateId, updateData);
+      const template = await pamAccountTemplateDAL.updateById(templateId, updateData);
+      const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
+      return { ...template, corsProbeUrl };
     } catch (err) {
       if (
         err instanceof DatabaseError &&
-        (err as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
-        throw new BadRequestError({ message: `A template named "${name}" already exists` });
+        throw new BadRequestError({ message: `An account template named "${name}" already exists in this project` });
       }
       throw err;
     }

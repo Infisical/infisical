@@ -19,6 +19,7 @@ export enum SecretSync {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
+  TriggerDev = "trigger-dev",
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
   CloudflareWorkers = "cloudflare-workers",
@@ -40,7 +41,8 @@ export enum SecretSync {
   Devin = "devin",
   Ona = "ona",
   TravisCI = "travis-ci",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Cloud66 = "cloud-66"
 }
 
 export enum SecretSyncInitialSyncBehavior {

@@ -1,38 +1,39 @@
-import "./postgres/pam-postgres-session-handler";
-import "./ssh/pam-ssh-session-handler";
-
 import net from "node:net";
 
-import { ForbiddenError } from "@casl/ability";
 import type WebSocket from "ws";
 
-import { ResourceType } from "@app/db/schemas";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
-import { PamTemplateAccessPolicySchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
+import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
+import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { extractGatewayTarget } from "../pam-account/pam-account-schemas";
+import {
+  extractGatewayTarget,
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue,
+  resolveSelectedHost
+} from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { getSessionHandler, isWebAccessSupported } from "./pam-session-handler-registry";
+import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
@@ -61,6 +62,11 @@ type TPamWebAccessServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
@@ -79,6 +85,7 @@ type THandleWebSocketConnectionDTO = {
   actorUserAgent: string;
   reason: string | null | undefined;
   maxSessionDurationMs?: number;
+  selectedHost?: string | null;
   preAuthMessages: TEarlyBufferedMsg[];
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
@@ -92,7 +99,9 @@ export const pamWebAccessServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   kmsService,
-  userDAL
+  userDAL,
+  mfaSessionService,
+  orgDAL
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -125,46 +134,13 @@ export const pamWebAccessServiceFactory = ({
     socket.close();
   };
 
-  const checkLaunchPermission = async (
-    projectId: string,
-    accountId: string,
-    folderId: string | null | undefined,
-    ctx: { actorId: string; actor: ActorType; actorOrgId: string; actorAuthMethod: ActorAuthMethod }
-  ) => {
-    if (folderId) {
-      try {
-        const { permission } = await permissionService.getResourcePermission({
-          actor: ctx.actor,
-          actorId: ctx.actorId,
-          projectId,
-          resourceType: ResourceType.PamFolder,
-          resourceId: folderId,
-          actorAuthMethod: ctx.actorAuthMethod,
-          actorOrgId: ctx.actorOrgId
-        });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionPamResourceActions.LaunchSessions,
-          ResourcePermissionSub.PamResource
-        );
-        return;
-      } catch (err) {
-        if (!(err instanceof ForbiddenError)) throw err;
-      }
+  const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
+    const issues = getAccountAccessibilityIssues(account);
+    if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
+      throw new BadRequestError({
+        message: "S3 recording must be configured before launching this account"
+      });
     }
-
-    const { permission } = await permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.PamAccount,
-      resourceId: accountId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      ResourcePermissionSub.PamResource
-    );
   };
 
   const issueWebSocketTicket = async ({
@@ -175,42 +151,59 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     auditLogInfo,
-    reason
+    reason,
+    mfaSessionId,
+    selectedHost
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    if (!isWebAccessSupported(account.accountType as PamAccountType)) {
+    if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
+    await checkAccountAccess(
+      permissionService,
+      accountId,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      {
+        actorId: actor.id,
+        actor: actor.type,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod
+      }
+    );
+
+    enforceRecordingConfig(account);
+
+    const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+    const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
+
     const trimmedReason = reason?.trim() || null;
 
-    const accessPolicy = account.templateAccessPolicy
-      ? PamTemplateAccessPolicySchema.safeParse(account.templateAccessPolicy)
-      : null;
-    const policy = accessPolicy?.success ? accessPolicy.data : null;
+    const policy = resolveAccessControls(account.templatePolicies);
 
-    if (policy?.requireReason && !trimmedReason) {
-      throw new BadRequestError({ message: "A reason is required to access this account" });
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
     }
 
-    if (policy?.requireMfa) {
-      throw new BadRequestError({ message: "MFA verification is required to access this account" });
+    if (policy.requireMfa) {
+      await enforceMfa(
+        { mfaSessionService, orgDAL, userDAL },
+        { userId: actor.id, orgId: actor.orgId, actorEmail, accountId: account.id, mfaSessionId }
+      );
     }
 
-    const maxSessionDurationMs = policy?.maxSessionDurationSeconds
+    const maxSessionDurationMs = policy.maxSessionDurationSeconds
       ? policy.maxSessionDurationSeconds * 1000
       : DEFAULT_WEB_SESSION_DURATION_MS;
-
-    await checkLaunchPermission(projectId, accountId, account.folderId, {
-      actorId: actor.id,
-      actor: actor.type,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod
-    });
 
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
     const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
@@ -233,7 +226,8 @@ export const pamWebAccessServiceFactory = ({
         actorName,
         auditLogInfo,
         reason: trimmedReason,
-        maxSessionDurationMs
+        maxSessionDurationMs,
+        selectedHost: resolvedHost
       })
     });
 
@@ -268,6 +262,7 @@ export const pamWebAccessServiceFactory = ({
     actorUserAgent,
     reason: accessReason,
     maxSessionDurationMs: policyDurationMs,
+    selectedHost,
     preAuthMessages,
     preAuthHandler
   }: THandleWebSocketConnectionDTO): Promise<void> => {
@@ -276,7 +271,7 @@ export const pamWebAccessServiceFactory = ({
       socket.off("message", preAuthHandler);
     };
 
-    let session: { id: string } | null = null;
+    let session: { id: string; accountId?: string | null } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
     let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
@@ -334,7 +329,7 @@ export const pamWebAccessServiceFactory = ({
               projectId,
               event: {
                 type: EventType.PAM_SESSION_END,
-                metadata: { sessionId, accountName }
+                metadata: { sessionId, accountId: session.accountId ?? undefined, accountName }
               }
             });
           }
@@ -380,14 +375,16 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Invalid account or project" });
       }
 
-      const handlerEntry = getSessionHandler(account.accountType as PamAccountType);
+      const handlerEntry = SESSION_HANDLERS[account.accountType as PamAccountType];
       if (!handlerEntry) {
         throw new BadRequestError({ message: "Web access is not supported for this account type" });
       }
 
+      enforceRecordingConfig(account);
+
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-        gatewayId: account.gatewayId,
-        gatewayPoolId: account.gatewayPoolId
+        gatewayId: account.gatewayId ?? account.templateGatewayId,
+        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
       });
       if (!effectiveGatewayId) {
         throw new BadRequestError({ message: "Gateway not configured for this account" });
@@ -405,7 +402,8 @@ export const pamWebAccessServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-      const gatewayTarget = extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+      const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
+      const targetHost = selectedHost || gatewayTarget.host;
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);
@@ -428,14 +426,14 @@ export const pamWebAccessServiceFactory = ({
         gatewayId: effectiveGatewayId,
         reason: accessReason?.trim() || null,
         folderName: account.folderName,
-        selectedHost: gatewayTarget.host
+        selectedHost: targetHost
       });
 
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId: effectiveGatewayId,
         sessionId: session.id,
         accountType: handlerEntry.gatewayAccountType,
-        host: gatewayTarget.host,
+        host: targetHost,
         port: gatewayTarget.port,
         duration: sessionDurationMs,
         actorMetadata: {
@@ -455,8 +453,10 @@ export const pamWebAccessServiceFactory = ({
         gateway: certs.gateway
       };
 
+      const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
+
       relayServer = await setupRelayServer({
-        protocol: GatewayProxyProtocol.Pam,
+        protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
         relayHost: certs.relayHost,
         relay: certs.relay,
         gateway: certs.gateway,
@@ -494,7 +494,11 @@ export const pamWebAccessServiceFactory = ({
         releaseEarlyBuffer();
       }
 
-      await pamSessionDAL.activateSession(session.id);
+      // RDP sessions are activated by the gateway after credential exchange,
+      // not by the web access service.
+      if (!isRdp) {
+        await pamSessionDAL.activateSession(session.id);
+      }
 
       logger.info({ accountId, sessionId: session.id }, "Web access session established");
 

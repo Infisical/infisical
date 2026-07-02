@@ -98,14 +98,18 @@ export enum PostHogEventTypes {
   GatewayUpdated = "Gateway Updated",
   GatewayDeleted = "Gateway Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
+  PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
   PamFolderCreated = "PAM Folder Created",
+  PamFolderUpdated = "PAM Folder Updated",
   PamFolderDeleted = "PAM Folder Deleted",
   PamAccountCreated = "PAM Account Created",
+  PamAccountUpdated = "PAM Account Updated",
   PamAccountDeleted = "PAM Account Deleted",
   PamAccountAccessed = "PAM Account Accessed",
   PamSessionStarted = "PAM Session Started",
   PamSessionEnded = "PAM Session Ended",
+  PamSessionTerminated = "PAM Session Terminated",
   PamProductMemberAdded = "PAM Product Member Added",
   PamProductMemberUpdated = "PAM Product Member Updated",
   PamProductMemberRemoved = "PAM Product Member Removed",
@@ -497,9 +501,32 @@ export type TTelemetryInstanceStatsEvent = {
     certificates: number;
     dynamicSecrets: number;
     identityAuthMethods: number;
+    identityAuthMethodBreakdown: Record<string, number>;
     groups: number;
     secretApprovalPolicies: number;
     activeGateways: number;
+    samlConfigs: number;
+    oidcConfigs: number;
+    ldapConfigs: number;
+    scimTokens: number;
+    auditLogStreams: number;
+    secretRotations: number;
+    webhooks: number;
+    customProjectRoles: number;
+    customOrgRoles: number;
+    kmipClients: number;
+    sshHosts: number;
+    sshCertificateAuthorities: number;
+    sshCertificates: number;
+    pamResources: number;
+    pamAccounts: number;
+    accessApprovalPolicies: number;
+    honeyTokens: number;
+    integrationBreakdown: Record<string, number>;
+    projectTypeBreakdown: Record<string, number>;
+    secretSyncBreakdown: Record<string, number>;
+    organizationBreakdown: { orgId: string; name: string; users: number; projects: number }[];
+    infisicalVersion?: string;
   };
 };
 
@@ -939,7 +966,10 @@ export type TGatewayDeletedEvent = {
 };
 
 export type TPamAccountTemplateEvent = {
-  event: PostHogEventTypes.PamAccountTemplateCreated | PostHogEventTypes.PamAccountTemplateDeleted;
+  event:
+    | PostHogEventTypes.PamAccountTemplateCreated
+    | PostHogEventTypes.PamAccountTemplateUpdated
+    | PostHogEventTypes.PamAccountTemplateDeleted;
   properties: {
     accountType: string;
     orgId: string;
@@ -947,14 +977,17 @@ export type TPamAccountTemplateEvent = {
 };
 
 export type TPamFolderEvent = {
-  event: PostHogEventTypes.PamFolderCreated | PostHogEventTypes.PamFolderDeleted;
+  event: PostHogEventTypes.PamFolderCreated | PostHogEventTypes.PamFolderUpdated | PostHogEventTypes.PamFolderDeleted;
   properties: {
     orgId: string;
   };
 };
 
 export type TPamAccountEvent = {
-  event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
+  event:
+    | PostHogEventTypes.PamAccountCreated
+    | PostHogEventTypes.PamAccountUpdated
+    | PostHogEventTypes.PamAccountDeleted;
   properties: {
     accountType: string;
     orgId: string;
@@ -973,12 +1006,13 @@ export type TPamAccountAccessedEvent = {
 export type TPamSessionStartedEvent = {
   event: PostHogEventTypes.PamSessionStarted;
   properties: {
+    accountType: string;
     orgId: string;
   };
 };
 
 export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded;
+  event: PostHogEventTypes.PamSessionEnded | PostHogEventTypes.PamSessionTerminated;
   properties: {
     accountType: string;
     orgId: string;

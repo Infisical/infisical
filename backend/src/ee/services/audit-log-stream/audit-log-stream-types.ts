@@ -1,24 +1,35 @@
 import { TAuditLogs } from "@app/db/schemas";
 
 import { LogProvider, StreamMode } from "./audit-log-stream-enums";
+import { TAuditLogStreamFilters } from "./audit-log-stream-schemas";
 import { TAzureProvider, TAzureProviderCredentials } from "./azure/azure-provider-types";
 import { TCriblProvider, TCriblProviderCredentials } from "./cribl/cribl-provider-types";
 import { TCustomProvider, TCustomProviderCredentials } from "./custom/custom-provider-types";
 import { TDatadogProvider, TDatadogProviderCredentials } from "./datadog/datadog-provider-types";
 import { TSplunkProvider, TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
+import { TSumoLogicProvider, TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-types";
 
-export type TAuditLogStream = TDatadogProvider | TSplunkProvider | TCustomProvider | TAzureProvider | TCriblProvider;
+export type TAuditLogStream =
+  | TDatadogProvider
+  | TSplunkProvider
+  | TCustomProvider
+  | TAzureProvider
+  | TCriblProvider
+  | TSumoLogicProvider;
 
 export type TAuditLogStreamCredentials =
   | TDatadogProviderCredentials
   | TSplunkProviderCredentials
   | TCustomProviderCredentials
   | TAzureProviderCredentials
-  | TCriblProviderCredentials;
+  | TCriblProviderCredentials
+  | TSumoLogicProviderCredentials;
 
 export type TCreateAuditLogStreamDTO = {
   provider: LogProvider;
   credentials: TAuditLogStreamCredentials;
+  // Products the stream is scoped to. Omitted/empty -> stream all products.
+  filters?: TAuditLogStreamFilters | null;
 };
 
 export type TUpdateAuditLogStreamDTO = {
@@ -27,6 +38,9 @@ export type TUpdateAuditLogStreamDTO = {
   credentials: TAuditLogStreamCredentials;
   // Optional one-way upgrade from "single" to "batch". Downgrades are rejected.
   streamMode?: StreamMode;
+  // Products the stream is scoped to. Omitted leaves the existing filter unchanged; pass null or an
+  // empty product list to clear it (stream all products).
+  filters?: TAuditLogStreamFilters | null;
 };
 
 export type TLogStreamFactoryValidateCredentials<C extends TAuditLogStreamCredentials> = (input: {

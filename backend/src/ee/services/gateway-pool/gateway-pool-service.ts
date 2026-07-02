@@ -272,6 +272,10 @@ export const gatewayPoolServiceFactory = ({
     return selected;
   };
 
+  const listHealthyGateways = async (poolId: string) => {
+    return gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
+  };
+
   const getPlatformConnectionDetailsByPoolId = async ({
     poolId,
     targetHost,
@@ -383,6 +387,7 @@ export const gatewayPoolServiceFactory = ({
     addGatewayToPool,
     removeGatewayFromPool,
     pickRandomHealthyGateway,
+    listHealthyGateways,
     getPlatformConnectionDetailsByPoolId,
     getConnectedResources,
     getConnectedResourcesCount,
