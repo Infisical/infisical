@@ -11,11 +11,11 @@ SSH accounts support three authentication methods: password, public key, and cer
 ## Creating an Account
 
 <Steps>
-  <Step title="Open the folder">
-    Go to **Privileged Access Management → Accounts** and click on the [folder](/documentation/platform/pam/folders/overview) where you want to add the account.
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
   </Step>
-  <Step title="Add account and select a template">
-    Click **Add Account** and select an SSH [template](/documentation/platform/pam/templates/overview) (e.g., the default `ssh` or a custom one). The template determines session rules like duration, MFA, and recording.
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an SSH [template](/documentation/platform/pam/templates/overview) (e.g., the default `ssh` or a custom one).
   </Step>
   <Step title="Enter connection details">
     | Field | Description |
@@ -71,18 +71,18 @@ SSH accounts support three authentication methods: password, public key, and cer
     The CLI starts a local proxy that you connect to with your SSH client.
 
     ```bash
-    infisical pam access /prod-servers/web-01
+    infisical pam access prod-servers/web-01
     ```
 
-    Then connect:
+    The command outputs the local port to connect to. Then use your SSH client:
     ```bash
-    ssh deploy@localhost -p 2222
+    ssh deploy@localhost -p <port>
     ```
 
     No password or key needed since the proxy handles authentication.
 
     **Flags:**
-    - `--port <port>` — use a specific local port
+    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
     - `--reason <reason>` — provide an access reason (if required by template)
   </Tab>
 </Tabs>

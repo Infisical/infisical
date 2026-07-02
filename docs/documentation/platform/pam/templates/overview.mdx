@@ -4,22 +4,17 @@ sidebarTitle: "Account Templates"
 description: "Define the rules that apply when users connect to accounts."
 ---
 
-Templates control what happens when someone connects to an [account](/documentation/platform/pam/accounts/overview). How long can they stay connected? Do they need MFA? Should the [session](/documentation/platform/pam/sessions/overview) be recorded? These rules are defined in a template, and every account uses one.
+Templates define how [accounts](/documentation/platform/pam/accounts/overview) behave when someone connects — session duration limits, MFA requirements, which [Gateway](/documentation/platform/gateways/overview) to use, where to store [session recordings](/documentation/platform/pam/sessions/session-recording), and more.
 
-Templates are **type-specific** — a PostgreSQL template can only be used with PostgreSQL accounts, and an SSH template can only be used with SSH accounts. This allows for type-specific policies like command restrictions or query filtering in future releases.
+**Every account requires a template.** When you create an account, you select a template, and the account inherits everything from it. Change the template later, and every account using it updates automatically.
 
-Infisical provides **default templates** (`postgres`, `ssh`) with sensible settings, so you can start adding accounts right away. Create custom templates when you need different rules — for example, stricter settings for production databases.
+Infisical provides **default templates** for each account type with sensible defaults, so you can start adding accounts right away. Create custom templates when you need different rules — for example, stricter session limits for production or a specific Gateway for a network segment.
 
 ## Default Templates
 
-When you first use PAM, these templates are already available:
+When you first use PAM, default templates are available for each account type (PostgreSQL, MySQL, MS SQL, MongoDB, SSH, Kubernetes, AWS IAM, Windows, Windows AD). Each has sensible defaults like 1-hour session duration.
 
-| Template | Type | Default Settings |
-|----------|------|------------------|
-| `postgres` | PostgreSQL | 1-hour sessions |
-| `ssh` | SSH | 1-hour sessions |
-
-These defaults work for many cases. If they fit your needs, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
+If the defaults work for you, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
 
 ## Creating a Custom Template
 
@@ -33,25 +28,23 @@ If you need different rules — say, 4-hour sessions with MFA for production —
     | Field | Description |
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `prod-postgres`) |
-    | **Type** | PostgreSQL or SSH |
+    | **Type** | The account type (PostgreSQL, MySQL, SSH, etc.) |
     | **Description** | Optional context about when to use this template |
   </Step>
-  <Step title="Configure access policy">
-    These rules control the user experience when connecting:
-    
-    | Setting | What it does |
-    |---------|--------------|
-    | **Max Session Duration** | How long can someone stay connected |
-    | **Require Reason** | Must they explain why they need access |
-    | **Require MFA** | Must they verify their identity first |
+  <Step title="Configure policies">
+    | Option | What it does |
+    |--------|--------------|
+    | **Require MFA** | Users must re-authenticate with MFA before connecting |
+    | **Require Reason** | Users must provide a reason before connecting |
+    | **Max Session Duration** | How long someone can stay connected (in seconds) |
+    | **Command Blocking** | Regex patterns for commands to reject (one per line) |
   </Step>
   <Step title="Configure system settings">
-    These settings control how the system behaves:
-    
-    | Setting | What it does |
-    |---------|--------------|
-    | **Recording Storage** | Where to store recordings (internal or your S3 bucket) |
-    | **Password Constraints** | Minimum complexity for account passwords |
+    | Option | What it does |
+    |--------|--------------|
+    | **Gateway** | Default Gateway for connections (can be overridden per account) |
+    | **Storage Backend** | Where to store session recordings (internal or your S3 bucket) |
+    | **Session Log Masking** | Regex patterns for content to mask in recordings (one per line) |
   </Step>
   <Step title="Save">
     Click **Create**. The template is now available when adding accounts.
@@ -60,12 +53,14 @@ If you need different rules — say, 4-hour sessions with MFA for production —
 
 ## How Templates Work with Accounts
 
-Every account references a template. When you create an account, you select which template it should use. The account then inherits all the rules from that template.
+Every account references a template. The account inherits everything from that template — session limits, MFA requirements, Gateway, recording storage, and so on.
 
 This means you can:
 - Apply the same rules to many accounts by having them use the same template
 - Change rules for all those accounts at once by editing the template
 - Have different accounts in the same folder use different templates (if they need different rules)
+
+Some options like Gateway can be overridden at the account level when needed.
 
 ## Next Steps
 

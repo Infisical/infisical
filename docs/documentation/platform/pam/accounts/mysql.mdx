@@ -1,10 +1,10 @@
 ---
-title: "PostgreSQL Accounts"
-sidebarTitle: "PostgreSQL"
-description: "Add and connect to PostgreSQL databases."
+title: "MySQL Accounts"
+sidebarTitle: "MySQL"
+description: "Add and connect to MySQL databases."
 ---
 
-PostgreSQL accounts let you manage access to your PostgreSQL databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) can be recorded.
+MySQL accounts let you manage access to your MySQL databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
 
 ## Creating an Account
 
@@ -13,14 +13,14 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
     Go to **Privileged Access Management → Accounts** and click **Add Account**.
   </Step>
   <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a PostgreSQL [template](/documentation/platform/pam/templates/overview) (e.g., the default `postgres` or a custom one).
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a MySQL [template](/documentation/platform/pam/templates/overview).
   </Step>
   <Step title="Enter connection details">
     | Field | Description |
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `orders-db-readonly`) |
     | **Host** | Database hostname or IP |
-    | **Port** | PostgreSQL port (default: 5432) |
+    | **Port** | MySQL port (default: 3306) |
     | **Database** | Database name |
     | **SSL Enabled** | Enable SSL for the connection |
     | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
@@ -29,8 +29,8 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
   <Step title="Enter credentials">
     | Field | Description |
     |-------|-------------|
-    | **Username** | PostgreSQL username |
-    | **Password** | PostgreSQL password |
+    | **Username** | MySQL username |
+    | **Password** | MySQL password |
   </Step>
   <Step title="Save">
     Click **Create**.
@@ -44,7 +44,7 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
     Web Access provides a browser-based interface with two tools:
 
     - **Data Explorer** — browse tables, view data, filter and sort, edit rows, export to CSV/JSON
-    - **SQL Editor** — write and run SQL queries, use transactions
+    - **SQL Editor** — write and run SQL queries
 
     To connect:
     1. Go to **Privileged Access Management → My Access**
@@ -52,15 +52,15 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
 
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your preferred PostgreSQL client.
+    The CLI starts a local proxy that you connect to with your preferred MySQL client.
 
     ```bash
-    infisical pam access backend-team/orders-db
+    infisical pam access my-folder/orders-db
     ```
 
-    The command outputs the local port to connect to. Then use your PostgreSQL client:
+    The command outputs the local port to connect to. Then use your MySQL client:
     ```bash
-    psql "postgresql://localhost:<port>/orders"
+    mysql -h 127.0.0.1 -P <port> -u root orders
     ```
 
     No password needed since the proxy handles authentication.
@@ -74,8 +74,8 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
-    Add SSH server accounts.
+  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
+    Add PostgreSQL database accounts.
   </Card>
   <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
     View and manage sessions.

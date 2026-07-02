@@ -10,7 +10,7 @@ Infisical PAM is built around four core components: accounts, folders, account t
 
 An **account** represents a single database or server you want to manage. You provide the connection details (host, port, database) and credentials (username, password), and Infisical stores them securely. Users connect through Infisical without ever seeing the underlying credentials.
 
-Infisical currently supports PostgreSQL databases and SSH servers.
+Infisical supports databases (PostgreSQL, MySQL, MS SQL, MongoDB), servers (SSH, Windows), Kubernetes clusters, and AWS IAM roles.
 
 [Learn more about Accounts →](/documentation/platform/pam/accounts/overview)
 
@@ -32,9 +32,9 @@ Permissions are set at the folder level, so everyone with access to a folder can
 - Whether a reason is required
 - Whether MFA is required
 
-Templates are specific to an account type (PostgreSQL or SSH). This allows for type-specific policies — for example, command restrictions for SSH or query restrictions for databases in future releases.
+Templates are specific to an account type. This allows for type-specific policies — for example, command restrictions for SSH or query restrictions for databases in future releases.
 
-Every account uses a template of the same type. Infisical provides default templates (`postgres`, `ssh`) with sensible settings, so you can start creating accounts immediately. Create custom templates when you need different rules for different environments or compliance requirements.
+Every account uses a template of the same type. Infisical provides default templates for each account type with sensible settings, so you can start creating accounts immediately. Create custom templates when you need different rules for different environments or compliance requirements.
 
 **Templates define rules, folders define access.** Accounts in the same folder can use different templates (different rules, same team access), and accounts in different folders can use the same template (same rules, different team access).
 

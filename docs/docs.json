@@ -984,7 +984,14 @@
                     "pages": [
                       "documentation/platform/pam/accounts/overview",
                       "documentation/platform/pam/accounts/postgresql",
-                      "documentation/platform/pam/accounts/ssh"
+                      "documentation/platform/pam/accounts/mysql",
+                      "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/ssh",
+                      "documentation/platform/pam/accounts/kubernetes",
+                      "documentation/platform/pam/accounts/aws-iam",
+                      "documentation/platform/pam/accounts/windows",
+                      "documentation/platform/pam/accounts/windows-ad"
                     ]
                   },
                   {

@@ -12,7 +12,7 @@ The content depends on the account type:
 
 **PostgreSQL sessions:**
 - All SQL queries executed
-- Query results and responses
+- Query responses and result summaries (not full result data)
 - Timestamps for each action
 
 **SSH sessions:**
@@ -22,19 +22,7 @@ The content depends on the account type:
 
 Both Web Access and CLI sessions are recorded the same way.
 
-## How Recording Works
-
-Recording happens at the [Gateway](/documentation/platform/gateways/overview) level:
-
-1. Traffic flows through the Gateway
-2. The Gateway captures and encrypts session events
-3. Events upload to Infisical in real-time
-4. Recordings are available immediately — even for active sessions
-
-This architecture means:
-- **No data loss** — if connectivity drops, the Gateway caches locally and syncs when restored
-- **Near real-time** — admins can see what's happening in active sessions
-- **Always encrypted** — recordings are encrypted before upload
+Recording happens at the [Gateway](/documentation/platform/gateways/overview) level — events are captured, encrypted, and uploaded in real-time. See [Architecture](/documentation/platform/pam/architecture) for details on how this works.
 
 ## Storage Options
 
@@ -54,10 +42,6 @@ For most cases, internal storage works fine. Use [External Storage](/documentati
 3. Use the search bar to find specific content
 
 Recordings are available in real-time for both active and completed sessions.
-
-## Best Practices
-
-**Use external S3 for regulated environments.** If you have data residency or retention requirements, store recordings in your own bucket where you control the data lifecycle.
 
 ## Next Steps
 
