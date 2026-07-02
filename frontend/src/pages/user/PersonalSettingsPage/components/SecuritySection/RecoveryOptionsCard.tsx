@@ -48,14 +48,14 @@ export const RecoveryOptionsCard = () => {
   };
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <h3 className="mb-4 text-sm font-medium text-mineshaft-100">Recovery options</h3>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <h3 className="mb-4 text-sm font-medium text-foreground">Recovery options</h3>
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <KeyRoundIcon className="mt-0.5 text-muted" />
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm text-mineshaft-100">Recovery codes</p>
+              <p className="text-sm text-foreground">Recovery codes</p>
               {hasViewed && <Badge variant="neutral">Viewed</Badge>}
             </div>
             <p className="text-xs text-muted">

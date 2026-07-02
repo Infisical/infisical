@@ -37,11 +37,11 @@ export const RecoveryCodesView = ({ recoveryCodes, onDownloaded }: Props) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+      <div className="rounded-lg border border-border bg-container p-4">
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
           {recoveryCodes.map((code, index) => (
-            <div key={code} className="flex items-center text-mineshaft-200">
-              <span className="w-6 text-right text-mineshaft-400">{index + 1}.</span>
+            <div key={code} className="flex items-center text-foreground">
+              <span className="w-6 text-right text-muted">{index + 1}.</span>
               <span className="pl-2">{code}</span>
             </div>
           ))}

@@ -37,7 +37,7 @@ const MethodRow = ({ icon: Icon, title, description, badge, action }: MethodRowP
       <Icon className="mt-0.5 text-muted" />
       <div>
         <div className="flex items-center gap-2">
-          <p className="text-sm text-mineshaft-100">{title}</p>
+          <p className="text-sm text-foreground">{title}</p>
           {badge}
         </div>
         <p className="text-xs text-muted">{description}</p>
@@ -74,9 +74,9 @@ export const MfaMethodsCard = () => {
   };
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <h3 className="mb-2 text-sm font-medium text-mineshaft-100">Two-factor methods</h3>
-      <div className="divide-y divide-mineshaft-700">
+    <div className="rounded-lg border border-border bg-card p-4">
+      <h3 className="mb-2 text-sm font-medium text-foreground">Two-factor methods</h3>
+      <div className="divide-y divide-border">
         <MethodRow
           icon={MailIcon}
           title="Email"

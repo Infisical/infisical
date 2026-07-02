@@ -100,19 +100,19 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
           ) : (
             <div className="flex flex-col gap-2">
               {credentials.length === 0 && (
-                <p className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 text-center text-sm text-muted">
+                <p className="rounded-lg border border-border bg-container p-4 text-center text-sm text-muted">
                   No passkeys registered yet.
                 </p>
               )}
               {credentials.map((credential) => (
                 <div
                   key={credential.id}
-                  className="flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-3"
+                  className="flex items-center justify-between rounded-lg border border-border bg-container p-3"
                 >
                   <div className="flex items-center gap-3">
                     <FingerprintIcon className="text-muted" />
                     <div>
-                      <p className="text-sm text-mineshaft-100">
+                      <p className="text-sm text-foreground">
                         {credential.name || "Unnamed passkey"}
                       </p>
                       <p className="text-xs text-muted">

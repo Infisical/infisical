@@ -64,7 +64,7 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
       {manualSecret && (
         <p className="text-xs text-muted">
           Can&apos;t scan? Enter this key manually:{" "}
-          <code className="rounded bg-mineshaft-700 px-2 py-0.5 font-mono text-mineshaft-100">
+          <code className="rounded border border-border bg-container px-2 py-0.5 font-mono text-foreground">
             {manualSecret}
           </code>
         </p>

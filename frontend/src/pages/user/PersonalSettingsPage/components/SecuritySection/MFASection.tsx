@@ -71,8 +71,8 @@ export const MFASection = () => {
 
   if (user.authMethods?.includes(AuthMethod.LDAP)) {
     return (
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h2 className="text-lg font-medium text-mineshaft-100">Two-factor Authentication</h2>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
         <p className="mt-1 text-sm text-muted">
           Two-factor authentication is managed by your identity provider for LDAP accounts.
         </p>
@@ -118,9 +118,9 @@ export const MFASection = () => {
   };
 
   const disabledView = (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="mb-6 rounded-lg border border-border bg-card p-6">
       <div className="flex items-start justify-between">
-        <h2 className="text-lg font-medium text-mineshaft-100">Two-factor Authentication</h2>
+        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
         <Badge variant="danger">
           <CircleAlertIcon /> Not enabled
         </Badge>
@@ -132,7 +132,7 @@ export const MFASection = () => {
           href={LEARN_MORE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline underline-offset-2 hover:text-mineshaft-200"
+          className="underline underline-offset-2 hover:text-foreground"
         >
           Click here
         </a>
@@ -147,9 +147,9 @@ export const MFASection = () => {
 
   const enabledView = (
     <div className="mb-6 flex flex-col gap-6">
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+      <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-medium text-mineshaft-100">Two-factor Authentication</h2>
+          <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
           <Badge variant="success">
             <ShieldCheckIcon /> Enabled
           </Badge>
@@ -159,8 +159,8 @@ export const MFASection = () => {
           options below.
         </p>
 
-        <div className="mt-6 border-t border-mineshaft-700 pt-6">
-          <p className="text-sm font-medium text-mineshaft-100">Preferred 2FA method</p>
+        <div className="mt-6 border-t border-border pt-6">
+          <p className="text-sm font-medium text-foreground">Preferred 2FA method</p>
           <p className="mb-3 text-sm text-muted">
             Set the method used first when signing in to Infisical.
           </p>
@@ -189,7 +189,7 @@ export const MFASection = () => {
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-4 border-t border-mineshaft-700 pt-6">
+        <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-6">
           <p className="text-sm text-muted">
             {isMfaEnforced
               ? "Your organization requires two-factor authentication, so it can't be disabled."
