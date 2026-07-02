@@ -242,7 +242,7 @@ export const secretReplicationServiceFactory = ({
       const foldersGroupedById = groupBy(importedFolders.filter(Boolean), (i) => i?.id as string);
       await Promise.all(
         nonReplicatedDestinationImports
-          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId]?.[0]?.path as string))
           // filter out already synced ones
           .filter(
             ({ folderId }) =>

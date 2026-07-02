@@ -811,14 +811,14 @@ export const secretQueueFactory = ({
         );
         await Promise.all(
           imports
-            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+            .filter(({ folderId }) => Boolean(foldersGroupedById[folderId]?.[0]?.path as string))
             // filter out already synced ones
             .filter(
               ({ folderId }) =>
                 !deDupeQueue[
                   uniqueSecretQueueKey(
-                    foldersGroupedById[folderId][0]?.environmentSlug as string,
-                    foldersGroupedById[folderId][0]?.path as string
+                    foldersGroupedById[folderId]?.[0]?.environmentSlug as string,
+                    foldersGroupedById[folderId]?.[0]?.path as string
                   )
                 ]
             )
@@ -873,14 +873,14 @@ export const secretQueueFactory = ({
         );
         await Promise.all(
           referencedFolderIds
-            .filter((folderId) => Boolean(referencedFoldersGroupedById[folderId][0]?.path))
+            .filter((folderId) => Boolean(referencedFoldersGroupedById[folderId]?.[0]?.path))
             // filter out already synced ones
             .filter(
               (folderId) =>
                 !deDupeQueue[
                   uniqueSecretQueueKey(
-                    referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
-                    referencedFoldersGroupedById[folderId][0]?.path as string
+                    referencedFoldersGroupedById[folderId]?.[0]?.environmentSlug as string,
+                    referencedFoldersGroupedById[folderId]?.[0]?.path as string
                   )
                 ]
             )
