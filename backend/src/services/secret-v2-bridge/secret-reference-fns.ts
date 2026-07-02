@@ -216,6 +216,14 @@ export const expandSecretReferencesFactory = ({
     const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
     let expandedValue = dto.value;
 
+    // Ensure the secret can actually be read before we expand it
+    const currentSecret = await fetchSecret(dto.environment, dto.secretPath, dto.secretKey);
+    if (!canExpandValue(dto.environment, dto.secretPath, dto.secretKey, currentSecret.tags)) {
+      throw new ForbiddenRequestError({
+        message: `You do not have permission to read secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+      });
+    }
+
     const crossProjectSecretSharingEnabled = await checkCrossProjectAllowed();
 
     while (stack.length) {
@@ -265,7 +273,6 @@ export const expandSecretReferencesFactory = ({
 
           if (entities.length === 1) {
             const [secretKey] = entities;
-
             // eslint-disable-next-line no-continue,no-await-in-loop
             const referredValue = await fetchSecret(environment, secretPath, secretKey);
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
@@ -284,12 +291,7 @@ export const expandSecretReferencesFactory = ({
           } else if (entities[0].startsWith("@")) {
             // Cross-project reference: ${@project-slug.env.path.KEY}
             // eslint-disable-next-line no-await-in-loop
-            if (
-              !canExpandValue ||
-              !hasCrossProjectConfig ||
-              !projectFolderGrantDAL ||
-              !crossProjectSecretSharingEnabled
-            ) {
+            if (!hasCrossProjectConfig || !projectFolderGrantDAL || !crossProjectSecretSharingEnabled) {
               // eslint-disable-next-line no-continue
               continue;
             }

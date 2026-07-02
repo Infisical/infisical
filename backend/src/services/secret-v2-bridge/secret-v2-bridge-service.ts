@@ -3127,17 +3127,9 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath
-    });
-
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
-      throw new NotFoundError({
-        message: "Folder not found for the given environment slug & secret path",
-        name: "Create secret"
-      });
+      throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
     const folderId = folder.id;
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
