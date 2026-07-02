@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -92,8 +94,8 @@ export const mfaRecoveryCodeServiceFactory = ({
    * ones. Returns the fresh codes so the caller can display them once. If no
    * pool exists yet it is created.
    */
-  const rotateRecoveryCodes = async ({ userId }: TRotateRecoveryCodesDTO) => {
-    const user = await userDAL.findById(userId);
+  const rotateRecoveryCodes = async ({ userId, tx: externalTx }: TRotateRecoveryCodesDTO) => {
+    const user = await userDAL.findById(userId, externalTx);
     if (!user?.isMfaEnabled) {
       throw new BadRequestError({
         message: "Cannot regenerate recovery codes: MFA is not enabled for this account"
@@ -102,7 +104,7 @@ export const mfaRecoveryCodeServiceFactory = ({
 
     const { recoveryCodes, encryptedRecoveryCodes } = generateEncryptedRecoveryCodes();
 
-    await mfaRecoveryCodeDAL.transaction(async (tx) => {
+    const upsert = async (tx: Knex) => {
       const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOne({ userId }, tx);
 
       if (recoveryCodeConfig) {
@@ -110,13 +112,19 @@ export const mfaRecoveryCodeServiceFactory = ({
       } else {
         await mfaRecoveryCodeDAL.create({ userId, encryptedRecoveryCodes }, tx);
       }
-    });
+    };
+
+    if (externalTx) {
+      await upsert(externalTx);
+    } else {
+      await mfaRecoveryCodeDAL.transaction(upsert);
+    }
 
     return recoveryCodes;
   };
 
-  const deleteRecoveryCodes = async ({ userId }: TDeleteRecoveryCodesDTO) => {
-    await mfaRecoveryCodeDAL.delete({ userId });
+  const deleteRecoveryCodes = async ({ userId, tx }: TDeleteRecoveryCodesDTO) => {
+    await mfaRecoveryCodeDAL.delete({ userId }, tx);
   };
 
   return {

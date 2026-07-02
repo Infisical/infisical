@@ -132,28 +132,34 @@ export const userServiceFactory = ({
       }
     }
 
-    let mfaMethods;
+    let mfaMethods: string[] | undefined;
     if (isMfaEnabled === undefined) {
       mfaMethods = undefined;
     } else {
       mfaMethods = isMfaEnabled ? ["email"] : [];
     }
 
-    const updatedUser = await userDAL.updateById(userId, {
-      isMfaEnabled,
-      mfaMethods,
-      selectedMfaMethod
-    });
+    const updatedUser = await userDAL.transaction(async (tx) => {
+      const user2fa = await userDAL.updateById(
+        userId,
+        {
+          isMfaEnabled,
+          mfaMethods,
+          selectedMfaMethod
+        },
+        tx
+      );
 
-    if (isMfaEnabled === true && !wasMfaEnabled) {
-      await mfaRecoveryCodeService.rotateRecoveryCodes({ userId });
-    } else if (isMfaEnabled === false) {
-      await Promise.all([
-        mfaRecoveryCodeService.deleteRecoveryCodes({ userId }),
-        totpConfigDAL.delete({ userId }),
-        webAuthnCredentialDAL.delete({ userId })
-      ]);
-    }
+      if (isMfaEnabled === true && !wasMfaEnabled) {
+        await mfaRecoveryCodeService.rotateRecoveryCodes({ userId, tx });
+      } else if (isMfaEnabled === false) {
+        await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
+        await totpConfigDAL.delete({ userId }, tx);
+        await webAuthnCredentialDAL.delete({ userId }, tx);
+      }
+
+      return user2fa;
+    });
 
     return updatedUser;
   };
