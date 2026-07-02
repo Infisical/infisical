@@ -531,6 +531,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "TriggerDev.png",
     category: "INFRASTRUCTURE",
     description: "Trigger.dev access."
+  },
+  [AppConnection.Gitea]: {
+    name: "Gitea",
+    image: "Gitea.png",
+    category: "VERSION CONTROL",
+    description: "Authenticate via OAuth or an access token."
   }
 };
 

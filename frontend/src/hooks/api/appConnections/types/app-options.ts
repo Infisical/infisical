@@ -294,6 +294,10 @@ export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
 
+export type TGiteaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Gitea;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -364,7 +368,8 @@ export type TAppConnectionOption =
   | TDatadogConnectionOption
   | TF5BigIpConnectionOption
   | TConvexConnectionOption
-  | TTriggerDevConnectionOption;
+  | TTriggerDevConnectionOption
+  | TGiteaConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;

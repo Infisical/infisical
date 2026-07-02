@@ -106,6 +106,7 @@ import {
 } from "@app/services/app-connection/f5-big-ip";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
+import { GiteaConnectionListItemSchema } from "@app/services/app-connection/gitea";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
   GitHubRadarConnectionListItemSchema,
@@ -359,7 +360,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SnowflakeConnectionListItemSchema,
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
-  ConvexConnectionListItemSchema
+  ConvexConnectionListItemSchema,
+  GiteaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

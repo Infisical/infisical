@@ -145,6 +145,7 @@ import {
 } from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
+import { getGiteaConnectionListItem } from "./gitea";
 import {
   getGitHubConnectionListItem,
   GitHubConnectionMethod,
@@ -363,7 +364,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSnowflakeConnectionListItem(),
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
-    getConvexConnectionListItem()
+    getConvexConnectionListItem(),
+    getGiteaConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
