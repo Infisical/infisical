@@ -525,6 +525,7 @@ import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
+import { userActivationServiceFactory } from "@app/services/user-activation/user-activation-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
@@ -2596,6 +2597,8 @@ export const registerRoutes = async (
     telemetryService
   });
 
+  const userActivationService = userActivationServiceFactory();
+
   const userEngagementService = userEngagementServiceFactory({
     userDAL,
     orgDAL
@@ -3885,6 +3888,7 @@ export const registerRoutes = async (
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
     secretSharing: secretSharingService,
+    userActivation: userActivationService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
     hsm: hsmService,
