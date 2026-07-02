@@ -132,8 +132,12 @@ export const GitHubSecretScanningFactory = () => {
     }
 
     await cloneRepository({
-      cloneUrl: `https://x-access-token:${token}@github.com/${resourceName}.git`,
-      repoPath
+      remoteUrl: `https://github.com/${resourceName}.git`,
+      repoPath,
+      auth: {
+        username: "x-access-token",
+        password: token
+      }
     });
 
     return repoPath;
