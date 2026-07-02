@@ -706,10 +706,9 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const projectName = currentProject?.name;
 
-    const shouldShowOnExampleProject =
-      projectName === "Example Project" && totalSecretCount && totalSecretCount > 5;
+    const isExampleProject = projectName === "Example Project";
 
-    if (hasSecrets && shouldShowOnExampleProject) {
+    if (hasSecrets && !isExampleProject) {
       checkSecretsActivation();
     }
   }, [hasSecrets, checkSecretsActivation]);
