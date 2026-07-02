@@ -2627,7 +2627,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionInsightsActions.Read,
-        description: "View secret access volume, locations, auth methods, calendar insights, and reports"
+        description:
+          "View secret access volume, locations, auth methods, calendar insights, and reports"
       },
       {
         label: "Generate Report",
