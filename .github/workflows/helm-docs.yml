@@ -7,6 +7,43 @@ permissions:
 
 env:
   HELM_DOCS_VERSION: "1.14.2"
+  TARGETS: |
+    [
+      {
+        "name": "secrets-operator",
+        "repo": "https://github.com/infisical/kubernetes-operator.git",
+        "chart_path": "helm-charts/secrets-operator",
+        "output_path": "docs/self-hosting/helm-charts/secrets-operator.mdx"
+      },
+      {
+        "name": "infisical-pki-issuer",
+        "repo": "https://github.com/Infisical/infisical-issuer.git",
+        "chart_path": "helm-charts/infisical-pki-issuer",
+        "output_path": "docs/self-hosting/helm-charts/infisical-pki-issuer.mdx"
+      },
+      {
+        "name": "infisical-gateway",
+        "chart_path": "helm-charts/infisical-gateway",
+        "output_path": "docs/self-hosting/helm-charts/infisical-gateway.mdx"
+      },
+      {
+        "name": "infisical-standalone-postgres",
+        "chart_path": "helm-charts/infisical-standalone-postgres",
+        "output_path": "docs/self-hosting/helm-charts/infisical-standalone-postgres.mdx"
+      },
+      {
+        "name": "infisical-csi-provider",
+        "repo": "https://github.com/Infisical/infisical-csi-provider.git",
+        "chart_path": "helm",
+        "output_path": "docs/self-hosting/helm-charts/infisical-csi-provider.mdx"
+      },
+      {
+        "name": "infisical-agent-injector",
+        "repo": "https://github.com/Infisical/infisical-agent-injector.git",
+        "chart_path": "helm",
+        "output_path": "docs/self-hosting/helm-charts/infisical-agent-injector.mdx"
+      }
+    ]
 
 jobs:
   generate-helm-docs:
@@ -27,43 +64,6 @@ jobs:
       - name: Generate and collect docs
         env:
           TEMPLATE_FILE: helm-charts/README.md.gotmpl
-          TARGETS: |
-            [
-              {
-                "name": "secrets-operator",
-                "repo": "https://github.com/infisical/kubernetes-operator.git",
-                "chart_path": "helm-charts/secrets-operator",
-                "output_path": "docs/self-hosting/helm-charts/secrets-operator.mdx"
-              },
-              {
-                "name": "infisical-pki-issuer",
-                "repo": "https://github.com/Infisical/infisical-issuer.git",
-                "chart_path": "helm-charts/infisical-pki-issuer",
-                "output_path": "docs/self-hosting/helm-charts/infisical-pki-issuer.mdx"
-              },
-              {
-                "name": "infisical-gateway",
-                "chart_path": "helm-charts/infisical-gateway",
-                "output_path": "docs/self-hosting/helm-charts/infisical-gateway.mdx"
-              },
-              {
-                "name": "infisical-standalone-postgres",
-                "chart_path": "helm-charts/infisical-standalone-postgres",
-                "output_path": "docs/self-hosting/helm-charts/infisical-standalone-postgres.mdx"
-              },
-              {
-                "name": "infisical-csi-provider",
-                "repo": "https://github.com/Infisical/infisical-csi-provider.git",
-                "chart_path": "helm",
-                "output_path": "docs/self-hosting/helm-charts/infisical-csi-provider.mdx"
-              },
-              {
-                "name": "infisical-agent-injector",
-                "repo": "https://github.com/Infisical/infisical-agent-injector.git",
-                "chart_path": "helm",
-                "output_path": "docs/self-hosting/helm-charts/infisical-agent-injector.mdx"
-              }
-            ]
         run: |
           template_src="${GITHUB_WORKSPACE}/${TEMPLATE_FILE}"
           if [ ! -f "$template_src" ]; then
@@ -120,7 +120,11 @@ jobs:
 
           branch="auto/helm-docs-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$branch"
-          git add .
+
+          echo "$TARGETS" | jq -r '.[].output_path' | while read -r path; do
+            git add "$path"
+          done
+
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "docs: update helm chart reference docs"
           git push origin "$branch"
