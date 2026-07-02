@@ -4,11 +4,11 @@ sidebarTitle: "SSH Certificate Auth"
 description: "Configure certificate-based SSH access to eliminate static credentials."
 ---
 
-This guide walks through setting up SSH certificate authentication. Instead of managing passwords or SSH keys, Infisical mints a short-lived certificate for each session — valid only for that session, so there's nothing to rotate or revoke.
+This guide walks through setting up SSH certificate authentication. Instead of managing passwords or SSH keys, Infisical mints a short-lived certificate for each [session](/documentation/platform/pam/sessions/overview) — valid only for that session, so there's nothing to rotate or revoke.
 
 ## Prerequisites
 
-- Admin access to the folder where you'll create the account
+- Admin access to the [folder](/documentation/platform/pam/folders/overview) where you'll create the [account](/documentation/platform/pam/accounts/overview)
 - Root/sudo access on the target server
 - The server must be reachable from your [Gateway](/documentation/platform/gateways/gateway-deployment)
 
@@ -18,7 +18,7 @@ This guide walks through setting up SSH certificate authentication. Instead of m
   <Step title="Create the SSH Account">
     1. Open the folder where you want to add the account
     2. Click **Add Account**
-    3. Select an SSH template
+    3. Select an SSH [template](/documentation/platform/pam/templates/overview)
     4. Fill in the connection details (host, port, username)
     5. Set **Authentication Method** to **Certificate**
     6. Click **Create**
@@ -50,10 +50,10 @@ This guide walks through setting up SSH certificate authentication. Instead of m
     ```
   </Step>
   <Step title="Connect">
-    Your team can now connect — either in the browser or using the CLI proxy.
+    Your team can now connect from **My Access** — either in the browser or using the CLI proxy.
 
-    1. Open the account
-    2. Click **Access**
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch**
   </Step>
 </Steps>
 

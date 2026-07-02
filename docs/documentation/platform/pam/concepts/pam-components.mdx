@@ -16,12 +16,11 @@ Infisical currently supports PostgreSQL databases and SSH servers.
 
 ## Folders
 
-**Folders** group related accounts together. They serve two purposes:
+**Group accounts by who needs access to them.** If the same people need the same accounts, put them in one folder. If different people need different accounts, use separate folders.
 
-1. **Organization** — keep related accounts together (by environment, team, or application)
-2. **Access control** — grant access to a folder and it applies to all accounts inside
+You might organize by team (`backend-team`), department (`engineering`), application (`checkout-service`), or environment — whatever matches how access actually works in your organization.
 
-Folders are the primary way to manage access at scale. Instead of granting permissions account-by-account, you grant access to a folder and users can reach everything in it.
+Permissions are set at the folder level, so everyone with access to a folder can reach all accounts inside.
 
 [Learn more about Folders →](/documentation/platform/pam/folders/overview)
 
@@ -32,7 +31,6 @@ Folders are the primary way to manage access at scale. Instead of granting permi
 - Maximum session duration
 - Whether a reason is required
 - Whether MFA is required
-- Whether sessions are recorded
 
 Templates are specific to an account type (PostgreSQL or SSH). This allows for type-specific policies — for example, command restrictions for SSH or query restrictions for databases in future releases.
 
@@ -48,10 +46,9 @@ Every account uses a template of the same type. Infisical provides default templ
 
 | Role | Capabilities |
 |------|-------------|
-| **Admin** | Full control — create accounts, manage memberships, connect |
-| **Connector** | Connect to accounts and launch sessions |
-| **Requester** | Request access to accounts |
-| **Auditor** | View sessions and audit logs (read-only) |
+| **Admin** | Full control — accounts, folders, sessions, memberships |
+| **Connector** | Launch sessions and connect to accounts |
+| **Auditor** | View audit logs and session recordings |
 
 Memberships on a folder cascade to all accounts inside. For most cases, this is all you need. For exceptions, you can assign memberships directly on individual accounts.
 

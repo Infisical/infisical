@@ -4,20 +4,28 @@ sidebarTitle: "Folders"
 description: "Organize accounts and control who can access them."
 ---
 
-Folders are how you organize accounts in PAM. Instead of having a flat list of every database and server, you group related accounts together — by team, environment, region, or whatever makes sense for your organization.
+**Group [accounts](/documentation/platform/pam/accounts/overview) by who needs access to them.** This is the core design principle of Infisical PAM.
 
-But folders aren't just for organization. They're also how you control access. When you grant someone access to a folder, they can access every account inside it.
+If the same 10 people need access to the same 5 databases, put those databases in one folder. If a different team needs access to different databases, create a separate folder for them.
+
+Common patterns:
+- **By team** — `backend-team`, `data-engineering`, `platform`
+- **By department** — `engineering`, `finance`, `operations`
+- **By application** — `checkout-service`, `payments`, `user-auth`
+- **By environment** — if different people manage dev vs prod
+
+The right pattern depends on your organization. Folder-level permissions are the primary way to grant access, though you can also assign access directly on individual accounts when needed.
 
 ## Creating a Folder
 
 <Steps>
-  <Step title="Navigate to Folders">
-    Go to **Privileged Access Management → Folders** and click **Create Folder**.
+  <Step title="Navigate to Accounts">
+    Go to **Privileged Access Management → Accounts** and click **Create Folder**.
   </Step>
   <Step title="Configure the folder">
     | Field | Description |
     |-------|-------------|
-    | **Name** | A unique name (e.g., `prod-databases`, `platform-team`) |
+    | **Name** | A unique name (e.g., `platform-team`, `checkout-service`, `us-west-prod`) |
     | **Description** | Optional context about what this folder contains |
     
     Click **Create**.
@@ -28,7 +36,7 @@ Once created, you can start adding accounts to it. But first, you'll probably wa
 
 ## Managing Access
 
-Access to a folder is controlled through **memberships**. You assign users or groups a role, and that role determines what they can do.
+Access to a folder is controlled through **[memberships](/documentation/platform/pam/concepts/access-control)**. You assign users or groups a role, and that role determines what they can do.
 
 ### Adding Members
 
@@ -56,10 +64,9 @@ Access to a folder is controlled through **memberships**. You assign users or gr
 
 | Role | What they can do |
 |------|------------------|
-| **Admin** | Full control — create/edit/delete accounts, manage memberships, connect to accounts, view all sessions |
-| **Connector** | Connect to accounts, view their own sessions |
-| **Requester** | Request access to accounts |
-| **Auditor** | View all sessions and logs (read-only) |
+| **Admin** | Full control — accounts, folders, sessions, memberships |
+| **Connector** | Launch sessions and connect to accounts |
+| **Auditor** | View audit logs and session recordings |
 
 When you assign a role on a folder, it applies to **all accounts** inside that folder. This is the main way to grant access — you don't have to set up permissions on each account individually.
 
@@ -75,17 +82,9 @@ You can grant access to individual users or to groups:
 
 Groups are managed at the organization level and can sync from identity providers like Okta or Azure AD.
 
-## What's Inside a Folder
-
-The folder detail page shows:
-- **Accounts** — all accounts in this folder
-- **Permissions** — who has access
-
-From here you can add new accounts, manage existing ones, or adjust who has access.
-
 ## Next Steps
 
-Now that you have a folder, you'll want to add accounts to it. But before that, you might want to set up templates to define what rules apply to those accounts.
+Now that you have a folder, you'll want to add accounts to it. But before that, you might want to set up [templates](/documentation/platform/pam/templates/overview) to define what rules apply to those accounts.
 
 <CardGroup cols={2}>
   <Card title="Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">

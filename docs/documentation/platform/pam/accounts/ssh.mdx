@@ -4,7 +4,7 @@ sidebarTitle: "SSH"
 description: "Add and connect to SSH servers."
 ---
 
-SSH accounts let you manage access to your Linux/Unix servers. Users connect through Web Access (a browser-based terminal) or CLI (a local proxy), and every session can be recorded.
+SSH accounts let you manage access to your Linux/Unix servers. Users connect through Web Access (a browser-based terminal) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) can be recorded.
 
 SSH accounts support three authentication methods: password, public key, and certificate-based.
 
@@ -12,10 +12,10 @@ SSH accounts support three authentication methods: password, public key, and cer
 
 <Steps>
   <Step title="Open the folder">
-    Go to **Folders** and click on the folder where you want to add the account.
+    Go to **Privileged Access Management → Accounts** and click on the [folder](/documentation/platform/pam/folders/overview) where you want to add the account.
   </Step>
   <Step title="Add account and select a template">
-    Click **Add Account** and select an SSH template (e.g., the default `ssh` or a custom one). The template determines session rules like duration, MFA, and recording.
+    Click **Add Account** and select an SSH [template](/documentation/platform/pam/templates/overview) (e.g., the default `ssh` or a custom one). The template determines session rules like duration, MFA, and recording.
   </Step>
   <Step title="Enter connection details">
     | Field | Description |
@@ -61,8 +61,8 @@ SSH accounts support three authentication methods: password, public key, and cer
   <Tab title="Web Access">
     Web Access provides an interactive terminal in your browser.
 
-    1. Open the account and click **Access**
-    2. Click **Connect in Browser**
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch → Connect in Browser**
     3. A terminal opens in a new tab
 
     You get a full shell. To disconnect, type `exit` or close the tab.

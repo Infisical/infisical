@@ -23,7 +23,7 @@ There are two product roles:
 Product Admins set up the governance layer — they don't automatically get access to connect to accounts. To connect, you need a membership on a folder or account.
 
 <Note>
-Organization Admins can access PAM as Product Admins without being explicitly added.
+Organization Admins can enter PAM as a Product Admin without being explicitly added — they just need to opt in.
 </Note>
 
 ### Adding Product Members
@@ -43,10 +43,9 @@ Once someone is a product member, they still need to be granted access to specif
 
 | Role | What they can do |
 |------|------------------|
-| **Admin** | Full control — create/edit/delete accounts, manage memberships, connect, view all sessions |
-| **Connector** | Connect to accounts, view their own sessions |
-| **Requester** | Request access to accounts |
-| **Auditor** | View all sessions and logs (read-only) |
+| **Admin** | Full control — accounts, folders, sessions, memberships |
+| **Connector** | Launch sessions and connect to accounts |
+| **Auditor** | View audit logs and session recordings |
 
 ### Folder vs Account Memberships
 
@@ -73,13 +72,13 @@ For accounts:
 Here's a typical setup:
 
 1. **Product Admin** adds the Platform team lead as a Product Member
-2. **Product Admin** creates a `prod-databases` folder
+2. **Product Admin** creates a `platform-team` folder
 3. **Product Admin** grants the team lead **Admin** on that folder
-4. **Team lead** (now a folder Admin) adds accounts to the folder
+4. **Team lead** (now a Folder Admin) adds accounts to the folder
 5. **Team lead** grants the rest of the team **Connector** on the folder
 6. **Team members** can now connect to any account in the folder
 
-The Product Admin sets up the governance structure. The folder Admin manages day-to-day access within their scope. Team members connect to what they've been granted access to.
+The Product Admin sets up the governance structure. The Folder Admin manages day-to-day access within their scope. Team members connect to what they've been granted access to.
 
 ## Next Steps
 

@@ -8,6 +8,10 @@ Accounts are the databases and servers you want to manage through PAM. Each acco
 
 When users connect to an account, they never see the actual credentials. The connection is proxied, credentials are injected automatically, and everything is recorded.
 
+<Tip>
+**Two pages, two purposes:** The **Accounts** page is where admins create and configure accounts. The **My Access** page is where users go to launch sessions and connect.
+</Tip>
+
 ## Account Types
 
 PAM currently supports two account types:
@@ -21,14 +25,14 @@ Each type has specific connection details — PostgreSQL accounts need a databas
 
 ## Adding an Account
 
-Accounts live inside folders. To add one:
+Accounts live inside [folders](/documentation/platform/pam/folders/overview). To add one:
 
 <Steps>
   <Step title="Open the folder">
-    Go to **Folders** and click on the folder where you want to add the account.
+    Go to **Privileged Access Management → Accounts** and click on the folder where you want to add the account.
   </Step>
   <Step title="Add account and select a template">
-    Click **Add Account** and select a template. The template determines the account type (PostgreSQL or SSH) and session rules (duration, MFA, recording).
+    Click **Add Account** and select a [template](/documentation/platform/pam/templates/overview). The template determines the account type (PostgreSQL or SSH) and session rules (duration, MFA, recording).
   </Step>
   <Step title="Enter connection details">
     Provide the hostname, port, and other connection information.
@@ -44,12 +48,12 @@ Accounts live inside folders. To add one:
 
 ## Connecting to an Account
 
-Once an account exists, users with access can connect in two ways:
+Once an account exists, users with access can connect from the **My Access** page:
 
 ### Web Access
 
-Click **Access** on the account and select **Connect in Browser**. This opens:
-- **PostgreSQL** — a Data Explorer for browsing tables and a SQL Terminal for running queries
+Go to **Privileged Access Management → My Access**, find the account, and click **Launch → Connect in Browser**. This opens:
+- **PostgreSQL** — a Data Explorer for browsing tables and a SQL Editor for running queries
 - **SSH** — an interactive terminal
 
 ### CLI Access

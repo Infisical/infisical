@@ -945,10 +945,10 @@
             ]
           },
           {
-            "item": "Infisical PAM",
+            "item": "Privileged Access Manager",
             "groups": [
               {
-                "group": "Infisical PAM",
+                "group": "Privileged Access Manager",
                 "pages": [
                   "documentation/platform/pam/overview",
                   {

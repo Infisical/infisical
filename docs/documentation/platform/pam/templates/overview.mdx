@@ -4,7 +4,7 @@ sidebarTitle: "Account Templates"
 description: "Define the rules that apply when users connect to accounts."
 ---
 
-Templates control what happens when someone connects to an account. How long can they stay connected? Do they need MFA? Should the session be recorded? These rules are defined in a template, and every account uses one.
+Templates control what happens when someone connects to an [account](/documentation/platform/pam/accounts/overview). How long can they stay connected? Do they need MFA? Should the [session](/documentation/platform/pam/sessions/overview) be recorded? These rules are defined in a template, and every account uses one.
 
 Templates are **type-specific** — a PostgreSQL template can only be used with PostgreSQL accounts, and an SSH template can only be used with SSH accounts. This allows for type-specific policies like command restrictions or query filtering in future releases.
 
@@ -69,7 +69,7 @@ This means you can:
 
 ## Next Steps
 
-With templates set up, you're ready to add accounts to your folders.
+With templates set up, you're ready to add accounts to your [folders](/documentation/platform/pam/folders/overview).
 
 <CardGroup cols={2}>
   <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">

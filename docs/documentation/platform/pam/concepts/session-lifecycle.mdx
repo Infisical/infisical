@@ -4,20 +4,20 @@ sidebarTitle: "Session Lifecycle"
 description: "What happens when you connect to an account."
 ---
 
-When you connect to an account through PAM, a **session** is created. The session tracks who connected, when, for how long, and what they did. Here's what happens at each stage.
+When you connect to an [account](/documentation/platform/pam/accounts/overview) through PAM, a **session** is created. The session tracks who connected, when, for how long, and what they did. Here's what happens at each stage.
 
 ## Requesting Access
 
-When you click **Access** on an account (or run the CLI command), PAM checks:
+When you click **Launch** on an account from the **My Access** page (or run the CLI command), PAM checks:
 
-1. **Do you have permission?** — You need a membership (on the folder or account) with the Connector or Admin role
-2. **Template requirements** — If the template requires a reason, you'll be prompted to enter one. If it requires MFA, you'll need to verify your identity.
+1. **Do you have permission?** — You need a [membership](/documentation/platform/pam/concepts/access-control) (on the [folder](/documentation/platform/pam/folders/overview) or account) with the Connector or Admin role
+2. **[Template](/documentation/platform/pam/templates/overview) requirements** — If the template requires a reason, you'll be prompted to enter one. If it requires MFA, you'll need to verify your identity.
 
 If everything checks out, the session is approved and you can connect.
 
 ## Connecting
 
-Once approved, the connection is established through the Gateway:
+Once approved, the connection is established through the [Gateway](/documentation/platform/gateways/overview):
 
 1. Your client (browser or CLI) connects to the Gateway
 2. The Gateway fetches the account credentials from Infisical

@@ -4,7 +4,7 @@ sidebarTitle: "Architecture"
 description: "How PAM connects users to your infrastructure securely."
 ---
 
-PAM uses a proxy-based architecture. Users never connect directly to your databases or servers — everything goes through the Gateway. This keeps your infrastructure isolated while providing secure, auditable access.
+PAM uses a proxy-based architecture. Users never connect directly to your databases or servers — everything goes through the [Gateway](/documentation/platform/gateways/overview). This keeps your infrastructure isolated while providing secure, auditable access.
 
 ## Components
 
@@ -16,11 +16,11 @@ PAM uses a proxy-based architecture. Users never connect directly to your databa
 
 ## How a Connection Works
 
-When a user connects to an account:
+When a user connects to an [account](/documentation/platform/pam/accounts/overview):
 
-1. **User requests access** — clicks Access in the browser or runs the CLI command
-2. **Infisical checks permissions** — verifies the user has a membership with the right role
-3. **Template rules are enforced** — MFA, reason requirement, etc.
+1. **User requests access** — clicks Launch in the browser or runs the CLI command
+2. **Infisical checks permissions** — verifies the user has a [membership](/documentation/platform/pam/concepts/access-control) with the right role
+3. **[Template](/documentation/platform/pam/templates/overview) rules are enforced** — MFA, reason requirement, etc.
 4. **Connection is established** — an encrypted tunnel is created between the client and Gateway
 5. **Gateway fetches credentials** — retrieves them from Infisical
 6. **Gateway connects to the target** — using the credentials

@@ -16,28 +16,29 @@ This guide walks through giving your team secure access to a production PostgreS
 
 <Steps>
   <Step title="Create a Folder">
-    1. Go to **Privileged Access Management → Folders**
+    Create a [folder](/documentation/platform/pam/folders/overview) for the [accounts](/documentation/platform/pam/accounts/overview) your team needs to access.
+
+    1. Go to **Privileged Access Management → Accounts**
     2. Click **Create Folder**
-    3. Name it `prod-databases`
+    3. Name it based on who needs access (e.g., `backend-team`, `checkout-service`)
     4. Click **Create**
   </Step>
   <Step title="(Optional) Create a Custom Template">
-    The default `postgres` template works for most cases. If you need stricter rules:
+    The default `postgres` [template](/documentation/platform/pam/templates/overview) works for most cases. If you need stricter rules:
 
     1. Go to **Account Templates** and click **Create Template**
-    2. Name it `prod-postgres`, select **PostgreSQL** as the type
-    3. Configure your access policy (max duration, require reason, require MFA)
-    4. Click **Create**
+    2. Select **PostgreSQL** as the type and configure your access policy
+    3. Click **Create**
   </Step>
   <Step title="Add the Database Account">
-    1. Open the `prod-databases` folder
+    1. Open your folder
     2. Click **Add Account**
-    3. Select your template (`prod-postgres` or the default `postgres`)
+    3. Select your template
     4. Fill in your database connection details and credentials
     5. Click **Create**
   </Step>
   <Step title="Grant Your Team Access">
-    1. Open the `prod-databases` folder
+    1. Open your folder
     2. Go to the **Permissions** tab
     3. Click **Assign Access**
     4. Select your team and set the role to **Connector**
@@ -48,10 +49,10 @@ This guide walks through giving your team secure access to a production PostgreS
     </Tip>
   </Step>
   <Step title="Connect">
-    Your team can now connect — either in the browser or using the CLI proxy.
+    Your team can now connect from **My Access** — either in the browser or using the CLI proxy.
 
-    1. Open the account
-    2. Click **Access**
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch**
   </Step>
 </Steps>
 
