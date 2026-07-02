@@ -36,7 +36,7 @@ const schema = z.object({
       },
       { message: "Duration must be between 30s and 7d. Examples: 30m, 1h, 4h, 1d" }
     ),
-  note: z.string().max(500).optional()
+  reason: z.string().max(500).optional()
 });
 
 type FormData = z.infer<typeof schema>;
@@ -57,7 +57,7 @@ export const RequestAccessModal = ({ account, isOpen, onOpenChange }: Props) => 
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { duration: "1h", note: "" }
+    defaultValues: { duration: "1h", reason: "" }
   });
 
   const onSubmit = (data: FormData) => {
@@ -66,7 +66,7 @@ export const RequestAccessModal = ({ account, isOpen, onOpenChange }: Props) => 
       {
         accountId: account.id,
         duration: data.duration,
-        note: data.note || undefined
+        reason: data.reason || undefined
       },
       {
         onSuccess: () => {
@@ -106,7 +106,7 @@ export const RequestAccessModal = ({ account, isOpen, onOpenChange }: Props) => 
           />
           <Controller
             control={control}
-            name="note"
+            name="reason"
             render={({ field }) => (
               <Field>
                 <FieldLabel>Reason</FieldLabel>

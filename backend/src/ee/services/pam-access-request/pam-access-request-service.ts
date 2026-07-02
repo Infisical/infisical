@@ -86,6 +86,7 @@ type TPamAccessRequestServiceFactoryDep = {
     | "find"
     | "findOne"
     | "findById"
+    | "findByIdForUpdate"
     | "create"
     | "updateById"
     | "transaction"
@@ -94,7 +95,7 @@ type TPamAccessRequestServiceFactoryDep = {
   >;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "updateById">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
-  approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create">;
+  approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create" | "find">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "findOne" | "create" | "updateById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find" | "findOne">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
@@ -139,6 +140,17 @@ export const pamAccessRequestServiceFactory = ({
       scopeId: folderId
     });
     return policy ?? null;
+  };
+
+  // npm ms returns undefined (not an error) for strings it can't parse, e.g. Go-style "2h30m"
+  const parseDurationMs = (duration: string): number => {
+    const durationMs: number | undefined = ms(duration);
+    if (!durationMs || durationMs <= 0) {
+      throw new BadRequestError({
+        message: `Invalid access duration '${duration}'. Use a single unit like '30m', '2h', or '1d'`
+      });
+    }
+    return durationMs;
   };
 
   // Confirms the folder belongs to the project (guards cross-project IDOR) and that the actor may
@@ -362,7 +374,7 @@ export const pamAccessRequestServiceFactory = ({
     return { policyId: newPolicy.id };
   };
 
-  const createRequest = async ({ accountId, path, projectId, note, duration, ...ctx }: TCreateAccessRequestDTO) => {
+  const createRequest = async ({ accountId, path, projectId, reason, duration, ...ctx }: TCreateAccessRequestDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
     if (!accountId && !path) {
@@ -400,6 +412,19 @@ export const pamAccessRequestServiceFactory = ({
       throw new BadRequestError({ message: "No approval configuration found for this folder" });
     }
 
+    const durationMs = parseDurationMs(duration);
+    const accessDuration = (
+      policy.constraints as { constraints?: { accessDuration?: { min?: string; max?: string } } } | null
+    )?.constraints?.accessDuration;
+    const minMs = accessDuration?.min ? ms(accessDuration.min) : undefined;
+    const maxMs = accessDuration?.max ? ms(accessDuration.max) : undefined;
+    if (minMs && durationMs < minMs) {
+      throw new BadRequestError({ message: `Access duration must be at least ${accessDuration?.min}` });
+    }
+    if (maxMs && durationMs > maxMs) {
+      throw new BadRequestError({ message: `Access duration must be at most ${accessDuration?.max}` });
+    }
+
     const existingPending = await approvalRequestDAL.find({
       requesterId: ctx.actorId,
       type: ApprovalPolicyType.PamAccess,
@@ -420,7 +445,6 @@ export const pamAccessRequestServiceFactory = ({
     const stepsForRequest = policySteps.map((s) => ({
       name: s.name ?? null,
       requiredApprovals: s.requiredApprovals,
-      notifyApprovers: s.notifyApprovers ?? true,
       approvers: s.approvers
     }));
 
@@ -430,7 +454,7 @@ export const pamAccessRequestServiceFactory = ({
     const requestData = {
       accountId: account.id,
       folderId: account.folderId,
-      note,
+      reason,
       duration
     } as unknown as TApprovalRequestData;
 
@@ -442,7 +466,7 @@ export const pamAccessRequestServiceFactory = ({
         policyType: ApprovalPolicyType.PamAccess,
         policySteps: stepsForRequest,
         requestData,
-        justification: note,
+        justification: reason,
         requesterUserId: ctx.actorId,
         requesterName: requesterName || "Unknown",
         requesterEmail: user.email || "",
@@ -459,7 +483,7 @@ export const pamAccessRequestServiceFactory = ({
     const firstStep = stepsForRequest[0];
     if (firstStep) {
       try {
-        await notifyApproversForStep(firstStep, request, {
+        await notifyApproversForStep({ ...firstStep, notifyApprovers: true }, request, {
           userGroupMembershipDAL,
           notificationService
         });
@@ -467,48 +491,46 @@ export const pamAccessRequestServiceFactory = ({
         logger.error(err, `Failed to send in-app notifications for PAM access request [requestId=${request.id}]`);
       }
 
-      if (firstStep.notifyApprovers) {
-        try {
-          const approverUserIds = new Set<string>();
+      try {
+        const approverUserIds = new Set<string>();
+        firstStep.approvers
+          .filter((a) => a.type === ApproverType.User)
+          .forEach((a) => approverUserIds.add(a.id));
+
+        const groupMemberLists = await Promise.all(
           firstStep.approvers
-            .filter((a) => a.type === ApproverType.User)
-            .forEach((a) => approverUserIds.add(a.id));
+            .filter((a) => a.type === ApproverType.Group)
+            .map((a) => userGroupMembershipDAL.find({ groupId: a.id }))
+        );
+        groupMemberLists.forEach((members) => members.forEach((m) => approverUserIds.add(m.userId)));
 
-          const groupMemberLists = await Promise.all(
-            firstStep.approvers
-              .filter((a) => a.type === ApproverType.Group)
-              .map((a) => userGroupMembershipDAL.find({ groupId: a.id }))
-          );
-          groupMemberLists.forEach((members) => members.forEach((m) => approverUserIds.add(m.userId)));
+        const approverUsers =
+          approverUserIds.size > 0 ? await userDAL.find({ $in: { id: [...approverUserIds] } }) : [];
+        const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
 
-          const approverUsers =
-            approverUserIds.size > 0 ? await userDAL.find({ $in: { id: [...approverUserIds] } }) : [];
-          const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
+        if (recipients.length > 0) {
+          const project = await projectDAL.findById(projectId);
+          const cfg = getConfig();
+          const approvalUrl = `${cfg.SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
 
-          if (recipients.length > 0) {
-            const project = await projectDAL.findById(projectId);
-            const cfg = getConfig();
-            const approvalUrl = `${cfg.SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
-
-            await smtpService.sendMail({
-              recipients,
-              subjectLine: "PAM Access Request",
-              template: SmtpTemplates.AccessPamRequest,
-              substitutions: {
-                projectName: project?.name ?? "PAM",
-                requesterFullName: requesterName || "Unknown",
-                requesterEmail: user.email ?? "",
-                accountName: account.name,
-                folderName: account.folderName ?? undefined,
-                accessDuration: duration,
-                note,
-                approvalUrl
-              }
-            });
-          }
-        } catch (err) {
-          logger.error(err, `Failed to send approval emails for PAM access request [requestId=${request.id}]`);
+          await smtpService.sendMail({
+            recipients,
+            subjectLine: "PAM Access Request",
+            template: SmtpTemplates.AccessPamRequest,
+            substitutions: {
+              projectName: project?.name ?? "PAM",
+              requesterFullName: requesterName || "Unknown",
+              requesterEmail: user.email ?? "",
+              accountName: account.name,
+              folderName: account.folderName ?? undefined,
+              accessDuration: duration,
+              reason,
+              approvalUrl
+            }
+          });
         }
+      } catch (err) {
+        logger.error(err, `Failed to send approval emails for PAM access request [requestId=${request.id}]`);
       }
     }
 
@@ -678,9 +700,22 @@ export const pamAccessRequestServiceFactory = ({
 
     if (status === "rejected") {
       await approvalRequestDAL.transaction(async (tx) => {
+        // Row lock serializes concurrent reviews; the pre-transaction checks may be stale by now
+        const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+        if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
+          throw new BadRequestError({ message: "Request is not pending" });
+        }
+        const lockedStep = steps.find((s) => s.stepNumber === locked.currentStep);
+        if (!lockedStep) {
+          throw new BadRequestError({ message: "Current step not found" });
+        }
+        if (!isUserEligibleApprover(lockedStep.approvers, ctx.actorId, userGroupIds)) {
+          throw new ForbiddenRequestError({ message: "You are not an eligible approver for this request" });
+        }
+
         await approvalRequestApprovalsDAL.create(
           {
-            stepId: currentStep.id,
+            stepId: lockedStep.id,
             approverUserId: ctx.actorId,
             decision: ApprovalRequestApprovalDecision.Rejected,
             comment
@@ -697,9 +732,30 @@ export const pamAccessRequestServiceFactory = ({
     const { updatedRequest, nextStepToNotify } = await approvalRequestDAL.transaction(async (tx) => {
       let nextStep = null;
 
+      // Row lock serializes concurrent approvals; re-check state and re-read the approval count
+      // under the lock so two simultaneous approvers can't both complete the step or double-grant
+      const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+      if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
+        throw new BadRequestError({ message: "Request is not pending" });
+      }
+
+      const lockedStepIndex = steps.findIndex((s) => s.stepNumber === locked.currentStep);
+      const lockedStep = steps[lockedStepIndex];
+      if (!lockedStep) {
+        throw new BadRequestError({ message: "Current step not found" });
+      }
+      if (!isUserEligibleApprover(lockedStep.approvers, ctx.actorId, userGroupIds)) {
+        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this request" });
+      }
+
+      const stepApprovals = await approvalRequestApprovalsDAL.find({ stepId: lockedStep.id }, { tx });
+      if (stepApprovals.some((a) => a.approverUserId === ctx.actorId)) {
+        throw new BadRequestError({ message: "You have already reviewed this request" });
+      }
+
       await approvalRequestApprovalsDAL.create(
         {
-          stepId: currentStep.id,
+          stepId: lockedStep.id,
           approverUserId: ctx.actorId,
           decision: ApprovalRequestApprovalDecision.Approved,
           comment
@@ -707,30 +763,28 @@ export const pamAccessRequestServiceFactory = ({
         tx
       );
 
-      const newApprovalCount = currentStep.approvals.length + 1;
-      if (newApprovalCount >= currentStep.requiredApprovals) {
+      const newApprovalCount = stepApprovals.length + 1;
+      if (newApprovalCount >= lockedStep.requiredApprovals) {
         await approvalRequestStepsDAL.updateById(
-          currentStep.id,
+          lockedStep.id,
           { status: ApprovalRequestStepStatus.Completed, completedAt: new Date() },
           tx
         );
 
-        const nextStepData = steps[currentStepIndex + 1];
+        const nextStepData = steps[lockedStepIndex + 1];
         if (nextStepData) {
-          await approvalRequestDAL.updateById(requestId, { currentStep: request.currentStep + 1 }, tx);
+          await approvalRequestDAL.updateById(requestId, { currentStep: locked.currentStep + 1 }, tx);
           await approvalRequestStepsDAL.updateById(
             nextStepData.id,
             { status: ApprovalRequestStepStatus.InProgress, startedAt: new Date() },
             tx
           );
-          if (nextStepData.notifyApprovers) {
-            nextStep = nextStepData;
-          }
+          nextStep = nextStepData;
         } else {
           await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
 
           if (requestData?.requestData) {
-            const durationMs = ms(requestData.requestData.duration);
+            const durationMs = parseDurationMs(requestData.requestData.duration);
             const expiresAt = new Date(Date.now() + durationMs);
             await approvalRequestGrantsDAL.create(
               {
@@ -751,7 +805,7 @@ export const pamAccessRequestServiceFactory = ({
         }
       }
 
-      const updated = await approvalRequestDAL.findById(requestId);
+      const updated = await approvalRequestDAL.findById(requestId, tx);
       return { updatedRequest: updated, nextStepToNotify: nextStep };
     });
 
@@ -760,7 +814,7 @@ export const pamAccessRequestServiceFactory = ({
         {
           name: nextStepToNotify.name ?? null,
           requiredApprovals: nextStepToNotify.requiredApprovals,
-          notifyApprovers: nextStepToNotify.notifyApprovers ?? true,
+          notifyApprovers: true,
           approvers: nextStepToNotify.approvers
         },
         updatedRequest,
@@ -807,17 +861,19 @@ export const pamAccessRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to revoke this grant" });
     }
 
-    await approvalRequestGrantsDAL.updateById(grant.id, {
+    const revokedGrant = await approvalRequestGrantsDAL.updateById(grant.id, {
       status: ApprovalRequestGrantStatus.Revoked,
       revokedByUserId: ctx.actorId,
       revokedAt: new Date(),
       revocationReason: "Revoked by admin"
     });
 
+    // An undefined userId in the filter would throw in knex; granteeUserId is null when the
+    // grantee user was deleted, and their sessions carry a null userId too
     if (accountId) {
       const activeSessions = await pamSessionDAL.find({
         accountId,
-        userId: grant.granteeUserId ?? undefined,
+        userId: grant.granteeUserId ?? null,
         status: "active"
       });
 
@@ -826,7 +882,7 @@ export const pamAccessRequestServiceFactory = ({
       }
     }
 
-    return { grant };
+    return { grant: revokedGrant };
   };
 
   const checkGrant = async ({

@@ -17,7 +17,7 @@ export type TCreateAccessRequestDTO = {
   accountId?: string;
   path?: string;
   projectId: string;
-  note?: string;
+  reason?: string;
   duration: string;
 } & TActorContext;
 
@@ -59,6 +59,6 @@ export type TCheckGrantDTO = {
 export type TPamAccessRequestData = {
   accountId: string;
   folderId: string;
-  note?: string;
+  reason?: string;
   duration: string;
 };

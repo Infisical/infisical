@@ -473,7 +473,7 @@ export type TPamAccessRequest = {
     requestData: {
       accountId: string;
       folderId: string;
-      note?: string;
+      reason?: string;
       duration: string;
     };
   } | null;
@@ -517,7 +517,7 @@ export type TPamAccessGrant = {
 
 export type TCreatePamAccessRequestDTO = {
   accountId: string;
-  note?: string;
+  reason?: string;
   duration: string;
 };
 

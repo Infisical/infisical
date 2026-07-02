@@ -23,7 +23,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         .object({
           accountId: z.string().uuid().optional(),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
-          note: z.string().max(500).optional(),
+          reason: z.string().max(500).optional(),
           duration: z.string().min(1)
         })
         .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
@@ -41,7 +41,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accountId: req.body.accountId,
         path: req.body.path,
         projectId: req.internalPamProjectId,
-        note: req.body.note,
+        reason: req.body.reason,
         duration: req.body.duration,
         actorId: req.permission.id,
         actor: req.permission.type,

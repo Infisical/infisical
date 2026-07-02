@@ -72,7 +72,7 @@ const RequestRow = ({
       </TableCell>
       <TableCell className="text-sm">{request.folderName ?? "-"}</TableCell>
       <TableCell className="max-w-[200px] truncate text-sm">
-        {request.requestData?.requestData?.note || "-"}
+        {request.requestData?.requestData?.reason || "-"}
       </TableCell>
       <TableCell className="text-sm">{duration ?? "-"}</TableCell>
       <TableCell className="text-sm">

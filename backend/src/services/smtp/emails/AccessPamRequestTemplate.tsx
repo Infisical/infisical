@@ -12,7 +12,7 @@ interface AccessPamRequestTemplateProps extends Omit<BaseEmailWrapperProps, "tit
   accountName?: string;
   folderName?: string;
   accessDuration: string;
-  note?: string;
+  reason?: string;
   approvalUrl: string;
 }
 
@@ -24,7 +24,7 @@ export const AccessPamRequestTemplate = ({
   accountName,
   folderName,
   accessDuration,
-  note,
+  reason,
   approvalUrl
 }: AccessPamRequestTemplateProps) => {
   const target = [folderName, accountName].filter(Boolean).join(" / ") || "a PAM account";
@@ -43,9 +43,9 @@ export const AccessPamRequestTemplate = ({
           <strong>{requesterFullName}</strong> (<BaseLink href={`mailto:${requesterEmail}`}>{requesterEmail}</BaseLink>)
           has requested access to <strong>{target}</strong> for <strong>{accessDuration}</strong>.
         </Text>
-        {note && (
+        {reason && (
           <Text className="text-[14px] text-slate-700 leading-[24px]">
-            <strong className="text-black">Reason provided:</strong> "{note}"
+            <strong className="text-black">Reason provided:</strong> "{reason}"
           </Text>
         )}
       </Section>
@@ -66,5 +66,5 @@ AccessPamRequestTemplate.PreviewProps = {
   accessDuration: "1 hour",
   siteUrl: "https://infisical.com",
   projectName: "Example Project",
-  note: "Need to run a migration on the production database."
+  reason: "Need to run a migration on the production database."
 } as AccessPamRequestTemplateProps;

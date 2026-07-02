@@ -116,7 +116,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
               }
             ]
           : []),
-        { label: "Reason", value: requestData?.note || "No reason provided" }
+        { label: "Reason", value: requestData?.reason || "No reason provided" }
       ]}
     >
       <Tabs defaultValue="review" className="flex h-full flex-col">
