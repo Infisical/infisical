@@ -1,0 +1,15 @@
+---
+title: "Helm Charts"
+description: "Reference documentation for all official Infisical Helm charts."
+---
+
+Infisical provides official Helm charts for deploying and integrating with Kubernetes. Each chart includes a full parameter reference generated from its `values.yaml`.
+
+| Chart | Description |
+|-------|-------------|
+| [Infisical (Standalone with PostgreSQL)](/self-hosting/helm-charts/infisical-standalone-postgres) | Deploy the Infisical platform as a standalone instance with a bundled PostgreSQL database. |
+| [Infisical Gateway](/self-hosting/helm-charts/infisical-gateway) | Deploy the Infisical Gateway for relaying connections to private infrastructure. |
+| [Secrets Operator](/self-hosting/helm-charts/secrets-operator) | Kubernetes operator that syncs Infisical secrets into native Kubernetes secrets. |
+| [PKI Issuer](/self-hosting/helm-charts/infisical-pki-issuer) | cert-manager issuer that provisions TLS certificates from Infisical PKI. |
+| [CSI Provider](/self-hosting/helm-charts/infisical-csi-provider) | Secrets Store CSI driver provider that mounts Infisical secrets as volumes. |
+| [Agent Injector](/self-hosting/helm-charts/infisical-agent-injector) | Mutating webhook that injects the Infisical agent sidecar into pods. |

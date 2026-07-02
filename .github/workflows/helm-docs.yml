@@ -33,7 +33,35 @@ jobs:
                 "name": "secrets-operator",
                 "repo": "https://github.com/infisical/kubernetes-operator.git",
                 "chart_path": "helm-charts/secrets-operator",
-                "output_path": "docs/integrations/platforms/kubernetes/components/operator/helm-chart-reference.mdx"
+                "output_path": "docs/self-hosting/helm-charts/secrets-operator.mdx"
+              },
+              {
+                "name": "infisical-pki-issuer",
+                "repo": "https://github.com/Infisical/infisical-issuer.git",
+                "chart_path": "helm-charts/infisical-pki-issuer",
+                "output_path": "docs/self-hosting/helm-charts/infisical-pki-issuer.mdx"
+              },
+              {
+                "name": "infisical-gateway",
+                "chart_path": "helm-charts/infisical-gateway",
+                "output_path": "docs/self-hosting/helm-charts/infisical-gateway.mdx"
+              },
+              {
+                "name": "infisical-standalone-postgres",
+                "chart_path": "helm-charts/infisical-standalone-postgres",
+                "output_path": "docs/self-hosting/helm-charts/infisical-standalone-postgres.mdx"
+              },
+              {
+                "name": "infisical-csi-provider",
+                "repo": "https://github.com/Infisical/infisical-csi-provider.git",
+                "chart_path": "helm",
+                "output_path": "docs/self-hosting/helm-charts/infisical-csi-provider.mdx"
+              },
+              {
+                "name": "infisical-agent-injector",
+                "repo": "https://github.com/Infisical/infisical-agent-injector.git",
+                "chart_path": "helm",
+                "output_path": "docs/self-hosting/helm-charts/infisical-agent-injector.mdx"
               }
             ]
         run: |

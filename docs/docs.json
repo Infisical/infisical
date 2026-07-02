@@ -381,6 +381,18 @@
                   "self-hosting/reference-architectures/google-cloud-run"
                 ]
               },
+              {
+                "group": "Helm charts",
+                "pages": [
+                  "self-hosting/helm-charts/overview",
+                  "self-hosting/helm-charts/infisical-standalone-postgres",
+                  "self-hosting/helm-charts/infisical-gateway",
+                  "self-hosting/helm-charts/secrets-operator",
+                  "self-hosting/helm-charts/infisical-pki-issuer",
+                  "self-hosting/helm-charts/infisical-csi-provider",
+                  "self-hosting/helm-charts/infisical-agent-injector"
+                ]
+              },
               "self-hosting/ee",
               "self-hosting/faq"
             ]
