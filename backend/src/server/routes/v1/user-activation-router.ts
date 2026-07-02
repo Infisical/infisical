@@ -7,22 +7,34 @@ import { AuthMode } from "@app/services/auth/auth-type";
 export const registerUserActivationRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/secrets",
-    method: "GET",
+    method: "POST",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getSecretsActivationStatus",
+      operationId: "checkSecretsActivation",
       response: {
         200: z.object({
-          userId: z.string(),
-          orgId: z.string()
+          shouldShowActivation: z.boolean(),
+          stage: z.enum(["FIRST_SECRET", "THREE_DAYS", "SEVEN_DAYS"]).nullable(),
+          activation: z
+            .object({
+              firstSecretCreatedAt: z.date().nullable(),
+              returnedAfterThreeDaysAt: z.date().nullable(),
+              returnedAfterSevenDaysAt: z.date().nullable()
+            })
+            .nullable()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.userActivation.getSecretsActivationStatus(req.permission.id, req.permission.orgId);
+      return server.services.userActivation.getSecretsActivationStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
     }
   });
 };

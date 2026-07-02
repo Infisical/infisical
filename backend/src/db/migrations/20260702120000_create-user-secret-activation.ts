@@ -11,6 +11,7 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("firstSecretCreatedAt");
       t.datetime("returnedAfterThreeDaysAt");
       t.datetime("returnedAfterSevenDaysAt");
+
       t.datetime("createdAt").notNullable().defaultTo(knex.fn.now());
       t.datetime("updatedAt").notNullable().defaultTo(knex.fn.now());
 

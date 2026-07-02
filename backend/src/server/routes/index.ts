@@ -525,6 +525,7 @@ import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
+import { userActivationDALFactory } from "@app/services/user-activation/user-activation-dal";
 import { userActivationServiceFactory } from "@app/services/user-activation/user-activation-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
@@ -598,6 +599,7 @@ export const registerRoutes = async (
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
   const orgMembershipDAL = orgMembershipDALFactory(db);
+  const userActivationDAL = userActivationDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
 
@@ -2597,7 +2599,11 @@ export const registerRoutes = async (
     telemetryService
   });
 
-  const userActivationService = userActivationServiceFactory();
+  const userActivationService = userActivationServiceFactory({
+    userActivationDAL,
+    permissionService,
+    orgDAL
+  });
 
   const userEngagementService = userEngagementServiceFactory({
     userDAL,
