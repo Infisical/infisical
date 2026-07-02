@@ -67,7 +67,13 @@ export const mfaRecoveryCodeServiceFactory = ({
     }
 
     const decryptWithRoot = kmsService.decryptWithRootKey();
-    const recoveryCodes = decryptWithRoot(recoveryCodeConfig.encryptedRecoveryCodes).toString().split(",");
+    // Once every code is consumed the stored value is the empty string, which
+    // split(",") turns into [""]. Filter out empties so an exhausted pool
+    // reads as [] rather than a single blank code.
+    const recoveryCodes = decryptWithRoot(recoveryCodeConfig.encryptedRecoveryCodes)
+      .toString()
+      .split(",")
+      .filter(Boolean);
 
     return recoveryCodes;
   };
