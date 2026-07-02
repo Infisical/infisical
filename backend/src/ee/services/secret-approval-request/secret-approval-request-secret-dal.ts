@@ -396,7 +396,9 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         )
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(
           TableName.SecretApprovalRequestSecretTag,
           `${TableName.SecretApprovalRequestSecret}.id`,
