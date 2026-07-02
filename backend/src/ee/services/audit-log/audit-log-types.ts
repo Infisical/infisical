@@ -706,6 +706,12 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
+
+  CREATE_AUDIT_REPORT = "create-audit-report",
+  GET_AUDIT_REPORTS = "get-audit-reports",
+  GET_AUDIT_REPORT = "get-audit-report",
+  DELETE_AUDIT_REPORT = "delete-audit-report",
+
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -5775,6 +5781,39 @@ interface ViewSecretManagementInsightsCountsEvent {
   };
 }
 
+interface CreateAuditReportEvent {
+  type: EventType.CREATE_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    projectId: string;
+    reportTypes: string[];
+    recipientCount: number;
+  };
+}
+
+interface GetAuditReportsEvent {
+  type: EventType.GET_AUDIT_REPORTS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface GetAuditReportEvent {
+  type: EventType.GET_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    projectId: string;
+  };
+}
+
+interface DeleteAuditReportEvent {
+  type: EventType.DELETE_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    projectId: string;
+  };
+}
+
 interface ViewAuditLogsEvent {
   type: EventType.VIEW_AUDIT_LOGS;
   metadata?: Record<string, unknown>;
@@ -7996,6 +8035,10 @@ export type Event =
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
+  | CreateAuditReportEvent
+  | GetAuditReportsEvent
+  | GetAuditReportEvent
+  | DeleteAuditReportEvent
   | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent

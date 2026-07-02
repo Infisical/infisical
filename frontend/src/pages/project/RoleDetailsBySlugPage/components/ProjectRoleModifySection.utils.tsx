@@ -64,7 +64,9 @@ const AuditLogsPolicyActionSchema = z.object({
 });
 
 const InsightsPolicyActionSchema = z.object({
-  [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
+  [ProjectPermissionInsightsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionInsightsActions.GenerateReport]: z.boolean().optional(),
+  [ProjectPermissionInsightsActions.DeleteReport]: z.boolean().optional()
 });
 
 const HoneyTokenPolicyActionSchema = z.object({
@@ -2620,12 +2622,23 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Insights]: {
     title: "Insights",
-    description: "View project analytics and insights dashboards",
+    description: "View project analytics and insights dashboards, and generate reports",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionInsightsActions.Read,
-        description: "View secret access volume, locations, auth methods, and calendar insights"
+        description:
+          "View secret access volume, locations, auth methods, calendar insights, and reports"
+      },
+      {
+        label: "Generate Report",
+        value: ProjectPermissionInsightsActions.GenerateReport,
+        description: "Generate new reports"
+      },
+      {
+        label: "Delete Report",
+        value: ProjectPermissionInsightsActions.DeleteReport,
+        description: "Delete reports"
       }
     ]
   },

@@ -230,7 +230,9 @@ export enum ProjectPermissionAuditLogsActions {
 }
 
 export enum ProjectPermissionInsightsActions {
-  Read = "read"
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum ProjectPermissionAppConnectionActions {

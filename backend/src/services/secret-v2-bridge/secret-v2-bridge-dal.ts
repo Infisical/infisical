@@ -1348,6 +1348,23 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findValueValidationCandidatesByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretV2)
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .whereNotNull(`${TableName.SecretV2}.encryptedValue`)
+        .select(`${TableName.SecretV2}.key`, `${TableName.SecretV2}.folderId`, `${TableName.SecretV2}.encryptedValue`);
+
+      return result as { key: string; folderId: string; encryptedValue: Buffer }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findValueValidationCandidatesByProject" });
+    }
+  };
+
   const countStaleByProject = async (projectId: string, staleBeforeDate: Date, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.SecretV2)
@@ -1406,6 +1423,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findStaleByProject,
     countStaleByProject,
     countByProject,
+    findValueValidationCandidatesByProject,
     findDuplicatedSecretValues,
     findOne,
     find,

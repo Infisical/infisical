@@ -313,6 +313,9 @@ export enum TableName {
   HoneyTokenEvent = "honey_token_events",
   HoneyTokenSecretMapping = "honey_token_secret_mappings",
 
+  // Audit Reports (exportable compliance reports)
+  AuditReport = "audit_reports",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
