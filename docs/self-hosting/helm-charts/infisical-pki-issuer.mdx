@@ -1,0 +1,59 @@
+---
+title: "infisical-pki-issuer"
+---
+
+# infisical-pki-issuer
+
+<div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square)
+
+![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+</div>
+
+A Helm chart for Infisical PKI Issuer
+
+## Table of content
+
+Use these links to navigate to a particular top-level stanza.
+- [`controllerManager`](#controllerManager)
+- [`controllerMetrics`](#controllerMetrics)
+- [`kubernetesClusterDomain`](#kubernetesClusterDomain)
+
+## All values
+
+### controllerManager
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `controllerManager.manager.args[0]` | string | `"--metrics-bind-address=:8443"` |  |
+| `controllerManager.manager.args[1]` | string | `"--leader-elect"` |  |
+| `controllerManager.manager.args[2]` | string | `"--health-probe-bind-address=:8081"` |  |
+| `controllerManager.manager.containerSecurityContext.allowPrivilegeEscalation` | bool | `false` |  |
+| `controllerManager.manager.containerSecurityContext.capabilities.drop[0]` | string | `"ALL"` |  |
+| `controllerManager.manager.image.repository` | string | `"docker.io/infisical/pki-issuer"` |  |
+| `controllerManager.manager.image.tag` | string | `"latest"` |  |
+| `controllerManager.manager.resources.limits.cpu` | string | `"500m"` |  |
+| `controllerManager.manager.resources.limits.memory` | string | `"128Mi"` |  |
+| `controllerManager.manager.resources.requests.cpu` | string | `"10m"` |  |
+| `controllerManager.manager.resources.requests.memory` | string | `"64Mi"` |  |
+| `controllerManager.podSecurityContext.runAsNonRoot` | bool | `true` |  |
+| `controllerManager.replicas` | int | `1` |  |
+| `controllerManager.serviceAccount.annotations` | object | `{}` |  |
+
+### controllerMetrics
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `controllerMetrics.ports[0].name` | string | `"https"` |  |
+| `controllerMetrics.ports[0].port` | int | `8443` |  |
+| `controllerMetrics.ports[0].protocol` | string | `"TCP"` |  |
+| `controllerMetrics.ports[0].targetPort` | int | `8443` |  |
+| `controllerMetrics.type` | string | `"ClusterIP"` |  |
+
+### kubernetesClusterDomain
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `kubernetesClusterDomain` | string | `"cluster.local"` |  |

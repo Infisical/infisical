@@ -1,0 +1,132 @@
+---
+title: "infisical-csi-provider"
+---
+
+# infisical-csi-provider
+
+<div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+![Version: 0.2.2](https://img.shields.io/badge/Version-0.2.2-informational?style=flat-square)
+
+![AppVersion: v0.0.7](https://img.shields.io/badge/AppVersion-v0.0.7-informational?style=flat-square)
+
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+</div>
+
+A Helm chart for the Infisical CSI provider
+
+## Table of content
+
+Use these links to navigate to a particular top-level stanza.
+- [`args[0]`](#args[0])
+- [`endpoint`](#endpoint)
+- [`image`](#image)
+- [`labels`](#labels)
+- [`livenessProbe`](#livenessProbe)
+- [`name`](#name)
+- [`namespace`](#namespace)
+- [`nodeSelector`](#nodeSelector)
+- [`podLabels`](#podLabels)
+- [`providerVolume`](#providerVolume)
+- [`readinessProbe`](#readinessProbe)
+- [`resources`](#resources)
+- [`tolerations`](#tolerations)
+
+## All values
+
+### args[0]
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `args[0]` | string | `"-endpoint=/provider/infisical.sock"` |  |
+
+### endpoint
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `endpoint` | string | `"/provider/infisical.sock"` |  |
+
+### image
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `image.pullPolicy` | string | `"IfNotPresent"` |  |
+| `image.repository` | string | `"infisical/infisical-csi-provider"` |  |
+| `image.tag` | string | `"v0.0.7"` |  |
+
+### labels
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `labels` | object | `{}` |  |
+
+### livenessProbe
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `livenessProbe.failureThreshold` | int | `2` |  |
+| `livenessProbe.httpGet.path` | string | `"/health/ready"` |  |
+| `livenessProbe.httpGet.port` | int | `8080` |  |
+| `livenessProbe.httpGet.scheme` | string | `"HTTP"` |  |
+| `livenessProbe.initialDelaySeconds` | int | `5` |  |
+| `livenessProbe.periodSeconds` | int | `5` |  |
+| `livenessProbe.successThreshold` | int | `1` |  |
+| `livenessProbe.timeoutSeconds` | int | `3` |  |
+
+### name
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | string | `"infisical-csi-provider"` |  |
+
+### namespace
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `namespace` | string | `"kube-system"` |  |
+
+### nodeSelector
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `nodeSelector."kubernetes.io/os"` | string | `"linux"` |  |
+
+### podLabels
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `podLabels` | object | `{}` |  |
+
+### providerVolume
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `providerVolume.hostPath` | string | `"/etc/kubernetes/secrets-store-csi-providers"` |  |
+| `providerVolume.mountPath` | string | `"/provider"` |  |
+
+### readinessProbe
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `readinessProbe.failureThreshold` | int | `2` |  |
+| `readinessProbe.httpGet.path` | string | `"/health/ready"` |  |
+| `readinessProbe.httpGet.port` | int | `8080` |  |
+| `readinessProbe.httpGet.scheme` | string | `"HTTP"` |  |
+| `readinessProbe.initialDelaySeconds` | int | `5` |  |
+| `readinessProbe.periodSeconds` | int | `5` |  |
+| `readinessProbe.successThreshold` | int | `1` |  |
+| `readinessProbe.timeoutSeconds` | int | `3` |  |
+
+### resources
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `resources.limits.cpu` | string | `"50m"` |  |
+| `resources.limits.memory` | string | `"100Mi"` |  |
+| `resources.requests.cpu` | string | `"50m"` |  |
+| `resources.requests.memory` | string | `"100Mi"` |  |
+
+### tolerations
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `tolerations` | list | `[]` |  |

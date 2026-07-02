@@ -1,0 +1,75 @@
+---
+title: "infisical-agent-injector"
+---
+
+# infisical-agent-injector
+
+<div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+![Version: 0.1.12](https://img.shields.io/badge/Version-0.1.12-informational?style=flat-square)
+
+![AppVersion: 0.1.12](https://img.shields.io/badge/AppVersion-0.1.12-informational?style=flat-square)
+
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+</div>
+
+A Helm chart for Infisical Kubernetes Agent Injector
+
+## Table of content
+
+Use these links to navigate to a particular top-level stanza.
+- [`failurePolicy`](#failurePolicy)
+- [`image`](#image)
+- [`livenessProbe`](#livenessProbe)
+- [`readinessProbe`](#readinessProbe)
+- [`replicaCount`](#replicaCount)
+- [`resources`](#resources)
+
+## All values
+
+### failurePolicy
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `failurePolicy` | string | `"Ignore"` |  |
+
+### image
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `image.repository` | string | `"infisical/infisical-agent-injector"` |  |
+| `image.tag` | string | `"v0.1.12"` |  |
+
+### livenessProbe
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `livenessProbe.failureThreshold` | int | `2` |  |
+| `livenessProbe.initialDelaySeconds` | int | `5` |  |
+| `livenessProbe.periodSeconds` | int | `2` |  |
+| `livenessProbe.successThreshold` | int | `1` |  |
+| `livenessProbe.timeoutSeconds` | int | `5` |  |
+
+### readinessProbe
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `readinessProbe.failureThreshold` | int | `2` |  |
+| `readinessProbe.initialDelaySeconds` | int | `5` |  |
+| `readinessProbe.periodSeconds` | int | `2` |  |
+| `readinessProbe.successThreshold` | int | `1` |  |
+| `readinessProbe.timeoutSeconds` | int | `5` |  |
+
+### replicaCount
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `replicaCount` | int | `1` |  |
+
+### resources
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `resources.limits.cpu` | string | `"200m"` |  |
+| `resources.limits.memory` | string | `"256Mi"` |  |
+| `resources.requests.cpu` | string | `"100m"` |  |
+| `resources.requests.memory` | string | `"128Mi"` |  |
