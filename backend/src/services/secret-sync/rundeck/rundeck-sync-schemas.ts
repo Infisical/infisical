@@ -18,7 +18,7 @@ const RundeckSyncDestinationConfigSchema = z.object({
     .min(1, "Path is required")
     .max(255)
     .startsWith("/", "Path must start with '/'")
-    .refine((val) => !val.includes(".."), "Path cannot contain '..'")
+    .refine((val) => val !== "." && val !== "..", "Invalid project name")
 });
 
 const RundeckSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };

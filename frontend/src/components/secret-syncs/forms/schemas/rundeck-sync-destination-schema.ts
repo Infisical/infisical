@@ -13,7 +13,7 @@ export const RundeckSyncDestinationSchema = BaseSecretSyncSchema().merge(
         .trim()
         .min(1, "Path is required")
         .startsWith("/", "Path must start with '/'")
-        .refine((val) => !val.includes(".."), "Path cannot contain '..'")
+        .refine((val) => val !== "." && val !== "..", "Invalid project path")
     })
   })
 );
