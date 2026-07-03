@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
+  BanIcon,
   BellIcon,
   ClipboardCheckIcon,
   CodeXmlIcon,
@@ -151,6 +152,7 @@ type Props = {
     | undefined;
   importedBy?: {
     environment: { name: string; slug: string };
+    project?: { name: string; slug: string; id: string };
     folders: {
       name: string;
       secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
@@ -167,6 +169,7 @@ type Props = {
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -203,7 +206,8 @@ export const SecretEditTableRow = ({
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
-  pendingKeyName
+  pendingKeyName,
+  revokedProjectFolderGrant
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -1108,6 +1112,20 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               )}
             </div>
+          </div>
+        )}
+        {revokedProjectFolderGrant && !isDirtyState && (
+          <div
+            className={twMerge(
+              "ml-auto flex shrink-0 items-center",
+              isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16",
+              isSingleEnvView && isFieldActive && "mr-8"
+            )}
+          >
+            <Badge variant="danger">
+              <BanIcon className="size-3.5" />
+              Secret share revoked
+            </Badge>
           </div>
         )}
       </div>

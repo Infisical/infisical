@@ -34,6 +34,7 @@ import { registerNorthflankSyncRouter } from "./northflank-sync-router";
 import { registerOctopusDeploySyncRouter } from "./octopus-deploy-sync-router";
 import { registerOnaSyncRouter } from "./ona-sync-router";
 import { registerOvhSyncRouter } from "./ovh-sync-router";
+import { registerQoverySyncRouter } from "./qovery-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerSnowflakeSyncRouter } from "./snowflake-sync-router";
@@ -93,5 +94,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.TravisCI]: registerTravisCISyncRouter,
   [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
   [SecretSync.HasuraCloud]: registerHasuraCloudSyncRouter,
+  [SecretSync.Qovery]: registerQoverySyncRouter,
   [SecretSync.Cloud66]: registerCloud66SyncRouter
 };

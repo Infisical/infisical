@@ -41,6 +41,7 @@ import {
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
+  QoveryConnectionMethod,
   RedisConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
@@ -540,6 +541,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "PLATFORM",
     description: "Project and deployment access for Convex."
   },
+  [AppConnection.Qovery]: {
+    name: "Qovery",
+    image: "Qovery.png",
+    category: "HOSTING",
+    description: "Deploy and manage applications on Qovery."
+  },
   [AppConnection.TriggerDev]: {
     name: "Trigger.dev",
     image: "TriggerDev.png",
@@ -621,6 +628,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NetlifyConnectionMethod.AccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
     case HasuraCloudConnectionMethod.AccessToken:
+    case QoveryConnectionMethod.AccessToken:
     case Cloud66ConnectionMethod.AccessToken:
       return { name: "Personal Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:

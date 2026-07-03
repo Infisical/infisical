@@ -3,10 +3,7 @@ import { logger } from "@app/lib/logger";
 
 import { mintServiceToken } from "../license-client-backends";
 
-const SNAPSHOTS_PATH = "/v1/usage/snapshots";
-
 export type TUsageSnapshot = {
-  org_id: string;
   feature_key: string;
   value: number;
   observed_at: string;
@@ -15,18 +12,18 @@ export type TUsageSnapshot = {
 };
 
 export type TUsageReporter = {
-  reportSnapshots: (snapshots: TUsageSnapshot[]) => Promise<void>;
+  reportSnapshots: (orgId: string, snapshots: TUsageSnapshot[]) => Promise<void>;
 };
 
 // getBearerToken is called per request so a cloud reporter can mint a fresh short-lived JWT each time
 // (a self-hosted reporter just returns its static license key).
 export const usageReporterFactory = (serverUrl: string, getBearerToken: () => string): TUsageReporter => ({
-  reportSnapshots: async (snapshots: TUsageSnapshot[]) => {
+  reportSnapshots: async (orgId: string, snapshots: TUsageSnapshot[]) => {
     if (!snapshots.length) {
       return;
     }
 
-    const url = new URL(SNAPSHOTS_PATH, serverUrl);
+    const url = new URL(`/v1/${encodeURIComponent(orgId)}/usage-snapshots`, serverUrl);
     const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${getBearerToken()}`, "Content-Type": "application/json" },

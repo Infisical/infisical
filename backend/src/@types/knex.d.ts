@@ -80,6 +80,9 @@ import {
   TAuditLogStreamsInsert,
   TAuditLogStreamsUpdate,
   TAuditLogsUpdate,
+  TAuditReports,
+  TAuditReportsInsert,
+  TAuditReportsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
   TAuthTokenSessionsInsert,
@@ -449,6 +452,9 @@ import {
   TProjectEnvironments,
   TProjectEnvironmentsInsert,
   TProjectEnvironmentsUpdate,
+  TProjectFolderGrants,
+  TProjectFolderGrantsInsert,
+  TProjectFolderGrantsUpdate,
   TProjectGateways,
   TProjectGatewaysInsert,
   TProjectGatewaysUpdate,
@@ -1179,6 +1185,11 @@ declare module "knex/types/tables" {
       TSecretImportsInsert,
       TSecretImportsUpdate
     >;
+    [TableName.ProjectFolderGrant]: KnexOriginal.CompositeTableType<
+      TProjectFolderGrants,
+      TProjectFolderGrantsInsert,
+      TProjectFolderGrantsUpdate
+    >;
     [TableName.Integration]: KnexOriginal.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
     [TableName.Webhook]: KnexOriginal.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;
     [TableName.ServiceToken]: KnexOriginal.CompositeTableType<
@@ -1398,6 +1409,7 @@ declare module "knex/types/tables" {
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
+    [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,

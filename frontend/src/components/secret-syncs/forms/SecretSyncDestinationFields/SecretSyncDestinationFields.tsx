@@ -37,6 +37,7 @@ import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OnaSyncFields } from "./OnaSyncFields";
 import { OvhSyncFields } from "./OvhSyncFields";
+import { QoverySyncFields } from "./QoverySyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { SnowflakeSyncFields } from "./SnowflakeSyncFields";
@@ -143,6 +144,8 @@ export const SecretSyncDestinationFields = () => {
       return <TriggerDevSyncFields />;
     case SecretSync.HasuraCloud:
       return <HasuraCloudSyncFields />;
+    case SecretSync.Qovery:
+      return <QoverySyncFields />;
     case SecretSync.Cloud66:
       return <Cloud66SyncFields />;
     default:

@@ -200,7 +200,7 @@ type TValidationViolation = {
   message: string;
 };
 
-const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
+export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.MinLength]: "Minimum length",
   [ConstraintType.MaxLength]: "Maximum length",
   [ConstraintType.RegexPattern]: "Regex pattern",
@@ -215,7 +215,7 @@ const TARGET_LABELS: Record<ConstraintTarget, string> = {
   [ConstraintTarget.GeneratedPassword]: "password"
 };
 
-const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
+export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
   // Skip value constraints when no value mutation is occurring (e.g. key-only rename)
   if (constraint.appliesTo === ConstraintTarget.SecretValue && secret.value === undefined) {
     return null;
@@ -287,6 +287,35 @@ const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate):
     default:
       return null;
   }
+};
+
+export type TStaticSecretConstraintViolation = {
+  constraintType: ConstraintType;
+  constraintLabel: string;
+  message: string;
+};
+
+/**
+ * Evaluate a single secret against a set of static-secret constraints, returning every violation
+ * (non-throwing). Reused by the audit-report compliance scan to surface already-stored secrets that do
+ * not conform to a validation rule that was created after them.
+ */
+export const evaluateStaticSecretConstraints = (
+  constraints: TConstraint[],
+  secret: TSecretToValidate
+): TStaticSecretConstraintViolation[] => {
+  const violations: TStaticSecretConstraintViolation[] = [];
+  for (const constraint of constraints) {
+    const error = evaluateConstraint(constraint, secret);
+    if (error) {
+      violations.push({
+        constraintType: constraint.type,
+        constraintLabel: CONSTRAINT_LABELS[constraint.type],
+        message: error
+      });
+    }
+  }
+  return violations;
 };
 
 /**
