@@ -11,6 +11,10 @@ import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
 import { THasuraCloudSyncWithCredentials } from "./hasura-cloud-sync-types";
 
+const HASURA_RESERVED_KEY_PREFIX = "HASURA_";
+
+const isHasuraReservedKey = (key: string) => key.startsWith(HASURA_RESERVED_KEY_PREFIX);
+
 const ZGraphqlErrors = z.object({
   errors: z.array(z.object({ message: z.string() })).optional()
 });
@@ -120,7 +124,7 @@ export const HasuraCloudSyncFns = {
       const entries: TSecretMap = {};
 
       for (const [key, value] of Object.entries(envVars)) {
-        if (matchesSchema(key, environment?.slug || "", keySchema)) {
+        if (!isHasuraReservedKey(key) && matchesSchema(key, environment?.slug || "", keySchema)) {
           entries[key] = { value };
         }
       }
@@ -149,7 +153,7 @@ export const HasuraCloudSyncFns = {
       const { hash, environment: existingEnvs } = await getTenantEnv(accessToken, tenantId);
 
       const envs = Object.entries(secretMap)
-        .filter(([key]) => !key.startsWith("HASURA_"))
+        .filter(([key]) => !isHasuraReservedKey(key))
         .map(([key, secret]) => ({ key, value: secret.value }));
 
       let currentHash = hash;
@@ -164,7 +168,7 @@ export const HasuraCloudSyncFns = {
       if (!disableSecretDeletion) {
         const keysToDelete = Object.keys(existingEnvs).filter(
           (key) =>
-            matchesSchema(key, environment?.slug || "", keySchema) && !(key in secretMap) && !key.startsWith("HASURA_")
+            matchesSchema(key, environment?.slug || "", keySchema) && !(key in secretMap) && !isHasuraReservedKey(key)
         );
 
         if (keysToDelete.length) {
@@ -190,7 +194,7 @@ export const HasuraCloudSyncFns = {
       const tenantId = await resolveTenantId(connection, projectId);
       const { hash, environment: existingEnvs } = await getTenantEnv(accessToken, tenantId);
 
-      const keysToDelete = Object.keys(existingEnvs).filter((key) => key in secretMap && !key.startsWith("HASURA_"));
+      const keysToDelete = Object.keys(existingEnvs).filter((key) => key in secretMap && !isHasuraReservedKey(key));
 
       if (keysToDelete.length) {
         await deleteTenantEnv(accessToken, tenantId, hash, keysToDelete);
