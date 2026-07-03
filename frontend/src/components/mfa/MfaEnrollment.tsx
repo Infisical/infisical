@@ -35,7 +35,9 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
 
     const prepare = async () => {
       // The enrollment endpoints authenticate with the regular access token, so
-      // clear the temporary MFA token first.
+      // clear the temporary MFA token first. Capture it so we can restore it if
+      // the request fails and the user needs to fall back to the login flow.
+      const mfaTempToken = getMfaTempToken();
       SecurityClient.setMfaToken("");
       try {
         // Enabling is the single place recovery codes are minted; idempotent if
@@ -43,6 +45,9 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
         await updateUserMfa({ isMfaEnabled: true });
         setPhase("verify");
       } catch (error: any) {
+        // Restore the temp token so the user can reload and retry the normal
+        // login flow instead of being stuck on the preparing screen.
+        SecurityClient.setMfaToken(mfaTempToken);
         createNotification({
           text: error?.response?.data?.message || "Failed to start two-factor setup",
           type: "error"

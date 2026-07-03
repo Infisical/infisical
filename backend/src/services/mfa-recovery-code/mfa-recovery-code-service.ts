@@ -70,7 +70,10 @@ export const mfaRecoveryCodeServiceFactory = ({
         });
       }
 
-      const recoveryCodes = decryptWithRoot(recoveryCodeConfig.encryptedRecoveryCodes).toString().split(",");
+      const recoveryCodes = decryptWithRoot(recoveryCodeConfig.encryptedRecoveryCodes)
+        .toString()
+        .split(",")
+        .filter(Boolean);
       const remainingRecoveryCodes = recoveryCodes.filter((code) => code !== recoveryCode);
       if (remainingRecoveryCodes.length === recoveryCodes.length) {
         throw new ForbiddenRequestError({

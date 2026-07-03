@@ -12,6 +12,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { MfaMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TUserDALFactory } from "../user/user-dal";
@@ -338,6 +339,18 @@ export const webAuthnServiceFactory = ({
     }
 
     await webAuthnCredentialDAL.deleteById(credential.id);
+
+    // If that was the user's last credential and webauthn is their preferred
+    // method, reset the preference so getRequiredMfaMethod doesn't keep
+    // challenging for webauthn with no credential left, which would lock the
+    // user out. Fall back to email, which is always available.
+    const remainingCredentials = await webAuthnCredentialDAL.find({ userId });
+    if (remainingCredentials.length === 0) {
+      const user = await userDAL.findById(userId);
+      if (user?.selectedMfaMethod === MfaMethod.WEBAUTHN) {
+        await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL });
+      }
+    }
 
     return {
       success: true

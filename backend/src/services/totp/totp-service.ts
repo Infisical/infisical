@@ -3,6 +3,7 @@ import { authenticator } from "otplib";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { MfaMethod } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTotpConfigDALFactory } from "./totp-config-dal";
@@ -188,6 +189,15 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
     }
 
     await totpConfigDAL.deleteById(totpConfig.id);
+
+    // If the user's preferred method is the TOTP config we just removed, reset it
+    // so getRequiredMfaMethod doesn't keep challenging for a method that no longer
+    // has a verified config, which would force the user back into enrollment. Fall
+    // back to email, which is always available.
+    const user = await userDAL.findById(userId);
+    if (user?.selectedMfaMethod === MfaMethod.TOTP) {
+      await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL });
+    }
   };
 
   return {
