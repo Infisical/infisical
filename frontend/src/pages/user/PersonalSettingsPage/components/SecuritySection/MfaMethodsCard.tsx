@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FingerprintIcon, LucideIcon, MailIcon, SmartphoneIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
 
+import { MFA_METHOD_ICONS, MFA_METHOD_LABELS } from "@app/components/mfa/setup";
 import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
@@ -78,16 +79,16 @@ export const MfaMethodsCard = () => {
       <h3 className="mb-2 text-sm font-medium text-foreground">Two-factor methods</h3>
       <div className="divide-y divide-border">
         <MethodRow
-          icon={MailIcon}
-          title="Email"
+          icon={MFA_METHOD_ICONS[MfaMethod.EMAIL]}
+          title={MFA_METHOD_LABELS[MfaMethod.EMAIL]}
           description="Receive one-time codes at your account email address to complete sign-in."
           badge={<Badge variant="success">Configured</Badge>}
           action={null}
         />
 
         <MethodRow
-          icon={SmartphoneIcon}
-          title="Authenticator app"
+          icon={MFA_METHOD_ICONS[MfaMethod.TOTP]}
+          title={MFA_METHOD_LABELS[MfaMethod.TOTP]}
           description="Use a TOTP authenticator app to get one-time codes when prompted at sign-in."
           badge={
             isTotpConfigured ? (
@@ -110,7 +111,7 @@ export const MfaMethodsCard = () => {
         />
 
         <MethodRow
-          icon={FingerprintIcon}
+          icon={MFA_METHOD_ICONS[MfaMethod.WEBAUTHN]}
           title="Passkeys"
           description="Passkeys use Face ID, Touch ID, a security key, or your device to sign in."
           badge={

@@ -333,56 +333,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  server.route({
-    method: "POST",
-    url: "/me/mfa/email/send",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "sendEmailMfaSetupCode",
-      response: {
-        200: z.object({
-          message: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
-    handler: async (req) => {
-      await server.services.user.sendEmailMfaSetupCode({
-        userId: req.permission.id
-      });
-      return { message: "Successfully sent email verification code" };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/me/mfa/email/verify",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "verifyEmailMfaSetupCode",
-      body: z.object({
-        code: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          success: z.boolean()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
-    handler: async (req) => {
-      await server.services.user.verifyEmailMfaSetupCode({
-        userId: req.permission.id,
-        code: req.body.code
-      });
-      return { success: true };
-    }
-  });
-
   // WebAuthn/Passkey Routes
   server.route({
     method: "GET",

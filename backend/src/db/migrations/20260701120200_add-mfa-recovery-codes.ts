@@ -31,36 +31,37 @@ export async function up(knex: Knex): Promise<void> {
     );
   }
 
-  // Recovery codes now live in user_mfa_recovery_codes; TOTP no longer writes
-  // this column. Make it nullable so new TOTP configs can omit it. A follow-up
-  // migration can drop the column entirely.
+  // Recovery codes now live in user_mfa_recovery_codes. The values were copied
+  // above, so drop the legacy column from totp_configs.
   if (await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes")) {
     await knex.schema.alterTable(TableName.TotpConfig, (t) => {
-      t.binary("encryptedRecoveryCodes").nullable().alter();
+      t.dropColumn("encryptedRecoveryCodes");
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // Re-populate the TOTP column from the account-level store before restoring
-  // the NOT NULL constraint so rollback does not fail on existing rows.
-  if (await knex.schema.hasTable(TableName.UserMfaRecoveryCode)) {
-    await knex.raw(
-      `UPDATE ?? tc
-       SET "encryptedRecoveryCodes" = rc."encryptedRecoveryCodes"
-       FROM ?? rc
-       WHERE tc."userId" = rc."userId" AND tc."encryptedRecoveryCodes" IS NULL`,
-      [TableName.TotpConfig, TableName.UserMfaRecoveryCode]
-    );
-  }
-
-  if (await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes")) {
+  // Recreate the legacy column so the pre-migration TOTP code can read recovery
+  // codes again. It is nullable because TOTP configs created after the column
+  // was dropped have no ciphertext to restore (their codes only live in the
+  // account-level store, which may have no row for a given user).
+  if (!(await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes"))) {
     await knex.schema.alterTable(TableName.TotpConfig, (t) => {
-      t.binary("encryptedRecoveryCodes").notNullable().alter();
+      t.binary("encryptedRecoveryCodes").nullable();
     });
   }
 
   if (await knex.schema.hasTable(TableName.UserMfaRecoveryCode)) {
+    // Copy the account-level recovery codes back into the freshly recreated
+    // column. Both stores share the same root-key ciphertext, so it is portable.
+    await knex.raw(
+      `UPDATE ?? tc
+       SET "encryptedRecoveryCodes" = rc."encryptedRecoveryCodes"
+       FROM ?? rc
+       WHERE tc."userId" = rc."userId"`,
+      [TableName.TotpConfig, TableName.UserMfaRecoveryCode]
+    );
+
     await dropOnUpdateTrigger(knex, TableName.UserMfaRecoveryCode);
     await knex.schema.dropTable(TableName.UserMfaRecoveryCode);
   }

@@ -125,7 +125,6 @@ export const KeyStorePrefixes = {
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
-  MfaEmailSetupResendCooldown: (userId: string) => `mfa-email-setup:${userId}:cd` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
@@ -165,7 +164,6 @@ export const KeyStoreTtls = {
   RefreshTokenGraceInSeconds: 10,
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
-  MfaEmailSetupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   AdminConfigInSeconds: 60,

@@ -82,27 +82,6 @@ export const useVerifyUserTotpRegistration = () => {
   });
 };
 
-export const useSendEmailMfaSetupCode = () => {
-  return useMutation<{ message: string }, unknown, void>({
-    mutationFn: async () => {
-      const { data } = await apiRequest.post<{ message: string }>("/api/v1/user/me/mfa/email/send");
-      return data;
-    }
-  });
-};
-
-export const useVerifyEmailMfaSetupCode = () => {
-  return useMutation<{ success: boolean }, unknown, { code: string }>({
-    mutationFn: async ({ code }: { code: string }) => {
-      const { data } = await apiRequest.post<{ success: boolean }>(
-        "/api/v1/user/me/mfa/email/verify",
-        { code }
-      );
-      return data;
-    }
-  });
-};
-
 export const useDeleteUserTotpConfiguration = () => {
   const queryClient = useQueryClient();
   return useMutation({

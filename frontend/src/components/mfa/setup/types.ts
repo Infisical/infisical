@@ -30,11 +30,15 @@ export const MFA_METHOD_OPTIONS: MfaMethodOption[] = [
   }
 ];
 
-export const MFA_METHOD_LABELS: Record<MfaMethod, string> = {
-  [MfaMethod.TOTP]: "Authenticator app",
-  [MfaMethod.EMAIL]: "Email",
-  [MfaMethod.WEBAUTHN]: "Passkey"
-};
+export const MFA_METHOD_LABELS = MFA_METHOD_OPTIONS.reduce(
+  (acc, option) => ({ ...acc, [option.value]: option.label }),
+  {} as Record<MfaMethod, string>
+);
+
+export const MFA_METHOD_ICONS = MFA_METHOD_OPTIONS.reduce(
+  (acc, option) => ({ ...acc, [option.value]: option.icon }),
+  {} as Record<MfaMethod, LucideIcon>
+);
 
 export type WizardStep = {
   key: "method" | "verify" | "recovery";

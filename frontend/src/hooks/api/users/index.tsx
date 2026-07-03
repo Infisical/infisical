@@ -5,11 +5,9 @@ export {
   useRequestEmailChangeOTP,
   useRevokeMySessionById,
   useRotateMfaRecoveryCodes,
-  useSendEmailMfaSetupCode,
   useSendEmailVerificationCode,
   useUpdateUserEmail,
   useVerifyCurrentEmailOTP,
-  useVerifyEmailMfaSetupCode,
   useVerifyUserTotpRegistration
 } from "./mutation";
 export {

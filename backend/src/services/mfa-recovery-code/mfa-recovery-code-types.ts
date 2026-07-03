@@ -12,6 +12,7 @@ export type TVerifyAndConsumeRecoveryCodeDTO = {
 export type TRotateRecoveryCodesDTO = {
   userId: string;
   tx?: Knex;
+  skipMfaEnabledCheck?: boolean;
 };
 
 export type TDeleteRecoveryCodesDTO = {

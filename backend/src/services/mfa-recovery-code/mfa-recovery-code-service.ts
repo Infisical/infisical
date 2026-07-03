@@ -94,12 +94,14 @@ export const mfaRecoveryCodeServiceFactory = ({
    * ones. Returns the fresh codes so the caller can display them once. If no
    * pool exists yet it is created.
    */
-  const rotateRecoveryCodes = async ({ userId, tx: externalTx }: TRotateRecoveryCodesDTO) => {
-    const user = await userDAL.findById(userId, externalTx);
-    if (!user?.isMfaEnabled) {
-      throw new BadRequestError({
-        message: "Cannot regenerate recovery codes: MFA is not enabled for this account"
-      });
+  const rotateRecoveryCodes = async ({ userId, tx: externalTx, skipMfaEnabledCheck }: TRotateRecoveryCodesDTO) => {
+    if (!skipMfaEnabledCheck) {
+      const user = await userDAL.findById(userId, externalTx);
+      if (!user?.isMfaEnabled) {
+        throw new BadRequestError({
+          message: "Cannot regenerate recovery codes: MFA is not enabled for this account"
+        });
+      }
     }
 
     const { recoveryCodes, encryptedRecoveryCodes } = generateEncryptedRecoveryCodes();

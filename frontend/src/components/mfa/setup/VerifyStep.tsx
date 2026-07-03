@@ -1,19 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
-import { FingerprintIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FingerprintIcon, MailIcon } from "lucide-react";
 import QRCode from "qrcode";
 
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { Button, Input } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import {
-  useGetUserTotpRegistration,
-  useSendEmailMfaSetupCode,
-  useVerifyEmailMfaSetupCode,
-  useVerifyUserTotpRegistration
-} from "@app/hooks/api/users";
-import { useGenerateRegistrationOptions, useVerifyRegistration } from "@app/hooks/api/webauthn";
+import { useGetUserTotpRegistration, useVerifyUserTotpRegistration } from "@app/hooks/api/users";
+import { useRegisterPasskey } from "@app/hooks/api/webauthn";
 
 type Props = {
   method: MfaMethod;
@@ -87,113 +81,41 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   );
 };
 
-const RESEND_COOLDOWN_SECONDS = 60;
-
 const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
-  const { mutateAsync: sendCode } = useSendEmailMfaSetupCode();
-  const { mutateAsync: verifyCode, isPending: isVerifying } = useVerifyEmailMfaSetupCode();
-  const [code, setCode] = useState("");
-  const [cooldown, setCooldown] = useState(0);
+  const [isEnabling, setIsEnabling] = useState(false);
 
-  const hasSentRef = useRef(false);
-
-  const sendAndStartCooldown = () => {
-    setCooldown(RESEND_COOLDOWN_SECONDS);
-    sendCode().catch((error: any) => {
-      const remaining = error?.response?.data?.details?.cooldownSeconds;
-      if (typeof remaining === "number") {
-        setCooldown(remaining);
-        return;
-      }
-      setCooldown(0);
-      createNotification({
-        text: error?.response?.data?.message || "Failed to send verification code",
-        type: "error"
-      });
-    });
-  };
-
-  useEffect(() => {
-    if (hasSentRef.current) return;
-    hasSentRef.current = true;
-    sendAndStartCooldown();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (cooldown <= 0) return undefined;
-    const timer = setTimeout(() => setCooldown((remaining) => remaining - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
-
-  const handleVerify = async () => {
+  const handleEnable = async () => {
+    setIsEnabling(true);
     try {
-      await verifyCode({ code: code.trim() });
-      createNotification({ text: "Email verified", type: "success" });
       await onVerified();
-    } catch {
-      // The global mutation error handler surfaces the failure toast.
+    } finally {
+      setIsEnabling(false);
     }
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted">
-        We sent a one-time code to your account email. Enter it below to confirm.
-      </p>
-      <Input
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        placeholder="Enter 6-digit code"
-        maxLength={6}
-      />
-      <div className="flex items-center gap-3">
-        <Button
-          variant="org"
-          isPending={isVerifying}
-          isDisabled={code.trim().length !== 6}
-          onClick={handleVerify}
-        >
-          Verify code
-        </Button>
-        <Button variant="ghost" isDisabled={cooldown > 0} onClick={sendAndStartCooldown}>
-          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
-        </Button>
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-container p-4">
+        <MailIcon className="mt-0.5 text-muted" />
+        <p className="text-sm text-muted">
+          A one-time code will be sent to your account email each time you sign in. No setup is
+          needed for this method.
+        </p>
       </div>
+      <Button variant="org" isPending={isEnabling} onClick={handleEnable}>
+        Enable email authentication
+      </Button>
     </div>
   );
 };
 
 const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
-  const { mutateAsync: generateOptions } = useGenerateRegistrationOptions();
-  const { mutateAsync: verifyRegistration, isPending } = useVerifyRegistration();
+  const { registerPasskey, isRegistering } = useRegisterPasskey();
   const [name, setName] = useState("");
 
   const handleRegister = async () => {
-    try {
-      if (
-        !window.PublicKeyCredential ||
-        !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-      ) {
-        createNotification({ text: "WebAuthn is not supported on this browser", type: "error" });
-        return;
-      }
-
-      const options = await generateOptions();
-      const registrationResponse = await startRegistration({ optionsJSON: options });
-      await verifyRegistration({ registrationResponse, name: name.trim() || "Passkey" });
-
-      createNotification({ text: "Passkey registered", type: "success" });
+    if (await registerPasskey(name)) {
       await onVerified();
-    } catch (error: any) {
-      let text = "Failed to register passkey";
-      if (error.name === "NotAllowedError")
-        text = "Passkey registration was cancelled or timed out";
-      else if (error.name === "InvalidStateError")
-        text = "This passkey has already been registered";
-      else if (error?.response?.data?.message) text = error.response.data.message;
-      else if (error.message) text = error.message;
-      createNotification({ text, type: "error" });
     }
   };
 
@@ -208,7 +130,7 @@ const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => 
         onChange={(e) => setName(e.target.value)}
         placeholder="Passkey name (optional)"
       />
-      <Button variant="org" isPending={isPending} onClick={handleRegister}>
+      <Button variant="org" isPending={isRegistering} onClick={handleRegister}>
         <FingerprintIcon /> Register passkey
       </Button>
     </div>

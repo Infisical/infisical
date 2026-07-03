@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
 import { FingerprintIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,9 +14,8 @@ import {
 } from "@app/components/v3";
 import {
   useDeleteWebAuthnCredential,
-  useGenerateRegistrationOptions,
   useGetWebAuthnCredentials,
-  useVerifyRegistration
+  useRegisterPasskey
 } from "@app/hooks/api/webauthn";
 
 type Props = {
@@ -27,35 +25,14 @@ type Props = {
 
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
   const { data: credentials = [], isPending } = useGetWebAuthnCredentials();
-  const { mutateAsync: generateOptions } = useGenerateRegistrationOptions();
-  const { mutateAsync: verifyRegistration, isPending: isRegistering } = useVerifyRegistration();
+  const { registerPasskey, isRegistering } = useRegisterPasskey();
   const { mutateAsync: deleteCredential } = useDeleteWebAuthnCredential();
 
   const [name, setName] = useState("");
 
   const handleAdd = async () => {
-    try {
-      if (
-        !window.PublicKeyCredential ||
-        !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-      ) {
-        createNotification({ text: "WebAuthn is not supported on this browser", type: "error" });
-        return;
-      }
-      const options = await generateOptions();
-      const registrationResponse = await startRegistration({ optionsJSON: options });
-      await verifyRegistration({ registrationResponse, name: name.trim() || "Passkey" });
+    if (await registerPasskey(name)) {
       setName("");
-      createNotification({ text: "Passkey registered", type: "success" });
-    } catch (error: any) {
-      let text = "Failed to register passkey";
-      if (error.name === "NotAllowedError")
-        text = "Passkey registration was cancelled or timed out";
-      else if (error.name === "InvalidStateError")
-        text = "This passkey has already been registered";
-      else if (error?.response?.data?.message) text = error.response.data.message;
-      else if (error.message) text = error.message;
-      createNotification({ text, type: "error" });
     }
   };
 

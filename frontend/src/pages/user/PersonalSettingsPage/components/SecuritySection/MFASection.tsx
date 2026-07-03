@@ -1,14 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  CircleAlertIcon,
-  FingerprintIcon,
-  MailIcon,
-  PowerIcon,
-  ShieldCheckIcon,
-  SmartphoneIcon
-} from "lucide-react";
+import { CircleAlertIcon, PowerIcon, ShieldCheckIcon } from "lucide-react";
 
+import { MFA_METHOD_ICONS, MFA_METHOD_LABELS } from "@app/components/mfa/setup";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import {
@@ -39,18 +33,6 @@ import { MfaSetupWizard } from "./MfaSetupWizard";
 import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
 
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
-
-const PREFERRED_METHOD_ICONS: Record<MfaMethod, typeof MailIcon> = {
-  [MfaMethod.TOTP]: SmartphoneIcon,
-  [MfaMethod.EMAIL]: MailIcon,
-  [MfaMethod.WEBAUTHN]: FingerprintIcon
-};
-
-const PREFERRED_METHOD_LABELS: Record<MfaMethod, string> = {
-  [MfaMethod.TOTP]: "Authenticator app",
-  [MfaMethod.EMAIL]: "Email",
-  [MfaMethod.WEBAUTHN]: "Passkey"
-};
 
 export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
@@ -178,12 +160,12 @@ export const MFASection = () => {
               </SelectTrigger>
               <SelectContent>
                 {availableMethods.map((method) => {
-                  const Icon = PREFERRED_METHOD_ICONS[method];
+                  const Icon = MFA_METHOD_ICONS[method];
                   return (
                     <SelectItem key={method} value={method}>
                       <span className="flex items-center gap-2">
                         <Icon />
-                        {PREFERRED_METHOD_LABELS[method]}
+                        {MFA_METHOD_LABELS[method]}
                       </span>
                     </SelectItem>
                   );

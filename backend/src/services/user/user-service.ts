@@ -4,7 +4,6 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -50,7 +49,6 @@ type TUserServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "delete">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "deleteRecoveryCodes" | "rotateRecoveryCodes">;
 };
 
@@ -67,7 +65,6 @@ export const userServiceFactory = ({
   userAliasDAL,
   totpConfigDAL,
   webAuthnCredentialDAL,
-  keyStore,
   mfaRecoveryCodeService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
@@ -151,7 +148,8 @@ export const userServiceFactory = ({
       );
 
       if (isMfaEnabled === true && !wasMfaEnabled) {
-        await mfaRecoveryCodeService.rotateRecoveryCodes({ userId, tx });
+        // MFA was just enabled in this transaction, so skip the redundant re-read.
+        await mfaRecoveryCodeService.rotateRecoveryCodes({ userId, tx, skipMfaEnabledCheck: true });
       } else if (isMfaEnabled === false) {
         await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
         await totpConfigDAL.delete({ userId }, tx);
@@ -162,55 +160,6 @@ export const userServiceFactory = ({
     });
 
     return updatedUser;
-  };
-
-  // Sends a one-time code to the account email so the user can prove control of
-  // the inbox while adding email as a second factor from account settings.
-  const sendEmailMfaSetupCode = async ({ userId }: { userId: string }) => {
-    const user = await userDAL.findById(userId);
-    if (!user || !user.email) throw new BadRequestError({ message: "No email address is set on this account" });
-
-    const cooldownKey = KeyStorePrefixes.MfaEmailSetupResendCooldown(userId);
-    const acquired = await keyStore.setItemWithExpiryNX(
-      cooldownKey,
-      KeyStoreTtls.MfaEmailSetupResendCooldownInSeconds,
-      "1"
-    );
-    if (!acquired) {
-      const remaining = await keyStore.ttl(cooldownKey);
-      throw new BadRequestError({
-        message: "Please wait before requesting another code",
-        details: { cooldownSeconds: Math.max(1, remaining) }
-      });
-    }
-
-    const code = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_MFA,
-      userId
-    });
-
-    await smtpService.sendMail({
-      template: SmtpTemplates.EmailMfa,
-      subjectLine: "Infisical MFA code",
-      recipients: [user.email],
-      substitutions: {
-        code
-      }
-    });
-  };
-
-  // Verifies the email setup code so the caller can confirm the method works
-  // before enabling account MFA (which mints the recovery codes).
-  const verifyEmailMfaSetupCode = async ({ userId, code }: { userId: string; code: string }) => {
-    try {
-      await tokenService.validateTokenForUser({
-        type: TokenType.TOKEN_EMAIL_MFA,
-        userId,
-        code
-      });
-    } catch (error) {
-      throw new BadRequestError({ message: "Invalid verification code" });
-    }
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
@@ -640,8 +589,6 @@ export const userServiceFactory = ({
   return {
     sendEmailVerificationCode,
     updateUserMfa,
-    sendEmailMfaSetupCode,
-    verifyEmailMfaSetupCode,
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,
