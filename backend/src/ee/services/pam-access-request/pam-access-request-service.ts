@@ -1103,6 +1103,7 @@ export const pamAccessRequestServiceFactory = ({
   const checkGrant = async ({
     userId,
     accountId,
+    accountFolderId,
     projectId
   }: TCheckGrantDTO): Promise<TApprovalRequestGrants | null> => {
     const grants = await approvalRequestGrantsDAL.find({
@@ -1113,7 +1114,13 @@ export const pamAccessRequestServiceFactory = ({
     });
 
     const now = new Date();
-    const forAccount = grants.filter((g) => (g.attributes as { accountId?: string } | null)?.accountId === accountId);
+    // Match the grant's snapshot folder against the account's CURRENT folder: a grant approved while
+    // the account lived in another folder must not authorize launch after the account is moved into a
+    // different (gated) folder whose approvers never reviewed it.
+    const forAccount = grants.filter((g) => {
+      const attrs = g.attributes as { accountId?: string; folderId?: string | null } | null;
+      return attrs?.accountId === accountId && (attrs?.folderId ?? null) === (accountFolderId ?? null);
+    });
     // Prefer a still-valid grant; otherwise return an expired one (rather than null) so the caller can
     // distinguish "grant expired" from "no grant" and signal PAM_GRANT_EXPIRED vs PAM_APPROVAL_REQUIRED.
     const valid = forAccount.find((g) => !g.expiresAt || new Date(g.expiresAt) > now);

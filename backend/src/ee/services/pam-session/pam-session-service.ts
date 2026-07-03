@@ -401,6 +401,7 @@ export const pamSessionServiceFactory = ({
       const grant = await pamAccessRequestService.checkGrant({
         userId: actor.actorId,
         accountId: account.id,
+        accountFolderId: account.folderId,
         projectId
       });
       if (!grant) {

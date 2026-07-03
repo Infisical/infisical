@@ -53,6 +53,7 @@ export type TRevokeAccessRequestDTO = {
 export type TCheckGrantDTO = {
   userId: string;
   accountId: string;
+  accountFolderId?: string | null;
   projectId: string;
 };
 

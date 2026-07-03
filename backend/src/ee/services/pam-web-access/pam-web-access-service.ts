@@ -185,7 +185,12 @@ export const pamWebAccessServiceFactory = ({
 
     let grantRemainingMs: number | null = null;
     if (requiresApproval) {
-      const grant = await pamAccessRequestService.checkGrant({ userId: actor.id, accountId, projectId });
+      const grant = await pamAccessRequestService.checkGrant({
+        userId: actor.id,
+        accountId,
+        accountFolderId: account.folderId,
+        projectId
+      });
       if (!grant) {
         throw new ForbiddenRequestError({ name: "PAM_APPROVAL_REQUIRED", message: "Access request required" });
       }
