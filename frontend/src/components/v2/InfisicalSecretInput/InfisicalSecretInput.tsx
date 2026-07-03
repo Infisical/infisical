@@ -275,19 +275,23 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // key operation should trigger only when popup is open
+      if (isPopupOpen && showWizard) {
+        if (e.key === "Tab") e.preventDefault();
+        return;
+      }
+
       if (isPopupOpen) {
         if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
           setHighlightedIndex((prevIndex) => {
             let nextIndex = mod(prevIndex + 1, suggestions.length);
-            // Skip "no match" messages
+            let iterations = 0;
             while (
-              nextIndex < suggestions.length &&
+              iterations < suggestions.length &&
               suggestions[nextIndex].slug === "__no_match__"
             ) {
               nextIndex = mod(nextIndex + 1, suggestions.length);
+              iterations += 1;
             }
-            // If we only have no-match messages, don't highlight anything
             if (suggestions[nextIndex]?.slug === "__no_match__") {
               return -1;
             }
@@ -300,11 +304,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
           setHighlightedIndex((prevIndex) => {
             let prevIdx = mod(prevIndex - 1, suggestions.length);
-            // Skip "no match" messages
-            while (prevIdx >= 0 && suggestions[prevIdx].slug === "__no_match__") {
+            let iterations = 0;
+            while (
+              iterations < suggestions.length &&
+              suggestions[prevIdx].slug === "__no_match__"
+            ) {
               prevIdx = mod(prevIdx - 1, suggestions.length);
+              iterations += 1;
             }
-            // If we only have no-match messages, don't highlight anything
             if (suggestions[prevIdx]?.slug === "__no_match__") {
               return -1;
             }
