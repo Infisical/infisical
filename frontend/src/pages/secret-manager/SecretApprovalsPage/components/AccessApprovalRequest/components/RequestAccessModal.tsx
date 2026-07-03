@@ -22,7 +22,7 @@ export const RequestAccessModal = ({
         <SheetHeader className="border-b">
           <SheetTitle>Request Access</SheetTitle>
           <SheetDescription>
-            Request access to any secrets and resources based on the predefined policies.
+            Request access to secrets, folders and other resources based on the predefined policies.
           </SheetDescription>
         </SheetHeader>
         <RequestAccessForm onClose={() => onOpenChange(false)} policies={policies} {...props} />

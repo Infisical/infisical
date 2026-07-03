@@ -1,14 +1,23 @@
-import { useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useMemo, useRef } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { formatDistance } from "date-fns";
 import {
-  ChevronDownIcon,
-  ClockIcon,
+  BanIcon,
   EyeIcon,
+  FingerprintIcon,
+  FolderIcon,
+  HexagonIcon,
+  ImportIcon,
+  KeyIcon,
+  KeyRoundIcon,
+  type LucideIcon,
   PencilIcon,
   PlusIcon,
-  Trash2Icon
+  RefreshCwIcon,
+  RotateCcwIcon,
+  TimerIcon,
+  Trash2Icon,
+  XIcon
 } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
@@ -18,17 +27,19 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
-  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldTitle,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  IconButton,
   Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -40,40 +51,333 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { cn } from "@app/components/v3/utils";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub,
+  useProject,
+  useSubscription
+} from "@app/context";
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSecretRotationActions
+} from "@app/context/ProjectPermissionContext/types";
 import { useCreateAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
-const secretPermissionSchema = z.object({
-  secretPath: z.string().optional(),
-  environmentSlug: z.string(),
-  [ProjectPermissionActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionActions.Read]: z.boolean().optional(),
-  [ProjectPermissionActions.Create]: z.boolean().optional(),
-  [ProjectPermissionActions.Delete]: z.boolean().optional(),
-  temporaryAccess: z.discriminatedUnion("isTemporary", [
-    z.object({
-      isTemporary: z.literal(true),
-      temporaryRange: z.string().min(1),
-      temporaryAccessStartTime: z.string().datetime(),
-      temporaryAccessEndTime: z.string().datetime().nullable().optional()
-    }),
-    z.object({
-      isTemporary: z.literal(false),
-      temporaryRange: z.string().optional()
+const PERMANENT_DURATION_VALUE = "permanent";
+const CUSTOM_DURATION_VALUE = "custom";
+
+const DURATION_PRESETS = [
+  { label: "30 minutes", value: "30m" },
+  { label: "1 hour", value: "1h" },
+  { label: "12 hours", value: "12h" },
+  { label: "1 day", value: "1d" },
+  { label: "3 days", value: "3d" },
+  { label: "7 days", value: "7d" },
+  { label: "30 days", value: "30d" }
+];
+
+type TResourceAction = {
+  value: string;
+  label: string;
+  description: string;
+  Icon: LucideIcon;
+};
+
+type TResourceConfig = {
+  subject: ProjectPermissionSub;
+  label: string;
+  Icon: LucideIcon;
+  // Tailwind extracts classes statically, so every tint must be a full literal string
+  iconTileClassName: string;
+  chipSelectedClassName: string;
+  countBadgeClassName: string;
+  summaryIconClassName: string;
+  actions: TResourceAction[];
+};
+
+const RESOURCE_CONFIGS: TResourceConfig[] = [
+  {
+    subject: ProjectPermissionSub.Secrets,
+    label: "Secrets",
+    Icon: KeyIcon,
+    iconTileClassName: "border-accent/10 bg-accent/15 text-accent",
+    chipSelectedClassName:
+      "border-accent/50 bg-accent/15 text-accent hover:border-accent/50 hover:bg-accent/25",
+    countBadgeClassName: "border-accent/10 bg-accent/15 text-accent",
+    summaryIconClassName: "text-accent",
+    actions: [
+      {
+        value: ProjectPermissionActions.Read,
+        label: "View",
+        description: "Read secret values",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionActions.Create,
+        label: "Create",
+        description: "Create new secrets",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionActions.Edit,
+        label: "Modify",
+        description: "Update existing secrets",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionActions.Delete,
+        label: "Delete",
+        description: "Delete existing secrets",
+        Icon: Trash2Icon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.SecretFolders,
+    label: "Folders",
+    Icon: FolderIcon,
+    iconTileClassName: "border-folder/10 bg-folder/15 text-folder",
+    chipSelectedClassName:
+      "border-folder/50 bg-folder/15 text-folder hover:border-folder/50 hover:bg-folder/25",
+    countBadgeClassName: "border-folder/10 bg-folder/15 text-folder",
+    summaryIconClassName: "text-folder",
+    actions: [
+      {
+        value: ProjectPermissionActions.Create,
+        label: "Create",
+        description: "Create new folders to organize secrets",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionActions.Edit,
+        label: "Modify",
+        description: "Rename or modify folder properties",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionActions.Delete,
+        label: "Delete",
+        description: "Delete folders and their contents",
+        Icon: Trash2Icon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.DynamicSecrets,
+    label: "Dynamic Secrets",
+    Icon: FingerprintIcon,
+    iconTileClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
+    chipSelectedClassName:
+      "border-dynamic-secret/50 bg-dynamic-secret/15 text-dynamic-secret hover:border-dynamic-secret/50 hover:bg-dynamic-secret/25",
+    countBadgeClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
+    summaryIconClassName: "text-dynamic-secret",
+    actions: [
+      {
+        value: ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        label: "View",
+        description: "View the root credentials used for dynamic secret generation",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.CreateRootCredential,
+        label: "Create",
+        description: "Configure new root credentials for dynamic secrets",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.EditRootCredential,
+        label: "Modify",
+        description: "Update existing root credentials configuration",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+        label: "Delete",
+        description: "Delete root credentials configuration",
+        Icon: Trash2Icon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.Lease,
+        label: "Lease",
+        description: "Create and revoke dynamic secret leases",
+        Icon: TimerIcon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.SecretRotation,
+    label: "Secret Rotation",
+    Icon: RefreshCwIcon,
+    iconTileClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
+    chipSelectedClassName:
+      "border-secret-rotation/50 bg-secret-rotation/15 text-secret-rotation hover:border-secret-rotation/50 hover:bg-secret-rotation/25",
+    countBadgeClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
+    summaryIconClassName: "text-secret-rotation",
+    actions: [
+      {
+        value: ProjectPermissionSecretRotationActions.Read,
+        label: "View",
+        description: "View secret rotation configurations",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+        label: "Read Credentials",
+        description: "Access rotated credential values",
+        Icon: KeyRoundIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.Create,
+        label: "Create",
+        description: "Create new secret rotation configuration",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.Edit,
+        label: "Modify",
+        description: "Update rotation configuration",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.Delete,
+        label: "Delete",
+        description: "Delete rotation configurations",
+        Icon: Trash2Icon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.RotateSecrets,
+        label: "Rotate",
+        description: "Manually trigger secret rotation",
+        Icon: RefreshCwIcon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.SecretImports,
+    label: "Secret Imports",
+    Icon: ImportIcon,
+    iconTileClassName: "border-import/10 bg-import/15 text-import",
+    chipSelectedClassName:
+      "border-import/50 bg-import/15 text-import hover:border-import/50 hover:bg-import/25",
+    countBadgeClassName: "border-import/10 bg-import/15 text-import",
+    summaryIconClassName: "text-import",
+    actions: [
+      {
+        value: ProjectPermissionActions.Read,
+        label: "View",
+        description: "View imported secrets from other projects",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionActions.Create,
+        label: "Create",
+        description: "Set up new secret imports",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionActions.Edit,
+        label: "Modify",
+        description: "Change import configuration",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionActions.Delete,
+        label: "Delete",
+        description: "Remove secret imports",
+        Icon: Trash2Icon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.HoneyTokens,
+    label: "Honey Tokens",
+    Icon: HexagonIcon,
+    iconTileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
+    chipSelectedClassName:
+      "border-yellow-700/50 bg-yellow-700/15 text-yellow-700 hover:border-yellow-700/50 hover:bg-yellow-700/25",
+    countBadgeClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
+    summaryIconClassName: "text-yellow-700",
+    actions: [
+      {
+        value: ProjectPermissionHoneyTokenActions.Read,
+        label: "View",
+        description: "View honey tokens and events",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.ReadCredentials,
+        label: "Read Credentials",
+        description: "Reveal honey token credentials",
+        Icon: KeyRoundIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Create,
+        label: "Create",
+        description: "Create honey tokens",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Edit,
+        label: "Modify",
+        description: "Update honey token metadata and mappings",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Reset,
+        label: "Reset",
+        description: "Reset triggered honey tokens",
+        Icon: RotateCcwIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Revoke,
+        label: "Revoke",
+        description: "Revoke honey tokens and credentials",
+        Icon: BanIcon
+      }
+    ]
+  }
+];
+
+const requestAccessSchema = z.object({
+  environmentSlug: z.string().min(1),
+  secretPath: z.string().min(1, "Please select a secret path"),
+  resources: z
+    .object({
+      subject: z.nativeEnum(ProjectPermissionSub),
+      actions: z.string().array()
     })
-  ]),
-  note: z.string().optional()
+    .array()
+    .refine((resources) => resources.some((resource) => resource.actions.length > 0), {
+      message: "Select at least one permission"
+    }),
+  duration: z
+    .object({
+      preset: z.string().min(1),
+      customValue: z.string().optional()
+    })
+    .superRefine((val, ctx) => {
+      if (val.preset !== CUSTOM_DURATION_VALUE) return;
+      let parsed: number | undefined;
+      try {
+        parsed = val.customValue ? ms(val.customValue) : undefined;
+      } catch {
+        parsed = undefined;
+      }
+      if (typeof parsed !== "number" || parsed <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customValue"],
+          message: "Invalid duration. Use formats like 30m, 2h, 1d."
+        });
+      }
+    }),
+  note: z.string().max(255).optional()
 });
 
-type TSecretPermissionForm = z.infer<typeof secretPermissionSchema>;
-
-const PERMISSIONS = [
-  { name: "read", label: "View", description: "Read secret values", Icon: EyeIcon },
-  { name: "create", label: "Create", description: "Create new secrets", Icon: PlusIcon },
-  { name: "edit", label: "Modify", description: "Update existing secrets", Icon: PencilIcon },
-  { name: "delete", label: "Delete", description: "Delete existing secrets", Icon: Trash2Icon }
-] as const;
+type TRequestAccessForm = z.infer<typeof requestAccessSchema>;
 
 export const RequestAccessForm = ({
   policies,
@@ -87,34 +391,30 @@ export const RequestAccessForm = ({
   onClose?: () => void;
 }) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const requestAccess = useCreateAccessRequest();
 
-  const privilegeForm = useForm<TSecretPermissionForm>({
-    resolver: zodResolver(secretPermissionSchema),
+  const form = useForm<TRequestAccessForm>({
+    resolver: zodResolver(requestAccessSchema),
     defaultValues: {
       environmentSlug: currentProject.environments?.[0]?.slug,
-      secretPath: initialSecretPath,
-      read: selectedActions.includes(ProjectPermissionActions.Read),
-      edit: selectedActions.includes(ProjectPermissionActions.Edit),
-      create: selectedActions.includes(ProjectPermissionActions.Create),
-      delete: selectedActions.includes(ProjectPermissionActions.Delete),
-      temporaryAccess: {
-        isTemporary: false,
-        temporaryRange: "1h"
-      }
+      secretPath: initialSecretPath ?? "",
+      resources: [{ subject: ProjectPermissionSub.Secrets, actions: selectedActions }],
+      duration: { preset: PERMANENT_DURATION_VALUE, customValue: "1h" },
+      note: ""
     }
   });
 
-  const temporaryAccessField = privilegeForm.watch("temporaryAccess");
-  const selectedEnvironment = privilegeForm.watch("environmentSlug");
-  const secretPath = privilegeForm.watch("secretPath");
+  const {
+    fields: resourceFields,
+    append: appendResource,
+    remove: removeResource
+  } = useFieldArray({ control: form.control, name: "resources" });
 
-  const readAccess = privilegeForm.watch("read");
-  const createAccess = privilegeForm.watch("create");
-  const editAccess = privilegeForm.watch("edit");
-  const deleteAccess = privilegeForm.watch("delete");
-
-  const accessSelected = readAccess || createAccess || editAccess || deleteAccess;
+  const selectedEnvironment = form.watch("environmentSlug");
+  const secretPath = form.watch("secretPath");
+  const resources = form.watch("resources");
+  const durationPreset = form.watch("duration.preset");
 
   const selectablePaths = useMemo(
     () =>
@@ -124,18 +424,76 @@ export const RequestAccessForm = ({
     [policies, selectedEnvironment]
   );
 
+  const matchedPolicy = useMemo(
+    () =>
+      policies.find(
+        (policy) =>
+          policy.environments.some((env) => env.slug === selectedEnvironment) &&
+          policy.secretPath === secretPath
+      ),
+    [policies, selectedEnvironment, secretPath]
+  );
+
+  const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
+  const allowedPresets = maxDurationMs
+    ? DURATION_PRESETS.filter((preset) => ms(preset.value) <= maxDurationMs)
+    : DURATION_PRESETS;
+
+  const isInitialMount = useRef(true);
   useEffect(() => {
-    privilegeForm.setValue("secretPath", "", {
-      shouldValidate: true
-    });
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    form.setValue("secretPath", "", { shouldValidate: true });
   }, [selectedEnvironment]);
 
-  const isTemporary = temporaryAccessField?.isTemporary;
-  const isExpired =
-    temporaryAccessField.isTemporary &&
-    new Date() > new Date(temporaryAccessField.temporaryAccessEndTime || "");
+  // policies with a max time period forbid permanent access and cap the range
+  useEffect(() => {
+    if (!maxDurationMs || !matchedPolicy?.maxTimePeriod) return;
+    const { preset } = form.getValues("duration");
+    const exceedsMax =
+      preset === PERMANENT_DURATION_VALUE ||
+      (preset !== CUSTOM_DURATION_VALUE && ms(preset) > maxDurationMs);
+    if (!exceedsMax) return;
+    const fallback = allowedPresets[allowedPresets.length - 1];
+    form.setValue(
+      "duration",
+      fallback
+        ? { preset: fallback.value, customValue: form.getValues("duration.customValue") }
+        : { preset: CUSTOM_DURATION_VALUE, customValue: matchedPolicy.maxTimePeriod },
+      { shouldValidate: true }
+    );
+  }, [matchedPolicy]);
 
-  const handleRequestAccess = async (data: TSecretPermissionForm) => {
+  const addedSubjects = new Set(resources.map((resource) => resource.subject));
+  const availableResources = RESOURCE_CONFIGS.filter(
+    (config) =>
+      !addedSubjects.has(config.subject) &&
+      (config.subject !== ProjectPermissionSub.HoneyTokens || subscription?.honeyTokens)
+  );
+
+  const summaryRows = resources.flatMap((resource) => {
+    const config = RESOURCE_CONFIGS.find((c) => c.subject === resource.subject);
+    if (!config) return [];
+    const selected = config.actions.filter((action) => resource.actions.includes(action.value));
+    return selected.length ? [{ config, selected }] : [];
+  });
+
+  const totalSelectedActions = resources.reduce(
+    (count, resource) => count + resource.actions.length,
+    0
+  );
+
+  const toggleAction = (index: number, actionValue: string) => {
+    const current = form.getValues(`resources.${index}.actions`);
+    const next = current.includes(actionValue)
+      ? current.filter((value) => value !== actionValue)
+      : [...current, actionValue];
+    form.setValue(`resources.${index}.actions`, next, { shouldDirty: true });
+  };
+
+  const handleRequestAccess = async (data: TRequestAccessForm) => {
     if (!currentProject) {
       createNotification({
         type: "error",
@@ -145,249 +503,265 @@ export const RequestAccessForm = ({
       return;
     }
 
-    if (!data.secretPath) {
-      createNotification({
-        type: "error",
-        text: "Please select a secret path...",
-        title: "Error"
-      });
-      return;
-    }
-
-    const policy = policies.find(
-      (p) =>
-        p.environments.find((e) => e.slug === selectedEnvironment) && p.secretPath === secretPath
-    );
+    const isTemporary = data.duration.preset !== PERMANENT_DURATION_VALUE;
+    const temporaryRange =
+      data.duration.preset === CUSTOM_DURATION_VALUE
+        ? data.duration.customValue
+        : data.duration.preset;
 
     if (
-      policy?.maxTimePeriod &&
-      (!data.temporaryAccess.isTemporary ||
-        ms(data.temporaryAccess.temporaryRange) > ms(policy.maxTimePeriod))
+      matchedPolicy?.maxTimePeriod &&
+      (!isTemporary || !temporaryRange || ms(temporaryRange) > ms(matchedPolicy.maxTimePeriod))
     ) {
       createNotification({
         type: "error",
-        text: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`,
+        text: `Requested access time range is limited to ${matchedPolicy.maxTimePeriod} by policy`,
         title: "Error"
       });
       return;
     }
 
-    const actions = [
-      { action: ProjectPermissionActions.Read, allowed: data.read },
-      { action: ProjectPermissionActions.Create, allowed: data.create },
-      { action: ProjectPermissionActions.Delete, allowed: data.delete },
-      { action: ProjectPermissionActions.Edit, allowed: data.edit }
-    ];
-    const conditions: Record<string, any> = { environment: data.environmentSlug };
-    if (data.secretPath) {
-      conditions.secretPath = { $glob: data.secretPath };
-    }
+    const conditions = {
+      environment: data.environmentSlug,
+      secretPath: { $glob: data.secretPath }
+    };
+    const permissions = data.resources.flatMap(({ subject, actions }) =>
+      actions.map((action) => ({ action, subject: [subject], conditions }))
+    );
+
     await requestAccess.mutateAsync({
-      ...data,
-      ...(data.temporaryAccess.isTemporary && {
-        temporaryRange: data.temporaryAccess.temporaryRange
-      }),
       projectSlug: currentProject.slug,
-      isTemporary: data.temporaryAccess.isTemporary,
-      permissions: actions
-        .filter(({ allowed }) => allowed)
-        .map(({ action }) => ({
-          action,
-          subject: [ProjectPermissionSub.Secrets],
-          conditions
-        })),
-      note: data.note
+      isTemporary,
+      ...(isTemporary && temporaryRange && { temporaryRange }),
+      permissions,
+      note: data.note || undefined
     });
 
     createNotification({
       type: "success",
       text: "Successfully requested access"
     });
-    privilegeForm.reset();
+    form.reset();
     if (onClose) onClose();
-  };
-
-  const handleGrant = () => {
-    const temporaryRange = privilegeForm.getValues("temporaryAccess.temporaryRange");
-    if (!temporaryRange) {
-      privilegeForm.setError(
-        "temporaryAccess.temporaryRange",
-        { type: "required", message: "Required" },
-        { shouldFocus: true }
-      );
-      return;
-    }
-    privilegeForm.clearErrors("temporaryAccess.temporaryRange");
-    privilegeForm.setValue(
-      "temporaryAccess",
-      {
-        isTemporary: true,
-        temporaryAccessStartTime: new Date().toISOString(),
-        temporaryRange,
-        temporaryAccessEndTime: new Date(new Date().getTime() + ms(temporaryRange)).toISOString()
-      },
-      { shouldDirty: true }
-    );
-  };
-
-  const handleCancelTemporary = () => {
-    privilegeForm.setValue("temporaryAccess", {
-      isTemporary: false,
-      temporaryRange: privilegeForm.getValues("temporaryAccess.temporaryRange")
-    });
-  };
-
-  const getAccessLabel = () => {
-    if (isExpired) return "Access expired";
-    if (!temporaryAccessField?.isTemporary) return "Permanent";
-    return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
   };
 
   return (
     <form
-      onSubmit={privilegeForm.handleSubmit(handleRequestAccess)}
+      onSubmit={form.handleSubmit(handleRequestAccess)}
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <Controller
-          control={privilegeForm.control}
-          name="environmentSlug"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="environmentSlug" className="w-full">
-                  <SelectValue placeholder="Select an environment" />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {currentProject?.environments?.map(({ slug, id, name }) => (
-                    <SelectItem value={slug} key={id}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
-        />
-        <Controller
-          control={privilegeForm.control}
-          name="secretPath"
-          render={({ field }) => {
-            const secretPathField = (
+        <div className="grid grid-cols-2 gap-3">
+          <Controller
+            control={form.control}
+            name="environmentSlug"
+            render={({ field }) => (
               <Field>
-                <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
-                <Select
-                  value={field.value || ""}
-                  onValueChange={field.onChange}
-                  disabled={!selectablePaths.length}
-                >
-                  <SelectTrigger id="secretPath" className="w-full">
-                    <SelectValue placeholder="Select a secret path" />
+                <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="environmentSlug" className="w-full">
+                    <SelectValue placeholder="Select an environment" />
                   </SelectTrigger>
                   <SelectContent position="popper">
-                    {selectablePaths.map((path) => (
-                      <SelectItem value={path} key={path}>
-                        {path}
+                    {currentProject?.environments?.map(({ slug, id, name }) => (
+                      <SelectItem value={slug} key={id}>
+                        {name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-            );
+            )}
+          />
+          <Controller
+            control={form.control}
+            name="secretPath"
+            render={({ field }) => {
+              const secretPathField = (
+                <Field>
+                  <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    disabled={!selectablePaths.length}
+                  >
+                    <SelectTrigger id="secretPath" className="w-full">
+                      <SelectValue placeholder="Select a secret path" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {selectablePaths.map((path) => (
+                        <SelectItem value={path} key={path}>
+                          {path}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              );
 
-            if (selectablePaths.length) return secretPathField;
+              if (selectablePaths.length) return secretPathField;
 
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="w-full">{secretPathField}</div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  The selected environment doesn&apos;t have any policies.
-                </TooltipContent>
-              </Tooltip>
-            );
-          }}
-        />
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="w-full">{secretPathField}</div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    The selected environment doesn&apos;t have any policies.
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }}
+          />
+        </div>
         <Field>
-          <FieldLabel>Permissions</FieldLabel>
-          <div className="grid grid-cols-2 gap-2">
-            {PERMISSIONS.map(({ name, label, description, Icon }) => (
-              <Controller
-                key={name}
-                control={privilegeForm.control}
-                name={name}
-                render={({ field }) => (
-                  <FieldLabel htmlFor={`secret-${name}`} variant="project">
-                    <Field orientation="horizontal">
-                      <FieldContent>
-                        <FieldTitle>
-                          <Icon />
-                          {label}
-                        </FieldTitle>
-                        <FieldDescription>{description}</FieldDescription>
-                      </FieldContent>
-                      <Checkbox
-                        id={`secret-${name}`}
-                        variant="outline"
-                        isChecked={field.value}
-                        onCheckedChange={(isChecked) => field.onChange(isChecked)}
-                      />
-                    </Field>
-                  </FieldLabel>
-                )}
-              />
-            ))}
+          <FieldLabel>Resources & Permissions</FieldLabel>
+          <div className="flex flex-col gap-3">
+            {resourceFields.map((resourceField, index) => {
+              const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
+              if (!config) return null;
+              const selectedValues = resources[index]?.actions ?? [];
+
+              return (
+                <div
+                  key={resourceField.id}
+                  className="overflow-hidden rounded-lg border border-border bg-card"
+                >
+                  <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                    <div
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-md border",
+                        config.iconTileClassName
+                      )}
+                    >
+                      <config.Icon className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{config.label}</span>
+                    <IconButton
+                      size="xs"
+                      variant="ghost-muted"
+                      className="ml-auto"
+                      aria-label={`Remove ${config.label}`}
+                      onClick={() => removeResource(index)}
+                    >
+                      <XIcon />
+                    </IconButton>
+                  </div>
+                  <div className="flex flex-wrap gap-2 p-3">
+                    {config.actions.map((action) => {
+                      const isSelected = selectedValues.includes(action.value);
+
+                      return (
+                        <Tooltip key={action.value}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              aria-pressed={isSelected}
+                              onClick={() => toggleAction(index, action.value)}
+                              className={cn(
+                                "rounded-md",
+                                isSelected
+                                  ? config.chipSelectedClassName
+                                  : "text-muted hover:text-foreground"
+                              )}
+                            >
+                              <action.Icon />
+                              {action.label}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{action.description}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {availableResources.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    isFullWidth
+                    className="border-dashed text-label hover:text-foreground"
+                  >
+                    <PlusIcon />
+                    Add resource type
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="w-(--radix-dropdown-menu-trigger-width)"
+                >
+                  {availableResources.map((config) => (
+                    <DropdownMenuItem
+                      key={config.subject}
+                      onSelect={() => appendResource({ subject: config.subject, actions: [] })}
+                    >
+                      <div
+                        className={cn(
+                          "flex size-6 items-center justify-center rounded-sm border",
+                          config.iconTileClassName
+                        )}
+                      >
+                        <config.Icon className="size-3.5" />
+                      </div>
+                      {config.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </Field>
-        <Field>
-          <FieldLabel>Duration</FieldLabel>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between capitalize">
-                <span className="flex items-center gap-2">
-                  {isTemporary && <ClockIcon className="size-3.5" />}
-                  {getAccessLabel()}
-                </span>
-                <ChevronDownIcon className="size-3.5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="flex flex-col gap-4">
-              <div className="text-sm text-foreground">Configure timed access</div>
-              {isExpired && (
-                <Badge variant="danger" className="w-fit">
-                  Expired
-                </Badge>
-              )}
-              <Controller
-                control={privilegeForm.control}
-                name="temporaryAccess.temporaryRange"
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="temporaryRange">
-                      <TtlFormLabel label="Validity" />
-                    </FieldLabel>
-                    <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
-                    <FieldError errors={[error]} />
-                  </Field>
-                )}
-              />
-              <div className="flex items-center gap-2">
-                <Button size="xs" variant="project" onClick={handleGrant}>
-                  Grant
-                </Button>
-                {temporaryAccessField.isTemporary && (
-                  <Button size="xs" variant="danger" onClick={handleCancelTemporary}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </Field>
         <Controller
-          control={privilegeForm.control}
+          control={form.control}
+          name="duration.preset"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel htmlFor="duration">Duration</FieldLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="duration" className="w-full">
+                  <SelectValue placeholder="Select a duration" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {!maxDurationMs && (
+                    <SelectItem value={PERMANENT_DURATION_VALUE}>Permanent</SelectItem>
+                  )}
+                  {allowedPresets.map((preset) => (
+                    <SelectItem value={preset.value} key={preset.value}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM_DURATION_VALUE}>Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              {matchedPolicy?.maxTimePeriod && (
+                <FieldDescription>
+                  Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
+                </FieldDescription>
+              )}
+            </Field>
+          )}
+        />
+        {durationPreset === CUSTOM_DURATION_VALUE && (
+          <Controller
+            control={form.control}
+            name="duration.customValue"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="customDuration">
+                  <TtlFormLabel label="Custom Duration" />
+                </FieldLabel>
+                <Input id="customDuration" {...field} isError={Boolean(error?.message)} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        )}
+        <Controller
+          control={form.control}
           name="note"
           render={({ field }) => (
             <Field>
@@ -401,15 +775,50 @@ export const RequestAccessForm = ({
             </Field>
           )}
         />
+        <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-black/20 p-3">
+          <span className="text-xs font-medium tracking-wider text-muted uppercase">
+            Request Summary
+          </span>
+          {summaryRows.length ? (
+            <div className="flex flex-col gap-2">
+              {summaryRows.map(({ config, selected }) => (
+                <HoverCard key={config.subject} openDelay={150}>
+                  <HoverCardTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      <config.Icon className={cn("size-3.5", config.summaryIconClassName)} />
+                      <span className="text-sm text-foreground">{config.label}</span>
+                      <Badge className={cn("ml-auto rounded-full", config.countBadgeClassName)}>
+                        {selected.length} {selected.length === 1 ? "permission" : "permissions"}
+                      </Badge>
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent align="end" className="flex w-56 flex-col gap-1.5">
+                    {selected.map((action) => (
+                      <div
+                        key={action.value}
+                        className="flex items-center gap-2 text-sm text-foreground"
+                      >
+                        <action.Icon className={cn("size-3.5", config.summaryIconClassName)} />
+                        {action.label}
+                      </div>
+                    ))}
+                  </HoverCardContent>
+                </HoverCard>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-muted">
+              No resources added yet. Add a resource type to begin.
+            </span>
+          )}
+        </div>
       </div>
       <SheetFooter className="border-t">
         <Button
           type="submit"
           variant="project"
-          isPending={privilegeForm.formState.isSubmitting || requestAccess.isPending}
-          isDisabled={
-            !policies.length || !privilegeForm.formState.isValid || !secretPath || !accessSelected
-          }
+          isPending={form.formState.isSubmitting || requestAccess.isPending}
+          isDisabled={!policies.length || !secretPath || totalSelectedActions === 0}
         >
           Request Access
         </Button>
