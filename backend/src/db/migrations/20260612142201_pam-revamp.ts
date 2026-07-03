@@ -71,6 +71,12 @@ const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
 };
 
 export async function up(knex: Knex): Promise<void> {
+  // The migration commits atomically, so this table existing means it already ran fully.
+  // Guarding the whole run: a partial re-run would null folderIds and delete migrated accounts.
+  if (await knex.schema.hasTable(TableName.PamAccountTemplate)) {
+    return;
+  }
+
   await knex.schema.createTable(TableName.PamAccountTemplate, (t) => {
     t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
@@ -524,6 +530,13 @@ export async function up(knex: Knex): Promise<void> {
     t.renameColumn("resourceType", "accountType");
     t.string("resourceName").nullable().alter();
   });
+
+  // Accounts existing at migration time were created with credentials supplied upfront
+  await knex.schema.alterTable(TableName.PamAccount, (t) => {
+    t.boolean("credentialConfigured").notNullable().defaultTo(false);
+  });
+
+  await knex(TableName.PamAccount).update({ credentialConfigured: true });
 }
 
 export async function down(): Promise<void> {
