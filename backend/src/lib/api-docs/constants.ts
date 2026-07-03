@@ -1422,6 +1422,7 @@ export const SECRET_IMPORTS = {
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
+      projectId: "The ID of the project to import from.",
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
     }

@@ -53,6 +53,23 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
     await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
+
+    // When a source project's secrets change, target projects that consume them
+    // via cross-project grants must also be invalidated so they don't serve
+    // stale source values from cache.
+    const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
+      .where("sourceProjectId", projectId)
+      .select("targetProjectId")
+      .groupBy("targetProjectId");
+
+    const stamp = utcDayStamp();
+    await Promise.all(
+      targetGrants.map(async ({ targetProjectId }) => {
+        const targetVersionKey = SecretServiceCacheKeys.getSecretDalVersion(targetProjectId);
+        await keyStore.pgIncrementBy(targetVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
+        await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(targetProjectId, stamp));
+      })
+    );
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
@@ -903,7 +920,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const upsertSecretReferences = async (
     data: {
       secretId: string;
-      references: Array<{ environment: string; secretPath: string; secretKey: string }>;
+      references: Array<{ environment: string; secretPath: string; secretKey: string; targetProjectSlug?: string }>;
     }[] = [],
     tx?: Knex
   ) => {
@@ -919,11 +936,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       const newSecretReferences = data
         .filter(({ references }) => references.length)
         .flatMap(({ secretId, references }) =>
-          references.map(({ environment, secretPath, secretKey }) => ({
+          references.map(({ environment, secretPath, secretKey, targetProjectSlug }) => ({
             secretPath,
             secretId,
             environment,
-            secretKey
+            secretKey,
+            ...(targetProjectSlug ? { targetProjectSlug } : {})
           }))
         );
       if (!newSecretReferences.length) return;
@@ -983,6 +1001,81 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindReferencedSecretReferencesBySecretKey" });
+    }
+  };
+
+  const findCrossProjectSecretReferencesByTargetSecretKey = async (
+    targetProjectSlug: string,
+    envSlug: string,
+    secretPath: string,
+    secretKey: string,
+    orgId: string,
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .where({
+          [`${TableName.SecretReferenceV2}.secretPath` as "secretPath"]: secretPath,
+          [`${TableName.SecretReferenceV2}.environment` as "environment"]: envSlug,
+          [`${TableName.SecretReferenceV2}.secretKey` as "secretKey"]: secretKey,
+          [`${TableName.SecretReferenceV2}.targetProjectSlug` as "targetProjectSlug"]: targetProjectSlug
+        })
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where({
+          [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false,
+          [`${TableName.Project}.orgId` as "orgId"]: orgId
+        })
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(
+          selectAllTableCols(TableName.SecretReferenceV2),
+          db.ref("folderId").withSchema(TableName.SecretV2),
+          db.ref("key").withSchema(TableName.SecretV2).as("secretVKey"),
+          db.ref("projectId").withSchema(TableName.Environment).as("referencingProjectId")
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCrossProjectSecretReferencesByTargetSecretKey" });
+    }
+  };
+
+  const findCrossProjectSecretReferencesByTargetFolder = async (
+    targetProjectSlug: string,
+    envSlug: string,
+    secretPath: string,
+    orgId: string,
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .where({
+          [`${TableName.SecretReferenceV2}.secretPath` as "secretPath"]: secretPath,
+          [`${TableName.SecretReferenceV2}.environment` as "environment"]: envSlug,
+          [`${TableName.SecretReferenceV2}.targetProjectSlug` as "targetProjectSlug"]: targetProjectSlug
+        })
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where({
+          [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false,
+          [`${TableName.Project}.orgId` as "orgId"]: orgId
+        })
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(
+          db.ref("folderId").withSchema(TableName.SecretV2),
+          db.ref("projectId").withSchema(TableName.Environment).as("referencingProjectId"),
+          db.ref("orgId").withSchema(TableName.Project).as("referencingOrgId")
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCrossProjectSecretReferencesByTargetFolder" });
     }
   };
 
@@ -1431,6 +1524,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findSecretsWithReminderRecipients,
     findSecretsWithReminderRecipientsOld,
     findReferencedSecretReferencesBySecretKey,
+    findCrossProjectSecretReferencesByTargetSecretKey,
+    findCrossProjectSecretReferencesByTargetFolder,
     updateSecretReferenceSecretKey,
     updateSecretReferenceEnvAndPath
   };

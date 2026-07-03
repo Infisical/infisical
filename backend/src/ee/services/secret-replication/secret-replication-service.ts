@@ -13,7 +13,9 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -90,6 +92,8 @@ type TSecretReplicationServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -137,6 +141,8 @@ export const secretReplicationServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   folderCommitService,
+  projectFolderGrantDAL,
+  orgDAL,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -236,7 +242,7 @@ export const secretReplicationServiceFactory = ({
       const foldersGroupedById = groupBy(importedFolders.filter(Boolean), (i) => i?.id as string);
       await Promise.all(
         nonReplicatedDestinationImports
-          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId][0]?.path as string))
+          .filter(({ folderId }) => Boolean(foldersGroupedById[folderId]?.[0]?.path as string))
           // filter out already synced ones
           .filter(
             ({ folderId }) =>
@@ -288,7 +294,12 @@ export const secretReplicationServiceFactory = ({
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         viewSecretValue: true,
-        hasSecretAccess: () => true
+        hasSecretAccess: () => true,
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId: orgId,
+        orgDAL,
+        kmsService
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({

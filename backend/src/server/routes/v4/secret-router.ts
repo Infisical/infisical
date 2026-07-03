@@ -28,7 +28,14 @@ const SecretReferenceNode = z.object({
   key: z.string(),
   value: z.string().optional(),
   environment: z.string(),
-  secretPath: z.string()
+  secretPath: z.string(),
+  project: z
+    .object({
+      id: z.string(),
+      slug: z.string(),
+      name: z.string()
+    })
+    .optional()
 });
 
 const DuplicateSecretAttributesSchema = z
