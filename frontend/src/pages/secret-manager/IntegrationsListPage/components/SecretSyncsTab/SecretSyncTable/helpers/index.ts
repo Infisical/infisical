@@ -2,6 +2,7 @@ import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
+import { GiteaSyncScope } from "@app/hooks/api/secretSyncs/types/gitea-sync";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility
@@ -264,6 +265,20 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.TriggerDev:
       primaryText = destinationConfig.projectRef;
       secondaryText = `Environment - ${destinationConfig.environment}`;
+      break;
+    case SecretSync.Gitea:
+      switch (destinationConfig.scope) {
+        case GiteaSyncScope.Organization:
+          primaryText = `${destinationConfig.org.fullName}`;
+          secondaryText = "Organization";
+          break;
+        case GiteaSyncScope.Repository:
+          primaryText = `${destinationConfig.owner}/${destinationConfig.repo}`;
+          secondaryText = "Repository";
+          break;
+        default:
+          throw new Error(`Unhandled Gitea Scope Destination Col Values ${destination}`);
+      }
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

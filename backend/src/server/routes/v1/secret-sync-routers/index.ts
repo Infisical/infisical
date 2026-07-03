@@ -21,6 +21,7 @@ import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-p
 import { registerExternalInfisicalSyncRouter } from "./external-infisical-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
+import { registerGiteaSyncRouter } from "./gitea-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerGitLabSyncRouter } from "./gitlab-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
@@ -89,5 +90,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Devin]: registerDevinSyncRouter,
   [SecretSync.Ona]: registerOnaSyncRouter,
   [SecretSync.TravisCI]: registerTravisCISyncRouter,
-  [SecretSync.Snowflake]: registerSnowflakeSyncRouter
+  [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
+  [SecretSync.Gitea]: registerGiteaSyncRouter
 };

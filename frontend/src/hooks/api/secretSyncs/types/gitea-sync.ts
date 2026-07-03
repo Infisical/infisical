@@ -11,7 +11,10 @@ export type TGiteaSync = TRootSecretSync & {
   destinationConfig:
     | {
         scope: GiteaSyncScope.Organization;
-        org: string;
+        org: {
+          name: string;
+          fullName: string;
+        };
       }
     | {
         scope: GiteaSyncScope.Repository;

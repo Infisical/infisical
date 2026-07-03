@@ -3268,6 +3268,13 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    GITEA: {
+      scope: "The Gitea scope that secrets should be synced to",
+      org: "The name of the Gitea organization.",
+      orgFull: "The full name of the Gitea organization.",
+      owner: "The name of the Gitea account owner of the repository.",
+      repo: "The name of the Gitea repository."
     }
   }
 };

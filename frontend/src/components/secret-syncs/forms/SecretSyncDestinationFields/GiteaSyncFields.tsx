@@ -80,7 +80,7 @@ export const GiteaSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.scope", GiteaSyncScope.Repository);
-          setValue("destinationConfig.org", "");
+          setValue("destinationConfig.org", { name: "", fullName: "" });
           setValue("destinationConfig.repo", "");
           setValue("destinationConfig.owner", "");
         }}
@@ -123,10 +123,10 @@ export const GiteaSyncFields = () => {
                 <FilterableSelect
                   isLoading={isOrganizationsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={organizations.find((org) => org.name === value) ?? null}
+                  value={organizations.find((org) => org.name === value.name) ?? null}
                   onChange={(option) => {
                     const selected = option as SingleValue<TGiteaOrganization>;
-                    onChange(selected?.name ?? null);
+                    onChange(selected);
                   }}
                   options={organizations}
                   placeholder="Select an organization..."

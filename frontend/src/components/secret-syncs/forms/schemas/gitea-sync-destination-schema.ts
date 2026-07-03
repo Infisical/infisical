@@ -10,7 +10,10 @@ export const GiteaSyncDestinationSchema = BaseSecretSyncSchema().extend({
   destinationConfig: z.discriminatedUnion("scope", [
     z.object({
       scope: z.literal(GiteaSyncScope.Organization),
-      org: z.string().trim().min(1, "Organization name required")
+      org: z.object({
+        name: z.string().trim().min(1, "Organization name required"),
+        fullName: z.string().trim().min(1, "Organization full name required")
+      })
     }),
     z.object({
       scope: z.literal(GiteaSyncScope.Repository),

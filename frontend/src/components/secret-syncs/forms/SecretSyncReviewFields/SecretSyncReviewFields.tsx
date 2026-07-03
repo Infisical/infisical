@@ -70,6 +70,7 @@ import {
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
+import { GiteaSyncReviewFields } from "./GiteaSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -233,6 +234,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.TriggerDev:
       DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Gitea:
+      DestinationFieldsComponent = <GiteaSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

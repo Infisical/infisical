@@ -43,6 +43,7 @@ import { TriggerDevSyncDestinationCol } from "./TriggerDevSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
+import { GiteaSyncDestinationCol } from "./GiteaSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -136,6 +137,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <SnowflakeSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TriggerDev:
       return <TriggerDevSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Gitea:
+      return <GiteaSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

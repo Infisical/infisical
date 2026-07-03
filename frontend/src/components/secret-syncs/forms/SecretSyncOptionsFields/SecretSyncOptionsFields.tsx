@@ -132,6 +132,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Ona:
     case SecretSync.TravisCI:
     case SecretSync.Snowflake:
+    case SecretSync.Gitea:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

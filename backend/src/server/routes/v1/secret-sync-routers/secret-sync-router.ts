@@ -50,6 +50,7 @@ import {
 } from "@app/services/secret-sync/external-infisical";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
+import { GiteaSyncListItemSchema, GiteaSyncSchema } from "@app/services/secret-sync/gitea";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
@@ -72,7 +73,6 @@ import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/service
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
-import { GiteaSyncListItemSchema } from "@app/services/secret-sync/gitea";
 
 const SecretSyncSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncSchema,
@@ -117,7 +117,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   DevinSyncSchema,
   OnaSyncSchema,
   TravisCISyncSchema,
-  SnowflakeSyncSchema
+  SnowflakeSyncSchema,
+  GiteaSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [

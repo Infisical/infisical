@@ -88,6 +88,7 @@ import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
 import { GITEA_SYNC_LIST_OPTION } from "./gitea/gitea-sync-constants";
+import { GiteaSyncFns } from "./gitea";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -431,6 +432,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Gitea:
+        return GiteaSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -592,6 +595,9 @@ export const SecretSyncFns = {
       case SecretSync.Snowflake:
         secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Gitea:
+        secretMap = await GiteaSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -736,6 +742,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Gitea:
+        return GiteaSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
