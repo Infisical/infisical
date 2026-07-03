@@ -44,6 +44,7 @@ import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatfo
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
 import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
+import { GiteaSyncReviewFields } from "./GiteaSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
@@ -72,7 +73,6 @@ import {
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
-import { GiteaSyncReviewFields } from "./GiteaSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();

@@ -64,6 +64,7 @@ import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from ".
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
+import { GITEA_SYNC_LIST_OPTION, GiteaSyncFns } from "./gitea";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
@@ -89,8 +90,6 @@ import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
-import { GITEA_SYNC_LIST_OPTION } from "./gitea/gitea-sync-constants";
-import { GiteaSyncFns } from "./gitea";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -756,15 +755,12 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
-<<<<<<< HEAD
       case SecretSync.Gitea:
         return GiteaSyncFns.removeSecrets(secretSync, schemaSecretMap);
-=======
       case SecretSync.Qovery:
         return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
         return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
->>>>>>> main
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

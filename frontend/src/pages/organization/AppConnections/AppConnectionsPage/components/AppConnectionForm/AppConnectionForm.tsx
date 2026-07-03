@@ -46,6 +46,7 @@ import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionFo
 import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
+import { GiteaConnectionForm } from "./GiteaConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { GitLabConnectionForm } from "./GitLabConnectionForm";
@@ -87,7 +88,6 @@ import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
-import { GiteaConnectionForm } from "./GiteaConnectionForm";
 
 type AppConnectionFormData = DiscriminativePick<
   TAppConnection,

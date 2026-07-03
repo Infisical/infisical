@@ -21,6 +21,7 @@ import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlat
 import { ExternalInfisicalSyncDestinationCol } from "./ExternalInfisicalSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
+import { GiteaSyncDestinationCol } from "./GiteaSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { GitLabSyncDestinationCol } from "./GitLabSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
@@ -45,7 +46,6 @@ import { TriggerDevSyncDestinationCol } from "./TriggerDevSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
-import { GiteaSyncDestinationCol } from "./GiteaSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
