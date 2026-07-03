@@ -56,6 +56,52 @@ const whereAnyActor = (qb: Knex.QueryBuilder, prefix = "") => {
     .orWhereNotNull(`${prefix}actorGroupId`);
 };
 
+type TRoleRow = {
+  role: string;
+  isTemporary: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: Date | null;
+  temporaryAccessEndTime?: Date | null;
+};
+
+const ROLE_ROW_COLUMNS = [
+  "role",
+  "isTemporary",
+  "temporaryMode",
+  "temporaryRange",
+  "temporaryAccessStartTime",
+  "temporaryAccessEndTime"
+];
+
+// Mirrors isActiveRole in permission-service.ts: an expired temporary role grants nothing
+const isActiveRoleRow = (r: TRoleRow) =>
+  !r.isTemporary || Boolean(r.temporaryAccessEndTime && new Date() < new Date(r.temporaryAccessEndTime));
+
+// Only old-project admins keep standing folder access, mapped to folder Admin with their
+// temporal window preserved. Non-admins get product membership only and request access
+// through the approval flow, so they are not added to any folder.
+const mapToFolderAdminRoleRows = (activeRoles: TRoleRow[]) => {
+  const mapped = new Map<string, Omit<TRoleRow, "role"> & { role: string }>();
+  for (const r of activeRoles) {
+    if (r.role !== ProjectMembershipRole.Admin) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    const row = {
+      role: PamResourceRole.Admin,
+      isTemporary: r.isTemporary,
+      temporaryMode: r.temporaryMode ?? null,
+      temporaryRange: r.temporaryRange ?? null,
+      temporaryAccessStartTime: r.temporaryAccessStartTime ?? null,
+      temporaryAccessEndTime: r.temporaryAccessEndTime ?? null
+    };
+    const key = JSON.stringify(row);
+    if (!mapped.has(key)) mapped.set(key, row);
+  }
+  return [...mapped.values()];
+};
+
 const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
   const allOrgs = (await knex(TableName.Organization).select("id")) as Array<{ id: string }>;
   const orgToPamProject = new Map<string, string>();
@@ -385,6 +431,7 @@ export async function up(knex: Knex): Promise<void> {
           .where(`${TableName.Membership}.scopeOrgId`, orgId)
           .where(`${TableName.Membership}.isActive`, true)
           .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
+          .where(`${TableName.MembershipRole}.isTemporary`, false)
           .where((qb) => whereAnyActor(qb, `${TableName.Membership}.`))
           .select(
             `${TableName.Membership}.actorUserId`,
@@ -404,13 +451,20 @@ export async function up(knex: Knex): Promise<void> {
         .select("id", "actorUserId", "actorIdentityId", "actorGroupId");
 
       for (const member of projectMembers) {
-        const actor = membershipActorKey(member);
-        allPamActors.add(actor);
+        const roles = (await knex(TableName.MembershipRole)
+          .where("membershipId", member.id)
+          .select(ROLE_ROW_COLUMNS)) as TRoleRow[];
+        const activeRoles = roles.filter(isActiveRoleRow);
 
-        const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
+        if (activeRoles.length > 0) {
+          const actor = membershipActorKey(member);
+          allPamActors.add(actor);
 
-        if (roles.some((r: { role: string }) => r.role === ProjectMembershipRole.Admin)) {
-          pamProjectAdmins.add(actor);
+          // Product admin requires a permanent admin role; temporary admins must not
+          // become permanent product admins
+          if (activeRoles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary)) {
+            pamProjectAdmins.add(actor);
+          }
         }
       }
     }
@@ -443,27 +497,28 @@ export async function up(knex: Knex): Promise<void> {
         .select("id", "actorUserId", "actorIdentityId", "actorGroupId");
 
       for (const member of projectMembers) {
-        const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
+        const roles = (await knex(TableName.MembershipRole)
+          .where("membershipId", member.id)
+          .select(ROLE_ROW_COLUMNS)) as TRoleRow[];
+        const folderRoleRows = mapToFolderAdminRoleRows(roles.filter(isActiveRoleRow));
 
-        const isAdmin = roles.some((r: { role: string }) => r.role === ProjectMembershipRole.Admin);
-        const resourceRole = isAdmin ? PamResourceRole.Admin : PamResourceRole.Requester;
+        if (folderRoleRows.length > 0) {
+          const [folderMembership] = await knex(TableName.Membership)
+            .insert({
+              scope: RESOURCE_SCOPE,
+              scopeOrgId: orgId,
+              scopeProjectId: newProjectId,
+              scopeResourceType: ResourceType.PamFolder,
+              scopeResourceId: folderId,
+              ...membershipActorColumns(membershipActorKey(member)),
+              isActive: true
+            })
+            .returning("id");
 
-        const [folderMembership] = await knex(TableName.Membership)
-          .insert({
-            scope: RESOURCE_SCOPE,
-            scopeOrgId: orgId,
-            scopeProjectId: newProjectId,
-            scopeResourceType: ResourceType.PamFolder,
-            scopeResourceId: folderId,
-            ...membershipActorColumns(membershipActorKey(member)),
-            isActive: true
-          })
-          .returning("id");
-
-        await knex(TableName.MembershipRole).insert({
-          membershipId: folderMembership.id,
-          role: resourceRole
-        });
+          await knex(TableName.MembershipRole).insert(
+            folderRoleRows.map((r) => ({ membershipId: folderMembership.id, ...r }))
+          );
+        }
       }
     }
   }
