@@ -20,6 +20,7 @@ type TBootstrapDeps = {
 type TBootstrapInput = {
   orgId: string;
   adminUserIds?: string[];
+  adminIdentityIds?: string[];
 };
 
 export type TDefaultTemplate = {
@@ -184,7 +185,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
 ];
 
 export const bootstrapPamProject = async (
-  { orgId, adminUserIds = [] }: TBootstrapInput,
+  { orgId, adminUserIds = [], adminIdentityIds = [] }: TBootstrapInput,
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,
   tx: Knex
 ): Promise<{ project: TProjects; created: boolean }> => {
@@ -215,6 +216,29 @@ export const bootstrapPamProject = async (
         scopeOrgId: orgId,
         scopeProjectId: project.id,
         actorUserId: userId,
+        isActive: true
+      },
+      tx
+    );
+
+    // eslint-disable-next-line no-await-in-loop
+    await membershipRoleDAL.create(
+      {
+        membershipId: membership.id,
+        role: ProjectMembershipRole.Admin
+      },
+      tx
+    );
+  }
+
+  for (const identityId of adminIdentityIds) {
+    // eslint-disable-next-line no-await-in-loop
+    const membership = await membershipDAL.create(
+      {
+        scope: AccessScope.Project,
+        scopeOrgId: orgId,
+        scopeProjectId: project.id,
+        actorIdentityId: identityId,
         isActive: true
       },
       tx
