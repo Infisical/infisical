@@ -344,7 +344,6 @@
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
                   "self-hosting/deployment-options/gcp-native"
                 ]
@@ -355,6 +354,18 @@
                   "self-hosting/deployment-options/native/linux-package/installation",
                   "self-hosting/deployment-options/native/linux-package/commands-configuration",
                   "self-hosting/deployment-options/linux-upgrade"
+                ]
+              },
+              {
+                "group": "Helm Charts",
+                "pages": [
+                  "self-hosting/helm-charts/overview",
+                  "self-hosting/deployment-options/kubernetes-helm",
+                  "self-hosting/helm-charts/secrets-operator",
+                  "self-hosting/helm-charts/gateway",
+                  "self-hosting/helm-charts/pki-issuer",
+                  "self-hosting/helm-charts/csi-provider",
+                  "self-hosting/helm-charts/agent-injector"
                 ]
               },
               "self-hosting/guides/replication",

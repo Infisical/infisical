@@ -1,0 +1,23 @@
+---
+title: "Helm Charts"
+sidebarTitle: "Overview"
+description: "Overview of all official Infisical Helm charts for Kubernetes deployments."
+---
+
+Infisical provides official Helm charts for deploying the platform and its components on Kubernetes. All charts are published to the Infisical Helm repository hosted on Cloudsmith.
+
+```bash
+helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+helm repo update
+```
+
+## Available Charts
+
+| Chart | Description | Chart Name |
+|-------|-------------|------------|
+| [Infisical](/self-hosting/deployment-options/kubernetes-helm) | The core Infisical platform with bundled PostgreSQL and Redis. | `infisical-standalone` |
+| [Secrets Operator](/self-hosting/helm-charts/secrets-operator) | Kubernetes operator that syncs, pushes, and manages secrets between Infisical and your cluster. | `secrets-operator` |
+| [Gateway](/self-hosting/helm-charts/gateway) | Enables secure outbound-only communication between private resources and Infisical. | `infisical-gateway` |
+| [PKI Issuer](/self-hosting/helm-charts/pki-issuer) | cert-manager external issuer for automated X.509 certificate issuance via Infisical PKI. | `infisical-pki-issuer` |
+| [CSI Provider](/self-hosting/helm-charts/csi-provider) | Mounts Infisical secrets directly into pods as files via the Secrets Store CSI Driver. | `infisical-csi-provider` |
+| [Agent Injector](/self-hosting/helm-charts/agent-injector) | Mutating webhook that automatically injects an Infisical Agent sidecar into pods. | `infisical-agent-injector` |

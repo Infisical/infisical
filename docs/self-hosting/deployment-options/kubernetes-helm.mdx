@@ -1,5 +1,6 @@
 ---
-title: "Kubernetes via Helm Chart"
+title: "Infisical"
+sidebarTitle: "Infisical"
 description: "Learn how to deploy Infisical on Kubernetes using our official Helm chart."
 ---
 
@@ -109,7 +110,7 @@ For production deployments with many users or secrets, increase these values acc
     infisical:
       image:
         repository: infisical/infisical
-        tag: "v0.151.0"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
+        tag: "v0.161.11"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
         pullPolicy: IfNotPresent
       replicaCount: 2
 
@@ -240,7 +241,7 @@ To upgrade to a new version:
    ```yaml
    infisical:
      image:
-       tag: "v0.152.0"  # New version
+       tag: "v0.162.0"  # New version
    ```
 
 3. **Apply the upgrade**:
