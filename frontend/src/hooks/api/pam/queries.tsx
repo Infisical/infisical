@@ -20,6 +20,7 @@ import {
   TListAccessiblePamAccountsDTO,
   TListPamAccountTemplatesDTO,
   TPamAccount,
+  TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
   TPamAccountTypeMetadata,
@@ -27,6 +28,7 @@ import {
   TPamMember,
   TPamMembersData,
   TPamResourceRole,
+  TPamRotationCandidateGroup,
   TPamSession
 } from "./types";
 
@@ -62,7 +64,10 @@ export const pamKeys = {
   productIdentities: () => [...pamKeys.all, "product-identities"] as const,
   resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
   accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
-  accountTypes: () => [...pamKeys.all, "account-types"] as const
+  accountTypes: () => [...pamKeys.all, "account-types"] as const,
+  accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  rotationCandidates: (accountId: string) =>
+    [...pamKeys.account(), "rotation-candidates", accountId] as const
 };
 
 const fetchFolderPermissions = async (folderId: string) => {
@@ -259,6 +264,35 @@ export const useGetPamAccountById = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useGetPamAccountRotation = (accountId?: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: pamKeys.accountRotation(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ rotation: TPamAccountRotation }>(
+        `/api/v1/pam/accounts/${accountId}/rotation`
+      );
+      return data.rotation;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
+  });
+};
+
+export const useGetPamRotationCandidates = (
+  accountId?: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: pamKeys.rotationCandidates(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ candidates: TPamRotationCandidateGroup[] }>(
+        `/api/v1/pam/accounts/${accountId}/rotation/rotation-account-candidates`
+      );
+      return data.candidates;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
   });
 };
 

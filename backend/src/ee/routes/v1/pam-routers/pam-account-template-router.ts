@@ -73,7 +73,8 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       response: {
         200: z.object({
           template: SanitizedTemplateSchema.extend({
-            accountCount: z.number()
+            accountCount: z.number(),
+            rotationImpact: z.object({ willRotate: z.number(), needsRotationAccount: z.number() })
           })
         })
       }

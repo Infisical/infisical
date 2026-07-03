@@ -390,7 +390,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     try {
-      const account = await pamAccountDAL.updateById(accountId, updateData);
+      const account = await pamAccountDAL.transaction(async (tx) => {
+        const updated = await pamAccountDAL.updateById(accountId, updateData, tx);
+        // A template move or a credential change can flip rotation readiness; re-derive the schedule atomically
+        // with the write so a failure can't leave a stale nextRotationAt.
+        if (templateId !== undefined || credentials) {
+          await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
+        }
+        return updated;
+      });
       const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
       return { ...account, corsProbeUrl };
     } catch (err) {
@@ -423,24 +431,44 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ctx
     );
 
-    return pamAccountDAL.transaction(async (tx) => {
-      const memberships = await membershipDAL.find(
-        {
-          scope: RESOURCE_SCOPE,
-          scopeResourceType: ResourceType.PamAccount,
-          scopeResourceId: accountId
-        },
-        { tx }
-      );
+    try {
+      return await pamAccountDAL.transaction(async (tx) => {
+        const memberships = await membershipDAL.find(
+          {
+            scope: RESOURCE_SCOPE,
+            scopeResourceType: ResourceType.PamAccount,
+            scopeResourceId: accountId
+          },
+          { tx }
+        );
 
-      if (memberships.length > 0) {
-        const ids = memberships.map((m) => m.id);
-        await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
-        await membershipDAL.delete({ $in: { id: ids } }, tx);
+        if (memberships.length > 0) {
+          const ids = memberships.map((m) => m.id);
+          await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
+          await membershipDAL.delete({ $in: { id: ids } }, tx);
+        }
+
+        return pamAccountDAL.deleteById(accountId, tx);
+      });
+    } catch (err) {
+      // The ON DELETE RESTRICT FK on rotationAccountId is the race-safe guard; on violation, look up the dependents
+      // to name them (rather than paying for that lookup on every delete).
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code?: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        const dependents = (await pamAccountDAL.find({ rotationAccountId: accountId })).filter(
+          (dependent) => dependent.id !== accountId
+        );
+        const names = dependents.map((dependent) => dependent.name).join(", ");
+        throw new BadRequestError({
+          message: names
+            ? `This account is the rotation account for: ${names}. Reassign or clear their rotation account before deleting this one.`
+            : "This account is used as the rotation account for another account. Reassign it before deleting this one."
+        });
       }
-
-      return pamAccountDAL.deleteById(accountId, tx);
-    });
+      throw err;
+    }
   };
 
   const listAccessible = async ({

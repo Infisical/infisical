@@ -278,7 +278,10 @@ export type TDeletePamAccountDTO = {
 
 export type TPamAccountTemplateWithCount = TPamAccountTemplate & { accountCount: number };
 
-export type TPamAccountTemplateDetail = TPamAccountTemplate & { accountCount: number };
+export type TPamAccountTemplateDetail = TPamAccountTemplate & {
+  accountCount: number;
+  rotationImpact: { willRotate: number; needsRotationAccount: number };
+};
 
 export type TListPamAccountTemplatesDTO = {
   search?: string;
@@ -455,4 +458,37 @@ export type TUpdatePamProductIdentityMemberDTO = {
 export type TRemovePamProductIdentityMemberDTO = {
   identityId: string;
   projectId: string;
+};
+
+// Credential rotation
+
+export type TPamPasswordRequirements = {
+  length: number;
+  required: { lowercase: number; uppercase: number; digits: number; symbols: number };
+  allowedSymbols?: string;
+};
+
+export type TPamAccountRotation = {
+  enabled: boolean;
+  intervalSeconds: number | null;
+  passwordRequirements: TPamPasswordRequirements | null;
+  rotationAccountId: string | null;
+  rotationAccountName: string | null;
+  lastRotatedAt: string | null;
+  isReady: boolean;
+};
+
+export type TPamRotationCandidateGroup = {
+  folderId: string | null;
+  folderName: string | null;
+  accounts: { id: string; name: string; host: string }[];
+};
+
+export type TUpdatePamAccountRotationDTO = {
+  accountId: string;
+  rotationAccountId: string | null;
+};
+
+export type TRotatePamAccountDTO = {
+  accountId: string;
 };

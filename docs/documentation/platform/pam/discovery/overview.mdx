@@ -70,7 +70,7 @@ Dependencies represent services and tasks that rely on a specific account's cred
 | **Scheduled Task** | A Windows scheduled task that runs under a specific account |
 | **IIS App Pool** | An IIS application pool configured with a specific identity |
 
-Each dependency has an **Enabled** toggle that defaults to off. When enabled, Infisical will automatically update the dependency's credentials after rotating the linked account's password during [credential rotation](/documentation/platform/pam/product-reference/credential-rotation).
+Each dependency has an **Enabled** toggle that defaults to off. When enabled, Infisical will automatically update the dependency's credentials after rotating the linked account's password during [credential rotation](/documentation/platform/pam/product-reference/credential-rotation/overview).
 
 <Info>
   Dependencies discovered by a scan will never have their **Enabled** status overwritten by subsequent scans. Your explicit enable/disable decisions are always preserved.

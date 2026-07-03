@@ -36,6 +36,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
@@ -428,6 +429,7 @@ declare module "fastify" {
       pamAccountTemplate: TPamAccountTemplateServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamAccount: TPamAccountServiceFactory;
+      pamAccountRotation: TPamAccountRotationServiceFactory;
       pamMembership: TPamMembershipServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamSessionChunk: TPamSessionChunkServiceFactory;

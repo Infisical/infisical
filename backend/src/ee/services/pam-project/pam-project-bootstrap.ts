@@ -42,15 +42,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.Postgres,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 16,
-        maxLength: 99,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: false
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -58,15 +50,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.MySQL,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 16,
-        maxLength: 80,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: false
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -74,15 +58,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.MsSQL,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 16,
-        maxLength: 128,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: true
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -90,15 +66,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.OracleDB,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 16,
-        maxLength: 30,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: true
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -106,15 +74,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.MongoDB,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 16,
-        maxLength: 128,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: false
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -122,15 +82,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.Redis,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 16,
-        maxLength: 128,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: false
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -154,15 +106,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.Windows,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 14,
-        maxLength: 127,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: true
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
   {
@@ -170,15 +114,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     type: PamAccountType.WindowsAd,
     settings: {
       recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres,
-      passwordConstraints: {
-        minLength: 14,
-        maxLength: 127,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSymbols: true
-      }
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   }
 ];

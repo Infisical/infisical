@@ -1,0 +1,41 @@
+---
+title: "Microsoft SQL Server Credential Rotation"
+sidebarTitle: "Microsoft SQL Server"
+description: "Rotate Microsoft SQL Server account passwords with Infisical PAM."
+---
+
+This page covers what is specific to rotating a Microsoft SQL Server account. For how rotation is configured and scheduled, see the [overview](/documentation/platform/pam/product-reference/credential-rotation/overview).
+
+## How the password is changed
+
+When a Microsoft SQL Server account rotates, the rotation account connects to the target and runs:
+
+```sql
+ALTER LOGIN "<target_login>" WITH PASSWORD = '<generated_password>';
+```
+
+The connection uses the account's existing connection details, including the SSL settings.
+
+<Warning>
+  Only **SQL Server authentication** logins can be rotated. Windows-authenticated accounts are not supported, because their passwords are managed by the domain or the operating system rather than by SQL Server. A rotation on a Windows-authenticated account is rejected before any change is attempted.
+</Warning>
+
+## Rotation account requirements
+
+- **Self-rotation**: a login can change its own password, so no extra privileges are needed.
+- **Delegated rotation**: the rotation account needs the `ALTER ANY LOGIN` permission to change another login's password.
+
+An example setup for a dedicated delegated rotation login:
+
+```sql
+-- the login Infisical connects as to perform rotations
+CREATE LOGIN infisical_rotator WITH PASSWORD = 'temporary_password';
+GRANT ALTER ANY LOGIN TO infisical_rotator;
+
+-- the account whose password gets rotated
+CREATE LOGIN app_login WITH PASSWORD = 'temporary_password';
+```
+
+<Note>
+  The target account's connection must use SQL Server authentication so that the rotated password is the credential used to log in.
+</Note>

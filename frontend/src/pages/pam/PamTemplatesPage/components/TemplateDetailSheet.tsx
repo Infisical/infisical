@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { AlertTriangleIcon, Ban } from "lucide-react";
+import { AlertTriangleIcon, Ban, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,6 +27,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   TextArea
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
@@ -34,6 +35,8 @@ import { useProject } from "@app/context";
 import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
+  isRotatablePamAccountType,
+  PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
@@ -66,7 +69,15 @@ const settingsSchema = z
     s3KeyPrefix: z.string().optional(),
     policies: z.record(z.unknown()),
     settings: z.object({
-      sessionLogMaskingPatterns: z.string().optional()
+      sessionLogMaskingPatterns: z.string().optional(),
+      rotationEnabled: z.boolean().optional(),
+      rotationIntervalSeconds: z.coerce.number().optional(),
+      pwLength: z.coerce.number().optional(),
+      pwUppercase: z.coerce.number().optional(),
+      pwLowercase: z.coerce.number().optional(),
+      pwDigits: z.coerce.number().optional(),
+      pwSymbols: z.coerce.number().optional(),
+      pwAllowedSymbols: z.string().optional()
     })
   })
   .superRefine((data, ctx) => {
@@ -235,7 +246,17 @@ const SettingsTab = ({
       s3Region: "",
       s3KeyPrefix: "",
       policies: {},
-      settings: { sessionLogMaskingPatterns: "" }
+      settings: {
+        sessionLogMaskingPatterns: "",
+        rotationEnabled: false,
+        rotationIntervalSeconds: 86400,
+        pwLength: 32,
+        pwUppercase: 1,
+        pwLowercase: 1,
+        pwDigits: 1,
+        pwSymbols: 1,
+        pwAllowedSymbols: "-_.~!*"
+      }
     }
   });
 
@@ -259,7 +280,33 @@ const SettingsTab = ({
         s3KeyPrefix: s3Config.keyPrefix ?? "",
         policies: (template.policies as Record<string, unknown>) ?? {},
         settings: {
-          sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? ""
+          sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? "",
+          ...(() => {
+            const rotation = (settings.rotation ?? {}) as {
+              enabled?: boolean;
+              intervalSeconds?: number;
+            };
+            const pw = (settings.passwordRequirements ?? {}) as {
+              length?: number;
+              required?: {
+                uppercase?: number;
+                lowercase?: number;
+                digits?: number;
+                symbols?: number;
+              };
+              allowedSymbols?: string;
+            };
+            return {
+              rotationEnabled: rotation.enabled ?? false,
+              rotationIntervalSeconds: rotation.intervalSeconds ?? 86400,
+              pwLength: pw.length ?? 32,
+              pwUppercase: pw.required?.uppercase ?? 1,
+              pwLowercase: pw.required?.lowercase ?? 1,
+              pwDigits: pw.required?.digits ?? 1,
+              pwSymbols: pw.required?.symbols ?? 1,
+              pwAllowedSymbols: pw.allowedSymbols ?? "-_.~!*"
+            };
+          })()
         }
       });
     }
@@ -281,9 +328,11 @@ const SettingsTab = ({
   const gatewayPoolId = watch("gatewayPoolId");
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
+  const rotationEnabled = watch("settings.rotationEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
+  const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
     (p) => POLICY_EDITORS[p.key]
   );
@@ -309,6 +358,33 @@ const SettingsTab = ({
       settings.sessionLogMaskingPatterns = maskingPatterns;
     } else {
       delete settings.sessionLogMaskingPatterns;
+    }
+
+    if (isRotatableTemplateType) {
+      const isRotationOn = Boolean(data.settings.rotationEnabled);
+      settings.rotation = {
+        enabled: isRotationOn,
+        intervalSeconds: data.settings.rotationIntervalSeconds ?? 86400
+      };
+      if (isRotationOn) {
+        settings.passwordRequirements = {
+          length: data.settings.pwLength ?? 32,
+          required: {
+            uppercase: data.settings.pwUppercase ?? 0,
+            lowercase: data.settings.pwLowercase ?? 0,
+            digits: data.settings.pwDigits ?? 0,
+            symbols: data.settings.pwSymbols ?? 0
+          },
+          ...(data.settings.pwAllowedSymbols
+            ? { allowedSymbols: data.settings.pwAllowedSymbols }
+            : {})
+        };
+      } else {
+        delete settings.passwordRequirements;
+      }
+    } else {
+      delete settings.rotation;
+      delete settings.passwordRequirements;
     }
 
     updateTemplate.mutate(
@@ -406,6 +482,154 @@ const SettingsTab = ({
                 />
               );
             })}
+          </CardContent>
+        </Card>
+      )}
+
+      {isRotatableTemplateType && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Credential settings</CardTitle>
+            <CardDescription>
+              How credentials for accounts using this template are rotated, and the format of the
+              generated passwords.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="settings.rotationEnabled"
+              render={({ field }) => (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Automatically rotate credentials
+                    </p>
+                    <p className="text-xs text-muted">
+                      Infisical rotates credentials on a fixed schedule. When off, they rotate only
+                      when triggered manually.
+                    </p>
+                  </div>
+                  <Switch
+                    variant="pam"
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                  />
+                </div>
+              )}
+            />
+            {rotationEnabled &&
+              template.rotationImpact &&
+              (template.rotationImpact.needsRotationAccount > 0 ? (
+                <Alert variant="warning">
+                  <AlertTriangleIcon />
+                  <AlertTitle>
+                    {template.rotationImpact.needsRotationAccount}{" "}
+                    {template.rotationImpact.needsRotationAccount === 1 ? "account" : "accounts"}{" "}
+                    won&apos;t rotate yet
+                  </AlertTitle>
+                  <AlertDescription>
+                    Set a rotation account on{" "}
+                    {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} to include{" "}
+                    {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} in the
+                    schedule.
+                    {template.rotationImpact.willRotate > 0 &&
+                      ` ${template.rotationImpact.willRotate} ${
+                        template.rotationImpact.willRotate === 1 ? "account" : "accounts"
+                      } will rotate as configured.`}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                // Nothing misconfigured: only surface while editing; the warning above always shows (actionable gap).
+                isDirty && (
+                  <Alert variant="info">
+                    <InfoIcon />
+                    <AlertTitle>
+                      {template.rotationImpact.willRotate === 0
+                        ? "No accounts to rotate yet"
+                        : `${template.rotationImpact.willRotate} ${
+                            template.rotationImpact.willRotate === 1 ? "account" : "accounts"
+                          } will rotate`}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {template.rotationImpact.willRotate === 0
+                        ? "Accounts using this template will rotate on schedule once they have a rotation account."
+                        : "Every account using this template is set to rotate on schedule."}
+                    </AlertDescription>
+                  </Alert>
+                )
+              ))}
+            {rotationEnabled && (
+              <Controller
+                control={control}
+                name="settings.rotationIntervalSeconds"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Rotate every</FieldLabel>
+                    <Select
+                      value={String(field.value ?? 86400)}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
+                          <SelectItem key={option.seconds} value={String(option.seconds)}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      How often credentials are rotated for accounts using this template.
+                    </FieldDescription>
+                  </Field>
+                )}
+              />
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  { name: "settings.pwLength", label: "Length" },
+                  { name: "settings.pwUppercase", label: "Min uppercase" },
+                  { name: "settings.pwLowercase", label: "Min lowercase" },
+                  { name: "settings.pwDigits", label: "Min numbers" },
+                  { name: "settings.pwSymbols", label: "Min symbols" }
+                ] as const
+              ).map(({ name, label }) => (
+                <Controller
+                  key={name}
+                  control={control}
+                  name={name}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel>{label}</FieldLabel>
+                      <Input
+                        type="number"
+                        value={field.value ?? 0}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        onWheel={(e) => e.currentTarget.blur()}
+                      />
+                    </Field>
+                  )}
+                />
+              ))}
+            </div>
+            <Controller
+              control={control}
+              name="settings.pwAllowedSymbols"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Allowed symbols</FieldLabel>
+                  <Input value={field.value ?? ""} onChange={field.onChange} placeholder="-_.~!*" />
+                  <FieldDescription>
+                    Symbols that generated passwords may use. Quotes, backticks, backslashes,
+                    semicolons, and question marks are not allowed.
+                  </FieldDescription>
+                </Field>
+              )}
+            />
           </CardContent>
         </Card>
       )}

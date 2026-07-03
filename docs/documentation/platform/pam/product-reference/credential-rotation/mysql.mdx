@@ -1,0 +1,46 @@
+---
+title: "MySQL Credential Rotation"
+sidebarTitle: "MySQL"
+description: "Rotate MySQL account passwords with Infisical PAM."
+---
+
+This page covers what is specific to rotating a MySQL account. For how rotation is configured and scheduled, see the [overview](/documentation/platform/pam/product-reference/credential-rotation/overview).
+
+## How the password is changed
+
+When a MySQL account rotates, the rotation account connects to the target database and runs:
+
+```sql
+ALTER USER "<target_user>"@'%' IDENTIFIED BY '<generated_password>';
+```
+
+The statement targets the user at the `'%'` (any-host) grant, so the target user must be defined for that host. The connection uses the account's existing connection details, including the SSL settings.
+
+## Rotation account requirements
+
+- **Self-rotation**: a user can change its own password, so no extra privileges are needed.
+- **Delegated rotation**: the rotation account needs the global `CREATE USER` privilege (or `UPDATE` on the `mysql` system database) to alter another user's password.
+
+An example setup for a dedicated delegated rotation user:
+
+```sql
+-- the user Infisical connects as to perform rotations
+CREATE USER 'infisical_rotator'@'%' IDENTIFIED BY 'temporary_password';
+GRANT CREATE USER ON *.* TO 'infisical_rotator'@'%';
+
+-- the account whose password gets rotated
+CREATE USER 'app_user'@'%' IDENTIFIED BY 'temporary_password';
+```
+
+## Special cases
+
+<Warning>
+  If the target is hosted on **PlanetScale**, set the account username to the PlanetScale format `username.branch_id`. Infisical connects with that full username but targets the base `username` in the password-change statement, as PlanetScale requires.
+
+  To find your branch ID, use the [PlanetScale CLI](https://planetscale.com/docs/reference/planetscale-cli):
+
+  ```bash
+  pscale org switch <org-name>
+  pscale branch show <database> <branch-name> --format json
+  ```
+</Warning>

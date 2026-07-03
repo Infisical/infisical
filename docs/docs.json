@@ -990,7 +990,15 @@
                   "documentation/platform/pam/product-reference/session-recording",
                   "documentation/platform/pam/product-reference/external-storage",
                   "documentation/platform/pam/product-reference/ai-session-insights",
-                  "documentation/platform/pam/product-reference/credential-rotation",
+                  {
+                    "group": "Credential Rotation",
+                    "pages": [
+                      "documentation/platform/pam/product-reference/credential-rotation/overview",
+                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
+                    ]
+                  },
                   "documentation/platform/pam/product-reference/view-credentials",
                   {
                     "group": "Web Access",
@@ -3932,6 +3940,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation",
+      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+    },
     {
       "source": "/sdks/languages/csharp",
       "destination": "/sdks/languages/dotnet"
