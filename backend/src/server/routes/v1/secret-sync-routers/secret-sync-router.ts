@@ -72,6 +72,7 @@ import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/service
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
+import { GiteaSyncListItemSchema } from "@app/services/secret-sync/gitea";
 
 const SecretSyncSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncSchema,
@@ -162,7 +163,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
-  SnowflakeSyncListItemSchema
+  SnowflakeSyncListItemSchema,
+  GiteaSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

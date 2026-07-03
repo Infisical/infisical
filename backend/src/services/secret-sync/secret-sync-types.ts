@@ -126,6 +126,7 @@ import {
 } from "./external-infisical";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
+import { TGiteaSyncListItem } from "./gitea";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
   THCVaultSync,
@@ -384,7 +385,8 @@ export type TSecretSyncListItem =
   | TDevinSyncListItem
   | TOnaSyncListItem
   | TTravisCISyncListItem
-  | TSnowflakeSyncListItem;
+  | TSnowflakeSyncListItem
+  | TGiteaSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

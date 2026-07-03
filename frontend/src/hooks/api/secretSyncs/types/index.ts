@@ -21,6 +21,7 @@ import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync"
 import { TExternalInfisicalSync } from "./external-infisical-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
+import { TGiteaSync } from "./gitea-sync";
 import { TGitHubSync } from "./github-sync";
 import { TGitLabSync } from "./gitlab-sync";
 import { THCVaultSync } from "./hc-vault-sync";
@@ -98,7 +99,8 @@ export type TSecretSync =
   | TOnaSync
   | TTravisCISync
   | TSnowflakeSync
-  | TTriggerDevSync;
+  | TTriggerDevSync
+  | TGiteaSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

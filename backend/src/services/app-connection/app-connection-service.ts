@@ -110,7 +110,7 @@ import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import { ValidateGiteaConnectionCredentialsSchema } from "./gitea";
+import { giteaConnectionService, ValidateGiteaConnectionCredentialsSchema } from "./gitea";
 import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
@@ -1362,6 +1362,7 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    gitea: giteaConnectionService(connectAppConnectionById)
   };
 };

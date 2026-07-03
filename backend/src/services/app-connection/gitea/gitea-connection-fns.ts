@@ -5,7 +5,28 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { GiteaConnectionMethod } from "./gitea-connection-enums";
-import { TGiteaConnectionConfig } from "./gitea-connection-types";
+import {
+  TGiteaConnection,
+  TGiteaConnectionConfig,
+  TGiteaOrganization,
+  TGiteaRepository
+} from "./gitea-connection-types";
+
+type TGiteaListOrganizationsResponse = {
+  id: number;
+  name: string;
+  full_name: string;
+}[];
+
+type TGiteaListRepositoriesResponse = {
+  data: {
+    id: number;
+    name: string;
+    owner: {
+      login: string;
+    };
+  }[];
+};
 
 export const getGiteaConnectionListItem = () => {
   return {
@@ -15,7 +36,7 @@ export const getGiteaConnectionListItem = () => {
   };
 };
 
-export const getGiteaInstanceUrl = async (config: Pick<TGiteaConnectionConfig, "credentials">) => {
+export const getGiteaInstanceUrl = async (config: Pick<TGiteaConnectionConfig | TGiteaConnection, "credentials">) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
 
   await blockLocalAndPrivateIpAddresses(instanceUrl);
@@ -41,4 +62,50 @@ export const validateGiteaConnectionCredentials = async (config: TGiteaConnectio
   }
 
   return config.credentials;
+};
+
+export const listGiteaOrganizations = async (appConnection: TGiteaConnection): Promise<TGiteaOrganization[]> => {
+  const instanceUrl = await getGiteaInstanceUrl(appConnection);
+  const { personalAccessToken } = appConnection.credentials;
+
+  const { data } = await request.get<TGiteaListOrganizationsResponse>(`${instanceUrl}/api/v1/user/orgs`, {
+    headers: {
+      Authorization: `Bearer ${personalAccessToken}`,
+      Accept: "application/json"
+    }
+  });
+
+  return data.map((org) => ({
+    id: org.id.toString(),
+    name: org.name,
+    fullName: org.full_name
+  }));
+};
+
+export const listGiteaRepositories = async (
+  appConnection: TGiteaConnection,
+  search?: string,
+  limit?: number
+): Promise<TGiteaRepository[]> => {
+  const instanceUrl = await getGiteaInstanceUrl(appConnection);
+  const { personalAccessToken } = appConnection.credentials;
+
+  const { data } = await request.get<TGiteaListRepositoriesResponse>(`${instanceUrl}/api/v1/repos/search`, {
+    headers: {
+      Authorization: `Bearer ${personalAccessToken}`,
+      Accept: "application/json"
+    },
+    params: {
+      q: search,
+      limit
+    }
+  });
+
+  return data.data.map((repo) => ({
+    id: repo.id.toString(),
+    name: repo.name,
+    owner: {
+      name: repo.owner.login
+    }
+  }));
 };

@@ -20,3 +20,17 @@ export type TValidateGiteaConnectionCredentialsSchema = typeof ValidateGiteaConn
 export type TGiteaConnectionConfig = DiscriminativePick<TGiteaConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export type TGiteaOrganization = {
+  id: string;
+  name: string;
+  fullName: string;
+};
+
+export type TGiteaRepository = {
+  id: string;
+  name: string;
+  owner: {
+    name: string;
+  };
+};
