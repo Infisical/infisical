@@ -94,6 +94,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
+import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -706,7 +707,7 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const projectName = currentProject?.name;
 
-    const isExampleProject = projectName === "Example Project";
+    const isExampleProject = projectName === EXAMPLE_PROJECT_NAME;
 
     if (hasSecrets && !isExampleProject) {
       checkSecretsActivation();
