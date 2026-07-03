@@ -148,7 +148,9 @@ export const HasuraCloudSyncFns = {
       const tenantId = await resolveTenantId(connection, projectId);
       const { hash, environment: existingEnvs } = await getTenantEnv(accessToken, tenantId);
 
-      const envs = Object.entries(secretMap).map(([key, secret]) => ({ key, value: secret.value }));
+      const envs = Object.entries(secretMap)
+        .filter(([key]) => !key.startsWith("HASURA_"))
+        .map(([key, secret]) => ({ key, value: secret.value }));
 
       let currentHash = hash;
 

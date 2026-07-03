@@ -706,7 +706,7 @@ export type TAppConnectionConfig =
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
-  | THasuraCloudConnectionConfig;
+  | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -781,7 +781,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
-  | TValidateHasuraCloudConnectionCredentialsSchema;
+  | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

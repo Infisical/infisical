@@ -443,7 +443,9 @@ export const SecretSyncFns = {
       case SecretSync.Cloud66:
         return Cloud66SyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
-        throw new Error(`Unhandled sync destination for sync secrets fns: ${secretSync.destination}`);
+        throw new Error(
+          `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
+        );
     }
   },
   getSecrets: async (
@@ -611,7 +613,9 @@ export const SecretSyncFns = {
         secretMap = await Cloud66SyncFns.getSecrets(secretSync);
         break;
       default:
-        throw new Error(`Unhandled sync destination for get secrets fns: ${secretSync.destination}`);
+        throw new Error(
+          `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
+        );
     }
 
     const filtered = filterForSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
@@ -759,7 +763,9 @@ export const SecretSyncFns = {
       case SecretSync.Cloud66:
         return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
-        throw new Error(`Unhandled sync destination for remove secrets fns: ${secretSync.destination}`);
+        throw new Error(
+          `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
+        );
     }
   }
 };
