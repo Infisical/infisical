@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { formatDistance } from "date-fns";
 import {
   BanIcon,
+  ChevronDownIcon,
+  ClockIcon,
   EyeIcon,
   FingerprintIcon,
   FolderIcon,
@@ -32,7 +35,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Field,
-  FieldDescription,
   FieldError,
   FieldLabel,
   HoverCard,
@@ -40,6 +42,9 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -65,19 +70,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { useCreateAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
-
-const PERMANENT_DURATION_VALUE = "permanent";
-const CUSTOM_DURATION_VALUE = "custom";
-
-const DURATION_PRESETS = [
-  { label: "30 minutes", value: "30m" },
-  { label: "1 hour", value: "1h" },
-  { label: "12 hours", value: "12h" },
-  { label: "1 day", value: "1d" },
-  { label: "3 days", value: "3d" },
-  { label: "7 days", value: "7d" },
-  { label: "30 days", value: "30d" }
-];
 
 type TResourceAction = {
   value: string;
@@ -353,27 +345,18 @@ const requestAccessSchema = z.object({
     .refine((resources) => resources.some((resource) => resource.actions.length > 0), {
       message: "Select at least one permission"
     }),
-  duration: z
-    .object({
-      preset: z.string().min(1),
-      customValue: z.string().optional()
-    })
-    .superRefine((val, ctx) => {
-      if (val.preset !== CUSTOM_DURATION_VALUE) return;
-      let parsed: number | undefined;
-      try {
-        parsed = val.customValue ? ms(val.customValue) : undefined;
-      } catch {
-        parsed = undefined;
-      }
-      if (typeof parsed !== "number" || parsed <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["customValue"],
-          message: "Invalid duration. Use formats like 30m, 2h, 1d."
-        });
-      }
+  temporaryAccess: z.discriminatedUnion("isTemporary", [
+    z.object({
+      isTemporary: z.literal(true),
+      temporaryRange: z.string().min(1),
+      temporaryAccessStartTime: z.string().datetime(),
+      temporaryAccessEndTime: z.string().datetime().nullable().optional()
     }),
+    z.object({
+      isTemporary: z.literal(false),
+      temporaryRange: z.string().optional()
+    })
+  ]),
   note: z.string().max(255).optional()
 });
 
@@ -400,7 +383,7 @@ export const RequestAccessForm = ({
       environmentSlug: currentProject.environments?.[0]?.slug,
       secretPath: initialSecretPath ?? "",
       resources: [{ subject: ProjectPermissionSub.Secrets, actions: selectedActions }],
-      duration: { preset: PERMANENT_DURATION_VALUE, customValue: "1h" },
+      temporaryAccess: { isTemporary: false, temporaryRange: "1h" },
       note: ""
     }
   });
@@ -414,7 +397,7 @@ export const RequestAccessForm = ({
   const selectedEnvironment = form.watch("environmentSlug");
   const secretPath = form.watch("secretPath");
   const resources = form.watch("resources");
-  const durationPreset = form.watch("duration.preset");
+  const temporaryAccessField = form.watch("temporaryAccess");
 
   const selectablePaths = useMemo(
     () =>
@@ -434,10 +417,10 @@ export const RequestAccessForm = ({
     [policies, selectedEnvironment, secretPath]
   );
 
-  const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
-  const allowedPresets = maxDurationMs
-    ? DURATION_PRESETS.filter((preset) => ms(preset.value) <= maxDurationMs)
-    : DURATION_PRESETS;
+  const isTemporary = temporaryAccessField?.isTemporary;
+  const isExpired =
+    temporaryAccessField.isTemporary &&
+    new Date() > new Date(temporaryAccessField.temporaryAccessEndTime || "");
 
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -447,24 +430,6 @@ export const RequestAccessForm = ({
     }
     form.setValue("secretPath", "", { shouldValidate: true });
   }, [selectedEnvironment]);
-
-  // policies with a max time period forbid permanent access and cap the range
-  useEffect(() => {
-    if (!maxDurationMs || !matchedPolicy?.maxTimePeriod) return;
-    const { preset } = form.getValues("duration");
-    const exceedsMax =
-      preset === PERMANENT_DURATION_VALUE ||
-      (preset !== CUSTOM_DURATION_VALUE && ms(preset) > maxDurationMs);
-    if (!exceedsMax) return;
-    const fallback = allowedPresets[allowedPresets.length - 1];
-    form.setValue(
-      "duration",
-      fallback
-        ? { preset: fallback.value, customValue: form.getValues("duration.customValue") }
-        : { preset: CUSTOM_DURATION_VALUE, customValue: matchedPolicy.maxTimePeriod },
-      { shouldValidate: true }
-    );
-  }, [matchedPolicy]);
 
   const addedSubjects = new Set(resources.map((resource) => resource.subject));
   const availableResources = RESOURCE_CONFIGS.filter(
@@ -503,15 +468,13 @@ export const RequestAccessForm = ({
       return;
     }
 
-    const isTemporary = data.duration.preset !== PERMANENT_DURATION_VALUE;
-    const temporaryRange =
-      data.duration.preset === CUSTOM_DURATION_VALUE
-        ? data.duration.customValue
-        : data.duration.preset;
+    const { isTemporary: isTemporaryRequest, temporaryRange } = data.temporaryAccess;
 
     if (
       matchedPolicy?.maxTimePeriod &&
-      (!isTemporary || !temporaryRange || ms(temporaryRange) > ms(matchedPolicy.maxTimePeriod))
+      (!isTemporaryRequest ||
+        !temporaryRange ||
+        ms(temporaryRange) > ms(matchedPolicy.maxTimePeriod))
     ) {
       createNotification({
         type: "error",
@@ -531,8 +494,8 @@ export const RequestAccessForm = ({
 
     await requestAccess.mutateAsync({
       projectSlug: currentProject.slug,
-      isTemporary,
-      ...(isTemporary && temporaryRange && { temporaryRange }),
+      isTemporary: isTemporaryRequest,
+      ...(isTemporaryRequest && temporaryRange && { temporaryRange }),
       permissions,
       note: data.note || undefined
     });
@@ -543,6 +506,42 @@ export const RequestAccessForm = ({
     });
     form.reset();
     if (onClose) onClose();
+  };
+
+  const handleGrant = () => {
+    const temporaryRange = form.getValues("temporaryAccess.temporaryRange");
+    if (!temporaryRange) {
+      form.setError(
+        "temporaryAccess.temporaryRange",
+        { type: "required", message: "Required" },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    form.clearErrors("temporaryAccess.temporaryRange");
+    form.setValue(
+      "temporaryAccess",
+      {
+        isTemporary: true,
+        temporaryAccessStartTime: new Date().toISOString(),
+        temporaryRange,
+        temporaryAccessEndTime: new Date(new Date().getTime() + ms(temporaryRange)).toISOString()
+      },
+      { shouldDirty: true }
+    );
+  };
+
+  const handleCancelTemporary = () => {
+    form.setValue("temporaryAccess", {
+      isTemporary: false,
+      temporaryRange: form.getValues("temporaryAccess.temporaryRange")
+    });
+  };
+
+  const getAccessLabel = () => {
+    if (isExpired) return "Access expired";
+    if (!temporaryAccessField?.isTemporary) return "Permanent";
+    return formatDistance(new Date(temporaryAccessField.temporaryAccessEndTime || ""), new Date());
   };
 
   return (
@@ -616,150 +615,152 @@ export const RequestAccessForm = ({
         </div>
         <Field>
           <FieldLabel>Resources & Permissions</FieldLabel>
-          <div className="flex flex-col gap-3">
-            {resourceFields.map((resourceField, index) => {
-              const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
-              if (!config) return null;
-              const selectedValues = resources[index]?.actions ?? [];
+          <div className="rounded-lg border border-border bg-black/20 p-3">
+            <div className="flex flex-col gap-3">
+              {resourceFields.map((resourceField, index) => {
+                const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
+                if (!config) return null;
+                const selectedValues = resources[index]?.actions ?? [];
 
-              return (
-                <div
-                  key={resourceField.id}
-                  className="overflow-hidden rounded-lg border border-border bg-card"
-                >
-                  <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-md border",
-                        config.iconTileClassName
-                      )}
-                    >
-                      <config.Icon className="size-4" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{config.label}</span>
-                    <IconButton
-                      size="xs"
-                      variant="ghost-muted"
-                      className="ml-auto"
-                      aria-label={`Remove ${config.label}`}
-                      onClick={() => removeResource(index)}
-                    >
-                      <XIcon />
-                    </IconButton>
-                  </div>
-                  <div className="flex flex-wrap gap-2 p-3">
-                    {config.actions.map((action) => {
-                      const isSelected = selectedValues.includes(action.value);
-
-                      return (
-                        <Tooltip key={action.value}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              aria-pressed={isSelected}
-                              onClick={() => toggleAction(index, action.value)}
-                              className={cn(
-                                "rounded-md",
-                                isSelected
-                                  ? config.chipSelectedClassName
-                                  : "text-muted hover:text-foreground"
-                              )}
-                            >
-                              <action.Icon />
-                              {action.label}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{action.description}</TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            {availableResources.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    isFullWidth
-                    className="border-dashed text-label hover:text-foreground"
+                return (
+                  <div
+                    key={resourceField.id}
+                    className="overflow-hidden rounded-lg border border-border bg-card"
                   >
-                    <PlusIcon />
-                    Add resource type
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="w-(--radix-dropdown-menu-trigger-width)"
-                >
-                  {availableResources.map((config) => (
-                    <DropdownMenuItem
-                      key={config.subject}
-                      onSelect={() => appendResource({ subject: config.subject, actions: [] })}
-                    >
+                    <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
                       <div
                         className={cn(
-                          "flex size-6 items-center justify-center rounded-sm border",
+                          "flex size-7 items-center justify-center rounded-md border",
                           config.iconTileClassName
                         )}
                       >
-                        <config.Icon className="size-3.5" />
+                        <config.Icon className="size-4" />
                       </div>
-                      {config.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                      <span className="text-sm font-medium text-foreground">{config.label}</span>
+                      <IconButton
+                        size="xs"
+                        variant="ghost-muted"
+                        className="ml-auto"
+                        aria-label={`Remove ${config.label}`}
+                        onClick={() => removeResource(index)}
+                      >
+                        <XIcon />
+                      </IconButton>
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-3">
+                      {config.actions.map((action) => {
+                        const isSelected = selectedValues.includes(action.value);
+
+                        return (
+                          <Tooltip key={action.value}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                aria-pressed={isSelected}
+                                onClick={() => toggleAction(index, action.value)}
+                                className={cn(
+                                  "rounded-md",
+                                  isSelected
+                                    ? config.chipSelectedClassName
+                                    : "text-muted hover:text-foreground"
+                                )}
+                              >
+                                <action.Icon />
+                                {action.label}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{action.description}</TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {availableResources.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      isFullWidth
+                      className="border-dashed text-label hover:text-foreground"
+                    >
+                      <PlusIcon />
+                      Add resource type
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-(--radix-dropdown-menu-trigger-width)"
+                  >
+                    {availableResources.map((config) => (
+                      <DropdownMenuItem
+                        key={config.subject}
+                        onSelect={() => appendResource({ subject: config.subject, actions: [] })}
+                      >
+                        <div
+                          className={cn(
+                            "flex size-6 items-center justify-center rounded-sm border",
+                            config.iconTileClassName
+                          )}
+                        >
+                          <config.Icon className="size-3.5" />
+                        </div>
+                        {config.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
         </Field>
-        <Controller
-          control={form.control}
-          name="duration.preset"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel htmlFor="duration">Duration</FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="duration" className="w-full">
-                  <SelectValue placeholder="Select a duration" />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {!maxDurationMs && (
-                    <SelectItem value={PERMANENT_DURATION_VALUE}>Permanent</SelectItem>
-                  )}
-                  {allowedPresets.map((preset) => (
-                    <SelectItem value={preset.value} key={preset.value}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={CUSTOM_DURATION_VALUE}>Custom</SelectItem>
-                </SelectContent>
-              </Select>
-              {matchedPolicy?.maxTimePeriod && (
-                <FieldDescription>
-                  Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
-                </FieldDescription>
+        <Field>
+          <FieldLabel>Duration</FieldLabel>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between capitalize">
+                <span className="flex items-center gap-2">
+                  {isTemporary && <ClockIcon className="size-3.5" />}
+                  {getAccessLabel()}
+                </span>
+                <ChevronDownIcon className="size-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="flex flex-col gap-4">
+              <div className="text-sm text-foreground">Configure timed access</div>
+              {isExpired && (
+                <Badge variant="danger" className="w-fit">
+                  Expired
+                </Badge>
               )}
-            </Field>
-          )}
-        />
-        {durationPreset === CUSTOM_DURATION_VALUE && (
-          <Controller
-            control={form.control}
-            name="duration.customValue"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel htmlFor="customDuration">
-                  <TtlFormLabel label="Custom Duration" />
-                </FieldLabel>
-                <Input id="customDuration" {...field} isError={Boolean(error?.message)} />
-                <FieldError errors={[error]} />
-              </Field>
-            )}
-          />
-        )}
+              <Controller
+                control={form.control}
+                name="temporaryAccess.temporaryRange"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="temporaryRange">
+                      <TtlFormLabel label="Validity" />
+                    </FieldLabel>
+                    <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              <div className="flex items-center gap-2">
+                <Button size="xs" variant="project" onClick={handleGrant}>
+                  Grant
+                </Button>
+                {temporaryAccessField.isTemporary && (
+                  <Button size="xs" variant="danger" onClick={handleCancelTemporary}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </Field>
         <Controller
           control={form.control}
           name="note"
