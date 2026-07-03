@@ -1,0 +1,120 @@
+<Steps>
+  <Step title="Add the Helm repository">
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm repo update
+    ```
+  </Step>
+
+  <Step title="Install the chart">
+    The operator can be installed either cluster-wide or restricted to specific namespaces.
+    If you require stronger isolation and stricter access controls, a namespace-scoped installation may make more sense.
+
+    <Tabs>
+      <Tab title="Cluster-wide (default)">
+        The operator will watch and manage CRDs across all namespaces in the cluster. This is the default and quickest way to get started.
+
+        ```bash
+        helm install --generate-name infisical-helm-charts/secrets-operator
+        ```
+      </Tab>
+
+      <Tab title="Namespace-scoped">
+        Limit the operator's permissions to only specific namespaces instead of cluster-wide access. Useful for multi-tenant clusters or environments requiring strict resource isolation.
+
+        <Note>
+          For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts as CRDs are cluster-wide resources.
+        </Note>
+
+        **Single namespace:**
+        ```bash
+        helm install operator-namespaced infisical-helm-charts/secrets-operator \
+          --namespace single-namespace \
+          --set scopedNamespaces=single-namespace \
+          --set scopedRBAC=true
+        ```
+
+        <Accordion title="Using values.yaml file">
+        ```yaml values.yaml
+          scopedNamespaces: single-namespace
+          scopedRBAC: true
+          installCRDs: true
+        ```
+        </Accordion>
+
+        **Multiple namespaces (separate operators):**
+        ```bash
+        helm install operator-1 infisical-helm-charts/secrets-operator \
+          --namespace ns1 \
+          --set scopedNamespaces=ns1 \
+          --set scopedRBAC=true \
+          --set installCRDs=true # Only install CRDs once in the cluster (default is true)
+
+        helm install operator-namespace2 infisical-helm-charts/secrets-operator \
+          --namespace ns2 \
+          --set scopedNamespaces=ns2 \
+          --set scopedRBAC=true \
+          --set installCRDs=false # Do not install CRDs in subsequent namespace installations
+        ```
+
+        <Accordion title="Using values.yaml file">
+        ```yaml values-operator1.yaml
+          scopedNamespaces: ns1
+          scopedRBAC: true
+          installCRDs: false
+        ```
+
+        ```yaml values-operator2.yaml
+          scopedNamespaces: ns2
+          scopedRBAC: true
+          installCRDs: false
+        ```
+        </Accordion>
+
+        **Multiple namespaces (single operator):**
+        ```bash
+        helm install operator infisical-helm-charts/secrets-operator \
+          --namespace operator-namespace \
+          --set "scopedNamespaces={ns1,ns2,ns3}" \
+          --set scopedRBAC=true
+        ```
+
+        <Accordion title="Using values.yaml file">
+        ```yaml values.yaml
+          scopedNamespaces:
+            - ns1
+            - ns2
+            - ns3
+          scopedRBAC: true
+        ```
+        </Accordion>
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify the deployment">
+    ```bash
+    kubectl get pods -n infisical
+    ```
+  </Step>
+</Steps>
+
+### Using your own service account
+
+By default a service account is created for the operator based on the release name.
+You can bring your own service account by setting `controllerManager.serviceAccount.create` to `false` and `controllerManager.serviceAccount.name` to the name of your existing service account.
+
+```yaml values.yaml
+controllerManager:
+  serviceAccount:
+    create: false
+    name: my-service-account
+```
+
+<Note>
+  The service account must already exist in the namespace you are installing the operator in.
+</Note>
+
+<Tip>
+  Custom service accounts are supported in chart version `0.10.11` and above.
+</Tip>

@@ -52,3 +52,40 @@ helm uninstall infisical-agent-injector --namespace infisical
 | `resources.requests.memory` | `128Mi` | Memory request. |
 | `resources.limits.cpu` | `200m` | CPU limit. |
 | `resources.limits.memory` | `256Mi` | Memory limit. |
+
+## Default Helm Values
+
+```yaml
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+failurePolicy: Ignore
+
+image:
+  repository: infisical/infisical-agent-injector
+  tag: v0.1.12
+
+livenessProbe:
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 2
+  successThreshold: 1
+  timeoutSeconds: 5
+
+readinessProbe:
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 2
+  successThreshold: 1
+  timeoutSeconds: 5
+
+# nodeSelector:
+  # kubernetes.io/os: windows
+```

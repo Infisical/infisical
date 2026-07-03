@@ -85,3 +85,72 @@ helm uninstall infisical-csi-provider
 | `tolerations` | `[]` | Pod tolerations. |
 | `labels` | `{}` | Additional labels for resources. |
 | `podLabels` | `{}` | Additional labels for pods. |
+
+## Default Helm Values
+
+```yaml
+# Name of the CSI provider deployment
+name: infisical-csi-provider
+# Namespace where CSI provider will be deployed
+namespace: kube-system
+
+# Container image configuration
+image:
+  repository: infisical/infisical-csi-provider
+  tag: v0.0.7
+  pullPolicy: IfNotPresent
+
+# Infisical provider arguments
+args:
+  - -endpoint=/provider/infisical.sock
+
+# Unix domain socket path for CSI driver communication
+endpoint: /provider/infisical.sock
+
+# Resource limits and requests
+resources:
+  requests:
+    cpu: 50m
+    memory: 100Mi
+  limits:
+    cpu: 50m
+    memory: 100Mi
+
+# Volume configuration for provider socket
+providerVolume:
+  mountPath: /provider
+  hostPath: /etc/kubernetes/secrets-store-csi-providers
+
+# Health check for container liveness
+livenessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+    scheme: HTTP
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+
+# Health check for container readiness
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+    scheme: HTTP
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+
+# Node selection criteria
+nodeSelector:
+  kubernetes.io/os: linux
+
+# Optional configurations
+labels: {}
+podLabels: {}
+tolerations: []
+```

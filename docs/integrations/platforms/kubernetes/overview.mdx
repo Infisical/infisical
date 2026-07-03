@@ -5,6 +5,7 @@ description: "How to use Infisical to inject, push, and manage secrets within Ku
 ---
 
 import KubernetesOperatorTemplating from "/snippets/kubernetes-operator-v1beta1-templating.mdx";
+import KubernetesOperatorInstall from "/snippets/kubernetes-operator-install.mdx";
 
 The Infisical Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Infisical and your Kubernetes cluster.
 It provides multiple Custom Resource Definitions (CRDs) which enable you to:
@@ -67,16 +68,9 @@ The short video below walks through how the Infisical Operator syncs secrets int
 
 ## Install
 
-The operator is installed via [Helm](https://helm.sh). The quickest way to get started:
+The operator is installed via [Helm](/self-hosting/helm-charts/secrets-operator).
 
-```bash
-helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
-helm repo update
-
-helm install --generate-name infisical-helm-charts/secrets-operator
-```
-
-This installs the operator cluster-wide. For namespace-scoped installations, custom service accounts, and all configurable values, see the [Secrets Operator Helm chart documentation](/self-hosting/helm-charts/secrets-operator).
+<KubernetesOperatorInstall />
 
 ## Custom Resource Definitions
 

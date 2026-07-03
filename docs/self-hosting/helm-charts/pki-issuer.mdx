@@ -57,3 +57,42 @@ helm uninstall infisical-pki-issuer --namespace infisical-pki
 | `controllerManager.manager.resources.limits.cpu` | `500m` | CPU limit. |
 | `controllerManager.manager.resources.limits.memory` | `128Mi` | Memory limit. |
 | `controllerManager.serviceAccount.annotations` | `{}` | Service account annotations. |
+
+## Default Helm Values
+
+```yaml
+controllerManager:
+  manager:
+    args:
+    - --metrics-bind-address=:8443
+    - --leader-elect
+    - --health-probe-bind-address=:8081
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    image:
+      repository: docker.io/infisical/pki-issuer
+      tag: latest
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
+  podSecurityContext:
+    runAsNonRoot: true
+  replicas: 1
+  serviceAccount:
+    annotations: {}
+controllerMetrics:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  type: ClusterIP
+kubernetesClusterDomain: cluster.local
+```

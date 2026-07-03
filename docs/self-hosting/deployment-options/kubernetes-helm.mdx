@@ -183,3 +183,237 @@ For production deployments with many users or secrets, increase these values acc
 Your Infisical instance should now be running on Kubernetes. Access it via the ingress hostname you configured, or use `kubectl port-forward` for local testing.
 
 ![self-hosted sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)
+
+## Default Helm Values
+
+```yaml
+# -- Overrides the default release name
+nameOverride: ""
+
+# -- Overrides the full name of the release, affecting resource names
+fullnameOverride: ""
+
+infisical:
+  # -- Enable Infisical chart deployment
+  enabled: true
+  # -- Sets the name of the deployment within this chart
+  name: infisical
+
+  autoBootstrap:
+    # -- Enable auto-bootstrap of the Infisical instance
+    enabled: false
+
+    image:
+      # -- Infisical Infisical CLI image tag version
+      tag: "0.41.86"
+
+    # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
+    secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
+
+    secretDestination:
+      # -- Name of the bootstrap secret to create in the Kubernetes cluster which will store the formatted root identity credentials
+      name: "infisical-bootstrap-secret"
+
+      # -- Namespace to create the bootstrap secret in. If not provided, the secret will be created in the same namespace as the release.
+      namespace: "default"
+
+    # -- Infisical organization to create in the Infisical instance during auto-bootstrap
+    organization: "default-org"
+
+    credentialSecret:
+      # -- Name of the Kubernetes secret containing the credentials for the auto-bootstrap workflow
+      name: "infisical-bootstrap-credentials"
+
+  databaseSchemaMigrationJob:
+    image:
+      # -- Image repository for migration wait job
+      repository: ghcr.io/groundnuty/k8s-wait-for
+      # -- Image tag version
+      tag: no-root-v2.0
+      # -- Pulls image only if not present on the node
+      pullPolicy: IfNotPresent
+
+  serviceAccount:
+    # -- Creates a new service account if true, with necessary permissions for this chart. If false and `serviceAccount.name` is not defined, the chart will attempt to use the Default service account
+    create: true
+    # -- Custom annotations for the auto-created service account
+    annotations: {}
+    # -- Optional custom service account name, if existing service account is used
+    name: null
+
+  # -- Override for the full name of Infisical resources in this deployment
+  fullnameOverride: ""
+  # -- Custom annotations for Infisical pods
+  podAnnotations: {}
+  # -- Custom annotations for Infisical deployment
+  deploymentAnnotations: {}
+  # -- Number of pod replicas for high availability
+  replicaCount: 2
+
+  image:
+    # -- Image repository for the Infisical service
+    repository: infisical/infisical
+    # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
+    tag: "v0.158.0"
+    # -- Pulls image only if not already present on the node
+    pullPolicy: IfNotPresent
+    # -- Secret references for pulling the image, if needed
+    imagePullSecrets: []
+
+  # -- Node affinity settings for pod placement
+  affinity: {}
+  # -- Tolerations definitions
+  tolerations: []
+  # -- Node selector for pod placement
+  nodeSelector: {}
+  # -- Topology spread constraints for multi-zone deployments
+  # -- Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+  topologySpreadConstraints: []
+
+  # -- Kubernetes Secret reference containing Infisical root credentials
+  kubeSecretRef: "infisical-secrets"
+
+  service:
+    # -- Custom annotations for Infisical service
+    annotations: {}
+    # -- Service type, can be changed based on exposure needs (e.g., LoadBalancer)
+    type: ClusterIP
+    # -- Optional node port for service when using NodePort type
+    nodePort: ""
+
+  # -- Extra environment variables to set on the Infisical container. Useful for setting variables like NODE_EXTRA_CA_CERTS.
+  # -- Example:
+  # --   - name: NODE_EXTRA_CA_CERTS
+  # --     value: /etc/ssl/certs/ca-certificates.crt
+  extraEnv: []
+
+  resources:
+    limits:
+      # -- Memory limit for Infisical container
+      memory: 1000Mi
+    requests:
+      # -- CPU request for Infisical container
+      cpu: 350m
+
+  # -- Additional containers to run alongside the Infisical container (sidecars).
+  # -- Useful for running auxiliary services like HSM PKCS#11 clients.
+  # -- Example:
+  # --   - name: hsm-client
+  # --     image: my-hsm-client:latest
+  # --     volumeMounts:
+  # --       - name: pkcs11-socket
+  # --         mountPath: /var/run/hsm
+  extraContainers: []
+
+  # -- Additional init containers to run before the Infisical container starts.
+  # -- Example:
+  # --   - name: wait-for-hsm
+  # --     image: busybox:latest
+  # --     command: ['sh', '-c', 'until nc -z hsm-host 9004; do sleep 2; done']
+  extraInitContainers: []
+
+  # -- Additional volumes to attach to the Infisical pods.
+  # -- Example:
+  # --   - name: pkcs11-socket
+  # --     emptyDir: {}
+  extraVolumes: []
+
+  # -- Additional volume mounts for the Infisical container.
+  # -- Example:
+  # --   - name: pkcs11-socket
+  # --     mountPath: /var/run/hsm
+  extraVolumeMounts: []
+
+ingress:
+  # -- Enable or disable ingress configuration
+  enabled: true
+  # -- Hostname for ingress access, e.g., app.example.com
+  hostName: ""
+  # -- Specifies the ingress class. When not set, defaults to "infisical-nginx" if the bundled ingress-nginx is enabled, or "nginx" otherwise.
+  ingressClassName: ""
+
+  nginx:
+    # -- Enable NGINX-specific settings, if using NGINX ingress controller
+    enabled: true
+
+  # -- Custom annotations for ingress resource
+  annotations: {}
+  # -- TLS settings for HTTPS access
+  tls: []
+    # -- TLS secret name for HTTPS
+    # - secretName: letsencrypt-prod
+    # -- Domain name to associate with the TLS certificate
+    #   hosts:
+    #     - some.domain.com
+
+postgresql:
+  # -- Enables an in-cluster PostgreSQL deployment. To achieve HA for Postgres, we recommend deploying https://github.com/zalando/postgres-operator instead.
+  enabled: true
+  # -- PostgreSQL resource name
+  name: "postgresql"
+  # -- Full name override for PostgreSQL resources
+  fullnameOverride: "postgresql"
+
+  image:
+    # -- Image registry for PostgreSQL
+    registry: mirror.gcr.io
+    # -- Image repository for PostgreSQL
+    repository: bitnamilegacy/postgresql
+
+  auth:
+    # -- Database username for PostgreSQL
+    username: infisical
+    # -- Password for PostgreSQL database access
+    password: root
+    # -- Database name for Infisical
+    database: infisicalDB
+
+  useExistingPostgresSecret:
+    # -- Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string
+    enabled: false
+    existingConnectionStringSecret:
+      # -- Kubernetes secret name containing the PostgreSQL connection string
+      name: ""
+      # -- Key name in the Kubernetes secret that holds the connection string
+      key: ""
+
+redis:
+  # -- Enables an in-cluster Redis deployment
+  enabled: true
+  # -- Redis resource name
+  name: "redis"
+  # -- Full name override for Redis resources
+  fullnameOverride: "redis"
+
+  image:
+    # -- Image registry for Redis
+    registry: mirror.gcr.io
+    # -- Image repository for Redis
+    repository: bitnamilegacy/redis
+
+  cluster:
+    # -- Clustered Redis deployment
+    enabled: false
+
+  # -- Requires a password for Redis authentication
+  usePassword: true
+
+  auth:
+    # -- Redis password
+    password: "mysecretpassword"
+
+  # -- Redis deployment type (e.g., standalone or cluster)
+  architecture: standalone
+
+# -- Configuration for the bundled ingress-nginx subchart (only applies when ingress.nginx.enabled=true)
+ingress-nginx:
+  controller:
+    ingressClassResource:
+      # -- Use a unique IngressClass name so the bundled controller only serves Infisical's Ingress,
+      # -- not other Ingresses in the cluster that use the common "nginx" class.
+      name: infisical-nginx
+      controllerValue: k8s.io/infisical-nginx
+      # -- Do not set this as the default IngressClass for the cluster
+      default: false
+    ingressClass: infisical-nginx
+```
