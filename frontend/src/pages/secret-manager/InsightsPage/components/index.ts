@@ -1,3 +1,4 @@
+export { AuditReportsCard } from "./AuditReportsCard";
 export { AuthMethodChart } from "./AuthMethodChart";
 export { CalendarCard } from "./CalendarCard";
 export { CalendarGrid } from "./CalendarGrid";

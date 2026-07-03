@@ -30,6 +30,7 @@ import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
+import { Cloud66SyncListItemSchema, Cloud66SyncSchema } from "@app/services/secret-sync/cloud66";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
@@ -62,6 +63,7 @@ import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/service
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
+import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SnowflakeSyncListItemSchema, SnowflakeSyncSchema } from "@app/services/secret-sync/snowflake";
@@ -118,7 +120,9 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OnaSyncSchema,
   TravisCISyncSchema,
   SnowflakeSyncSchema,
-  GiteaSyncSchema
+  GiteaSyncSchema,
+  QoverySyncSchema,
+  Cloud66SyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -165,7 +169,9 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
   SnowflakeSyncListItemSchema,
-  GiteaSyncListItemSchema
+  GiteaSyncListItemSchema,
+  QoverySyncListItemSchema,
+  Cloud66SyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

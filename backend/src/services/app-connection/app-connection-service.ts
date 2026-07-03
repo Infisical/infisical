@@ -84,6 +84,8 @@ import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
+import { ValidateCloud66ConnectionCredentialsSchema } from "./cloud-66";
+import { cloud66ConnectionService } from "./cloud-66/cloud-66-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateConvexConnectionCredentialsSchema } from "./convex";
@@ -144,6 +146,8 @@ import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
+import { qoveryConnectionService } from "./qovery/qovery-connection-service";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
@@ -250,6 +254,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.Cloud66]: ValidateCloud66ConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.VenafiTpp]: ValidateVenafiTppConnectionCredentialsSchema,
@@ -268,7 +273,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
-  [AppConnection.Gitea]: ValidateGiteaConnectionCredentialsSchema
+  [AppConnection.Gitea]: ValidateGiteaConnectionCredentialsSchema,
+  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1322,6 +1328,7 @@ export const appConnectionServiceFactory = ({
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
+    qovery: qoveryConnectionService(connectAppConnectionById),
     ona: onaConnectionService(connectAppConnectionById),
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
@@ -1332,6 +1339,7 @@ export const appConnectionServiceFactory = ({
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
+    cloud66: cloud66ConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),

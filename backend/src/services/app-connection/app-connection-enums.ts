@@ -69,7 +69,9 @@ export enum AppConnection {
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
   Convex = "convex",
-  Gitea = "gitea"
+  Gitea = "gitea",
+  Qovery = "qovery",
+  Cloud66 = "cloud-66"
 }
 
 export enum AWSRegion {

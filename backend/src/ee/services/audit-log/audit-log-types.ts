@@ -55,6 +55,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
+import { TSignerExternalConfigurationInput } from "@app/services/signer/signer-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
@@ -705,6 +706,12 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
+
+  CREATE_AUDIT_REPORT = "create-audit-report",
+  GET_AUDIT_REPORTS = "get-audit-reports",
+  GET_AUDIT_REPORT = "get-audit-report",
+  DELETE_AUDIT_REPORT = "delete-audit-report",
+
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -1420,13 +1427,22 @@ interface DeleteServiceTokenEvent {
 }
 
 interface CreateIdentityEvent {
-  // note: currently not logging org-role
   type: EventType.CREATE_IDENTITY;
   metadata: {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
     metadata?: { key: string; value: string }[];
+    roles?: (
+      | { role: string; isTemporary: false }
+      | {
+          role: string;
+          isTemporary: true;
+          temporaryMode: string;
+          temporaryRange: string;
+          temporaryAccessStartTime: string;
+        }
+    )[];
   };
 }
 
@@ -4920,6 +4936,7 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
 
@@ -5008,6 +5025,7 @@ interface ReissuePkiSignerCertificateEvent {
     keySource?: string;
     hsmConnectorId?: string;
     hsmKeyAlgorithm?: string;
+    externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
 
@@ -5759,6 +5777,39 @@ interface ViewInsightsSecretsDuplicationEvent {
 interface ViewSecretManagementInsightsCountsEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS;
   metadata: {
+    projectId: string;
+  };
+}
+
+interface CreateAuditReportEvent {
+  type: EventType.CREATE_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    projectId: string;
+    reportTypes: string[];
+    recipientCount: number;
+  };
+}
+
+interface GetAuditReportsEvent {
+  type: EventType.GET_AUDIT_REPORTS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface GetAuditReportEvent {
+  type: EventType.GET_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    projectId: string;
+  };
+}
+
+interface DeleteAuditReportEvent {
+  type: EventType.DELETE_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
     projectId: string;
   };
 }
@@ -7984,6 +8035,10 @@ export type Event =
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
+  | CreateAuditReportEvent
+  | GetAuditReportsEvent
+  | GetAuditReportEvent
+  | DeleteAuditReportEvent
   | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent

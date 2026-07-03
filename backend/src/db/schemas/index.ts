@@ -25,6 +25,7 @@ export * from "./approval-requests";
 export * from "./audit-log-stream-outbox";
 export * from "./audit-log-streams";
 export * from "./audit-logs";
+export * from "./audit-reports";
 export * from "./auth-token-sessions";
 export * from "./auth-tokens";
 export * from "./backup-private-key";

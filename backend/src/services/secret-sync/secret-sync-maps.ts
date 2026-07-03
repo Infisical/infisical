@@ -46,7 +46,9 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Ona]: "Ona",
   [SecretSync.TravisCI]: "Travis CI",
   [SecretSync.Snowflake]: "Snowflake",
-  [SecretSync.Gitea]: "Gitea"
+  [SecretSync.Gitea]: "Gitea",
+  [SecretSync.Qovery]: "Qovery",
+  [SecretSync.Cloud66]: "Cloud 66"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -93,7 +95,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
-  [SecretSync.Gitea]: AppConnection.Gitea
+  [SecretSync.Gitea]: AppConnection.Gitea,
+  [SecretSync.Qovery]: AppConnection.Qovery,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -140,7 +144,9 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Ona]: SecretSyncPlanType.Regular,
   [SecretSync.TravisCI]: SecretSyncPlanType.Regular,
   [SecretSync.Snowflake]: SecretSyncPlanType.Regular,
-  [SecretSync.Gitea]: SecretSyncPlanType.Regular
+  [SecretSync.Gitea]: SecretSyncPlanType.Regular,
+  [SecretSync.Qovery]: SecretSyncPlanType.Regular,
+  [SecretSync.Cloud66]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -196,7 +202,9 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Ona]: ["projectName"],
   [SecretSync.TravisCI]: ["repositorySlug"],
   [SecretSync.Snowflake]: [],
-  [SecretSync.Gitea]: []
+  [SecretSync.Gitea]: [],
+  [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
+  [SecretSync.Cloud66]: ["stackName"]
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -269,7 +277,9 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Ona]: defaultDuplicateCheck,
   [SecretSync.TravisCI]: defaultDuplicateCheck,
   [SecretSync.Snowflake]: defaultDuplicateCheck,
-  [SecretSync.Gitea]: defaultDuplicateCheck
+  [SecretSync.Gitea]: defaultDuplicateCheck,
+  [SecretSync.Qovery]: defaultDuplicateCheck,
+  [SecretSync.Cloud66]: defaultDuplicateCheck
 };
 
 /**

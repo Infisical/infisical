@@ -5,6 +5,12 @@ import {
   Alert,
   AlertDescription,
   ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DateRangeFilter,
   type DateRangeFilterResult,
   DateRangeFilterType,
@@ -103,9 +109,9 @@ const LogsSectionComponent = ({
 
   if (pageView)
     return (
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <Card>
         {showClickHouseWarning && (
-          <Alert variant="warning" className="mb-4">
+          <Alert variant="warning">
             <AlertDescription>
               <p>
                 Your audit log volume is growing. To keep searches fast and reduce database load, we
@@ -132,15 +138,17 @@ const LogsSectionComponent = ({
             </AlertDescription>
           </Alert>
         )}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
-          <div>
-            <div className="flex items-center gap-x-2 whitespace-nowrap">
-              <p className="text-xl font-medium text-mineshaft-100">Audit History</p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            {showFilters && (
+        <CardHeader>
+          <CardTitle>
+            Audit History
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
+          </CardTitle>
+          <CardDescription>
+            Search and review a detailed history of events{" "}
+            {project ? "in this project" : "across your organization"}.
+          </CardDescription>
+          {showFilters && (
+            <CardAction>
               <ButtonGroup>
                 <DateRangeQuickPresets
                   value={activePreset}
@@ -160,25 +168,25 @@ const LogsSectionComponent = ({
                   accent={dateRangeAccent}
                 />
               </ButtonGroup>
-            )}
-          </div>
-        </div>
-        {showFilters && (
-          <div className="mb-4">
-            <AuditSearchFilter
-              filters={searchFilters}
-              onFiltersChange={setSearchFilters}
-              hasProjectContext={Boolean(project)}
-              projectId={project?.id}
-            />
-            {searchFilters.length > 0 && (
-              <p className="mt-2 text-xs text-mineshaft-400">
-                {searchFilters.length} active filter{searchFilters.length !== 1 ? "s" : ""}
-              </p>
-            )}
-          </div>
-        )}
-        <div className="space-y-2">
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {showFilters && (
+            <div>
+              <AuditSearchFilter
+                filters={searchFilters}
+                onFiltersChange={setSearchFilters}
+                hasProjectContext={Boolean(project)}
+                projectId={project?.id}
+              />
+              {searchFilters.length > 0 && (
+                <p className="mt-2 text-xs text-muted">
+                  {searchFilters.length} active filter{searchFilters.length !== 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+          )}
           <LogsTable
             refetchInterval={refetchInterval}
             filter={{
@@ -198,15 +206,15 @@ const LogsSectionComponent = ({
             }}
             timezone={timezone}
           />
-          <UpgradePlanModal
-            isOpen={popUp.upgradePlan.isOpen}
-            onOpenChange={(isOpen) => {
-              handlePopUpToggle("upgradePlan", isOpen);
-            }}
-            text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
-          />
-        </div>
-      </div>
+        </CardContent>
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("upgradePlan", isOpen);
+          }}
+          text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
+        />
+      </Card>
     );
 
   return (

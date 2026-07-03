@@ -66,6 +66,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  Cloud66ConnectionListItemSchema,
+  SanitizedCloud66ConnectionSchema
+} from "@app/services/app-connection/cloud-66";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -164,6 +168,7 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import { QoveryConnectionListItemSchema, SanitizedQoveryConnectionSchema } from "@app/services/app-connection/qovery";
 import {
   RailwayConnectionListItemSchema,
   SanitizedRailwayConnectionSchema
@@ -253,6 +258,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedCircleCIConnectionSchema.options,
+  ...SanitizedCloud66ConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
@@ -288,7 +294,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDatadogConnectionSchema.options,
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
-  ...SanitizedGiteaConnectionSchema.options
+  ...SanitizedGiteaConnectionSchema.options,
+  ...SanitizedQoveryConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -327,6 +334,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
   CircleCIConnectionListItemSchema,
+  Cloud66ConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
@@ -362,7 +370,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
-  GiteaConnectionListItemSchema
+  GiteaConnectionListItemSchema,
+  QoveryConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

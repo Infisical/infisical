@@ -113,6 +113,12 @@ import {
   TValidateCircleCIConnectionCredentialsSchema
 } from "./circleci";
 import {
+  TCloud66Connection,
+  TCloud66ConnectionConfig,
+  TCloud66ConnectionInput,
+  TValidateCloud66ConnectionCredentialsSchema
+} from "./cloud-66";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -318,6 +324,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TQoveryConnection,
+  TQoveryConnectionConfig,
+  TQoveryConnectionInput,
+  TValidateQoveryConnectionCredentialsSchema
+} from "./qovery";
+import {
   TRailwayConnection,
   TRailwayConnectionConfig,
   TRailwayConnectionInput,
@@ -475,6 +487,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TCloud66Connection
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TVenafiTppConnection
@@ -494,6 +507,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TF5BigIpConnection
   | TConvexConnection
   | TGiteaConnection
+  | TQoveryConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -557,6 +571,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TVenafiTppConnectionInput
@@ -576,6 +591,7 @@ export type TAppConnectionInput = { id: string } & (
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
   | TGiteaConnectionInput
+  | TQoveryConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -671,6 +687,7 @@ export type TAppConnectionConfig =
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig
+  | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
   | TVenafiTppConnectionConfig
@@ -689,7 +706,8 @@ export type TAppConnectionConfig =
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
-  | TGiteaConnectionConfig;
+  | TGiteaConnectionConfig
+  | TQoveryConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -744,6 +762,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateVenafiTppConnectionCredentialsSchema
@@ -762,7 +781,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
-  | TValidateGiteaConnectionCredentialsSchema;
+  | TValidateGiteaConnectionCredentialsSchema
+  | TValidateQoveryConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

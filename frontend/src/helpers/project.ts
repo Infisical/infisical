@@ -139,7 +139,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "PAM"
+    [ProjectType.PAM]: "PAM",
+    [ProjectType.AI]: "AI"
   };
   return titleConvert[type] || type;
 };
@@ -183,18 +184,6 @@ export const collapseCertManagerProjects = (
           : display.name
     }
   ];
-};
-
-export const getProjectLottieIcon = (type: ProjectType) => {
-  const iconConvert: Partial<Record<ProjectType, string>> = {
-    [ProjectType.SecretManager]: "vault",
-    [ProjectType.KMS]: "unlock",
-    [ProjectType.CertificateManager]: "note",
-    [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan",
-    [ProjectType.PAM]: "groups"
-  };
-  return iconConvert[type] || "vault";
 };
 
 export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {

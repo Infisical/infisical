@@ -84,6 +84,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         );
       })
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .join(
         TableName.SecretApprovalPolicy,
         `${TableName.SecretApprovalRequest}.policyId`,
@@ -399,6 +400,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 `${TableName.Environment}.deleteAfter`
               );
             })
+            .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+            .whereNull(`${TableName.Project}.deleteAfter`)
             .join(
               TableName.SecretApprovalPolicy,
               `${TableName.SecretApprovalRequest}.policyId`,
@@ -456,6 +459,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .join(
           TableName.SecretApprovalPolicy,
           `${TableName.SecretApprovalRequest}.policyId`,
@@ -669,6 +674,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .join(
           TableName.SecretApprovalPolicy,
           `${TableName.SecretApprovalRequest}.policyId`,

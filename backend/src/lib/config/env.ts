@@ -521,7 +521,7 @@ const envSchema = z
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
     // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
-    isCloud: Boolean(data.LICENSE_SERVER_KEY),
+    isCloud: Boolean(data.LICENSE_SERVER_KEY || data.LICENSE_SERVER_V2_SERVICE_KEY),
     isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),

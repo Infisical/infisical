@@ -41,6 +41,7 @@ import {
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
+  QoveryConnectionMethod,
   RedisConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
@@ -56,6 +57,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
 import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
@@ -417,6 +419,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "CI/CD",
     description: "Project and pipeline access for CircleCI."
   },
+  [AppConnection.Cloud66]: {
+    name: "Cloud 66",
+    image: "Cloud 66.png",
+    category: "HOSTING",
+    description: "App and deployment access for Cloud 66."
+  },
   [AppConnection.AzureEntraId]: {
     name: "Azure Entra ID",
     image: "Microsoft Azure.png",
@@ -527,6 +535,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "PLATFORM",
     description: "Project and deployment access for Convex."
   },
+  [AppConnection.Qovery]: {
+    name: "Qovery",
+    image: "Qovery.png",
+    category: "HOSTING",
+    description: "Deploy and manage applications on Qovery."
+  },
   [AppConnection.TriggerDev]: {
     name: "Trigger.dev",
     image: "TriggerDev.png",
@@ -613,6 +627,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case FlyioConnectionMethod.AccessToken:
     case NetlifyConnectionMethod.AccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case QoveryConnectionMethod.AccessToken:
+    case Cloud66ConnectionMethod.AccessToken:
       return { name: "Personal Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
     case SalesforceConnectionMethod.ClientCredentials:

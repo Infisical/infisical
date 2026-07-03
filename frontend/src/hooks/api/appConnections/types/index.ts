@@ -16,6 +16,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -54,6 +55,7 @@ import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
@@ -87,6 +89,7 @@ export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
+export * from "./cloud-66-connection";
 export * from "./cloudflare-connection";
 export * from "./convex-connection";
 export * from "./databricks-connection";
@@ -122,6 +125,7 @@ export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
 export * from "./postgres-connection";
+export * from "./qovery-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
@@ -193,6 +197,7 @@ export type TAppConnection =
   | TOpenRouterConnection
   | TAnthropicConnection
   | TCircleCIConnection
+  | TCloud66Connection
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TVenafiTppConnection
@@ -211,7 +216,8 @@ export type TAppConnection =
   | TF5BigIpConnection
   | TConvexConnection
   | TTriggerDevConnection
-  | TGiteaConnection;
+  | TGiteaConnection
+  | TQoveryConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

@@ -282,6 +282,18 @@ export const SECRET_SYNC_MAP: Record<
     image: "Gitea.png",
     category: "VERSION CONTROL",
     description: "Repository or organization-level secrets."
+  },
+  [SecretSync.Qovery]: {
+    name: "Qovery",
+    image: "Qovery.png",
+    category: "HOSTING",
+    description: "Environment secrets and variables for Qovery projects."
+  },
+  [SecretSync.Cloud66]: {
+    name: "Cloud 66",
+    image: "Cloud 66.png",
+    category: "HOSTING",
+    description: "Environment variables for Cloud 66 stacks."
   }
 };
 
@@ -336,7 +348,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
   [SecretSync.TriggerDev]: AppConnection.TriggerDev,
-  [SecretSync.Gitea]: AppConnection.Gitea
+  [SecretSync.Gitea]: AppConnection.Gitea,
+  [SecretSync.Qovery]: AppConnection.Qovery,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

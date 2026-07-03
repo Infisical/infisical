@@ -7,15 +7,23 @@ import { TCriblProvider, TCriblProviderCredentials } from "./cribl/cribl-provide
 import { TCustomProvider, TCustomProviderCredentials } from "./custom/custom-provider-types";
 import { TDatadogProvider, TDatadogProviderCredentials } from "./datadog/datadog-provider-types";
 import { TSplunkProvider, TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
+import { TSumoLogicProvider, TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-types";
 
-export type TAuditLogStream = TDatadogProvider | TSplunkProvider | TCustomProvider | TAzureProvider | TCriblProvider;
+export type TAuditLogStream =
+  | TDatadogProvider
+  | TSplunkProvider
+  | TCustomProvider
+  | TAzureProvider
+  | TCriblProvider
+  | TSumoLogicProvider;
 
 export type TAuditLogStreamCredentials =
   | TDatadogProviderCredentials
   | TSplunkProviderCredentials
   | TCustomProviderCredentials
   | TAzureProviderCredentials
-  | TCriblProviderCredentials;
+  | TCriblProviderCredentials
+  | TSumoLogicProviderCredentials;
 
 export type TCreateAuditLogStreamDTO = {
   provider: LogProvider;

@@ -69,5 +69,7 @@ export enum AppConnection {
   GoDaddy = "godaddy",
   Convex = "convex",
   TriggerDev = "trigger-dev",
-  Gitea = "gitea"
+  Gitea = "gitea",
+  Qovery = "qovery",
+  Cloud66 = "cloud-66"
 }

@@ -12,6 +12,7 @@ import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
 import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
+import { Cloud66SyncDestinationCol } from "./Cloud66SyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
@@ -32,6 +33,7 @@ import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
 import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
+import { QoverySyncDestinationCol } from "./QoverySyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
@@ -139,6 +141,10 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <TriggerDevSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Gitea:
       return <GiteaSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Qovery:
+      return <QoverySyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Cloud66:
+      return <Cloud66SyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

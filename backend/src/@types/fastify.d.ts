@@ -11,6 +11,7 @@ import { TAiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mc
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
@@ -405,6 +406,7 @@ declare module "fastify" {
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
       insights: TInsightsServiceFactory;
+      auditReport: TAuditReportServiceFactory;
       pamInsights: TPamInsightsServiceFactory;
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;

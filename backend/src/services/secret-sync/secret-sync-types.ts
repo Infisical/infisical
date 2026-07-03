@@ -101,6 +101,12 @@ import {
 } from "./checkly/checkly-sync-types";
 import { TCircleCISync, TCircleCISyncInput, TCircleCISyncListItem, TCircleCISyncWithCredentials } from "./circleci";
 import {
+  TCloud66Sync,
+  TCloud66SyncInput,
+  TCloud66SyncListItem,
+  TCloud66SyncWithCredentials
+} from "./cloud66/cloud66-sync-types";
+import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
   TCloudflarePagesSyncListItem,
@@ -162,6 +168,7 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -222,6 +229,7 @@ export type TSecretSync =
   | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync
+  | TQoverySync
   | TLaravelForgeSync
   | TWindmillSync
   | THCVaultSync
@@ -250,7 +258,8 @@ export type TSecretSync =
   | TDevinSync
   | TOnaSync
   | TTravisCISync
-  | TSnowflakeSync;
+  | TSnowflakeSync
+  | TCloud66Sync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -266,6 +275,7 @@ export type TSecretSyncWithCredentials =
   | TTerraformCloudSyncWithCredentials
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials
+  | TQoverySyncWithCredentials
   | TWindmillSyncWithCredentials
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
@@ -296,7 +306,8 @@ export type TSecretSyncWithCredentials =
   | TOnaSyncWithCredentials
   | TTravisCISyncWithCredentials
   | TSnowflakeSyncWithCredentials
-  | TGiteaSyncWithCredentials;
+  | TGiteaSyncWithCredentials
+  | TCloud66SyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -312,6 +323,7 @@ export type TSecretSyncInput =
   | TTerraformCloudSyncInput
   | TCamundaSyncInput
   | TVercelSyncInput
+  | TQoverySyncInput
   | TWindmillSyncInput
   | THCVaultSyncInput
   | TTeamCitySyncInput
@@ -341,7 +353,8 @@ export type TSecretSyncInput =
   | TDevinSyncInput
   | TOnaSyncInput
   | TTravisCISyncInput
-  | TSnowflakeSyncInput;
+  | TSnowflakeSyncInput
+  | TCloud66SyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -357,6 +370,7 @@ export type TSecretSyncListItem =
   | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
   | TVercelSyncListItem
+  | TQoverySyncListItem
   | TLaravelForgeSyncListItem
   | TWindmillSyncListItem
   | THCVaultSyncListItem
@@ -387,7 +401,8 @@ export type TSecretSyncListItem =
   | TOnaSyncListItem
   | TTravisCISyncListItem
   | TSnowflakeSyncListItem
-  | TGiteaSyncListItem;
+  | TGiteaSyncListItem
+  | TCloud66SyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

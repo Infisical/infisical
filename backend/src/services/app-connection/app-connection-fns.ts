@@ -100,6 +100,11 @@ import {
   getCircleCIConnectionListItem,
   validateCircleCIConnectionCredentials
 } from "./circleci";
+import {
+  Cloud66ConnectionMethod,
+  getCloud66ConnectionListItem,
+  validateCloud66ConnectionCredentials
+} from "./cloud-66";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -207,6 +212,7 @@ import {
 } from "./open-router";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
@@ -349,6 +355,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAnthropicConnectionListItem(),
     getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
+    getCloud66ConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
     getVenafiTppConnectionListItem(),
@@ -365,7 +372,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
-    getGiteaConnectionListItem()
+    getGiteaConnectionListItem(),
+    getQoveryConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -583,6 +591,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Cloud66]: validateCloud66ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
@@ -607,7 +616,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Gitea]: validateGiteaConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Gitea]: validateGiteaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -621,6 +631,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case Cloud66ConnectionMethod.AccessToken:
       return "Personal Access Token";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -707,6 +718,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
+    case QoveryConnectionMethod.AccessToken:
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
@@ -835,6 +847,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
   [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Cloud66]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,
@@ -851,7 +864,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
-  [AppConnection.Gitea]: platformManagedCredentialsNotSupported
+  [AppConnection.Gitea]: platformManagedCredentialsNotSupported,
+  [AppConnection.Qovery]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

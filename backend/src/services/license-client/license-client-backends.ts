@@ -48,7 +48,8 @@ const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 
 // The license server validates a short-lived RS256 service JWT (iss/aud/exp/sub) that we sign with
 // our private key and it verifies with the matching public key. Mint a fresh token per request.
-const mintServiceToken = (signingKey: string): string =>
+// Exported so the usage reporter authenticates cloud requests the same way (never sending the raw key).
+export const mintServiceToken = (signingKey: string): string =>
   jwt.sign({}, signingKey, {
     algorithm: "RS256",
     issuer: SERVICE_TOKEN_ISSUER,
