@@ -397,6 +397,19 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         if (!rotator.credentialConfigured) {
           throw new BadRequestError({ message: "Rotation account has no stored credential to perform rotations" });
         }
+        const targetConn = toSqlConnectionDetails(
+          account.accountType,
+          await decrypt(projectId, account.encryptedConnectionDetails)
+        );
+        const rotatorConn = toSqlConnectionDetails(
+          account.accountType,
+          await decrypt(projectId, rotator.encryptedConnectionDetails)
+        );
+        if (targetConn.host !== rotatorConn.host || targetConn.port !== rotatorConn.port) {
+          throw new BadRequestError({
+            message: "Rotation account must be on the same resource (host and port) as this account"
+          });
+        }
         // Binding a rotator causes its credential to be used to authenticate rotations, so require credential access
         // to it (not just metadata read): otherwise a caller could leverage a privileged account they can only see.
         await checkAccount(
@@ -489,13 +502,18 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     );
 
     const { decryptor } = await getProjectCipher(projectId);
-    const withHost = candidates.map((candidate) => {
-      const raw = JSON.parse(
-        decryptor({ cipherTextBlob: candidate.encryptedConnectionDetails }).toString("utf-8")
-      ) as Record<string, unknown>;
-      const details = toSqlConnectionDetails(account.accountType as PamAccountType, raw);
-      return { ...candidate, host: details.host };
-    });
+    const detailsOf = (blob: Buffer) =>
+      toSqlConnectionDetails(
+        account.accountType as PamAccountType,
+        JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>
+      );
+    const target = detailsOf(account.encryptedConnectionDetails);
+    const withHost = candidates
+      .map((candidate) => {
+        const details = detailsOf(candidate.encryptedConnectionDetails);
+        return { ...candidate, host: details.host, port: details.port };
+      })
+      .filter((candidate) => candidate.host === target.host && candidate.port === target.port);
 
     const groupsByFolder = new Map<
       string,
