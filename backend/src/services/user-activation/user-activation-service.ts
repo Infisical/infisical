@@ -1,42 +1,21 @@
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { getConfig } from "@app/lib/config/env";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserActivationDALFactory } from "./user-activation-dal";
 import { TGetSecretsActivationStatusDTO } from "./user-activation-types";
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const ORG_MAX_AGE_MONTHS = 2;
-const ORG_MAX_MEMBERS = 5;
-const RETURNED_AFTER_THREE_DAYS_MS = 3 * DAY_IN_MS;
-const RETURNED_AFTER_SEVEN_DAYS_MS = 7 * DAY_IN_MS;
+import { TActivationRecord, TSecretsActivationStatus } from "./user-activation-types";
 
 type TUserActivationServiceFactoryDep = {
   userActivationDAL: TUserActivationDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByUserId">;
 };
 
 export type TUserActivationServiceFactory = ReturnType<typeof userActivationServiceFactory>;
 
-type TActivationRecord = {
-  firstSecretCreatedAt?: Date | null;
-  returnedAfterThreeDaysAt?: Date | null;
-  returnedAfterSevenDaysAt?: Date | null;
-};
-
-type TSecretsActivationStatus = {
-  shouldShowActivation: boolean;
-  stage: "FIRST_SECRET" | "THREE_DAYS" | "SEVEN_DAYS" | null;
-  activation: {
-    firstSecretCreatedAt: Date | null;
-    returnedAfterThreeDaysAt: Date | null;
-    returnedAfterSevenDaysAt: Date | null;
-  } | null;
-};
 
 export const userActivationServiceFactory = ({
   userActivationDAL,
@@ -58,6 +37,7 @@ export const userActivationServiceFactory = ({
     actorAuthMethod
   }: TGetSecretsActivationStatusDTO): Promise<TSecretsActivationStatus> => {
     const noActivation: TSecretsActivationStatus = { shouldShowActivation: false, stage: null, activation: null };
+    const appCfg = getConfig();
 
     // 1. The caller must be able to invite other members to the org.
     const { permission } = await permissionService.getOrgPermission({
@@ -70,56 +50,71 @@ export const userActivationServiceFactory = ({
     });
     if (!permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member)) return noActivation;
 
-    // 2. The org must be younger than 2 months.
+    // 2. The org must be young enough (SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS).
     const org = await orgDAL.findById(actorOrgId);
     if (!org) return noActivation;
     const orgAgeCutoff = new Date();
-    orgAgeCutoff.setMonth(orgAgeCutoff.getMonth() - ORG_MAX_AGE_MONTHS);
+    orgAgeCutoff.setMonth(orgAgeCutoff.getMonth() - appCfg.SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS);
     if (org.createdAt.getTime() < orgAgeCutoff.getTime()) return noActivation;
 
-    // 3. The org must have fewer than 5 users.
+    // 3. The org must have fewer than SECRETS_ACTIVATION_ORG_MAX_MEMBERS users.
     const memberCount = await orgDAL.countAllOrgMembers(actorOrgId);
-    if (memberCount >= ORG_MAX_MEMBERS) return noActivation;
+    if (memberCount >= appCfg.SECRETS_ACTIVATION_ORG_MAX_MEMBERS) return noActivation;
 
-    const existingActivation = await userActivationDAL.findOne({ userId: actorId, orgId: actorOrgId });
-    const now = new Date();
+    // Read-modify-write under a row lock so concurrent activation checks for the same
+    // (userId, orgId) can't double-stamp a stage or lose an update. FOR UPDATE can't lock a row
+    // that doesn't exist yet, so the first-interaction insert still goes through ON CONFLICT
+    // (upsert) to stay safe against a concurrent first request.
+    return userActivationDAL.transaction(async (tx): Promise<TSecretsActivationStatus> => {
+      const existingActivation = await userActivationDAL.findOneForUpdate(
+        { userId: actorId, orgId: actorOrgId },
+        tx
+      );
+      const now = new Date();
 
-    // First interaction: creating the row is itself the signal that this is the user's first action,
-    // so we stamp firstSecretCreatedAt. This also covers orgs that predate the feature.
-    if (!existingActivation) {
-      const createdActivation = await userActivationDAL.create({
-        userId: actorId,
-        orgId: actorOrgId,
-        firstSecretCreatedAt: now
-      });
-      return { shouldShowActivation: true, stage: "FIRST_SECRET", activation: toActivation(createdActivation) };
-    }
+      // First interaction: creating the row is itself the signal that this is the user's first
+      // action, so we stamp firstSecretCreatedAt. This also covers orgs that predate the feature.
+      if (!existingActivation) {
+        const [createdActivation] = await userActivationDAL.upsert(
+          [{ userId: actorId, orgId: actorOrgId, firstSecretCreatedAt: now }],
+          ["userId", "orgId"],
+          tx
+        );
+        return { shouldShowActivation: true, stage: "FIRST_SECRET", activation: toActivation(createdActivation) };
+      }
 
-    // if the row was created and the firstSecretCreatedAt is not set, it means the user has not created a secret yet
-    if (!existingActivation.firstSecretCreatedAt) {
-      existingActivation.firstSecretCreatedAt = now;
-      await userActivationDAL.updateById(existingActivation.id, existingActivation);
+      // Row exists but firstSecretCreatedAt was never set: treat this call as the first action.
+      if (!existingActivation.firstSecretCreatedAt) {
+        const updatedActivation = await userActivationDAL.updateById(
+          existingActivation.id,
+          { firstSecretCreatedAt: now },
+          tx
+        );
+        return { shouldShowActivation: true, stage: "FIRST_SECRET", activation: toActivation(updatedActivation) };
+      }
 
-      return { shouldShowActivation: true, stage: "FIRST_SECRET", activation: toActivation(existingActivation) };
-    }
+      const elapsedMs = now.getTime() - existingActivation.firstSecretCreatedAt.getTime();
 
-    const elapsedMs = now.getTime() - existingActivation.firstSecretCreatedAt.getTime();
+      if (!existingActivation.returnedAfterThreeDaysAt && elapsedMs >= appCfg.SECRETS_ACTIVATION_FIRST_NUDGE_DELAY) {
+        const updatedActivation = await userActivationDAL.updateById(
+          existingActivation.id,
+          { returnedAfterThreeDaysAt: now },
+          tx
+        );
+        return { shouldShowActivation: true, stage: "THREE_DAYS", activation: toActivation(updatedActivation) };
+      }
 
-    if (!existingActivation.returnedAfterThreeDaysAt && elapsedMs >= RETURNED_AFTER_THREE_DAYS_MS) {
-      const updatedActivation = await userActivationDAL.updateById(existingActivation.id, {
-        returnedAfterThreeDaysAt: now
-      });
-      return { shouldShowActivation: true, stage: "THREE_DAYS", activation: toActivation(updatedActivation) };
-    }
+      if (!existingActivation.returnedAfterSevenDaysAt && elapsedMs >= appCfg.SECRETS_ACTIVATION_SECOND_NUDGE_DELAY) {
+        const updatedActivation = await userActivationDAL.updateById(
+          existingActivation.id,
+          { returnedAfterSevenDaysAt: now },
+          tx
+        );
+        return { shouldShowActivation: true, stage: "SEVEN_DAYS", activation: toActivation(updatedActivation) };
+      }
 
-    if (!existingActivation.returnedAfterSevenDaysAt && elapsedMs >= RETURNED_AFTER_SEVEN_DAYS_MS) {
-      const updatedActivation = await userActivationDAL.updateById(existingActivation.id, {
-        returnedAfterSevenDaysAt: now
-      });
-      return { shouldShowActivation: true, stage: "SEVEN_DAYS", activation: toActivation(updatedActivation) };
-    }
-
-    return { shouldShowActivation: false, stage: null, activation: toActivation(existingActivation) };
+      return { shouldShowActivation: false, stage: null, activation: toActivation(existingActivation) };
+    });
   };
 
   return {

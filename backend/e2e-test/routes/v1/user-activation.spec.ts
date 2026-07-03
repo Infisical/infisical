@@ -28,7 +28,7 @@ const mintJwt = (orgId: string) =>
 
 const callActivation = (orgId: string) =>
   testServer.inject({
-    method: "GET",
+    method: "POST",
     url: "/api/v1/user-activation/secrets",
     headers: { authorization: `Bearer ${mintJwt(orgId)}` }
   });

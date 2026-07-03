@@ -12,9 +12,6 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("returnedAfterThreeDaysAt");
       t.datetime("returnedAfterSevenDaysAt");
 
-      t.datetime("createdAt").notNullable().defaultTo(knex.fn.now());
-      t.datetime("updatedAt").notNullable().defaultTo(knex.fn.now());
-
       t.uuid("userId").notNullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
 
