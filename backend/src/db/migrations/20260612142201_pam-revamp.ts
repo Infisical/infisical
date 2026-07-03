@@ -25,46 +25,50 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
 import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
 
-const seedDefaultTemplates = async (knex: Knex, projectId: string) => {
-  for (const template of DEFAULT_ACCOUNT_TEMPLATES) {
-    await knex(TableName.PamAccountTemplate)
-      .insert({
-        projectId,
-        name: template.name,
-        type: template.type,
-        settings: template.settings
-      })
-      .onConflict(["projectId", "name"])
-      .ignore();
-  }
-};
-
-const createPamProjectForOrg = async (knex: Knex, orgId: string) => {
-  const slug = slugify(`pam-${alphaNumericNanoId(4)}`);
-
-  const [{ id: projectId }] = (await knex(TableName.Project)
-    .insert({
-      name: "Privileged Access Manager",
-      slug,
-      type: ProjectType.PAM,
-      orgId,
-      version: 3,
-      pitVersionLimit: 10
-    })
-    .returning("id")) as Array<{ id: string }>;
-
-  await seedDefaultTemplates(knex, projectId);
-
-  return projectId;
-};
+// Batched: the per-org insert loop is round-trip-bound and holds write-blocking locks on hot
+// tables for ~15 statements x org count (12+ min at Cloud scale); chunked inserts take seconds.
+const PROJECT_INSERT_CHUNK = 500;
+const TEMPLATE_INSERT_CHUNK = 1000;
 
 const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
   const allOrgs = (await knex(TableName.Organization).select("id")) as Array<{ id: string }>;
   const orgToPamProject = new Map<string, string>();
 
-  for (const { id } of allOrgs) {
-    const projectId = await createPamProjectForOrg(knex, id);
-    orgToPamProject.set(id, projectId);
+  for (let i = 0; i < allOrgs.length; i += PROJECT_INSERT_CHUNK) {
+    const orgChunk = allOrgs.slice(i, i + PROJECT_INSERT_CHUNK);
+
+    const insertedProjects = (await knex(TableName.Project)
+      .insert(
+        orgChunk.map(({ id: orgId }) => ({
+          name: "Privileged Access Manager",
+          slug: slugify(`pam-${alphaNumericNanoId(4)}`),
+          type: ProjectType.PAM,
+          orgId,
+          version: 3,
+          pitVersionLimit: 10
+        }))
+      )
+      .returning(["id", "orgId"])) as Array<{ id: string; orgId: string }>;
+
+    for (const { id, orgId } of insertedProjects) {
+      orgToPamProject.set(orgId, id);
+    }
+
+    const templateRows = insertedProjects.flatMap(({ id: projectId }) =>
+      DEFAULT_ACCOUNT_TEMPLATES.map((template) => ({
+        projectId,
+        name: template.name,
+        type: template.type,
+        settings: template.settings
+      }))
+    );
+
+    for (let j = 0; j < templateRows.length; j += TEMPLATE_INSERT_CHUNK) {
+      await knex(TableName.PamAccountTemplate)
+        .insert(templateRows.slice(j, j + TEMPLATE_INSERT_CHUNK))
+        .onConflict(["projectId", "name"])
+        .ignore();
+    }
   }
 
   return orgToPamProject;
