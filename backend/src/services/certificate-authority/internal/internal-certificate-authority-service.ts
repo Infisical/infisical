@@ -343,6 +343,8 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
 
+    const resolvedCaName = name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`);
+
     const keySource = dto.keySource ?? CertKeySource.Infisical;
     const useHsm = keySource === CertKeySource.Hsm;
 
@@ -384,7 +386,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       const generated = await hsmConnectorService.generateKeyPair({
         connectorId: dto.hsmConnectorId,
         projectId,
-        keyLabel: `ca-${crypto.nativeCrypto.randomUUID()}`,
+        keyLabel: `ca-${resolvedCaName}-${alphaNumericNanoId(5)}`,
         keyAlgorithm: shape.hsmKeyAlgorithm
       });
       hsmKey = generated;
@@ -490,7 +492,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
-          name: name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`),
+          name: resolvedCaName,
           status: notAfter && type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           enableDirectIssuance: false
         },
