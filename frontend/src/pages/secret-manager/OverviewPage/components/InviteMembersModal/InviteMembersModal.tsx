@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon, SendHorizontalIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   CreatableSelect,
@@ -23,18 +24,25 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useAddUserToWsNonE2EE, useGetOrgUsers } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+// PostHog event names for the secrets activation nudge, so we can measure the
+// shown -> invited/dismissed conversion funnel of this modal.
+const ACTIVATION_EVENTS = {
+  Viewed: "Secrets Activation Modal Viewed",
+  Invited: "Secrets Activation Modal Members Invited",
+  Dismissed: "Secrets Activation Modal Dismissed"
+} as const;
 
 const inviteMembersFormSchema = z.object({
   members: z
     .array(
       z.object({
         label: z.string().trim(),
-        value: z.string().trim(),
-        isNewInvitee: z.boolean().optional()
+        value: z.string().trim()
       })
     )
     .min(1)
@@ -54,7 +62,6 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
 
-  const { data: members } = useGetWorkspaceUsers(projectId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
   const {
@@ -72,19 +79,16 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
-  // Org members that are not already part of this project, shown as suggestions.
-  const suggestionList = useMemo(() => {
-    const wsUserUsernames = new Set(members?.map((member) => member.user.username));
-    return (orgUsers || [])
-      .filter(({ user: u }) => !wsUserUsernames.has(u.username))
-      .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
-        value: id,
-        label:
-          firstName && lastName
-            ? `${firstName} ${lastName}`
-            : firstName || lastName || email || inviteEmail
-      }));
-  }, [orgUsers, members]);
+  const telemetry = new Telemetry().getInstance();
+  const baseEventProps = { orgId, projectId, projectType: currentProject?.type };
+
+  const isOpen = popUp?.inviteMembers?.isOpen;
+  // Fire once each time the nudge surfaces. The modal opens at most once per session
+  // (see useSecretsActivationNudge), so guarding on the open state is sufficient.
+  useEffect(() => {
+    if (isOpen) telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const selectedMembers = watch("members");
 
@@ -100,29 +104,8 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       return;
     }
 
-    // Suggested org members carry their membership id in `value`; resolve those back to an
-    // email/username. Typed-in invitees carry their email directly in `value`.
-    const existingOrgUsers = selectedPeople
-      .filter((person) => !person.isNewInvitee)
-      .map((person) => orgUsers?.find((orgUser) => orgUser.id === person.value));
-
-    const newInviteeEmails = selectedPeople
-      .filter((person) => person.isNewInvitee)
-      .map((person) => person.value);
-
-    const existingUserEmails = existingOrgUsers
-      .map((member) => member?.user.username || member?.user.email || null)
-      .filter(Boolean) as string[];
-
-    if (existingUserEmails.length !== existingOrgUsers.length) {
-      createNotification({
-        type: "error",
-        text: "Failed to send invites. One or more selected users were invalid."
-      });
-      return;
-    }
-
-    const usernames = [...existingUserEmails, ...newInviteeEmails];
+    // Every entry is a brand-new invitee typed in as an email address.
+    const usernames = selectedPeople.map((person) => person.value);
     if (usernames.length) {
       await addUserToProject({
         usernames,
@@ -132,6 +115,11 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
         roleSlugs: [ProjectMembershipRole.Member]
       });
     }
+
+    telemetry.capture(ACTIVATION_EVENTS.Invited, {
+      ...baseEventProps,
+      invitedCount: usernames.length
+    });
 
     createNotification({
       type: "success",
@@ -144,9 +132,9 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
     <Dialog
       open={popUp?.inviteMembers?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("inviteMembers", isOpen);
-        if (!isOpen) reset();
+      onOpenChange={(open) => {
+        handlePopUpToggle("inviteMembers", open);
+        if (!open) reset();
       }}
     >
       <DialogContent
@@ -190,7 +178,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                       <p>Type an email address to invite someone new to your organization.</p>
                     )}
                     onCreateOption={(inputValue) =>
-                      append({ label: inputValue, value: inputValue, isNewInvitee: true })
+                      append({ label: inputValue, value: inputValue })
                     }
                     formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
                     isValidNewOption={(input) =>
@@ -201,7 +189,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                     placeholder="teammate@company.com"
                     isMulti
                     name="members"
-                    options={suggestionList}
+                    components={{ DropdownIndicator: null, IndicatorSeparator: null }}
                     value={field.value}
                     onChange={field.onChange}
                     isError={!!errors.members?.length}
@@ -216,6 +204,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
               variant="ghost"
               type="button"
               onClick={() => {
+                telemetry.capture(ACTIVATION_EVENTS.Dismissed, baseEventProps);
                 handlePopUpToggle("inviteMembers", false);
                 reset();
               }}

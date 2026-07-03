@@ -1,4 +1,4 @@
-import { useCallback, useEffect,  useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -24,7 +24,7 @@ const ACTIVATION_NUDGE_DELAY_MS = 1000;
 // is a no-op if the request fails.
 export const useSecretsActivationNudge = () => {
   const { user } = useUser();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isRootOrganization } = useOrganization();
   const { permission } = useOrgPermission();
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["inviteMembers"] as const);
@@ -38,14 +38,14 @@ export const useSecretsActivationNudge = () => {
     []
   );
 
+
   const canInviteMembers = permission.can(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Member
   );
 
-
   const checkActivation = useCallback(async () => {
-    if (!canInviteMembers || !currentOrg?.id) return;
+    if (!isRootOrganization || !canInviteMembers || !currentOrg?.id) return;
 
     const queryKey = userActivationKeys.secretsStatus(currentOrg.id, user.id);
     // Already checked this session (cached): don't call again and don't re-open the modal.
