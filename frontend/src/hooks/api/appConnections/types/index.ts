@@ -103,6 +103,7 @@ export * from "./external-infisical-connection";
 export * from "./f5-big-ip-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
+export * from "./gitea-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
 export * from "./gitlab-connection";
@@ -143,7 +144,6 @@ export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
-export * from "./gitea-connection";
 
 export type TAppConnection =
   | TAwsConnection

@@ -1,0 +1,142 @@
+---
+title: "Gitea Connection"
+description: "Learn how to configure a Gitea Connection for Infisical using OAuth or Access Token methods."
+---
+
+Infisical supports two methods for connecting to Gitea: **OAuth** and **Personal Access Token**. Choose the method that best fits your setup and security requirements.
+
+<Tabs>
+
+  <Tab title="OAuth">
+    Infisical will use an OAuth App to connect to Gitea.
+
+    <Info>OAuth is only supported in Self-Hosted mode.</Info>
+
+    ## Create an OAuth Application in Gitea
+
+      <Steps>
+        <Step title="Create an OAuth application in Gitea">
+          Navigate to your user Settings > Applications > Manage OAuth2 Applications to create a new Gitea OAuth application.
+
+          ![integrations gitea config](/images/app-connections/gitea/config-settings.png)
+          ![integrations gitea config](/images/app-connections/gitea/config-new-app.png)
+
+          Fill in the OAuth application details:
+          - **Application name:** A descriptive name for the application (e.g., "infisical-oauth-app")
+          - **Redirect URI:** Set it to `https://your-domain.com/organization/app-connections/gitea/oauth/callback`.
+
+          Click **Create Application** to create the application.
+
+          <Note>
+            If you have a Gitea organization, you can create an OAuth application under it
+            in your organization Settings > Applications > Create a New OAuth2 Application.
+          </Note>
+        </Step>
+        <Step title="Add your OAuth application credentials to Infisical">
+          Copy the **Client ID** and **Client Secret** for your generated Gitea OAuth application.
+
+          ![integrations gitea config](/images/app-connections/gitea/config-app-credentials.png)
+
+          Back in your Infisical instance, add two new environment variables for the credentials of your Gitea OAuth application:
+
+          - `INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_ID`: The **Client ID** of your Gitea OAuth application.
+          - `INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_SECRET`: The **Client Secret** of your Gitea OAuth application.
+
+          Once added, restart your Infisical instance and use the Gitea integration.
+        </Step>
+      </Steps>
+
+    ## Setup Gitea Connection in Infisical
+
+      <Steps>
+        <Step title="Navigate to App Connections">
+          Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+          ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
+        </Step>
+        <Step title="Add Connection">
+          Select the **Gitea Connection** option from the connection options modal.
+          ![Select Gitea Connection](/images/app-connections/gitea/select-gitea-connection.png)
+        </Step>
+        <Step title="Authorize Connection">
+          Select the **OAuth** method and fill in the **Instance URL** with your Gitea instance's URL.
+
+          Click **Connect to Gitea**.
+          ![Connect via Gitea OAuth](/images/app-connections/gitea/create-oauth-method.png)
+        </Step>
+        <Step title="Grant Access">
+          You will then be redirected to the Gitea to grant Infisical access to your Gitea account (organization, repository and user privileges).
+          Once granted, you will redirect you back to Infisical's App Connections page.
+          ![Gitea Authorization](/images/app-connections/gitea/oauth-authorization.png)
+        </Step>
+        <Step title="Connection Created">
+          Your **Gitea Connection** is now available for use.
+          ![Gitea OAuth Connection](/images/app-connections/gitea/oauth-connection.png)
+        </Step>
+      </Steps>
+
+  </Tab>
+
+  <Tab title="Personal Access Token">
+    Infisical will use a Personal Access Token to connect to Gitea.
+
+    ## Create a Personal Access Token
+      <Steps>
+        <Step title="Create a Personal Access Token in Gitea">
+          Navigate to your user Settings > Applications > Manage Access Tokens to create a new Personal Access Token.
+
+          ![integrations gitea config](/images/app-connections/gitea/config-settings.png)
+
+        </Step>
+        <Step title="Fill in the Personal Access Token details">
+          Fill in the Personal Access Token details:
+          - **Token name:** A descriptive name for the token (e.g., "infisical-connection-token")
+          - **Repository and Organization access:** Select the repositories you want to grant access to
+              - Select `All` or `Public only` to allow access to public organizations and repositories.
+          - **Select permissions:** Choose the following permissions:
+              - **Organization**: Read and Write
+              - **Repository**: Read and write
+              - **User**: Read
+
+          ![integrations gitea config](/images/app-connections/gitea/config-new-pat.png)
+
+          Click **Generate token** to create the token.
+        </Step>
+        <Step title="Copy the Personal Access Token">
+          Copy the generated token immediately as it won't be shown again.
+
+          ![Personal Access Token Generated](/images/app-connections/gitea/create-pat-token-generated.png)
+
+          <Warning>
+              Keep your Personal Access Token secure and do not share it. Anyone with access to this token can access your Gitea account and repositories.
+          </Warning>
+        </Step>
+      </Steps>
+
+    ## Setup Gitea Connection in Infisical
+
+    <Steps>
+      <Step title="Navigate to App Connections">
+        Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+        ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
+      </Step>
+      <Step title="Add Connection">
+        Select the **Gitea Connection** option from the connection options modal.
+        ![Select Gitea Connection](/images/app-connections/gitea/select-gitea-connection.png)
+      </Step>
+      <Step title="Authorize Connection">
+          Select the **Personal Access Token** method and fill in the **Personal Access Token** field with your Personal Access Token.
+
+          Fill in the **Instance URL** with your Gitea instance's URL.
+
+          Click **Create Connection**.
+
+          ![Personal Access Token](/images/app-connections/gitea/create-pat-method.png)
+      </Step>
+      <Step title="Connection Created">
+          Your **Gitea Connection** is now available for use.
+          ![Personal Access Token Connection](/images/app-connections/gitea/pat-connection.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>

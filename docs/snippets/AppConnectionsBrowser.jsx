@@ -583,6 +583,14 @@ export const AppConnectionsBrowser = () => {
         "Learn how to connect Qovery to pull secrets from Infisical.",
       category: "DevOps Tools",
     },
+    {
+      name: "Gitea",
+      slug: "gitea",
+      path: "/integrations/app-connections/gitea",
+      description:
+        "Learn how to connect your Gitea application to pull secrets from Infisical.",
+      category: "CI/CD",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

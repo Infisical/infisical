@@ -50,6 +50,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases"},
     {"name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools"},
     {"name": "Qovery", "slug": "qovery", "path": "/integrations/secret-syncs/qovery", "description": "Learn how to sync secrets from Infisical to Qovery.", "category": "DevOps Tools"},
+    {"name": "Gitea", "slug": "gitea", "path": "/integrations/secret-syncs/gitea", "description": "Learn how to sync secrets from Infisical to Gitea.", "category": "CI/CD"},
 
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
