@@ -301,7 +301,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const recoveryCodes = await server.services.mfaRecoveryCode.getRecoveryCodes({
         userId: req.permission.id
