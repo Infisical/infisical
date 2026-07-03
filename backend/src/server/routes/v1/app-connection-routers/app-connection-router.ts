@@ -122,6 +122,10 @@ import {
   SanitizedGoDaddyConnectionSchema
 } from "@app/services/app-connection/godaddy";
 import {
+  HasuraCloudConnectionListItemSchema,
+  SanitizedHasuraCloudConnectionSchema
+} from "@app/services/app-connection/hasura-cloud";
+import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
@@ -248,6 +252,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
   ...SanitizedHerokuConnectionSchema.options,
+  ...SanitizedHasuraCloudConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedTriggerDevConnectionSchema.options,
@@ -324,6 +329,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
   HerokuConnectionListItemSchema,
+  HasuraCloudConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   TriggerDevConnectionListItemSchema,

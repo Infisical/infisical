@@ -38,6 +38,7 @@ import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
 import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
+import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
@@ -150,5 +151,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Gitea]: registerGiteaConnectionRouter,
+    [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter
   };

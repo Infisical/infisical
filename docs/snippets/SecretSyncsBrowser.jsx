@@ -51,7 +51,8 @@ export const SecretSyncsBrowser = () => {
     {"name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools"},
     {"name": "Qovery", "slug": "qovery", "path": "/integrations/secret-syncs/qovery", "description": "Learn how to sync secrets from Infisical to Qovery.", "category": "DevOps Tools"},
     {"name": "Gitea", "slug": "gitea", "path": "/integrations/secret-syncs/gitea", "description": "Learn how to sync secrets from Infisical to Gitea.", "category": "CI/CD"},
-
+    {"name": "Cloud 66", "slug": "cloud-66", "path": "/integrations/secret-syncs/cloud-66", "description": "Learn how to sync secrets from Infisical to Cloud66.", "category": "DevOps Tools"},
+    {"name": "Hasura Cloud", "slug": "hasura-cloud", "path": "/integrations/secret-syncs/hasura-cloud", "description": "Learn how to sync secrets from Infisical to Hasura Cloud.", "category": "Platform"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

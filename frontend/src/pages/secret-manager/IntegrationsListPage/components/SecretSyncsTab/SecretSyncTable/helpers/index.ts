@@ -188,6 +188,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectName;
       secondaryText = "Railway Project";
       break;
+    case SecretSync.HasuraCloud:
+      primaryText = destinationConfig.projectName || destinationConfig.projectId;
+      secondaryText = "Hasura Cloud Project";
+      break;
     case SecretSync.Checkly:
       primaryText = destinationConfig.accountName || destinationConfig.accountId;
       secondaryText = destinationConfig.groupName || destinationConfig.groupId || "Checkly Account";

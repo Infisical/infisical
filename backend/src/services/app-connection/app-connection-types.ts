@@ -233,6 +233,12 @@ import {
   TValidateGoDaddyConnectionCredentialsSchema
 } from "./godaddy";
 import {
+  THasuraCloudConnection,
+  THasuraCloudConnectionConfig,
+  THasuraCloudConnectionInput,
+  TValidateHasuraCloudConnectionCredentialsSchema
+} from "./hasura-cloud";
+import {
   THCVaultConnection,
   THCVaultConnectionConfig,
   THCVaultConnectionInput,
@@ -507,6 +513,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TF5BigIpConnection
   | TConvexConnection
   | TGiteaConnection
+  | THasuraCloudConnection
   | TQoveryConnection
 );
 
@@ -591,6 +598,7 @@ export type TAppConnectionInput = { id: string } & (
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
   | TGiteaConnectionInput
+  | THasuraCloudConnectionInput
   | TQoveryConnectionInput
 );
 
@@ -707,6 +715,7 @@ export type TAppConnectionConfig =
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
   | TGiteaConnectionConfig
+  | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -782,6 +791,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
   | TValidateGiteaConnectionCredentialsSchema
+  | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

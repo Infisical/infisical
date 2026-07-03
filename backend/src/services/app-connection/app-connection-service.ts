@@ -121,6 +121,8 @@ import { githubRadarConnectionService } from "./github-radar/github-radar-connec
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
+import { ValidateHasuraCloudConnectionCredentialsSchema } from "./hasura-cloud";
+import { hasuraCloudConnectionService } from "./hasura-cloud/hasura-cloud-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
@@ -229,6 +231,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
   [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
+  [AppConnection.HasuraCloud]: ValidateHasuraCloudConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.LaravelForge]: ValidateLaravelForgeConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
@@ -1353,6 +1356,7 @@ export const appConnectionServiceFactory = ({
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
+    hasuraCloud: hasuraCloudConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),

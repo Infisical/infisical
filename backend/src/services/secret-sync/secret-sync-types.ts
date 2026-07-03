@@ -135,6 +135,12 @@ import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } fr
 import { TGiteaSyncListItem, TGiteaSyncWithCredentials } from "./gitea";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
+  THasuraCloudSync,
+  THasuraCloudSyncInput,
+  THasuraCloudSyncListItem,
+  THasuraCloudSyncWithCredentials
+} from "./hasura-cloud/hasura-cloud-sync-types";
+import {
   THCVaultSync,
   THCVaultSyncInput,
   THCVaultSyncListItem,
@@ -259,6 +265,7 @@ export type TSecretSync =
   | TOnaSync
   | TTravisCISync
   | TSnowflakeSync
+  | THasuraCloudSync
   | TCloud66Sync;
 
 export type TSecretSyncWithCredentials =
@@ -307,6 +314,7 @@ export type TSecretSyncWithCredentials =
   | TTravisCISyncWithCredentials
   | TSnowflakeSyncWithCredentials
   | TGiteaSyncWithCredentials
+  | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -354,6 +362,7 @@ export type TSecretSyncInput =
   | TOnaSyncInput
   | TTravisCISyncInput
   | TSnowflakeSyncInput
+  | THasuraCloudSyncInput
   | TCloud66SyncInput;
 
 export type TSecretSyncListItem =
@@ -402,6 +411,7 @@ export type TSecretSyncListItem =
   | TTravisCISyncListItem
   | TSnowflakeSyncListItem
   | TGiteaSyncListItem
+  | THasuraCloudSyncListItem
   | TCloud66SyncListItem;
 
 export type TSyncOptionsConfig = {

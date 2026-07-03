@@ -397,6 +397,10 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .boolean()
           .optional()
           .describe("Block duplicate secret sync destinations across the organization"),
+        allowCrossProjectSecretSharing: z
+          .boolean()
+          .optional()
+          .describe("Allow secret imports and references to target secrets in other projects within the organization"),
         secretShareBrandConfig: z
           .object({
             primaryColor: z

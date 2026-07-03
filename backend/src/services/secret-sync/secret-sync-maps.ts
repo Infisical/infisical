@@ -47,6 +47,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.TravisCI]: "Travis CI",
   [SecretSync.Snowflake]: "Snowflake",
   [SecretSync.Gitea]: "Gitea",
+  [SecretSync.HasuraCloud]: "Hasura Cloud",
   [SecretSync.Qovery]: "Qovery",
   [SecretSync.Cloud66]: "Cloud 66"
 };
@@ -96,6 +97,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
   [SecretSync.Gitea]: AppConnection.Gitea,
+  [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66
 };
@@ -145,6 +147,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.TravisCI]: SecretSyncPlanType.Regular,
   [SecretSync.Snowflake]: SecretSyncPlanType.Regular,
   [SecretSync.Gitea]: SecretSyncPlanType.Regular,
+  [SecretSync.HasuraCloud]: SecretSyncPlanType.Regular,
   [SecretSync.Qovery]: SecretSyncPlanType.Regular,
   [SecretSync.Cloud66]: SecretSyncPlanType.Regular
 };
@@ -203,6 +206,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.TravisCI]: ["repositorySlug"],
   [SecretSync.Snowflake]: [],
   [SecretSync.Gitea]: [],
+  [SecretSync.HasuraCloud]: ["projectName"],
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"]
 };
@@ -278,6 +282,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.TravisCI]: defaultDuplicateCheck,
   [SecretSync.Snowflake]: defaultDuplicateCheck,
   [SecretSync.Gitea]: defaultDuplicateCheck,
+  [SecretSync.HasuraCloud]: defaultDuplicateCheck,
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck
 };

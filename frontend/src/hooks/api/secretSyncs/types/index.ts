@@ -25,6 +25,7 @@ import { TGcpSync } from "./gcp-sync";
 import { TGiteaSync } from "./gitea-sync";
 import { TGitHubSync } from "./github-sync";
 import { TGitLabSync } from "./gitlab-sync";
+import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
@@ -103,6 +104,7 @@ export type TSecretSync =
   | TSnowflakeSync
   | TTriggerDevSync
   | TGiteaSync
+  | THasuraCloudSync
   | TQoverySync
   | TCloud66Sync;
 

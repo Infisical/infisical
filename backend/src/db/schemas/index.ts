@@ -180,6 +180,7 @@ export * from "./pki-syncs";
 export * from "./project-access-requests";
 export * from "./project-bots";
 export * from "./project-environments";
+export * from "./project-folder-grants";
 export * from "./project-gateways";
 export * from "./project-keys";
 export * from "./project-memberships";

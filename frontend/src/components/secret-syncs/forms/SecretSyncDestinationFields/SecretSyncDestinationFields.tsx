@@ -27,6 +27,7 @@ import { GcpSyncFields } from "./GcpSyncFields";
 import { GiteaSyncFields } from "./GiteaSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { GitLabSyncFields } from "./GitLabSyncFields";
+import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
@@ -144,6 +145,8 @@ export const SecretSyncDestinationFields = () => {
       return <TriggerDevSyncFields />;
     case SecretSync.Gitea:
       return <GiteaSyncFields />;
+    case SecretSync.HasuraCloud:
+      return <HasuraCloudSyncFields />;
     case SecretSync.Qovery:
       return <QoverySyncFields />;
     case SecretSync.Cloud66:

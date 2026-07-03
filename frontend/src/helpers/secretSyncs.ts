@@ -283,6 +283,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "VERSION CONTROL",
     description: "Repository or organization-level secrets."
   },
+  [SecretSync.HasuraCloud]: {
+    name: "Hasura Cloud",
+    image: "Hasura.svg",
+    category: "PLATFORM",
+    description: "Environment variables for Hasura Cloud tenants."
+  },
   [SecretSync.Qovery]: {
     name: "Qovery",
     image: "Qovery.png",
@@ -349,6 +355,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Snowflake]: AppConnection.Snowflake,
   [SecretSync.TriggerDev]: AppConnection.TriggerDev,
   [SecretSync.Gitea]: AppConnection.Gitea,
+  [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66
 };

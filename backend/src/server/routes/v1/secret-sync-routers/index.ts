@@ -25,6 +25,7 @@ import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGiteaSyncRouter } from "./gitea-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerGitLabSyncRouter } from "./gitlab-sync-router";
+import { registerHasuraCloudSyncRouter } from "./hasura-cloud-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
@@ -94,6 +95,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.TravisCI]: registerTravisCISyncRouter,
   [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
   [SecretSync.Gitea]: registerGiteaSyncRouter,
+  [SecretSync.HasuraCloud]: registerHasuraCloudSyncRouter,
   [SecretSync.Qovery]: registerQoverySyncRouter,
   [SecretSync.Cloud66]: registerCloud66SyncRouter
 };
