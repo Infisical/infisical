@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { GcpIamAuthMethod, PamAccountType } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 import {
   PamAccountSettingsOverridesSchema,
@@ -388,18 +388,41 @@ export const ACCOUNT_TYPE_CONFIGS = {
   },
 
   [PamAccountType.GcpIam]: {
-    name: "Google Cloud IAM",
+    name: "GCP Service Account",
     icon: "Google Cloud Platform.png",
     connectionDetails: z.object({
-      serviceAccountEmail: z.string().trim().min(1).max(255)
+      serviceAccountEmail: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .email("Must be a valid service account email address")
+        .refine((val) => val.endsWith(".iam.gserviceaccount.com"), {
+          message: "Must be a GCP service account email (ending in .iam.gserviceaccount.com)"
+        })
     }),
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
-        authMethod: z.literal("impersonation")
+        authMethod: z.literal(GcpIamAuthMethod.Impersonation)
       }),
       z.object({
-        authMethod: z.literal("static-key"),
-        serviceAccountKeyJson: z.string().trim().min(1).max(8192)
+        authMethod: z.literal(GcpIamAuthMethod.StaticKey),
+        serviceAccountKeyJson: z
+          .string()
+          .trim()
+          .min(1)
+          .max(8192)
+          .refine(
+            (val) => {
+              try {
+                const parsed = JSON.parse(val) as Record<string, unknown>;
+                return typeof parsed.client_email === "string" && typeof parsed.private_key === "string";
+              } catch {
+                return false;
+              }
+            },
+            { message: "Must be valid JSON containing client_email and private_key fields" }
+          )
       })
     ]),
     sanitizedCredentials: z.object({
@@ -409,10 +432,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
       serviceAccountEmail: { label: "Service Account Email" },
       authMethod: {
         label: "Auth Method",
-        defaultValue: "impersonation",
+        tooltip:
+          "Impersonation uses the platform's GCP identity to generate short-lived tokens for the target service account. Static Key uses a service account key JSON stored directly in the PAM account.",
+        defaultValue: GcpIamAuthMethod.Impersonation,
         options: [
-          { label: "Impersonation (Recommended)", value: "impersonation" },
-          { label: "Static Key", value: "static-key" }
+          { label: "Impersonation (Recommended)", value: GcpIamAuthMethod.Impersonation },
+          { label: "Static Key", value: GcpIamAuthMethod.StaticKey }
         ]
       },
       serviceAccountKeyJson: {

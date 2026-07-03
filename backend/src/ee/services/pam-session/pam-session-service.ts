@@ -23,7 +23,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { GcpIamAuthMethod, PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
@@ -219,10 +219,10 @@ export const pamSessionServiceFactory = ({
       const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
 
       let sourceClient;
-      if (credentials.authMethod === "static-key") {
+      if (credentials.authMethod === GcpIamAuthMethod.StaticKey) {
         const keyJson = JSON.parse(credentials.serviceAccountKeyJson as string) as {
-          client_email?: string;
-          private_key?: string;
+          client_email: string;
+          private_key: string;
         };
         sourceClient = new JWT({
           email: keyJson.client_email,
