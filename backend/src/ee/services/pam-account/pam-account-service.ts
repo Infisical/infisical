@@ -448,6 +448,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           await membershipDAL.delete({ $in: { id: ids } }, tx);
         }
 
+        await pamAccountDAL.updateById(accountId, { rotationAccountId: null }, tx);
+
         return pamAccountDAL.deleteById(accountId, tx);
       });
     } catch (err) {

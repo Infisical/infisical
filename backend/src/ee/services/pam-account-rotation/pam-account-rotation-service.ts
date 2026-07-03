@@ -371,23 +371,42 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       throw new BadRequestError({ message: "Credential rotation is not supported for this account type" });
     }
 
-    if (rotationAccountId && rotationAccountId !== accountId) {
-      const rotator = await pamAccountDAL.findByIdWithDetails(rotationAccountId);
-      if (!rotator || rotator.projectId !== projectId) {
-        throw new BadRequestError({ message: "Rotation account not found in this project" });
+    if (rotationAccountId) {
+      if (account.credentialConfigured) {
+        const targetCredentials = await decryptSqlCredentials(
+          projectId,
+          account.accountType,
+          account.encryptedCredentials
+        );
+        PAM_ROTATION_FACTORY_MAP[account.accountType].validateTarget({
+          accountType: account.accountType,
+          authMethod: targetCredentials.authMethod
+        });
       }
-      if (rotator.accountType !== account.accountType) {
-        throw new BadRequestError({ message: "Rotation account must be the same type as this account" });
+
+      if (rotationAccountId !== accountId) {
+        const rotator = await pamAccountDAL.findByIdWithDetails(rotationAccountId);
+        if (!rotator || rotator.projectId !== projectId) {
+          throw new BadRequestError({ message: "Rotation account not found in this project" });
+        }
+        if (rotator.accountType !== account.accountType) {
+          throw new BadRequestError({ message: "Rotation account must be the same type as this account" });
+        }
+        // A delegated rotator authenticates with its own stored password, so it must have one, else every rotation
+        // fails in resolveAuthCredential and the account is scheduled into a permanent failure state.
+        if (!rotator.credentialConfigured) {
+          throw new BadRequestError({ message: "Rotation account has no stored credential to perform rotations" });
+        }
+        // Binding a rotator causes its credential to be used to authenticate rotations, so require credential access
+        // to it (not just metadata read): otherwise a caller could leverage a privileged account they can only see.
+        await checkAccount(
+          rotationAccountId,
+          rotator.folderId,
+          projectId,
+          ResourcePermissionPamResourceActions.ViewCredentials,
+          ctx
+        );
       }
-      // Binding a rotator causes its credential to be used to authenticate rotations, so require credential access
-      // to it (not just metadata read): otherwise a caller could leverage a privileged account they can only see.
-      await checkAccount(
-        rotationAccountId,
-        rotator.folderId,
-        projectId,
-        ResourcePermissionPamResourceActions.ViewCredentials,
-        ctx
-      );
     }
 
     // Set the rotation account and re-derive the schedule atomically, so a crash can't leave the account bound

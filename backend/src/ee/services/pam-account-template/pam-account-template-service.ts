@@ -124,7 +124,9 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
 
-    const { accountCount, ...rotationImpact } = await pamAccountTemplateDAL.getTemplateRotationStats(templateId);
+    const { accountCount, ...stats } = await pamAccountTemplateDAL.getTemplateRotationStats(templateId);
+    // rotationImpact only means something for rotatable types; a non-rotatable template rotates nothing regardless.
+    const rotationImpact = isRotatableAccountType(template.type) ? stats : { willRotate: 0, needsRotationAccount: 0 };
     return { ...template, accountCount, rotationImpact };
   };
 
