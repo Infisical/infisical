@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { userKeys } from "@app/hooks/api/users/query-keys";
 
 import { webAuthnKeys } from "./queries";
 import {
@@ -74,6 +75,7 @@ export const useDeleteWebAuthnCredential = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials });
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
   });
 };

@@ -27,6 +27,7 @@ import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
+import { webAuthnKeys } from "@app/hooks/api/webauthn/queries";
 
 import { MfaMethodsCard } from "./MfaMethodsCard";
 import { MfaSetupWizard } from "./MfaSetupWizard";
@@ -91,7 +92,8 @@ export const MFASection = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: userKeys.getUser }),
         queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration }),
-        queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes })
+        queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes }),
+        queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials })
       ]);
       setIsDisableOpen(false);
       createNotification({ text: "Two-factor authentication disabled", type: "success" });

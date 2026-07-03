@@ -14,7 +14,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
@@ -142,7 +142,7 @@ export const userServiceFactory = ({
         {
           isMfaEnabled,
           mfaMethods,
-          selectedMfaMethod
+          selectedMfaMethod: isMfaEnabled === false ? MfaMethod.EMAIL : selectedMfaMethod
         },
         tx
       );

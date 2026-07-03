@@ -93,6 +93,7 @@ export const useDeleteUserTotpConfiguration = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
       queryClient.removeQueries({ queryKey: userKeys.totpRegistration });
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
     }
   });
 };
