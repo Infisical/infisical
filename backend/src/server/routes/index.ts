@@ -1088,7 +1088,8 @@ export const registerRoutes = async (
   const telemetryService = telemetryServiceFactory({
     keyStore,
     licenseService,
-    orgDAL
+    orgDAL,
+    emailDomainDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
@@ -2334,7 +2335,9 @@ export const registerRoutes = async (
     identityMembershipV2DAL,
     identityAccessTokenService,
     keyStore,
-    projectDAL
+    projectDAL,
+    orgDAL,
+    roleDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({
@@ -3418,6 +3421,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     signerIssuanceService,
     internalCertificateAuthorityService,
+    digicertFns: digicertCaFns,
     projectDAL,
     kmsService,
     permissionService,

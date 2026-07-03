@@ -126,7 +126,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
       <AuthPageHeader>
-        <Button asChild>
+        <Button asChild variant="project">
           <Link to="/login">Log In</Link>
         </Button>
       </AuthPageHeader>

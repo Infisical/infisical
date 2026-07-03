@@ -13,6 +13,7 @@ import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
 import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
+import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -98,7 +99,8 @@ export type TSecretSync =
   | TOnaSync
   | TTravisCISync
   | TSnowflakeSync
-  | TTriggerDevSync;
+  | TTriggerDevSync
+  | TCloud66Sync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

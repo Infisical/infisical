@@ -101,6 +101,12 @@ import {
 } from "./checkly/checkly-sync-types";
 import { TCircleCISync, TCircleCISyncInput, TCircleCISyncListItem, TCircleCISyncWithCredentials } from "./circleci";
 import {
+  TCloud66Sync,
+  TCloud66SyncInput,
+  TCloud66SyncListItem,
+  TCloud66SyncWithCredentials
+} from "./cloud66/cloud66-sync-types";
+import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
   TCloudflarePagesSyncListItem,
@@ -249,7 +255,8 @@ export type TSecretSync =
   | TDevinSync
   | TOnaSync
   | TTravisCISync
-  | TSnowflakeSync;
+  | TSnowflakeSync
+  | TCloud66Sync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -294,7 +301,8 @@ export type TSecretSyncWithCredentials =
   | TDevinSyncWithCredentials
   | TOnaSyncWithCredentials
   | TTravisCISyncWithCredentials
-  | TSnowflakeSyncWithCredentials;
+  | TSnowflakeSyncWithCredentials
+  | TCloud66SyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -339,7 +347,8 @@ export type TSecretSyncInput =
   | TDevinSyncInput
   | TOnaSyncInput
   | TTravisCISyncInput
-  | TSnowflakeSyncInput;
+  | TSnowflakeSyncInput
+  | TCloud66SyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -384,7 +393,8 @@ export type TSecretSyncListItem =
   | TDevinSyncListItem
   | TOnaSyncListItem
   | TTravisCISyncListItem
-  | TSnowflakeSyncListItem;
+  | TSnowflakeSyncListItem
+  | TCloud66SyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

@@ -10,15 +10,16 @@ export const PkiSyncOptionsSchema = z.object({
   includeRootCa: z.boolean().optional().default(false),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (val) => {
-        if (!val) return true;
-
         const allowedPlaceholdersRegexPart = [
           "{{certificateId}}",
+          "{{shortCertificateId}}",
           "{{profileId}}",
           "{{applicationId}}",
+          "{{applicationName}}",
           "{{commonName}}"
         ]
           .map((p) => p.replace(new RE2(/[-/\\^$*+?.()|[\]{}]/g), "\\$&")) // Escape regex special characters
@@ -28,8 +29,7 @@ export const PkiSyncOptionsSchema = z.object({
         const contentIsValid = allowedContentRegex.test(val);
 
         if (val.trim()) {
-          const certificateIdRegex = new RE2(/\{\{certificateId\}\}/);
-          const certificateIdIsPresent = certificateIdRegex.test(val);
+          const certificateIdIsPresent = val.includes("{{certificateId}}") || val.includes("{{shortCertificateId}}");
           return contentIsValid && certificateIdIsPresent;
         }
 
@@ -37,7 +37,7 @@ export const PkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
       }
     )
 });

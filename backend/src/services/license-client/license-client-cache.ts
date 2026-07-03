@@ -5,7 +5,7 @@ import { logger } from "@app/lib/logger";
 import { TEntitlementOrg, TEntitlementsResponse, TLicenseClientBackend } from "./license-client-types";
 
 type TEntitlementResolverDep = {
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   backend: Pick<TLicenseClientBackend, "fetchEntitlements">;
 };
 
@@ -57,5 +57,16 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
     }
   };
 
-  return { getEntitlements };
+  // Drop the cached entitlements so the next read reflects a just-committed subscription change
+  // instead of waiting out the 30-minute TTL. The license server reconciles asynchronously via
+  // its Stripe webhook, so a stale read here is what otherwise makes a removed product linger.
+  const invalidateEntitlements = async (orgId: string): Promise<void> => {
+    try {
+      await keyStore.deleteItem(KeyStorePrefixes.LicenseEntitlements(orgId));
+    } catch (error) {
+      logger.error(error, `license-client: failed to invalidate entitlements [orgId=${orgId}]`);
+    }
+  };
+
+  return { getEntitlements, invalidateEntitlements };
 };

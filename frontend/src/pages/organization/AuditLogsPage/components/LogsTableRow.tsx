@@ -1,10 +1,15 @@
-import { faCaretDown, faCaretRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { InfoIcon } from "lucide-react";
+import { ChevronRight, InfoIcon } from "lucide-react";
 
-import { Td, Tooltip, Tr } from "@app/components/v2";
+import {
+  Badge,
+  ButtonGroup,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
-import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { AuditLog } from "@app/hooks/api/auditLogs/types";
 
@@ -12,6 +17,7 @@ type Props = {
   auditLog: AuditLog;
   rowNumber: number;
   timezone: Timezone;
+  onClick: (auditLog: AuditLog) => void;
 };
 
 type TagProps = {
@@ -22,73 +28,64 @@ const Tag = ({ label, value }: TagProps) => {
   if (!value) return null;
 
   return (
-    <div className="flex items-center space-x-1.5">
-      <div className="rounded-sm bg-mineshaft-600 p-0.5 pl-1 font-mono">{label}:</div>
-      <div>{value}</div>
-      {value === "unknownUser" && (
-        <Tooltip
-          side="right"
-          className="max-w-sm"
-          content="This action doesn't require authentication, so the requesting actor cannot be identified."
-        >
-          <InfoIcon size={14} className="text-mineshaft-300" />
-        </Tooltip>
-      )}
-    </div>
+    <ButtonGroup>
+      <Badge variant="neutral" isTruncatable className="max-w-[12rem] shrink-0">
+        <span>{label}</span>
+      </Badge>
+      <Badge variant="neutral" isTruncatable className="border-l-transparent bg-neutral/5">
+        <span>{value}</span>
+        {value === "unknownUser" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <InfoIcon />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-sm">
+              This action doesn&apos;t require authentication, so the requesting actor cannot be
+              identified.
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </Badge>
+    </ButtonGroup>
   );
 };
 
-export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
-  const [isOpen, setIsOpen] = useToggle();
-
+export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) => {
   return (
-    <>
-      <Tr
-        className="h-10 cursor-pointer border-x-0 border-t-0 border-b hover:bg-mineshaft-700"
-        role="button"
-        tabIndex={0}
-        onClick={() => setIsOpen.toggle()}
-        onKeyDown={(evt) => {
-          if (evt.key === "Enter") setIsOpen.toggle();
-        }}
-        isHoverable
-      >
-        <Td className="flex items-center gap-2 pr-0 align-top">
-          <FontAwesomeIcon icon={isOpen ? faCaretDown : faCaretRight} />
-          {rowNumber}
-        </Td>
-        <Td className="align-top">{formatDateTime({ timestamp: auditLog.createdAt, timezone })}</Td>
-        <Td>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Tag label="event" value={auditLog.event.type} />
-            <Tag label="actor" value={auditLog.actor.type} />
-            {auditLog.actor.type === ActorType.USER && (
-              <Tag label="user_email" value={auditLog.actor.metadata.email} />
-            )}
-            {auditLog.actor.type === ActorType.IDENTITY && (
-              <Tag label="identity_name" value={auditLog.actor.metadata.name} />
-            )}
-            {auditLog.actor.type === ActorType.ACME_PROFILE && (
-              <Tag label="acme_profile_id" value={auditLog.actor.metadata.profileId} />
-            )}
-            {auditLog.actor.type === ActorType.ACME_ACCOUNT && (
-              <Tag label="acme_account_id" value={auditLog.actor.metadata.accountId} />
-            )}
-            {auditLog.actor.type === ActorType.EST_ACCOUNT && (
-              <Tag label="est_profile_id" value={auditLog.actor.metadata.profileId} />
-            )}
-          </div>
-        </Td>
-      </Tr>
-      {isOpen && (
-        <Tr className={`log-${auditLog.id} h-10 border-x-0 border-t-0 border-b`}>
-          <Td colSpan={3} className="px-3 py-2">
-            <div className="my-1 max-h-96 thin-scrollbar overflow-auto rounded-sm border border-mineshaft-600 bg-bunker-800 p-2 font-mono leading-6 whitespace-pre-wrap">
-              {JSON.stringify(auditLog, null, 4)}
-            </div>
-          </Td>
-        </Tr>
-      )}
-    </>
+    <TableRow
+      role="button"
+      tabIndex={0}
+      onClick={() => onClick(auditLog)}
+      onKeyDown={(evt) => {
+        if (evt.key === "Enter") onClick(auditLog);
+      }}
+    >
+      <TableCell className="text-muted">{rowNumber}</TableCell>
+      <TableCell>{formatDateTime({ timestamp: auditLog.createdAt, timezone })}</TableCell>
+      <TableCell>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Tag label="event" value={auditLog.event.type} />
+          <Tag label="actor" value={auditLog.actor.type} />
+          {auditLog.actor.type === ActorType.USER && (
+            <Tag label="user_email" value={auditLog.actor.metadata.email} />
+          )}
+          {auditLog.actor.type === ActorType.IDENTITY && (
+            <Tag label="identity_name" value={auditLog.actor.metadata.name} />
+          )}
+          {auditLog.actor.type === ActorType.ACME_PROFILE && (
+            <Tag label="acme_profile_id" value={auditLog.actor.metadata.profileId} />
+          )}
+          {auditLog.actor.type === ActorType.ACME_ACCOUNT && (
+            <Tag label="acme_account_id" value={auditLog.actor.metadata.accountId} />
+          )}
+          {auditLog.actor.type === ActorType.EST_ACCOUNT && (
+            <Tag label="est_profile_id" value={auditLog.actor.metadata.profileId} />
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        <ChevronRight className="inline-block size-4 text-muted" />
+      </TableCell>
+    </TableRow>
   );
 };

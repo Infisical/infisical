@@ -113,6 +113,12 @@ import {
   TValidateCircleCIConnectionCredentialsSchema
 } from "./circleci";
 import {
+  TCloud66Connection,
+  TCloud66ConnectionConfig,
+  TCloud66ConnectionInput,
+  TValidateCloud66ConnectionCredentialsSchema
+} from "./cloud-66";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -469,6 +475,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TCloud66Connection
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TVenafiTppConnection
@@ -550,6 +557,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TVenafiTppConnectionInput
@@ -663,6 +671,7 @@ export type TAppConnectionConfig =
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig
+  | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
   | TVenafiTppConnectionConfig
@@ -735,6 +744,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateVenafiTppConnectionCredentialsSchema

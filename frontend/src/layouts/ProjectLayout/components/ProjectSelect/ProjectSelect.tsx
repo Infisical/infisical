@@ -218,6 +218,7 @@ const ProjectSelectInner = () => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+        projectType={currentWorkspace.type}
       />
     </div>
   );

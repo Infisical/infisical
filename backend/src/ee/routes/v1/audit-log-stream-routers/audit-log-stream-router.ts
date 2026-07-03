@@ -20,6 +20,10 @@ import {
   SanitizedSplunkProviderSchema,
   SplunkProviderListItemSchema
 } from "@app/ee/services/audit-log-stream/splunk/splunk-provider-schemas";
+import {
+  SanitizedSumoLogicProviderSchema,
+  SumoLogicProviderListItemSchema
+} from "@app/ee/services/audit-log-stream/sumo-logic/sumo-logic-provider-schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -29,7 +33,8 @@ const SanitizedAuditLogStreamSchema = z.union([
   SanitizedDatadogProviderSchema,
   SanitizedSplunkProviderSchema,
   SanitizedAzureProviderSchema,
-  SanitizedCriblProviderSchema
+  SanitizedCriblProviderSchema,
+  SanitizedSumoLogicProviderSchema
 ]);
 
 const ProviderOptionsSchema = z.discriminatedUnion("provider", [
@@ -37,7 +42,8 @@ const ProviderOptionsSchema = z.discriminatedUnion("provider", [
   DatadogProviderListItemSchema,
   SplunkProviderListItemSchema,
   AzureProviderListItemSchema,
-  CriblProviderListItemSchema
+  CriblProviderListItemSchema,
+  SumoLogicProviderListItemSchema
 ]);
 
 export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) => {

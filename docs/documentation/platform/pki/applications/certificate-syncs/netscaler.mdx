@@ -107,7 +107,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
 </Tabs>
 
 <Note>
-  NetScaler caps `sslcertkey` names at **63 characters**. Since `{{certificateId}}` is required and each UUID placeholder (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) resolves to 32 characters, combining two of them exceeds the limit and the schema is rejected when you save the sync. For NetScaler, pair `{{certificateId}}` with a short prefix or `{{commonName}}` (kept under the limit).
+  NetScaler caps `sslcertkey` names at **63 characters**. Full UUID placeholders (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) each resolve to 32 characters, so combining two of them exceeds the limit and the schema is rejected when you save the sync. For tight schemas, use `{{shortCertificateId}}` (22 characters) in place of `{{certificateId}}`, optionally with a short prefix or `{{commonName}}`.
 </Note>
 
 ## Certificate Management

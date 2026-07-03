@@ -68,7 +68,13 @@ type TIdentityUaServiceFactoryDep = {
   >;
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
+    | "setItemWithExpiry"
+    | "setItemWithExpiryNX"
+    | "getItem"
+    | "deleteItem"
+    | "getKeysByPattern"
+    | "deleteItems"
+    | "acquireLock"
   >;
 };
 
@@ -78,6 +84,9 @@ type LockoutObject = {
   lockedOut: boolean;
   failedAttempts: number;
 };
+
+// debounce per-secret usage writes so login bursts on one unlimited secret don't pile up on its row lock
+const UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS = 10;
 
 export const identityUaServiceFactory = ({
   identityUaDAL,
@@ -305,7 +314,20 @@ export const identityUaServiceFactory = ({
       }
 
       await identityUaDAL.transaction(async (tx) => {
-        await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+        if (clientSecretNumUsesLimit > 0) {
+          // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
+          await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+        } else {
+          // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
+          const isFirstUseInWindow = await keyStore.setItemWithExpiryNX(
+            KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(validClientSecretInfo!.id),
+            UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
+            "1"
+          );
+          if (isFirstUseInWindow) {
+            await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+          }
+        }
         await membershipIdentityDAL.update(
           identity.projectId
             ? {

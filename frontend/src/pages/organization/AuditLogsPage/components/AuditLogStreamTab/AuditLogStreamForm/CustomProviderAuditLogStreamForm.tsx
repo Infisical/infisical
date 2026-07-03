@@ -1,23 +1,30 @@
 import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleHelp, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import {
   Button,
-  FormControl,
-  FormLabel,
+  Field,
+  FieldError,
+  FieldLabel,
   IconButton,
   Input,
-  ModalClose,
   Switch,
-  Tooltip
-} from "@app/components/v2";
-import { LogProvider, StreamMode } from "@app/hooks/api/auditLogStreams/enums";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
+import {
+  LogProvider,
+  REDACTED_CREDENTIAL_VALUE,
+  StreamMode
+} from "@app/hooks/api/auditLogStreams/enums";
 import { TCustomProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/custom-provider";
 
+import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
 
 type Props = {
@@ -31,8 +38,8 @@ const formSchema = z.object({
     url: z.string().url().trim().min(1).max(255),
     headers: z
       .object({
-        key: z.string().min(1),
-        value: z.string().min(1)
+        key: z.string().min(1, "Required"),
+        value: z.string().min(1, "Required")
       })
       .array()
   }),
@@ -48,6 +55,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
   const isUpdate = Boolean(auditLogStream);
   // Only streams already on "single" (legacy) can change mode — and only to "batch".
   const isSingleStream = auditLogStream?.streamMode === StreamMode.Single;
+  const scopeVariant = useScopeVariant();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -60,17 +68,12 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           streamMode: auditLogStream.streamMode ?? StreamMode.Batch
         }
       : {
-          provider: LogProvider.Custom
+          provider: LogProvider.Custom,
+          credentials: { headers: [] }
         }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty },
-    getValues,
-    setValue
-  } = form;
+  const { handleSubmit, control } = form;
 
   const headerFields = useFieldArray({
     control,
@@ -85,52 +88,51 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Endpoint URL"
-            >
-              <Input {...field} placeholder="https://example.com" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="custom-url">Endpoint URL</FieldLabel>
+              <Input
+                id="custom-url"
+                {...field}
+                placeholder="https://example.com"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
-        <FormLabel label="Headers" isOptional />
+        <FieldLabel className="mb-2">
+          Headers <span className="text-muted">(optional)</span>
+        </FieldLabel>
         {headerFields.fields.map(({ id: headerFieldId }, i) => (
-          <div key={headerFieldId} className="flex space-x-2">
+          <div key={headerFieldId} className="flex items-start gap-2">
             <Controller
               control={control}
               name={`credentials.headers.${i}.key`}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  errorText={error?.message}
-                  className="w-1/3"
-                >
-                  <Input {...field} placeholder="Authorization" />
-                </FormControl>
+                <Field className="mb-2 w-1/3">
+                  <Input {...field} placeholder="Authorization" isError={Boolean(error?.message)} />
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
             <Controller
               control={control}
               name={`credentials.headers.${i}.value`}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  errorText={error?.message}
-                  className="grow"
-                >
+                <Field className="mb-2 grow">
                   <Input
                     {...field}
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
                     placeholder="Bearer <token>"
+                    isError={Boolean(error?.message)}
                     onFocus={() => {
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
-                        auditLogStream.credentials.headers[i].value === "******" &&
-                        field.value === "******"
+                        auditLogStream.credentials.headers[i].value === REDACTED_CREDENTIAL_VALUE &&
+                        field.value === REDACTED_CREDENTIAL_VALUE
                       ) {
                         field.onChange("");
                       }
@@ -140,109 +142,91 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
-                        auditLogStream.credentials.headers[i].value === "******" &&
+                        auditLogStream.credentials.headers[i].value === REDACTED_CREDENTIAL_VALUE &&
                         field.value === ""
                       ) {
-                        field.onChange("******");
+                        field.onChange(REDACTED_CREDENTIAL_VALUE);
                       }
                       setShowPassword(false);
                     }}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
-            <IconButton
-              ariaLabel="delete key"
-              className="h-9"
-              variant="outline_bg"
-              onClick={() => {
-                const header = getValues("credentials.headers");
-                if (header && header?.length > 1) {
-                  headerFields.remove(i);
-                } else {
-                  setValue("credentials.headers", [{ key: "", value: "" }]);
-                }
-              }}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </IconButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  aria-label="delete key"
+                  variant="outline"
+                  className="hover:text-danger"
+                  onClick={() => headerFields.remove(i)}
+                >
+                  <Trash2 />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Remove header</TooltipContent>
+            </Tooltip>
           </div>
         ))}
-        <div>
-          <Button
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            size="xs"
-            variant="outline_bg"
-            onClick={() => headerFields.append({ value: "", key: "" })}
-          >
-            Add Key
-          </Button>
-        </div>
-
+        <Button
+          variant="outline"
+          size="xs"
+          className="mb-4"
+          onClick={() => headerFields.append({ value: "", key: "" })}
+        >
+          <Plus />
+          Add Key
+        </Button>
         {isUpdate && (
-          <div className="mt-6">
-            <Controller
-              control={control}
-              name="streamMode"
-              render={({ field }) => {
-                const isBatch = field.value === StreamMode.Batch;
-                return (
-                  <div>
+          <Controller
+            control={control}
+            name="streamMode"
+            render={({ field }) => {
+              const isBatch = field.value === StreamMode.Batch;
+              return (
+                <div className="mb-4">
+                  <Field orientation="horizontal">
+                    <FieldLabel htmlFor="stream-batch-mode" className="text-sm">
+                      Batch delivery
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelp />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          Send events as a JSON array.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
                     <Switch
                       id="stream-batch-mode"
-                      isChecked={isBatch}
-                      isDisabled={!isSingleStream}
+                      variant={scopeVariant}
+                      checked={isBatch}
+                      disabled={!isSingleStream}
                       onCheckedChange={(checked) =>
                         field.onChange(checked ? StreamMode.Batch : StreamMode.Single)
                       }
-                    >
-                      <p className="text-sm">
-                        Batch delivery
-                        <Tooltip className="max-w-md" content={<p>Send events as a JSON array.</p>}>
-                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                        </Tooltip>
+                    />
+                  </Field>
+                  {isSingleStream &&
+                    (isBatch ? (
+                      <p className="mt-2 text-xs text-warning">
+                        Switching from single to batch delivery cannot be undone. Make sure your
+                        endpoint accepts a JSON array of events.
                       </p>
-                    </Switch>
-                    {isSingleStream &&
-                      (isBatch ? (
-                        <p className="mt-2 text-xs text-yellow">
-                          Switching from single to batch delivery cannot be undone. Make sure your
-                          endpoint accepts a JSON array of events.
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-xs text-mineshaft-400">
-                          This stream uses legacy single-event delivery (one event per request).
-                          Enable batch delivery to send events as a JSON array.
-                        </p>
-                      ))}
-                  </div>
-                );
-              }}
-            />
-          </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted">
+                        This stream uses legacy single-event delivery (one event per request).
+                        Enable batch delivery to send events as a JSON array.
+                      </p>
+                    ))}
+                </div>
+              );
+            }}
+          />
         )}
-
-        <div className="mt-6">
-          <ProductsField />
-        </div>
-
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Create Log Stream"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <ProductsField />
+        <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>
   );

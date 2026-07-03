@@ -1,40 +1,38 @@
 import { useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faFilter,
-  faMagnifyingGlass,
-  faPlug,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChevronDownIcon, FilterIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { useListAuditLogStreams } from "@app/hooks/api";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -55,6 +53,7 @@ type LogStreamFilters = {
 
 export const AuditLogStreamTable = () => {
   const { isPending, data: logStreams = [] } = useListAuditLogStreams();
+  const scopeVariant = useScopeVariant();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "delete",
@@ -133,11 +132,15 @@ export const AuditLogStreamTable = () => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: LogStreamsOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
-
-  const getColSortIcon = (col: LogStreamsOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const renderSortIcon = (col: LogStreamsOrderBy) =>
+    orderBy === col ? (
+      <ChevronDownIcon
+        className={twMerge(
+          "ml-1 size-3.5 transition-transform",
+          orderDirection === OrderByDirection.DESC && "rotate-180"
+        )}
+      />
+    ) : null;
 
   const isTableFiltered = Boolean(filters.providers.length);
 
@@ -147,38 +150,44 @@ export const AuditLogStreamTable = () => {
     handlePopUpOpen("editCredentials", logStream);
   };
 
+  const visibleLogStreams = filteredLogStreams.slice(offset, perPage * page);
+
   return (
-    <div>
-      <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search audit log streams..."
-          className="flex-1"
-        />
+    <>
+      <div className="flex items-center gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search audit log streams..."
+          />
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              ariaLabel="Filter Log Streams"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
+              aria-label="Filter Log Streams"
+              variant={isTableFiltered ? scopeVariant : "outline"}
             >
-              <FontAwesomeIcon icon={faFilter} />
+              <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
+          <DropdownMenuContent
+            sideOffset={2}
+            className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+            align="end"
+          >
             <DropdownMenuLabel>Filter by Provider</DropdownMenuLabel>
             {logStreams.length ? (
               [...new Set(logStreams.map(({ provider }) => provider))].map((provider) => {
                 const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
 
                 return (
-                  <DropdownMenuItem
+                  <DropdownMenuCheckboxItem
+                    key={provider}
+                    checked={filters.providers.includes(provider)}
                     onClick={(e) => {
                       e.preventDefault();
                       setFilters((prev) => ({
@@ -188,8 +197,6 @@ export const AuditLogStreamTable = () => {
                           : [...prev.providers, provider]
                       }));
                     }}
-                    key={provider}
-                    iconPos="right"
                   >
                     <div className="flex items-center gap-2">
                       {providerDetails.image ? (
@@ -202,95 +209,104 @@ export const AuditLogStreamTable = () => {
                         providerDetails.icon && (
                           <FontAwesomeIcon
                             icon={providerDetails.icon}
-                            className="size-4 text-mineshaft-300"
+                            className="size-4 text-muted"
                           />
                         )
                       )}
                       <span>{providerDetails.name}</span>
                     </div>
-                  </DropdownMenuItem>
+                  </DropdownMenuCheckboxItem>
                 );
               })
             ) : (
-              <DropdownMenuItem isDisabled>No Providers Configured</DropdownMenuItem>
+              <DropdownMenuLabel className="font-normal text-muted">
+                No Providers Configured
+              </DropdownMenuLabel>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Provider
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(LogStreamsOrderBy.Provider)}
-                    ariaLabel="sort"
+      <div className="mt-4">
+        {!isPending && !filteredLogStreams.length ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {logStreams.length
+                  ? "No log streams match search"
+                  : "No log streams have been configured"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {logStreams.length
+                  ? "Adjust your search or filters to view log streams."
+                  : "Add a log stream to send audit logs to an external destination."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="cursor-pointer"
                     onClick={() => handleSort(LogStreamsOrderBy.Provider)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(LogStreamsOrderBy.Provider)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/3">
-                <div className="flex items-center">
-                  Endpoint URL
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(LogStreamsOrderBy.Url)}
-                    ariaLabel="sort"
+                    Provider
+                    {renderSortIcon(LogStreamsOrderBy.Provider)}
+                  </TableHead>
+                  <TableHead
+                    className="w-full cursor-pointer"
                     onClick={() => handleSort(LogStreamsOrderBy.Url)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(LogStreamsOrderBy.Url)} />
-                  </IconButton>
-                </div>
-              </Th>
-
-              <Th>Products</Th>
-
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && (
-              <TableSkeleton
-                innerKey="audit-log-streams-table"
-                columns={4}
-                key="audit-log-streams"
+                    Endpoint URL
+                    {renderSortIcon(LogStreamsOrderBy.Url)}
+                  </TableHead>
+                  <TableHead>Products</TableHead>
+                  <TableHead className="w-5" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isPending &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`log-stream-skeleton-${i + 1}`}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!isPending &&
+                  visibleLogStreams.map((stream) => (
+                    <AuditLogStreamRow
+                      logStream={stream}
+                      key={stream.id}
+                      onDelete={handleDelete}
+                      onEditCredentials={handleEditCredentials}
+                    />
+                  ))}
+              </TableBody>
+            </Table>
+            {!isPending && (
+              <Pagination
+                count={filteredLogStreams.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={handlePerPageChange}
               />
             )}
-            {filteredLogStreams.slice(offset, perPage * page).map((stream) => (
-              <AuditLogStreamRow
-                logStream={stream}
-                key={stream.id}
-                onDelete={handleDelete}
-                onEditCredentials={handleEditCredentials}
-              />
-            ))}
-          </TBody>
-        </Table>
-        {Boolean(filteredLogStreams.length) && (
-          <Pagination
-            count={filteredLogStreams.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
+          </>
         )}
-        {!isPending && !filteredLogStreams?.length && (
-          <EmptyState
-            title={
-              logStreams.length
-                ? "No log streams match search..."
-                : "No log streams have been configured"
-            }
-            icon={logStreams.length ? faSearch : faPlug}
-          />
-        )}
-      </TableContainer>
+      </div>
       <DeleteAuditLogStreamModal
         isOpen={popUp.delete.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("delete", isOpen)}
@@ -301,6 +317,6 @@ export const AuditLogStreamTable = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("editCredentials", isOpen)}
         auditLogStream={popUp.editCredentials.data}
       />
-    </div>
+    </>
   );
 };
