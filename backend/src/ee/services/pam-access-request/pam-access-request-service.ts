@@ -1113,13 +1113,11 @@ export const pamAccessRequestServiceFactory = ({
     });
 
     const now = new Date();
-    return (
-      grants.find((g) => {
-        if (g.expiresAt && new Date(g.expiresAt) <= now) return false;
-        const attrs = g.attributes as { accountId?: string } | null;
-        return attrs?.accountId === accountId;
-      }) ?? null
-    );
+    const forAccount = grants.filter((g) => (g.attributes as { accountId?: string } | null)?.accountId === accountId);
+    // Prefer a still-valid grant; otherwise return an expired one (rather than null) so the caller can
+    // distinguish "grant expired" from "no grant" and signal PAM_GRANT_EXPIRED vs PAM_APPROVAL_REQUIRED.
+    const valid = forAccount.find((g) => !g.expiresAt || new Date(g.expiresAt) > now);
+    return valid ?? forAccount[0] ?? null;
   };
 
   const getAccessStatusBatch = async (
