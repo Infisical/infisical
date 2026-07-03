@@ -42,31 +42,34 @@ export const useSecretsActivationNudge = () => {
     OrgPermissionSubjects.Member
   );
 
-  const checkActivation = useCallback(async () => {
-    if (!isRootOrganization || !canInviteMembers || !currentOrg?.id) return;
+  const checkActivation = useCallback(
+    async (customDelayMs?: number) => {
+      if (!isRootOrganization || !canInviteMembers || !currentOrg?.id) return;
 
-    const queryKey = userActivationKeys.secretsStatus(currentOrg.id, user.id);
-    // Already checked this session (cached): don't call again and don't re-open the modal.
-    if (queryClient.getQueryData(queryKey) !== undefined) return;
+      const queryKey = userActivationKeys.secretsStatus(currentOrg.id, user.id);
+      // Already checked this session (cached): don't call again and don't re-open the modal.
+      if (queryClient.getQueryData(queryKey) !== undefined) return;
 
-    try {
-      const data = await queryClient.ensureQueryData({
-        queryKey,
-        queryFn: fetchSecretsActivationStatus,
-        retry: false,
-        gcTime: Infinity
-      });
-      if (data.shouldShowActivation) {
-        // Give the page a beat before nudging so it doesn't feel abrupt.
-        if (openTimeoutRef.current) clearTimeout(openTimeoutRef.current);
-        openTimeoutRef.current = setTimeout(() => {
-          handlePopUpOpen("inviteMembers");
-        }, ACTIVATION_NUDGE_DELAY_MS);
+      try {
+        const data = await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetchSecretsActivationStatus,
+          retry: false,
+          gcTime: Infinity
+        });
+        if (data.shouldShowActivation) {
+          // Give the page a beat before nudging so it doesn't feel abrupt.
+          if (openTimeoutRef.current) clearTimeout(openTimeoutRef.current);
+          openTimeoutRef.current = setTimeout(() => {
+            handlePopUpOpen("inviteMembers");
+          }, customDelayMs ?? ACTIVATION_NUDGE_DELAY_MS);
+        }
+      } catch {
+        // Silent by design: a failed activation check must not disrupt the page.
       }
-    } catch {
-      // Silent by design: a failed activation check must not disrupt the page.
-    }
-  }, [isRootOrganization, canInviteMembers, currentOrg?.id, user.id, queryClient, handlePopUpOpen]);
+    },
+    [isRootOrganization, canInviteMembers, currentOrg?.id, user.id, queryClient, handlePopUpOpen]
+  );
 
   return { popUp, handlePopUpToggle, checkActivation };
 };

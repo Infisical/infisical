@@ -94,6 +94,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
+import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -701,6 +702,13 @@ const OverviewPageContent = () => {
     handlePopUpToggle: handleInvitePopUpToggle,
     checkActivation: checkSecretsActivation
   } = useSecretsActivationNudge();
+
+  const hasSecrets = !isPlaceholderData && Boolean(totalSecretCount);
+  useEffect(() => {
+    if (hasSecrets) {
+      checkSecretsActivation(4000);
+    }
+  }, [hasSecrets, checkSecretsActivation]);
 
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)

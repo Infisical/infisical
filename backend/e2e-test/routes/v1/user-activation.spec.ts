@@ -102,21 +102,24 @@ describe("User Activation Router", () => {
     if (createdUserIds.length) await db(TableName.Users).whereIn("id", createdUserIds).del();
   });
 
-  test("old org (62 days) → no activation and no row created", async () => {
+  test("old org (90 days) with few users → activation shown and row created", async () => {
     const db = getDb();
-    const org = await createOrgWithAdmin(db, daysAgo(62));
+    const org = await createOrgWithAdmin(db, daysAgo(90));
 
     const res = await callActivation(org.id);
     expect(res.statusCode).toBe(200);
-    expect(res.json().shouldShowActivation).toBe(false);
+    const body = res.json();
+    expect(body.shouldShowActivation).toBe(true);
+    expect(body.stage).toBe("FIRST_SECRET");
 
     const row = await getActivationRow(db, org.id);
-    expect(row).toBeUndefined();
+    expect(row).toBeDefined();
+    expect(row?.firstSecretCreatedAt).not.toBeNull();
   });
 
-  test("new org (60 days) with more than 5 users → no activation and no row created", async () => {
+  test("old org (90 days) with more than 5 users → no activation and no row created", async () => {
     const db = getDb();
-    const org = await createOrgWithAdmin(db, daysAgo(60));
+    const org = await createOrgWithAdmin(db, daysAgo(90));
     // admin member + 5 more = 6 users (> 5)
     for (let i = 0; i < 5; i += 1) {
       // eslint-disable-next-line no-await-in-loop
@@ -129,6 +132,25 @@ describe("User Activation Router", () => {
 
     const row = await getActivationRow(db, org.id);
     expect(row).toBeUndefined();
+  });
+
+  test("young org with more than 5 users → activation shown", async () => {
+    const db = getDb();
+    const org = await createOrgWithAdmin(db, daysAgo(1));
+    // admin member + 5 more = 6 users (> 5), but the org is still young
+    for (let i = 0; i < 5; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await addAcceptedMember(db, org.id);
+    }
+
+    const res = await callActivation(org.id);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.shouldShowActivation).toBe(true);
+    expect(body.stage).toBe("FIRST_SECRET");
+
+    const row = await getActivationRow(db, org.id);
+    expect(row).toBeDefined();
   });
 
   test("new org, < 5 users, first interaction → firstSecretCreatedAt is set", async () => {
