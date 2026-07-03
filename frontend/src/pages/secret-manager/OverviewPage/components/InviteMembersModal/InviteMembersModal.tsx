@@ -105,7 +105,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
 
     // Every entry is a brand-new invitee typed in as an email address.
-    const usernames = selectedPeople.map((person) => person.value);
+    const usernames = selectedPeople.map((person) => person.value.toLowerCase());
     if (usernames.length) {
       await addUserToProject({
         usernames,

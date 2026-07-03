@@ -56,13 +56,9 @@ export const userActivationServiceFactory = ({
 
     const orgAgeCutoff = new Date();
     orgAgeCutoff.setMonth(orgAgeCutoff.getMonth() - appCfg.SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS);
-    if (org.createdAt.getTime() < orgAgeCutoff.getTime() || memberCount >= appCfg.SECRETS_ACTIVATION_ORG_MAX_MEMBERS)
+    if (org.createdAt.getTime() < orgAgeCutoff.getTime() && memberCount >= appCfg.SECRETS_ACTIVATION_ORG_MAX_MEMBERS)
       return noActivation;
 
-    // Read-modify-write under a row lock so concurrent activation checks for the same
-    // (userId, orgId) can't double-stamp a stage or lose an update. FOR UPDATE can't lock a row
-    // that doesn't exist yet, so the first-interaction insert still goes through ON CONFLICT
-    // (upsert) to stay safe against a concurrent first request.
     return userActivationDAL.transaction(async (tx): Promise<TSecretsActivationStatus> => {
       const existingActivation = await userActivationDAL.findOneForUpdate({ userId: actorId, orgId: actorOrgId }, tx);
       const now = new Date();

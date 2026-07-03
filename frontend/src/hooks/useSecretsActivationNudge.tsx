@@ -66,7 +66,7 @@ export const useSecretsActivationNudge = () => {
     } catch {
       // Silent by design: a failed activation check must not disrupt the page.
     }
-  }, [canInviteMembers, currentOrg?.id, user.id, queryClient, handlePopUpOpen]);
+  }, [isRootOrganization, canInviteMembers, currentOrg?.id, user.id, queryClient, handlePopUpOpen]);
 
   return { popUp, handlePopUpToggle, checkActivation };
 };
