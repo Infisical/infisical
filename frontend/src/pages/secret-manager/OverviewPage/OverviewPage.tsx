@@ -94,7 +94,6 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
-import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -694,25 +693,14 @@ const OverviewPageContent = () => {
     usedBySecretSyncs
   } = overview ?? {};
 
-  // Growth nudge: once the project has secrets (on load) or the user creates one, ask the backend
-  // whether to surface the "Invite your team" modal. The check runs at most once per session,
-  // opens the modal only if the backend says so, and is a no-op on failure.
+  // Growth nudge: when the user creates a secret, ask the backend whether to surface the
+  // "Invite your team" modal. The check runs at most once per session, opens the modal only if
+  // the backend says so, and is a no-op on failure.
   const {
     popUp: invitePopUp,
     handlePopUpToggle: handleInvitePopUpToggle,
     checkActivation: checkSecretsActivation
   } = useSecretsActivationNudge();
-
-  const hasSecrets = !isPlaceholderData && Boolean(totalSecretCount);
-  useEffect(() => {
-    const projectName = currentProject?.name;
-
-    const isExampleProject = projectName === EXAMPLE_PROJECT_NAME;
-
-    if (hasSecrets && !isExampleProject) {
-      checkSecretsActivation();
-    }
-  }, [hasSecrets, checkSecretsActivation]);
 
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
@@ -1679,6 +1667,9 @@ const OverviewPageContent = () => {
         type: "success",
         text: "Successfully created secret"
       });
+
+      // The user just created a secret: check whether to surface the activation nudge.
+      checkSecretsActivation();
     }
   };
 
@@ -2131,8 +2122,24 @@ const OverviewPageContent = () => {
           : "Changes saved successfully",
         type: requiresApproval ? "info" : "success"
       });
+
+      // If the commit actually created secrets (not just an approval request), check whether to
+      // surface the activation nudge.
+      const createdSecret = changes.secrets.some((s) => s.type === PendingAction.Create);
+      if (createdSecret && !requiresApproval) {
+        console.log("createdSecret", createdSecret);
+        checkSecretsActivation();
+      }
     },
-    [singleVisibleEnv, projectId, secretPath, isProtectedBranch, queryClient, createCommit]
+    [
+      singleVisibleEnv,
+      projectId,
+      secretPath,
+      isProtectedBranch,
+      queryClient,
+      createCommit,
+      checkSecretsActivation
+    ]
   );
 
   // Batch mode: toggle
@@ -3426,6 +3433,7 @@ const OverviewPageContent = () => {
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
+            onSecretCreated={checkSecretsActivation}
             onBatchSecretCreate={(params) => {
               addPendingChange(
                 {

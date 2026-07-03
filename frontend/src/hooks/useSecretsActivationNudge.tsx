@@ -12,16 +12,15 @@ import { fetchSecretsActivationStatus, userActivationKeys } from "@app/hooks/api
 
 import { usePopUp } from "./usePopUp";
 
-// Small delay before opening the modal so it doesn't pop the instant the page settles or a
-// secret is created, which reads as abrupt. Tunable.
+// Small delay before opening the modal so it doesn't pop the instant a secret is created, which
+// reads as abrupt. Tunable.
 const ACTIVATION_NUDGE_DELAY_MS = 1000;
 
-// Growth nudge for the secret overview page. `checkActivation` can be called from multiple
-// triggers (the project having secrets, or a secret being created), but it runs the request at
-// most once per session: the result is cached (gcTime Infinity) and we skip entirely
-// once it is present, so the modal never re-opens on remount. The check is also gated on the user
-// being able to invite members and being recent, opens the modal only if the backend says so, and
-// is a no-op if the request fails.
+// Growth nudge for the secret overview page. `checkActivation` is called when the user creates a
+// secret, but it runs the request at most once per session: the result is cached (gcTime Infinity)
+// and we skip entirely once it is present, so the modal never re-opens on remount. The check is
+// also gated on the user being able to invite members and being recent, opens the modal only if
+// the backend says so, and is a no-op if the request fails.
 export const useSecretsActivationNudge = () => {
   const { user } = useUser();
   const { currentOrg, isRootOrganization } = useOrganization();
@@ -37,7 +36,6 @@ export const useSecretsActivationNudge = () => {
     },
     []
   );
-
 
   const canInviteMembers = permission.can(
     OrgPermissionActions.Create,

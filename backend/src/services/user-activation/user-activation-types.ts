@@ -7,7 +7,6 @@ export type TGetSecretsActivationStatusDTO = {
   actorAuthMethod: ActorAuthMethod;
 };
 
-
 export type TActivationRecord = {
   firstSecretCreatedAt?: Date | null;
   returnedAfterThreeDaysAt?: Date | null;

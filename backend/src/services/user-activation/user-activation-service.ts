@@ -5,8 +5,7 @@ import { getConfig } from "@app/lib/config/env";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TUserActivationDALFactory } from "./user-activation-dal";
-import { TGetSecretsActivationStatusDTO } from "./user-activation-types";
-import { TActivationRecord, TSecretsActivationStatus } from "./user-activation-types";
+import { TActivationRecord, TGetSecretsActivationStatusDTO, TSecretsActivationStatus } from "./user-activation-types";
 
 type TUserActivationServiceFactoryDep = {
   userActivationDAL: TUserActivationDALFactory;
@@ -15,7 +14,6 @@ type TUserActivationServiceFactoryDep = {
 };
 
 export type TUserActivationServiceFactory = ReturnType<typeof userActivationServiceFactory>;
-
 
 export const userActivationServiceFactory = ({
   userActivationDAL,
@@ -50,26 +48,23 @@ export const userActivationServiceFactory = ({
     });
     if (!permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member)) return noActivation;
 
-    // 2. The org must be young enough (SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS).
+    // 2. The org must be young enough (SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS) or has less than 5 u
     const org = await orgDAL.findById(actorOrgId);
     if (!org) return noActivation;
+
+    const memberCount = await orgDAL.countAllOrgMembers(actorOrgId);
+
     const orgAgeCutoff = new Date();
     orgAgeCutoff.setMonth(orgAgeCutoff.getMonth() - appCfg.SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS);
-    if (org.createdAt.getTime() < orgAgeCutoff.getTime()) return noActivation;
-
-    // 3. The org must have fewer than SECRETS_ACTIVATION_ORG_MAX_MEMBERS users.
-    const memberCount = await orgDAL.countAllOrgMembers(actorOrgId);
-    if (memberCount >= appCfg.SECRETS_ACTIVATION_ORG_MAX_MEMBERS) return noActivation;
+    if (org.createdAt.getTime() < orgAgeCutoff.getTime() || memberCount >= appCfg.SECRETS_ACTIVATION_ORG_MAX_MEMBERS)
+      return noActivation;
 
     // Read-modify-write under a row lock so concurrent activation checks for the same
     // (userId, orgId) can't double-stamp a stage or lose an update. FOR UPDATE can't lock a row
     // that doesn't exist yet, so the first-interaction insert still goes through ON CONFLICT
     // (upsert) to stay safe against a concurrent first request.
     return userActivationDAL.transaction(async (tx): Promise<TSecretsActivationStatus> => {
-      const existingActivation = await userActivationDAL.findOneForUpdate(
-        { userId: actorId, orgId: actorOrgId },
-        tx
-      );
+      const existingActivation = await userActivationDAL.findOneForUpdate({ userId: actorId, orgId: actorOrgId }, tx);
       const now = new Date();
 
       // First interaction: creating the row is itself the signal that this is the user's first
