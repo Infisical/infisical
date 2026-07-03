@@ -36,6 +36,7 @@ export type Organization = {
   maxSharedSecretLifetime: number;
   maxSharedSecretViewLimit: number | null;
   blockDuplicateSecretSyncDestinations: boolean;
+  allowCrossProjectSecretSharing: boolean;
   parentOrgId: string | null;
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
@@ -64,6 +65,7 @@ export type UpdateOrgDTO = {
   maxSharedSecretViewLimit?: number | null;
   maxSharedSecretLifetime?: number;
   blockDuplicateSecretSyncDestinations?: boolean;
+  allowCrossProjectSecretSharing?: boolean;
   secretShareBrandConfig?: TSecretShareBrandConfig;
 };
 

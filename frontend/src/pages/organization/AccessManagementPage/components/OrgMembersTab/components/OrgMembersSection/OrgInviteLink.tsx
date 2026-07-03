@@ -1,9 +1,16 @@
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { Check, Copy } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { IconButton, Tooltip } from "@app/components/v2";
+import {
+  ButtonGroup,
+  Field,
+  FieldLabel,
+  IconButton,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
 type Props = {
@@ -13,7 +20,7 @@ type Props = {
 export const OrgInviteLink = ({ invite }: Props) => {
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
 
-  const copyTokenToClipboard = () => {
+  const copyLinkToClipboard = () => {
     if (isInviteLinkCopied) return;
 
     navigator.clipboard.writeText(invite.link);
@@ -26,30 +33,31 @@ export const OrgInviteLink = ({ invite }: Props) => {
   };
 
   return (
-    <div key={`invite-${invite.email}`}>
-      <p className="text-sm text-mineshaft-400">
-        Invite for <span className="font-medium">{invite.email}</span>
-      </p>
-      <div className="flex flex-col gap-1 rounded-md bg-white/4 p-2 text-base text-gray-400">
-        <p
-          className={twMerge(
-            "mr-4 line-clamp-1",
-            window.isSecureContext ? "overflow-hidden text-ellipsis whitespace-nowrap" : "break-all"
-          )}
-        >
-          {invite.link}
-        </p>
-        <Tooltip content={`Copy invitation link for ${invite.email}`}>
-          <IconButton
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="group relative"
-            onClick={() => copyTokenToClipboard()}
-          >
-            <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
-          </IconButton>
+    <Field>
+      <FieldLabel htmlFor={`invite-link-${invite.email}`}>
+        Invite for <span className="font-medium text-foreground">{invite.email}</span>
+      </FieldLabel>
+      <ButtonGroup className="w-full">
+        <Input
+          id={`invite-link-${invite.email}`}
+          value={invite.link}
+          readOnly
+          aria-label={`Invitation link for ${invite.email}`}
+          className="font-mono"
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              variant="outline"
+              aria-label={`Copy invitation link for ${invite.email}`}
+              onClick={copyLinkToClipboard}
+            >
+              {isInviteLinkCopied ? <Check /> : <Copy />}
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>{isInviteLinkCopied ? "Copied" : "Copy"}</TooltipContent>
         </Tooltip>
-      </div>
-    </div>
+      </ButtonGroup>
+    </Field>
   );
 };

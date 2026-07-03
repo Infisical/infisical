@@ -5,7 +5,7 @@ import {
   AlertTriangleIcon,
   ArrowRightIcon,
   FolderIcon,
-  KeyRoundIcon,
+  KeyIcon,
   LayersIcon,
   Loader2Icon,
   LockIcon
@@ -232,23 +232,23 @@ export const DuplicatedSecretsCard = () => {
                         containerClassName="rounded-t-none overflow-x-hidden"
                         className="table-fixed"
                       >
-                        <TableHeader className="bg-mineshaft-800">
+                        <TableHeader>
                           <TableRow>
-                            <TableHead className="h-10 w-[35%]">SECRET KEY</TableHead>
-                            <TableHead className="h-10 w-[25%]">ENVIRONMENT</TableHead>
-                            <TableHead className="h-10">PATH</TableHead>
-                            <TableHead className="h-10 w-12" />
+                            <TableHead className="w-[35%]">Secret Key</TableHead>
+                            <TableHead className="w-[25%]">Environment</TableHead>
+                            <TableHead>Path</TableHead>
+                            <TableHead className="w-12" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {group.secrets.map((entry, idx) => (
                             <TableRow
                               key={`${entry.key}-${entry.environment.slug}-${entry.secretPath}-${String(idx)}`}
-                              className="group/row bg-mineshaft-900"
+                              className="group/row"
                             >
                               <TableCell isTruncatable className="max-w-60">
                                 <div className="flex items-center gap-2">
-                                  <KeyRoundIcon className="size-4 shrink-0 text-muted" />
+                                  <KeyIcon className="size-4 shrink-0 text-muted" />
                                   <span className="truncate font-mono">{entry.key}</span>
                                 </div>
                               </TableCell>
@@ -258,8 +258,8 @@ export const DuplicatedSecretsCard = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-2 text-muted">
-                                  <FolderIcon className="size-3.5 shrink-0" />
+                                <div className="flex items-center gap-2">
+                                  <FolderIcon className="size-3.5 shrink-0 text-folder" />
                                   <span className="truncate">{entry.secretPath}</span>
                                 </div>
                               </TableCell>

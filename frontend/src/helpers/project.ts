@@ -140,7 +140,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "Privileged Access Manager"
+    [ProjectType.PAM]: "Privileged Access Manager",
+    [ProjectType.AI]: "AI"
   };
   return titleConvert[type] || type;
 };
