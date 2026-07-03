@@ -190,7 +190,7 @@ export const HasuraCloudSyncFns = {
       const tenantId = await resolveTenantId(connection, projectId);
       const { hash, environment: existingEnvs } = await getTenantEnv(accessToken, tenantId);
 
-      const keysToDelete = Object.keys(existingEnvs).filter((key) => key in secretMap);
+      const keysToDelete = Object.keys(existingEnvs).filter((key) => key in secretMap && !key.startsWith("HASURA_"));
 
       if (keysToDelete.length) {
         await deleteTenantEnv(accessToken, tenantId, hash, keysToDelete);
