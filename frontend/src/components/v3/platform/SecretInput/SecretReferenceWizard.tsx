@@ -639,6 +639,10 @@ export const SecretReferenceWizard = ({
     }
   };
 
+  if (uniqueSourceProjects.length === 0) {
+    return <div ref={contentRef}>{renderStepContent()}</div>;
+  }
+
   return (
     <Tabs value={state.tab} onValueChange={handleTabChange} className="gap-0">
       <TabsList className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0">
