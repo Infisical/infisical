@@ -2663,7 +2663,8 @@ export const CertificateAuthorities = {
         "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
       hsmConnectorId:
         "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
-      hsmKeyLabel: "The label of the CA signing key on the HSM. Set automatically for HSM-backed CAs.",
+      hsmKeyLabel:
+        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a unique, server-generated per-CA suffix (ca-<uuid>).",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:

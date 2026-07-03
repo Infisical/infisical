@@ -369,8 +369,18 @@ export const internalCertificateAuthorityServiceFactory = ({
         );
       }
 
-      // Kept outside the transaction below (network round-trip); an aborted tx orphans a harmless
-      // unreferenced HSM key rather than holding a DB connection open across the call.
+      // A duplicate name only fails the (name, projectId) unique constraint after the key is
+      // generated, and an HSM key cannot be auto-removed, so reject a taken name before keygen to
+      // avoid leaving an orphaned key on the HSM.
+      if (name) {
+        const existingCa = await certificateAuthorityDAL.findOne({ projectId, name });
+        if (existingCa) {
+          throw new BadRequestError({
+            message: `A certificate authority named "${name}" already exists in this project.`
+          });
+        }
+      }
+
       const generated = await hsmConnectorService.generateKeyPair({
         connectorId: dto.hsmConnectorId,
         projectId,

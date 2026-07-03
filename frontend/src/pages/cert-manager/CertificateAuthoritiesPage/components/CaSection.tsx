@@ -19,7 +19,9 @@ import {
   ProjectPermissionSub,
   useProject
 } from "@app/context";
-import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteCa, useGetCa, useUpdateCa } from "@app/hooks/api";
+import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import { CertKeySource } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
@@ -40,6 +42,18 @@ export const CaSection = () => {
     "deleteCa",
     "caStatus" // enable / disable
   ] as const);
+
+  const deleteCaId = (popUp?.deleteCa?.data as { caId?: string })?.caId;
+  const { data: caPendingDeleteData } = useGetCa({
+    caId: deleteCaId ?? "",
+    type: CaType.INTERNAL,
+    options: { enabled: popUp.deleteCa.isOpen && Boolean(deleteCaId) }
+  });
+  const caPendingDelete = caPendingDeleteData as TInternalCertificateAuthority | undefined;
+  const pendingDeleteHsmKeyLabel =
+    caPendingDelete?.configuration?.keySource === CertKeySource.Hsm
+      ? caPendingDelete?.configuration?.hsmKeyLabel
+      : undefined;
 
   const onRemoveCaSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
@@ -107,7 +121,11 @@ export const CaSection = () => {
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         }?`}
-        subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
+        subTitle={`This action will delete other CAs and certificates below it in your CA hierarchy.${
+          pendingDeleteHsmKeyLabel
+            ? ` This CA's key on the HSM (label: ${pendingDeleteHsmKeyLabel}) is not removed automatically and will remain as an orphaned key.`
+            : ""
+        }`}
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
