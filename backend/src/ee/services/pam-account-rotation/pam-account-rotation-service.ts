@@ -334,18 +334,35 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     });
 
     let rotationAccountName: string | null = null;
+    let rotationAccountId: string | null = account.rotationAccountId ?? null;
     if (account.rotationAccountId === account.id) {
+      // Self-rotation: the rotation account is this account, which the caller already reads.
       rotationAccountName = account.name;
     } else if (account.rotationAccountId) {
       const rotator = await pamAccountDAL.findById(account.rotationAccountId);
-      rotationAccountName = rotator?.name ?? null;
+      const canReadRotator =
+        !!rotator &&
+        (await checkAccount(
+          rotator.id,
+          rotator.folderId,
+          projectId,
+          ResourcePermissionPamResourceActions.ReadAccounts,
+          ctx
+        )
+          .then(() => true)
+          .catch(() => false));
+      if (rotator && canReadRotator) {
+        rotationAccountName = rotator.name;
+      } else {
+        rotationAccountId = null;
+      }
     }
 
     return {
       enabled: settings?.rotation?.enabled ?? false,
       intervalSeconds: settings?.rotation?.intervalSeconds ?? null,
       passwordRequirements: settings?.passwordRequirements ?? null,
-      rotationAccountId: account.rotationAccountId ?? null,
+      rotationAccountId,
       rotationAccountName,
       lastRotatedAt: account.lastRotatedAt ?? null,
       isReady: readiness.ready
