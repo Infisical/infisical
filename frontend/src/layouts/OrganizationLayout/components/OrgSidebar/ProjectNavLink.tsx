@@ -2,7 +2,13 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Badge, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@app/components/v3";
+import {
+  Badge,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 
 import type { NavItem, Submenu } from "./types";
@@ -20,6 +26,7 @@ export const ProjectNavLink = ({
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { pathname, search: locationSearch } = useLocation();
+  const { setOpenMobile } = useSidebar();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
   const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
@@ -75,6 +82,7 @@ export const ProjectNavLink = ({
           params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           search={item.search as any}
+          onClick={() => setOpenMobile(false)}
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>

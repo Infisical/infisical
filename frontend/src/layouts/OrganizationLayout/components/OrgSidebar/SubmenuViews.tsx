@@ -7,7 +7,8 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  useSidebar
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 
@@ -27,6 +28,7 @@ export const ProjectSubmenuView = ({
   const { currentProject } = useProject();
   const { pathname } = useLocation();
   const searchParams = useSearch({ strict: false }) as Record<string, string>;
+  const { setOpenMobile } = useSidebar();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
   const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
@@ -73,6 +75,7 @@ export const ProjectSubmenuView = ({
                   params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   search={{ selectedTab: sub.tab } as any}
+                  onClick={() => setOpenMobile(false)}
                 >
                   <sub.icon className="size-4" />
                   <span>{sub.label}</span>
