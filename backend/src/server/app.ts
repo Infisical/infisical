@@ -105,6 +105,22 @@ export const main = async ({
     }
   });
 
+  // Some clients (browsers, some SDKs) send POST requests with no body and no Content-Type header.
+  // Fastify's default parser lookup rejects these with FST_ERR_CTP_INVALID_MEDIA_TYPE (415), which
+  // then surfaces as a 500 through the error handler. This breaks endpoints that intentionally take
+  // no body — e.g. POST /me/webauthn/register, POST /auth/token, POST /auth/logout.
+  // A wildcard parser gracefully accepts an empty payload and leaves any non-empty body to the
+  // route-specific validator, which will reject it if the endpoint actually expected a body.
+  server.addContentTypeParser("*", { parseAs: "string" }, (req, body: string | Buffer, done) => {
+    const strBody = body instanceof Buffer ? body.toString() : body;
+    if (!strBody) {
+      done(null, undefined);
+      return;
+    }
+    const contentType = req.headers["content-type"] ?? "unknown";
+    done(new Error(`Unsupported Media Type: ${contentType}`), undefined);
+  });
+
   try {
     await server.register<FastifyCookieOptions>(cookie, {
       secret: appCfg.COOKIE_SECRET_SIGN_KEY
