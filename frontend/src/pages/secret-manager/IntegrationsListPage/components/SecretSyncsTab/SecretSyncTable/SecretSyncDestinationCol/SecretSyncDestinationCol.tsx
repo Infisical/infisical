@@ -23,6 +23,7 @@ import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { GitLabSyncDestinationCol } from "./GitLabSyncDestinationCol";
+import { HasuraCloudSyncDestinationCol } from "./HasuraCloudSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
@@ -102,6 +103,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <ZabbixSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Railway:
       return <RailwaySyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.HasuraCloud:
+      return <HasuraCloudSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Checkly:
       return <ChecklySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Supabase:

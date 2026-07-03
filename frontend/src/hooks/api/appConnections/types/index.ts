@@ -35,6 +35,7 @@ import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { TGitLabConnection } from "./gitlab-connection";
 import { TGoDaddyConnection } from "./godaddy-connection";
+import { THasuraCloudConnection } from "./hasura-cloud-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -105,6 +106,7 @@ export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
 export * from "./gitlab-connection";
+export * from "./hasura-cloud-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
@@ -215,6 +217,7 @@ export type TAppConnection =
   | TF5BigIpConnection
   | TConvexConnection
   | TTriggerDevConnection
+  | THasuraCloudConnection
   | TQoveryConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;

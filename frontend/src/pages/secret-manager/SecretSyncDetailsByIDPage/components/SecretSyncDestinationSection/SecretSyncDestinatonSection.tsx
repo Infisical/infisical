@@ -27,6 +27,7 @@ import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
+import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
@@ -137,6 +138,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Railway:
       DestinationComponents = <RailwaySyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.HasuraCloud:
+      DestinationComponents = <HasuraCloudSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Checkly:
       DestinationComponents = <ChecklySyncDestinationSection secretSync={secretSync} />;

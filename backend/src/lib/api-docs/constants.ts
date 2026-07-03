@@ -2926,6 +2926,9 @@ export const AppConnections = {
       accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
       instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
     },
+    HASURA_CLOUD: {
+      accessToken: "The Hasura Cloud access token used to authenticate with the Hasura Cloud GraphQL API."
+    },
     OVH: {
       privateKey:
         "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
@@ -3233,6 +3236,10 @@ export const SecretSyncs = {
       environmentName: "The Railway environment to sync secrets to.",
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
+    },
+    HASURA_CLOUD: {
+      projectId: "The ID of the Hasura Cloud project to sync secrets to.",
+      projectName: "The name of the Hasura Cloud project to sync secrets to."
     },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."
