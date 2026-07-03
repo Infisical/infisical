@@ -30,6 +30,31 @@ import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/
 const PROJECT_INSERT_CHUNK = 500;
 const TEMPLATE_INSERT_CHUNK = 1000;
 
+type TMembershipActor = {
+  actorUserId?: string | null;
+  actorIdentityId?: string | null;
+  actorGroupId?: string | null;
+};
+
+const membershipActorKey = (m: TMembershipActor) => {
+  if (m.actorUserId) return `user:${m.actorUserId}`;
+  if (m.actorIdentityId) return `identity:${m.actorIdentityId}`;
+  return `group:${m.actorGroupId}`;
+};
+
+const membershipActorColumns = (key: string) => ({
+  actorUserId: key.startsWith("user:") ? key.slice("user:".length) : null,
+  actorIdentityId: key.startsWith("identity:") ? key.slice("identity:".length) : null,
+  actorGroupId: key.startsWith("group:") ? key.slice("group:".length) : null
+});
+
+const whereAnyActor = (qb: Knex.QueryBuilder, prefix = "") => {
+  void qb
+    .whereNotNull(`${prefix}actorUserId`)
+    .orWhereNotNull(`${prefix}actorIdentityId`)
+    .orWhereNotNull(`${prefix}actorGroupId`);
+};
+
 const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
   const allOrgs = (await knex(TableName.Organization).select("id")) as Array<{ id: string }>;
   const orgToPamProject = new Map<string, string>();
@@ -318,7 +343,7 @@ export async function up(knex: Knex): Promise<void> {
       }
     }
 
-    // Migrate permissions
+    // Migrate permissions for users, machine identities, and groups
     const orgAdmins = new Set(
       (
         await knex(TableName.Membership)
@@ -327,43 +352,45 @@ export async function up(knex: Knex): Promise<void> {
           .where(`${TableName.Membership}.scopeOrgId`, orgId)
           .where(`${TableName.Membership}.isActive`, true)
           .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
-          .whereNotNull(`${TableName.Membership}.actorUserId`)
-          .select(`${TableName.Membership}.actorUserId as userId`)
-      ).map((r: { userId: string }) => r.userId)
+          .where((qb) => whereAnyActor(qb, `${TableName.Membership}.`))
+          .select(
+            `${TableName.Membership}.actorUserId`,
+            `${TableName.Membership}.actorIdentityId`,
+            `${TableName.Membership}.actorGroupId`
+          )
+      ).map((m: TMembershipActor) => membershipActorKey(m))
     );
 
     const pamProjectAdmins = new Set<string>();
-    const allPamUsers = new Map<string, string[]>();
+    const allPamActors = new Set<string>();
 
     for (const project of oldPamProjects) {
       const projectMembers = await knex(TableName.Membership)
         .where({ scope: AccessScope.Project, scopeProjectId: project.id, isActive: true })
-        .whereNotNull("actorUserId")
-        .select("id", "actorUserId as userId");
+        .where((qb) => whereAnyActor(qb))
+        .select("id", "actorUserId", "actorIdentityId", "actorGroupId");
 
       for (const member of projectMembers) {
-        if (!allPamUsers.has(member.userId)) {
-          allPamUsers.set(member.userId, []);
-        }
-        allPamUsers.get(member.userId)!.push(project.id);
+        const actor = membershipActorKey(member);
+        allPamActors.add(actor);
 
         const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
 
         if (roles.some((r: { role: string }) => r.role === ProjectMembershipRole.Admin)) {
-          pamProjectAdmins.add(member.userId);
+          pamProjectAdmins.add(actor);
         }
       }
     }
 
-    for (const [userId] of allPamUsers) {
-      const isProductAdmin = orgAdmins.has(userId) && pamProjectAdmins.has(userId);
+    for (const actor of allPamActors) {
+      const isProductAdmin = orgAdmins.has(actor) && pamProjectAdmins.has(actor);
 
       const [membership] = await knex(TableName.Membership)
         .insert({
           scope: AccessScope.Project,
           scopeOrgId: orgId,
           scopeProjectId: newProjectId,
-          actorUserId: userId,
+          ...membershipActorColumns(actor),
           isActive: true
         })
         .returning("id");
@@ -379,8 +406,8 @@ export async function up(knex: Knex): Promise<void> {
 
       const projectMembers = await knex(TableName.Membership)
         .where({ scope: AccessScope.Project, scopeProjectId: project.id, isActive: true })
-        .whereNotNull("actorUserId")
-        .select("id", "actorUserId as userId");
+        .where((qb) => whereAnyActor(qb))
+        .select("id", "actorUserId", "actorIdentityId", "actorGroupId");
 
       for (const member of projectMembers) {
         const roles = await knex(TableName.MembershipRole).where("membershipId", member.id).select("role");
@@ -395,7 +422,7 @@ export async function up(knex: Knex): Promise<void> {
             scopeProjectId: newProjectId,
             scopeResourceType: ResourceType.PamFolder,
             scopeResourceId: folderId,
-            actorUserId: member.userId,
+            ...membershipActorColumns(membershipActorKey(member)),
             isActive: true
           })
           .returning("id");
