@@ -276,29 +276,27 @@ export async function up(knex: Knex): Promise<void> {
           `${TableName.PamResource}.gatewayPoolId`
         );
 
+      // Any failure here throws and rolls back the whole migration rather than
+      // silently dropping the account via the null-folder assertion below
       for (const account of resourceAccounts) {
-        try {
-          const templateId = templateMap[account.resourceType];
-          if (templateId) {
-            await knex(TableName.PamAccount)
-              .where("id", account.accountId)
-              .update({
-                projectId: newProjectId,
-                folderId,
-                templateId,
-                encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-                encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
-                encryptedInternalMetadata: reEncrypt(oldProjectCipher, account.encryptedResourceMetadata),
-                gatewayId: account.gatewayId,
-                gatewayPoolId: account.gatewayPoolId
-              });
-          }
-        } catch (err) {
-          logger.warn(
-            { err, accountId: account.accountId },
-            `PAM migration: failed to migrate resource account, skipping [accountId=${account.accountId}]`
+        const templateId = templateMap[account.resourceType];
+        if (!templateId) {
+          throw new Error(
+            `PAM migration: no template for resource account [accountId=${account.accountId}] [type=${account.resourceType}]`
           );
         }
+        await knex(TableName.PamAccount)
+          .where("id", account.accountId)
+          .update({
+            projectId: newProjectId,
+            folderId,
+            templateId,
+            encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
+            encryptedConnectionDetails: reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+            encryptedInternalMetadata: reEncrypt(oldProjectCipher, account.encryptedResourceMetadata),
+            gatewayId: account.gatewayId,
+            gatewayPoolId: account.gatewayPoolId
+          });
       }
 
       const domainAccounts = await knex(TableName.PamAccount)
@@ -314,32 +312,28 @@ export async function up(knex: Knex): Promise<void> {
         );
 
       for (const account of domainAccounts) {
-        try {
-          // active-directory domains became the windows-ad account type
-          const isActiveDirectory = account.domainType === "active-directory";
-          const templateType = isActiveDirectory ? "windows-ad" : account.domainType;
-          const templateId = templateMap[templateType];
-          if (templateId) {
-            await knex(TableName.PamAccount)
-              .where("id", account.accountId)
-              .update({
-                projectId: newProjectId,
-                folderId,
-                templateId,
-                encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
-                encryptedConnectionDetails: isActiveDirectory
-                  ? reEncryptAdConnectionDetails(oldProjectCipher, account.encryptedConnectionDetails)
-                  : reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
-                gatewayId: account.gatewayId,
-                gatewayPoolId: account.gatewayPoolId
-              });
-          }
-        } catch (err) {
-          logger.warn(
-            { err, accountId: account.accountId },
-            `PAM migration: failed to migrate domain account, skipping [accountId=${account.accountId}]`
+        // active-directory domains became the windows-ad account type
+        const isActiveDirectory = account.domainType === "active-directory";
+        const templateType = isActiveDirectory ? "windows-ad" : account.domainType;
+        const templateId = templateMap[templateType];
+        if (!templateId) {
+          throw new Error(
+            `PAM migration: no template for domain account [accountId=${account.accountId}] [type=${account.domainType}]`
           );
         }
+        await knex(TableName.PamAccount)
+          .where("id", account.accountId)
+          .update({
+            projectId: newProjectId,
+            folderId,
+            templateId,
+            encryptedCredentials: reEncrypt(oldProjectCipher, account.encryptedCredentials),
+            encryptedConnectionDetails: isActiveDirectory
+              ? reEncryptAdConnectionDetails(oldProjectCipher, account.encryptedConnectionDetails)
+              : reEncrypt(oldProjectCipher, account.encryptedConnectionDetails),
+            gatewayId: account.gatewayId,
+            gatewayPoolId: account.gatewayPoolId
+          });
       }
     }
 
@@ -435,12 +429,20 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  // Clean up orphaned accounts and deduplicate before adding constraints
-  await knex(TableName.PamAccount)
+  // Every account must have been migrated above; fail loudly instead of deleting strays
+  const orphanedAccounts = (await knex(TableName.PamAccount)
     .where((qb) => {
       void qb.whereNull("folderId").orWhereNull("templateId");
     })
-    .delete();
+    .select("id")) as Array<{ id: string }>;
+
+  if (orphanedAccounts.length > 0) {
+    throw new Error(
+      `PAM migration: ${orphanedAccounts.length} account(s) were not migrated [ids=${orphanedAccounts
+        .map((a) => a.id)
+        .join(", ")}]`
+    );
+  }
 
   await knex.raw(`
     UPDATE ${TableName.PamAccount} a
