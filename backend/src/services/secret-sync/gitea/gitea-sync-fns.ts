@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { request } from "@app/lib/config/request";
-import { getGiteaAPIBaseUrl, makePaginatedGiteaRequest } from "@app/services/app-connection/gitea";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { getGiteaAPIBaseUrl, getValidAccessToken, makePaginatedGiteaRequest } from "@app/services/app-connection/gitea";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -9,8 +11,20 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { GiteaSyncScope } from "./gitea-sync-enums";
 import { TGiteaSecret, TGiteaSyncWithCredentials } from "./gitea-sync-types";
 
-const getAllSecrets = async (secretSync: TGiteaSyncWithCredentials) => {
+type TGiteaSyncFactoryDeps = {
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+const getAllSecrets = async ({
+  secretSync,
+  accessToken
+}: {
+  secretSync: TGiteaSyncWithCredentials;
+  accessToken: string;
+}) => {
   const { connection, destinationConfig } = secretSync;
+  const baseUrl = await getGiteaAPIBaseUrl(connection);
   let path: string;
 
   switch (destinationConfig.scope) {
@@ -23,14 +37,23 @@ const getAllSecrets = async (secretSync: TGiteaSyncWithCredentials) => {
       break;
   }
 
-  return makePaginatedGiteaRequest<TGiteaSecret>(connection, path);
+  return makePaginatedGiteaRequest<TGiteaSecret>({ url: `${baseUrl}${path}`, accessToken });
 };
 
-const putSecret = async (secretSync: TGiteaSyncWithCredentials, name: string, value: string) => {
+const putSecret = async ({
+  name,
+  value,
+  accessToken,
+  secretSync
+}: {
+  name: string;
+  value: string;
+  accessToken: string;
+  secretSync: TGiteaSyncWithCredentials;
+}) => {
   const { connection, destinationConfig } = secretSync;
-  const { personalAccessToken } = connection.credentials;
-  const baseUrl = await getGiteaAPIBaseUrl(connection);
 
+  const baseUrl = await getGiteaAPIBaseUrl(connection);
   let path: string;
 
   switch (destinationConfig.scope) {
@@ -50,18 +73,25 @@ const putSecret = async (secretSync: TGiteaSyncWithCredentials, name: string, va
     },
     {
       headers: {
-        Authorization: `Bearer ${personalAccessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
       }
     }
   );
 };
 
-const deleteSecret = async (secretSync: TGiteaSyncWithCredentials, name: string) => {
+const deleteSecret = async ({
+  name,
+  accessToken,
+  secretSync
+}: {
+  name: string;
+  accessToken: string;
+  secretSync: TGiteaSyncWithCredentials;
+}) => {
   const { connection, destinationConfig } = secretSync;
-  const { personalAccessToken } = connection.credentials;
-  const baseUrl = await getGiteaAPIBaseUrl(connection);
 
+  const baseUrl = await getGiteaAPIBaseUrl(connection);
   let path: string;
 
   switch (destinationConfig.scope) {
@@ -76,24 +106,33 @@ const deleteSecret = async (secretSync: TGiteaSyncWithCredentials, name: string)
 
   await request.delete(`${baseUrl}${path}`, {
     headers: {
-      Authorization: `Bearer ${personalAccessToken}`,
+      Authorization: `Bearer ${accessToken}`,
       Accept: "application/json"
     }
   });
 };
 
 export const GiteaSyncFns = {
-  syncSecrets: async (secretSync: TGiteaSyncWithCredentials, ogSecretMap: TSecretMap) => {
+  syncSecrets: async (
+    secretSync: TGiteaSyncWithCredentials,
+    ogSecretMap: TSecretMap,
+    { appConnectionDAL, kmsService }: TGiteaSyncFactoryDeps
+  ) => {
+    const accessToken = await getValidAccessToken({
+      appConnection: secretSync.connection,
+      appConnectionDAL,
+      kmsService
+    });
+
+    const currentSecrets = await getAllSecrets({ secretSync, accessToken });
+
     const secretMap = Object.fromEntries(
       Object.entries(ogSecretMap).map(([name, value]) => [name.toUpperCase(), value])
     );
 
-    const { environment } = secretSync;
-    const currentSecrets = await getAllSecrets(secretSync);
-
     for (const name of Object.keys(secretMap)) {
       try {
-        await putSecret(secretSync, name, secretMap[name].value);
+        await putSecret({ name, value: secretMap[name].value, accessToken, secretSync });
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -109,11 +148,11 @@ export const GiteaSyncFns = {
     for (const secret of currentSecrets) {
       try {
         const shouldDelete =
-          matchesSchema(secret.name, environment?.slug || "", secretSync.syncOptions.keySchema) &&
+          matchesSchema(secret.name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
           !(secret.name in secretMap);
 
         if (shouldDelete) {
-          await deleteSecret(secretSync, secret.name);
+          await deleteSecret({ name: secret.name, accessToken, secretSync });
         }
       } catch (error) {
         throw new SecretSyncError({
@@ -124,18 +163,29 @@ export const GiteaSyncFns = {
     }
   },
 
-  removeSecrets: async (secretSync: TGiteaSyncWithCredentials, ogSecretMap: TSecretMap) => {
+  removeSecrets: async (
+    secretSync: TGiteaSyncWithCredentials,
+    ogSecretMap: TSecretMap,
+    { appConnectionDAL, kmsService }: TGiteaSyncFactoryDeps
+  ) => {
+    const accessToken = await getValidAccessToken({
+      appConnection: secretSync.connection,
+      appConnectionDAL,
+      kmsService
+    });
+
+    const currentSecrets = await getAllSecrets({ secretSync, accessToken });
+
     const secretMap = Object.fromEntries(
       Object.entries(ogSecretMap).map(([name, value]) => [name.toUpperCase(), value])
     );
 
-    const currentSecrets = await getAllSecrets(secretSync);
     const secretsToDelete = currentSecrets.map((secret) => secret.name).filter((name) => name in secretMap);
 
     await Promise.all(
       secretsToDelete.map(async (name) => {
         try {
-          await deleteSecret(secretSync, name);
+          await deleteSecret({ name, accessToken, secretSync });
         } catch (error) {
           throw new SecretSyncError({
             error,

@@ -436,7 +436,7 @@ export const SecretSyncFns = {
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Gitea:
-        return GiteaSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return GiteaSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Qovery:
         return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
@@ -756,7 +756,7 @@ export const SecretSyncFns = {
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Gitea:
-        return GiteaSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return GiteaSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Qovery:
         return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:

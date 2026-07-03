@@ -463,6 +463,10 @@ const envSchema = z
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
+    // gitea oauth
+    INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
     // PIT
     PIT_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("100")),
     PIT_TREE_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("200")),

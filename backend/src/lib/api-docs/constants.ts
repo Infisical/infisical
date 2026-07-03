@@ -2951,8 +2951,9 @@ export const AppConnections = {
       password: "The password used to authenticate with Venafi TPP."
     },
     GITEA: {
+      instanceUrl: "The URL of the Gitea instance to connect to.",
       personalAccessToken: "The Personal Access Token used to authenticate with Gitea.",
-      instanceUrl: "The URL of the Gitea instance to connect to."
+      code: "The OAuth code to use to connect with Gitea."
     }
   }
 };

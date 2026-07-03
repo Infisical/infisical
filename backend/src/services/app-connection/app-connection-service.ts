@@ -1371,6 +1371,6 @@ export const appConnectionServiceFactory = ({
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
     snowflake: snowflakeConnectionService(connectAppConnectionById),
-    gitea: giteaConnectionService(connectAppConnectionById)
+    gitea: giteaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };
