@@ -13,3 +13,9 @@ export type TGiteaSyncListItem = z.infer<typeof GiteaSyncListItemSchema>;
 export type TGiteaSyncWithCredentials = TGiteaSync & {
   connection: TGiteaConnection;
 };
+
+export type TGiteaSecret = {
+  name: string;
+  description: string;
+  created_at: string;
+};

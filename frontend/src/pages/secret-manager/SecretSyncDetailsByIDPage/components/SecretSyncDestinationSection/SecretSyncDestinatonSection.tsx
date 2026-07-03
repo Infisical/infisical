@@ -47,6 +47,7 @@ import { TriggerDevSyncDestinationSection } from "./TriggerDevSyncDestinationSec
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
+import { GiteaSyncDestinationSection } from "./GiteaSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -191,6 +192,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.TriggerDev:
       DestinationComponents = <TriggerDevSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Gitea:
+      DestinationComponents = <GiteaSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

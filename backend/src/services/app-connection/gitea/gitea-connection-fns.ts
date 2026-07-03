@@ -1,3 +1,5 @@
+import { AxiosResponse } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -36,20 +38,20 @@ export const getGiteaConnectionListItem = () => {
   };
 };
 
-export const getGiteaInstanceUrl = async (config: Pick<TGiteaConnectionConfig | TGiteaConnection, "credentials">) => {
+export const getGiteaAPIBaseUrl = async (config: Pick<TGiteaConnectionConfig | TGiteaConnection, "credentials">) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
 
   await blockLocalAndPrivateIpAddresses(instanceUrl);
 
-  return instanceUrl;
+  return `${instanceUrl}/api/v1`;
 };
 
 export const validateGiteaConnectionCredentials = async (config: TGiteaConnectionConfig) => {
-  const instanceUrl = await getGiteaInstanceUrl(config);
+  const baseUrl = await getGiteaAPIBaseUrl(config);
   const { personalAccessToken } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/api/v1/user`, {
+    await request.get(`${baseUrl}/user`, {
       headers: {
         Authorization: `Bearer ${personalAccessToken}`,
         Accept: "application/json"
@@ -64,16 +66,71 @@ export const validateGiteaConnectionCredentials = async (config: TGiteaConnectio
   return config.credentials;
 };
 
-export const listGiteaOrganizations = async (appConnection: TGiteaConnection): Promise<TGiteaOrganization[]> => {
-  const instanceUrl = await getGiteaInstanceUrl(appConnection);
-  const { personalAccessToken } = appConnection.credentials;
+export const makePaginatedGiteaRequest = async <T>(appConnection: TGiteaConnection, path: string): Promise<T[]> => {
+  const results: T[] = [];
+  const itemsPerPage = 50;
+  const maxIterations = 1000;
 
-  const { data } = await request.get<TGiteaListOrganizationsResponse>(`${instanceUrl}/api/v1/user/orgs`, {
+  const { credentials } = appConnection;
+
+  const baseUrl = await getGiteaAPIBaseUrl(appConnection);
+  const initialUrlObj = new URL(`${baseUrl}${path}`);
+  initialUrlObj.searchParams.set("limit", itemsPerPage.toString());
+
+  const firstResponse = await request.get<T[]>(initialUrlObj.toString(), {
     headers: {
-      Authorization: `Bearer ${personalAccessToken}`,
+      Authorization: `Bearer ${credentials.personalAccessToken}`,
       Accept: "application/json"
     }
   });
+
+  const firstPageItems = firstResponse.data as unknown as T[];
+  results.push(...firstPageItems);
+
+  const totalItems = Number(String(firstResponse.headers["x-total-count"])) || 0;
+
+  // More than one page of data available, so concurrently fetch the remaining pages
+  if (totalItems > firstPageItems.length) {
+    const pageRequests: Promise<AxiosResponse<T[]>>[] = [];
+    const totalPages = Math.ceil((totalItems - firstPageItems.length) / itemsPerPage);
+
+    for (let pageNum = 2; pageNum <= totalPages && pageNum - 1 < maxIterations; pageNum += 1) {
+      const pageUrlObj = new URL(initialUrlObj.toString());
+      pageUrlObj.searchParams.set("page", pageNum.toString());
+
+      pageRequests.push(
+        request.get<T[]>(pageUrlObj.toString(), {
+          headers: {
+            Authorization: `Bearer ${credentials.personalAccessToken}`,
+            Accept: "application/json"
+          }
+        })
+      );
+    }
+
+    const responses = await Promise.all(pageRequests);
+
+    for (const response of responses) {
+      const items = response.data as unknown as T[];
+      results.push(...items);
+    }
+  }
+
+  return results;
+};
+
+export const listGiteaOrganizations = async (appConnection: TGiteaConnection): Promise<TGiteaOrganization[]> => {
+  // const baseUrl = await getGiteaAPIBaseUrl(appConnection);
+  // const { personalAccessToken } = appConnection.credentials;
+
+  const data = await makePaginatedGiteaRequest<TGiteaListOrganizationsResponse[number]>(appConnection, "/user/orgs");
+
+  // const { data } = await request.get<TGiteaListOrganizationsResponse>(`${baseUrl}/user/orgs`, {
+  //   headers: {
+  //     Authorization: `Bearer ${personalAccessToken}`,
+  //     Accept: "application/json"
+  //   }
+  // });
 
   return data.map((org) => ({
     id: org.id.toString(),
@@ -87,10 +144,10 @@ export const listGiteaRepositories = async (
   search?: string,
   limit?: number
 ): Promise<TGiteaRepository[]> => {
-  const instanceUrl = await getGiteaInstanceUrl(appConnection);
+  const baseUrl = await getGiteaAPIBaseUrl(appConnection);
   const { personalAccessToken } = appConnection.credentials;
 
-  const { data } = await request.get<TGiteaListRepositoriesResponse>(`${instanceUrl}/api/v1/repos/search`, {
+  const { data } = await request.get<TGiteaListRepositoriesResponse>(`${baseUrl}/repos/search`, {
     headers: {
       Authorization: `Bearer ${personalAccessToken}`,
       Accept: "application/json"

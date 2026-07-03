@@ -91,6 +91,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Ona:
     case SecretSync.TravisCI:
     case SecretSync.Snowflake:
+    case SecretSync.Gitea:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
