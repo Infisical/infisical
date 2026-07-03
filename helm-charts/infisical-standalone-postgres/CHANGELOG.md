@@ -1,3 +1,11 @@
+## 1.10.0 (July 3, 2026)
+Changes:
+* Added configurable `securityContext` for the Infisical app pod and container via `infisical.podSecurityContext` and `infisical.containerSecurityContext`. This allows the chart to run under the Kubernetes Pod Security "restricted" standard without external mutation.
+* The same `infisical.podSecurityContext` / `infisical.containerSecurityContext` values are also applied to the auto-bootstrap Job (`infisical.autoBootstrap.enabled`) and its init container, so a full install (including auto-bootstrap) is admitted in a `restricted`-enforced namespace.
+* Both keys ship with hardened, secure-by-default values that match the image's non-root `USER 1001`: pod defaults set `runAsNonRoot: true`, `runAsUser: 1001`, `fsGroup: 1001`, `seccompProfile.type: RuntimeDefault`; container defaults set `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`, `runAsNonRoot: true`, `runAsUser: 1001`.
+* `containerSecurityContext.readOnlyRootFilesystem` is kept `false` by default because the Node.js app writes temporary files. To enable it, mount `emptyDir` volumes for the app's writable paths (e.g. `/tmp`) via `infisical.extraVolumes` / `infisical.extraVolumeMounts`.
+* This change is backwards compatible, but the pod-spec change triggers a one-time rollout on upgrade. Set either key to `null` to render a pod spec without that security context block.
+
 ## 1.9.0 (May 28, 2026)
 Changes:
 * Added support for sidecar containers via `infisical.extraContainers`, enabling use cases like HSM PKCS#11 client sidecars (e.g., Entrust nShield).

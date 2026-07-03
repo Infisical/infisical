@@ -18,6 +18,7 @@ A helm chart to deploy Infisical
 |-----|------|---------|-------------|
 | fullnameOverride | string | `""` | Overrides the full name of the release, affecting resource names |
 | infisical.affinity | object | `{}` | Node affinity settings for pod placement |
+| infisical.containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false,"runAsNonRoot":true,"runAsUser":1001}` | Container-level security context applied to the Infisical container. Secure by default. `readOnlyRootFilesystem` is kept `false` because the Node.js app writes temporary files; to enable it, mount `emptyDir` volumes for the app's writable paths via `infisical.extraVolumes` / `infisical.extraVolumeMounts`. Set to `null` to omit the block. |
 | infisical.databaseSchemaMigrationJob.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not present on the node |
 | infisical.databaseSchemaMigrationJob.image.repository | string | `"ghcr.io/groundnuty/k8s-wait-for"` | Image repository for migration wait job |
 | infisical.databaseSchemaMigrationJob.image.tag | string | `"no-root-v2.0"` | Image tag version |
@@ -36,6 +37,7 @@ A helm chart to deploy Infisical
 | infisical.kubeSecretRef | string | `"infisical-secrets"` | Kubernetes Secret reference containing Infisical root credentials |
 | infisical.name | string | `"infisical"` |  |
 | infisical.podAnnotations | object | `{}` | Custom annotations for Infisical pods |
+| infisical.podSecurityContext | object | `{"fsGroup":1001,"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}}` | Pod-level security context applied to the Infisical pod. Secure by default; matches the image's non-root `USER 1001`. Set to `null` to omit the block. |
 | infisical.replicaCount | int | `2` | Number of pod replicas for high availability |
 | infisical.resources.limits.memory | string | `"600Mi"` | Memory limit for Infisical container |
 | infisical.resources.requests.cpu | string | `"350m"` | CPU request for Infisical container |

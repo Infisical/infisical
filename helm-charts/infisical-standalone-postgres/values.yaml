@@ -99,6 +99,27 @@ infisical:
   # --     value: /etc/ssl/certs/ca-certificates.crt
   extraEnv: []
 
+  # -- Pod-level security context applied to the Infisical pod. Secure by default.
+  # -- The Infisical image runs as non-root UID 1001 (see Dockerfile `USER 1001`).
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    fsGroup: 1001
+    seccompProfile:
+      type: RuntimeDefault
+
+  # -- Container-level security context applied to the Infisical container. Secure by default.
+  # -- `readOnlyRootFilesystem` is kept false because the Node.js app writes temporary files.
+  # -- To enable it, mount emptyDir volumes for the app's writable paths (e.g. /tmp) via
+  # -- `infisical.extraVolumes` / `infisical.extraVolumeMounts`.
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 1001
+    capabilities:
+      drop: ["ALL"]
+
   resources:
     limits:
       # -- Memory limit for Infisical container
