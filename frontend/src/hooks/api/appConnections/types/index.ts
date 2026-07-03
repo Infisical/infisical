@@ -143,6 +143,7 @@ export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
+export * from "./gitea-connection";
 
 export type TAppConnection =
   | TAwsConnection

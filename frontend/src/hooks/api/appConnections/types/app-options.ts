@@ -304,6 +304,7 @@ export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
 
 export type TGiteaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Gitea;
+  oauthClientId?: string;
 };
 
 export type TAppConnectionOption =

@@ -41,25 +41,6 @@ type TGiteaListRepositoriesResponse = {
   }[];
 };
 
-export const getGiteaConnectionListItem = () => {
-  return {
-    name: "Gitea" as const,
-    app: AppConnection.Gitea as const,
-    methods: Object.values(GiteaConnectionMethod) as [GiteaConnectionMethod.PersonalAccessToken]
-  };
-};
-
-export const getGiteaInstanceUrl = async (instanceUrl: string) => {
-  const normalizaedInstanceUrl = removeTrailingSlash(instanceUrl);
-  await blockLocalAndPrivateIpAddresses(normalizaedInstanceUrl);
-  return normalizaedInstanceUrl;
-};
-
-export const getGiteaAPIBaseUrl = async (config: Pick<TGiteaConnectionConfig | TGiteaConnection, "credentials">) => {
-  const instanceUrl = await getGiteaInstanceUrl(config.credentials.instanceUrl);
-  return `${instanceUrl}/api/v1`;
-};
-
 const getOAuthConfig = () => {
   const { INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_SECRET, SITE_URL, isCloud } =
     getConfig();
@@ -80,6 +61,31 @@ const getOAuthConfig = () => {
     clientSecret: INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_SECRET,
     siteUrl: SITE_URL
   };
+};
+
+export const getGiteaConnectionListItem = () => {
+  const { clientId } = getOAuthConfig();
+
+  return {
+    name: "Gitea" as const,
+    app: AppConnection.Gitea as const,
+    methods: Object.values(GiteaConnectionMethod) as [
+      GiteaConnectionMethod.OAuth,
+      GiteaConnectionMethod.PersonalAccessToken
+    ],
+    oauthClientId: clientId
+  };
+};
+
+export const getGiteaInstanceUrl = async (instanceUrl: string) => {
+  const normalizaedInstanceUrl = removeTrailingSlash(instanceUrl);
+  await blockLocalAndPrivateIpAddresses(normalizaedInstanceUrl);
+  return normalizaedInstanceUrl;
+};
+
+export const getGiteaAPIBaseUrl = async (config: Pick<TGiteaConnectionConfig | TGiteaConnection, "credentials">) => {
+  const instanceUrl = await getGiteaInstanceUrl(config.credentials.instanceUrl);
+  return `${instanceUrl}/api/v1`;
 };
 
 const exchangeGiteaOAuthCode = async (code: string, instanceUrl: string): Promise<GiteaOAuthTokenResponse> => {

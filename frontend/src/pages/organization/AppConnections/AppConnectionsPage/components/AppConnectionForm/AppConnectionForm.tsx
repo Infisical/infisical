@@ -332,7 +332,7 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Gitea:
-        return <GiteaConnectionForm onSubmit={onSubmit} />;
+        return <GiteaConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -589,7 +589,13 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Gitea:
-        return <GiteaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+        return (
+          <GiteaConnectionForm
+            onSubmit={onSubmit}
+            appConnection={appConnection}
+            projectId={appConnection.projectId}
+          />
+        );
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

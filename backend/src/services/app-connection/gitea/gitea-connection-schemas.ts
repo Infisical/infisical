@@ -104,6 +104,7 @@ export const GiteaConnectionListItemSchema = z
   .object({
     name: z.literal("Gitea"),
     app: z.literal(AppConnection.Gitea),
-    methods: z.nativeEnum(GiteaConnectionMethod).array()
+    methods: z.nativeEnum(GiteaConnectionMethod).array(),
+    oauthClientId: z.string().optional()
   })
   .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Gitea] }));

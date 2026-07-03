@@ -456,16 +456,16 @@ const envSchema = z
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Gitea App Connection
+    INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
     DATADOG_ENV: zpStr(z.string().optional().default("prod")),
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
-
-    // gitea oauth
-    INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
-    INF_APP_CONNECTION_GITEA_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
 
     // PIT
     PIT_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("100")),
