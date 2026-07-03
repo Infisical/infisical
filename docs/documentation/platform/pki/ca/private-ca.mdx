@@ -46,6 +46,8 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
         - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
         - Path Length: The maximum number of intermediate CAs that can be chained to this CA. A path of `-1` implies no limit; a path of `0` implies no intermediate CAs can be chained.
         - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair that the CA creates when it issues a certificate. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
+        - Key Source: Where the CA's signing key is generated and stored. **Infisical** (the default) generates and manages the key for you. **HSM** generates the key inside your own Hardware Security Module through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors), and every signing operation the CA performs runs on the HSM. See [HSM-backed Internal CAs](#hsm-backed-internal-cas) below.
+        - HSM Connector: The [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical uses to reach your HSM. Shown only when **Key Source** is **HSM**. With an HSM key source the algorithm choices stay limited to `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384`.
         - Name: A slug-friendly name for the CA.
         - Organization (O): The organization name.
         - Country (C): The country code.
@@ -252,6 +254,31 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
   </Tab>
 </Tabs>
 
+## HSM-backed Internal CAs
+
+By default, Infisical generates and manages the signing key for an Internal CA. You can instead keep the CA's signing key inside your own Hardware Security Module. When **Key Source** is set to **HSM**, Infisical generates the keypair on the HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) and performs every signing operation the CA does on the HSM. That covers the self-signed root certificate, intermediate CSRs, the certificates the CA issues, and its CRLs.
+
+Both root and intermediate CAs can be HSM-backed. HSM-backed CAs support the `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` key algorithms.
+
+<Note>
+  Set up an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) before creating an HSM-backed CA. Creating one requires the **Attach** permission on HSM Connectors in addition to permission to create Certificate Authorities.
+</Note>
+
+To create an HSM-backed CA over the API, set `keySource` to `hsm` and supply the `hsmConnectorId` in the request.
+
+```bash Request
+curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
+  --header 'Authorization: Bearer <access-token>' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+      "type": "root",
+      "commonName": "My HSM Root CA",
+      "keyAlgorithm": "ECDSA_P384",
+      "keySource": "hsm",
+      "hsmConnectorId": "<hsm-connector-id>"
+  }'
+```
+
 ## FAQ
 
 <AccordionGroup>
@@ -260,6 +287,9 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
   </Accordion>
   <Accordion title="Does Infisical support chaining an Intermediate CA to an external CA?">
     Yes. You can either manually obtain a CSR and import the signed certificate, or use an integrated external CA provider like [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi) or [Azure AD CS](/documentation/platform/pki/ca/azure-adcs#signing-internal-intermediate-cas-with-ad-cs) to automate the signing process.
+  </Accordion>
+  <Accordion title="Can the CA signing key be kept in my own HSM?">
+    Yes. Set **Key Source** to **HSM** when creating the CA and pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). The keypair is generated on your HSM and every signing operation the CA performs runs there. Both root and intermediate CAs support this. Supported algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384`. See [HSM-backed Internal CAs](#hsm-backed-internal-cas).
   </Accordion>
 </AccordionGroup>
 
@@ -280,5 +310,11 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
   </Card>
   <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
     Set up Applications to issue certificates.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="HSM Connectors" icon="shield-halved" href="/documentation/platform/pki/settings/hsm-connectors">
+    Keep the CA signing key inside your own Hardware Security Module.
   </Card>
 </CardGroup>

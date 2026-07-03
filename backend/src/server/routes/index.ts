@@ -2913,7 +2913,8 @@ export const registerRoutes = async (
     appConnectionService,
     pkiSyncDAL,
     pkiSyncQueue,
-    internalCertificateAuthorityDAL
+    internalCertificateAuthorityDAL,
+    hsmConnectorService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -2934,7 +2935,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     caSigningConfigDAL,
-    usageMeteringService
+    usageMeteringService,
+    hsmConnectorService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -2975,7 +2977,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     gatewayV2Service,
     gatewayPoolService,
-    usageMeteringService
+    usageMeteringService,
+    hsmConnectorService,
+    certificateAuthoritySecretDAL
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3037,7 +3041,8 @@ export const registerRoutes = async (
     pkiAlertV2Queue,
     pkiApplicationDAL,
     licenseService,
-    usageMeteringService
+    usageMeteringService,
+    hsmConnectorService
   });
 
   const digicertCaFns = DigiCertCertificateAuthorityFns({

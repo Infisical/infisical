@@ -26,12 +26,13 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { CaStatus } from "@app/hooks/api/ca/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListHsmConnectorLinkedResources } from "@app/hooks/api/hsmConnectors";
 
 type Props = { connectorId: string };
 
-export const HsmConnectorLinkedCertsSection = ({ connectorId }: Props) => {
+export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const { data, isPending } = useListHsmConnectorLinkedResources(connectorId, {
@@ -39,6 +40,7 @@ export const HsmConnectorLinkedCertsSection = ({ connectorId }: Props) => {
     limit: perPage
   });
   const linked = data?.certificates ?? [];
+  const linkedCas = data?.certificateAuthorities ?? [];
   const totalCount = data?.totalCount ?? 0;
   const navigate = useNavigate();
   const { currentProject } = useProject();
@@ -61,26 +63,71 @@ export const HsmConnectorLinkedCertsSection = ({ connectorId }: Props) => {
   return (
     <Card className="w-full">
       <CardHeader className="border-b">
-        <CardTitle>Linked certificates</CardTitle>
+        <CardTitle>Linked resources</CardTitle>
         <CardDescription>
-          Certificates that use this HSM Connector as their key source. Delete is blocked while any
-          of these exist. Re-issue them with a different key source or retire them first.
+          Certificates and certificate authorities that use this HSM Connector as their key source.
+          Delete is blocked while any of these exist. Re-issue or retire the certificates, and
+          delete or migrate the certificate authorities first.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isPending && <Skeleton className="h-24" />}
-        {!isPending && linked.length === 0 && (
+        {!isPending && linked.length === 0 && linkedCas.length === 0 && (
           <Empty className="border border-solid">
             <EmptyHeader>
-              <EmptyTitle>No certificates linked</EmptyTitle>
+              <EmptyTitle>No linked resources</EmptyTitle>
               <EmptyDescription>
-                No certificate currently uses this connector. It is safe to delete.
+                No certificate or certificate authority currently uses this connector. It is safe to
+                delete.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
+        {!isPending && linkedCas.length > 0 && (
+          <div className="mb-6">
+            <p className="mb-2 text-sm font-medium text-mineshaft-200">Certificate authorities</p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>HSM key label</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {linkedCas.map((ca) => (
+                  <TableRow key={ca.id}>
+                    <TableCell className="font-medium">{ca.name}</TableCell>
+                    <TableCell className="capitalize">{ca.type}</TableCell>
+                    <TableCell>
+                      <Badge variant={ca.status === CaStatus.ACTIVE ? "success" : "outline"}>
+                        {ca.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[14rem] font-mono text-xs">
+                      {ca.hsmKeyLabel ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="block truncate">{ca.hsmKeyLabel}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{ca.hsmKeyLabel}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
         {!isPending && linked.length > 0 && (
           <>
+            {linkedCas.length > 0 && (
+              <p className="mb-2 text-sm font-medium text-mineshaft-200">Certificates</p>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
