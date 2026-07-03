@@ -5,7 +5,10 @@ import * as Popover from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretReferenceWizard } from "@app/components/v3/platform/SecretInput/SecretReferenceWizard";
+import {
+  SecretReferenceWizard,
+  SecretReferenceWizardHandle
+} from "@app/components/v3/platform/SecretInput/SecretReferenceWizard";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -95,6 +98,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const popoverContentRef = useRef<HTMLDivElement>(null);
+    const wizardRef = useRef<SecretReferenceWizardHandle>(null);
     const [isFocused, setIsFocused] = useToggle(false);
     const currentCursorPosition = inputRef.current?.selectionStart || 0;
 
@@ -276,7 +280,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (isPopupOpen && showWizard) {
-        if (e.key === "Tab") e.preventDefault();
+        if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
+          wizardRef.current?.navigateNext();
+        } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
+          wizardRef.current?.navigatePrev();
+        } else if (e.key === "Enter") {
+          wizardRef.current?.selectHighlighted();
+        }
+        if (["ArrowDown", "ArrowUp", "Tab", "Enter"].includes(e.key)) {
+          e.preventDefault();
+        }
         return;
       }
 
@@ -512,6 +525,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           >
             {showWizard ? (
               <SecretReferenceWizard
+                ref={wizardRef}
                 isEnabled={isPopupOpen}
                 onSelect={handleWizardSelect}
                 onFocusItem={() => inputRef.current?.focus()}
