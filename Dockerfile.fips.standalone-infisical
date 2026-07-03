@@ -184,8 +184,10 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && apt-get update && apt-get install -y infisical=0.43.90 \
-    # Patch CVEs in base image packages (pinned versions for reproducibility)
-    && apt-get install -y --only-upgrade \
+    # Patch CVEs in base image packages (pinned versions for reproducibility).
+    # --allow-downgrades is required because some pins are older than what the base image now ships
+    # (e.g. libssl3t64) and we want the pinned CVE-patched version rather than whatever floats in.
+    && apt-get install -y --only-upgrade --allow-downgrades \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u3 \
     libc-bin=2.41-12+deb13u3 \
