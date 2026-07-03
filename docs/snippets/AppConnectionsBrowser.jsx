@@ -582,7 +582,29 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Rundeck to pull secrets from Infisical.",
       category: "DevOps Tools",
-    }
+    },
+    {
+      name: "Qovery",
+      slug: "qovery",
+      path: "/integrations/app-connections/qovery",
+      description:
+        "Learn how to connect Qovery to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Cloud 66",
+      slug: "cloud-66",
+      path: "/integrations/app-connections/cloud-66",
+      description: "Learn how to connect Cloud66 to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Hasura Cloud",
+      slug: "hasura-cloud",
+      path: "/integrations/app-connections/hasura-cloud",
+      description: "Learn how to connect Hasura Cloud to pull secrets from Infisical.",
+      category: "Platform",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

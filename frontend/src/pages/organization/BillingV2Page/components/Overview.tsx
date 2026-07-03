@@ -427,7 +427,8 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
     limitNote = `${used.toLocaleString()} / ${entitlement.limit.toLocaleString()}${unit}`;
   }
 
-  const selfServe = Boolean(prod.pro?.planKey);
+  const selfServe = prod.plans.some((plan) => plan.selfServe);
+  const salesLed = prod.plans.some((plan) => plan.salesLed);
 
   let action = null;
   if (!readOnly) {
@@ -444,7 +445,7 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
           Upgrade
         </Button>
       );
-    } else if (prod.enterprise) {
+    } else if (salesLed) {
       action = (
         <Button variant="org" size="sm" onClick={() => onContact(prod)}>
           Contact sales

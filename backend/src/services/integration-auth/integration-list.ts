@@ -363,7 +363,7 @@ export const getIntegrationOptions = async () => {
       name: "Codefresh",
       slug: "codefresh",
       image: "Codefresh.png",
-      isAvailable: true,
+      isAvailable: false,
       type: "pat",
       clientId: "",
       docsLink: ""

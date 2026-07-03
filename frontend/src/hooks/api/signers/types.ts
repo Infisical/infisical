@@ -1,5 +1,12 @@
+import { CaType } from "@app/hooks/api/ca/enums";
+
 export type TGetUserSignerPermissionDTO = {
   signerId: string;
+};
+
+export type TSignerExternalConfiguration = {
+  caType: CaType.DIGICERT;
+  reissueFromExternalOrderId?: string;
 };
 
 export enum SignerStatus {
@@ -102,6 +109,11 @@ export type TSigner = {
   certificateHsmConnectorId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
+  externalOrder?: {
+    provider: string;
+    orderId: number;
+    status?: string | null;
+  } | null;
 };
 
 export enum SigningActorType {
@@ -265,6 +277,7 @@ export type TCreateSignerDTO = {
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
   certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfiguration;
 };
 
 export type TUpdateSignerDTO = {
@@ -288,6 +301,7 @@ export type TReissueSignerCertificateDTO = {
     keySource: CertKeySource;
     hsmConnectorId?: string;
   };
+  externalConfiguration?: TSignerExternalConfiguration;
 };
 
 export type TEnableSignerDTO = { signerId: string };

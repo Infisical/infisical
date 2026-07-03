@@ -11,6 +11,7 @@ import { TAiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mc
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
@@ -155,6 +156,7 @@ import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-tem
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { TProjectFolderGrantServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-service";
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
@@ -305,6 +307,7 @@ declare module "fastify" {
       secretTag: TSecretTagServiceFactory;
       secretValidationRule: TSecretValidationRuleServiceFactory;
       secretImport: TSecretImportServiceFactory;
+      projectFolderGrant: TProjectFolderGrantServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
       integration: TIntegrationServiceFactory;
@@ -405,6 +408,7 @@ declare module "fastify" {
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
       insights: TInsightsServiceFactory;
+      auditReport: TAuditReportServiceFactory;
       pamInsights: TPamInsightsServiceFactory;
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;

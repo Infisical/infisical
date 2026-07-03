@@ -12,7 +12,6 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
@@ -75,7 +74,6 @@ export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
   SecretReminder = "secret-reminder",
-  AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   PkiAlertV2Event = "pki-alert-v2-event",
@@ -102,6 +100,7 @@ export enum QueueName {
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
   UserNotification = "user-notification",
+  AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
   PamSessionAiSummary = "pam-session-ai-summary",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
@@ -120,7 +119,6 @@ export enum QueueName {
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
@@ -168,6 +166,7 @@ export enum QueueJobs {
   DailyReminders = "daily-reminders",
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
+  GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
@@ -233,10 +232,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.AuditLog]: {
-    name: QueueJobs.AuditLog;
-    payload: TCreateAuditLogDTO;
   };
   [QueueName.PkiAlertV2Event]: {
     name: QueueJobs.PkiAlertV2ProcessEvent;
@@ -453,6 +448,10 @@ export type TQueueJobTypes = {
   [QueueName.UserNotification]: {
     name: QueueJobs.UserNotification;
     payload: { notifications: TCreateUserNotificationDTO[] };
+  };
+  [QueueName.AuditReportGeneration]: {
+    name: QueueJobs.GenerateAuditReport;
+    payload: { auditReportId: string };
   };
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
@@ -676,6 +675,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "queue-internal-recovery",
       "queue-internal-reconciliation",
       "secret-rotation",
+      // Legacy per-log audit queue, replaced by the unified Redis ingest stream. The compatibility
+      // shim that re-routed its jobs has been removed; obliterate any residue left in Redis.
+      "audit-log",
       // Queues replaced by cronJobFactory (src/lib/cron/cron-job.ts)
       "daily-resource-cleanup",
       "frequent-resource-cleanup",

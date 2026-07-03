@@ -122,6 +122,7 @@
                       "integrations/app-connections/checkly",
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
+                      "integrations/app-connections/cloud-66",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
@@ -140,6 +141,7 @@
                       "integrations/app-connections/gitlab",
                       "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
+                      "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
                       "integrations/app-connections/external-infisical",
@@ -160,6 +162,7 @@
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/ovh",
                       "integrations/app-connections/postgres",
+                      "integrations/app-connections/qovery",
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
@@ -635,6 +638,7 @@
                       "integrations/secret-syncs/checkly",
                       "integrations/secret-syncs/chef",
                       "integrations/secret-syncs/circleci",
+                      "integrations/secret-syncs/cloud-66",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -645,6 +649,7 @@
                       "integrations/secret-syncs/github",
                       "integrations/secret-syncs/gitlab",
                       "integrations/secret-syncs/hashicorp-vault",
+                      "integrations/secret-syncs/hasura-cloud",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/external-infisical",
@@ -655,6 +660,7 @@
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/ovh",
+                      "integrations/secret-syncs/qovery",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
                       "integrations/secret-syncs/rundeck",
@@ -792,6 +798,7 @@
                       {
                         "group": "Code Signing",
                         "pages": [
+                          "documentation/platform/pki/guides/code-signing/digicert-code-signing",
                           "documentation/platform/pki/guides/code-signing/jarsigner",
                           "documentation/platform/pki/guides/code-signing/apksigner",
                           "documentation/platform/pki/guides/code-signing/osslsigncode",
@@ -1516,6 +1523,18 @@
                     ]
                   },
                   {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/cloud-66/list",
+                      "api-reference/endpoints/app-connections/cloud-66/available",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-id",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-name",
+                      "api-reference/endpoints/app-connections/cloud-66/create",
+                      "api-reference/endpoints/app-connections/cloud-66/update",
+                      "api-reference/endpoints/app-connections/cloud-66/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -1693,6 +1712,18 @@
                       "api-reference/endpoints/app-connections/hashicorp-vault/create",
                       "api-reference/endpoints/app-connections/hashicorp-vault/update",
                       "api-reference/endpoints/app-connections/hashicorp-vault/delete"
+                    ]
+                  },
+                  {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/hasura-cloud/list",
+                      "api-reference/endpoints/app-connections/hasura-cloud/available",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/app-connections/hasura-cloud/create",
+                      "api-reference/endpoints/app-connections/hasura-cloud/update",
+                      "api-reference/endpoints/app-connections/hasura-cloud/delete"
                     ]
                   },
                   {
@@ -1897,6 +1928,18 @@
                       "api-reference/endpoints/app-connections/postgres/create",
                       "api-reference/endpoints/app-connections/postgres/update",
                       "api-reference/endpoints/app-connections/postgres/delete"
+                    ]
+                  },
+                  {
+                    "group": "Qovery",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/qovery/list",
+                      "api-reference/endpoints/app-connections/qovery/available",
+                      "api-reference/endpoints/app-connections/qovery/get-by-id",
+                      "api-reference/endpoints/app-connections/qovery/get-by-name",
+                      "api-reference/endpoints/app-connections/qovery/create",
+                      "api-reference/endpoints/app-connections/qovery/update",
+                      "api-reference/endpoints/app-connections/qovery/delete"
                     ]
                   },
                   {
@@ -2759,6 +2802,20 @@
                     ]
                   },
                   {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloud-66/list",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloud-66/create",
+                      "api-reference/endpoints/secret-syncs/cloud-66/update",
+                      "api-reference/endpoints/secret-syncs/cloud-66/delete",
+                      "api-reference/endpoints/secret-syncs/cloud-66/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/import-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare Pages",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
@@ -2904,6 +2961,20 @@
                     ]
                   },
                   {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/list",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/create",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/update",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/delete",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/import-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Heroku",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/heroku/list",
@@ -3009,6 +3080,19 @@
                       "api-reference/endpoints/secret-syncs/octopus-deploy/delete",
                       "api-reference/endpoints/secret-syncs/octopus-deploy/sync-secrets",
                       "api-reference/endpoints/secret-syncs/octopus-deploy/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Qovery",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/qovery/list",
+                      "api-reference/endpoints/secret-syncs/qovery/get-by-id",
+                      "api-reference/endpoints/secret-syncs/qovery/get-by-name",
+                      "api-reference/endpoints/secret-syncs/qovery/create",
+                      "api-reference/endpoints/secret-syncs/qovery/update",
+                      "api-reference/endpoints/secret-syncs/qovery/delete",
+                      "api-reference/endpoints/secret-syncs/qovery/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/qovery/remove-secrets"
                     ]
                   },
                   {

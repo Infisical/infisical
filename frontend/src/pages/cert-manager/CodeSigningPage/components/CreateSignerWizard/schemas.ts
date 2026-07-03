@@ -37,7 +37,9 @@ export const certificateSchema = z
       .default(null),
     keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
     keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
-    hsmConnectorId: z.string().uuid().optional().nullable()
+    hsmConnectorId: z.string().uuid().optional().nullable(),
+    // DigiCert code signing only: reissue into this existing order instead of placing a new one.
+    reissueFromExternalOrderId: z.string().nullable().optional().default(null)
   })
   .refine(
     (data) =>

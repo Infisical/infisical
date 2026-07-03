@@ -282,6 +282,24 @@ export const SECRET_SYNC_MAP: Record<
     image: "TriggerDev.png",
     category: "HOSTING",
     description: "Environment variables for Trigger.dev projects."
+  },
+  [SecretSync.HasuraCloud]: {
+    name: "Hasura Cloud",
+    image: "Hasura.svg",
+    category: "PLATFORM",
+    description: "Environment variables for Hasura Cloud tenants."
+  },
+  [SecretSync.Qovery]: {
+    name: "Qovery",
+    image: "Qovery.png",
+    category: "HOSTING",
+    description: "Environment secrets and variables for Qovery projects."
+  },
+  [SecretSync.Cloud66]: {
+    name: "Cloud 66",
+    image: "Cloud 66.png",
+    category: "HOSTING",
+    description: "Environment variables for Cloud 66 stacks."
   }
 };
 
@@ -336,7 +354,10 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
-  [SecretSync.TriggerDev]: AppConnection.TriggerDev
+  [SecretSync.TriggerDev]: AppConnection.TriggerDev,
+  [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
+  [SecretSync.Qovery]: AppConnection.Qovery,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -71,7 +71,10 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.F5BigIp]: "F5 BIG-IP",
   [AppConnection.GoDaddy]: "GoDaddy",
   [AppConnection.Convex]: "Convex",
-  [AppConnection.Rundeck]: "Rundeck"
+  [AppConnection.Rundeck]: "Rundeck",
+  [AppConnection.HasuraCloud]: "Hasura Cloud",
+  [AppConnection.Qovery]: "Qovery",
+  [AppConnection.Cloud66]: "Cloud 66"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -145,5 +148,8 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.F5BigIp]: AppConnectionPlanType.Regular,
   [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
   [AppConnection.Convex]: AppConnectionPlanType.Regular,
-  [AppConnection.Rundeck]: AppConnectionPlanType.Regular
+  [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
+  [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
+  [AppConnection.Qovery]: AppConnectionPlanType.Regular,
+  [AppConnection.Cloud66]: AppConnectionPlanType.Regular
 };

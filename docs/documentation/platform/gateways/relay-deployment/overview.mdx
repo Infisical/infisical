@@ -191,7 +191,8 @@ openssl s_client -connect <relay-ip>:8443
 <Accordion title="What happens if my relay server goes down?">
 Relay server outages affect gateway connectivity:
 
-- **Gateway reconnection**: Gateways will automatically attempt to reconnect when the relay comes back online
+- **Automatic failover**: Gateways configured with automatic relay selection will switch to a different healthy relay if the current one becomes unreachable
+- **Gateway reconnection**: Gateways connected to a specific relay will automatically attempt to reconnect when the relay comes back online
 - **Service interruption**: While the relay is down, the Infisical platform cannot reach gateways through that relay. As a result, any secrets or resources accessed via those gateways will be temporarily unavailable until connectivity is restored.
 - **Multiple relays**: Deploy multiple relay servers for redundancy and high availability
 - **Automatic restart**: Use systemd or container orchestration to automatically restart failed relay services

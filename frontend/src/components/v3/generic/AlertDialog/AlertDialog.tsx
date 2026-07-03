@@ -136,17 +136,29 @@ function AlertDialogAction({
   size = "sm",
   isFullWidth = false,
   isDisabled = false,
+  isPending = false,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
-  Pick<React.ComponentProps<typeof Button>, "variant" | "size" | "isFullWidth" | "isDisabled">) {
+}: Omit<React.ComponentProps<typeof AlertDialogPrimitive.Action>, "asChild"> &
+  Pick<
+    React.ComponentProps<typeof Button>,
+    "variant" | "size" | "isFullWidth" | "isDisabled" | "isPending"
+  >) {
+  // Invert the asChild composition: Radix's Action lends its close-on-click behaviour to the real
+  // Button, so Button renders a native <button> and its isPending spinner works (a Slot child would
+  // strip it). Button forbids isPending together with asChild for exactly that reason.
   return (
-    <Button variant={variant} size={size} isFullWidth={isFullWidth} isDisabled={isDisabled} asChild>
-      <AlertDialogPrimitive.Action
+    <AlertDialogPrimitive.Action asChild>
+      <Button
         data-slot="alert-dialog-action"
+        variant={variant}
+        size={size}
+        isPending={isPending}
+        isFullWidth={isFullWidth}
+        isDisabled={isDisabled}
         className={cn(className)}
         {...props}
       />
-    </Button>
+    </AlertDialogPrimitive.Action>
   );
 }
 

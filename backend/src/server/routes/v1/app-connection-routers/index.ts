@@ -18,6 +18,7 @@ import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
+import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
@@ -36,6 +37,7 @@ import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
 import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
+import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
@@ -53,6 +55,7 @@ import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
+import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
@@ -128,6 +131,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
+    [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.VenafiTpp]: registerVenafiTppConnectionRouter,
@@ -146,5 +150,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Datadog]: registerDatadogConnectionRouter,
     [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
     [AppConnection.Convex]: registerConvexConnectionRouter,
-    [AppConnection.Rundeck]: registerRundeckConnectionRouter
+    [AppConnection.Rundeck]: registerRundeckConnectionRouter,
+    [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
+    [AppConnection.Qovery]: registerQoveryConnectionRouter
   };

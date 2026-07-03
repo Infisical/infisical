@@ -30,6 +30,7 @@ import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
+import { Cloud66SyncListItemSchema, Cloud66SyncSchema } from "@app/services/secret-sync/cloud66";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
@@ -52,6 +53,10 @@ import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-s
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
+import {
+  HasuraCloudSyncListItemSchema,
+  HasuraCloudSyncSchema
+} from "@app/services/secret-sync/hasura-cloud/hasura-cloud-sync-schemas";
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
@@ -61,6 +66,7 @@ import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/service
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
+import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { RundeckSyncListItemSchema, RundeckSyncSchema } from "@app/services/secret-sync/rundeck";
@@ -118,7 +124,10 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   DevinSyncSchema,
   OnaSyncSchema,
   TravisCISyncSchema,
-  SnowflakeSyncSchema
+  SnowflakeSyncSchema,
+  HasuraCloudSyncSchema,
+  QoverySyncSchema,
+  Cloud66SyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -165,7 +174,10 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
-  SnowflakeSyncListItemSchema
+  SnowflakeSyncListItemSchema,
+  HasuraCloudSyncListItemSchema,
+  QoverySyncListItemSchema,
+  Cloud66SyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
