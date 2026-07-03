@@ -230,7 +230,9 @@ export enum ProjectPermissionAuditLogsActions {
 }
 
 export enum ProjectPermissionInsightsActions {
-  Read = "read"
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum ProjectPermissionAppConnectionActions {
@@ -293,6 +295,12 @@ export enum ProjectPermissionApprovalRequestGrantActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionProjectFolderGrantActions {
+  ReadGrant = "read-grant",
+  CreateGrant = "create-grant",
+  RevokeGrant = "revoke-grant"
+}
+
 export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
 }
@@ -337,7 +345,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
-  | ProjectPermissionSub.HoneyTokens;
+  | ProjectPermissionSub.HoneyTokens
+  | ProjectPermissionSub.ProjectFolderGrant;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -433,6 +442,7 @@ export enum ProjectPermissionSub {
   HoneyTokens = "honey-tokens",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
+  ProjectFolderGrant = "project-folder-grant",
   Insights = "insights"
 }
 
@@ -468,6 +478,11 @@ export type SecretImportSubjectFields = {
 };
 
 export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type ProjectFolderGrantSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -712,6 +727,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
+  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
+  | [
+      ProjectPermissionProjectFolderGrantActions,
+      (
+        | ProjectPermissionSub.ProjectFolderGrant
+        | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
+      )
+    ];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

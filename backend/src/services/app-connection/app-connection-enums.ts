@@ -68,7 +68,9 @@ export enum AppConnection {
   Datadog = "datadog",
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
-  Convex = "convex"
+  Convex = "convex",
+  Qovery = "qovery",
+  Cloud66 = "cloud-66"
 }
 
 export enum AWSRegion {

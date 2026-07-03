@@ -522,6 +522,31 @@ export const ACCOUNT_TYPE_CONFIGS = {
       },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
+  },
+
+  [PamAccountType.AwsIam]: {
+    name: "AWS IAM",
+    icon: "Amazon Web Services.png",
+    requiresGateway: false,
+    connectionDetails: z.object({
+      roleArn: z.string().trim().min(1).max(2048)
+    }),
+    credentials: z.object({
+      targetRoleArn: z.string().trim().min(1).max(2048)
+    }),
+    sanitizedCredentials: z.object({
+      targetRoleArn: z.string().optional()
+    }),
+    ui: {
+      roleArn: {
+        label: "PAM Role ARN",
+        tooltip: "The ARN of the IAM role that Infisical assumes to broker access to the target role."
+      },
+      targetRoleArn: {
+        label: "Target Role ARN",
+        tooltip: "The ARN of the IAM role the user will assume when accessing this account."
+      }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -529,6 +554,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     {
       name: string;
       icon: string;
+      requiresGateway?: boolean;
       connectionDetails: z.ZodTypeAny;
       credentials: z.ZodTypeAny;
       sanitizedCredentials: z.ZodTypeAny;
@@ -632,6 +658,8 @@ export const extractGatewayTarget = async (
       };
     case PamAccountType.GcpIam:
       return { host: "googleapis.com", port: 443 };
+    case PamAccountType.AwsIam:
+      throw new Error("AWS IAM accounts do not use gateway routing");
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
@@ -694,6 +722,13 @@ export enum PamAccountAccessibilityIssue {
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
   accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd;
 
+export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
+    | { requiresGateway?: boolean }
+    | undefined;
+  return config?.requiresGateway !== false;
+};
+
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;
   gatewayId?: string | null;
@@ -708,7 +743,13 @@ export const getAccountAccessibilityIssues = (account: {
 }): PamAccountAccessibilityIssue[] => {
   const issues: PamAccountAccessibilityIssue[] = [];
 
-  if (!account.gatewayId && !account.gatewayPoolId && !account.templateGatewayId && !account.templateGatewayPoolId) {
+  if (
+    accountTypeRequiresGateway(account.accountType as PamAccountType) &&
+    !account.gatewayId &&
+    !account.gatewayPoolId &&
+    !account.templateGatewayId &&
+    !account.templateGatewayPoolId
+  ) {
     issues.push(PamAccountAccessibilityIssue.NoGateway);
   }
 
@@ -767,6 +808,7 @@ export const PamAccountTypeMetadataSchema = z.object({
   name: z.string(),
   icon: z.string(),
   supportsWebAccess: z.boolean(),
+  requiresGateway: z.boolean(),
   connectionFields: z.array(PamFieldDescriptorSchema),
   credentialFields: z.array(PamFieldDescriptorSchema),
   applicablePolicies: z.array(PamPolicyDescriptorSchema)
@@ -919,6 +961,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     name: config.name,
     icon: config.icon,
     supportsWebAccess: webAccessSupportedTypes.has(type),
+    requiresGateway: accountTypeRequiresGateway(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui),
     applicablePolicies: getApplicablePolicies(type)

@@ -9,12 +9,27 @@ export type BillingV2Dim = {
   monthly: number;
   annual: number;
   included: number;
+  // When true, the matching cadence's price is a usage overage rate, not a buyer-selected quantity.
+  meteredMonthly?: boolean;
+  meteredAnnual?: boolean;
 };
 
+// A comparison row's cells are keyed by plan tier ("pro" | "advanced" | "enterprise" | ...) so the
+// table can render one column per plan.
 export type BillingV2CompareRow = {
   label: string;
-  pro: string | boolean;
-  ent: string | boolean;
+  cells: Record<string, string | boolean | number>;
+};
+
+// A single purchasable (or sales-led) plan of a product. The free tier is implicit and never listed.
+export type BillingV2Plan = {
+  tier: string;
+  name: string;
+  selfServe: boolean;
+  salesLed: boolean;
+  feature?: string;
+  base?: { monthly: number; annual: number };
+  dims: BillingV2Dim[];
 };
 
 export type BillingV2CatalogProduct = {
@@ -26,14 +41,7 @@ export type BillingV2CatalogProduct = {
   addon?: boolean;
   desc: string;
   tagline?: string;
-  pro: {
-    base?: { monthly: number; annual: number };
-    dims?: BillingV2Dim[];
-    proFeature: string;
-    planKey?: string;
-  };
-  enterprise: { sales: true; feature: string } | null;
-  upgradeChanges?: { add: string[] };
+  plans: BillingV2Plan[];
   includes?: string[];
   compare?: BillingV2CompareRow[];
 };
@@ -63,8 +71,12 @@ export type BillingV2Invoice = {
 
 export type BillingV2Entitlement = {
   entitled: boolean;
+  // Tier the org is currently subscribed to for this product; lets the UI mark the active plan card.
+  planTier?: string;
   limit?: number | null;
   used?: number;
+  // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
+  unit?: string | null;
 };
 
 export type BillingV2Overview = {
@@ -82,7 +94,19 @@ export type BillingV2Overview = {
     identityLimit: number | null;
   };
   payment: BillingV2PaymentMethod;
-  billingDetails: { name: string; email: string } | null;
+  billingDetails: {
+    name: string;
+    email: string;
+    address: {
+      line1?: string | null;
+      line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      postalCode?: string | null;
+      country?: string | null;
+    } | null;
+    taxIds: { type: string; value: string }[];
+  } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
 };
@@ -101,6 +125,7 @@ export type TCreateBillingV2PortalSessionDTO = {
 export type TCreateBillingV2CheckoutSessionDTO = {
   orgId: string;
   productId: string;
+  plan?: string;
   cadence?: BillingV2Cadence;
   email?: string;
   returnPath?: string;
@@ -109,4 +134,49 @@ export type TCreateBillingV2CheckoutSessionDTO = {
 export type TAddBillingV2PaymentMethodDTO = {
   orgId: string;
   returnPath?: string;
+};
+
+export type BillingV2PreviewLine = {
+  description: string;
+  amount: number;
+  proration: boolean;
+};
+
+// prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
+// invoice (a removal). prorationDate is the timestamp the preview was computed at, for display only.
+export type BillingV2Preview = {
+  currency: string;
+  prorationAmount: number;
+  nextInvoiceTotal: number;
+  nextRecurringTotal: number;
+  prorationDate: number;
+  lines: BillingV2PreviewLine[];
+};
+
+export type BillingV2MutationResult = {
+  subscriptionId?: string;
+};
+
+export type TPreviewBillingV2ChangeDTO = {
+  orgId: string;
+  addProductId?: string;
+  plan?: string;
+  cadence?: BillingV2Cadence;
+  removeProductId?: string;
+};
+
+export type TAddBillingV2ProductDTO = {
+  orgId: string;
+  productId: string;
+  plan?: string;
+  cadence?: BillingV2Cadence;
+};
+
+export type TRemoveBillingV2ProductDTO = {
+  orgId: string;
+  productId: string;
+};
+
+export type TBillingV2LifecycleDTO = {
+  orgId: string;
 };

@@ -321,6 +321,8 @@ const envSchema = z
     LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
     LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
+    // CROSS-PROJECT SECRET SHARING
+    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -521,7 +523,7 @@ const envSchema = z
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
     // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
-    isCloud: Boolean(data.LICENSE_SERVER_KEY),
+    isCloud: Boolean(data.LICENSE_SERVER_KEY || data.LICENSE_SERVER_V2_SERVICE_KEY),
     isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
@@ -570,6 +572,7 @@ const envSchema = z
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
+    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: data.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST?.split(",") ?? [],
     PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0,
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,

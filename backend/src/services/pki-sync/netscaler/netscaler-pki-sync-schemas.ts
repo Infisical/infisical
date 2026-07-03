@@ -18,12 +18,11 @@ export const NetScalerPkiSyncOptionsSchema = z.object({
   preserveItemOnRenewal: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
-
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
@@ -37,7 +36,7 @@ export const NetScalerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{profileId}}, {{applicationId}}, {{commonName}}"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
@@ -53,7 +52,7 @@ export const CreateNetScalerPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: NetScalerPkiSyncConfigSchema,
-  syncOptions: NetScalerPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: NetScalerPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

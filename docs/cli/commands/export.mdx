@@ -27,6 +27,10 @@ infisical export --output-file=./.env
 infisical export --format=dotenv-export > .env
 infisical export --format=dotenv-export --output-file=./.env
 
+# Export variables for shell eval/source (POSIX shell-quoted, safe for eval)
+eval "$(infisical export --format=dotenv-eval)"
+infisical export --format=dotenv-eval --output-file=./.env
+
 # Export variables to a JSON file
 infisical export --format=json > secrets.json
 infisical export --format=json --output-file=./secrets.json
@@ -169,9 +173,26 @@ infisical export --template=<path to template>
   </Accordion>
 
   <Accordion title="--format">
-    Format of the output file. Accepted values: `dotenv`, `dotenv-export`, `csv`, `json` and `yaml`
+    Format of the output file. Accepted values: `dotenv`, `dotenv-export`, `dotenv-eval`, `csv`, `json` and `yaml`
 
     Default value: `dotenv`
+
+    The `dotenv-eval` format emits each secret as an `export KEY='value'` statement with values POSIX shell-quoted (wrapped in single quotes, with embedded single quotes escaped). This makes the output safe to load directly into your current shell via `eval`/`source`, regardless of the value's contents (newlines, single quotes, `$`, `"`, `\`, and other shell metacharacters are preserved verbatim).
+
+    ```bash
+    # Load secrets into the current shell session
+    eval "$(infisical export --format=dotenv-eval)"
+    ```
+
+    ```bash
+    # Example output
+    export DATABASE_URL='postgres://user:pass@localhost:5432/db'
+    export API_KEY='it'\''s a secret'
+    ```
+
+    <Warning>
+      The POSIX single-quoting only escapes secret **values**. Secret **names** (keys) are emitted as-is and are not escaped, so `eval`/`source` is only safe when every secret name is a valid shell identifier (letters, digits, and underscores, not starting with a digit). Avoid running `eval`/`source` on this format if your secret names may contain shell metacharacters.
+    </Warning>
 
   </Accordion>
 

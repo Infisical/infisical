@@ -95,7 +95,8 @@ export const useGetSecretApprovalRequests = ({
         search
       }),
     enabled: Boolean(projectId) && (options?.enabled ?? true),
-    placeholderData: (previousData) => previousData
+    placeholderData: (previousData) => previousData,
+    refetchInterval: options?.refetchInterval ?? 30_000
   });
 
 const fetchSecretApprovalRequestDetails = async ({

@@ -1,0 +1,349 @@
+---
+title: "Kubernetes with cert-manager (Infisical Issuer)"
+sidebarTitle: "Issue TLS Certificates in Kubernetes (Infisical Issuer)"
+description: "Issue and renew Kubernetes TLS certificates with the Infisical cert-manager external issuer, authenticating with a machine identity."
+---
+
+Issue TLS certificates to your Kubernetes workloads using [cert-manager](https://cert-manager.io/) and the [Infisical Issuer](https://github.com/Infisical/infisical-issuer), an [external issuer](https://cert-manager.io/docs/configuration/external/) for cert-manager. Certificates are signed by Infisical through a [PKI Application](/documentation/platform/pki/applications/overview) and [Certificate Profile](/documentation/platform/pki/settings/profiles), stored in Kubernetes Secrets (including the CA chain), and renewed automatically before expiration.
+
+<Info>
+  This is the **Infisical Issuer** approach. If you would rather use the standard cert-manager ACME issuer with EAB credentials, see the [cert-manager (ACME) guide](/documentation/platform/pki/guides/applications/k8s-cert-manager-acme) instead.
+
+  This guide assumes you have a PKI Application with [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) configured.
+</Info>
+
+## When to use the Infisical Issuer instead of ACME
+
+- You want to authenticate with a [machine identity](/documentation/platform/identities/machine-identities) ([Universal Auth](/documentation/platform/identities/universal-auth) or [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth)) rather than ACME/EAB credentials.
+- You want the **CA chain populated** in the Secret's `ca.crt` automatically (with the ACME issuer this is not automatic and needs extra setup such as [trust-manager](https://cert-manager.io/docs/trust/trust-manager/)).
+- You do not want ACME domain-ownership challenges (HTTP-01/DNS-01).
+- You are issuing workload identity certificates (for example `spiffe://` URIs for service meshes).
+
+## How It Works
+
+1. Install cert-manager and the Infisical Issuer controller in your Kubernetes cluster.
+2. Create an `Issuer` (or `ClusterIssuer`) that authenticates to Infisical with a machine identity and points at your PKI Application and Profile.
+3. Create `Certificate` resources that define the certificates you need.
+4. cert-manager approves each request and the Infisical Issuer signs it through Infisical, storing the certificate, private key, and CA chain in a Secret.
+5. Certificates are automatically renewed before expiration.
+
+## Guide
+
+Throughout this guide, replace `<namespace>` with the namespace where your workloads and certificates live. With a namespaced `Issuer`, its credentials `Secret`, the `Issuer`, and the `Certificate` all live in this namespace. To issue across namespaces from a single resource, use a [`ClusterIssuer`](#create-the-infisical-issuer) instead, whose `Secret` and service account live in the controller's namespace rather than alongside each workload.
+
+<Steps>
+  <Step title="Set up your Infisical PKI Application and machine identity">
+    Before installing anything in Kubernetes, make sure you have the following in Infisical:
+
+    - A **PKI Application** with a **Certificate Profile** that uses **API enrollment**. Note the **Application name** (for example `web-services`) and the **Profile name** (for example `web-server`); you reference both by name when you create the `Issuer`.
+    - A **machine identity** added to the Application with the **operator** role, which lets it issue certificates.
+
+    Pick one authentication method for the identity:
+
+    - **Universal Auth**: use the identity's **Client ID** and **Client Secret**.
+    - **Kubernetes Auth**: the controller mints a short-lived token for a Kubernetes service account and presents it to Infisical. Configure it on the identity first, and note its **Identity ID**.
+  </Step>
+
+  <Step title="Install cert-manager">
+    Install cert-manager by following the official guide [here](https://cert-manager.io/docs/installation/) or by applying the manifest directly:
+
+    ```bash
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.1/cert-manager.yaml
+    ```
+  </Step>
+
+  <Step title="Install the Infisical Issuer">
+    Install the Infisical Issuer controller with Helm:
+
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm repo update
+    helm install infisical-pki-issuer infisical-helm-charts/infisical-pki-issuer \
+      --namespace infisical-pki-issuer --create-namespace
+    ```
+
+    This installs the controller and registers the `Issuer` and `ClusterIssuer` custom resources in the `infisical-issuer.infisical.com` API group. Confirm the controller is running:
+
+    ```bash
+    kubectl get pods -n infisical-pki-issuer
+    ```
+  </Step>
+
+  <Step title="Allow cert-manager to approve Infisical Issuer requests">
+    cert-manager only signs a `CertificateRequest` once it has been **approved**. Its built-in approver approves requests for the standard cert-manager issuer types, but for an external issuer you must explicitly grant it permission to approve requests for the Infisical Issuer's signers. Apply the following once:
+
+    ```yaml infisical-issuer-approver.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: infisical-issuer-approver
+    rules:
+      - apiGroups: ["cert-manager.io"]
+        resources: ["signers"]
+        verbs: ["approve"]
+        resourceNames:
+          - "issuers.infisical-issuer.infisical.com/*"
+          - "clusterissuers.infisical-issuer.infisical.com/*"
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: infisical-issuer-approver
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: infisical-issuer-approver
+    subjects:
+      - kind: ServiceAccount
+        name: cert-manager
+        namespace: cert-manager
+    ```
+
+    ```bash
+    kubectl apply -f infisical-issuer-approver.yaml
+    ```
+
+    <Note>
+      If you skip this step, `Certificate` resources stay pending because their `CertificateRequest` is never approved, so the Infisical Issuer never signs it. Adjust the `ServiceAccount` name and namespace if your cert-manager runs under different ones.
+    </Note>
+  </Step>
+
+  <Step title="Store your machine identity credentials in a Secret">
+    Create a Kubernetes `Secret` holding your machine identity credentials, in the namespace where you will issue certificates.
+
+    <Tabs>
+      <Tab title="Universal Auth">
+        ```bash
+        kubectl create secret generic infisical-credentials \
+          --namespace <namespace> \
+          --from-literal=clientId=<machine_identity_client_id> \
+          --from-literal=clientSecret=<machine_identity_client_secret>
+        ```
+      </Tab>
+      <Tab title="Kubernetes Auth">
+        Store the machine identity's **Identity ID** (Kubernetes Auth does not use a client secret):
+
+        ```bash
+        kubectl create secret generic infisical-identity \
+          --namespace <namespace> \
+          --from-literal=identityId=<machine_identity_id>
+        ```
+
+        The controller mints a short-lived token (via the Kubernetes `TokenRequest` API) for a service account you reference in the next step, then presents it to Infisical. Create that service account if it does not exist:
+
+        ```bash
+        kubectl create serviceaccount infisical-issuer-auth --namespace <namespace>
+        ```
+
+        The service account's name and namespace must be allowed by the identity's [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) configuration in Infisical (and the audience there must match), otherwise issuance fails authentication.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Create the Infisical Issuer">
+    Create an `Issuer` (or `ClusterIssuer`) referencing your Application and Profile by name, and the credentials Secret from the previous step.
+
+    <Tabs>
+      <Tab title="Universal Auth">
+        ```yaml issuer-infisical.yaml
+        apiVersion: infisical-issuer.infisical.com/v1alpha1
+        kind: Issuer
+        metadata:
+          name: infisical-issuer
+          namespace: <namespace>
+        spec:
+          # Base URL of your Infisical instance
+          # (https://app.infisical.com, https://eu.infisical.com, or your self-hosted URL)
+          url: https://app.infisical.com
+          # Name of the PKI Application to issue through
+          application: <application_name>
+          # Name of the Certificate Profile to issue with
+          profile: <profile_name>
+          authentication:
+            method: universal
+            universal:
+              clientIdRef:
+                name: infisical-credentials
+                namespace: <namespace>
+                key: clientId
+              clientSecretRef:
+                name: infisical-credentials
+                namespace: <namespace>
+                key: clientSecret
+        ```
+      </Tab>
+      <Tab title="Kubernetes Auth">
+        ```yaml issuer-infisical.yaml
+        apiVersion: infisical-issuer.infisical.com/v1alpha1
+        kind: Issuer
+        metadata:
+          name: infisical-issuer
+          namespace: <namespace>
+        spec:
+          url: https://app.infisical.com
+          application: <application_name>
+          profile: <profile_name>
+          authentication:
+            method: kubernetes
+            kubernetes:
+              # Secret holding the machine identity ID
+              identityIdRef:
+                name: infisical-identity
+                namespace: <namespace>
+                key: identityId
+              # Service account whose token is presented to Infisical
+              # (the one created in the previous step)
+              serviceAccountRef:
+                name: infisical-issuer-auth
+                namespace: <namespace>
+        ```
+      </Tab>
+    </Tabs>
+
+    ```bash
+    kubectl apply -f issuer-infisical.yaml
+    ```
+
+    Confirm the issuer is ready. The controller authenticates with Infisical and checks that the Application and Profile exist, then records the result on the issuer's `Ready` condition:
+
+    ```bash
+    kubectl get issuers.infisical-issuer.infisical.com infisical-issuer \
+      -n <namespace> \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}{"\n"}'
+    ```
+
+    ```bash
+    True
+    ```
+
+    If this is not `True`, run `kubectl describe issuers.infisical-issuer.infisical.com infisical-issuer -n <namespace>` and read the `Ready` condition message for the reason (for example a missing secret, or an unknown Application or Profile).
+
+    <Note>
+      - An `Issuer` is namespace-scoped: certificates can only be issued from an `Issuer` in the same namespace as the `Certificate`. Its referenced Secrets (and service account) must live in that same namespace; cross-namespace references are rejected.
+      - To issue across namespaces with one resource, create a `ClusterIssuer` instead. The spec is identical except `kind: ClusterIssuer` and no `metadata.namespace`. Because a `ClusterIssuer` has no namespace of its own, its referenced Secrets and service account must live in the controller's namespace (the one the issuer is installed into, configurable with the controller's `--cluster-resource-namespace` flag), and each reference's `namespace` must match it.
+      - For a self-hosted Infisical that uses a private CA, add a `tls` block so the controller trusts it:
+        ```yaml
+        spec:
+          tls:
+            caCertificate:
+              name: <secret_with_ca_cert>
+              namespace: <namespace>
+              key: ca.crt
+        ```
+    </Note>
+  </Step>
+
+  <Step title="Create the Certificate">
+    Request a certificate by creating a cert-manager `Certificate` that references the Infisical Issuer. The `issuerRef.group` must be `infisical-issuer.infisical.com`.
+
+    ```yaml certificate.yaml
+    apiVersion: cert-manager.io/v1
+    kind: Certificate
+    metadata:
+      name: example-com
+      namespace: <namespace>
+    spec:
+      secretName: example-com-tls
+      commonName: example.com
+      dnsNames:
+        - example.com
+      # Optional. If omitted, the Certificate Profile's default TTL is used.
+      duration: 720h
+      # cert-manager renews before expiry
+      renewBefore: 240h
+      privateKey:
+        algorithm: RSA
+        size: 2048
+      issuerRef:
+        name: infisical-issuer
+        kind: Issuer
+        group: infisical-issuer.infisical.com
+    ```
+
+    ```bash
+    kubectl apply -f certificate.yaml
+    ```
+
+    Check that it was issued:
+
+    ```bash
+    kubectl get certificate -n <namespace>
+    ```
+
+    ```bash
+    NAME          READY   SECRET            AGE
+    example-com   True    example-com-tls   15s
+    ```
+
+    <Note>
+      Workload identity certificates work too. For a SPIFFE identity (for example with istio-csr), set a `uris` SAN and make sure the Certificate Profile policy allows URI SANs:
+      ```yaml
+      spec:
+        uris:
+          - spiffe://cluster.local/ns/default/sa/my-workload
+      ```
+    </Note>
+  </Step>
+
+  <Step title="Use the certificate">
+    The certificate and key are stored in the Secret named by `secretName`:
+
+    ```bash
+    kubectl get secret example-com-tls -n <namespace>
+    ```
+
+    ```bash
+    NAME              TYPE                DATA   AGE
+    example-com-tls   kubernetes.io/tls   3      1m
+    ```
+
+    The Secret contains three keys: `tls.crt` (the issued certificate plus any intermediates), `tls.key` (the private key), and `ca.crt` (the root CA). You can decode the certificate with `openssl`:
+
+    ```bash
+    kubectl get secret example-com-tls -n <namespace> \
+      -o jsonpath='{.data.tls\.crt}' | base64 --decode | openssl x509 -text -noout
+    ```
+
+    The Secret is now ready to be mounted by your workloads (Ingresses, Deployments, service meshes, and so on).
+  </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Which authentication method should I use?">
+    Both authenticate as an Infisical machine identity:
+
+    - **Universal Auth** is the simplest: store a Client ID and Client Secret in a Secret. Good for any cluster.
+    - **Kubernetes Auth** avoids storing a long-lived secret: the controller mints a short-lived token for a Kubernetes service account, and Infisical validates it against your cluster. Prefer this when you want to bind issuance to a service account rather than a static secret. It requires configuring [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) on the identity first.
+  </Accordion>
+
+  <Accordion title="Why is my certificate duration different from what I requested?">
+    Infisical issues certificates in whole-hour granularity, so the requested `duration` is rounded down to whole hours (with a one-hour minimum). The effective lifetime is also clamped to the maximum validity allowed by the Certificate Profile's policy. If you omit `duration` entirely, the Profile's default TTL is used.
+  </Accordion>
+
+  <Accordion title="My CertificateRequest is stuck waiting for approval.">
+    cert-manager must be allowed to approve requests for the Infisical Issuer's signers. Make sure you applied the approver `ClusterRole` and `ClusterRoleBinding` from Step 4, and that the `ServiceAccount` subject matches your cert-manager installation (name and namespace).
+  </Accordion>
+
+  <Accordion title="Can certificates be renewed automatically?">
+    Yes. cert-manager renews certificates according to the `renewBefore` threshold on the `Certificate`. A renewal is just a new request that the Infisical Issuer signs, so no extra configuration is needed.
+  </Accordion>
+</AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="cert-manager (ACME)" icon="lock" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
+    Use the standard cert-manager ACME issuer with EAB instead.
+  </Card>
+  <Card title="Certificate Profiles" icon="sliders" href="/documentation/platform/pki/settings/profiles">
+    Configure the policy and defaults for issued certificates.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to AWS, Azure, and more.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+</CardGroup>

@@ -1428,6 +1428,7 @@ export const SECRET_IMPORTS = {
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
+      projectId: "The ID of the project to import from.",
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
     }
@@ -2887,6 +2888,9 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    QOVERY: {
+      accessToken: "The project access token used to authenticate with Qovery."
+    },
     DATADOG: {
       url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
       apiKey: "The Datadog API key used to authenticate.",
@@ -2920,6 +2924,9 @@ export const AppConnections = {
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    CLOUD66: {
+      accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
     },
     CONVEX: {
       accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
@@ -3130,6 +3137,17 @@ export const SecretSyncs = {
       sensitive:
         "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
     },
+    QOVERY: {
+      organizationId: "The ID of the Qovery organization to sync secrets to.",
+      organizationName: "The name of the Qovery organization to sync secrets to.",
+      projectId: "The ID of the Qovery project to sync secrets to.",
+      projectName: "The name of the Qovery project to sync secrets to.",
+      environmentId:
+        "The ID of the Qovery environment to sync secrets to. When omitted, secrets are synced at the project level.",
+      environmentName: "The name of the Qovery environment to sync secrets to.",
+      variableType:
+        "Whether to sync values as Qovery environment secrets or environment variables. Environment variables expose their value; secrets do not."
+    },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
       orgName: "The name of the Laravel Forge org to sync secrets to.",
@@ -3244,6 +3262,10 @@ export const SecretSyncs = {
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
       dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+    },
+    CLOUD66: {
+      stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
+      stackName: "The name of the Cloud 66 stack to sync secrets to."
     },
     NORTHFLANK: {
       projectId: "The ID of the Northflank project to sync secrets to.",

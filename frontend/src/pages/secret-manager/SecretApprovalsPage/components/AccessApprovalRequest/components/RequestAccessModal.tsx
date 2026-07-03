@@ -1,7 +1,8 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { ProjectPermissionActions } from "@app/context";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
-import { SpecificPrivilegeSecretForm } from "@app/pages/project/AccessControlPage/components/MembersTab/components/MemberRoleForm/SpecificPrivilegeSection";
+
+import { RequestAccessForm } from "./RequestAccessForm";
 
 export const RequestAccessModal = ({
   isOpen,
@@ -16,18 +17,16 @@ export const RequestAccessModal = ({
   secretPath?: string;
 }) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-xl"
-        title="Request Access"
-        subTitle="Request access to any secrets and resources based on the predefined policies."
-      >
-        <SpecificPrivilegeSecretForm
-          onClose={() => onOpenChange(false)}
-          policies={policies}
-          {...props}
-        />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>Request Access</SheetTitle>
+          <SheetDescription>
+            Request access to any secrets and resources based on the predefined policies.
+          </SheetDescription>
+        </SheetHeader>
+        <RequestAccessForm onClose={() => onOpenChange(false)} policies={policies} {...props} />
+      </SheetContent>
+    </Sheet>
   );
 };

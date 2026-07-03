@@ -31,6 +31,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
+import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -68,6 +69,7 @@ import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
+import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
@@ -278,6 +280,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <MongoDBConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Qovery:
+        return <QoveryConnectionForm onSubmit={onSubmit} />;
       case AppConnection.SSH:
         return <SshConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Dbt:
@@ -292,6 +296,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Cloud66:
+        return <Cloud66ConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} />;
       case AppConnection.VenafiTpp:
@@ -527,6 +533,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Qovery:
+        return <QoveryConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.SSH:
         return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Dbt:
@@ -541,6 +549,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Cloud66:
+        return <Cloud66ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ExternalInfisical:
         return (
           <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

@@ -9,7 +9,8 @@ type Props = {
     | ProjectPermissionSub.SecretFolders
     | ProjectPermissionSub.SecretImports
     | ProjectPermissionSub.Commits
-    | ProjectPermissionSub.HoneyTokens;
+    | ProjectPermissionSub.HoneyTokens
+    | ProjectPermissionSub.ProjectFolderGrant;
 };
 
 type SelectOption = { value: string; label: string; description?: string };

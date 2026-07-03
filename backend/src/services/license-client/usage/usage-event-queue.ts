@@ -55,9 +55,8 @@ export const usageEventQueueFactory = ({
 
     const observedAt = new Date();
     const minuteBucketSeconds = Math.floor(observedAt.getTime() / 60_000) * 60;
-    await usageReporter.reportSnapshots([
+    await usageReporter.reportSnapshots(orgId, [
       {
-        org_id: orgId,
         feature_key: featureKey,
         value,
         observed_at: observedAt.toISOString(),

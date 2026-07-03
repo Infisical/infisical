@@ -493,6 +493,9 @@ const SettingsTab = ({
   const [showGatewayPicker, setShowGatewayPicker] = useState(false);
   const [showRecordingPicker, setShowRecordingPicker] = useState(false);
 
+  const { map: settingsTypeMap } = usePamAccountTypeMap();
+  const showGatewaySection =
+    settingsTypeMap[account?.accountType as PamAccountType]?.requiresGateway !== false;
   const showRecordingOverride = account && accountTypeRequiresRecording(account.accountType);
 
   const {
@@ -657,55 +660,62 @@ const SettingsTab = ({
           <CardDescription>System configuration overrides.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div
-            className={`rounded-md border p-4 ${isGatewayOverriding ? "border-product-pam/50" : "border-border"}`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container">
-                  <Network className="size-4 text-muted" />
+          {!showGatewaySection && !showRecordingOverride && (
+            <p className="text-sm text-muted">No settings available for this account type.</p>
+          )}
+          {showGatewaySection && (
+            <div
+              className={`rounded-md border p-4 ${isGatewayOverriding ? "border-product-pam/50" : "border-border"}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container">
+                    <Network className="size-4 text-muted" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">
+                      Gateway
+                      {isGatewayOverriding && (
+                        <span className="ml-2 text-xs font-normal text-product-pam">
+                          (override)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted">
+                      {isGatewayOverriding
+                        ? `Overriding the template default (${inheritedGatewayLabel}) for this account.`
+                        : `Inherited from ${account.templateName}: ${inheritedGatewayLabel}`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">
-                    Gateway
-                    {isGatewayOverriding && (
-                      <span className="ml-2 text-xs font-normal text-product-pam">(override)</span>
-                    )}
-                  </p>
-                  <p className="text-sm text-muted">
-                    {isGatewayOverriding
-                      ? `Overriding the template default (${inheritedGatewayLabel}) for this account.`
-                      : `Inherited from ${account.templateName}: ${inheritedGatewayLabel}`}
-                  </p>
-                </div>
+                {isGatewayOverriding ? (
+                  <Button type="button" size="sm" variant="ghost" onClick={removeGatewayOverride}>
+                    Remove Override
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowGatewayPicker(true)}
+                  >
+                    <SquarePen className="mr-1.5 size-3.5" />
+                    Override
+                  </Button>
+                )}
               </div>
-              {isGatewayOverriding ? (
-                <Button type="button" size="sm" variant="ghost" onClick={removeGatewayOverride}>
-                  Remove Override
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowGatewayPicker(true)}
-                >
-                  <SquarePen className="mr-1.5 size-3.5" />
-                  Override
-                </Button>
+
+              {isGatewayOverriding && (
+                <div className="mt-4">
+                  <GatewayPicker
+                    value={{ gatewayId, gatewayPoolId }}
+                    onChange={setGateway}
+                    isRequired
+                  />
+                </div>
               )}
             </div>
-
-            {isGatewayOverriding && (
-              <div className="mt-4">
-                <GatewayPicker
-                  value={{ gatewayId, gatewayPoolId }}
-                  onChange={setGateway}
-                  isRequired
-                />
-              </div>
-            )}
-          </div>
+          )}
 
           {showRecordingOverride && (
             <div

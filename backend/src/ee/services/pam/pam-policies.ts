@@ -49,11 +49,17 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
       { message: "One or more patterns are not valid regular expressions" }
     );
 
+type TPamPolicyTypeOverride = {
+  description?: string;
+  schema?: z.ZodTypeAny;
+};
+
 type TPamPolicyDefinition = {
   label: string;
   description: string;
   appliesTo: PamAccountType[] | "all";
   schema: z.ZodTypeAny;
+  typeOverrides?: Partial<Record<PamAccountType, TPamPolicyTypeOverride>>;
 };
 
 export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition> = {
@@ -73,7 +79,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     label: "Max Session Duration",
     description: "Maximum session length in seconds (60 to 86400).",
     appliesTo: "all",
-    schema: z.number().int().min(60).max(86400)
+    schema: z.number().int().min(60).max(86400),
+    typeOverrides: {
+      [PamAccountType.AwsIam]: {
+        description: "Maximum session length in seconds (900 to 3600).",
+        schema: z.number().int().min(900).max(3600)
+      }
+    }
   },
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
@@ -97,7 +109,10 @@ export const policyAppliesTo = (policy: PamPolicyType, accountType: PamAccountTy
 export const getApplicablePolicies = (accountType: PamAccountType) =>
   (Object.entries(PAM_POLICY_DEFINITIONS) as [PamPolicyType, TPamPolicyDefinition][])
     .filter(([key]) => policyAppliesTo(key, accountType))
-    .map(([key, def]) => ({ key, label: def.label, description: def.description }));
+    .map(([key, def]) => {
+      const override = def.typeOverrides?.[accountType];
+      return { key, label: def.label, description: override?.description ?? def.description };
+    });
 
 export type TValidatePolicyValuesResult = { ok: true; data: Record<string, unknown> } | { ok: false; message: string };
 
@@ -128,7 +143,9 @@ export const validatePolicyValues = (
       };
     }
 
-    const parsed = PAM_POLICY_DEFINITIONS[policy].schema.safeParse(value);
+    const def = PAM_POLICY_DEFINITIONS[policy];
+    const schema = def.typeOverrides?.[accountType]?.schema ?? def.schema;
+    const parsed = schema.safeParse(value);
     if (!parsed.success) {
       const reason = parsed.error.issues.map((issue) => issue.message).join("; ");
       return { ok: false, message: `Invalid configuration for policy '${key}': ${reason}` };

@@ -265,6 +265,16 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectRef;
       secondaryText = `Environment - ${destinationConfig.environment}`;
       break;
+    case SecretSync.Qovery:
+      primaryText = destinationConfig.projectName || destinationConfig.projectId;
+      secondaryText = destinationConfig.environmentName
+        ? `Environment - ${destinationConfig.environmentName}`
+        : "Project";
+      break;
+    case SecretSync.Cloud66:
+      primaryText = destinationConfig.stackName;
+      secondaryText = "Stack";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

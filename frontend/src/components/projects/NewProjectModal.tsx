@@ -3,13 +3,11 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { InfoIcon, Plus } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import z from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Lottie } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
@@ -49,7 +47,8 @@ import {
 import {
   getProjectDescription,
   getProjectHomePage,
-  getProjectLottieIcon
+  getProjectLucideIcon,
+  getProjectTitle
 } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useCreateWorkspace, useGetExternalKmsList, useGetUserProjects } from "@app/hooks/api";
@@ -78,25 +77,6 @@ interface NewProjectModalProps {
 }
 
 type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange" | "projectType">;
-
-const PROJECT_TYPE_MENU_ITEMS = [
-  {
-    label: "Secrets Management",
-    value: ProjectType.SecretManager
-  },
-  {
-    label: "KMS",
-    value: ProjectType.KMS
-  },
-  {
-    label: "Secret Scanning",
-    value: ProjectType.SecretScanning
-  },
-  {
-    label: "Privileged Access Manager",
-    value: ProjectType.PAM
-  }
-];
 
 const ADD_EXTERNAL_KMS_OPTION = "__add-external-kms__";
 
@@ -130,7 +110,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
     defaultValues: {
       kmsKeyId: INTERNAL_KMS_KEY_ID,
       template: InfisicalProjectTemplate.Default,
-      ...(fixedProjectType ? { type: fixedProjectType } : {})
+      type: fixedProjectType ?? ProjectType.SecretManager
     }
   });
 
@@ -217,41 +197,6 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
             </Field>
           )}
         />
-        {!fixedProjectType && (
-          <Controller
-            control={control}
-            name="type"
-            defaultValue={ProjectType.SecretManager}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Project Type</FieldLabel>
-                <div className="grid grid-cols-3 gap-3">
-                  {PROJECT_TYPE_MENU_ITEMS.map((el) => (
-                    <div
-                      key={el.value}
-                      className={twMerge(
-                        "flex cursor-pointer flex-col items-center gap-2 rounded-md border border-border bg-transparent px-2 py-4 opacity-75 transition-colors hover:bg-container-hover",
-                        field.value === el.value && "border-primary bg-container-hover opacity-100"
-                      )}
-                      onClick={() => field.onChange(el.value)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          field.onChange(el.value);
-                        }
-                      }}
-                    >
-                      <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
-                      <div className="text-center text-xs">{el.label}</div>
-                    </div>
-                  ))}
-                </div>
-                {error && <FieldError>{error.message}</FieldError>}
-              </Field>
-            )}
-          />
-        )}
         <Controller
           control={control}
           name="description"
@@ -426,17 +371,24 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({
   onOpenChange,
   projectType
 }) => {
-  const title = "Create a new project";
+  const title = projectType
+    ? `Create a New ${getProjectTitle(projectType)} Project`
+    : "Create a New Project";
 
-  const subTitle = projectType
-    ? getProjectDescription(projectType)
-    : "This project will contain your secrets and configurations.";
+  const subTitle =
+    (projectType && getProjectDescription(projectType)) ||
+    "This project will contain your secrets and configurations.";
+
+  const ProjectIcon = projectType ? getProjectLucideIcon(projectType) : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {ProjectIcon && <ProjectIcon className="size-5 text-muted" />}
+            {title}
+          </DialogTitle>
           <DialogDescription>{subTitle}</DialogDescription>
         </DialogHeader>
         <NewProjectForm onOpenChange={onOpenChange} projectType={projectType} />

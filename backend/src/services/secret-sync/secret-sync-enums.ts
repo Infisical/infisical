@@ -41,7 +41,9 @@ export enum SecretSync {
   Devin = "devin",
   Ona = "ona",
   TravisCI = "travis-ci",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  Qovery = "qovery",
+  Cloud66 = "cloud-66"
 }
 
 export enum SecretSyncInitialSyncBehavior {

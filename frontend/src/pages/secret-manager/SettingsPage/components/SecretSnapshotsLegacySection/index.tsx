@@ -1,1 +1,0 @@
-export { SecretSnapshotsLegacySection } from "./SecretSnapshotsLegacySection";
