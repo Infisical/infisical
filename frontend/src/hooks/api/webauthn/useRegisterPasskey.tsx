@@ -24,6 +24,16 @@ export const useRegisterPasskey = () => {
       return false;
     }
 
+    const isAuthenticatorAvailable =
+      await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if (!isAuthenticatorAvailable) {
+      createNotification({
+        text: "No passkey-compatible authenticator found on this device",
+        type: "error"
+      });
+      return false;
+    }
+
     setIsRegistering(true);
     try {
       const options = await generateOptions();

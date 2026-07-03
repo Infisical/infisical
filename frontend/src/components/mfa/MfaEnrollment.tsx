@@ -24,7 +24,7 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
   const [phase, setPhase] = useState<"preparing" | "verify" | "recovery">("preparing");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
-  const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
   const hasPrepared = useRef(false);
 
   const hasRecoveryCodes = recoveryCodes.length > 0;
@@ -110,7 +110,7 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
                 </Alert>
                 <RecoveryCodesView
                   recoveryCodes={recoveryCodes}
-                  onDownloaded={() => setHasDownloaded(true)}
+                  onSaved={() => setHasSaved(true)}
                 />
               </>
             ) : (
@@ -129,7 +129,7 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
             <Button
               variant="org"
               isFullWidth
-              isDisabled={!hasRecoveryCodes || !hasDownloaded}
+              isDisabled={!hasRecoveryCodes || !hasSaved}
               onClick={handleContinue}
             >
               Continue

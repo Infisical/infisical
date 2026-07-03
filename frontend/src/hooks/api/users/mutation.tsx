@@ -107,8 +107,8 @@ export const useRotateMfaRecoveryCodes = () => {
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes });
+    onSuccess: (data) => {
+      queryClient.setQueryData(userKeys.mfaRecoveryCodes, data.recoveryCodes);
       queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
     }
   });

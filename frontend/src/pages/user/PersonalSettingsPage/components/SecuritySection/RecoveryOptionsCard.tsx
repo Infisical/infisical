@@ -23,12 +23,12 @@ import {
 import { useGetMfaRecoveryCodes, useRotateMfaRecoveryCodes } from "@app/hooks/api/users";
 
 export const RecoveryOptionsCard = () => {
-  const { data: recoveryCodes = [] } = useGetMfaRecoveryCodes(true);
-  const { mutateAsync: rotate, isPending: isRotating } = useRotateMfaRecoveryCodes();
-
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [hasViewed, setHasViewed] = useState(false);
+
+  const { data: recoveryCodes = [] } = useGetMfaRecoveryCodes(isViewOpen);
+  const { mutateAsync: rotate, isPending: isRotating } = useRotateMfaRecoveryCodes();
 
   const handleRegenerate = async () => {
     try {

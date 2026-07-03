@@ -1,7 +1,39 @@
 import { Knex } from "knex";
 
+import { inMemoryKeyStore } from "@app/keystore/memory";
+import { initLogger } from "@app/lib/logger";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { generateRecoveryCode } from "@app/services/mfa-recovery-code/mfa-recovery-code-fns";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+
+const BATCH_SIZE = 500;
+// Keep in sync with MAX_RECOVERY_CODE_LIMIT in mfa-recovery-code-service.ts.
+const RECOVERY_CODE_COUNT = 10;
+
+// Boots just enough of the KMS stack to mint root-key ciphertext from within a
+// migration, mirroring the runtime mfaRecoveryCodeService.
+const startRootEncryptor = async (knex: Knex) => {
+  initLogger();
+  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
+  const superAdminDAL = superAdminDALFactory(knex);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
+  const keyStore = inMemoryKeyStore();
+  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  return kmsService.encryptWithRootKey();
+};
+
+// Same code count + encoding as generateEncryptedRecoveryCodes in the service,
+// so the ciphertext decrypts identically in either store.
+const generateEncryptedRecoveryCodes = (encryptWithRoot: (plainText: Buffer) => Buffer) => {
+  const recoveryCodes = Array.from({ length: RECOVERY_CODE_COUNT }).map(generateRecoveryCode);
+  return encryptWithRoot(Buffer.from(recoveryCodes.join(",")));
+};
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.UserMfaRecoveryCode))) {
@@ -31,6 +63,33 @@ export async function up(knex: Knex): Promise<void> {
     );
   }
 
+  // Some MFA-enabled users have no pool after the copy above: email-MFA users
+  // (no TOTP config at all) and users whose TOTP config was never verified.
+  // Going forward the disabled->enabled transition mints codes, but these
+  // pre-existing users would be stuck — unable to finish org-enforced
+  // enrollment or use recovery-code login — so generate a fresh pool for them.
+  const usersMissingRecoveryCodes = await knex(TableName.Users)
+    .leftJoin(TableName.UserMfaRecoveryCode, `${TableName.UserMfaRecoveryCode}.userId`, `${TableName.Users}.id`)
+    .where(`${TableName.Users}.isMfaEnabled`, true)
+    .whereNull(`${TableName.UserMfaRecoveryCode}.id`)
+    .select(`${TableName.Users}.id`);
+
+  if (usersMissingRecoveryCodes.length) {
+    const encryptWithRoot = await startRootEncryptor(knex);
+    const rows = usersMissingRecoveryCodes.map(({ id }) => ({
+      userId: id,
+      encryptedRecoveryCodes: generateEncryptedRecoveryCodes(encryptWithRoot)
+    }));
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      // eslint-disable-next-line no-await-in-loop
+      await knex(TableName.UserMfaRecoveryCode)
+        .insert(rows.slice(i, i + BATCH_SIZE))
+        .onConflict("userId")
+        .ignore();
+    }
+  }
+
   // Recovery codes now live in user_mfa_recovery_codes. The values were copied
   // above, so drop the legacy column from totp_configs.
   if (await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes")) {
@@ -41,10 +100,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // Recreate the legacy column so the pre-migration TOTP code can read recovery
-  // codes again. It is nullable because TOTP configs created after the column
-  // was dropped have no ciphertext to restore (their codes only live in the
-  // account-level store, which may have no row for a given user).
+  // Recreate the legacy column nullable for now so the backfill below can
+  // populate it; the original NOT NULL constraint is restored at the end.
   if (!(await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes"))) {
     await knex.schema.alterTable(TableName.TotpConfig, (t) => {
       t.binary("encryptedRecoveryCodes").nullable();
@@ -64,5 +121,34 @@ export async function down(knex: Knex): Promise<void> {
 
     await dropOnUpdateTrigger(knex, TableName.UserMfaRecoveryCode);
     await knex.schema.dropTable(TableName.UserMfaRecoveryCode);
+  }
+
+  // TOTP configs created after the column was dropped (or whose account-level
+  // pool was missing) still have NULL. The pre-migration TOTP code decrypts this
+  // column unconditionally and the original schema was NOT NULL, so mint a fresh
+  // pool for those rows before restoring the constraint — otherwise the rolled-
+  // back code throws a 500 on every TOTP settings load / login for those users.
+  const totpConfigsMissingCodes = await knex(TableName.TotpConfig).whereNull("encryptedRecoveryCodes").select("id");
+
+  if (totpConfigsMissingCodes.length) {
+    const encryptWithRoot = await startRootEncryptor(knex);
+
+    for (const { id } of totpConfigsMissingCodes) {
+      // Raw update: encryptedRecoveryCodes was dropped from the generated schema,
+      // so the typed query builder no longer knows the (recreated) column.
+      // eslint-disable-next-line no-await-in-loop
+      await knex.raw(`UPDATE ?? SET "encryptedRecoveryCodes" = ? WHERE "id" = ?`, [
+        TableName.TotpConfig,
+        generateEncryptedRecoveryCodes(encryptWithRoot),
+        id
+      ]);
+    }
+  }
+
+  // Restore the original NOT NULL constraint now that every row has ciphertext.
+  if (await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes")) {
+    await knex.schema.alterTable(TableName.TotpConfig, (t) => {
+      t.binary("encryptedRecoveryCodes").notNullable().alter();
+    });
   }
 }

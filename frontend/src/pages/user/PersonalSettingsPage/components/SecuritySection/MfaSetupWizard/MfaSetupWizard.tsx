@@ -35,7 +35,7 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
 
   const [step, setStep] = useState(0);
   const [selectedMethod, setSelectedMethod] = useState<MfaMethod>(MfaMethod.TOTP);
-  const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
 
   const {
     data: recoveryCodes = [],
@@ -50,7 +50,7 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
       // Reset once the close animation is unlikely to be visible.
       setStep(0);
       setSelectedMethod(MfaMethod.TOTP);
-      setHasDownloaded(false);
+      setHasSaved(false);
     }
   }, [isOpen]);
 
@@ -122,7 +122,7 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
                     </Alert>
                     <RecoveryCodesView
                       recoveryCodes={recoveryCodes}
-                      onDownloaded={() => setHasDownloaded(true)}
+                      onSaved={() => setHasSaved(true)}
                     />
                   </>
                 ) : (
@@ -160,7 +160,7 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
             {step === 2 && (
               <Button
                 variant="org"
-                isDisabled={!hasRecoveryCodes || !hasDownloaded}
+                isDisabled={!hasRecoveryCodes || !hasSaved}
                 onClick={handleDone}
               >
                 Done

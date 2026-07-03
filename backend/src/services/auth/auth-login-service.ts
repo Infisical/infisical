@@ -744,6 +744,12 @@ export const authLoginServiceFactory = ({
         });
       }
     } catch (err) {
+      if (isRecoveryCode && err instanceof NotFoundError) {
+        throw new BadRequestError({
+          message: "No recovery codes are configured for this account. Please use another MFA method."
+        });
+      }
+
       const updatedUser = await processFailedMfaAttempt(userId);
       if (updatedUser.isLocked) {
         if (updatedUser.email) {

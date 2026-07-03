@@ -5,10 +5,10 @@ import { Button } from "@app/components/v3";
 
 type Props = {
   recoveryCodes: string[];
-  onDownloaded?: () => void;
+  onSaved?: () => void;
 };
 
-export const RecoveryCodesView = ({ recoveryCodes, onDownloaded }: Props) => {
+export const RecoveryCodesView = ({ recoveryCodes, onSaved }: Props) => {
   const [copied, setCopied] = useState(false);
 
   const handleDownload = () => {
@@ -22,7 +22,7 @@ export const RecoveryCodesView = ({ recoveryCodes, onDownloaded }: Props) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    onDownloaded?.();
+    onSaved?.();
   };
 
   const handleCopy = async () => {
@@ -30,6 +30,7 @@ export const RecoveryCodesView = ({ recoveryCodes, onDownloaded }: Props) => {
       await navigator.clipboard.writeText(recoveryCodes.join("\n"));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      onSaved?.();
     } catch {
       // ignore clipboard failures
     }
