@@ -133,9 +133,31 @@ export const identityAccessTokenServiceFactory = ({
     return activeRevocations;
   };
 
+  // Cache-aside delayed double delete (see invalidateRevocationCache): a second delete
+  // fired after a short delay to close the read-write race window. Best-effort, fire-and-
+  // forget — never let a timer failure surface anywhere.
+  const REVOCATION_CACHE_DOUBLE_DELETE_DELAY_MS = 2000;
+  const scheduleRevocationCacheDoubleDelete = (identityId: string) => {
+    const timer = setTimeout(() => {
+      keyStore
+        .deleteItem(KeyStorePrefixes.IdentityRevocationList(identityId))
+        .catch((error) => logger.error(error, "Failed to run delayed identity revocation cache double-delete"));
+    }, REVOCATION_CACHE_DOUBLE_DELETE_DELAY_MS);
+    timer.unref();
+  };
+
   // Drop the cached revocation set so a freshly-inserted revocation is enforced at once
   // instead of waiting out the TTL. Never let a cache error surface from a revoke.
+  //
+  // Also schedules a second delete a couple seconds later ("delayed double delete"): a
+  // concurrent auth request that read the DB (a cache miss) just before this revoke
+  // committed can still win the race and write the stale pre-revoke set back to Redis
+  // right after our delete lands, re-caching it for the full TTL. The delayed delete
+  // clears that window down to ~the delay, assuming normal (sub-second) DB read latency
+  // — it's a mitigation for the common case, not a correctness guarantee against an
+  // arbitrarily slow concurrent read.
   const invalidateRevocationCache = async (identityId: string) => {
+    scheduleRevocationCacheDoubleDelete(identityId);
     try {
       await keyStore.deleteItem(KeyStorePrefixes.IdentityRevocationList(identityId));
     } catch (error) {

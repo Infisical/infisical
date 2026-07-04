@@ -52,7 +52,7 @@ const createService = ({
     getItem: vi.fn().mockResolvedValue(null),
     incrementBy: vi.fn(),
     setItemWithExpiry: vi.fn(),
-    deleteItem: vi.fn()
+    deleteItem: vi.fn().mockResolvedValue(1)
   };
   const identityAccessTokenRevocationDAL = {
     findActiveRevocationsForIdentity: vi.fn().mockResolvedValue(activeRevocations),
@@ -350,6 +350,20 @@ describe("identityAccessTokenServiceFactory", () => {
     await service.revokeAllTokensForIdentity("identity-id");
 
     expect(keyStore.deleteItem).toHaveBeenCalledWith("identity-revocation-list:identity-id");
+  });
+
+  test("schedules a delayed second cache delete to close the cache-aside write-after-invalidate race", async () => {
+    const { service, keyStore } = createService();
+
+    await service.revokeAllTokensForIdentity("identity-id");
+
+    // Immediate delete only so far; the delayed double-delete hasn't fired yet.
+    expect(keyStore.deleteItem).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(keyStore.deleteItem).toHaveBeenCalledTimes(2);
+    expect(keyStore.deleteItem).toHaveBeenNthCalledWith(2, "identity-revocation-list:identity-id");
   });
 
   test("keeps usage counters in Redis", async () => {
