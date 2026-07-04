@@ -1,7 +1,12 @@
 /* eslint-disable no-await-in-loop */
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getGiteaAPIBaseUrl, getValidAccessToken, makePaginatedGiteaRequest } from "@app/services/app-connection/gitea";
+import {
+  getGiteaAPIBaseUrl,
+  getValidAccessToken,
+  makePaginatedGiteaRequest,
+  TGiteaAccessToken
+} from "@app/services/app-connection/gitea";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -17,11 +22,11 @@ type TGiteaSyncFactoryDeps = {
 };
 
 const getAllSecrets = async ({
-  secretSync,
-  accessToken
+  accessToken,
+  secretSync
 }: {
+  accessToken: TGiteaAccessToken;
   secretSync: TGiteaSyncWithCredentials;
-  accessToken: string;
 }) => {
   const { connection, destinationConfig } = secretSync;
   const baseUrl = await getGiteaAPIBaseUrl(connection);
@@ -48,7 +53,7 @@ const putSecret = async ({
 }: {
   name: string;
   value: string;
-  accessToken: string;
+  accessToken: TGiteaAccessToken;
   secretSync: TGiteaSyncWithCredentials;
 }) => {
   const { connection, destinationConfig } = secretSync;
@@ -73,7 +78,7 @@ const putSecret = async ({
     },
     {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `${accessToken.prefix} ${accessToken.value}`,
         Accept: "application/json"
       }
     }
@@ -86,7 +91,7 @@ const deleteSecret = async ({
   secretSync
 }: {
   name: string;
-  accessToken: string;
+  accessToken: TGiteaAccessToken;
   secretSync: TGiteaSyncWithCredentials;
 }) => {
   const { connection, destinationConfig } = secretSync;
@@ -106,7 +111,7 @@ const deleteSecret = async ({
 
   await request.delete(`${baseUrl}${path}`, {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `${accessToken.prefix} ${accessToken.value}`,
       Accept: "application/json"
     }
   });
@@ -124,7 +129,7 @@ export const GiteaSyncFns = {
       kmsService
     });
 
-    const currentSecrets = await getAllSecrets({ secretSync, accessToken });
+    const currentSecrets = await getAllSecrets({ accessToken, secretSync });
 
     const secretMap = Object.fromEntries(
       Object.entries(ogSecretMap).map(([name, value]) => [name.toUpperCase(), value])
@@ -174,7 +179,7 @@ export const GiteaSyncFns = {
       kmsService
     });
 
-    const currentSecrets = await getAllSecrets({ secretSync, accessToken });
+    const currentSecrets = await getAllSecrets({ accessToken, secretSync });
 
     const secretMap = Object.fromEntries(
       Object.entries(ogSecretMap).map(([name, value]) => [name.toUpperCase(), value])

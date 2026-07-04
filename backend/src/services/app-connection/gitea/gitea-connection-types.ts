@@ -21,6 +21,11 @@ export type TGiteaConnectionConfig = DiscriminativePick<TGiteaConnectionInput, "
   orgId: string;
 };
 
+export type TGiteaAccessToken = {
+  prefix: string;
+  value: string;
+};
+
 export type TGiteaOrganization = {
   id: string;
   name: string;

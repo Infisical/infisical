@@ -12,13 +12,14 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { AppConnection } from "../app-connection-enums";
 import { GiteaConnectionMethod } from "./gitea-connection-enums";
 import {
+  TGiteaAccessToken,
   TGiteaConnection,
   TGiteaConnectionConfig,
   TGiteaOrganization,
   TGiteaRepository
 } from "./gitea-connection-types";
 
-type GiteaOAuthTokenResponse = {
+type TGiteaOAuthTokenResponse = {
   access_token: string;
   token_type: string;
   expires_in: number;
@@ -64,7 +65,15 @@ const getOAuthConfig = () => {
 };
 
 export const getGiteaConnectionListItem = () => {
-  const { clientId } = getOAuthConfig();
+  let oauthClientId: string | undefined;
+
+  try {
+    const config = getOAuthConfig();
+    oauthClientId = config.clientId;
+  } catch {
+    // Suppress static config fetch errors
+    // It likely means it isn't configured, rather than misconfiguration
+  }
 
   return {
     name: "Gitea" as const,
@@ -73,7 +82,7 @@ export const getGiteaConnectionListItem = () => {
       GiteaConnectionMethod.OAuth,
       GiteaConnectionMethod.PersonalAccessToken
     ],
-    oauthClientId: clientId
+    oauthClientId
   };
 };
 
@@ -88,7 +97,7 @@ export const getGiteaAPIBaseUrl = async (config: Pick<TGiteaConnectionConfig | T
   return `${instanceUrl}/api/v1`;
 };
 
-const exchangeGiteaOAuthCode = async (code: string, instanceUrl: string): Promise<GiteaOAuthTokenResponse> => {
+const exchangeGiteaOAuthCode = async (code: string, instanceUrl: string): Promise<TGiteaOAuthTokenResponse> => {
   const { clientId, clientSecret, siteUrl } = getOAuthConfig();
 
   try {
@@ -101,7 +110,7 @@ const exchangeGiteaOAuthCode = async (code: string, instanceUrl: string): Promis
       redirect_uri: `${siteUrl}/organization/app-connections/gitea/oauth/callback`
     });
 
-    const response = await request.post<GiteaOAuthTokenResponse>(
+    const response = await request.post<TGiteaOAuthTokenResponse>(
       `${url}/login/oauth/access_token`,
       payload.toString(),
       {
@@ -160,7 +169,7 @@ const refreshGiteaOAuthAccessToken = async ({
       redirect_uri: `${siteUrl}/organization/app-connections/gitea/oauth/callback`
     });
 
-    const { data } = await request.post<GiteaOAuthTokenResponse>(
+    const { data } = await request.post<TGiteaOAuthTokenResponse>(
       `${url}/login/oauth/access_token`,
       payload.toString(),
       {
@@ -181,7 +190,7 @@ const refreshGiteaOAuthAccessToken = async ({
       credentials: {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
-        expiresAt: new Date(Date.now() + data.expires_in * 1000 - 600000),
+        expiresAt: new Date(Date.now() + data.expires_in * 1000 - 60000),
         tokenType: data.token_type,
         instanceUrl
       },
@@ -195,11 +204,11 @@ const refreshGiteaOAuthAccessToken = async ({
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to refresh GitLab token: ${error.message}`
+        message: `Failed to refresh Gitea token: ${error.message}`
       });
     }
     throw new BadRequestError({
-      message: "Unable to refresh GitLab token"
+      message: "Unable to refresh Gitea token"
     });
   }
 };
@@ -212,9 +221,9 @@ export const getValidAccessToken = async ({
   appConnection: TGiteaConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}): Promise<string> => {
+}): Promise<TGiteaAccessToken> => {
   if (appConnection.method === GiteaConnectionMethod.PersonalAccessToken) {
-    return appConnection.credentials.personalAccessToken;
+    return { prefix: "token", value: appConnection.credentials.personalAccessToken };
   }
 
   let { accessToken } = appConnection.credentials;
@@ -231,7 +240,7 @@ export const getValidAccessToken = async ({
     });
   }
 
-  return accessToken;
+  return { prefix: "Bearer", value: accessToken };
 };
 
 export const validateGiteaConnectionCredentials = async (config: TGiteaConnectionConfig) => {
@@ -239,7 +248,7 @@ export const validateGiteaConnectionCredentials = async (config: TGiteaConnectio
   const { credentials: ogCredentials, method } = config;
 
   let accessToken: string;
-  let oauthData: GiteaOAuthTokenResponse | null = null;
+  let oauthData: TGiteaOAuthTokenResponse | null = null;
 
   if (method === GiteaConnectionMethod.OAuth && "code" in ogCredentials) {
     oauthData = await exchangeGiteaOAuthCode(ogCredentials.code, ogCredentials.instanceUrl);
@@ -283,7 +292,7 @@ export const makePaginatedGiteaRequest = async <T>({
   accessToken
 }: {
   url: string;
-  accessToken: string;
+  accessToken: TGiteaAccessToken;
 }): Promise<T[]> => {
   const results: T[] = [];
   const itemsPerPage = 50;
@@ -294,7 +303,7 @@ export const makePaginatedGiteaRequest = async <T>({
 
   const firstResponse = await request.get<T[]>(initialUrlObj.toString(), {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `${accessToken.prefix} ${accessToken.value}`,
       Accept: "application/json"
     }
   });
@@ -307,7 +316,7 @@ export const makePaginatedGiteaRequest = async <T>({
   // More than one page of data available, so concurrently fetch the remaining pages
   if (totalItems > firstPageItems.length) {
     const pageRequests: Promise<AxiosResponse<T[]>>[] = [];
-    const totalPages = Math.ceil((totalItems - firstPageItems.length) / itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     for (let pageNum = 2; pageNum <= totalPages && pageNum - 1 < maxIterations; pageNum += 1) {
       const pageUrlObj = new URL(initialUrlObj.toString());
@@ -316,7 +325,7 @@ export const makePaginatedGiteaRequest = async <T>({
       pageRequests.push(
         request.get<T[]>(pageUrlObj.toString(), {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `${accessToken.prefix} ${accessToken.value}`,
             Accept: "application/json"
           }
         })
@@ -376,7 +385,7 @@ export const listGiteaRepositories = async ({
 
   const { data } = await request.get<TGiteaListRepositoriesResponse>(`${baseUrl}/repos/search`, {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `${accessToken.prefix} ${accessToken.value}`,
       Accept: "application/json"
     },
     params: {
