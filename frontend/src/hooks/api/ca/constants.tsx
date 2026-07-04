@@ -40,6 +40,7 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
     CaCapability.RENEW_CERTIFICATES
   ],
   [CaType.AZURE_AD_CS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.ADCS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
   [CaType.AWS_PCA]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
@@ -65,7 +66,8 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
 
 export const EXTERNAL_CA_TYPE_NAME_MAP: Record<string, string> = {
   [CaType.ACME]: "ACME",
-  [CaType.AZURE_AD_CS]: "Active Directory Certificate Services (AD CS)",
+  [CaType.AZURE_AD_CS]: "Azure ADCS (Web Enrollment)",
+  [CaType.ADCS]: "ADCS",
   [CaType.AWS_PCA]: "AWS Private CA (PCA)",
   [CaType.DIGICERT]: "DigiCert CertCentral",
   [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA",

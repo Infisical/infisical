@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
@@ -23,10 +25,24 @@ export type TSignerCertificateInput = {
   hsmConnectorId?: string;
 };
 
-export type TSignerExternalConfigurationInput = {
-  caType: CaType.DIGICERT;
-  reissueFromExternalOrderId?: string;
-};
+export type TSignerExternalConfigurationInput =
+  | {
+      caType: CaType.DIGICERT;
+      reissueFromExternalOrderId?: string;
+    }
+  | {
+      caType: CaType.ADCS;
+      template?: string;
+    };
+
+export const SignerExternalCaConfigSchema = z.discriminatedUnion("caType", [
+  z.object({
+    caType: z.literal(CaType.ADCS),
+    template: z.string().trim().min(1).optional()
+  })
+]);
+
+export type TSignerExternalCaConfig = z.infer<typeof SignerExternalCaConfigSchema>;
 
 export type TCreateSignerDTO = {
   name: string;

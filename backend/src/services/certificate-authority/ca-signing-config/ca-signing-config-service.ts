@@ -17,7 +17,9 @@ import { TInternalCertificateAuthorityDALFactory } from "../internal/internal-ce
 import { TCaSigningConfigDALFactory } from "./ca-signing-config-dal";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
 import {
+  AdcsDestinationConfigSchema,
   AzureAdCsDestinationConfigSchema,
+  TAdcsDestinationConfig,
   TAzureAdCsDestinationConfig,
   TCreateCaSigningConfigDTO,
   TGetCaSigningConfigDTO,
@@ -35,7 +37,10 @@ type TCaSigningConfigServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  caAutoRenewalQueue: Pick<TCaAutoRenewalQueueFactory, "queueVenafiInstall" | "queueAdcsInstall">;
+  caAutoRenewalQueue: Pick<
+    TCaAutoRenewalQueueFactory,
+    "queueVenafiInstall" | "queueAdcsInstall" | "queueNativeAdcsInstall"
+  >;
 };
 
 export type TCaSigningConfigServiceFactory = ReturnType<typeof caSigningConfigServiceFactory>;
@@ -133,7 +138,21 @@ export const caSigningConfigServiceFactory = ({
       await validateAppConnectionOrg(appConnectionId, actorOrgId);
     }
 
-    const isExternalCa = type === CaSigningConfigType.Venafi || type === CaSigningConfigType.AzureAdCs;
+    if (type === CaSigningConfigType.Adcs) {
+      if (!appConnectionId) {
+        throw new BadRequestError({ message: "App connection ID is required for ADCS signing" });
+      }
+      if (!destinationConfig) {
+        throw new BadRequestError({ message: "Destination config is required for ADCS signing" });
+      }
+      AdcsDestinationConfigSchema.parse(destinationConfig);
+      await validateAppConnectionOrg(appConnectionId, actorOrgId);
+    }
+
+    const isExternalCa =
+      type === CaSigningConfigType.Venafi ||
+      type === CaSigningConfigType.AzureAdCs ||
+      type === CaSigningConfigType.Adcs;
 
     const config = await caSigningConfigDAL.transaction(async (tx) => {
       if (existing) {
@@ -239,7 +258,7 @@ export const caSigningConfigServiceFactory = ({
     const updateData: {
       parentCaId?: string | null;
       appConnectionId?: string;
-      destinationConfig?: TVenafiDestinationConfig | TAzureAdCsDestinationConfig;
+      destinationConfig?: TVenafiDestinationConfig | TAzureAdCsDestinationConfig | TAdcsDestinationConfig;
       lastExternalCertificateId?: string;
     } = {};
 
@@ -266,6 +285,17 @@ export const caSigningConfigServiceFactory = ({
       }
       if (destinationConfig !== undefined) {
         AzureAdCsDestinationConfigSchema.parse(destinationConfig);
+        updateData.destinationConfig = destinationConfig;
+      }
+    }
+
+    if (existing.type === CaSigningConfigType.Adcs) {
+      if (appConnectionId !== undefined) {
+        await validateAppConnectionOrg(appConnectionId, actorOrgId);
+        updateData.appConnectionId = appConnectionId;
+      }
+      if (destinationConfig !== undefined) {
+        AdcsDestinationConfigSchema.parse(destinationConfig);
         updateData.destinationConfig = destinationConfig;
       }
     }
@@ -548,6 +578,63 @@ export const caSigningConfigServiceFactory = ({
     return { ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
   };
 
+  const installCertificateAdcsNative = async ({
+    caId,
+    maxPathLength,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    caId: string;
+    maxPathLength?: number;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
+    );
+
+    const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
+    if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
+
+    const signingConfig = await getSigningConfigByCaId(internalCa.id);
+
+    if (signingConfig.type !== CaSigningConfigType.Adcs) {
+      throw new BadRequestError({ message: "CA signing config is not configured for ADCS" });
+    }
+
+    if (!signingConfig.appConnectionId) {
+      throw new BadRequestError({ message: "ADCS signing config is missing app connection" });
+    }
+
+    const parseResult = AdcsDestinationConfigSchema.safeParse(signingConfig.destinationConfig);
+    if (!parseResult.success) {
+      throw new BadRequestError({
+        message: "ADCS signing config has invalid or missing destination configuration"
+      });
+    }
+
+    await caAutoRenewalQueue.queueNativeAdcsInstall(caId, maxPathLength);
+
+    return { ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
+  };
+
   return {
     createSigningConfig,
     getSigningConfig,
@@ -555,6 +642,7 @@ export const caSigningConfigServiceFactory = ({
     getAutoRenewalConfig,
     updateAutoRenewalConfig,
     installCertificateVenafi,
-    installCertificateAzureAdCs
+    installCertificateAzureAdCs,
+    installCertificateAdcsNative
   };
 };

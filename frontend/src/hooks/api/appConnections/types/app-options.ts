@@ -192,6 +192,10 @@ export type TAzureAdCsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureADCS;
 };
 
+export type TAdcsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ADCS;
+};
+
 export type TRedisConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Redis;
 };
@@ -349,6 +353,7 @@ export type TAppConnectionOption =
   | TCircleCISyncConnectionOption
   | TCloud66ConnectionOption
   | TAzureAdCsConnectionOption
+  | TAdcsConnectionOption
   | TLaravelForgeConnectionOption
   | TRedisConnectionOption
   | TMongoDBConnectionOption
@@ -423,6 +428,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.OpenRouter]: TOpenRouterConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
+  [AppConnection.ADCS]: TAdcsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;

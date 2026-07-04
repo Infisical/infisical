@@ -72,6 +72,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         if (ca.type === CaType.INTERNAL) return true;
         if (ca.type === CaType.AWS_PCA) return true;
         if (ca.type === CaType.AZURE_AD_CS) return true;
+        if (ca.type === CaType.ADCS) return true;
         if (ca.type === CaType.DIGICERT) {
           return ca.configuration?.purpose === DigiCertCaPurpose.CodeSigning;
         }
@@ -89,9 +90,16 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 organizationId: ca.configuration.organizationId,
                 productNameId: ca.configuration.productNameId
               }
+            : undefined,
+        adcs:
+          ca.type === CaType.ADCS
+            ? { appConnectionId: ca.configuration.appConnectionId }
             : undefined
       }));
   }, [cas.data]);
+
+  const signerAdcsTemplate =
+    signer.externalCaConfig?.caType === CaType.ADCS ? (signer.externalCaConfig.template ?? "") : "";
 
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),
@@ -108,7 +116,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       keySource: currentKeySource,
       keyAlgorithm: currentKeyAlgorithm,
       hsmConnectorId: currentHsmConnectorId,
-      reissueFromExternalOrderId: null
+      reissueFromExternalOrderId: null,
+      adcsTemplate: signerAdcsTemplate
     }
   });
 
@@ -129,8 +138,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const watchedHsmConnectorId = certificateForm.watch("hsmConnectorId");
   const watchedKeyAlgorithm = certificateForm.watch("keyAlgorithm");
   const watchedReissueOrderId = certificateForm.watch("reissueFromExternalOrderId");
+  const watchedAdcsTemplate = certificateForm.watch("adcsTemplate");
 
   const selectedCa = caOptions.find((o) => o.id === watchedCaId) ?? null;
+  const isAdcs = selectedCa?.caType === CaType.ADCS;
   const { requiresHsm, minRsaKeyBits } = getCaIssuanceCapabilities(selectedCa?.caType);
 
   useEffect(() => {
@@ -149,8 +160,14 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       (watchedHsmConnectorId ?? null) !== currentHsmConnectorId);
   const keyAlgorithmChanged = watchedKeyAlgorithm !== currentKeyAlgorithm;
   const isReissueFromOrder = Boolean(watchedReissueOrderId);
+  const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
   const shouldReissue =
-    caSwap || subjectChanged || keySourceChanged || keyAlgorithmChanged || isReissueFromOrder;
+    caSwap ||
+    subjectChanged ||
+    keySourceChanged ||
+    keyAlgorithmChanged ||
+    isReissueFromOrder ||
+    adcsTemplateChanged;
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -164,13 +181,20 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         keySource: currentKeySource,
         keyAlgorithm: currentKeyAlgorithm,
         hsmConnectorId: currentHsmConnectorId,
-        reissueFromExternalOrderId: null
+        reissueFromExternalOrderId: null,
+        adcsTemplate: signerAdcsTemplate
       });
     }
     onOpenChange(open);
   };
 
   const onSave = async () => {
+    if (isAdcs && !certificateForm.getValues("adcsTemplate")?.trim()) {
+      certificateForm.setError("adcsTemplate", { message: "Certificate template is required" });
+      setStep(1);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const basics = basicsForm.getValues();
@@ -200,12 +224,21 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                       : undefined
                 }
               : undefined,
-          externalConfiguration: cert.reissueFromExternalOrderId
-            ? {
-                caType: CaType.DIGICERT,
+          externalConfiguration: (() => {
+            if (cert.reissueFromExternalOrderId) {
+              return {
+                caType: CaType.DIGICERT as const,
                 reissueFromExternalOrderId: cert.reissueFromExternalOrderId
-              }
-            : undefined
+              };
+            }
+            if (isAdcs) {
+              return {
+                caType: CaType.ADCS as const,
+                template: cert.adcsTemplate?.trim() || undefined
+              };
+            }
+            return undefined;
+          })()
         });
       }
 

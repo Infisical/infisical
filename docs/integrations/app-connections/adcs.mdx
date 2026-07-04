@@ -1,0 +1,49 @@
+---
+title: "ADCS Connection"
+description: "Learn how to configure a native ADCS Connection for Infisical certificate management."
+---
+
+Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) over MS-WCCE through an Infisical [Gateway](/documentation/platform/gateways/overview). The Gateway runs inside your network and speaks to the CA directly, so the AD CS server never needs to be exposed to Infisical.
+
+<Note>
+  This is the native AD CS integration. It talks to the CA over the Windows Client Certificate Enrollment protocol (MS-WCCE) through a Gateway. It is separate from the [Azure ADCS (Web Enrollment)](/integrations/app-connections/azure-adcs) connection, which uses the AD CS web enrollment pages over HTTPS.
+</Note>
+
+## Prerequisites
+
+- A Microsoft Active Directory Certificate Services (AD CS) server (Enterprise CA)
+- An Infisical [Gateway](/documentation/platform/gateways/overview) deployed inside the network that can reach the AD CS server
+- A domain account with Enroll permission on the certificate templates you plan to use
+- Network connectivity from the Gateway to the AD CS server over DCOM (MS-WCCE)
+
+<Note>
+  The connection authenticates with NTLM. The Gateway reaches the CA host over DCOM. No inbound access to the AD CS server from Infisical is required, and no configuration file is created on the Gateway.
+</Note>
+
+## Connection Setup
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **App Connections** tab on the **Organization Settings** page.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **ADCS Connection** option from the connection options modal.
+  </Step>
+  <Step title="Configure Connection Details">
+    - **Name**: Friendly name for this connection (for example, `production-adcs`)
+    - **CA Host**: The AD CS server hostname or IP reachable from the Gateway (for example, `ca01.corp.example.com`)
+    - **Username**: Domain account in the form `DOMAIN\username` or `username@domain.com`
+    - **Password**: Password for the domain account
+    - **Gateway**: The Gateway that can reach the AD CS server
+
+    A Gateway is required. The control plane cannot reach AD CS over DCOM directly, so every operation is relayed through the Gateway.
+  </Step>
+  <Step title="Connection Created">
+    Your **ADCS Connection** is now available for use in your Infisical projects.
+  </Step>
+</Steps>
+
+## Certificate Authority Name
+
+The AD CS certificate authority name is discovered automatically from the CA host, so you do not have to enter it. If discovery cannot run in your environment (for example, the Remote Registry service is disabled on the CA host), provide the certificate authority name explicitly when creating the [external CA](/documentation/platform/pki/ca/adcs).

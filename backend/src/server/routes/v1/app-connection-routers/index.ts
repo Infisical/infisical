@@ -4,6 +4,7 @@ import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connecti
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
+import { registerADCSConnectionRouter } from "./adcs-connection-router";
 import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
@@ -87,6 +88,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
     [AppConnection.AzureADCS]: registerAzureADCSConnectionRouter,
+    [AppConnection.ADCS]: registerADCSConnectionRouter,
     [AppConnection.AzureDNS]: registerAzureDnsConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,

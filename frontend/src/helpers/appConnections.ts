@@ -50,6 +50,7 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { AdcsConnectionMethod } from "@app/hooks/api/appConnections/types/adcs-connection";
 import { AnthropicConnectionMethod } from "@app/hooks/api/appConnections/types/anthropic-connection";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
@@ -153,10 +154,16 @@ export const APP_CONNECTION_MAP: Record<
     description: "Pipeline and project access for Azure DevOps."
   },
   [AppConnection.AzureADCS]: {
-    name: "Azure ADCS",
+    name: "Azure ADCS (Web Enrollment)",
     image: "Microsoft Azure.png",
     category: "CERTIFICATES",
-    description: "Issue certificates via Active Directory Certificate Services."
+    description: "Issue certificates via Active Directory Certificate Services web enrollment."
+  },
+  [AppConnection.ADCS]: {
+    name: "ADCS",
+    image: "Microsoft Azure.png",
+    category: "CERTIFICATES",
+    description: "Issue certificates via Active Directory Certificate Services over the Gateway."
   },
   [AppConnection.AzureDNS]: {
     name: "Azure DNS",
@@ -615,6 +622,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };

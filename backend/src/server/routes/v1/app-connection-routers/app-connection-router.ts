@@ -16,6 +16,10 @@ import {
   SanitizedOnePassConnectionSchema
 } from "@app/services/app-connection/1password";
 import {
+  ADCSConnectionListItemSchema,
+  SanitizedADCSConnectionSchema
+} from "@app/services/app-connection/adcs/adcs-connection-schemas";
+import {
   AnthropicConnectionListItemSchema,
   SanitizedAnthropicConnectionSchema
 } from "@app/services/app-connection/anthropic";
@@ -269,6 +273,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNorthflankConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
+  ...SanitizedADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
@@ -345,6 +350,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NorthflankConnectionListItemSchema,
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
+  ADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,

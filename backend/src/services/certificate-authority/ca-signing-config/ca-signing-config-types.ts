@@ -23,22 +23,38 @@ export const AzureAdCsDestinationConfigSchema = z.object({
 
 export type TAzureAdCsDestinationConfig = z.infer<typeof AzureAdCsDestinationConfigSchema>;
 
+export const AdcsDestinationConfigSchema = z.object({
+  template: z
+    .string()
+    .min(1)
+    .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters"),
+  caName: z
+    .string()
+    .min(1)
+    .refine((v) => RE_NO_NEWLINES.test(v), "CA name must not contain newline characters")
+    .optional()
+});
+
+export type TAdcsDestinationConfig = z.infer<typeof AdcsDestinationConfigSchema>;
+
 // Union of all external CA destination config schemas — extend here when adding new providers
-export const DestinationConfigSchema = VenafiDestinationConfigSchema.or(AzureAdCsDestinationConfigSchema);
+export const DestinationConfigSchema = VenafiDestinationConfigSchema.or(AzureAdCsDestinationConfigSchema).or(
+  AdcsDestinationConfigSchema
+);
 
 export type TCreateCaSigningConfigDTO = {
   caId: string;
   type: CaSigningConfigType;
   parentCaId?: string;
   appConnectionId?: string;
-  destinationConfig?: TVenafiDestinationConfig | TAzureAdCsDestinationConfig;
+  destinationConfig?: TVenafiDestinationConfig | TAzureAdCsDestinationConfig | TAdcsDestinationConfig;
 };
 
 export type TUpdateCaSigningConfigDTO = {
   caId: string;
   parentCaId?: string;
   appConnectionId?: string;
-  destinationConfig?: TVenafiDestinationConfig | TAzureAdCsDestinationConfig;
+  destinationConfig?: TVenafiDestinationConfig | TAzureAdCsDestinationConfig | TAdcsDestinationConfig;
   lastExternalCertificateId?: string;
 };
 

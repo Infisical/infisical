@@ -13,6 +13,16 @@ export const AzureAdCsExternalConfigSchema = z.object({
 });
 
 /**
+ * External configuration schema for Active Directory Certificate Service Certificate Authority
+ */
+export const ADCSExternalConfigSchema = z.object({
+  template: z
+    .string()
+    .min(1, "Template name is required for Active Directory Certificate Service")
+    .describe("Certificate template name for Active Directory Certificate Service")
+});
+
+/**
  * External configuration schema for ACME Certificate Authority
  */
 export const AcmeExternalConfigSchema = z.object({});
@@ -47,6 +57,7 @@ export const GoDaddyExternalConfigSchema = z.object({});
  */
 export const ExternalConfigSchemaMap = {
   [CaType.AZURE_AD_CS]: AzureAdCsExternalConfigSchema,
+  [CaType.ADCS]: ADCSExternalConfigSchema,
   [CaType.ACME]: AcmeExternalConfigSchema,
   [CaType.AWS_PCA]: AwsPcaExternalConfigSchema,
   [CaType.DIGICERT]: DigiCertExternalConfigSchema,
@@ -75,6 +86,7 @@ export const createExternalConfigSchema = (caType?: CaType | null) => {
 export const ExternalConfigUnionSchema = z
   .union([
     AzureAdCsExternalConfigSchema,
+    ADCSExternalConfigSchema,
     AcmeExternalConfigSchema,
     AwsPcaExternalConfigSchema,
     DigiCertExternalConfigSchema,

@@ -2944,7 +2944,9 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     internalCertificateAuthorityService,
     appConnectionDAL,
-    kmsService
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const caSigningConfigService = caSigningConfigServiceFactory({

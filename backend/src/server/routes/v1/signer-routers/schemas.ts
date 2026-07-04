@@ -16,6 +16,15 @@ export const SignerExternalConfigurationSchema = z.discriminatedUnion("caType", 
       .describe(
         "Reissue into this existing DigiCert order instead of placing a new order (reuses the subscription slot)."
       )
+  }),
+  z.object({
+    caType: z.literal(CaType.ADCS),
+    template: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .describe("The AD CS certificate template this signer requests when issuing (e.g. a code-signing template).")
   })
 ]);
 

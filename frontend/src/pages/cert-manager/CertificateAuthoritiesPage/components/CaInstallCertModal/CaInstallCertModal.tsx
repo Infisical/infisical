@@ -12,6 +12,7 @@ import { Badge, Button } from "@app/components/v3";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { AdcsCaInstallForm } from "./AdcsCaInstallForm";
+import { AdcsNativeCaInstallForm } from "./AdcsNativeCaInstallForm";
 import { ExternalCaInstallForm } from "./ExternalCaInstallForm";
 import { InternalCaInstallForm } from "./InternalCaInstallForm";
 import { VenafiCaInstallForm } from "./VenafiCaInstallForm";
@@ -74,8 +75,14 @@ const INTEGRATIONS: TIntegration[] = [
   },
   {
     id: "azure-adcs",
-    name: "Azure AD CS",
+    name: "Azure AD CS (Web Enrollment)",
     description: "Microsoft Active Directory Certificate Services",
+    image: "/images/integrations/Microsoft Azure.png"
+  },
+  {
+    id: "adcs",
+    name: "ADCS",
+    description: "Microsoft AD CS (native)",
     image: "/images/integrations/Microsoft Azure.png"
   }
 ];
@@ -174,6 +181,9 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
       case SigningMethod.Automated:
         if (selectedIntegration === "azure-adcs") {
           return <AdcsCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
+        }
+        if (selectedIntegration === "adcs") {
+          return <AdcsNativeCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
         }
         if (selectedIntegration === "venafi") {
           return <VenafiCaInstallForm caId={caId} handlePopUpToggle={handlePopUpToggle} />;
