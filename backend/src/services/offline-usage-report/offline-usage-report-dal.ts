@@ -111,7 +111,9 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
         this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
       })
-      .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .leftJoin(`${TableName.Project} as p`, function joinActiveProjectForFolder() {
+        this.on("e.projectId", "p.id").andOnNull("p.deleteAfter");
+      })
       .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id")
       .whereNotNull("p.id")) as Array<{ projectId: string; count: string }>;
@@ -148,7 +150,9 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.Environment} as e`, function joinActiveEnvForFolder() {
         this.on("sf.envId", "e.id").andOnNull("e.deleteAfter");
       })
-      .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .leftJoin(`${TableName.Project} as p`, function joinActiveProjectForFolder() {
+        this.on("e.projectId", "p.id").andOnNull("p.deleteAfter");
+      })
       .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id", "p.name")
       .whereNotNull("p.id")) as Array<{ projectId: string; projectName: string; secretCount: string }>;
