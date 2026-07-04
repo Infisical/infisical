@@ -51,10 +51,11 @@ const createService = ({
   const keyStore = {
     getItem: vi.fn().mockResolvedValue(null),
     incrementBy: vi.fn(),
-    setItemWithExpiry: vi.fn()
+    setItemWithExpiry: vi.fn(),
+    deleteItem: vi.fn()
   };
   const identityAccessTokenRevocationDAL = {
-    findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
+    findActiveRevocationsForIdentity: vi.fn().mockResolvedValue(activeRevocations),
     insertRevocation: vi.fn()
   };
   const identityDAL = {
@@ -291,9 +292,71 @@ describe("identityAccessTokenServiceFactory", () => {
     });
   });
 
+  test("caches the identity's active revocations on a miss with a jittered TTL", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForIdentity).toHaveBeenCalledWith("identity-id");
+    const cacheWrite = keyStore.setItemWithExpiry.mock.calls.find(
+      (call: unknown[]) => typeof call[0] === "string" && call[0].startsWith("identity-revocation-list:")
+    ) as [string, number, string] | undefined;
+    expect(cacheWrite).toBeDefined();
+    const [key, ttl, value] = cacheWrite!;
+    expect(key).toBe("identity-revocation-list:identity-id");
+    // 10 minutes ± up to ~2 minutes jitter
+    expect(ttl).toBeGreaterThanOrEqual(480);
+    expect(ttl).toBeLessThanOrEqual(720);
+    expect(value).toBe("[]");
+  });
+
+  test("serves the revocation check from the Redis cache without hitting the DB", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    keyStore.getItem.mockImplementation((key: string) =>
+      Promise.resolve(
+        key.startsWith("identity-revocation-list:")
+          ? JSON.stringify([
+              { id: "token-id", identityId: "identity-id", createdAt: new Date(NOW_SECONDS * 1000).toISOString() }
+            ])
+          : null
+      )
+    );
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "token has been revoked"
+    );
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForIdentity).not.toHaveBeenCalled();
+  });
+
+  test("falls back to the DB when the revocation cache read fails", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService({
+      activeRevocations: [{ id: "token-id", identityId: "identity-id", createdAt: new Date(NOW_SECONDS * 1000) }]
+    });
+    keyStore.getItem.mockImplementation((key: string) =>
+      key.startsWith("identity-revocation-list:") ? Promise.reject(new Error("redis down")) : Promise.resolve(null)
+    );
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "token has been revoked"
+    );
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForIdentity).toHaveBeenCalledWith("identity-id");
+  });
+
+  test("invalidates the identity revocation cache when revoking all tokens", async () => {
+    const { service, keyStore } = createService();
+
+    await service.revokeAllTokensForIdentity("identity-id");
+
+    expect(keyStore.deleteItem).toHaveBeenCalledWith("identity-revocation-list:identity-id");
+  });
+
   test("keeps usage counters in Redis", async () => {
     const { service, keyStore } = createService();
-    keyStore.getItem.mockResolvedValue("1");
+    keyStore.getItem.mockImplementation((key: string) =>
+      Promise.resolve(key.startsWith("identity-token-uses-remaining:") ? "1" : null)
+    );
     keyStore.incrementBy.mockResolvedValue(0);
 
     await expect(
@@ -327,13 +390,19 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
       identityId: "identity-id"
     });
-    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
+    expect(
+      keyStore.setItemWithExpiry.mock.calls.some(
+        (call: unknown[]) => typeof call[0] === "string" && call[0].startsWith("identity-token-uses-remaining:")
+      )
+    ).toBe(false);
     expect(keyStore.incrementBy).not.toHaveBeenCalled();
   });
 
   test("rejects exhausted Redis usage counters", async () => {
     const { service, keyStore } = createService();
-    keyStore.getItem.mockResolvedValue("0");
+    keyStore.getItem.mockImplementation((key: string) =>
+      Promise.resolve(key.startsWith("identity-token-uses-remaining:") ? "0" : null)
+    );
 
     await expect(
       service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
@@ -457,7 +526,9 @@ describe("identityAccessTokenServiceFactory", () => {
       identityAuth: {}
     });
     const { service, keyStore } = createService();
-    keyStore.getItem.mockResolvedValue("0");
+    keyStore.getItem.mockImplementation((key: string) =>
+      Promise.resolve(key.startsWith("identity-token-uses-remaining:") ? "0" : null)
+    );
 
     await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("Cannot renew exhausted access token");
   });

@@ -38,34 +38,18 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findActiveRevocationsForToken = async ({
-    tokenId,
-    identityId,
-    scopes
-  }: {
-    tokenId: string;
-    identityId: string;
-    scopes: string[];
-  }): Promise<TRevocationRow[]> => {
+  // Returns every active revocation marker for an identity, regardless of token/scope.
+  // Callers filter the returned set in-app; keeping the query keyed only on identityId
+  // lets the result be cached and invalidated per-identity.
+  const findActiveRevocationsForIdentity = async (identityId: string): Promise<TRevocationRow[]> => {
     try {
-      return (
-        (await db
-          .replicaNode()(TableName.IdentityAccessTokenRevocation)
-          .select("id", "identityId", "revokedAt", "createdAt", "scope")
-          .where("expiresAt", ">", db.fn.now())
-          .where("identityId", identityId)
-          // Both halves of the OR must be equality predicates so the planner can
-          // serve `id IN (...)` from the PK and the `scope IN (...)` filter stays
-          // selective. `scope IS NOT NULL` would force a non-sargable scan.
-          .andWhere((qb) => {
-            void qb.whereIn("id", [tokenId, identityId]);
-            if (scopes.length > 0) {
-              void qb.orWhereIn("scope", scopes);
-            }
-          })) as TRevocationRow[]
-      );
+      return (await db
+        .replicaNode()(TableName.IdentityAccessTokenRevocation)
+        .select("id", "identityId", "revokedAt", "createdAt", "scope")
+        .where("expiresAt", ">", db.fn.now())
+        .where("identityId", identityId)) as TRevocationRow[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForToken" });
+      throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForIdentity" });
     }
   };
 
@@ -79,7 +63,7 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
 
   return {
     insertRevocation,
-    findActiveRevocationsForToken,
+    findActiveRevocationsForIdentity,
     removeExpiredRevocations
   };
 };

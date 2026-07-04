@@ -1,11 +1,13 @@
 import { Knex } from "knex";
 
 import { IdentityAuthMethod, OrgMembershipStatus, TableName, TIdentityAccessTokens } from "@app/db/schemas";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
+import { applyJitter } from "@app/lib/dates";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { recordTokenRenewalMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -70,7 +72,7 @@ type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenRevocationDAL: TIdentityAccessTokenRevocationDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership" | "findOne">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
@@ -90,6 +92,57 @@ export const identityAccessTokenServiceFactory = ({
     );
   };
 
+  type TActiveRevocation = Awaited<
+    ReturnType<TIdentityAccessTokenRevocationDALFactory["findActiveRevocationsForIdentity"]>
+  >[number];
+
+  // The revocation check runs on every machine-identity request. Cache the identity's
+  // active revocation markers in Redis (TTL + jitter) so repeated auth for the same
+  // identity doesn't hit PG each time; the per-token/scope filtering happens in-app in
+  // `assertTokenIsNotRevoked`, and revoke paths invalidate the key so new revocations
+  // take effect immediately. Redis errors fall back to the DB — a cache fault must never
+  // block auth or let a revoked token through.
+  const getActiveRevocationsForIdentity = async (identityId: string): Promise<TActiveRevocation[]> => {
+    const cacheKey = KeyStorePrefixes.IdentityRevocationList(identityId);
+
+    try {
+      const cached = await keyStore.getItem(cacheKey);
+      if (cached) {
+        return (JSON.parse(cached) as TActiveRevocation[]).map((revocation) => ({
+          ...revocation,
+          createdAt: new Date(revocation.createdAt),
+          revokedAt: revocation.revokedAt ? new Date(revocation.revokedAt) : revocation.revokedAt
+        }));
+      }
+    } catch (error) {
+      logger.error(error, "Failed to read identity revocation cache; falling back to DB");
+    }
+
+    const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForIdentity(identityId);
+
+    try {
+      await keyStore.setItemWithExpiry(
+        cacheKey,
+        applyJitter(KeyStoreTtls.IdentityRevocationListInSeconds, KeyStoreTtls.IdentityRevocationListJitterInSeconds),
+        JSON.stringify(activeRevocations)
+      );
+    } catch (error) {
+      logger.error(error, "Failed to write identity revocation cache");
+    }
+
+    return activeRevocations;
+  };
+
+  // Drop the cached revocation set so a freshly-inserted revocation is enforced at once
+  // instead of waiting out the TTL. Never let a cache error surface from a revoke.
+  const invalidateRevocationCache = async (identityId: string) => {
+    try {
+      await keyStore.deleteItem(KeyStorePrefixes.IdentityRevocationList(identityId));
+    } catch (error) {
+      logger.error(error, "Failed to invalidate identity revocation cache");
+    }
+  };
+
   const assertTokenIsNotRevoked = async ({
     tokenId,
     identityId,
@@ -105,15 +158,7 @@ export const identityAccessTokenServiceFactory = ({
     authMethod?: string;
     messagePrefix?: "Failed to authorize" | "Cannot renew";
   }) => {
-    const scopes: string[] = [];
-    if (clientSecretId) scopes.push(clientSecretId);
-    if (authMethod) scopes.push(authMethod);
-
-    const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForToken({
-      tokenId,
-      identityId,
-      scopes
-    });
+    const activeRevocations = await getActiveRevocationsForIdentity(identityId);
 
     for (const revocation of activeRevocations) {
       // Legacy markers have scope=null and key off polymorphic `id`.
@@ -521,6 +566,7 @@ export const identityAccessTokenServiceFactory = ({
       identityId,
       expiresAt
     });
+    await invalidateRevocationCache(identityId);
 
     return { revokedToken: { id: decodedToken.identityAccessTokenId, identityId, isAccessTokenRevoked: true } };
   };
@@ -548,6 +594,7 @@ export const identityAccessTokenServiceFactory = ({
       identityId,
       expiresAt
     });
+    await invalidateRevocationCache(identityId);
   };
 
   // Identity-wide revoke: any JWT with iat < this epoch is rejected on auth.
@@ -561,6 +608,7 @@ export const identityAccessTokenServiceFactory = ({
       revokedAt,
       expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
     });
+    await invalidateRevocationCache(identityId);
   };
 
   // Scoped revoke for Universal Auth client secret deletion: rejects every JWT
@@ -583,6 +631,7 @@ export const identityAccessTokenServiceFactory = ({
       revokedAt,
       expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
     });
+    await invalidateRevocationCache(identityId);
   };
 
   // Scoped revoke for auth-method removal: rejects every JWT issued via the
@@ -605,6 +654,7 @@ export const identityAccessTokenServiceFactory = ({
       revokedAt,
       expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
     });
+    await invalidateRevocationCache(identityId);
   };
 
   return {

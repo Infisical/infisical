@@ -68,6 +68,7 @@ export const KeyStorePrefixes = {
     `identity-access-token-status:${identityAccessTokenId}`,
   IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
     `identity-token-uses-remaining:${identityId}:${jti}` as const,
+  IdentityRevocationList: (identityId: string) => `identity-revocation-list:${identityId}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
@@ -154,6 +155,8 @@ export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
+  IdentityRevocationListInSeconds: 600, // 10 minutes
+  IdentityRevocationListJitterInSeconds: 120, // ±up to ~2 minutes so entries don't all expire together
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes
