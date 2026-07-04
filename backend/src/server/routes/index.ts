@@ -106,6 +106,10 @@ import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-d
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
 import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
+import { pamDiscoveredAccountDALFactory } from "@app/ee/services/pam-discovery/pam-discovered-account-dal";
+import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
+import { pamDiscoverySourceRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
+import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
@@ -1809,6 +1813,25 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolService,
     appConnectionDAL
+  });
+
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
+  const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
+
+  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoverySourceRunDAL,
+    pamDiscoveredAccountDAL,
+    pamAccountDAL,
+    pamAccountService,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    queueService,
+    cronJob
   });
 
   const pamSessionDAL = pamSessionDALFactory(db);
@@ -3604,6 +3627,7 @@ export const registerRoutes = async (
   healthAlert.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
+  pamDiscoveryService.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   dailyReminderQueueService.startDailyRemindersJob();
   secretSyncQueue.startDailySecretSyncRetryJob();
@@ -3712,6 +3736,7 @@ export const registerRoutes = async (
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
+    pamDiscovery: pamDiscoveryService,
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,

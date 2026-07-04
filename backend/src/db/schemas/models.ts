@@ -245,6 +245,7 @@ export enum TableName {
   PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoveredAccount = "pam_discovered_accounts",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",

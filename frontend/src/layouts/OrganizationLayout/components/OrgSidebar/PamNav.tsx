@@ -1,4 +1,4 @@
-import { ClipboardList, FileText, FolderOpen, KeyRound, Shield, Video } from "lucide-react";
+import { ClipboardList, FileText, FolderOpen, KeyRound, Radar, Shield, Video } from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
 import { useGetPamAccessCapabilities } from "@app/hooks/api/pam";
@@ -23,7 +23,8 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
       : []),
     ...(isProductAdmin
       ? [{ label: "Account Templates", icon: ClipboardList, pathSuffix: "templates" }]
-      : [])
+      : []),
+    ...(isProductAdmin ? [{ label: "Discovery", icon: Radar, pathSuffix: "discovery" }] : [])
   ];
 
   const monitorItems: NavItem[] = [

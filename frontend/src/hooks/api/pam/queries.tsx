@@ -23,6 +23,10 @@ import {
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
   TPamAccountTypeMetadata,
+  TPamDiscoveredAccount,
+  TPamDiscoveryRun,
+  TPamDiscoverySource,
+  TPamDiscoveryTypeOption,
   TPamFolderWithCount,
   TPamMember,
   TPamMembersData,
@@ -62,7 +66,14 @@ export const pamKeys = {
   productIdentities: () => [...pamKeys.all, "product-identities"] as const,
   resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
   accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
-  accountTypes: () => [...pamKeys.all, "account-types"] as const
+  accountTypes: () => [...pamKeys.all, "account-types"] as const,
+  discovery: () => [...pamKeys.all, "discovery"] as const,
+  discoveryTypes: () => [...pamKeys.discovery(), "types"] as const,
+  listDiscoverySources: (params?: { search?: string }) =>
+    [...pamKeys.discovery(), "sources", params] as const,
+  listDiscoveryRuns: (sourceId: string) => [...pamKeys.discovery(), "runs", sourceId] as const,
+  listDiscoveredAccounts: (sourceId: string, search?: string) =>
+    [...pamKeys.discovery(), "discovered", sourceId, search] as const
 };
 
 const fetchFolderPermissions = async (folderId: string) => {
@@ -428,5 +439,64 @@ export const useGetPamAccessCapabilities = () => {
       }>("/api/v1/pam/memberships/capabilities");
       return data;
     }
+  });
+};
+
+export const useListPamDiscoveryTypes = () => {
+  return useQuery({
+    queryKey: pamKeys.discoveryTypes(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ discoveryTypes: TPamDiscoveryTypeOption[] }>(
+        "/api/v1/pam/discovery-sources/options"
+      );
+      return data.discoveryTypes;
+    },
+    staleTime: Infinity
+  });
+};
+
+export const useListPamDiscoverySources = (params?: { search?: string }) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoverySources(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ sources: TPamDiscoverySource[] }>(
+        "/api/v1/pam/discovery-sources",
+        { params }
+      );
+      return data.sources;
+    },
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamDiscoveryRuns = (
+  sourceId: string,
+  options?: { refetchInterval?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoveryRuns(sourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ runs: TPamDiscoveryRun[] }>(
+        `/api/v1/pam/discovery-sources/${sourceId}/runs`
+      );
+      return data.runs;
+    },
+    enabled: Boolean(sourceId),
+    refetchInterval: options?.refetchInterval
+  });
+};
+
+export const useListPamDiscoveredAccounts = (sourceId: string, search?: string) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoveredAccounts(sourceId, search),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ discoveredAccounts: TPamDiscoveredAccount[] }>(
+        `/api/v1/pam/discovery-sources/${sourceId}/discovered`,
+        { params: { search } }
+      );
+      return data.discoveredAccounts;
+    },
+    enabled: Boolean(sourceId),
+    placeholderData: (prev) => prev
   });
 };

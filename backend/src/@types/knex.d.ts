@@ -744,6 +744,11 @@ import {
 } from "@app/db/schemas/pam-account-templates";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import {
+  TPamDiscoveredAccounts,
+  TPamDiscoveredAccountsInsert,
+  TPamDiscoveredAccountsUpdate
+} from "@app/db/schemas/pam-discovered-accounts";
+import {
   TPamDiscoverySourceAccounts,
   TPamDiscoverySourceAccountsInsert,
   TPamDiscoverySourceAccountsUpdate
@@ -1776,6 +1781,11 @@ declare module "knex/types/tables" {
       TPamDiscoverySourceRuns,
       TPamDiscoverySourceRunsInsert,
       TPamDiscoverySourceRunsUpdate
+    >;
+    [TableName.PamDiscoveredAccount]: KnexOriginal.CompositeTableType<
+      TPamDiscoveredAccounts,
+      TPamDiscoveredAccountsInsert,
+      TPamDiscoveredAccountsUpdate
     >;
     [TableName.PamDiscoverySourceResource]: KnexOriginal.CompositeTableType<
       TPamDiscoverySourceResources,
