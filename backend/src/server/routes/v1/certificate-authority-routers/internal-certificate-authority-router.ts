@@ -866,7 +866,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -963,7 +964,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

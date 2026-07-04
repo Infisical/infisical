@@ -5,7 +5,6 @@ import { logger } from "@app/lib/logger";
 export type AdcsRpcEndpoint = "/v1/test" | "/v1/discover-ca" | "/v1/templates" | "/v1/enroll";
 
 export type AdcsRpcRequestBody = {
-  host: string;
   username: string;
   password: string;
   caName?: string;

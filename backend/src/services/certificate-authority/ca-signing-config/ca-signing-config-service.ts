@@ -7,7 +7,10 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
@@ -37,6 +40,7 @@ type TCaSigningConfigServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
     TCaAutoRenewalQueueFactory,
     "queueVenafiInstall" | "queueAdcsInstall" | "queueNativeAdcsInstall"
@@ -51,6 +55,7 @@ export const caSigningConfigServiceFactory = ({
   internalCertificateAuthorityDAL,
   permissionService,
   appConnectionDAL,
+  appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
   const validateAppConnectionOrg = async (connectionId: string, actorOrgId: string) => {
@@ -58,6 +63,10 @@ export const caSigningConfigServiceFactory = ({
     if (!appConnection || appConnection.orgId !== actorOrgId) {
       throw new BadRequestError({ message: "App connection not found or does not belong to your organization" });
     }
+  };
+
+  const validateAdcsAppConnectionUsage = async (connectionId: string, projectId: string, actor: OrgServiceActor) => {
+    await appConnectionService.validateAppConnectionUsageById(AppConnection.ADCS, { connectionId, projectId }, actor);
   };
 
   const getSigningConfigByCaId = async (internalCaId: string) => {
@@ -77,12 +86,14 @@ export const caSigningConfigServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    permissionActor
   }: TCreateCaSigningConfigDTO & {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
+    permissionActor: OrgServiceActor;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
@@ -146,7 +157,7 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for ADCS signing" });
       }
       AdcsDestinationConfigSchema.parse(destinationConfig);
-      await validateAppConnectionOrg(appConnectionId, actorOrgId);
+      await validateAdcsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
     }
 
     const isExternalCa =
@@ -224,12 +235,14 @@ export const caSigningConfigServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    permissionActor
   }: TUpdateCaSigningConfigDTO & {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
+    permissionActor: OrgServiceActor;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
@@ -291,7 +304,7 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.Adcs) {
       if (appConnectionId !== undefined) {
-        await validateAppConnectionOrg(appConnectionId, actorOrgId);
+        await validateAdcsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {

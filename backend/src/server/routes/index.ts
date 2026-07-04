@@ -2955,6 +2955,7 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     permissionService,
     appConnectionDAL,
+    appConnectionService,
     caAutoRenewalQueue
   });
 

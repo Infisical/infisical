@@ -10,10 +10,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { ADCSConnectionMethod } from "./adcs-connection-enums";
 import { TADCSConnectionConfig } from "./adcs-connection-types";
 
-// The gateway routes ADCS operations by ALPN, so the target host/port carried in
-// the client certificate is not used. A stable placeholder keeps routing happy.
-const ADCS_TARGET_HOST = "adcs";
-
 export type TADCSGatewayDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -63,7 +59,7 @@ export const executeAdcsGatewayOperation = async <T>(
 
   const connectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
-    targetHost: ADCS_TARGET_HOST,
+    targetHost: args.credentials.host,
     targetPort: 0
   });
   if (!connectionDetails) {
@@ -76,7 +72,6 @@ export const executeAdcsGatewayOperation = async <T>(
         port,
         endpoint: args.endpoint,
         body: {
-          host: args.credentials.host,
           username: args.credentials.username,
           password: args.credentials.password,
           caName: args.caName,
