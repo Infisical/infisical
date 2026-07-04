@@ -156,7 +156,8 @@ export const KeyStoreTtls = {
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
   IdentityRevocationListInSeconds: 600, // 10 minutes
-  IdentityRevocationListJitterInSeconds: 120, // ±up to ~2 minutes so entries don't all expire together
+  // up to ±2 minutes of jitter so entries don't all expire together (actual range [480, 719] s)
+  IdentityRevocationListJitterInSeconds: 120,
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes

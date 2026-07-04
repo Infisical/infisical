@@ -41,10 +41,14 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
   // Returns every active revocation marker for an identity, regardless of token/scope.
   // Callers filter the returned set in-app; keeping the query keyed only on identityId
   // lets the result be cached and invalidated per-identity.
+  //
+  // Reads the PRIMARY (not replicaNode): this fills a Redis cache that a revoke just
+  // invalidated, so a replica read lagging behind the revoke insert would cache a stale
+  // "no revocation" set for the full TTL and silently un-revoke the token. The cache
+  // absorbs the per-request load, so this runs at most ~once per identity per TTL.
   const findActiveRevocationsForIdentity = async (identityId: string): Promise<TRevocationRow[]> => {
     try {
-      return (await db
-        .replicaNode()(TableName.IdentityAccessTokenRevocation)
+      return (await db(TableName.IdentityAccessTokenRevocation)
         .select("id", "identityId", "revokedAt", "createdAt", "scope")
         .where("expiresAt", ">", db.fn.now())
         .where("identityId", identityId)) as TRevocationRow[];

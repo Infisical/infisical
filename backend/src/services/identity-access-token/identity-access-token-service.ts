@@ -160,6 +160,11 @@ export const identityAccessTokenServiceFactory = ({
   }) => {
     const activeRevocations = await getActiveRevocationsForIdentity(identityId);
 
+    // Cached markers aren't re-filtered by `expiresAt > now()` on read (the DB query did
+    // that at fill time). This stays correct only because every insert path sets
+    // `expiresAt = revokedAt + MAX_MACHINE_IDENTITY_TOKEN_AGE`: any JWT a marker could block
+    // has itself expired by the time the marker does, so a stale-but-cached marker can never
+    // wrongly pass a still-valid token. Keep that invariant if adding new revocation paths.
     for (const revocation of activeRevocations) {
       // Legacy markers have scope=null and key off polymorphic `id`.
       if (revocation.scope === null || revocation.scope === undefined) {
