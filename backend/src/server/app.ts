@@ -118,7 +118,15 @@ export const main = async ({
       return;
     }
     const contentType = req.headers["content-type"] ?? "unknown";
-    done(new Error(`Unsupported Media Type: ${contentType}`), undefined);
+    // Attach Fastify's own 415 metadata so the global error handler returns the proper Unsupported
+    // Media Type response for non-empty bodies with an unmatched Content-Type, rather than a 500.
+    const err = new Error(`Unsupported Media Type: ${contentType}`) as Error & {
+      statusCode: number;
+      code: string;
+    };
+    err.statusCode = 415;
+    err.code = "FST_ERR_CTP_INVALID_MEDIA_TYPE";
+    done(err, undefined);
   });
 
   try {
