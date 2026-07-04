@@ -177,6 +177,7 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         .join("version_cte", "version_cte.id", `${TableName.SecretVersion}.id`)
         .whereRaw(`version_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({
