@@ -261,6 +261,27 @@ export const ADCSCertificateAuthorityFns = ({
       throw new NotFoundError({ message: `Certificate authority with ID '${id}' not found` });
     }
 
+    if (configuration) {
+      const { appConnectionId } = configuration;
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+
+      if (!appConnection) {
+        throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      }
+
+      if (appConnection.app !== AppConnection.ADCS) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not an ADCS connection`
+        });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     // Resolve the CA name outside the transaction (discovery is a gateway call).
     const resolvedUpdateCaName = configuration
       ? await resolveAdcsCaName(
@@ -273,23 +294,6 @@ export const ADCSCertificateAuthorityFns = ({
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { appConnectionId } = configuration;
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-
-        if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
-        }
-
-        if (appConnection.app !== AppConnection.ADCS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not an ADCS connection`
-          });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
 
         await externalCertificateAuthorityDAL.update(
           { caId: id, type: CaType.ADCS },
@@ -373,6 +377,7 @@ export const ADCSCertificateAuthorityFns = ({
     validity,
     signatureAlgorithm,
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
+    csr,
     isRenewal,
     originalCertificateId,
     isCancelled
@@ -387,6 +392,7 @@ export const ADCSCertificateAuthorityFns = ({
     validity: { ttl: string };
     signatureAlgorithm?: string;
     keyAlgorithm?: CertKeyAlgorithm;
+    csr?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
     isCancelled?: () => Promise<boolean>;
@@ -459,28 +465,34 @@ export const ADCSCertificateAuthorityFns = ({
       alg = keyAlgorithmToAlgCfg(keyAlgorithm);
     }
 
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
-
-    const subjectDN = buildSubjectDN(commonName);
-
-    const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: subjectDN,
-      keys: leafKeys,
-      signingAlgorithm: alg,
-      ...(altNames.length > 0 && {
-        extensions: [
-          new x509.SubjectAlternativeNameExtension(
-            altNames.map((sanValue) => ({ type: "dns" as TAltNameType, value: sanValue })),
-            false
-          )
-        ]
-      })
-    });
-
     // MS-WCCE expects the CSR as base64-encoded DER PKCS#10.
-    const csrDerBase64 = Buffer.from(new Uint8Array(csrObj.rawData)).toString("base64");
+    let skLeaf: string | undefined;
+    let csrDerBase64: string;
+    if (csr) {
+      csrDerBase64 = Buffer.from(new Uint8Array(new x509.Pkcs10CertificateRequest(csr).rawData)).toString("base64");
+    } else {
+      const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+      skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+      const subjectDN = buildSubjectDN(commonName);
+
+      const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+        name: subjectDN,
+        keys: leafKeys,
+        signingAlgorithm: alg,
+        ...(altNames.length > 0 && {
+          extensions: [
+            new x509.SubjectAlternativeNameExtension(
+              altNames.map((sanValue) => ({ type: "dns" as TAltNameType, value: sanValue })),
+              false
+            )
+          ]
+        })
+      });
+
+      csrDerBase64 = Buffer.from(new Uint8Array(csrObj.rawData)).toString("base64");
+    }
 
     const enrollResult = await executeAdcsGatewayOperation<AdcsEnrollResult>(
       {
@@ -529,10 +541,6 @@ export const ADCSCertificateAuthorityFns = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
-    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-      plainText: Buffer.from(skLeaf)
-    });
-
     if (isCancelled && (await isCancelled())) {
       throw new CertificateRequestCancelledError();
     }
@@ -576,13 +584,18 @@ export const ADCSCertificateAuthorityFns = ({
         tx
       );
 
-      await certificateSecretDAL.create(
-        {
-          certId: cert.id,
-          encryptedPrivateKey
-        },
-        tx
-      );
+      if (skLeaf) {
+        const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
+          plainText: Buffer.from(skLeaf)
+        });
+        await certificateSecretDAL.create(
+          {
+            certId: cert.id,
+            encryptedPrivateKey
+          },
+          tx
+        );
+      }
 
       if (profileId && validity?.ttl && certificateProfileDAL) {
         const profile = await certificateProfileDAL.findById(profileId, tx);

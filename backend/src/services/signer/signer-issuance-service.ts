@@ -578,6 +578,7 @@ export const signerIssuanceServiceFactory = ({
         validity: { ttl: `${job.certificateTtlDays}d` },
         keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
         template: adcsTemplate,
+        csr,
         isRenewal: false,
         isCancelled: async () => false
       });

@@ -77,6 +77,14 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
+      const adcsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId,
+          type: CaType.ADCS
+        },
+        req.permission
+      );
+
       const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
           projectId,
@@ -127,6 +135,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
               ...(azureAdCsCas ?? []).map((ca) => ca.id),
+              ...(adcsCas ?? []).map((ca) => ca.id),
               ...(awsPcaCas ?? []).map((ca) => ca.id),
               ...(digicertCas ?? []).map((ca) => ca.id),
               ...(awsAcmPublicCas ?? []).map((ca) => ca.id),
@@ -142,6 +151,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           ...(internalCas ?? []),
           ...(acmeCas ?? []),
           ...(azureAdCsCas ?? []),
+          ...(adcsCas ?? []),
           ...(awsPcaCas ?? []),
           ...(digicertCas ?? []),
           ...(awsAcmPublicCas ?? []),

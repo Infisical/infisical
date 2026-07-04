@@ -28,9 +28,12 @@ export const AdcsTemplateField = <T extends FieldValues>({
   connectionId,
   description
 }: Props<T>) => {
-  const { data: templates = [], isLoading } = useAdcsConnectionListCertificateTemplates(connectionId ?? "", {
-    enabled: Boolean(connectionId)
-  });
+  const { data: templates = [], isLoading } = useAdcsConnectionListCertificateTemplates(
+    connectionId ?? "",
+    {
+      enabled: Boolean(connectionId)
+    }
+  );
   const options = templates.map((t) => ({ value: t.name, label: t.name }));
   type Option = (typeof options)[number];
 

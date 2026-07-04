@@ -1,6 +1,9 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+
+const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
 /**
  * External configuration schema for Azure AD CS Certificate Authority
@@ -19,6 +22,7 @@ export const ADCSExternalConfigSchema = z.object({
   template: z
     .string()
     .min(1, "Template name is required for Active Directory Certificate Service")
+    .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters")
     .describe("Certificate template name for Active Directory Certificate Service")
 });
 

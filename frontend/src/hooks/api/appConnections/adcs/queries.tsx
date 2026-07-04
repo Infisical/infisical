@@ -10,7 +10,8 @@ export type TAdcsCertificateTemplate = {
 
 const adcsConnectionKeys = {
   all: [...appConnectionKeys.all, "adcs"] as const,
-  listTemplates: (connectionId: string) => [...adcsConnectionKeys.all, "templates", connectionId] as const
+  listTemplates: (connectionId: string) =>
+    [...adcsConnectionKeys.all, "templates", connectionId] as const
 };
 
 export const useAdcsConnectionListCertificateTemplates = (

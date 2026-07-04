@@ -393,7 +393,9 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                   >
                     <FilterableSelect
                       isLoading={isAzureAdcsConnectionsPending}
-                      value={(availableAzureAdcsConnections || []).find((conn) => conn.id === value)}
+                      value={(availableAzureAdcsConnections || []).find(
+                        (conn) => conn.id === value
+                      )}
                       onChange={(option) => {
                         const selected = option as SingleValue<TAvailableAppConnection>;
                         onChange(selected?.id ?? "");

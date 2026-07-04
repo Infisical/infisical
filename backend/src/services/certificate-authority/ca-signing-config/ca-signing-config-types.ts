@@ -37,10 +37,12 @@ export const AdcsDestinationConfigSchema = z.object({
 
 export type TAdcsDestinationConfig = z.infer<typeof AdcsDestinationConfigSchema>;
 
-// Union of all external CA destination config schemas — extend here when adding new providers
-export const DestinationConfigSchema = VenafiDestinationConfigSchema.or(AzureAdCsDestinationConfigSchema).or(
-  AdcsDestinationConfigSchema
-);
+// Union of all external CA destination config schemas — extend here when adding new providers.
+export const DestinationConfigSchema = z.union([
+  VenafiDestinationConfigSchema.strict(),
+  AzureAdCsDestinationConfigSchema.strict(),
+  AdcsDestinationConfigSchema.strict()
+]);
 
 export type TCreateCaSigningConfigDTO = {
   caId: string;

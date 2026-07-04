@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -35,10 +36,17 @@ export type TSignerExternalConfigurationInput =
       template?: string;
     };
 
+const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
+
 export const SignerExternalCaConfigSchema = z.discriminatedUnion("caType", [
   z.object({
     caType: z.literal(CaType.ADCS),
-    template: z.string().trim().min(1).optional()
+    template: z
+      .string()
+      .trim()
+      .min(1)
+      .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters")
+      .optional()
   })
 ]);
 
