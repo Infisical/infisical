@@ -42,13 +42,24 @@ export const pamProjectResolverFactory = ({
 
   // Orgs with no PAM data get no consolidated project during the migration; the first PAM request
   // creates it here, seeded with the org's current admins so it is immediately usable (otherwise
-  // no one could administer it — there is no org-admin fallback in the PAM permission model).
+  // no one could administer it, since the PAM permission model has no org-admin fallback).
   const ensureDefaultProject = (orgId: string): Promise<string> =>
     db.transaction(async (tx) => {
       // Serialize concurrent first-use bootstraps for the same org. There is no DB unique
       // constraint to rely on (old zombie PAM projects also have type=pam, so an org can legitimately
       // have several), and the advisory lock auto-releases when this transaction ends.
       await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`pam-bootstrap:${orgId}`]);
+
+      // Re-check inside the lock on the primary, with the same semantics as findDefaultProjectId
+      // (newest first, soft-deleted excluded). This resolves the race winner and, when several PAM
+      // projects exist (consolidated + old zombies), returns the consolidated one rather than an
+      // arbitrary row.
+      const existing = await tx(TableName.Project)
+        .where({ orgId, type: ProjectType.PAM })
+        .whereNull("deleteAfter")
+        .orderBy("createdAt", "desc")
+        .first("id");
+      if (existing) return existing.id;
 
       const adminRows = (await tx(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
@@ -65,8 +76,6 @@ export const pamProjectResolverFactory = ({
 
       const uniq = (values: (string | null)[]) => [...new Set(values.filter((v): v is string => Boolean(v)))];
 
-      // bootstrapPamProject re-checks for an existing project inside this locked transaction, so a
-      // request that lost the race returns the winner's project instead of creating a duplicate.
       const { project } = await bootstrapPamProject(
         {
           orgId,

@@ -209,60 +209,20 @@ export const bootstrapPamProject = async (
     tx
   );
 
-  for (const userId of adminUserIds) {
+  const adminActors: Array<{ actorUserId: string } | { actorIdentityId: string } | { actorGroupId: string }> = [
+    ...adminUserIds.map((actorUserId) => ({ actorUserId })),
+    ...adminIdentityIds.map((actorIdentityId) => ({ actorIdentityId })),
+    ...adminGroupIds.map((actorGroupId) => ({ actorGroupId }))
+  ];
+
+  for (const actor of adminActors) {
     // eslint-disable-next-line no-await-in-loop
     const membership = await membershipDAL.create(
       {
         scope: AccessScope.Project,
         scopeOrgId: orgId,
         scopeProjectId: project.id,
-        actorUserId: userId,
-        isActive: true
-      },
-      tx
-    );
-
-    // eslint-disable-next-line no-await-in-loop
-    await membershipRoleDAL.create(
-      {
-        membershipId: membership.id,
-        role: ProjectMembershipRole.Admin
-      },
-      tx
-    );
-  }
-
-  for (const identityId of adminIdentityIds) {
-    // eslint-disable-next-line no-await-in-loop
-    const membership = await membershipDAL.create(
-      {
-        scope: AccessScope.Project,
-        scopeOrgId: orgId,
-        scopeProjectId: project.id,
-        actorIdentityId: identityId,
-        isActive: true
-      },
-      tx
-    );
-
-    // eslint-disable-next-line no-await-in-loop
-    await membershipRoleDAL.create(
-      {
-        membershipId: membership.id,
-        role: ProjectMembershipRole.Admin
-      },
-      tx
-    );
-  }
-
-  for (const groupId of adminGroupIds) {
-    // eslint-disable-next-line no-await-in-loop
-    const membership = await membershipDAL.create(
-      {
-        scope: AccessScope.Project,
-        scopeOrgId: orgId,
-        scopeProjectId: project.id,
-        actorGroupId: groupId,
+        ...actor,
         isActive: true
       },
       tx

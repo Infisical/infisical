@@ -791,7 +791,9 @@ export const projectServiceFactory = ({
       });
     }
 
-    // PAM projects are managed (one per org) and cannot be deleted
+    // PAM projects are not deletable here: the consolidated project is managed (one active project
+    // per org, recreated on demand), and any leftover pre-migration PAM projects still hold FK
+    // references from migrated accounts, so cascade-deleting them would break/erase that data.
     if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: "Privileged Access Manager projects cannot be deleted."
