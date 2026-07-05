@@ -177,6 +177,7 @@ const ConfigurationTab = ({
             <FieldLabel>Gateway</FieldLabel>
             <FieldContent>
               <GatewayPicker
+                isRequired
                 value={{ gatewayId, gatewayPoolId }}
                 onChange={(value) => {
                   setValue("gatewayId", value.gatewayId, { shouldDirty: true });

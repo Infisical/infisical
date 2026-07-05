@@ -1,6 +1,7 @@
 import net from "node:net";
 
 import ldapjs from "@infisical/ldapjs";
+import slugify from "@sindresorhus/slugify";
 import { runPowershell } from "winrm-client";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -302,9 +303,10 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     );
 
     // Domain accounts inherit the source's connection target; only the login user differs
+    const domainShortName = domain.split(".")[0];
     const discovered: TDiscoveredAccount[] = users.map((u) => ({
       accountType: PamAccountType.WindowsAd,
-      name: u.sAMAccountName.toLowerCase(),
+      name: slugify(`${domainShortName} ${u.sAMAccountName}`, { lowercase: true }).slice(0, 64).replace(/-+$/, ""),
       fingerprint: `${domain}:${u.objectGUID}`,
       details: { connectionDetails, credentials: { username: u.sAMAccountName } }
     }));
@@ -321,6 +323,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
 
       for (const computer of computers) {
         const host = computer.resolvedIp || computer.dNSHostName || computer.cn;
+        const hostLabel = computer.cn || computer.dNSHostName || host;
         try {
           // eslint-disable-next-line no-await-in-loop
           const localUsers = await enumerateLocalUsers(
@@ -335,7 +338,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
           for (const u of localUsers.filter((lu) => lu.Name)) {
             discovered.push({
               accountType: PamAccountType.Windows,
-              name: u.Name.toLowerCase(),
+              name: slugify(`${hostLabel} ${u.Name}`, { lowercase: true }).slice(0, 64).replace(/-+$/, ""),
               fingerprint: `${domain}:${computer.objectGUID}:${u.Name.toLowerCase()}`,
               details: {
                 connectionDetails: { host, port: connectionDetails.rdpPort },

@@ -352,6 +352,10 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
 
   const listRuns = async ({ projectId, sourceId, offset = 0, limit = 20, ...ctx }: TListRunsDTO) => {
     await verifyAdmin(projectId, ctx);
+    const source = await pamDiscoverySourceDAL.findById(sourceId);
+    if (!source || source.projectId !== projectId) {
+      throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
+    }
     const runs = await pamDiscoverySourceRunDAL.find(
       { discoverySourceId: sourceId },
       { sort: [["createdAt", "desc"]], offset, limit }
@@ -361,6 +365,10 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
 
   const listDiscovered = async ({ projectId, sourceId, search, ...ctx }: TListDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
+    const source = await pamDiscoverySourceDAL.findById(sourceId);
+    if (!source || source.projectId !== projectId) {
+      throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
+    }
     const accounts = await pamDiscoveredAccountDAL.listStaged(sourceId, search);
     return accounts.map((a) => ({
       id: a.id,
