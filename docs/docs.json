@@ -361,7 +361,6 @@
               "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
-              "self-hosting/guides/releases",
               "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
