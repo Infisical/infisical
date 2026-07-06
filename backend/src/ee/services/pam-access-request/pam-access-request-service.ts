@@ -275,7 +275,23 @@ export const pamAccessRequestServiceFactory = ({
 
   const getApprovalConfiguration = async ({ folderId, projectId, ...ctx }: TGetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
-    await assertFolderPolicyManagement(folderId, projectId, ctx);
+
+    const folder = await pamFolderDAL.findById(folderId);
+    if (!folder || folder.projectId !== projectId) {
+      throw new NotFoundError({ message: "Folder not found" });
+    }
+
+    // Viewing the configuration is read-only, so auditors (ViewAuditLogs) may see it alongside
+    // policy managers; editing still requires ManagePolicies via assertFolderPolicyManagement.
+    const { permission } = await checkFolderPermission(permissionService, folderId, projectId, ctx);
+    const canView =
+      permission.can(ResourcePermissionPamResourceActions.ManagePolicies, ResourcePermissionSub.PamResource) ||
+      permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource);
+    if (!canView) {
+      throw new ForbiddenRequestError({
+        message: "You are not authorized to view this folder's approval configuration"
+      });
+    }
 
     const policy = await findFolderPolicy(folderId);
     if (!policy) {
