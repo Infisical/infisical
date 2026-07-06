@@ -22,7 +22,6 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
-import { resolveAccessControls } from "../pam/pam-policies";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -30,6 +29,7 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
+import { resolveAccessControls } from "../pam/pam-policies";
 import {
   mintCorsProbeUrl,
   resolveOverridesS3Config,
@@ -157,7 +157,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const requiresApproval = resolveAccessControls(a.templatePolicies).requiresApproval;
+      const { requiresApproval } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
@@ -545,12 +545,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const requiresApproval = resolveAccessControls(a.templatePolicies).requiresApproval;
+        const { requiresApproval } = resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
         const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
         if (requiresApproval && !hasPolicyConfigured) {
-          disabledReason = "No approval policy configured for this folder";
+          disabledReason =
+            "This account requires approval, but its folder has no approvers yet. Ask a folder admin to add approvers under the folder's Approvals tab.";
         }
         return {
           id: a.id,

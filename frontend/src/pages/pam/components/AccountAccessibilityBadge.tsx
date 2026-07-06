@@ -8,7 +8,7 @@ const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
   [PamAccountAccessibilityIssue.NoRecordingConfig]: "No recording bucket is configured",
   [PamAccountAccessibilityIssue.NoCredential]: "No password is set",
   [PamAccountAccessibilityIssue.NoApprovalConfig]:
-    "No approval policy is configured for this folder"
+    "This account requires approval, but its folder has no approvers yet. Ask a folder admin to add approvers under the folder's Approvals tab."
 };
 
 type Props = {
