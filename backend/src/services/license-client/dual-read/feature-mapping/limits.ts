@@ -32,16 +32,16 @@ export const limitsMappings: TFeatureMapping[] = [
   {
     v2Key: "rate_limits_read_limit",
     v1Field: "rateLimits.readLimit",
-    extractV1: (p) => p.rateLimits.readLimit
+    extractV1: (p) => p.rateLimits?.readLimit ?? null
   },
   {
     v2Key: "rate_limits_write_limit",
     v1Field: "rateLimits.writeLimit",
-    extractV1: (p) => p.rateLimits.writeLimit
+    extractV1: (p) => p.rateLimits?.writeLimit ?? null
   },
   {
     v2Key: "rate_limits_secrets_limit",
     v1Field: "rateLimits.secretsLimit",
-    extractV1: (p) => p.rateLimits.secretsLimit
+    extractV1: (p) => p.rateLimits?.secretsLimit ?? null
   }
 ];
