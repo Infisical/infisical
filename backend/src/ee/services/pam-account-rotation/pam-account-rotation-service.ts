@@ -63,6 +63,7 @@ type TPamAccountRotationServiceFactoryDep = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
 };
 
 export type TPamAccountRotationServiceFactory = ReturnType<typeof pamAccountRotationServiceFactory>;
@@ -77,7 +78,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     keyStore,
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    rotationHandlers = PAM_ROTATION_FACTORY_MAP
   } = deps;
 
   const gatewayDeps = { gatewayService, gatewayV2Service, gatewayPoolService };
@@ -140,20 +142,31 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     raw: Record<string, unknown>
   ): TPamSqlConnectionDetails => validateConnectionDetails(accountType, raw) as TPamSqlConnectionDetails;
 
-  const resolveAuthCredential = async (
+  const resolveRotator = async (
     account: TPamAccountDetail,
-    targetCredentials: TSqlAccountCredentials
-  ): Promise<{ username: string; password: string }> => {
+    targetCredentials: TSqlAccountCredentials,
+    targetConnectionDetails: TPamSqlConnectionDetails,
+    targetGateway: { gatewayId?: string | null; gatewayPoolId?: string | null }
+  ): Promise<{
+    auth: { username: string; password: string };
+    connectionDetails: TPamSqlConnectionDetails;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  }> => {
     const projectId = account.projectId as string;
 
     if (account.rotationAccountId === account.id) {
       if (!targetCredentials.password) {
         throw new BadRequestError({ message: "Account has no stored password to self-rotate" });
       }
-      return { username: targetCredentials.username, password: targetCredentials.password };
+      return {
+        auth: { username: targetCredentials.username, password: targetCredentials.password },
+        connectionDetails: targetConnectionDetails,
+        ...targetGateway
+      };
     }
 
-    const rotator = await pamAccountDAL.findById(account.rotationAccountId as string);
+    const rotator = await pamAccountDAL.findByIdWithDetails(account.rotationAccountId as string);
     if (!rotator || rotator.projectId !== projectId) {
       throw new BadRequestError({ message: "Rotation account no longer exists" });
     }
@@ -166,7 +179,16 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     if (!rotatorCredentials.password) {
       throw new BadRequestError({ message: "Rotation account has no stored password" });
     }
-    return { username: rotatorCredentials.username, password: rotatorCredentials.password };
+    const rotatorConnectionDetails = toSqlConnectionDetails(
+      account.accountType as PamAccountType,
+      await decrypt(projectId, rotator.encryptedConnectionDetails)
+    );
+    return {
+      auth: { username: rotatorCredentials.username, password: rotatorCredentials.password },
+      connectionDetails: rotatorConnectionDetails,
+      gatewayId: rotator.gatewayId ?? rotator.templateGatewayId,
+      gatewayPoolId: rotator.gatewayPoolId ?? rotator.templateGatewayPoolId
+    };
   };
 
   const rotateWithinLock = async (account: TPamAccountDetail) => {
@@ -182,7 +204,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
     const targetCredentials = await decryptSqlCredentials(projectId, accountType, account.encryptedCredentials);
     const targetUsername = targetCredentials.username;
-    const handler = PAM_ROTATION_FACTORY_MAP[accountType];
+    const handler = rotationHandlers[accountType];
 
     handler.validateTarget({ accountType, authMethod: targetCredentials.authMethod });
 
@@ -224,7 +246,12 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: null });
     }
 
-    const auth = await resolveAuthCredential(account, targetCredentials);
+    const {
+      auth,
+      connectionDetails: rotatorConnectionDetails,
+      gatewayId: rotatorGatewayId,
+      gatewayPoolId: rotatorGatewayPoolId
+    } = await resolveRotator(account, targetCredentials, connectionDetails, { gatewayId, gatewayPoolId });
     const requirements = getPasswordRequirements(account.templateSettings);
     const newPassword = generatePassword(requirements);
     const encryptedPending = await encrypt(projectId, { ...targetCredentials, password: newPassword });
@@ -234,7 +261,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
     try {
       await handler.applyPasswordChange(
-        { accountType, connectionDetails, auth, targetUsername, newPassword, gatewayId, gatewayPoolId },
+        {
+          accountType,
+          connectionDetails: rotatorConnectionDetails,
+          auth,
+          targetUsername,
+          newPassword,
+          gatewayId: rotatorGatewayId,
+          gatewayPoolId: rotatorGatewayPoolId
+        },
         gatewayDeps
       );
     } catch (err) {
@@ -389,17 +424,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     }
 
     if (rotationAccountId) {
-      if (account.credentialConfigured) {
-        const targetCredentials = await decryptSqlCredentials(
-          projectId,
-          account.accountType,
-          account.encryptedCredentials
-        );
-        PAM_ROTATION_FACTORY_MAP[account.accountType].validateTarget({
-          accountType: account.accountType,
-          authMethod: targetCredentials.authMethod
-        });
-      }
+      const targetCredentials = await decryptSqlCredentials(
+        projectId,
+        account.accountType,
+        account.encryptedCredentials
+      );
+      rotationHandlers[account.accountType].validateTarget({
+        accountType: account.accountType,
+        authMethod: targetCredentials.authMethod
+      });
 
       if (rotationAccountId !== accountId) {
         const rotator = await pamAccountDAL.findByIdWithDetails(rotationAccountId);
@@ -507,7 +540,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts] },
+      { allOf: [ResourcePermissionPamResourceActions.ViewCredentials] },
       ctx
     );
 

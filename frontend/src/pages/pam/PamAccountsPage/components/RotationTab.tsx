@@ -100,8 +100,8 @@ const RotationAccountPicker = ({
             )}
             <CommandGroup>
               <CommandItem value="none" onSelect={() => onSelect(null)}>
-                <Check className={`mr-2 size-4 ${selectedId ? "opacity-0" : "opacity-100"}`} />
                 None (not configured)
+                <Check className={`ml-auto size-4 ${selectedId ? "opacity-0" : "opacity-100"}`} />
               </CommandItem>
             </CommandGroup>
             {candidates.map((group) => (
@@ -115,9 +115,6 @@ const RotationAccountPicker = ({
                     value={candidate.id}
                     onSelect={() => onSelect(candidate.id)}
                   >
-                    <Check
-                      className={`mr-2 size-4 ${selectedId === candidate.id ? "opacity-100" : "opacity-0"}`}
-                    />
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate font-medium">
                         {candidate.name}
@@ -125,6 +122,9 @@ const RotationAccountPicker = ({
                       </span>
                       <span className="truncate text-xs text-muted">{candidate.host}</span>
                     </div>
+                    <Check
+                      className={`ml-auto size-4 ${selectedId === candidate.id ? "opacity-100" : "opacity-0"}`}
+                    />
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -198,23 +198,20 @@ export const RotationTab = ({ accountId }: Props) => {
             <span className="text-sm text-muted">Default</span>
           )}
         </DetailRow>
-        <div className="flex items-center justify-between gap-3 py-3">
-          <span className="text-sm text-foreground">Last rotated</span>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted">
-              {rotation.lastRotatedAt ? formatDetailDate(rotation.lastRotatedAt) : "Never"}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              isDisabled={!canManage || !rotation.isReady}
-              isPending={rotateNow.isPending}
-              onClick={onRotateNow}
-            >
-              Rotate now
-            </Button>
-          </div>
-        </div>
+        <DetailRow label="Last rotated">
+          <span className="text-sm text-muted">
+            {rotation.lastRotatedAt ? formatDetailDate(rotation.lastRotatedAt) : "Never"}
+          </span>
+        </DetailRow>
+        <Button
+          variant="pam"
+          className="mt-4 w-full"
+          isDisabled={!canManage || !rotation.isReady}
+          isPending={rotateNow.isPending}
+          onClick={onRotateNow}
+        >
+          Rotate now
+        </Button>
       </div>
 
       <div className="rounded-lg border border-border bg-container p-4">

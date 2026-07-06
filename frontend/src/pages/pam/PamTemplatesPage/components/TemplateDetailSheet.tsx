@@ -81,20 +81,62 @@ const settingsSchema = z
     })
   })
   .superRefine((data, ctx) => {
-    if (data.recordingStorageBackend !== "aws-s3") return;
-    if (!data.recordingConnectionId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["recordingConnectionId"],
-        message: "Select an AWS connection"
-      });
+    if (data.recordingStorageBackend === "aws-s3") {
+      if (!data.recordingConnectionId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["recordingConnectionId"],
+          message: "Select an AWS connection"
+        });
+      }
+      if (!data.s3Bucket?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["s3Bucket"],
+          message: "Bucket is required"
+        });
+      }
     }
-    if (!data.s3Bucket?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["s3Bucket"],
-        message: "Bucket is required"
+
+    if (data.settings.rotationEnabled) {
+      const length = data.settings.pwLength ?? 32;
+      const mins = {
+        uppercase: data.settings.pwUppercase ?? 0,
+        lowercase: data.settings.pwLowercase ?? 0,
+        digits: data.settings.pwDigits ?? 0,
+        symbols: data.settings.pwSymbols ?? 0
+      };
+      if (length < 1 || length > 250) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Length must be between 1 and 250"
+        });
+      }
+      (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
+        const value = data.settings[key];
+        if (value !== undefined && value < 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["settings", key],
+            message: "Cannot be negative"
+          });
+        }
       });
+      const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
+      if (totalRequired === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Require at least one character type"
+        });
+      } else if (totalRequired > length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Length must be at least the sum of the minimums"
+        });
+      }
     }
   });
 
@@ -412,6 +454,12 @@ const SettingsTab = ({
                 });
                 return;
               }
+              // Surface the specific validation issue rather than the opaque generic toast.
+              createNotification({
+                type: "error",
+                text: responseData.message[0]?.message ?? "Failed to update template"
+              });
+              return;
             }
             const msg = (error.response?.data as { message?: string })?.message;
             createNotification({
@@ -506,8 +554,8 @@ const SettingsTab = ({
                       Automatically rotate credentials
                     </p>
                     <p className="text-xs text-muted">
-                      Infisical rotates credentials on a fixed schedule. When off, they rotate only
-                      when triggered manually.
+                      Infisical rotates credentials on a fixed schedule. When off, accounts using
+                      this template won&apos;t rotate, on a schedule or manually.
                     </p>
                   </div>
                   <Switch
@@ -602,7 +650,7 @@ const SettingsTab = ({
                   key={name}
                   control={control}
                   name={name}
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <Field>
                       <FieldLabel>{label}</FieldLabel>
                       <Input
@@ -611,6 +659,7 @@ const SettingsTab = ({
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         onWheel={(e) => e.currentTarget.blur()}
                       />
+                      {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
                     </Field>
                   )}
                 />
