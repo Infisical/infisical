@@ -728,7 +728,8 @@ export const accountTypeRequiresRecording = (accountType: PamAccountType): boole
 
 export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
-    { requiresGateway?: boolean } | undefined;
+    | { requiresGateway?: boolean }
+    | undefined;
   return config?.requiresGateway !== false;
 };
 
@@ -764,8 +765,8 @@ export const getAccountAccessibilityIssues = (account: {
 
     const hasRecordingConfig = Boolean(
       parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
-      (account.recordingConnectionId || account.templateRecordingConnectionId) &&
-      (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
+        (account.recordingConnectionId || account.templateRecordingConnectionId) &&
+        (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
     );
     if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
   }
