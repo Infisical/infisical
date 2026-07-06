@@ -1,6 +1,7 @@
 import { registerPamAccountRouter } from "./pam-account-router";
 import { registerPamAccountTemplateRouter } from "./pam-account-template-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
+import { registerPamProjectRouter } from "./pam-project-router";
 import {
   registerPamAccountMembershipRouter,
   registerPamFolderMembershipRouter,
@@ -11,6 +12,7 @@ import { registerPamSessionChunkRouter } from "./pam-session-chunk-router";
 import { registerPamSessionRouter, registerPamWebAccessRouter } from "./pam-session-router";
 
 export const registerPamRouters = async (server: FastifyZodProvider) => {
+  await server.register(registerPamProjectRouter, { prefix: "/project" });
   await server.register(registerPamAccountTemplateRouter, { prefix: "/account-templates" });
   await server.register(registerPamFolderRouter, { prefix: "/folders" });
   await server.register(registerPamFolderMembershipRouter, { prefix: "/folders" });

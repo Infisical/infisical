@@ -30,6 +30,12 @@ import {
   TPamSession
 } from "./types";
 
+// Resolves the org's PAM project, creating it on first access (lazy bootstrap on the backend).
+export const fetchPamProjectId = async () => {
+  const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/pam/project");
+  return data.projectId;
+};
+
 export const pamKeys = {
   all: ["pam"] as const,
   account: () => [...pamKeys.all, "account"] as const,
