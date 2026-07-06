@@ -158,6 +158,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
+                      "integrations/app-connections/openai",
                       "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/ovh",
@@ -498,6 +499,7 @@
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/hp-ilo-local-account",
                       "documentation/platform/secret-rotation/okta-client-secret",
+                      "documentation/platform/secret-rotation/openai-admin-api-key",
                       "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
@@ -1893,6 +1895,18 @@
                     ]
                   },
                   {
+                    "group": "OpenAI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/openai/list",
+                      "api-reference/endpoints/app-connections/openai/available",
+                      "api-reference/endpoints/app-connections/openai/get-by-id",
+                      "api-reference/endpoints/app-connections/openai/get-by-name",
+                      "api-reference/endpoints/app-connections/openai/create",
+                      "api-reference/endpoints/app-connections/openai/update",
+                      "api-reference/endpoints/app-connections/openai/delete"
+                    ]
+                  },
+                  {
                     "group": "OpenRouter",
                     "pages": [
                       "api-reference/endpoints/app-connections/openrouter/list",
@@ -2506,6 +2520,19 @@
                       "api-reference/endpoints/secret-rotations/okta-client-secret/list",
                       "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/okta-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "OpenAI Admin API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/create",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/delete",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/list",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/update"
                     ]
                   },
                   {

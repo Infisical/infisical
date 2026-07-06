@@ -1,0 +1,99 @@
+---
+title: "OpenAI Connection"
+description: "Learn how to configure an OpenAI connection for Infisical."
+---
+
+Infisical supports connecting to OpenAI using an **API Key** (an Admin API key). This connection is used to manage and rotate OpenAI admin API keys via [Secret Rotation](/documentation/platform/secret-rotation/openai-admin-api-key).
+
+## Prerequisites
+
+You need an OpenAI **Admin API key** created by an **Organization Owner**. Admin API keys are organization-scoped and can manage organization resources such as users, projects, and API keys. A regular project API key (for example, one starting with `sk-`) does not have these permissions and will fail validation.
+
+## Create an OpenAI Admin API Key
+
+<Steps>
+    <Step title="Navigate to Admin Keys">
+        In the [OpenAI dashboard](https://platform.openai.com/settings/organization/admin-keys), go to **Settings** → **Organization** → **Admin keys** and click **Create new admin key**.
+
+        ![OpenAI Admin Keys](/images/app-connections/openai/step-1.png)
+    </Step>
+    <Step title="Name and create the key">
+        Give the key a descriptive name (e.g. `infisical-rotation`) and create it. Copy the generated Admin API key. It will only be shown once.
+
+        ![OpenAI Admin Key Created](/images/app-connections/openai/step-2.png)
+    </Step>
+</Steps>
+
+<Tip>
+    Create a dedicated Admin API key for Infisical rather than reusing an existing one. This makes it easy to rotate or revoke access independently.
+</Tip>
+
+## Create OpenAI Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** → **App Connections**.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select OpenAI Connection">
+                Click **Add Connection** and choose **OpenAI** from the list of available connections.
+
+                ![Select OpenAI Connection](/images/app-connections/openai/openai-app-connection-option.png)
+            </Step>
+            <Step title="Fill out Connection Form">
+                Complete the form with:
+                - A **name** for the connection (e.g. `openai-prod`)
+                - An optional **description**
+                - Your **Admin API Key** (from the steps above)
+
+                ![OpenAI Connection Form](/images/app-connections/openai/openai-app-connection-form.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking **Create**, Infisical validates the key against the OpenAI API. Your **OpenAI Connection** is then ready to use for [OpenAI Admin API Key Secret Rotation](/documentation/platform/secret-rotation/openai-admin-api-key).
+
+                ![OpenAI Connection Created](/images/app-connections/openai/openai-app-connection-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        Create an OpenAI connection via the [Create OpenAI Connection](/api-reference/endpoints/app-connections/openai/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+          --url https://app.infisical.com/api/v1/app-connections/openai \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "name": "my-openai-connection",
+            "method": "api-key",
+            "credentials": {
+              "apiKey": "<YOUR-ADMIN-API-KEY>"
+            }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+            "name": "my-openai-connection",
+            "description": null,
+            "version": 1,
+            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+            "createdAt": "2025-04-23T19:46:34.831Z",
+            "updatedAt": "2025-04-23T19:46:34.831Z",
+            "isPlatformManagedCredentials": false,
+            "app": "openai",
+            "method": "api-key",
+            "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

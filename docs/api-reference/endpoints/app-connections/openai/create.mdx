@@ -1,0 +1,54 @@
+---
+title: "Create"
+openapi: "POST /api/v1/app-connections/openai"
+---
+
+<Note>
+    Check out the configuration docs for [OpenAI Connections](/integrations/app-connections/openai) to learn how to obtain the required credentials.
+</Note>
+
+Creates an OpenAI app connection using an Admin API key. The connection can then be used for [OpenAI Admin API Key secret rotations](/documentation/platform/secret-rotation/openai-admin-api-key).
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique name for the connection. |
+| `method` | string | Yes | Must be `"api-key"`. |
+| `credentials.apiKey` | string | Yes | Your OpenAI [Admin API key](https://platform.openai.com/settings/organization/admin-keys). |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/app-connections/openai \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-openai-connection",
+    "method": "api-key",
+    "credentials": {
+      "apiKey": "<YOUR-ADMIN-API-KEY>"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "appConnection": {
+    "id": "<connection-id>",
+    "name": "my-openai-connection",
+    "description": null,
+    "version": 1,
+    "orgId": "<org-id>",
+    "createdAt": "<ISO8601>",
+    "updatedAt": "<ISO8601>",
+    "isPlatformManagedCredentials": false,
+    "app": "openai",
+    "method": "api-key",
+    "credentials": {}
+  }
+}
+```
