@@ -98,12 +98,7 @@ export const RequestAccessModal = ({ account, isOpen, onOpenChange }: Props) => 
   const createRequest = useCreatePamAccessRequest();
   const isPending = account?.accessStatus === PamAccessStatus.Pending;
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting }
-  } = useForm<FormData>({
+  const { control, handleSubmit, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { duration: "1h", reason: "" }
   });
@@ -217,7 +212,7 @@ export const RequestAccessModal = ({ account, isOpen, onOpenChange }: Props) => 
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" variant="pam" isPending={isSubmitting}>
+              <Button type="submit" variant="pam" isPending={createRequest.isPending}>
                 Submit Request
               </Button>
             </DialogFooter>
