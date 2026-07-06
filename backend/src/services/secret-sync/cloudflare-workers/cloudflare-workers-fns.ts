@@ -97,16 +97,20 @@ export const CloudflareWorkersSyncFns = {
         return !isInNewSecretMap && isManagedBySchema;
       });
 
-      for await (const key of secretsToDelete) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.delete(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`
+      try {
+        for await (const key of secretsToDelete) {
+          await delayMs(Math.max(0, applyJitter(100, 200)));
+          await request.delete(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`
+              }
             }
-          }
-        );
+          );
+        }
+      } catch (err) {
+        throwOnUndeployedVersionError(err);
       }
     }
   },
