@@ -389,12 +389,24 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
     }
 
+    const routingChanged = connectionDetails !== undefined || gatewayId !== undefined || gatewayPoolId !== undefined;
+    if (routingChanged && existing.rotationAccountId) {
+      updateData.rotationAccountId = null;
+    }
+
     try {
       const account = await pamAccountDAL.transaction(async (tx) => {
         const updated = await pamAccountDAL.updateById(accountId, updateData, tx);
-        // A template move or a credential change can flip rotation readiness; re-derive the schedule atomically
-        // with the write so a failure can't leave a stale nextRotationAt.
-        if (templateId !== undefined || credentials) {
+        if (routingChanged) {
+          await pamAccountDAL.update(
+            { rotationAccountId: accountId },
+            { rotationAccountId: null, nextRotationAt: null },
+            tx
+          );
+        }
+        // A template move, credential change, or a cleared binding can flip rotation readiness; re-derive the schedule
+        // atomically with the write so a failure can't leave a stale nextRotationAt.
+        if (templateId !== undefined || credentials || routingChanged) {
           await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
         }
         return updated;

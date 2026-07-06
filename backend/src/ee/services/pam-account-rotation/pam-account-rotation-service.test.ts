@@ -184,4 +184,45 @@ describe("rotateScheduledAccount recovery probe", () => {
     // ...but the target's own username is what gets altered.
     expect(applyArgs.targetUsername).toBe("app");
   });
+
+  test("aborts a delegated rotation when target and rotator are no longer the same resource, sending no credential", async () => {
+    // The target's host was changed after binding, so it no longer matches the rotator's resource.
+    const account = {
+      ...buildAccount(),
+      rotationAccountId: "rot-1",
+      encryptedConnectionDetails: blobOf({
+        host: "attacker.host",
+        port: 5432,
+        database: "app",
+        sslEnabled: false,
+        sslRejectUnauthorized: false
+      })
+    };
+    const rotator = {
+      id: "rot-1",
+      projectId: "proj-1",
+      accountType: PamAccountType.Postgres,
+      encryptedCredentials: blobOf({ username: "rotuser", password: "rot-pw" }),
+      encryptedConnectionDetails: blobOf({
+        host: "db.internal",
+        port: 5432,
+        database: "rotdb",
+        sslEnabled: false,
+        sslRejectUnauthorized: false
+      }),
+      gatewayId: null,
+      gatewayPoolId: null,
+      templateGatewayId: null,
+      templateGatewayPoolId: null
+    };
+    const { service, applyPasswordChange, testCredential } = buildService(() => true, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
+    expect(result?.message).toContain("same resource");
+    // Nothing may leave: no probe (testCredential) and no apply against the redirected target.
+    expect(testCredential).not.toHaveBeenCalled();
+    expect(applyPasswordChange).not.toHaveBeenCalled();
+  });
 });

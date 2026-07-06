@@ -216,6 +216,22 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     const gatewayPoolId = account.gatewayPoolId ?? account.templateGatewayPoolId;
     const now = new Date();
 
+    if (account.rotationAccountId !== account.id) {
+      const rotator = await pamAccountDAL.findByIdWithDetails(account.rotationAccountId);
+      if (!rotator || rotator.projectId !== projectId) {
+        throw new BadRequestError({ message: "Rotation account no longer exists" });
+      }
+      const rotatorConnection = toSqlConnectionDetails(
+        accountType,
+        await decrypt(projectId, rotator.encryptedConnectionDetails)
+      );
+      if (rotatorConnection.host !== connectionDetails.host || rotatorConnection.port !== connectionDetails.port) {
+        throw new BadRequestError({
+          message: "Rotation account is no longer on the same resource (host and port) as this account"
+        });
+      }
+    }
+
     // Recovery from an interrupted rotation: probe the candidate then the current credential, acting only on a
     // definitive answer so a transient failure never discards a possibly-live credential.
     if (account.encryptedPendingCredentials) {
