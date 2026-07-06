@@ -21,7 +21,8 @@ type Props = {
 export const PlatformManagedConfirmationModal = ({ isOpen, onOpenChange, onConfirm }: Props) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      {/* z-[80] keeps this above the Add Connection sheet (z-[70]) that hosts this form. */}
+      <AlertDialogContent className="z-[80]" overlayClassName="z-[80]">
         <AlertDialogHeader>
           <AlertDialogMedia>
             <AlertTriangleIcon />

@@ -342,12 +342,14 @@ export const GitHubAppSelector = ({
       </div>
 
       <Dialog open={isManageOpen} onOpenChange={handleManageOpenChange}>
+        {/* z-[80] keeps this above the Add Connection sheet (z-[70]) that hosts this form. */}
         <DialogContent
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             containerRef.current?.focus({ preventScroll: true });
           }}
-          className="max-w-xl"
+          className="z-[80] max-w-xl"
+          overlayClassName="z-[80]"
         >
           <DialogHeader>
             <DialogTitle>Manage GitHub Apps</DialogTitle>
