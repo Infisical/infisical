@@ -119,8 +119,6 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
                 {step.requiredApprovals <= 1
                   ? "any one approves"
                   : `${step.requiredApprovals} approvals required`}
-                <span>·</span>
-                <span>0 / {step.requiredApprovals} collected</span>
               </p>
               <div className="mt-2.5 flex flex-wrap gap-2">
                 {step.approvers.map((approver) => (
