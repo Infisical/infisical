@@ -1,6 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
-import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
   TCreateProjectTemplateDTO,
@@ -721,61 +720,31 @@ export enum EventType {
 
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
-  PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
   PAM_SESSION_TERMINATE = "pam-session-terminate",
-  PAM_SESSION_GET = "pam-session-get",
-  PAM_SESSION_LIST = "pam-session-list",
-  PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
   PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
   PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
-  PAM_RECORDING_CONFIG_UPDATE = "pam-recording-config-update",
-  PAM_RECORDING_CONFIG_DELETE = "pam-recording-config-delete",
-  PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED = "pam-recording-bucket-connection-test-failed",
+  PAM_ACCOUNT_TEMPLATE_CREATE = "pam-account-template-create",
+  PAM_ACCOUNT_TEMPLATE_UPDATE = "pam-account-template-update",
+  PAM_ACCOUNT_TEMPLATE_DELETE = "pam-account-template-delete",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
-  PAM_ACCOUNT_LIST = "pam-account-list",
-  PAM_ACCOUNT_GET = "pam-account-get",
+  PAM_PRODUCT_MEMBER_ADD = "pam-product-member-add",
+  PAM_PRODUCT_MEMBER_UPDATE = "pam-product-member-update",
+  PAM_PRODUCT_MEMBER_REMOVE = "pam-product-member-remove",
+  PAM_FOLDER_MEMBER_ADD = "pam-folder-member-add",
+  PAM_FOLDER_MEMBER_UPDATE = "pam-folder-member-update",
+  PAM_FOLDER_MEMBER_REMOVE = "pam-folder-member-remove",
+  PAM_ACCOUNT_MEMBER_ADD = "pam-account-member-add",
+  PAM_ACCOUNT_MEMBER_UPDATE = "pam-account-member-update",
+  PAM_ACCOUNT_MEMBER_REMOVE = "pam-account-member-remove",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
-  PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED = "pam-account-aws-console-url-generated",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
-  PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
-  PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
-  PAM_ACCOUNT_POLICY_CREATE = "pam-account-policy-create",
-  PAM_ACCOUNT_POLICY_UPDATE = "pam-account-policy-update",
-  PAM_ACCOUNT_POLICY_DELETE = "pam-account-policy-delete",
-  PAM_ACCOUNT_POLICY_LIST = "pam-account-policy-list",
-  PAM_ACCOUNT_POLICY_GET = "pam-account-policy-get",
-  PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
+  PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
-  PAM_RESOURCE_LIST = "pam-resource-list",
-  PAM_RESOURCE_GET = "pam-resource-get",
-  PAM_RESOURCE_CREATE = "pam-resource-create",
-  PAM_RESOURCE_UPDATE = "pam-resource-update",
-  PAM_RESOURCE_DELETE = "pam-resource-delete",
-  PAM_DOMAIN_LIST = "pam-domain-list",
-  PAM_DOMAIN_GET = "pam-domain-get",
-  PAM_DOMAIN_CREATE = "pam-domain-create",
-  PAM_DOMAIN_UPDATE = "pam-domain-update",
-  PAM_DOMAIN_DELETE = "pam-domain-delete",
-  PAM_DISCOVERY_SOURCE_LIST = "pam-discovery-source-list",
-  PAM_DISCOVERY_SOURCE_GET = "pam-discovery-source-get",
-  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
-  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
-  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
-  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
-  PAM_DISCOVERY_SOURCE_RUN_LIST = "pam-discovery-source-run-list",
-  PAM_DISCOVERY_SOURCE_RUN_GET = "pam-discovery-source-run-get",
-  PAM_DISCOVERY_SOURCE_RESOURCE_LIST = "pam-discovery-source-resource-list",
-  PAM_DISCOVERY_SOURCE_ACCOUNT_LIST = "pam-discovery-source-account-list",
-  PAM_RESOURCE_ROTATION_RULE_LIST = "pam-resource-rotation-rule-list",
-  PAM_RESOURCE_ROTATION_RULE_CREATE = "pam-resource-rotation-rule-create",
-  PAM_RESOURCE_ROTATION_RULE_UPDATE = "pam-resource-rotation-rule-update",
-  PAM_RESOURCE_ROTATION_RULE_DELETE = "pam-resource-rotation-rule-delete",
-  PAM_RESOURCE_ROTATION_RULE_REORDER = "pam-resource-rotation-rule-reorder",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -5834,43 +5803,6 @@ interface ViewAuditLogsEvent {
   metadata?: Record<string, unknown>;
 }
 
-interface ViewPamInsightsSummaryEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_SUMMARY;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsSessionActivityEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_SESSION_ACTIVITY;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsTopActorsEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_TOP_ACTORS;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsResourceBreakdownEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface ViewPamInsightsRotationCalendarEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_ROTATION_CALENDAR;
-  metadata: {
-    projectId: string;
-    month: number;
-    year: number;
-  };
-}
-
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -5948,26 +5880,11 @@ interface OrgRoleDeleteEvent {
   };
 }
 
-interface PamSessionCredentialsGetEvent {
-  type: EventType.PAM_SESSION_CREDENTIALS_GET;
-  metadata: {
-    sessionId: string;
-    accountName: string;
-  };
-}
-
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
     sessionId: string;
-    accountName: string;
-  };
-}
-
-interface PamSessionLogsUpdateEvent {
-  type: EventType.PAM_SESSION_LOGS_UPDATE;
-  metadata: {
-    sessionId: string;
+    accountId?: string;
     accountName: string;
   };
 }
@@ -5976,6 +5893,7 @@ interface PamSessionEndEvent {
   type: EventType.PAM_SESSION_END;
   metadata: {
     sessionId: string;
+    accountId?: string;
     accountName: string;
   };
 }
@@ -5984,29 +5902,8 @@ interface PamSessionTerminateEvent {
   type: EventType.PAM_SESSION_TERMINATE;
   metadata: {
     sessionId: string;
+    accountId?: string;
     accountName: string;
-  };
-}
-
-interface PamSessionGetEvent {
-  type: EventType.PAM_SESSION_GET;
-  metadata: {
-    sessionId: string;
-  };
-}
-
-interface PamSessionListEvent {
-  type: EventType.PAM_SESSION_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface PamSessionEventBatchUploadEvent {
-  type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD;
-  metadata: {
-    sessionId: string;
-    startOffset: number;
   };
 }
 
@@ -6014,6 +5911,7 @@ interface PamSessionChunkUploadEvent {
   type: EventType.PAM_SESSION_CHUNK_UPLOAD;
   metadata: {
     sessionId: string;
+    accountId?: string;
     chunkIndex: number;
     storageBackend: string;
     ciphertextBytes: number;
@@ -6024,42 +5922,40 @@ interface PamSessionUploadTokenInvalidEvent {
   type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID;
   metadata: {
     sessionId: string;
+    accountId?: string;
     chunkIndex?: number;
   };
 }
 
-interface PamRecordingConfigUpsertEvent {
-  type: EventType.PAM_RECORDING_CONFIG_UPDATE;
+interface PamAccountTemplateCreateEvent {
+  type: EventType.PAM_ACCOUNT_TEMPLATE_CREATE;
   metadata: {
-    projectId: string;
-    storageBackend: string;
-    bucket: string;
-    region: string;
+    templateId: string;
+    name: string;
+    accountType: string;
   };
 }
 
-interface PamRecordingConfigDeleteEvent {
-  type: EventType.PAM_RECORDING_CONFIG_DELETE;
+interface PamAccountTemplateUpdateEvent {
+  type: EventType.PAM_ACCOUNT_TEMPLATE_UPDATE;
   metadata: {
-    projectId: string;
+    templateId: string;
+    name?: string;
   };
 }
 
-interface PamRecordingBucketConnectionTestFailedEvent {
-  type: EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED;
+interface PamAccountTemplateDeleteEvent {
+  type: EventType.PAM_ACCOUNT_TEMPLATE_DELETE;
   metadata: {
-    projectId: string;
-    storageBackend: string;
-    bucket: string;
-    region: string;
-    reason: string;
+    templateId: string;
+    name: string;
   };
 }
 
 interface PamFolderCreateEvent {
   type: EventType.PAM_FOLDER_CREATE;
   metadata: {
-    parentId?: string | null;
+    folderId: string;
     name: string;
     description?: string | null;
   };
@@ -6082,18 +5978,96 @@ interface PamFolderDeleteEvent {
   };
 }
 
-interface PamAccountListEvent {
-  type: EventType.PAM_ACCOUNT_LIST;
+interface PamProductMemberAddEvent {
+  type: EventType.PAM_PRODUCT_MEMBER_ADD;
   metadata: {
-    accountCount: number;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
   };
 }
 
-interface PamAccountGetEvent {
-  type: EventType.PAM_ACCOUNT_GET;
+interface PamProductMemberUpdateEvent {
+  type: EventType.PAM_PRODUCT_MEMBER_UPDATE;
+  metadata: {
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface PamProductMemberRemoveEvent {
+  type: EventType.PAM_PRODUCT_MEMBER_REMOVE;
+  metadata: {
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+  };
+}
+
+interface PamFolderMemberAddEvent {
+  type: EventType.PAM_FOLDER_MEMBER_ADD;
+  metadata: {
+    folderId: string;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface PamFolderMemberUpdateEvent {
+  type: EventType.PAM_FOLDER_MEMBER_UPDATE;
+  metadata: {
+    folderId: string;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface PamFolderMemberRemoveEvent {
+  type: EventType.PAM_FOLDER_MEMBER_REMOVE;
+  metadata: {
+    folderId: string;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+  };
+}
+
+interface PamAccountMemberAddEvent {
+  type: EventType.PAM_ACCOUNT_MEMBER_ADD;
   metadata: {
     accountId: string;
-    accountName: string;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface PamAccountMemberUpdateEvent {
+  type: EventType.PAM_ACCOUNT_MEMBER_UPDATE;
+  metadata: {
+    accountId: string;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
+    role: string;
+  };
+}
+
+interface PamAccountMemberRemoveEvent {
+  type: EventType.PAM_ACCOUNT_MEMBER_REMOVE;
+  metadata: {
+    accountId: string;
+    userId?: string;
+    groupId?: string;
+    identityId?: string;
   };
 }
 
@@ -6117,26 +6091,15 @@ interface PamWebAccessSessionTicketCreatedEvent {
   };
 }
 
-interface PamAccountAwsConsoleUrlGeneratedEvent {
-  type: EventType.PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED;
-  metadata: {
-    sessionId: string;
-    accountId: string;
-    resourceName: string;
-    accountName: string;
-  };
-}
-
 interface PamAccountCreateEvent {
   type: EventType.PAM_ACCOUNT_CREATE;
   metadata: {
-    resourceId?: string | null;
-    domainId?: string | null;
-    parentType: PamParentType;
-    folderId?: string | null;
+    accountId: string;
+    accountType: string;
+    folderId: string;
+    templateId: string;
     name: string;
     description?: string | null;
-    requireMfa?: boolean | null;
   };
 }
 
@@ -6144,336 +6107,32 @@ interface PamAccountUpdateEvent {
   type: EventType.PAM_ACCOUNT_UPDATE;
   metadata: {
     accountId: string;
-    resourceId?: string | null;
-    domainId?: string | null;
-    parentType: PamParentType;
+    accountType: string;
     name?: string;
     description?: string | null;
-    requireMfa?: boolean | null;
+    folderId?: string;
+    templateId?: string;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    connectionDetailsUpdated?: boolean;
+    credentialsUpdated?: boolean;
   };
 }
 
 interface PamAccountDeleteEvent {
   type: EventType.PAM_ACCOUNT_DELETE;
   metadata: {
-    accountName: string;
     accountId: string;
-    resourceId?: string | null;
-    domainId?: string | null;
-    parentType: PamParentType;
-  };
-}
-
-interface PamAccountCredentialRotationEvent {
-  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION;
-  metadata: {
+    accountType: string;
     accountName: string;
-    accountId: string;
-    resourceId: string;
-    resourceType: string;
   };
 }
 
-interface PamAccountCredentialRotationFailedEvent {
-  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED;
-  metadata: {
-    accountName: string;
-    accountId: string;
-    resourceId: string;
-    resourceType: string;
-    errorMessage: string;
-  };
-}
-
-interface PamAccountPolicyCreateEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_CREATE;
-  metadata: {
-    projectId: string;
-    name: string;
-    description?: string;
-  };
-}
-
-interface PamAccountPolicyUpdateEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_UPDATE;
-  metadata: {
-    policyId: string;
-    projectId: string;
-    name?: string;
-    isActive?: boolean;
-  };
-}
-
-interface PamAccountPolicyDeleteEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_DELETE;
-  metadata: {
-    policyId: string;
-    projectId: string;
-    name: string;
-  };
-}
-
-interface PamAccountPolicyListEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_LIST;
-  metadata: {
-    projectId: string;
-  };
-}
-
-interface PamAccountPolicyGetEvent {
-  type: EventType.PAM_ACCOUNT_POLICY_GET;
-  metadata: {
-    policyId: string;
-    projectId: string;
-  };
-}
-
-interface PamAccountReadCredentialsEvent {
-  type: EventType.PAM_ACCOUNT_READ_CREDENTIALS;
+interface PamAccountSshCaCreateEvent {
+  type: EventType.PAM_ACCOUNT_SSH_CA_CREATE;
   metadata: {
     accountId: string;
-    accountName: string;
-    resourceId?: string | null;
-    resourceType?: string | null;
-    domainId?: string | null;
-    domainType?: string | null;
-  };
-}
-
-interface PamResourceListEvent {
-  type: EventType.PAM_RESOURCE_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface PamResourceGetEvent {
-  type: EventType.PAM_RESOURCE_GET;
-  metadata: {
-    resourceId: string;
-    resourceType: string;
-    name: string;
-  };
-}
-
-interface PamResourceCreateEvent {
-  type: EventType.PAM_RESOURCE_CREATE;
-  metadata: {
-    resourceType: string;
-    gatewayId?: string;
-    name: string;
-  };
-}
-
-interface PamResourceUpdateEvent {
-  type: EventType.PAM_RESOURCE_UPDATE;
-  metadata: {
-    resourceId: string;
-    resourceType: string;
-    gatewayId?: string;
-    name?: string;
-  };
-}
-
-interface PamResourceDeleteEvent {
-  type: EventType.PAM_RESOURCE_DELETE;
-  metadata: {
-    resourceId: string;
-    resourceType: string;
-  };
-}
-
-interface PamDomainListEvent {
-  type: EventType.PAM_DOMAIN_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface PamDomainGetEvent {
-  type: EventType.PAM_DOMAIN_GET;
-  metadata: {
-    domainId: string;
-    domainType: string;
-    name: string;
-  };
-}
-
-interface PamDomainCreateEvent {
-  type: EventType.PAM_DOMAIN_CREATE;
-  metadata: {
-    domainType: string;
-    gatewayId?: string;
-    name: string;
-  };
-}
-
-interface PamDomainUpdateEvent {
-  type: EventType.PAM_DOMAIN_UPDATE;
-  metadata: {
-    domainId: string;
-    domainType: string;
-    gatewayId?: string;
-    name?: string;
-  };
-}
-
-interface PamDomainDeleteEvent {
-  type: EventType.PAM_DOMAIN_DELETE;
-  metadata: {
-    domainId: string;
-    domainType: string;
-  };
-}
-
-interface PamDiscoverySourceListEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface PamDiscoverySourceGetEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_GET;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-    name: string;
-  };
-}
-
-interface PamDiscoverySourceCreateEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
-  metadata: {
-    sourceName: string;
-    discoveryType: string;
-    gatewayId?: string | null;
-    name: string;
-  };
-}
-
-interface PamDiscoverySourceUpdateEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-    gatewayId?: string | null;
-    newSourceName?: string;
-  };
-}
-
-interface PamDiscoverySourceDeleteEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-  };
-}
-
-interface PamDiscoveryScanEvent {
-  type: EventType.PAM_DISCOVERY_SCAN;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-  };
-}
-
-interface PamDiscoverySourceRunListEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_RUN_LIST;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-    count: number;
-  };
-}
-
-interface PamDiscoverySourceRunGetEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_RUN_GET;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-    runId: string;
-  };
-}
-
-interface PamDiscoverySourceResourceListEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_RESOURCE_LIST;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-    count: number;
-  };
-}
-
-interface PamDiscoverySourceAccountListEvent {
-  type: EventType.PAM_DISCOVERY_SOURCE_ACCOUNT_LIST;
-  metadata: {
-    sourceId: string;
-    sourceName: string;
-    discoveryType: string;
-    count: number;
-  };
-}
-
-interface PamResourceRotationRuleListEvent {
-  type: EventType.PAM_RESOURCE_ROTATION_RULE_LIST;
-  metadata: {
-    resourceId: string;
-    resourceName: string;
-    count: number;
-  };
-}
-
-interface PamResourceRotationRuleCreateEvent {
-  type: EventType.PAM_RESOURCE_ROTATION_RULE_CREATE;
-  metadata: {
-    resourceId: string;
-    resourceName: string;
-    ruleId: string;
-    ruleName?: string;
-    namePattern: string;
-    enabled: boolean;
-    intervalSeconds?: number | null;
-  };
-}
-
-interface PamResourceRotationRuleUpdateEvent {
-  type: EventType.PAM_RESOURCE_ROTATION_RULE_UPDATE;
-  metadata: {
-    resourceId: string;
-    resourceName: string;
-    ruleId: string;
-    ruleName?: string | null;
-    namePattern?: string;
-    enabled?: boolean;
-    intervalSeconds?: number | null;
-  };
-}
-
-interface PamResourceRotationRuleDeleteEvent {
-  type: EventType.PAM_RESOURCE_ROTATION_RULE_DELETE;
-  metadata: {
-    resourceId: string;
-    resourceName: string;
-    ruleId: string;
-    ruleName?: string | null;
-    namePattern: string;
-  };
-}
-
-interface PamResourceRotationRuleReorderEvent {
-  type: EventType.PAM_RESOURCE_ROTATION_RULE_REORDER;
-  metadata: {
-    resourceId: string;
-    resourceName: string;
-    ruleIds: string[];
+    keyAlgorithm: string;
   };
 }
 
@@ -8078,11 +7737,6 @@ export type Event =
   | GetAuditReportEvent
   | DeleteAuditReportEvent
   | ViewAuditLogsEvent
-  | ViewPamInsightsSummaryEvent
-  | ViewPamInsightsSessionActivityEvent
-  | ViewPamInsightsTopActorsEvent
-  | ViewPamInsightsResourceBreakdownEvent
-  | ViewPamInsightsRotationCalendarEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -8091,63 +7745,32 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
-  | PamSessionCredentialsGetEvent
   | PamSessionStartEvent
-  | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
   | PamSessionTerminateEvent
-  | PamSessionGetEvent
-  | PamSessionListEvent
-  | PamSessionEventBatchUploadEvent
   | PamSessionChunkUploadEvent
   | PamSessionUploadTokenInvalidEvent
-  | PamRecordingConfigUpsertEvent
-  | PamRecordingConfigDeleteEvent
-  | PamRecordingBucketConnectionTestFailedEvent
+  | PamAccountTemplateCreateEvent
+  | PamAccountTemplateUpdateEvent
+  | PamAccountTemplateDeleteEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
-  | PamAccountListEvent
-  | PamAccountGetEvent
+  | PamProductMemberAddEvent
+  | PamProductMemberUpdateEvent
+  | PamProductMemberRemoveEvent
+  | PamFolderMemberAddEvent
+  | PamFolderMemberUpdateEvent
+  | PamFolderMemberRemoveEvent
+  | PamAccountMemberAddEvent
+  | PamAccountMemberUpdateEvent
+  | PamAccountMemberRemoveEvent
   | PamAccountAccessEvent
-  | PamAccountAwsConsoleUrlGeneratedEvent
   | PamWebAccessSessionTicketCreatedEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
-  | PamAccountCredentialRotationEvent
-  | PamAccountCredentialRotationFailedEvent
-  | PamAccountPolicyCreateEvent
-  | PamAccountPolicyUpdateEvent
-  | PamAccountPolicyDeleteEvent
-  | PamAccountPolicyListEvent
-  | PamAccountPolicyGetEvent
-  | PamAccountReadCredentialsEvent
-  | PamResourceListEvent
-  | PamResourceGetEvent
-  | PamResourceCreateEvent
-  | PamResourceUpdateEvent
-  | PamResourceDeleteEvent
-  | PamDomainListEvent
-  | PamDomainGetEvent
-  | PamDomainCreateEvent
-  | PamDomainUpdateEvent
-  | PamDomainDeleteEvent
-  | PamDiscoverySourceListEvent
-  | PamDiscoverySourceGetEvent
-  | PamDiscoverySourceCreateEvent
-  | PamDiscoverySourceUpdateEvent
-  | PamDiscoverySourceDeleteEvent
-  | PamDiscoveryScanEvent
-  | PamDiscoverySourceRunListEvent
-  | PamDiscoverySourceRunGetEvent
-  | PamDiscoverySourceResourceListEvent
-  | PamDiscoverySourceAccountListEvent
-  | PamResourceRotationRuleListEvent
-  | PamResourceRotationRuleCreateEvent
-  | PamResourceRotationRuleUpdateEvent
-  | PamResourceRotationRuleDeleteEvent
-  | PamResourceRotationRuleReorderEvent
+  | PamAccountSshCaCreateEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

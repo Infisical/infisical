@@ -176,19 +176,35 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countPamResourcesForOrg = async (orgId: string, tx?: Knex) => {
+  const countPamAccountTemplatesForOrg = async (orgId: string, tx?: Knex) => {
     try {
-      const result = (await (tx || db.replicaNode())(TableName.PamResource)
-        .join(TableName.Project, `${TableName.PamResource}.projectId`, `${TableName.Project}.id`)
+      const result = (await (tx || db.replicaNode())(TableName.PamAccountTemplate)
+        .join(TableName.Project, `${TableName.PamAccountTemplate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.PAM)
-        .count(`${TableName.PamResource}.id as count`)
+        .count(`${TableName.PamAccountTemplate}.id as count`)
         .first()) as { count: string } | undefined;
 
       return parseInt(result?.count || "0", 10);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CountPamResourcesForOrg" });
+      throw new DatabaseError({ error, name: "CountPamAccountTemplatesForOrg" });
+    }
+  };
+
+  const countPamFoldersForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.PamFolder)
+        .join(TableName.Project, `${TableName.PamFolder}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.PAM)
+        .count(`${TableName.PamFolder}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountPamFoldersForOrg" });
     }
   };
 
@@ -224,7 +240,8 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countDataSourcesForOrg,
     countSecretScanningResourcesForOrg,
     countPamAccountsForOrg,
-    countPamResourcesForOrg,
+    countPamAccountTemplatesForOrg,
+    countPamFoldersForOrg,
     countProjectsByTypeForOrg
   };
 };
