@@ -110,6 +110,10 @@ export const KeyStorePrefixes = {
     `project-sse-conn:${projectId}:${connectionId}` as const,
 
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+  // Set once a project's hard-delete job exhausts all BullMQ retry attempts, so the discovery cron
+  // stops re-enqueueing (and re-hammering the DB for) a permanently-failing project every tick until
+  // the marker expires.
+  ProjectHardDeleteQuarantine: (projectId: string) => `project-hard-delete-quarantine-${projectId}` as const,
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,

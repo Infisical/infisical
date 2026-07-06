@@ -35,6 +35,16 @@ const INTER_BATCH_SLEEP_MS = 10;
 const PROJECT_DELETE_LOCK_TTL_MS = 30 * 60 * 1000;
 const CRON_HANDLER_TIMEOUT_MS = 5 * 60 * 1000;
 
+// This is a background job, not an interactive request, so the final cascade delete gets its own
+// generous statement_timeout instead of inheriting the (much shorter) interactive-query default.
+// An unusually large project's cascade across ~27+ CASCADE FKs can legitimately take longer than
+// that default, which otherwise causes the transaction to be killed and the job to retry forever.
+const FINAL_DELETE_STATEMENT_TIMEOUT_MS = 5 * 60 * 1000;
+
+// Once a project's hard-delete job exhausts all BullMQ attempts, quarantine it for this long instead
+// of letting the next cron tick immediately re-enqueue (and re-fail) it every 5 minutes forever.
+const HARD_DELETE_QUARANTINE_S = 6 * 60 * 60;
+
 type TProjectCleanupQueueFactoryDep = {
   projectDAL: Pick<
     TProjectDALFactory,
@@ -50,9 +60,9 @@ type TProjectCleanupQueueFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
   kmsService: Pick<TKmsServiceFactory, "deleteInternalKms">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "deleteItem" | "setItemWithExpiry" | "getItems">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "listen">;
   cronJob: TCronJobFactory;
 };
 
@@ -145,6 +155,10 @@ export const projectCleanupQueueFactory = ({
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
       const deleted = await projectDAL.transaction(async (tx) => {
+        // SET LOCAL so the bound can't leak to pooled connections. Set ahead of the delete below,
+        // which relies on ~27+ tables' ON DELETE CASCADE FKs to resolve as a single cascade tree.
+        await tx.raw(`SET LOCAL statement_timeout = ${FINAL_DELETE_STATEMENT_TIMEOUT_MS}`);
+
         // capture the ghost user before its project membership is removed below
         const ghostUser = await projectDAL.findProjectGhostUser(projectId, tx).catch(() => null);
 
@@ -223,6 +237,31 @@ export const projectCleanupQueueFactory = ({
       { concurrency: WORKER_CONCURRENCY, limiter: { max: RATE_LIMIT_MAX, duration: RATE_LIMIT_DURATION_MS } }
     );
 
+    // Once a project's job has exhausted every BullMQ attempt, quarantine it so the next cron ticks
+    // skip re-enqueueing it for HARD_DELETE_QUARANTINE_S instead of hammering the DB every 5 minutes
+    // on a permanently-failing project. This does not retire the project — it's picked up again (and
+    // retried normally) once the quarantine marker expires.
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    queueService.listen(QueueName.ProjectHardDelete, "failed", async (job, err) => {
+      if (!job?.data) return;
+      const { projectId } = job.data;
+      const attemptsExhausted = !!(job.opts.attempts && job.attemptsMade >= job.opts.attempts);
+      if (!attemptsExhausted) return;
+
+      logger.error(
+        { err, projectId, attemptsMade: job.attemptsMade },
+        `project-hard-delete: exhausted all retry attempts, quarantining for ${HARD_DELETE_QUARANTINE_S / 3600}h [projectId=${projectId}]`
+      );
+      await keyStore
+        .setItemWithExpiry(KeyStorePrefixes.ProjectHardDeleteQuarantine(projectId), HARD_DELETE_QUARANTINE_S, 1)
+        .catch((quarantineErr: unknown) => {
+          logger.warn(
+            { err: quarantineErr, projectId },
+            `project-hard-delete: failed to set quarantine marker [projectId=${projectId}]`
+          );
+        });
+    });
+
     // Cron tick: discovery only (fast). Enqueues the oldest expired projects; jobId dedupe keeps the
     // queue bounded and idempotent across ticks.
     cronJob.register({
@@ -236,9 +275,23 @@ export const projectCleanupQueueFactory = ({
         const expiredProjects = await projectDAL.findExpiredForHardDelete(DISCOVERY_BATCH);
         if (expiredProjects.length === 0) return;
 
-        logger.info(`cron[${CronJobName.ProjectHardDelete}]: enqueuing ${expiredProjects.length} expired project(s)`);
+        // Skip projects currently quarantined after exhausting retries (see the "failed" listener
+        // above) so a permanently-failing project doesn't get re-enqueued and re-fail every tick.
+        const quarantineFlags = await keyStore.getItems(
+          expiredProjects.map((project) => KeyStorePrefixes.ProjectHardDeleteQuarantine(project.id))
+        );
+        const projectsToEnqueue = expiredProjects.filter((_project, idx) => !quarantineFlags[idx]);
+        const skippedCount = expiredProjects.length - projectsToEnqueue.length;
+        if (skippedCount > 0) {
+          logger.warn(
+            `cron[${CronJobName.ProjectHardDelete}]: skipping ${skippedCount} quarantined project(s) that previously exhausted retries`
+          );
+        }
+        if (projectsToEnqueue.length === 0) return;
+
+        logger.info(`cron[${CronJobName.ProjectHardDelete}]: enqueuing ${projectsToEnqueue.length} expired project(s)`);
         await Promise.all(
-          expiredProjects.map((project) =>
+          projectsToEnqueue.map((project) =>
             queueService.queue(
               QueueName.ProjectHardDelete,
               QueueJobs.ProjectHardDelete,
