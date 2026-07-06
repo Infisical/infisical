@@ -19,7 +19,7 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
   // Fire-and-forget shadow compare against the already-resolved v1 plan. Never awaited, never throws into
   // the request path; inert unless mode is read-compare. Reads v2 through the real client SDK so the
   // production read path is exercised under real traffic ahead of the cutover.
-  const compareInBackground = (orgId: string, planV1: TFeatureSet) => {
+  const compareInBackground = (orgId: string, planV1: TFeatureSet, getFreeTierPlan: () => TFeatureSet) => {
     if (!envConfig.isLicenseDualReadEnabled) {
       return;
     }
@@ -32,7 +32,16 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
         return;
       }
 
-      const discrepancies = compareEntitlements(planV1, entitlements, FEATURE_MAPPINGS);
+      // v2 resolves an org with no license to the free tier (every feature source=default). Comparing that
+      // against the org's real v1 plan is noise, so compare v2 against the v1 free baseline instead.
+      const featureValues = Object.values(entitlements.features);
+      const isV2Unlicensed = featureValues.length > 0 && featureValues.every((f) => f.source === "default");
+      let planForCompare = planV1;
+      if (isV2Unlicensed) {
+        planForCompare = getFreeTierPlan();
+      }
+
+      const discrepancies = compareEntitlements(planForCompare, entitlements, FEATURE_MAPPINGS);
       const diffs = discrepancies.filter((d) => d.kind !== DualReadDiffKind.Match);
 
       for (const d of diffs) {

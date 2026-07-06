@@ -366,7 +366,7 @@ export const licenseServiceFactory = ({
 
         // read-compare bake: serve v1 but shadow-compare against v2 in the background ahead of the cutover.
         if (envConfig.LICENSE_SERVER_V2_MODE === "read-compare") {
-          licenseDualRead?.compareInBackground(rootOrgId, currentPlan);
+          licenseDualRead?.compareInBackground(rootOrgId, currentPlan, getDefaultOnPremFeatures);
         }
 
         return currentPlan;
