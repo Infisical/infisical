@@ -1826,7 +1826,6 @@ export const registerRoutes = async (
     gatewayV2Service,
     membershipDAL,
     membershipRoleDAL,
-    projectDAL,
     permissionService,
     notificationService,
     smtpService,

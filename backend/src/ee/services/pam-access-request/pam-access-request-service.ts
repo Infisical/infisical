@@ -42,7 +42,6 @@ import {
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -111,7 +110,6 @@ type TPamAccessRequestServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -137,7 +135,6 @@ export const pamAccessRequestServiceFactory = ({
   gatewayV2Service,
   membershipDAL,
   membershipRoleDAL,
-  projectDAL,
   permissionService,
   notificationService,
   smtpService,
@@ -498,7 +495,10 @@ export const pamAccessRequestServiceFactory = ({
     // A step with no approvers can never be reviewed, wedging the request forever. The dashboard hides
     // the request action in this case, but that guard must also hold for the CLI and direct API callers.
     if (policySteps.length === 0 || policySteps.some((s) => s.approvers.length === 0)) {
-      throw new BadRequestError({ message: "This folder's approval policy has no approvers configured" });
+      throw new BadRequestError({
+        message:
+          "This folder's approval policy has no approvers configured. Ask a folder admin to add approvers under the folder's Approvals tab, then submit your request again."
+      });
     }
 
     const stepsForRequest = policySteps.map((s) => ({
@@ -566,7 +566,6 @@ export const pamAccessRequestServiceFactory = ({
         const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
 
         if (recipients.length > 0) {
-          const project = await projectDAL.findById(projectId);
           const cfg = getConfig();
           const approvalUrl = `${cfg.SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
 
@@ -575,7 +574,6 @@ export const pamAccessRequestServiceFactory = ({
             subjectLine: "PAM Access Request",
             template: SmtpTemplates.AccessPamRequest,
             substitutions: {
-              projectName: project?.name ?? "PAM",
               requesterFullName: requesterName || "Unknown",
               requesterEmail: user.email ?? "",
               accountName: account.name,
