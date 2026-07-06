@@ -8,7 +8,7 @@ export enum PamAccountType {
   Redis = "redis",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
-  GcpIam = "gcp-iam",
+  GcpServiceAccount = "gcp-service-account",
   Windows = "windows",
   WindowsAd = "windows-ad"
 }

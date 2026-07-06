@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { GcpIamAuthMethod, PamAccountType } from "../pam/pam-enums";
+import { GcpServiceAccountAuthMethod, PamAccountType } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 import {
   PamAccountSettingsOverridesSchema,
@@ -387,8 +387,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
-  [PamAccountType.GcpIam]: {
-    name: "GCP Service Account",
+  [PamAccountType.GcpServiceAccount]: {
+    name: "Google Service Account",
     icon: "Google Cloud Platform.png",
     connectionDetails: z.object({
       serviceAccountEmail: z
@@ -403,10 +403,10 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
-        authMethod: z.literal(GcpIamAuthMethod.Impersonation)
+        authMethod: z.literal(GcpServiceAccountAuthMethod.Impersonation)
       }),
       z.object({
-        authMethod: z.literal(GcpIamAuthMethod.StaticKey),
+        authMethod: z.literal(GcpServiceAccountAuthMethod.StaticKey),
         serviceAccountKeyJson: z
           .string()
           .trim()
@@ -429,15 +429,18 @@ export const ACCOUNT_TYPE_CONFIGS = {
       authMethod: z.string()
     }),
     ui: {
-      serviceAccountEmail: { label: "Service Account Email" },
+      serviceAccountEmail: {
+          label: "Service Account Email",
+          tooltip: "The email address of the GCP service account to broker access to (must end in .iam.gserviceaccount.com)."
+        },
       authMethod: {
         label: "Auth Method",
         tooltip:
-          "Impersonation uses the platform's GCP identity to generate short-lived tokens for the target service account. Static Key uses a service account key JSON stored directly in the PAM account.",
-        defaultValue: GcpIamAuthMethod.Impersonation,
+          "Impersonation uses the platform's GCP identity to generate short-lived tokens for the target service account.\nStatic Key uses a service account key JSON stored directly in the PAM account.",
+        defaultValue: GcpServiceAccountAuthMethod.Impersonation,
         options: [
-          { label: "Impersonation (Recommended)", value: GcpIamAuthMethod.Impersonation },
-          { label: "Static Key", value: GcpIamAuthMethod.StaticKey }
+          { label: "Impersonation (Recommended)", value: GcpServiceAccountAuthMethod.Impersonation },
+          { label: "Static Key", value: GcpServiceAccountAuthMethod.StaticKey }
         ]
       },
       serviceAccountKeyJson: {
@@ -656,7 +659,7 @@ export const extractGatewayTarget = async (
         host: (validated as { hosts: string[]; rdpPort: number }).hosts[0],
         port: (validated as { hosts: string[]; rdpPort: number }).rdpPort
       };
-    case PamAccountType.GcpIam:
+    case PamAccountType.GcpServiceAccount:
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
       throw new Error("AWS IAM accounts do not use gateway routing");
@@ -882,8 +885,8 @@ const describeField = (
     widget,
     required,
     secret: hint.secret ?? widget === PamFieldWidget.Password,
-    ...(widget === PamFieldWidget.Select && enumValues
-      ? { options: enumValues.map((v) => ({ label: humanizeKey(v), value: v })) }
+    ...(widget === PamFieldWidget.Select
+      ? { options: hint.options ?? (enumValues ? enumValues.map((v) => ({ label: humanizeKey(v), value: v })) : []) }
       : {}),
     ...(hint.defaultValue !== undefined ? { defaultValue: hint.defaultValue } : {}),
     ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {}),
@@ -918,14 +921,17 @@ const fieldsFromSchema = (schema: z.ZodTypeAny, ui: Record<string, TFieldUiHint>
     const discriminatorValues = variants.map(
       (variant) => (variant.shape[discriminator]._def as { value: string }).value
     );
+    const discHint = ui[discriminator] ?? {};
     const fields: PamFieldDescriptor[] = [
       {
         key: discriminator,
-        label: ui[discriminator]?.label ?? humanizeKey(discriminator),
+        label: discHint.label ?? humanizeKey(discriminator),
         widget: PamFieldWidget.Select,
         required: true,
         secret: false,
-        options: ui[discriminator]?.options ?? discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v }))
+        options: discHint.options ?? discriminatorValues.map((v) => ({ label: humanizeKey(v), value: v })),
+        ...(discHint.defaultValue !== undefined ? { defaultValue: discHint.defaultValue } : {}),
+        ...(discHint.tooltip ? { tooltip: discHint.tooltip } : {})
       }
     ];
 

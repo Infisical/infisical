@@ -121,7 +121,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                       <TooltipTrigger>
                         <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
                       </TooltipTrigger>
-                      <TooltipContent>{descriptor.tooltip}</TooltipContent>
+                      <TooltipContent className="whitespace-pre-line">{descriptor.tooltip}</TooltipContent>
                     </Tooltip>
                   )}
                 </FieldLabel>
@@ -141,7 +141,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                       <TooltipTrigger>
                         <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
                       </TooltipTrigger>
-                      <TooltipContent>{descriptor.tooltip}</TooltipContent>
+                      <TooltipContent className="whitespace-pre-line">{descriptor.tooltip}</TooltipContent>
                     </Tooltip>
                   )}
                 </FieldLabel>

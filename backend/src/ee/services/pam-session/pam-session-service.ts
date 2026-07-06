@@ -24,7 +24,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { GcpIamAuthMethod, PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { GcpServiceAccountAuthMethod, PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
@@ -220,13 +220,13 @@ export const pamSessionServiceFactory = ({
       }
     }
 
-    if (account.accountType === PamAccountType.GcpIam) {
+    if (account.accountType === PamAccountType.GcpServiceAccount) {
       const serviceAccountEmail = connectionDetails.serviceAccountEmail as string;
       const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
 
       let sourceClient;
-      if (credentials.authMethod === GcpIamAuthMethod.StaticKey) {
+      if (credentials.authMethod === GcpServiceAccountAuthMethod.StaticKey) {
         const keyJson = JSON.parse(credentials.serviceAccountKeyJson as string) as {
           client_email: string;
           private_key: string;
@@ -624,7 +624,7 @@ export const pamSessionServiceFactory = ({
 
     const metadata: Record<string, string> = {};
 
-    if (account.accountType === PamAccountType.GcpIam) {
+    if (account.accountType === PamAccountType.GcpServiceAccount) {
       metadata.serviceAccountEmail = rawConnectionDetails.serviceAccountEmail as string;
       metadata.authMethod = rawCredentials.authMethod as string;
     } else if (account.accountType === PamAccountType.Kubernetes) {
