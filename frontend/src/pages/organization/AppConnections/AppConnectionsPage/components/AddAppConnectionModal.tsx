@@ -81,7 +81,12 @@ export const AddAppConnectionModal = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+        <SheetContent
+          // z-[70] keeps this sheet above legacy v2 modals (z-[60]) that open it,
+          // e.g. the secret rotation Create/Edit modal.
+          className="z-[70] flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl"
+          overlayClassName="z-[70]"
+        >
           <SheetHeader className="border-b">
             {selectedApp ? (
               <>
