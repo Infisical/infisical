@@ -279,11 +279,12 @@ export const pamAccessRequestServiceFactory = ({
 
     const policy = await findFolderPolicy(folderId);
     if (!policy) {
-      return { policy: null, steps: [] };
+      return { steps: [] };
     }
 
+    // The policy row and step tuning fields are internal; the UI only needs the approver lists.
     const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
-    return { policy, steps };
+    return { steps: steps.map((s) => ({ approvers: s.approvers })) };
   };
 
   const setApprovalConfiguration = async ({ folderId, projectId, steps, ...ctx }: TSetApprovalConfigurationDTO) => {

@@ -26,18 +26,9 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
       }),
       response: {
         200: z.object({
-          policy: z
-            .object({
-              id: z.string().uuid(),
-              name: z.string()
-            })
-            .nullable(),
           steps: z.array(
             z.object({
-              requiredApprovals: z.number(),
-              approvers: z.array(ApproverSchema),
-              name: z.string().nullish(),
-              notifyApprovers: z.boolean().nullish()
+              approvers: z.array(ApproverSchema)
             })
           )
         })

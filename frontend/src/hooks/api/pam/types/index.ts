@@ -502,12 +502,8 @@ export type TPamAccessRequest = {
 };
 
 export type TPamApprovalConfig = {
-  policy: { id: string; name: string } | null;
   steps: {
-    requiredApprovals: number;
     approvers: { type: PamApproverType; id: string }[];
-    name?: string | null;
-    notifyApprovers?: boolean | null;
   }[];
 };
 
