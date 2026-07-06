@@ -102,10 +102,11 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
         onOpenChange(open);
       }}
     >
-      {/* Sit below the v3 overlay layer (z-50) so the inline "Create Connection" Sheet and its v3
-          Select menus stack above this modal instead of being buried behind it. */}
+      {/* z-50 (not the v2 default z-[60]) so the inline "Create Connection" Sheet and its v3 Select
+          menus (all z-50, portaled later) stack above this modal instead of being buried behind it,
+          while the backdrop still covers page chrome up to z-50 by portal order. */}
       <ModalContent
-        overlayClassName="z-40"
+        overlayClassName="z-50"
         title={
           selectedDataSource ? (
             <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
@@ -116,7 +117,7 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
             </div>
           )
         }
-        className={selectedDataSource ? "z-40 max-w-2xl" : "z-40 max-w-3xl"}
+        className={selectedDataSource ? "z-50 max-w-2xl" : "z-50 max-w-3xl"}
         subTitle={
           selectedDataSource ? undefined : "Select a data source to configure secret scanning for."
         }

@@ -15,14 +15,16 @@ type Props = {
 export const EditPkiSyncModal = ({ pkiSync, onOpenChange, fields, ...props }: Props) => {
   if (!pkiSync) return null;
 
-  // z-40 keeps this modal below the v3 overlay layer (z-50) so the inline "Create Connection" Sheet
-  // and its v3 Select menus stack above it instead of being buried behind it.
-  const modalClassName = fields === PkiSyncEditFields.Mappings ? "z-40 max-w-4xl" : "z-40 max-w-2xl";
+  // z-50 (not the v2 default z-[60]) so the inline "Create Connection" Sheet and its v3 Select
+  // menus (all z-50, portaled later) stack above this modal instead of being buried behind it,
+  // while the backdrop still covers page chrome up to z-50 by portal order.
+  const modalClassName =
+    fields === PkiSyncEditFields.Mappings ? "z-50 max-w-4xl" : "z-50 max-w-2xl";
 
   return (
     <Modal {...props} onOpenChange={onOpenChange}>
       <ModalContent
-        overlayClassName="z-40"
+        overlayClassName="z-50"
         title={<PkiSyncModalHeader isConfigured destination={pkiSync.destination} />}
         className={modalClassName}
         bodyClassName="overflow-visible"
