@@ -160,7 +160,7 @@ export const APP_CONNECTION_MAP: Record<
     description: "Issue certificates via Active Directory Certificate Services web enrollment."
   },
   [AppConnection.ADCS]: {
-    name: "ADCS",
+    name: "Microsoft ADCS",
     image: "Microsoft Azure.png",
     category: "CERTIFICATES",
     description: "Issue certificates via Active Directory Certificate Services over the Gateway."

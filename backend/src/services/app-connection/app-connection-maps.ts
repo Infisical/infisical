@@ -10,7 +10,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureClientSecrets]: "Azure Client Secrets",
   [AppConnection.AzureDevOps]: "Azure DevOps",
   [AppConnection.AzureADCS]: "Azure ADCS (Web Enrollment)",
-  [AppConnection.ADCS]: "ADCS",
+  [AppConnection.ADCS]: "Microsoft ADCS",
   [AppConnection.AzureDNS]: "Azure DNS",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",

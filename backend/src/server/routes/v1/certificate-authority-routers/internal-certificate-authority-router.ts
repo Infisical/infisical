@@ -764,7 +764,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
 
   server.route({
     method: "POST",
-    url: "/:caId/install-certificate-adcs-native",
+    url: "/:caId/install-certificate-native-adcs",
     config: {
       rateLimit: writeLimit
     },

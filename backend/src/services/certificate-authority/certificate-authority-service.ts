@@ -70,10 +70,7 @@ import {
   AzureAdCsCertificateAuthorityFns,
   castDbEntryToAzureAdCsCertificateAuthority
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
-import {
-  TCreateAzureAdCsCertificateAuthorityDTO,
-  TUpdateAzureAdCsCertificateAuthorityDTO
-} from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
+import { TUpdateAzureAdCsCertificateAuthorityDTO } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import {
@@ -342,12 +339,9 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (type === CaType.AZURE_AD_CS) {
-      return azureAdCsFns.createCertificateAuthority({
-        name,
-        projectId,
-        configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
-        status,
-        actor
+      throw new BadRequestError({
+        message:
+          "Creating new Azure ADCS (Web Enrollment) certificate authorities is no longer supported. Use the Microsoft ADCS connection instead."
       });
     }
 
@@ -1285,6 +1279,11 @@ export const certificateAuthorityServiceFactory = ({
 
     if (caType === CaType.AWS_ACM_PUBLIC_CA) {
       await awsAcmPublicCaFns.revokeCertificate({ caId, serialNumber, reason });
+      return;
+    }
+
+    if (caType === CaType.ADCS) {
+      await adcsFns.revokeCertificate({ caId, serialNumber, reason });
       return;
     }
 

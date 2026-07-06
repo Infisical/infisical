@@ -74,15 +74,9 @@ const INTEGRATIONS: TIntegration[] = [
     image: "/images/integrations/Venafi.png"
   },
   {
-    id: "azure-adcs",
-    name: "Azure AD CS (Web Enrollment)",
-    description: "Microsoft Active Directory Certificate Services",
-    image: "/images/integrations/Microsoft Azure.png"
-  },
-  {
     id: "adcs",
-    name: "ADCS",
-    description: "Microsoft AD CS (native)",
+    name: "Microsoft ADCS",
+    description: "Microsoft Active Directory Certificate Services",
     image: "/images/integrations/Microsoft Azure.png"
   }
 ];

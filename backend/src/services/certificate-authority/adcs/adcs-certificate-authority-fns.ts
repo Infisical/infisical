@@ -4,15 +4,16 @@ import RE2 from "re2";
 import { TableName } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   ADCS_DISPOSITION_ISSUED,
   AdcsEnrollResult,
+  AdcsRevokeResult,
   AdcsTemplatesResult,
   describeAdcsDisposition
 } from "@app/lib/gateway-v2/adcs-rpc";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { executeAdcsGatewayOperation, resolveAdcsCaName } from "@app/services/app-connection/adcs";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -27,8 +28,9 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm,
   CertStatus,
-  TAltNameType
+  CrlReason
 } from "@app/services/certificate/certificate-types";
+import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/certificate-csr-utils";
 import { calculateFinalRenewBeforeDays } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -59,6 +61,19 @@ const SIG_ALG_MAP: Record<string, Record<string, CertSignatureAlgorithm>> = {
     "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
     "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
   }
+};
+
+// RFC 5280 section 5.3.1 CRLReason codes, which MS-CSRA ICertAdminD::RevokeCertificate expects as `Reason`.
+const ADCS_CRL_REASON_CODES: Record<CrlReason, number> = {
+  [CrlReason.UNSPECIFIED]: 0,
+  [CrlReason.KEY_COMPROMISE]: 1,
+  [CrlReason.CA_COMPROMISE]: 2,
+  [CrlReason.AFFILIATION_CHANGED]: 3,
+  [CrlReason.SUPERSEDED]: 4,
+  [CrlReason.CESSATION_OF_OPERATION]: 5,
+  [CrlReason.CERTIFICATE_HOLD]: 6,
+  [CrlReason.PRIVILEGE_WITHDRAWN]: 9,
+  [CrlReason.A_A_COMPROMISE]: 10
 };
 
 // The CA (not the request) decides how it signs, so read the algorithm off the issued certificate.
@@ -134,7 +149,7 @@ type TADCSCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -471,27 +486,13 @@ export const ADCSCertificateAuthorityFns = ({
     if (csr) {
       csrDerBase64 = Buffer.from(new Uint8Array(new x509.Pkcs10CertificateRequest(csr).rawData)).toString("base64");
     } else {
-      const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-      const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-      skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
-
-      const subjectDN = buildSubjectDN(commonName);
-
-      const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-        name: subjectDN,
-        keys: leafKeys,
-        signingAlgorithm: alg,
-        ...(altNames.length > 0 && {
-          extensions: [
-            new x509.SubjectAlternativeNameExtension(
-              altNames.map((sanValue) => ({ type: "dns" as TAltNameType, value: sanValue })),
-              false
-            )
-          ]
-        })
+      const generated = await generateLeafKeypairAndCsr({
+        subjectName: buildSubjectDN(commonName),
+        algorithm: alg,
+        altNames
       });
-
-      csrDerBase64 = Buffer.from(new Uint8Array(csrObj.rawData)).toString("base64");
+      skLeaf = generated.privateKeyPem;
+      csrDerBase64 = generated.csrDerBase64;
     }
 
     const enrollResult = await executeAdcsGatewayOperation<AdcsEnrollResult>(
@@ -654,6 +655,55 @@ export const ADCSCertificateAuthorityFns = ({
     }));
   };
 
+  const revokeCertificate = async ({
+    caId,
+    serialNumber,
+    reason
+  }: {
+    caId: string;
+    serialNumber: string;
+    reason: CrlReason;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.ADCS) {
+      throw new BadRequestError({ message: `CA is not a Microsoft ADCS certificate authority [caId=${caId}]` });
+    }
+
+    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    if (!cert) {
+      throw new NotFoundError({
+        message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`
+      });
+    }
+
+    const adcsCa = castDbEntryToADCSCertificateAuthority(ca);
+    const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
+      adcsCa.configuration.appConnectionId,
+      appConnectionDAL,
+      kmsService
+    );
+
+    // Unlike issuance, revocation is an MS-CSRA (ICertAdminD::RevokeCertificate) operation,
+    // so it targets /v1/revoke and requires the connection account to hold Manage CA (Certificate Manager)
+    // rights rather than just Enroll. AD CS identifies the certificate by its serial number as plain hex
+    // with no leading "0x" — the form it is already stored in — so it is forwarded unchanged.
+    await executeAdcsGatewayOperation<AdcsRevokeResult>(
+      {
+        gatewayId,
+        gatewayPoolId,
+        credentials,
+        endpoint: "/v1/revoke",
+        caName: adcsCa.configuration.caName,
+        params: { serialNumber, reason: ADCS_CRL_REASON_CODES[reason] }
+      },
+      { gatewayV2Service, gatewayPoolService }
+    );
+
+    logger.info(
+      `Microsoft ADCS certificate revocation submitted [caId=${caId}] [certificateId=${cert.id}] [serialNumber=${serialNumber}] [reason=${reason}]`
+    );
+  };
+
   return {
     createCertificateAuthority,
     getCertificateAuthority,
@@ -661,6 +711,7 @@ export const ADCSCertificateAuthorityFns = ({
     deleteCertificateAuthority,
     listCertificateAuthorities,
     orderCertificate,
-    getCertificateTemplates
+    getCertificateTemplates,
+    revokeCertificate
   };
 };

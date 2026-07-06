@@ -2,7 +2,7 @@ import http from "node:http";
 
 import { logger } from "@app/lib/logger";
 
-export type AdcsRpcEndpoint = "/v1/test" | "/v1/discover-ca" | "/v1/templates" | "/v1/enroll";
+export type AdcsRpcEndpoint = "/v1/test" | "/v1/discover-ca" | "/v1/templates" | "/v1/enroll" | "/v1/revoke";
 
 export type AdcsRpcRequestBody = {
   username: string;
@@ -21,6 +21,7 @@ export type AdcsEnrollResult = {
   dispositionMessage?: string;
   hresult?: number;
 };
+export type AdcsRevokeResult = { ok: boolean };
 
 // CR_DISP_* request-disposition codes (small values) from ICertRequestD::Request.
 const ADCS_REQUEST_DISPOSITIONS: Record<number, string> = {

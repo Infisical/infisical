@@ -1,22 +1,13 @@
 ---
-title: "Microsoft AD CS (Native)"
+title: "Microsoft ADCS"
 description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over MS-WCCE through an Infisical Gateway."
 ---
 
-Issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over the native Windows Client Certificate Enrollment protocol (MS-WCCE). Requests are relayed through an Infisical [Gateway](/documentation/platform/gateways/overview) that runs inside your network, so the AD CS server is never exposed to Infisical.
-
-<Note>
-  This is the native AD CS integration (MS-WCCE over DCOM through a Gateway). It is separate from the [Azure ADCS (Web Enrollment)](/documentation/platform/pki/ca/azure-adcs) integration, which uses the AD CS web enrollment pages over HTTPS.
-</Note>
+Issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over the Windows Client Certificate Enrollment protocol (MS-WCCE). Requests are relayed through an Infisical [Gateway](/documentation/platform/gateways/overview) that runs inside your network, so the AD CS server is never exposed to Infisical.
 
 ## Prerequisites
 
-Before setting up the native AD CS integration, ensure you have:
-
-- A Microsoft Active Directory Certificate Services (AD CS) server (Enterprise CA)
-- An Infisical [Gateway](/documentation/platform/gateways/overview) deployed inside the network that can reach the AD CS server over DCOM
-- A domain account with Enroll permission on the certificate templates you plan to use
-- An ADCS app connection configured (see [ADCS Connection](/integrations/app-connections/adcs))
+Before setting up a Microsoft ADCS certificate authority, configure a [Microsoft ADCS app connection](/integrations/app-connections/adcs). It covers the AD CS server, the Infisical [Gateway](/documentation/platform/gateways/overview) (including the network and port requirements), and the domain account used for enrollment.
 
 You can use AD CS in a few ways: as an **External CA** that issues certificates directly, to back a **code signing signer**, or to **sign internal intermediate CAs** so you can build an Infisical-managed CA hierarchy backed by your AD CS server. In every case the certificate template is chosen by the issuance flow (profile, signer, or intermediate CA), not by the CA itself.
 
@@ -31,11 +22,11 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
         In **Certificate Manager**, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
       </Step>
 
-      <Step title="Create a New ADCS Certificate Authority">
+      <Step title="Create a New Microsoft ADCS Certificate Authority">
         Click **Create CA** and configure:
-        - **Type**: Choose **ADCS**
+        - **Type**: Choose **Microsoft ADCS**
         - **Name**: Friendly name for this CA (for example, `production-adcs`)
-        - **ADCS Connection**: Choose your ADCS connection
+        - **Microsoft ADCS Connection**: Choose your Microsoft ADCS connection
         - **Certificate Authority**: Optional. Leave blank to discover it automatically from the CA host.
       </Step>
 
@@ -102,12 +93,12 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
           <Step title="Open the Install Certificate Modal">
             Press **Install CA Certificate** on the intermediate CA, select **External CA (Automated)**, and press **Choose Integration**.
           </Step>
-          <Step title="Select ADCS">
-            Choose **ADCS** as the integration provider.
+          <Step title="Select Microsoft ADCS">
+            Choose **Microsoft ADCS** as the integration provider.
           </Step>
           <Step title="Configure Signing Details">
             Configure the following:
-            - **ADCS Connection**: Select your ADCS connection.
+            - **Microsoft ADCS Connection**: Select your Microsoft ADCS connection.
             - **Certificate Template**: The subordinate CA template name (for example, `SubCA`).
             - **Path Length**: Max intermediate CAs below this one (`-1` for no limit, `0` to prevent chaining).
           </Step>
@@ -134,7 +125,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
           </Step>
           <Step title="Install the Certificate">
             ```bash Request
-            curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-adcs-native' \
+            curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-native-adcs' \
               --header 'Authorization: Bearer <access-token>' \
               --header 'Content-Type: application/json' \
               --data-raw '{
@@ -180,11 +171,9 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
 
 ## Limitations
 
-<Note>
-  - Requests are issued immediately. Templates that require manual approval or are held by CA policy are not supported.
-  - Certificate revocation is not supported by the native AD CS integration.
-  - Authentication uses NTLM.
-</Note>
+- Requests are issued immediately. Templates that require manual approval or are held by CA policy are not supported.
+- Revoking a certificate requires the connection account to have Manage CA (Certificate Manager) rights on the CA, which is a stronger permission than the Enroll right used for issuance.
+- Authentication uses NTLM.
 
 ## Troubleshooting
 

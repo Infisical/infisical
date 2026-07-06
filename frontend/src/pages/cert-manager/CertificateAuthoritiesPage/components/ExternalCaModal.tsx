@@ -259,8 +259,7 @@ type Props = {
 
 const caTypes = [
   { label: "ACME", value: CaType.ACME },
-  { label: "Azure ADCS (Web Enrollment)", value: CaType.AZURE_AD_CS },
-  { label: "ADCS", value: CaType.ADCS },
+  { label: "Microsoft ADCS", value: CaType.ADCS },
   { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA },
   { label: "AWS ACM Public CA", value: CaType.AWS_ACM_PUBLIC_CA },
   { label: "DigiCert CertCentral", value: CaType.DIGICERT },

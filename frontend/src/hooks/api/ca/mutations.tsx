@@ -256,7 +256,7 @@ export const useInstallCaCertificateVenafi = () =>
 export const useInstallCaCertificateAdcs = () =>
   useInstallCaCertificate("install-certificate-adcs");
 export const useInstallCaCertificateAdcsNative = () =>
-  useInstallCaCertificate("install-certificate-adcs-native");
+  useInstallCaCertificate("install-certificate-native-adcs");
 
 export const useCreateCaSigningConfig = () => {
   const queryClient = useQueryClient();

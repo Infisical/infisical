@@ -121,7 +121,7 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
         name="appConnectionId"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <FormControl
-            label="ADCS Connection"
+            label="Microsoft ADCS Connection"
             errorText={error?.message}
             isError={Boolean(error)}
             isRequired
@@ -134,7 +134,7 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 onChange(selected?.id ?? "");
               }}
               options={availableAdcsConnections || []}
-              placeholder="Select an ADCS connection..."
+              placeholder="Select a Microsoft ADCS connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />
