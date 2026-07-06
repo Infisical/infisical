@@ -3,7 +3,7 @@ title: "Microsoft ADCS Connection"
 description: "Learn how to configure a Microsoft ADCS Connection for Infisical certificate management."
 ---
 
-Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) over MS-WCCE through an Infisical [Gateway](/documentation/platform/gateways/overview). The Gateway runs inside your network and speaks to the CA directly, so the AD CS server never needs to be exposed to Infisical.
+Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) through an Infisical [Gateway](/documentation/platform/gateways/overview). The Gateway runs inside your network and communicates with the CA directly, so your AD CS server never needs to be exposed to the internet.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) ove
 - An Infisical [Gateway](/documentation/platform/gateways/overview) deployed inside the network that can reach the AD CS server
 - A domain account with Enroll permission on the certificate templates you plan to use (and Manage CA / Certificate Manager rights if you want to revoke certificates)
 - Network reachability from the Gateway to the AD CS server on:
-  - **TCP 135** (RPC endpoint mapper) and the server's **dynamic RPC port range** (default `49152-65535`) for MS-WCCE over DCOM
+  - **TCP 135** (RPC endpoint mapper) and the server's **dynamic RPC port range** (default `49152-65535`) for MS-WCCE/MS-CSRA over DCOM
   - **TCP 445** (SMB) only if you rely on automatic CA-name discovery (reads the CA name over the Remote Registry service)
 
 ## Connection Setup
@@ -34,6 +34,6 @@ Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) ove
     A Gateway is required. The control plane cannot reach AD CS over DCOM directly, so every operation is relayed through the Gateway.
   </Step>
   <Step title="Connection Created">
-    Your **Microsoft ADCS Connection** is now available for use in your Infisical projects.
+    Your **Microsoft ADCS Connection** is now available for use.
   </Step>
 </Steps>

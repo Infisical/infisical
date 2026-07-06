@@ -58,11 +58,11 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
 
     Infisical retrieves the templates published on your CA in real time, so a profile can only reference a template that exists and is reachable. The template lives on the issuance flow (the profile), not on the CA.
 
-    Ensure the templates you use are configured with:
+    Before using a template, verify the following in AD CS:
 
-    - **Enroll permission** for the connection account
-    - **Subject name requirements** matching your requests
-    - **Key usage and extended key usage** appropriate for your use case
+    - **Enroll permission**: The domain account you configured in the ADCS connection must have Enroll permission on the template.
+    - **Subject name**: The template's subject name policy must be compatible with the certificates you plan to request (required fields, allowed patterns, and so on).
+    - **Key usage**: The template's key usage and extended key usage must match what you need (for example, Server Authentication for TLS certificates).
   </Tab>
 
   <Tab title="Code Signing Signers">
@@ -125,7 +125,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
           </Step>
           <Step title="Install the Certificate">
             ```bash Request
-            curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-native-adcs' \
+            curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-microsoft-adcs' \
               --header 'Authorization: Bearer <access-token>' \
               --header 'Content-Type: application/json' \
               --data-raw '{
@@ -171,9 +171,8 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
 
 ## Limitations
 
-- Requests are issued immediately. Templates that require manual approval or are held by CA policy are not supported.
-- Revoking a certificate requires the connection account to have Manage CA (Certificate Manager) rights on the CA, which is a stronger permission than the Enroll right used for issuance.
-- Authentication uses NTLM.
+- Templates that require manual approval or are held by CA policy are not supported. Requests are issued immediately.
+- Authentication uses NTLM. Kerberos is not yet supported.
 
 ## Troubleshooting
 

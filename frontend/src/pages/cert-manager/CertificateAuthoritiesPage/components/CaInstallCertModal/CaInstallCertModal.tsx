@@ -77,7 +77,7 @@ const INTEGRATIONS: TIntegration[] = [
     id: "adcs",
     name: "Microsoft ADCS",
     description: "Microsoft Active Directory Certificate Services",
-    image: "/images/integrations/Microsoft Azure.png"
+    image: "/images/integrations/Windows.png"
   }
 ];
 
