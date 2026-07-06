@@ -947,67 +947,65 @@
             ]
           },
           {
-            "item": "Infisical PAM",
+            "item": "Privileged Access Manager",
             "groups": [
               {
-                "group": "Infisical PAM",
+                "group": "Privileged Access Manager",
                 "pages": [
                   "documentation/platform/pam/overview",
                   {
-                    "group": "Getting Started",
+                    "group": "Quickstarts",
                     "pages": [
-                      "documentation/platform/pam/getting-started/setup",
-                      {
-                        "group": "Resources",
-                        "pages": [
-                          "documentation/platform/pam/getting-started/resources",
-                          "documentation/platform/pam/getting-started/resources/active-directory",
-                          "documentation/platform/pam/getting-started/resources/aws-iam",
-                          "documentation/platform/pam/getting-started/resources/kubernetes",
-                          "documentation/platform/pam/getting-started/resources/mongodb",
-                          "documentation/platform/pam/getting-started/resources/mssql",
-                          "documentation/platform/pam/getting-started/resources/mysql",
-                          "documentation/platform/pam/getting-started/resources/oracle",
-                          "documentation/platform/pam/getting-started/resources/postgresql",
-                          "documentation/platform/pam/getting-started/resources/redis",
-                          "documentation/platform/pam/getting-started/resources/ssh",
-                          "documentation/platform/pam/getting-started/resources/windows-server"
-                        ]
-                      },
-                      "documentation/platform/pam/getting-started/accounts"
+                      "documentation/platform/pam/quick-starts/launch-first-session"
                     ]
                   },
                   {
-                    "group": "Discovery",
+                    "group": "Concepts",
                     "pages": [
-                      "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory"
+                      "documentation/platform/pam/concepts/pam-components",
+                      "documentation/platform/pam/concepts/session-lifecycle",
+                      "documentation/platform/pam/concepts/access-control"
                     ]
                   },
-                  "documentation/platform/pam/architecture"
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pam/guides/team-access",
+                      "documentation/platform/pam/guides/ssh-certificate-auth"
+                    ]
+                  }
                 ]
               },
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/pam/product-reference/access-policies",
-                  "documentation/platform/pam/product-reference/account-policies",
-                  "documentation/platform/pam/product-reference/auditing",
-                  "documentation/platform/pam/product-reference/session-recording",
-                  "documentation/platform/pam/product-reference/external-storage",
-                  "documentation/platform/pam/product-reference/ai-session-insights",
-                  "documentation/platform/pam/product-reference/credential-rotation",
-                  "documentation/platform/pam/product-reference/view-credentials",
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
                   {
-                    "group": "Web Access",
+                    "group": "Accounts",
                     "pages": [
-                      "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql",
-                      "documentation/platform/pam/product-reference/web-access/redis",
-                      "documentation/platform/pam/product-reference/web-access/ssh",
-                      "documentation/platform/pam/product-reference/web-access/windows-rdp"
+                      "documentation/platform/pam/accounts/overview",
+                      "documentation/platform/pam/accounts/postgresql",
+                      "documentation/platform/pam/accounts/mysql",
+                      "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/ssh",
+                      "documentation/platform/pam/accounts/kubernetes",
+                      "documentation/platform/pam/accounts/aws-iam",
+                      "documentation/platform/pam/accounts/windows",
+                      "documentation/platform/pam/accounts/windows-ad"
                     ]
-                  }
+                  },
+                  {
+                    "group": "Sessions",
+                    "pages": [
+                      "documentation/platform/pam/sessions/overview",
+                      "documentation/platform/pam/sessions/session-recording",
+                      "documentation/platform/pam/sessions/external-storage"
+                    ]
+                  },
+                  "documentation/platform/pam/auditing",
+                  "documentation/platform/pam/architecture"
                 ]
               }
             ]
