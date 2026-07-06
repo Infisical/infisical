@@ -17,7 +17,7 @@ export const FireworksApiKeyRotationSecretsMappingFields = () => {
 
   const items = [
     {
-      name: "Secret Value",
+      name: "API Key",
       input: (
         <Controller
           render={({ field: { value, onChange }, fieldState: { error } }) => (
@@ -25,12 +25,12 @@ export const FireworksApiKeyRotationSecretsMappingFields = () => {
               <Input
                 value={value}
                 onChange={onChange}
-                placeholder={rotationOption?.template.secretsMapping.secretValue}
+                placeholder={rotationOption?.template.secretsMapping.apiKey}
               />
             </FormControl>
           )}
           control={control}
-          name="secretsMapping.secretValue"
+          name="secretsMapping.apiKey"
         />
       )
     }

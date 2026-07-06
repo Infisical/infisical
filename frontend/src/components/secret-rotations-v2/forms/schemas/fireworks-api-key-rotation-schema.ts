@@ -7,10 +7,10 @@ export const FireworksApiKeyRotationSchema = z
   .object({
     type: z.literal(SecretRotation.FireworksApiKey),
     parameters: z.object({
-      keyName: z.string().trim().min(1, "Key name required")
+      serviceAccountUserId: z.string().trim().min(1, "Service account required")
     }),
     secretsMapping: z.object({
-      secretValue: z.string().trim().min(1, "Secret value name required")
+      apiKey: z.string().trim().min(1, "API key name required")
     })
   })
   .merge(BaseSecretRotationSchema);

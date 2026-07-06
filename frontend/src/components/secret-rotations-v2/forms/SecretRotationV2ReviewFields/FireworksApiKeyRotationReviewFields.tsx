@@ -13,15 +13,17 @@ export const FireworksApiKeyRotationReviewFields = () => {
     }
   >();
 
-  const [parameters, { secretValue }] = watch(["parameters", "secretsMapping"]);
+  const [parameters, { apiKey }] = watch(["parameters", "secretsMapping"]);
 
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Key Name">{parameters.keyName}</GenericFieldLabel>
+        <GenericFieldLabel label="Service Account">
+          {parameters.serviceAccountUserId}
+        </GenericFieldLabel>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Secret Value">{secretValue}</GenericFieldLabel>
+        <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>
       </SecretRotationReviewSection>
     </>
   );

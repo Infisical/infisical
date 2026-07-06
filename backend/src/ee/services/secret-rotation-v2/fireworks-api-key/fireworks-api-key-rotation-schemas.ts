@@ -12,24 +12,28 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 export const FireworksApiKeyRotationGeneratedCredentialsSchema = z
   .object({
-    secretName: z.string(),
-    secretValue: z.string()
+    keyId: z.string(),
+    apiKey: z.string()
   })
   .array()
   .min(1)
   .max(2);
 
 const FireworksApiKeyRotationParametersSchema = z.object({
-  keyName: z.string().trim().min(1, "Key name required").describe(SecretRotations.PARAMETERS.FIREWORKS_API_KEY.keyName)
+  serviceAccountUserId: z
+    .string()
+    .trim()
+    .min(1, "Service account required")
+    .describe(SecretRotations.PARAMETERS.FIREWORKS_API_KEY.serviceAccountUserId)
 });
 
 const FireworksApiKeyRotationSecretsMappingSchema = z.object({
-  secretValue: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.FIREWORKS_API_KEY.secretValue)
+  apiKey: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.FIREWORKS_API_KEY.apiKey)
 });
 
 export const FireworksApiKeyRotationTemplateSchema = z.object({
   secretsMapping: z.object({
-    secretValue: z.string()
+    apiKey: z.string()
   })
 });
 

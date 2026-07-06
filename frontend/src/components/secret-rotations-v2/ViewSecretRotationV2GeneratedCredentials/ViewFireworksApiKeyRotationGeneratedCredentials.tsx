@@ -17,13 +17,13 @@ export const ViewFireworksApiKeyRotationGeneratedCredentials = ({
   return (
     <ViewRotationGeneratedCredentialsDisplay
       activeCredentials={
-        <CredentialDisplay isSensitive label="Secret Value">
-          {activeCredentials?.secretValue}
+        <CredentialDisplay isSensitive label="API Key">
+          {activeCredentials?.apiKey}
         </CredentialDisplay>
       }
       inactiveCredentials={
-        <CredentialDisplay isSensitive label="Secret Value">
-          {inactiveCredentials?.secretValue}
+        <CredentialDisplay isSensitive label="API Key">
+          {inactiveCredentials?.apiKey}
         </CredentialDisplay>
       }
     />

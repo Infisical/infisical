@@ -8,7 +8,7 @@ export const FIREWORKS_API_KEY_ROTATION_LIST_OPTION: TSecretRotationV2ListItem =
   connection: AppConnection.Fireworks,
   template: {
     secretsMapping: {
-      secretValue: "FIREWORKS_SECRET"
+      apiKey: "FIREWORKS_API_KEY"
     }
   }
 };

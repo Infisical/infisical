@@ -3473,7 +3473,7 @@ export const SecretRotations = {
       namePrefix: "A prefix to use when naming the generated Convex access key."
     },
     FIREWORKS_API_KEY: {
-      keyName: "The key name identifier for the secret on Fireworks."
+      serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3550,7 +3550,7 @@ export const SecretRotations = {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
     },
     FIREWORKS_API_KEY: {
-      secretValue: "The name of the secret that the rotated Fireworks secret value will be mapped to."
+      apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
     }
   }
 };

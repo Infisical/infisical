@@ -8,16 +8,16 @@ import {
 export type TFireworksApiKeyRotation = TSecretRotationV2Base & {
   type: SecretRotation.FireworksApiKey;
   parameters: {
-    keyName: string;
+    serviceAccountUserId: string;
   };
   secretsMapping: {
-    secretValue: string;
+    apiKey: string;
   };
 };
 
 export type TFireworksApiKeyRotationGeneratedCredentials = {
-  secretName: string;
-  secretValue: string;
+  keyId: string;
+  apiKey: string;
 };
 
 export type TFireworksApiKeyRotationGeneratedCredentialsResponse =

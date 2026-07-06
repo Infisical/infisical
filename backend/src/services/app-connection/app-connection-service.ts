@@ -109,6 +109,7 @@ import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
 import { ValidateFireworksConnectionCredentialsSchema } from "./fireworks";
+import { fireworksConnectionService } from "./fireworks/fireworks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -1374,6 +1375,7 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    fireworks: fireworksConnectionService(connectAppConnectionById)
   };
 };

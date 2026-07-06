@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import { AxiosError } from "axios";
 
 import {
@@ -19,17 +17,21 @@ import {
   TFireworksApiKeyRotationWithConnection
 } from "./fireworks-api-key-rotation-types";
 
-const $createSecret = async (
+type TFireworksCreateApiKeyResponse = {
+  keyId: string;
+  key: string;
+};
+
+const $createApiKey = async (
   apiKey: string,
   accountId: string,
-  keyName: string
-): Promise<{ secretName: string; secretValue: string }> => {
-  const secretValue = crypto.randomBytes(32).toString("base64url");
-
+  userId: string,
+  displayName: string
+): Promise<{ keyId: string; apiKey: string }> => {
   try {
-    const { data } = await request.post<{ name: string }>(
-      `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/secrets`,
-      { keyName, value: secretValue },
+    const { data } = await request.post<TFireworksCreateApiKeyResponse>(
+      `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users/${userId}/apiKeys`,
+      { apiKey: { displayName } },
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -38,36 +40,38 @@ const $createSecret = async (
       }
     );
 
-    if (!data?.name) {
-      throw new Error("Invalid response from Fireworks: missing 'name'.");
+    if (!data?.key) {
+      throw new Error("Invalid response from Fireworks: missing API key data.");
     }
 
     return {
-      secretName: data.name,
-      secretValue
+      keyId: data.keyId,
+      apiKey: data.key
     };
   } catch (error: unknown) {
     if (error instanceof BadRequestError) throw error;
     throw new BadRequestError({
-      message: `Failed to create Fireworks secret: ${error instanceof AxiosError ? error.message : "Unknown error"}`
+      message: `Failed to create Fireworks API key: ${error instanceof AxiosError ? error.message : "Unknown error"}`
     });
   }
 };
 
-const $deleteSecret = async (apiKey: string, accountId: string, secretName: string): Promise<void> => {
-  const secretId = secretName.split("/").pop();
-
+const $deleteApiKey = async (authKey: string, accountId: string, userId: string, keyId: string): Promise<void> => {
   try {
-    await request.delete(`${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/secrets/${secretId}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+    await request.post(
+      `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users/${userId}/apiKeys:delete`,
+      { keyId },
+      {
+        headers: {
+          Authorization: `Bearer ${authKey}`,
+          "Content-Type": "application/json"
+        }
       }
-    });
+    );
   } catch (error: unknown) {
     if (error instanceof AxiosError && error.response?.status === 404) return;
     throw new BadRequestError({
-      message: `Failed to delete Fireworks secret: ${error instanceof AxiosError ? error.message : "Unknown error"}`
+      message: `Failed to delete Fireworks API key: ${error instanceof AxiosError ? error.message : "Unknown error"}`
     });
   }
 };
@@ -79,16 +83,18 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
   const {
     id: rotationId,
     connection,
-    parameters: { keyName },
+    parameters: { serviceAccountUserId },
     secretsMapping
   } = secretRotation;
 
   const { apiKey, accountId } = connection.credentials;
 
+  const generateDisplayName = () => `Infisical-rotation-${Date.now()}`;
+
   const issueCredentials: TRotationFactoryIssueCredentials<TFireworksApiKeyRotationGeneratedCredentials> = async (
     callback
   ) => {
-    const credentials = await $createSecret(apiKey, accountId, keyName);
+    const credentials = await $createApiKey(apiKey, accountId, serviceAccountUserId, generateDisplayName());
     return callback(credentials);
   };
 
@@ -99,14 +105,14 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
     if (!generatedCredentials?.length) return callback();
 
     const results = await Promise.allSettled(
-      generatedCredentials.map((credential) => $deleteSecret(apiKey, accountId, credential.secretName))
+      generatedCredentials.map((credential) => $deleteApiKey(apiKey, accountId, serviceAccountUserId, credential.keyId))
     );
 
     results.forEach((result, index) => {
       if (result.status === "rejected") {
         logger.error(
           result.reason,
-          `fireworksApiKeyRotation: failed to revoke secret during cleanup [rotationId=${rotationId}] [secretName=${generatedCredentials[index].secretName}]`
+          `fireworksApiKeyRotation: failed to revoke API key during cleanup [rotationId=${rotationId}] [keyId=${generatedCredentials[index].keyId}]`
         );
       }
     });
@@ -118,15 +124,15 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
     credentialsToRevoke,
     callback
   ) => {
-    const credentials = await $createSecret(apiKey, accountId, keyName);
+    const credentials = await $createApiKey(apiKey, accountId, serviceAccountUserId, generateDisplayName());
 
-    if (credentialsToRevoke?.secretName) {
+    if (credentialsToRevoke?.keyId) {
       try {
-        await $deleteSecret(apiKey, accountId, credentialsToRevoke.secretName);
+        await $deleteApiKey(apiKey, accountId, serviceAccountUserId, credentialsToRevoke.keyId);
       } catch (revokeError) {
         logger.error(
           revokeError,
-          `fireworksApiKeyRotation: failed to revoke previous secret after rotation [rotationId=${rotationId}] [secretName=${credentialsToRevoke.secretName}]`
+          `fireworksApiKeyRotation: failed to revoke previous API key after rotation [rotationId=${rotationId}] [keyId=${credentialsToRevoke.keyId}]`
         );
       }
     }
@@ -136,7 +142,7 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TFireworksApiKeyRotationGeneratedCredentials> = (
     generatedCredentials
-  ) => [{ key: secretsMapping.secretValue, value: generatedCredentials.secretValue }];
+  ) => [{ key: secretsMapping.apiKey, value: generatedCredentials.apiKey }];
 
   return {
     issueCredentials,
