@@ -1,5 +1,5 @@
 import opentelemetry from "@opentelemetry/api";
-import { AxiosError } from "axios";
+import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
@@ -603,8 +603,10 @@ export const secretSyncQueueFactory = ({
 
       isSynced = true;
     } catch (err) {
+      const axiosError = err instanceof SecretSyncError && isAxiosError(err.error) ? err.error : err;
+
       logger.error(
-        err,
+        isAxiosError(axiosError) ? axiosError.response?.data : err,
         `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
