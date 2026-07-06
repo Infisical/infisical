@@ -417,7 +417,7 @@ export const pamSessionServiceFactory = ({
         if (grantRemainingMs <= 0) {
           throw new ForbiddenRequestError({
             name: "PAM_GRANT_EXPIRED",
-            message: "Access grant has expired"
+            message: "Your approved access has expired"
           });
         }
         sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);

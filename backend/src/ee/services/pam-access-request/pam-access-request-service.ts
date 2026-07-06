@@ -1014,7 +1014,7 @@ export const pamAccessRequestServiceFactory = ({
     });
 
     if (!grant || grant.projectId !== projectId) {
-      throw new NotFoundError({ message: "Active grant not found for this request" });
+      throw new NotFoundError({ message: "No active approval found for this request" });
     }
 
     const requestData = (await approvalRequestDAL.findById(requestId))?.requestData as {
@@ -1037,7 +1037,7 @@ export const pamAccessRequestServiceFactory = ({
     } else if (!hasRole(PamProductRole.Admin)) {
       // The grant's account can't be resolved (missing from requestData or already deleted), so there
       // is no resource to check RevokeGrants against. Fail closed to product admins.
-      throw new ForbiddenRequestError({ message: "You are not authorized to revoke this grant" });
+      throw new ForbiddenRequestError({ message: "You are not authorized to revoke this approval" });
     }
 
     const revokedGrant = await revokeGrantRow(grant, ctx.actorId, "Revoked by admin");

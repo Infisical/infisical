@@ -201,7 +201,7 @@ export const pamWebAccessServiceFactory = ({
       if (grant.expiresAt) {
         grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
         if (grantRemainingMs <= 0) {
-          throw new ForbiddenRequestError({ name: "PAM_GRANT_EXPIRED", message: "Access grant has expired" });
+          throw new ForbiddenRequestError({ name: "PAM_GRANT_EXPIRED", message: "Your approved access has expired" });
         }
       }
     }

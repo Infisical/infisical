@@ -505,7 +505,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           if (!open) setRequestToRevoke(null);
         }}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this grant? Any active session using it will be terminated immediately."
+        subTitle="Are you sure you want to revoke this user's approved access? Any active session using it will be terminated immediately."
         deleteKey="revoke"
         buttonText="Revoke"
         onDeleteApproved={confirmRevoke}
