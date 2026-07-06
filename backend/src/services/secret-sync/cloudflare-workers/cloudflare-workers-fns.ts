@@ -126,25 +126,29 @@ export const CloudflareWorkersSyncFns = {
     const existingSecretNames = await getSecretKeys(secretSync);
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
-    for await (const existingKey of existingSecretNames) {
-      const isManagedBySchema = matchesSchema(
-        existingKey,
-        secretSync.environment?.slug || "",
-        secretSync.syncOptions.keySchema
-      );
-      const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingKey);
-
-      if (isInSecretMapToRemove && isManagedBySchema) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.delete(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingKey}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`
-            }
-          }
+    try {
+      for await (const existingKey of existingSecretNames) {
+        const isManagedBySchema = matchesSchema(
+          existingKey,
+          secretSync.environment?.slug || "",
+          secretSync.syncOptions.keySchema
         );
+        const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingKey);
+
+        if (isInSecretMapToRemove && isManagedBySchema) {
+          await delayMs(Math.max(0, applyJitter(100, 200)));
+          await request.delete(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingKey}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`
+              }
+            }
+          );
+        }
       }
+    } catch (err) {
+      throwOnUndeployedVersionError(err);
     }
   }
 };
