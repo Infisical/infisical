@@ -66,7 +66,10 @@ export const CreatePkiSyncModal = ({
         onOpenChange(isOpen);
       }}
     >
+      {/* Sit below the v3 overlay layer (z-50) so the inline "Create Connection" Sheet and its v3
+          Select menus stack above this modal instead of being buried behind it. */}
       <ModalContent
+        overlayClassName="z-40"
         title={
           selectedSync ? (
             <PkiSyncModalHeader isConfigured={false} destination={selectedSync} />
@@ -74,7 +77,7 @@ export const CreatePkiSyncModal = ({
             "Add Sync"
           )
         }
-        className="max-w-3xl"
+        className="z-40 max-w-3xl"
         bodyClassName={selectedSync ? "overflow-visible" : undefined}
         subTitle={
           selectedSync ? undefined : "Select a third-party service to sync certificates to."

@@ -15,11 +15,14 @@ type Props = {
 export const EditPkiSyncModal = ({ pkiSync, onOpenChange, fields, ...props }: Props) => {
   if (!pkiSync) return null;
 
-  const modalClassName = fields === PkiSyncEditFields.Mappings ? "max-w-4xl" : "max-w-2xl";
+  // z-40 keeps this modal below the v3 overlay layer (z-50) so the inline "Create Connection" Sheet
+  // and its v3 Select menus stack above it instead of being buried behind it.
+  const modalClassName = fields === PkiSyncEditFields.Mappings ? "z-40 max-w-4xl" : "z-40 max-w-2xl";
 
   return (
     <Modal {...props} onOpenChange={onOpenChange}>
       <ModalContent
+        overlayClassName="z-40"
         title={<PkiSyncModalHeader isConfigured destination={pkiSync.destination} />}
         className={modalClassName}
         bodyClassName="overflow-visible"

@@ -109,7 +109,10 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
         onOpenChange(open);
       }}
     >
+      {/* Sit below the v3 overlay layer (z-50) so the inline "Create Connection" Sheet and its v3
+          Select menus stack above this modal instead of being buried behind it. */}
       <ModalContent
+        overlayClassName="z-40"
         title={
           selectedRotation ? (
             <SecretRotationV2ModalHeader isConfigured={false} type={selectedRotation} />
@@ -120,7 +123,7 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
             </div>
           )
         }
-        className={selectedRotation ? "max-w-2xl" : "max-w-3xl"}
+        className={selectedRotation ? "z-40 max-w-2xl" : "z-40 max-w-3xl"}
         subTitle={
           selectedRotation ? undefined : "Select a provider to create a secret rotation for."
         }
