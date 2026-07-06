@@ -34,10 +34,11 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
 
   const isDisabled = !!disabledReason;
   const isGranted = accessStatus === PamAccessStatus.Granted;
-  const needsApproval = requiresApproval && !isGranted && !isDisabled;
+  // Approval is a layer on top of standing access: only users who could launch the account may
+  // request a grant, and launching a gated account requires both the permission and the grant.
+  const needsApproval = requiresApproval && !isGranted && !isDisabled && canLaunch;
   const isPending = accessStatus === PamAccessStatus.Pending;
-  // A granted approval authorizes launching even without standing LaunchSessions permission.
-  const canLaunchNow = canLaunch || isGranted;
+  const canLaunchNow = canLaunch && (!requiresApproval || isGranted);
   const canClick = canLaunchNow && !needsApproval && !isDisabled;
 
   const renderAction = () => {

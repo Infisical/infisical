@@ -357,13 +357,15 @@ export const pamSessionServiceFactory = ({
     const templateSettings = account.templateSettings as { requiresApproval?: boolean } | null;
     const requiresApproval = Boolean(templateSettings?.requiresApproval);
 
-    // Gated accounts are launched via a just-in-time approval grant rather than standing
-    // LaunchSessions permission, so an approved Requester can launch without holding it.
-    const launchAuthorizationAction = requiresApproval
-      ? ResourcePermissionPamResourceActions.ReadAccounts
-      : ResourcePermissionPamResourceActions.LaunchSessions;
-
-    await checkAccount(account.id, account.folderId, projectId, launchAuthorizationAction, actor);
+    // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
+    // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
+    await checkAccount(
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      actor
+    );
 
     const trimmedReason = reason?.trim() || null;
 

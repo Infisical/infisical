@@ -439,12 +439,14 @@ export const pamAccessRequestServiceFactory = ({
       throw new NotFoundError({ message: "Account not found" });
     }
 
+    // Approval is a layer on top of standing access: only users who could launch sessions on this
+    // account may request the temporary grant that unlocks the gated launch.
     await checkAccountAccess(
       permissionService,
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.RequestAccess,
+      ResourcePermissionPamResourceActions.LaunchSessions,
       ctx
     );
 

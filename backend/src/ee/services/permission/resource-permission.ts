@@ -36,7 +36,6 @@ export enum ResourcePermissionPamResourceActions {
   ViewSessions = "view-sessions",
   TerminateSessions = "terminate-sessions",
   ViewCredentials = "view-credentials",
-  RequestAccess = "request-access",
   ApproveRequests = "approve-requests",
   RevokeGrants = "revoke-grants",
   ManagePolicies = "manage-policies",

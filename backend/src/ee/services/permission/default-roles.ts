@@ -1114,7 +1114,6 @@ const buildPamResourceAdminPermissionRules = () => {
       ResourcePermissionPamResourceActions.ViewSessions,
       ResourcePermissionPamResourceActions.TerminateSessions,
       ResourcePermissionPamResourceActions.ViewCredentials,
-      ResourcePermissionPamResourceActions.RequestAccess,
       ResourcePermissionPamResourceActions.ApproveRequests,
       ResourcePermissionPamResourceActions.RevokeGrants,
       ResourcePermissionPamResourceActions.ManagePolicies,
@@ -1133,8 +1132,7 @@ const buildPamResourceConnectorPermissionRules = () => {
     [
       ResourcePermissionPamResourceActions.ReadFolder,
       ResourcePermissionPamResourceActions.ReadAccounts,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      ResourcePermissionPamResourceActions.RequestAccess
+      ResourcePermissionPamResourceActions.LaunchSessions
     ],
     ResourcePermissionSub.PamResource
   );

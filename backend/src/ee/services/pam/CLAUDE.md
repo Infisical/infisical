@@ -53,7 +53,7 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | List sessions | `ViewSessions` (via `getResourceIdsWithActions`) |
 | List folder/account members | `ManageMembers` (via `checkManageMembers`) |
 | Get account by ID | `ReadAccounts` (via `checkAccountAccess`) |
-| Launch session / web access | Non-gated account: `LaunchSessions`. Gated account (`requiresApproval`): `ReadAccounts` + a valid approval grant (just-in-time), enforced in both `pam-session-service.access()` and `pam-web-access-service.issueWebSocketTicket()`. `LaunchSessions` holders do not bypass the approval gate. |
+| Launch session / web access | `LaunchSessions` always. Gated account (`requiresApproval`): `LaunchSessions` AND a valid approval grant, enforced in both `pam-session-service.access()` and `pam-web-access-service.issueWebSocketTicket()`. Approval is a layer on top of standing access, never a substitute for it. |
 | View recording | `ViewSessions` (via `checkAccountAccess`) |
 | Revoke access grant | `RevokeGrants` on the grant's account (via `checkAccountAccess`) |
 | Create account | `CreateAccounts` (via folder permission) |
@@ -78,7 +78,7 @@ PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, e
 ### Roles
 
 - **Product roles** (`PamProductRole`): `Admin`, `Member`
-- **Resource roles** (`PamResourceRole`): `Admin`, `Connector`, `Auditor`. `Connector` grants `ReadFolder` + `ReadAccounts` + `LaunchSessions` + `RequestAccess` (direct launch on non-gated accounts, and can request approval on gated ones).
+- **Resource roles** (`PamResourceRole`): `Admin`, `Connector`, `Auditor`. `Connector` grants `ReadFolder` + `ReadAccounts` + `LaunchSessions` (direct launch on non-gated accounts; on gated ones `LaunchSessions` also authorizes submitting an access request, since there is no dedicated request permission).
 
 Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via the generic membership system (`ResourceType.PamFolder` / `ResourceType.PamAccount`).
 
