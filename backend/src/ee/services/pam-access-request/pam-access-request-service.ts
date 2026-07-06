@@ -1224,28 +1224,46 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!account.folderId) return { approvers: [] };
+    if (!account.folderId) return { steps: [] };
     const policy = await findFolderPolicy(account.folderId);
-    if (!policy) return { approvers: [] };
+    if (!policy) return { steps: [] };
 
-    const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
-    const approverEntries = steps.flatMap((s) => s.approvers);
+    const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
+    const approverEntries = policySteps.flatMap((s) => s.approvers);
     const userIds = approverEntries.filter((a) => a.type === ApproverType.User).map((a) => a.id);
     const groupIds = approverEntries.filter((a) => a.type === ApproverType.Group).map((a) => a.id);
 
-    const [users, groups] = await Promise.all([
+    const [users, groups, groupMemberships] = await Promise.all([
       userIds.length > 0 ? userDAL.find({ $in: { id: userIds } }) : [],
-      groupIds.length > 0 ? groupDAL.find({ $in: { id: groupIds } }) : []
+      groupIds.length > 0 ? groupDAL.find({ $in: { id: groupIds } }) : [],
+      groupIds.length > 0 ? userGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
     ]);
 
+    const userNameById = new Map(
+      users.map((u) => [
+        u.id,
+        [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.email || "Unknown user"
+      ])
+    );
+    const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
+    const groupMemberCounts = new Map<string, number>();
+    groupMemberships.forEach((m) => {
+      if (m.groupId) groupMemberCounts.set(m.groupId, (groupMemberCounts.get(m.groupId) ?? 0) + 1);
+    });
+
     return {
-      approvers: [
-        ...users.map((u) => ({
-          type: ApproverType.User,
-          name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.email || "Unknown user"
-        })),
-        ...groups.map((g) => ({ type: ApproverType.Group, name: g.name }))
-      ]
+      steps: policySteps.map((step) => ({
+        requiredApprovals: step.requiredApprovals,
+        approvers: step.approvers.map((a) =>
+          a.type === ApproverType.User
+            ? { type: ApproverType.User, name: userNameById.get(a.id) ?? "Unknown user" }
+            : {
+                type: ApproverType.Group,
+                name: groupNameById.get(a.id) ?? "Unknown group",
+                memberCount: groupMemberCounts.get(a.id) ?? 0
+              }
+        )
+      }))
     };
   };
 

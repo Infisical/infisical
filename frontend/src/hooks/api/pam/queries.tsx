@@ -453,15 +453,20 @@ export const useGetPamAccessCapabilities = () => {
 
 // Access Requests / Approvals
 
+export type TPamApprovalWorkflowStep = {
+  requiredApprovals: number;
+  approvers: { type: PamApproverType; name: string; memberCount?: number }[];
+};
+
 export const useGetPamAccountApprovers = (accountId?: string) => {
   return useQuery({
     queryKey: pamKeys.accountApprovers(accountId ?? ""),
     enabled: Boolean(accountId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        approvers: { type: PamApproverType; name: string }[];
-      }>(`/api/v1/pam/access-requests/accounts/${accountId}/approvers`);
-      return data.approvers;
+      const { data } = await apiRequest.get<{ steps: TPamApprovalWorkflowStep[] }>(
+        `/api/v1/pam/access-requests/accounts/${accountId}/approvers`
+      );
+      return data.steps;
     }
   });
 };

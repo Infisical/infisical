@@ -35,7 +35,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { FolderAccountGroup } from "./components/FolderAccountGroup";
 import { LaunchSessionSheet } from "./components/LaunchSessionSheet";
-import { RequestAccessModal } from "./components/RequestAccessModal";
+import { RequestAccessSheet } from "./components/RequestAccessSheet";
 
 export const PamAccessPage = () => {
   const { t } = useTranslation();
@@ -217,7 +217,7 @@ export const PamAccessPage = () => {
         }}
       />
 
-      <RequestAccessModal
+      <RequestAccessSheet
         account={requestAccount}
         isOpen={!!requestAccount}
         onOpenChange={(open) => {
