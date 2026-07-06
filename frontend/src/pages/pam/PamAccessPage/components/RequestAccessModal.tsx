@@ -1,9 +1,7 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import ms from "ms";
 import { z } from "zod";
 
-import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -15,27 +13,29 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldError,
   FieldLabel,
-  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextArea
 } from "@app/components/v3";
 import { TAccessiblePamAccount, useCreatePamAccessRequest } from "@app/hooks/api/pam";
 
-const MIN_DURATION_MS = ms("30s");
-const MAX_DURATION_MS = ms("7d");
+// Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
+// without "No expiry" since every approved access must be time-boxed.
+const DURATION_OPTIONS = [
+  { value: "15m", label: "15 minutes" },
+  { value: "1h", label: "1 hour" },
+  { value: "4h", label: "4 hours" },
+  { value: "1d", label: "1 day" },
+  { value: "3d", label: "3 days" },
+  { value: "7d", label: "1 week" }
+];
 
 const schema = z.object({
-  duration: z
-    .string()
-    .min(1, "Required")
-    .refine(
-      (val) => {
-        const parsed = ms(val);
-        return typeof parsed === "number" && parsed >= MIN_DURATION_MS && parsed <= MAX_DURATION_MS;
-      },
-      { message: "Duration must be between 30s and 7d. Examples: 30m, 1h, 4h, 1d" }
-    ),
+  duration: z.string().min(1, "Required"),
   reason: z.string().max(500).optional()
 });
 
@@ -94,12 +94,22 @@ export const RequestAccessModal = ({ account, isOpen, onOpenChange }: Props) => 
           <Controller
             control={control}
             name="duration"
-            render={({ field, fieldState }) => (
+            render={({ field }) => (
               <Field>
-                <TtlFormLabel label="Duration" />
+                <FieldLabel>Duration</FieldLabel>
                 <FieldContent>
-                  <Input {...field} placeholder="e.g. 1h, 4h, 1d" isError={!!fieldState.error} />
-                  <FieldError>{fieldState.error?.message}</FieldError>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {DURATION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FieldContent>
               </Field>
             )}
