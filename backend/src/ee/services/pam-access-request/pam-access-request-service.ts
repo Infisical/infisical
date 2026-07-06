@@ -47,6 +47,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessStatus, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
+import { resolveAccessControls } from "../pam/pam-policies";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -447,8 +448,7 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    const templateSettings = account.templateSettings as { requiresApproval?: boolean } | null;
-    if (!templateSettings?.requiresApproval) {
+    if (!resolveAccessControls(account.templatePolicies).requiresApproval) {
       throw new BadRequestError({ message: "This account does not require approval" });
     }
 

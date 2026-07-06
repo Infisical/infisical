@@ -22,6 +22,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { resolveAccessControls } from "../pam/pam-policies";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -144,22 +145,20 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       search
     });
 
-    const approvalFolderIds = [
+    const folderIdsRequiringApproval = [
       ...new Set(
         accounts
-          .filter((a) => {
-            const settings = a.templateSettings as { requiresApproval?: boolean } | null;
-            return settings?.requiresApproval && a.folderId;
-          })
+          .filter((a) => resolveAccessControls(a.templatePolicies).requiresApproval && a.folderId)
           .map((a) => a.folderId!)
       )
     ];
-    const configuredFolders = await deps.pamAccessRequestService.getFolderPolicyConfigured(approvalFolderIds);
+    const foldersWithApprovalPolicy =
+      await deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval);
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const settings = a.templateSettings as { requiresApproval?: boolean } | null;
-      if (settings?.requiresApproval && a.folderId && !configuredFolders.has(a.folderId)) {
+      const requiresApproval = resolveAccessControls(a.templatePolicies).requiresApproval;
+      if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
       return {
@@ -531,24 +530,24 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       onlyAccessible: true
     });
 
-    const approvalAccounts = accounts.filter((a) => {
-      const settings = a.templateSettings as { requiresApproval?: boolean } | null;
-      return settings?.requiresApproval;
-    });
-    const approvalAccountIds = approvalAccounts.map((a) => a.id);
+    const accountsRequiringApproval = accounts.filter(
+      (a) => resolveAccessControls(a.templatePolicies).requiresApproval
+    );
+    const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
 
-    const approvalFolderIds = [...new Set(approvalAccounts.map((a) => a.folderId).filter(Boolean) as string[])];
-    const [accessStatusMap, configuredFolders] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, approvalAccountIds, projectId),
-      deps.pamAccessRequestService.getFolderPolicyConfigured(approvalFolderIds)
+    const folderIdsRequiringApproval = [
+      ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
+    ];
+    const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
     ]);
 
     return {
       accounts: accounts.map((a) => {
-        const settings = a.templateSettings as { requiresApproval?: boolean } | null;
-        const requiresApproval = settings?.requiresApproval ?? false;
+        const requiresApproval = resolveAccessControls(a.templatePolicies).requiresApproval;
         const statusEntry = accessStatusMap.get(a.id);
-        const hasPolicyConfigured = a.folderId ? configuredFolders.has(a.folderId) : false;
+        const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
         if (requiresApproval && !hasPolicyConfigured) {
           disabledReason = "No approval policy configured for this folder";

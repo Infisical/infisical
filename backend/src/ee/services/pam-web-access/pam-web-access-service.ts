@@ -167,8 +167,8 @@ export const pamWebAccessServiceFactory = ({
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
-    const templateSettings = account.templateSettings as { requiresApproval?: boolean } | null;
-    const requiresApproval = Boolean(templateSettings?.requiresApproval);
+    const policy = resolveAccessControls(account.templatePolicies);
+    const { requiresApproval } = policy;
 
     // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
     // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
@@ -212,8 +212,6 @@ export const pamWebAccessServiceFactory = ({
     const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
     const trimmedReason = reason?.trim() || null;
-
-    const policy = resolveAccessControls(account.templatePolicies);
 
     if (policy.requireReason && !trimmedReason) {
       throw new BadRequestError({

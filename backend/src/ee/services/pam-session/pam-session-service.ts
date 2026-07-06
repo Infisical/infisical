@@ -354,8 +354,8 @@ export const pamSessionServiceFactory = ({
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
-    const templateSettings = account.templateSettings as { requiresApproval?: boolean } | null;
-    const requiresApproval = Boolean(templateSettings?.requiresApproval);
+    const policy = resolveAccessControls(account.templatePolicies);
+    const { requiresApproval } = policy;
 
     // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
     // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
@@ -368,8 +368,6 @@ export const pamSessionServiceFactory = ({
     );
 
     const trimmedReason = reason?.trim() || null;
-
-    const policy = resolveAccessControls(account.templatePolicies);
 
     if (policy.requireReason && !trimmedReason) {
       throw new BadRequestError({

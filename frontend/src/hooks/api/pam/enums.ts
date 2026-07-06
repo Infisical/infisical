@@ -13,6 +13,7 @@ export enum PamAccountType {
 }
 
 export enum PamPolicyType {
+  RequiresApproval = "requires-approval",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",

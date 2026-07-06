@@ -29,8 +29,7 @@ export const PamTemplateSettingsSchema = z.object({
   recordingStorageBackend: z.nativeEnum(PamRecordingStorageBackend).default(PamRecordingStorageBackend.Postgres),
   recordingS3Config: PamRecordingS3ConfigSchema.optional(),
   passwordConstraints: PamPasswordConstraintsSchema.optional(),
-  sessionLogMaskingPatterns: z.string().optional(),
-  requiresApproval: z.boolean().optional()
+  sessionLogMaskingPatterns: z.string().optional()
 });
 
 export const PamTemplateSettingsInputSchema = PamTemplateSettingsSchema.extend({
