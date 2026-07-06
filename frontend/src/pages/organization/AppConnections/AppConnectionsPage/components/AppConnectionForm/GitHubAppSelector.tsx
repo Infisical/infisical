@@ -342,7 +342,6 @@ export const GitHubAppSelector = ({
       </div>
 
       <Dialog open={isManageOpen} onOpenChange={handleManageOpenChange}>
-        {/* z-[80] keeps this above the Add Connection sheet (z-[70]) that hosts this form. */}
         <DialogContent
           onOpenAutoFocus={(e) => {
             e.preventDefault();

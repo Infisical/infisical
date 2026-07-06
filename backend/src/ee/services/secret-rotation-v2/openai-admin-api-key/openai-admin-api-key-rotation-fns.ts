@@ -61,9 +61,6 @@ export const openAIAdminApiKeyRotationFactory: TRotationFactory<
    */
   const $createApiKey = async () => {
     try {
-      // Suffix with a timestamp so the active and retired keys have distinct names on the
-      // OpenAI platform during the dual-credential window. Deletion is by key id, so the
-      // name itself is only used for identification in the OpenAI dashboard.
       const keyName = `${name}-${Date.now()}`;
 
       const { data } = await request.post<TOpenAIAdminApiKeyCreateResponse>(

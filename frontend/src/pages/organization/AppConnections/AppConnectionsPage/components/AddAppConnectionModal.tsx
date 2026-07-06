@@ -132,9 +132,6 @@ export const AddAppConnectionModal = ({
       </Sheet>
 
       <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
-        {/* z-[80] keeps the discard confirmation above this sheet (z-[70]). Without it, when the
-            sheet is opened over a legacy v2 modal (z-[60]) — e.g. the secret rotation modal — the
-            confirm dialog would open behind the sheet yet still capture focus, leaving it dead. */}
         <AlertDialogContent className="z-[80]" overlayClassName="z-[80]">
           <AlertDialogHeader>
             <AlertDialogMedia>
