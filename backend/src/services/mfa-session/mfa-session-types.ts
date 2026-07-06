@@ -30,3 +30,9 @@ export type TGetMfaSessionStatusDTO = {
   mfaSessionId: string;
   userId: string;
 };
+
+export type TIsMfaSessionActiveDTO = {
+  mfaSessionId: string;
+  userId: string;
+  resourceId: string;
+};

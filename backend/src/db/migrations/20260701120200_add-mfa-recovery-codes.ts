@@ -66,8 +66,8 @@ export async function up(knex: Knex): Promise<void> {
   // Some MFA-enabled users have no pool after the copy above: email-MFA users
   // (no TOTP config at all) and users whose TOTP config was never verified.
   // Going forward the disabled->enabled transition mints codes, but these
-  // pre-existing users would be stuck — unable to finish org-enforced
-  // enrollment or use recovery-code login — so generate a fresh pool for them.
+  // pre-existing users would be stuck (unable to finish org-enforced enrollment
+  // or use recovery-code login), so generate a fresh pool for them.
   const usersMissingRecoveryCodes = await knex(TableName.Users)
     .leftJoin(TableName.UserMfaRecoveryCode, `${TableName.UserMfaRecoveryCode}.userId`, `${TableName.Users}.id`)
     .where(`${TableName.Users}.isMfaEnabled`, true)
@@ -91,17 +91,26 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Recovery codes now live in user_mfa_recovery_codes. The values were copied
-  // above, so drop the legacy column from totp_configs.
+  // above, but we intentionally KEEP the legacy totp_configs column and only
+  // relax its NOT NULL constraint rather than dropping it. During a rolling
+  // deploy the previous backend version is still serving and reads this column
+  // unconditionally (getUserTotpConfig / registerUserTotp / verifyUserTotpConfig
+  // and the recovery-code login path); dropping it would 500 those pods for
+  // every TOTP operation until they roll. Making it nullable lets the new code
+  // insert TOTP configs without it while the old code keeps reading the existing
+  // ciphertext. A follow-up migration can drop the column once every pod runs
+  // the new code.
   if (await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes")) {
     await knex.schema.alterTable(TableName.TotpConfig, (t) => {
-      t.dropColumn("encryptedRecoveryCodes");
+      t.binary("encryptedRecoveryCodes").nullable().alter();
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // Recreate the legacy column nullable for now so the backfill below can
-  // populate it; the original NOT NULL constraint is restored at the end.
+  // The `up` kept the legacy column (nullable), so it should already exist. Guard
+  // against a missing column defensively; the original NOT NULL constraint is
+  // restored at the end.
   if (!(await knex.schema.hasColumn(TableName.TotpConfig, "encryptedRecoveryCodes"))) {
     await knex.schema.alterTable(TableName.TotpConfig, (t) => {
       t.binary("encryptedRecoveryCodes").nullable();
@@ -109,8 +118,10 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasTable(TableName.UserMfaRecoveryCode)) {
-    // Copy the account-level recovery codes back into the freshly recreated
-    // column. Both stores share the same root-key ciphertext, so it is portable.
+    // Copy the account-level recovery codes back into the legacy column so the
+    // user's currently-valid codes (which may have been rotated after the up ran)
+    // keep working under the rolled-back code. Both stores share the same
+    // root-key ciphertext, so it is portable.
     await knex.raw(
       `UPDATE ?? tc
        SET "encryptedRecoveryCodes" = rc."encryptedRecoveryCodes"
@@ -123,19 +134,19 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.dropTable(TableName.UserMfaRecoveryCode);
   }
 
-  // TOTP configs created after the column was dropped (or whose account-level
-  // pool was missing) still have NULL. The pre-migration TOTP code decrypts this
-  // column unconditionally and the original schema was NOT NULL, so mint a fresh
-  // pool for those rows before restoring the constraint — otherwise the rolled-
-  // back code throws a 500 on every TOTP settings load / login for those users.
+  // TOTP configs created by the new code (or whose account-level pool was missing)
+  // still have NULL. The pre-migration TOTP code decrypts this column
+  // unconditionally and the original schema was NOT NULL, so mint a fresh pool for
+  // those rows before restoring the constraint. Otherwise the rolled-back code
+  // throws a 500 on every TOTP settings load / login for those users.
   const totpConfigsMissingCodes = await knex(TableName.TotpConfig).whereNull("encryptedRecoveryCodes").select("id");
 
   if (totpConfigsMissingCodes.length) {
     const encryptWithRoot = await startRootEncryptor(knex);
 
     for (const { id } of totpConfigsMissingCodes) {
-      // Raw update: encryptedRecoveryCodes was dropped from the generated schema,
-      // so the typed query builder no longer knows the (recreated) column.
+      // Raw update: encryptedRecoveryCodes is not part of the generated totp_configs
+      // schema, so the typed query builder does not know the column.
       // eslint-disable-next-line no-await-in-loop
       await knex.raw(`UPDATE ?? SET "encryptedRecoveryCodes" = ? WHERE "id" = ?`, [
         TableName.TotpConfig,

@@ -29,7 +29,6 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
-import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -95,7 +94,7 @@ type TPamWebAccessServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
-    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+    "createMfaSession" | "isMfaSessionActive" | "deleteMfaSession" | "sendMfaCode"
   >;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
@@ -374,13 +373,12 @@ export const pamWebAccessServiceFactory = ({
     }
 
     if (account.requireMfa && mfaSessionId) {
-      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
-      if (
-        !mfaSession ||
-        mfaSession.userId !== actor.id ||
-        mfaSession.resourceId !== account.id ||
-        mfaSession.status !== MfaSessionStatus.ACTIVE
-      ) {
+      const isActive = await mfaSessionService.isMfaSessionActive({
+        mfaSessionId,
+        userId: actor.id,
+        resourceId: account.id
+      });
+      if (!isActive) {
         throw new BadRequestError({ message: "Invalid or expired MFA session" });
       }
 

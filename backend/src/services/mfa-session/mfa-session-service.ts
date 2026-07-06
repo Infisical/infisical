@@ -7,7 +7,13 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 
-import { MfaSessionStatus, TGetMfaSessionStatusDTO, TMfaSession, TVerifyMfaSessionDTO } from "./mfa-session-types";
+import {
+  MfaSessionStatus,
+  TGetMfaSessionStatusDTO,
+  TIsMfaSessionActiveDTO,
+  TMfaSession,
+  TVerifyMfaSessionDTO
+} from "./mfa-session-types";
 
 type TMfaSessionServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
@@ -34,6 +40,23 @@ export const mfaSessionServiceFactory = ({
     }
 
     return JSON.parse(mfaSessionData) as TMfaSession;
+  };
+
+  // Centralized guard that a step-up MFA session is authorized for a specific
+  // resource: it must exist, belong to the given user, target the given
+  // resourceId, and be ACTIVE. Every consumer MUST gate on this rather than
+  // re-implementing the checks, so a session minted for one resource (e.g. a
+  // low-value PAM account) can never be replayed against another (e.g. recovery
+  // codes). verifyMfaSession only flips PENDING -> ACTIVE; the resource binding
+  // is enforced here at the point of use.
+  const isMfaSessionActive = async ({ mfaSessionId, userId, resourceId }: TIsMfaSessionActiveDTO): Promise<boolean> => {
+    const mfaSession = await getMfaSession(mfaSessionId);
+    return Boolean(
+      mfaSession &&
+        mfaSession.userId === userId &&
+        mfaSession.resourceId === resourceId &&
+        mfaSession.status === MfaSessionStatus.ACTIVE
+    );
   };
 
   // Helper function to update MFA session in Redis
@@ -170,6 +193,7 @@ export const mfaSessionServiceFactory = ({
     getMfaSessionStatus,
     sendMfaCode,
     getMfaSession,
+    isMfaSessionActive,
     deleteMfaSession
   };
 };

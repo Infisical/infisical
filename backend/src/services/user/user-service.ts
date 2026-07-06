@@ -47,8 +47,8 @@ type TUserServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
-  totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
-  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "delete">;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "delete" | "findOne">;
+  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "delete" | "find">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "deleteRecoveryCodes" | "rotateRecoveryCodes">;
 };
 
@@ -124,6 +124,24 @@ export const userServiceFactory = ({
         if (organizations.some((org) => org.enforceMfa)) {
           throw new ForbiddenRequestError({
             message: "Two-factor authentication is required by your organization and cannot be disabled"
+          });
+        }
+      }
+    }
+
+    if (isMfaEnabled !== false && selectedMfaMethod && selectedMfaMethod !== MfaMethod.EMAIL) {
+      if (selectedMfaMethod === MfaMethod.TOTP) {
+        const totpConfig = await totpConfigDAL.findOne({ userId, isVerified: true });
+        if (!totpConfig) {
+          throw new BadRequestError({
+            message: "Cannot select an authenticator app without a verified authenticator configured"
+          });
+        }
+      } else if (selectedMfaMethod === MfaMethod.WEBAUTHN) {
+        const credentials = await webAuthnCredentialDAL.find({ userId });
+        if (credentials.length === 0) {
+          throw new BadRequestError({
+            message: "Cannot select a passkey without a registered passkey"
           });
         }
       }

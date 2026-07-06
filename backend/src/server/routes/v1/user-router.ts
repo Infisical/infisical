@@ -8,7 +8,6 @@ import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
-import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 
 const SantizedUserSchema = UsersSchema.omit({
   hashedPassword: true
@@ -37,16 +36,15 @@ const RECOVERY_CODE_MFA_RESOURCE = "mfa-recovery-codes";
  *   so the client can drive the challenge and retry.
  */
 const ensureRecoveryCodeMfa = async (server: FastifyZodProvider, userId: string, mfaSessionId?: string) => {
-  if (mfaSessionId) {
-    const mfaSession = await server.services.mfaSession.getMfaSession(mfaSessionId);
-    if (
-      mfaSession &&
-      mfaSession.userId === userId &&
-      mfaSession.resourceId === RECOVERY_CODE_MFA_RESOURCE &&
-      mfaSession.status === MfaSessionStatus.ACTIVE
-    ) {
-      return;
-    }
+  if (
+    mfaSessionId &&
+    (await server.services.mfaSession.isMfaSessionActive({
+      mfaSessionId,
+      userId,
+      resourceId: RECOVERY_CODE_MFA_RESOURCE
+    }))
+  ) {
+    return;
   }
 
   const user = await server.services.user.getMe(userId);
