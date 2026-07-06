@@ -8,7 +8,7 @@ export enum AdcsConnectionMethod {
 }
 
 export const CreateAdcsConnectionSchema = z.object({
-  caHost: z.string().min(1, "CA Host is required"),
+  host: z.string().min(1, "CA Host is required"),
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required")
 });

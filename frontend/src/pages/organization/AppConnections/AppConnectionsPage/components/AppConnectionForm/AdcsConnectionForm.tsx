@@ -47,7 +47,7 @@ const formSchema = z
     rootSchema.extend({
       method: z.literal(AdcsConnectionMethod.UsernamePassword),
       credentials: z.object({
-        caHost: z.string().trim().min(1, "CA Host required"),
+        host: z.string().trim().min(1, "CA Host required"),
         username: z.string().trim().min(1, "Username required"),
         password: z.string().trim().min(1, "Password required")
       })
@@ -76,7 +76,7 @@ export const AdcsConnectionForm = ({ appConnection, onSubmit }: Props) => {
       gatewayId: null,
       gatewayPoolId: null,
       credentials: {
-        caHost: "",
+        host: "",
         username: "",
         password: ""
       }
@@ -183,7 +183,7 @@ export const AdcsConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         </OrgPermissionCan>
         <Controller
-          name="credentials.caHost"
+          name="credentials.host"
           control={control}
           render={({ field, fieldState: { error } }) => (
             <Field className="mb-4">
