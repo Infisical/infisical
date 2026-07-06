@@ -19,6 +19,7 @@ import {
 } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
 // The style for the verification code input
@@ -77,6 +78,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
   const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
   const [shouldShowWebAuthnRegistration, setShouldShowWebAuthnRegistration] = useState(false);
+  const [shouldShowEmailRegistration, setShouldShowEmailRegistration] = useState(false);
   const logout = useLogoutUser();
 
   const { mutateAsync: generateWebAuthnAuthenticationOptions } = useGenerateAuthenticationOptions();
@@ -98,6 +100,16 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           setShouldShowWebAuthnRegistration(true);
         }
       });
+    } else if (method === MfaMethod.EMAIL) {
+      fetchUserDetails()
+        .then((user) => {
+          if (!user.isMfaEnabled) {
+            setShouldShowEmailRegistration(true);
+          }
+        })
+        .catch(() => {
+          // If we can't determine enrollment state, fall back to the normal email challenge.
+        });
     }
   }, [method]);
 
@@ -252,7 +264,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   };
 
-  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
+  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration || shouldShowEmailRegistration) {
     return (
       <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
         <MfaEnrollment
@@ -260,6 +272,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           onComplete={async () => {
             setShouldShowTotpRegistration(false);
             setShouldShowWebAuthnRegistration(false);
+            setShouldShowEmailRegistration(false);
             await successCallback();
           }}
         />

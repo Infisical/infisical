@@ -311,7 +311,18 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
             lastName: z.string().nullable().optional(),
             isAccepted: z.boolean().default(false).nullable().optional(),
             isMfaEnabled: z.boolean().default(false).nullable().optional(),
-            mfaMethods: z.string().array().nullable().optional(),
+            mfaMethods: z
+              .string()
+              .array()
+              .nullable()
+              .optional()
+              .default(null)
+              .describe(
+                JSON.stringify({
+                  deprecated: true,
+                  description: "Deprecated: no longer used and always null. Use selectedMfaMethod instead."
+                })
+              ),
             devices: z.unknown().nullable().optional(),
             createdAt: z.date(),
             updatedAt: z.date(),

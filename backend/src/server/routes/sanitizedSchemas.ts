@@ -128,12 +128,23 @@ export const sanitizedServiceTokenUserSchema = UsersSchema.pick({
   devices: true,
   email: true,
   firstName: true,
-  lastName: true,
-  mfaMethods: true
+  lastName: true
 }).merge(
   z.object({
     __v: z.number().default(0),
-    _id: z.string()
+    _id: z.string(),
+    mfaMethods: z
+      .string()
+      .array()
+      .nullable()
+      .optional()
+      .default(null)
+      .describe(
+        JSON.stringify({
+          deprecated: true,
+          description: "Deprecated: no longer used and always null. Use selectedMfaMethod instead."
+        })
+      )
   })
 );
 

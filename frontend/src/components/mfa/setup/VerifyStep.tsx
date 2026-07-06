@@ -15,13 +15,15 @@ type Props = {
 };
 
 const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
-  const { data: registration, isPending } = useGetUserTotpRegistration();
+  const [hasRegistered, setHasRegistered] = useState(false);
+  const { data: registration, isPending } = useGetUserTotpRegistration({ enabled: !hasRegistered });
   const { mutateAsync: verifyTotp, isPending: isVerifying } = useVerifyUserTotpRegistration();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
 
   useEffect(() => {
     if (registration?.otpUrl) {
+      setHasRegistered(true);
       QRCode.toDataURL(registration.otpUrl).then(setQrCodeUrl);
     }
   }, [registration?.otpUrl]);

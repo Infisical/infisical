@@ -147,13 +147,6 @@ export const userServiceFactory = ({
       }
     }
 
-    let mfaMethods: string[] | undefined;
-    if (isMfaEnabled === undefined) {
-      mfaMethods = undefined;
-    } else {
-      mfaMethods = isMfaEnabled ? ["email"] : [];
-    }
-
     let recoveryCodes: string[] | undefined;
 
     const updatedUser = await userDAL.transaction(async (tx) => {
@@ -161,7 +154,6 @@ export const userServiceFactory = ({
         userId,
         {
           isMfaEnabled,
-          mfaMethods,
           selectedMfaMethod: isMfaEnabled === false ? MfaMethod.EMAIL : selectedMfaMethod
         },
         tx

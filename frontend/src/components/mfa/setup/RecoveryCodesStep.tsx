@@ -1,4 +1,4 @@
-import { TriangleAlertIcon } from "lucide-react";
+import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 
@@ -10,18 +10,19 @@ type Props = {
 };
 
 // Shared final step for the MFA enrollment and settings wizard: shows the newly
-// minted recovery codes with a save prompt, or a danger fallback when enabling
-// MFA returned no codes (e.g. MFA was already on) so the user knows to
-// regenerate them from their security settings.
+// minted recovery codes with a save prompt. When enabling MFA returned no codes
+// (it was already on, so codes were generated during the original setup), show an
+// informational note pointing to personal settings instead of an error.
 export const RecoveryCodesStep = ({ recoveryCodes, onSaved }: Props) => {
   if (recoveryCodes.length === 0) {
     return (
-      <Alert variant="danger">
-        <TriangleAlertIcon />
-        <AlertTitle>Couldn&apos;t load recovery codes</AlertTitle>
+      <Alert variant="info">
+        <InfoIcon />
+        <AlertTitle>Two-factor authentication is already enabled</AlertTitle>
         <AlertDescription>
-          Two-factor authentication is enabled, but we couldn&apos;t display your recovery codes.
-          Regenerate them from your security settings so you don&apos;t get locked out.
+          Your recovery codes were generated when you first set up two-factor authentication. You
+          can view or regenerate them anytime from the Authentication section of your personal
+          settings.
         </AlertDescription>
       </Alert>
     );

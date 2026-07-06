@@ -174,13 +174,15 @@ export const authLoginServiceFactory = ({
     email,
     authMethod,
     organizationId,
-    requiredMfaMethod
+    requiredMfaMethod,
+    sendEmailCode = true
   }: {
     userId: string;
     email?: string | null;
     authMethod: AuthMethod;
     organizationId?: string;
     requiredMfaMethod: MfaMethod;
+    sendEmailCode?: boolean;
   }) => {
     const appCfg = getConfig();
 
@@ -197,7 +199,7 @@ export const authLoginServiceFactory = ({
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
     );
 
-    if (requiredMfaMethod === MfaMethod.EMAIL && email) {
+    if (requiredMfaMethod === MfaMethod.EMAIL && email && sendEmailCode) {
       await sendUserMfaCode({ userId, email });
     }
 
@@ -1375,12 +1377,15 @@ export const authLoginServiceFactory = ({
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
+      const isPendingEmailEnrollment = requiredMfaMethod === MfaMethod.EMAIL && !user.isMfaEnabled;
+
       const mfaToken = await issueMfaChallenge({
         userId: user.id,
         email: user.email,
         authMethod: userAuthMethod,
         requiredMfaMethod,
-        organizationId: rootOrg.id
+        organizationId: rootOrg.id,
+        sendEmailCode: !isPendingEmailEnrollment
       });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;

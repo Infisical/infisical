@@ -1319,7 +1319,6 @@ tables:
       - lastName
       - isAccepted
       - isMfaEnabled
-      - mfaMethods
       - devices
       - createdAt
       - updatedAt

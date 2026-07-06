@@ -31,41 +31,27 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
     if (hasPrepared.current) return;
     hasPrepared.current = true;
 
-    const prepare = async () => {
-      // The enrollment endpoints authenticate with the regular access token, so
-      // clear the temporary MFA token first. Capture it so we can restore it if
-      // the request fails and the user needs to fall back to the login flow.
-      const mfaTempToken = getMfaTempToken();
-      SecurityClient.setMfaToken("");
-      try {
-        // Enabling is the single place recovery codes are minted; the response
-        // returns them once so we can show them after verification without a
-        // step-up MFA challenge (idempotent if MFA is already on, in which case
-        // no codes come back).
-        const { recoveryCodes: codes } = await updateUserMfa({ isMfaEnabled: true });
-        setRecoveryCodes(codes ?? []);
-        setPhase("verify");
-      } catch (error: any) {
-        // Restore the temp token so the user can reload and retry the normal
-        // login flow instead of being stuck on the preparing screen.
-        SecurityClient.setMfaToken(mfaTempToken);
-        createNotification({
-          text: error?.response?.data?.message || "Failed to start two-factor setup",
-          type: "error"
-        });
-      }
-    };
-
-    prepare();
-  }, [updateUserMfa]);
+    // The verification/enable endpoints authenticate with the base access token, so clear the
+    // temporary MFA token before mounting the verify step (TOTP fires a registration request on
+    // mount). MFA itself is enabled only once the method is verified — see handleVerified.
+    SecurityClient.setMfaToken("");
+    setPhase("verify");
+  }, []);
 
   const handleVerified = async () => {
     try {
-      await updateUserMfa({ selectedMfaMethod: method });
-    } catch {
-      // preference update is best-effort
+      const { recoveryCodes: codes } = await updateUserMfa({
+        isMfaEnabled: true,
+        selectedMfaMethod: method
+      });
+      setRecoveryCodes(codes ?? []);
+      setPhase("recovery");
+    } catch (error: any) {
+      createNotification({
+        text: error?.response?.data?.message || "Failed to enable two-factor authentication",
+        type: "error"
+      });
     }
-    setPhase("recovery");
   };
 
   const handleContinue = async () => {
