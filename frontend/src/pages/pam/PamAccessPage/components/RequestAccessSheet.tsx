@@ -1,6 +1,13 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clock, GitBranch, Send, User as UserIcon, Users as UsersIcon } from "lucide-react";
+import {
+  Clock,
+  GitBranch,
+  ListChecks,
+  Send,
+  User as UserIcon,
+  Users as UsersIcon
+} from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -91,29 +98,39 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
         {steps.map((step, idx) => (
           // Steps are ordered and have no natural id; index is the step number
           // eslint-disable-next-line react/no-array-index-key
-          <div key={idx} className="rounded-md border border-border bg-container p-4">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xs font-semibold tracking-wide text-muted">STEP {idx + 1}</span>
+          <div key={idx} className="flex gap-3.5 rounded-md border border-border bg-container p-4">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-danger/40 bg-danger/10">
+              <Clock className="size-4 text-danger" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-semibold tracking-wide text-muted">
+                  STEP {idx + 1}
+                </span>
+                {isPending && (
+                  <Badge variant="warning">
+                    <Clock className="mr-1 size-3" />
+                    Awaiting
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
+                <ListChecks className="size-3.5" />
+                {step.requiredApprovals <= 1
+                  ? "any one approves"
+                  : `${step.requiredApprovals} approvals required`}
+                <span>·</span>
+                <span>0 / {step.requiredApprovals} collected</span>
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {step.approvers.map((approver) => (
+                  <ApproverChip key={`${approver.type}-${approver.name}`} approver={approver} />
+                ))}
+              </div>
               {isPending && (
-                <Badge variant="warning">
-                  <Clock className="mr-1 size-3" />
-                  Awaiting
-                </Badge>
+                <p className="mt-2.5 text-xs text-muted">Waiting on the approvers above.</p>
               )}
             </div>
-            <p className="mt-1.5 text-xs text-muted">
-              {step.requiredApprovals <= 1
-                ? "any one approves"
-                : `${step.requiredApprovals} approvals required`}
-            </p>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {step.approvers.map((approver) => (
-                <ApproverChip key={`${approver.type}-${approver.name}`} approver={approver} />
-              ))}
-            </div>
-            {isPending && (
-              <p className="mt-2.5 text-xs text-muted">Waiting on the approvers above.</p>
-            )}
           </div>
         ))}
       </div>
