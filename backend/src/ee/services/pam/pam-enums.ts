@@ -41,3 +41,9 @@ export enum PamAccessStatus {
   Pending = "pending",
   Granted = "granted"
 }
+
+export enum PamMemberKind {
+  User = "user",
+  Group = "group",
+  Identity = "identity"
+}
