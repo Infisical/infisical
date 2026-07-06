@@ -32,8 +32,7 @@ export const pamProjectResolverFactory = ({
   membershipRoleDAL,
   keyStore
 }: TResolverDeps) => {
-  // projectDAL.find already excludes soft-deleted (deleteAfter) projects. Passing tx runs the read
-  // on the primary inside the caller's transaction (used for the in-lock re-check).
+  // Newest live PAM project (find() excludes soft-deleted); tx reads the primary for the in-lock re-check.
   const findDefaultProjectId = async (orgId: string, tx?: Knex): Promise<string | null> => {
     const projects = await projectDAL.find(
       { orgId, type: ProjectType.PAM },
@@ -42,19 +41,13 @@ export const pamProjectResolverFactory = ({
     return projects.length ? projects[0].id : null;
   };
 
-  // Orgs with no PAM data get no consolidated project during the migration; the first PAM request
-  // creates it here, seeded with the org's current admins so it is immediately usable (otherwise
-  // no one could administer it, since the PAM permission model has no org-admin fallback).
+  // Lazily create the project on first use, seeded with current org admins (PAM has no org-admin fallback).
   const ensureDefaultProject = (orgId: string): Promise<string> =>
     db.transaction(async (tx) => {
-      // Serialize concurrent first-use bootstraps for the same org. There is no DB unique
-      // constraint to rely on (old zombie PAM projects also have type=pam, so an org can legitimately
-      // have several), and the advisory lock auto-releases when this transaction ends.
+      // Serialize concurrent bootstraps; a unique constraint won't work since zombie projects share type=pam.
       await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`pam-bootstrap:${orgId}`]);
 
-      // Re-check inside the lock on the primary (tx). Resolves the race winner and, when several PAM
-      // projects exist (consolidated + old zombies), returns the consolidated one rather than a
-      // stale/arbitrary row.
+      // Re-check inside the lock (race winner).
       const existingId = await findDefaultProjectId(orgId, tx);
       if (existingId) return existingId;
 

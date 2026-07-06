@@ -102,9 +102,8 @@ const mapToFolderAdminRoleRows = (activeRoles: TRoleRow[]) => {
   return [...mapped.values()];
 };
 
-// Only orgs that already have PAM data get a consolidated project during the migration. Orgs with
-// no PAM data get one lazily on first PAM access (see pamProjectResolver), avoiding tens of
-// thousands of empty projects here. Chunked inserts keep even the migrated set fast.
+// Only orgs with existing PAM data get a project here; the rest are created lazily on first access
+// (see pamProjectResolver) to avoid backfilling tens of thousands of empty projects.
 const backfillPamProjectsForOrgs = async (knex: Knex, orgIds: string[]) => {
   const orgToPamProject = new Map<string, string>();
 

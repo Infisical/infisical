@@ -259,10 +259,8 @@ export const pamSessionServiceFactory = ({
         sessionId
       };
     } else {
-      // Re-fetch (e.g. gateway restart/resume or a transient retry): the recording secrets are only
-      // issued once, so return the existing session key by decrypting the stored one. The upload
-      // token is left empty on purpose — the server only keeps its hash, and the gateway supplies its
-      // own disk-persisted token. Without this, a session spanning a gateway restart loses recording.
+      // On re-fetch (e.g. gateway restart) return the existing key; empty token since the gateway
+      // restores its own from disk and the server only keeps the token hash.
       const sessionKey = await decryptSessionKey({
         projectId: session.projectId,
         sessionId,

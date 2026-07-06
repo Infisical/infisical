@@ -21,11 +21,8 @@ export const Route = createFileRoute(
 
     let pamProjectId = org?.pamProjectId;
     if (!pamProjectId) {
-      // The org has no consolidated PAM project yet (lazy creation). Hitting the PAM endpoint
-      // bootstraps it server-side and returns its id. Patch it straight into the cached org so the
-      // contexts that read it (ProjectContext / ProjectPermissionContext) pick it up. We inject the
-      // id we just got rather than refetching the org, which avoids a round-trip and the read-replica
-      // lag window where getOrgById could still re-derive pamProjectId=null right after the write.
+      // Lazily bootstrap the project and patch its id into the cached org so the Project/ProjectPermission
+      // contexts pick it up (injecting the returned id avoids a refetch that could race read-replica lag).
       const resolvedPamProjectId = await fetchPamProjectId();
       pamProjectId = resolvedPamProjectId;
       context.queryClient.setQueryData<Organization>(

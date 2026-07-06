@@ -608,9 +608,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ResourcePermissionSub.PamResource
     );
 
-    // The membership roster is only for member management, so don't disclose it to read-only callers
-    // (e.g. Connector/Requester have ReadAccounts but not ManageMembers) — that would leak the full
-    // list of users/groups/identities and their roles on the account and parent folder.
+    // Only member managers get the roster; read-only roles must not enumerate members.
     const canManageMembers = mergedPermission.can(
       ResourcePermissionPamResourceActions.ManageMembers,
       ResourcePermissionSub.PamResource

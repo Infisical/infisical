@@ -10,6 +10,8 @@ export const registerPamProjectRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     schema: {
+      // Internal endpoint; PAM projects are never user-facing, so keep it out of the API docs
+      hide: true,
       operationId: "getPamProject",
       description: "Resolve the organization's Privileged Access Manager project, creating it on first access",
       tags: [ApiDocsTags.PamFolders],
@@ -21,8 +23,7 @@ export const registerPamProjectRouter = async (server: FastifyZodProvider) => {
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    // injectPamProjectId (preValidation) resolves and lazily bootstraps the project, so by the time
-    // this handler runs internalPamProjectId is always set.
+    // injectPamProjectId (preValidation) has already resolved/bootstrapped the project by now.
     handler: async (req) => ({ projectId: req.internalPamProjectId })
   });
 };
