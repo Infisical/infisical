@@ -608,9 +608,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ResourcePermissionSub.PamResource
     );
 
+    // Only member managers get the roster; read-only roles must not enumerate members.
+    const canManageMembers = mergedPermission.can(
+      ResourcePermissionPamResourceActions.ManageMembers,
+      ResourcePermissionSub.PamResource
+    );
+
     return {
       permissions: packRules(mergedPermission.rules),
-      memberships: allMemberships
+      memberships: canManageMembers ? allMemberships : []
     };
   };
 

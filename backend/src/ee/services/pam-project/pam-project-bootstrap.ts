@@ -21,6 +21,7 @@ type TBootstrapInput = {
   orgId: string;
   adminUserIds?: string[];
   adminIdentityIds?: string[];
+  adminGroupIds?: string[];
 };
 
 export type TDefaultTemplate = {
@@ -185,7 +186,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
 ];
 
 export const bootstrapPamProject = async (
-  { orgId, adminUserIds = [], adminIdentityIds = [] }: TBootstrapInput,
+  { orgId, adminUserIds = [], adminIdentityIds = [], adminGroupIds = [] }: TBootstrapInput,
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,
   tx: Knex
 ): Promise<{ project: TProjects; created: boolean }> => {
@@ -208,37 +209,20 @@ export const bootstrapPamProject = async (
     tx
   );
 
-  for (const userId of adminUserIds) {
+  const adminActors: Array<{ actorUserId: string } | { actorIdentityId: string } | { actorGroupId: string }> = [
+    ...adminUserIds.map((actorUserId) => ({ actorUserId })),
+    ...adminIdentityIds.map((actorIdentityId) => ({ actorIdentityId })),
+    ...adminGroupIds.map((actorGroupId) => ({ actorGroupId }))
+  ];
+
+  for (const actor of adminActors) {
     // eslint-disable-next-line no-await-in-loop
     const membership = await membershipDAL.create(
       {
         scope: AccessScope.Project,
         scopeOrgId: orgId,
         scopeProjectId: project.id,
-        actorUserId: userId,
-        isActive: true
-      },
-      tx
-    );
-
-    // eslint-disable-next-line no-await-in-loop
-    await membershipRoleDAL.create(
-      {
-        membershipId: membership.id,
-        role: ProjectMembershipRole.Admin
-      },
-      tx
-    );
-  }
-
-  for (const identityId of adminIdentityIds) {
-    // eslint-disable-next-line no-await-in-loop
-    const membership = await membershipDAL.create(
-      {
-        scope: AccessScope.Project,
-        scopeOrgId: orgId,
-        scopeProjectId: project.id,
-        actorIdentityId: identityId,
+        ...actor,
         isActive: true
       },
       tx

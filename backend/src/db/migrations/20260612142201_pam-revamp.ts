@@ -102,16 +102,17 @@ const mapToFolderAdminRoleRows = (activeRoles: TRoleRow[]) => {
   return [...mapped.values()];
 };
 
-const backfillPamProjectsForAllOrgs = async (knex: Knex) => {
-  const allOrgs = (await knex(TableName.Organization).select("id")) as Array<{ id: string }>;
+// Only orgs with existing PAM data get a project here; the rest are created lazily on first access
+// (see pamProjectResolver) to avoid backfilling tens of thousands of empty projects.
+const backfillPamProjectsForOrgs = async (knex: Knex, orgIds: string[]) => {
   const orgToPamProject = new Map<string, string>();
 
-  for (let i = 0; i < allOrgs.length; i += PROJECT_INSERT_CHUNK) {
-    const orgChunk = allOrgs.slice(i, i + PROJECT_INSERT_CHUNK);
+  for (let i = 0; i < orgIds.length; i += PROJECT_INSERT_CHUNK) {
+    const orgChunk = orgIds.slice(i, i + PROJECT_INSERT_CHUNK);
 
     const insertedProjects = (await knex(TableName.Project)
       .insert(
-        orgChunk.map(({ id: orgId }) => ({
+        orgChunk.map((orgId) => ({
           name: "Privileged Access Manager",
           slug: slugify(`pam-${alphaNumericNanoId(4)}`),
           type: ProjectType.PAM,
@@ -210,7 +211,10 @@ export async function up(knex: Knex): Promise<void> {
   // Capture orgs that have a PAM project before backfill
   const orgsWithPam = await knex(TableName.Project).where("type", ProjectType.PAM).distinct("orgId").select("orgId");
 
-  const orgToPamProject = await backfillPamProjectsForAllOrgs(knex);
+  const orgToPamProject = await backfillPamProjectsForOrgs(
+    knex,
+    orgsWithPam.map((o) => o.orgId)
+  );
 
   // Drop old folders table and recreate with new schema
   await knex.raw(`UPDATE ${TableName.PamAccount} SET "folderId" = NULL WHERE "folderId" IS NOT NULL`);
