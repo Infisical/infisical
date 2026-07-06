@@ -615,105 +615,103 @@ export const RequestAccessForm = ({
         </div>
         <Field>
           <FieldLabel>Resources & Permissions</FieldLabel>
-          <div className="rounded-lg border border-border bg-black/20 p-3">
-            <div className="flex flex-col gap-3">
-              {resourceFields.map((resourceField, index) => {
-                const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
-                if (!config) return null;
-                const selectedValues = resources[index]?.actions ?? [];
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-black/20 p-3">
+            {resourceFields.map((resourceField, index) => {
+              const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
+              if (!config) return null;
+              const selectedValues = resources[index]?.actions ?? [];
 
-                return (
-                  <div
-                    key={resourceField.id}
-                    className="overflow-hidden rounded-lg border border-border bg-card"
+              return (
+                <div
+                  key={resourceField.id}
+                  className="overflow-hidden rounded-lg border border-border bg-card"
+                >
+                  <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                    <div
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-md border",
+                        config.iconTileClassName
+                      )}
+                    >
+                      <config.Icon className="size-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{config.label}</span>
+                    <IconButton
+                      size="xs"
+                      variant="ghost-muted"
+                      className="ml-auto"
+                      aria-label={`Remove ${config.label}`}
+                      onClick={() => removeResource(index)}
+                    >
+                      <XIcon />
+                    </IconButton>
+                  </div>
+                  <div className="flex flex-wrap gap-2 p-3">
+                    {config.actions.map((action) => {
+                      const isSelected = selectedValues.includes(action.value);
+
+                      return (
+                        <Tooltip key={action.value}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              aria-pressed={isSelected}
+                              onClick={() => toggleAction(index, action.value)}
+                              className={cn(
+                                "rounded-md",
+                                isSelected
+                                  ? config.chipSelectedClassName
+                                  : "text-muted hover:text-foreground"
+                              )}
+                            >
+                              <action.Icon />
+                              {action.label}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{action.description}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {availableResources.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    isFullWidth
+                    className="border-dashed text-label hover:text-foreground"
                   >
-                    <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                    <PlusIcon />
+                    Add resource type
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="w-(--radix-dropdown-menu-trigger-width)"
+                >
+                  {availableResources.map((config) => (
+                    <DropdownMenuItem
+                      key={config.subject}
+                      onSelect={() => appendResource({ subject: config.subject, actions: [] })}
+                    >
                       <div
                         className={cn(
-                          "flex size-7 items-center justify-center rounded-md border",
+                          "flex size-6 items-center justify-center rounded-sm border",
                           config.iconTileClassName
                         )}
                       >
-                        <config.Icon className="size-4" />
+                        <config.Icon className="size-3.5" />
                       </div>
-                      <span className="text-sm font-medium text-foreground">{config.label}</span>
-                      <IconButton
-                        size="xs"
-                        variant="ghost-muted"
-                        className="ml-auto"
-                        aria-label={`Remove ${config.label}`}
-                        onClick={() => removeResource(index)}
-                      >
-                        <XIcon />
-                      </IconButton>
-                    </div>
-                    <div className="flex flex-wrap gap-2 p-3">
-                      {config.actions.map((action) => {
-                        const isSelected = selectedValues.includes(action.value);
-
-                        return (
-                          <Tooltip key={action.value}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="xs"
-                                variant="outline"
-                                aria-pressed={isSelected}
-                                onClick={() => toggleAction(index, action.value)}
-                                className={cn(
-                                  "rounded-md",
-                                  isSelected
-                                    ? config.chipSelectedClassName
-                                    : "text-muted hover:text-foreground"
-                                )}
-                              >
-                                <action.Icon />
-                                {action.label}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{action.description}</TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-              {availableResources.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      isFullWidth
-                      className="border-dashed text-label hover:text-foreground"
-                    >
-                      <PlusIcon />
-                      Add resource type
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    className="w-(--radix-dropdown-menu-trigger-width)"
-                  >
-                    {availableResources.map((config) => (
-                      <DropdownMenuItem
-                        key={config.subject}
-                        onSelect={() => appendResource({ subject: config.subject, actions: [] })}
-                      >
-                        <div
-                          className={cn(
-                            "flex size-6 items-center justify-center rounded-sm border",
-                            config.iconTileClassName
-                          )}
-                        >
-                          <config.Icon className="size-3.5" />
-                        </div>
-                        {config.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+                      {config.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </Field>
         <Field>
