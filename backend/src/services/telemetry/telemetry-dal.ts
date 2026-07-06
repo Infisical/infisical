@@ -70,11 +70,21 @@ export const telemetryDALFactory = (db: TDbClient) => {
           return parseInt(result || "0", 10);
         })(),
         countTable(db, TableName.Identity),
-        countTable(db, TableName.Project),
+        (async () => {
+          const result = (await db(TableName.Project).whereNull("deleteAfter").count().first())?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         countTable(db, TableName.Secret),
         countTable(db, TableName.SecretV2),
         (async () => {
-          const result = (await db(TableName.Environment).whereNull("deleteAfter").count().first())?.count as string;
+          const result = (
+            await db(TableName.Environment)
+              .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+              .whereNull(`${TableName.Environment}.deleteAfter`)
+              .whereNull(`${TableName.Project}.deleteAfter`)
+              .count()
+              .first()
+          )?.count as string;
           return parseInt(result || "0", 10);
         })(),
         countTable(db, TableName.SecretSync),
@@ -168,6 +178,7 @@ export const telemetryDALFactory = (db: TDbClient) => {
 
       // Project type breakdown
       const projectTypeRows = (await db(TableName.Project)
+        .whereNull("deleteAfter")
         .select("type")
         .count("* as count")
         .groupBy("type")) as unknown as { type: string; count: string }[];
@@ -199,6 +210,7 @@ export const telemetryDALFactory = (db: TDbClient) => {
       const orgUserMap = new Map(orgUserRows.map((r) => [r.scopeOrgId, parseInt(String(r.count), 10)]));
 
       const orgProjectRows = (await db(TableName.Project)
+        .whereNull("deleteAfter")
         .select("orgId")
         .count("* as count")
         .groupBy("orgId")) as unknown as { orgId: string; count: string }[];
