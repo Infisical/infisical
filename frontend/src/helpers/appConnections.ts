@@ -75,6 +75,7 @@ import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/n
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
+import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
@@ -413,6 +414,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "AI",
     description: "Route requests across LLM providers."
   },
+  [AppConnection.OpenAI]: {
+    name: "OpenAI",
+    image: "OpenAI.png",
+    category: "AI",
+    description: "Manage OpenAI API access."
+  },
   [AppConnection.CircleCI]: {
     name: "CircleCI",
     image: "CircleCI.png",
@@ -650,6 +657,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case OpenAIConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:

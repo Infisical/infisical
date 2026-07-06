@@ -145,6 +145,7 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateOnaConnectionCredentialsSchema } from "./ona";
 import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
+import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
@@ -248,6 +249,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.OpenRouter]: ValidateOpenRouterConnectionCredentialsSchema,
+  [AppConnection.OpenAI]: ValidateOpenAIConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,

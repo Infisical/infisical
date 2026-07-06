@@ -313,6 +313,12 @@ import {
   TValidateOpenRouterConnectionCredentialsSchema
 } from "./open-router";
 import {
+  TOpenAIConnection,
+  TOpenAIConnectionConfig,
+  TOpenAIConnectionInput,
+  TValidateOpenAIConnectionCredentialsSchema
+} from "./openai";
+import {
   TOvhConnection,
   TOvhConnectionConfig,
   TOvhConnectionInput,
@@ -486,6 +492,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
+  | TOpenAIConnection
   | TCircleCIConnection
   | TCloud66Connection
   | TAzureEntraIdConnection
@@ -570,6 +577,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDbtConnectionInput
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
+  | TOpenAIConnectionInput
   | TCircleCIConnectionInput
   | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
@@ -686,6 +694,7 @@ export type TAppConnectionConfig =
   | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
+  | TOpenAIConnectionConfig
   | TCircleCIConnectionConfig
   | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
@@ -761,6 +770,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
+  | TValidateOpenAIConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema

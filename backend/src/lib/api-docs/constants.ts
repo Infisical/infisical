@@ -2922,6 +2922,9 @@ export const AppConnections = {
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     },
+    OPENAI: {
+      apiKey: "The OpenAI Admin API key used to manage API keys."
+    },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
