@@ -1647,7 +1647,10 @@ export const registerRoutes = async (
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
+    db,
     projectDAL,
+    membershipDAL,
+    membershipRoleDAL,
     keyStore
   });
 

@@ -1,0 +1,65 @@
+---
+title: "Auditing"
+sidebarTitle: "Auditing"
+description: "Track all activity across your PAM environment."
+---
+
+PAM logs every action — who accessed what, who changed what, and when. This audit trail is essential for compliance reviews and incident investigation.
+
+## What Gets Logged
+
+| Category | Events |
+|----------|--------|
+| **Sessions** | Session started, session ended, session terminated |
+| **Accounts** | Account created, updated, deleted |
+| **Folders** | Folder created, updated, deleted |
+| **Templates** | Template created, updated, deleted |
+| **Memberships** | Membership added, updated, removed |
+| **Product Access** | Product member added, removed, role changed |
+
+Each event includes:
+- **Timestamp** — when it happened
+- **Actor** — who did it (user, email, IP address)
+- **Action** — what was done
+- **Target** — what was affected
+- **Details** — relevant context (e.g., what changed)
+
+## Viewing Audit Logs
+
+1. Go to **Privileged Access Management → Audit Logs**
+2. Browse the log (newest first) or use filters
+
+## Audit Logs vs Session Recordings
+
+These are complementary:
+
+**Audit logs** track metadata — who accessed what [account](/documentation/platform/pam/accounts/overview), when, from where. They tell you *that* something happened.
+
+**[Session recordings](/documentation/platform/pam/sessions/session-recording)** capture content — the actual queries and commands. They tell you *what* was done during the session.
+
+For a complete picture, you need both. The audit log tells you Alice accessed the orders-db at 2pm; the session recording shows you exactly what queries she ran.
+
+## Retention
+
+Audit logs are retained according to your organization's policy. Events are immutable — they can't be modified or deleted.
+
+## Common Use Cases
+
+**Access reviews** — Filter by date range to see who accessed what during a specific period.
+
+**Incident investigation** — Search for a specific account or user to trace actions before or after an incident.
+
+**Change tracking** — Filter by event type to see configuration changes (template updates, membership changes).
+
+**User activity reports** — Filter by actor to see everything a specific user did.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View session recordings for detailed activity.
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/documentation/platform/pam/architecture">
+    Understand how PAM works under the hood.
+  </Card>
+</CardGroup>

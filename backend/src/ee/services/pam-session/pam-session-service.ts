@@ -50,7 +50,7 @@ import {
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
@@ -223,6 +223,14 @@ export const pamSessionServiceFactory = ({
       await pamSessionDAL.activateSession(sessionId);
     }
 
+    const templateSettingsParsed = account.templateSettings
+      ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
+      : null;
+    const resolvedBackend =
+      templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
+        ? templateSettingsParsed.data.recordingStorageBackend
+        : PamRecordingStorageBackend.Postgres;
+
     let recording: {
       sessionKey: string;
       uploadToken: string;
@@ -243,17 +251,26 @@ export const pamSessionServiceFactory = ({
         gatewayUploadTokenHash: secrets.uploadTokenHash
       });
 
-      const templateSettingsParsed = account.templateSettings
-        ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
-        : null;
-      const resolvedBackend =
-        templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
-          ? templateSettingsParsed.data.recordingStorageBackend
-          : PamRecordingStorageBackend.Postgres;
-
       recording = {
         sessionKey: secrets.sessionKey.toString("base64"),
         uploadToken: secrets.uploadToken.toString("base64"),
+        storageBackend: resolvedBackend,
+        projectId: session.projectId,
+        sessionId
+      };
+    } else {
+      // On re-fetch (e.g. gateway restart) return the existing key; empty token since the gateway
+      // restores its own from disk and the server only keeps the token hash.
+      const sessionKey = await decryptSessionKey({
+        projectId: session.projectId,
+        sessionId,
+        encryptedSessionKey: session.encryptedSessionKey,
+        kmsService
+      });
+
+      recording = {
+        sessionKey: sessionKey.toString("base64"),
+        uploadToken: "",
         storageBackend: resolvedBackend,
         projectId: session.projectId,
         sessionId
