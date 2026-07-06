@@ -175,6 +175,8 @@ export const useCreatePamAccountTemplate = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.template() });
+      // Template policies/settings feed account accessibility (approval gating, recording config)
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
