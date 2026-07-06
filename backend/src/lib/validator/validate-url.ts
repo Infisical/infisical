@@ -10,7 +10,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
 
-export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = false) => {
+export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = false, allowInternalIp = false) => {
   const appCfg = getConfig();
 
   if (appCfg.isDevelopmentMode || isGateway) return;
@@ -21,11 +21,13 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
   }
 
+  const allowInternal = allowInternalIp || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS;
+
   const inputHostIps: string[] = [];
   if (isIP(validUrl.hostname)) {
     inputHostIps.push(validUrl.hostname);
   } else {
-    if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
+    if (!allowInternal && (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal")) {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
     const entries = await dns.lookup(validUrl.hostname, { all: true });
@@ -37,8 +39,7 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     inputHostIps.push(...entries.map(({ address }) => address));
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
-  if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)
-    throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+  if (isInternalIp && !allowInternal) throw new BadRequestError({ message: "Local IPs not allowed as URL" });
 };
 
 type FQDNOptions = {

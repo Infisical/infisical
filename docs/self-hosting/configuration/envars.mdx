@@ -62,6 +62,10 @@ Example values:
 >
   Determines whether App Connections, Dynamic Secrets, and PKI Certificate
   Discovery jobs are permitted to connect with internal/private IP addresses.
+
+  <Warning>
+    Relaxes the SSRF protection. Only enable it if you trust the users who can configure streams.
+  </Warning>
 </ParamField>
 
 <ParamField
@@ -224,6 +228,14 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 
 <ParamField query="DISABLE_AUDIT_LOG_GENERATION" type="string" default="false">
   Disable audit log generation entirely. When set to `true`, no audit log events are produced — neither PostgreSQL, ClickHouse, nor audit log streams will receive events.
+</ParamField>
+
+<ParamField query="AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP" type="bool" default="false" optional>
+  Determines whether Audit Log Streams are permitted to connect with internal/private IP addresses.
+
+  <Warning>
+    Relaxes the SSRF protection. Only enable it if you trust the users who can configure streams.
+  </Warning>
 </ParamField>
 
 ### Redis
