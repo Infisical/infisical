@@ -26,6 +26,9 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: {{ include "infisical.serviceAccountName" . }}
+    {{- with $infisicalValues.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+    {{- end }}
     {{- with $infisicalValues.topologySpreadConstraints }}
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
@@ -54,6 +57,9 @@ spec:
       - name: {{ template "infisical.name" . }}-{{ $infisicalValues.name }}
         image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
         imagePullPolicy: {{ $infisicalValues.image.pullPolicy }}
+        {{- with $infisicalValues.containerSecurityContext }}
+        securityContext: {{- toYaml . | nindent 10 }}
+        {{- end }}
         readinessProbe:
           httpGet:
             path: /api/status
