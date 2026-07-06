@@ -191,6 +191,12 @@ import {
   TValidateF5BigIpConnectionCredentialsSchema
 } from "./f5-big-ip";
 import {
+  TFireworksConnection,
+  TFireworksConnectionConfig,
+  TFireworksConnectionInput,
+  TValidateFireworksConnectionCredentialsSchema
+} from "./fireworks";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -508,6 +514,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TConvexConnection
   | THasuraCloudConnection
   | TQoveryConnection
+  | TFireworksConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -592,6 +599,7 @@ export type TAppConnectionInput = { id: string } & (
   | TConvexConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
+  | TFireworksConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -707,7 +715,8 @@ export type TAppConnectionConfig =
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
   | THasuraCloudConnectionConfig
-  | TQoveryConnectionConfig;
+  | TQoveryConnectionConfig
+  | TFireworksConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -782,7 +791,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
-  | TValidateQoveryConnectionCredentialsSchema;
+  | TValidateQoveryConnectionCredentialsSchema
+  | TValidateFireworksConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

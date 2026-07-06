@@ -2925,6 +2925,10 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    FIREWORKS: {
+      apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
+      accountId: "The Fireworks account ID used to identify the Fireworks account."
+    },
     CLOUD66: {
       accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
     },
@@ -3467,6 +3471,9 @@ export const SecretRotations = {
     },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
+    },
+    FIREWORKS_API_KEY: {
+      keyName: "The key name identifier for the secret on Fireworks."
     }
   },
   SECRETS_MAPPING: {
@@ -3541,6 +3548,9 @@ export const SecretRotations = {
     },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
+    },
+    FIREWORKS_API_KEY: {
+      secretValue: "The name of the secret that the rotated Fireworks secret value will be mapped to."
     }
   }
 };

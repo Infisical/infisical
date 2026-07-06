@@ -44,6 +44,7 @@ import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
+import { FireworksConnectionForm } from "./FireworksConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -295,6 +296,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Fireworks:
+        return <FireworksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
@@ -550,6 +553,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Fireworks:
+        return <FireworksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:

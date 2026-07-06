@@ -255,6 +255,10 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TFireworksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Fireworks;
+};
+
 export type TOvhConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OVH;
 };
@@ -379,7 +383,8 @@ export type TAppConnectionOption =
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | THasuraCloudConnectionOption
-  | TQoveryConnectionOption;
+  | TQoveryConnectionOption
+  | TFireworksConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -455,4 +460,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
+  [AppConnection.Fireworks]: TFireworksConnectionOption;
 };

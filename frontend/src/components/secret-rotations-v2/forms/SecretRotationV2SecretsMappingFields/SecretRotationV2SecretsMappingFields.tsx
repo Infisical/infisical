@@ -10,6 +10,7 @@ import { ConvexAccessKeyRotationSecretsMappingFields } from "./ConvexAccessKeyRo
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
 import { DatadogApplicationKeySecretRotationSecretsMappingFields } from "./DatadogApplicationKeySecretRotationSecretsMappingFields";
 import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
+import { FireworksApiKeyRotationSecretsMappingFields } from "./FireworksApiKeyRotationSecretsMappingFields";
 import { HpIloRotationSecretsMappingFields } from "./HpIloRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
@@ -45,7 +46,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
     SalesforceOauthCredentialsRotationSecretsMappingFields,
   [SecretRotation.DatadogApplicationKeySecret]:
     DatadogApplicationKeySecretRotationSecretsMappingFields,
-  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields
+  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields,
+  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

@@ -71,5 +71,6 @@ export enum AppConnection {
   TriggerDev = "trigger-dev",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
-  Cloud66 = "cloud-66"
+  Cloud66 = "cloud-66",
+  Fireworks = "fireworks"
 }

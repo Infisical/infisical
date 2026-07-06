@@ -108,6 +108,7 @@ import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
+import { ValidateFireworksConnectionCredentialsSchema } from "./fireworks";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -275,7 +276,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
-  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema
+  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
+  [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
