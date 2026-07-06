@@ -19,6 +19,19 @@ import {
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
+// Compact remaining time for the grant-expiry badge, e.g. "3h 41m"
+const formatRemaining = (expiresAt: string) => {
+  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+  if (remainingMs <= 0) return "Expired";
+  const totalMinutes = Math.floor(remainingMs / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};
+
 type Props = {
   account: TAccessiblePamAccount;
   search: string;
@@ -30,7 +43,7 @@ type Props = {
 export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indented }: Props) => {
   const { map } = usePamAccountTypeMap();
   const typeName = map[account.accountType as PamAccountType]?.name ?? account.accountType;
-  const { canLaunch, requiresApproval, accessStatus, disabledReason } = account;
+  const { canLaunch, requiresApproval, accessStatus, grantExpiresAt, disabledReason } = account;
 
   const isDisabled = !!disabledReason;
   const isGranted = accessStatus === PamAccessStatus.Granted;
@@ -139,7 +152,15 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
         </div>
       </TableCell>
       <TableCell className="w-32">
-        <div className="flex items-center justify-end">{renderAction()}</div>
+        <div className="flex items-center justify-end gap-2.5">
+          {isGranted && grantExpiresAt && (
+            <Badge variant="success">
+              <Clock className="mr-1 size-3" />
+              Expires in {formatRemaining(grantExpiresAt)}
+            </Badge>
+          )}
+          {renderAction()}
+        </div>
       </TableCell>
     </TableRow>
   );
