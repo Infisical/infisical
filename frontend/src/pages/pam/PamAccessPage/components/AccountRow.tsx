@@ -39,7 +39,13 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
   const needsApproval = requiresApproval && !isGranted && !isDisabled && canLaunch;
   const isPending = accessStatus === PamAccessStatus.Pending;
   const canLaunchNow = canLaunch && (!requiresApproval || isGranted);
-  const canClick = canLaunchNow && !needsApproval && !isDisabled;
+  // Row click mirrors the action button: launch when possible, otherwise open the request sheet
+  const rowAction = (() => {
+    if (isDisabled) return undefined;
+    if (needsApproval) return () => onRequestAccess(account);
+    if (canLaunchNow) return () => onLaunch(account);
+    return undefined;
+  })();
 
   const renderAction = () => {
     if (isDisabled) {
@@ -122,10 +128,7 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
   };
 
   return (
-    <TableRow
-      className={canClick ? "cursor-pointer" : ""}
-      onClick={canClick ? () => onLaunch(account) : undefined}
-    >
+    <TableRow className={rowAction ? "cursor-pointer" : ""} onClick={rowAction}>
       <TableCell>
         <div className={`flex items-center gap-2.5 ${indented ? "pl-[26px]" : ""}`}>
           <AccountPlatformIcon accountType={account.accountType} size={20} />
