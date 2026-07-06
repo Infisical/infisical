@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { ContentLoader } from "@app/components/v2";
-import { Alert, AlertDescription, AlertTitle, Button } from "@app/components/v3";
+import { Button } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
 import { useUpdateUserMfa } from "@app/hooks/api/users";
 
-import { MFA_METHOD_LABELS, RecoveryCodesView, VerifyStep } from "./setup";
+import { MFA_METHOD_LABELS, RecoveryCodesStep, VerifyStep } from "./setup";
 
 type Props = {
   method: MfaMethod;
@@ -90,33 +89,11 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
 
       {phase === "recovery" && (
         <div className="flex flex-col gap-4">
-          {hasRecoveryCodes ? (
-            <>
-              <Alert variant="warning">
-                <TriangleAlertIcon />
-                <AlertTitle>Save your recovery codes</AlertTitle>
-                <AlertDescription>
-                  Store these somewhere safe. Each works once if you lose access to your other
-                  methods.
-                </AlertDescription>
-              </Alert>
-              <RecoveryCodesView recoveryCodes={recoveryCodes} onSaved={() => setHasSaved(true)} />
-            </>
-          ) : (
-            <Alert variant="danger">
-              <TriangleAlertIcon />
-              <AlertTitle>Couldn&apos;t load recovery codes</AlertTitle>
-              <AlertDescription>
-                Two-factor authentication is enabled, but we couldn&apos;t display your recovery
-                codes. Regenerate them from your security settings after signing in so you
-                don&apos;t get locked out.
-              </AlertDescription>
-            </Alert>
-          )}
+          <RecoveryCodesStep recoveryCodes={recoveryCodes} onSaved={() => setHasSaved(true)} />
           <Button
             variant="org"
             isFullWidth
-            isDisabled={!hasRecoveryCodes || !hasSaved}
+            isDisabled={hasRecoveryCodes && !hasSaved}
             onClick={handleContinue}
           >
             Continue

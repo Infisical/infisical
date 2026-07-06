@@ -55,6 +55,7 @@ export const useRecoveryCodesMfa = () => {
       try {
         if (Date.now() - startTime > MFA_TIMEOUT) {
           clearInterval(pollIntervalRef.current);
+          if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
           createNotification({
             type: "error",
             text: "MFA verification timed out. If a popup did not appear, check that popups are not blocked for this site."
