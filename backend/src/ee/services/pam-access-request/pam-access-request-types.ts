@@ -1,3 +1,5 @@
+import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+
 import { TActorContext } from "../pam/pam-permission";
 
 export type TGetApprovalConfigurationDTO = {
@@ -9,7 +11,7 @@ export type TSetApprovalConfigurationDTO = {
   folderId: string;
   projectId: string;
   steps: {
-    approvers: { type: "user" | "group"; id: string }[];
+    approvers: { type: ApproverType; id: string }[];
   }[];
 } & TActorContext;
 
@@ -41,7 +43,7 @@ export type TGetAccessRequestCountDTO = {
 export type TReviewAccessRequestDTO = {
   requestId: string;
   projectId: string;
-  status: "approved" | "rejected";
+  status: ApprovalRequestApprovalDecision;
   comment?: string;
 } & TActorContext;
 

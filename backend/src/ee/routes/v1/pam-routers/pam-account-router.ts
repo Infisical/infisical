@@ -2,7 +2,7 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamAccessStatus, PamAccountType } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -399,7 +399,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               requiresApproval: z
                 .boolean()
                 .describe("Whether this account requires approval before launching a session"),
-              accessStatus: z.enum(["none", "pending", "granted"]).describe("Current approval status for the caller"),
+              accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
               grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
               disabledReason: z.string().nullable().describe("Why this account is disabled, or null if usable")
             })

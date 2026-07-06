@@ -21,7 +21,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -565,7 +565,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           projectId: a.projectId,
           canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
           requiresApproval,
-          accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? "none") : ("none" as const),
+          accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           disabledReason,
           createdAt: a.createdAt,

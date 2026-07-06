@@ -1,8 +1,11 @@
 import { OrderByDirection } from "../../generic/types";
 import {
+  PamAccessRequestDecision,
+  PamAccessStatus,
   PamAccountOrderBy,
   PamAccountType,
   PamAccountView,
+  PamApproverType,
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
@@ -206,7 +209,7 @@ export type TAccessiblePamAccount = {
   accountType: PamAccountType;
   canLaunch: boolean;
   requiresApproval?: boolean;
-  accessStatus?: "none" | "pending" | "granted";
+  accessStatus?: PamAccessStatus;
   grantExpiresAt?: string | null;
   disabledReason?: string | null;
   createdAt: string;
@@ -502,7 +505,7 @@ export type TPamApprovalConfig = {
   policy: { id: string; name: string } | null;
   steps: {
     requiredApprovals: number;
-    approvers: { type: "user" | "group"; id: string }[];
+    approvers: { type: PamApproverType; id: string }[];
     name?: string | null;
     notifyApprovers?: boolean | null;
   }[];
@@ -530,7 +533,7 @@ export type TCreatePamAccessRequestDTO = {
 
 export type TReviewPamAccessRequestDTO = {
   requestId: string;
-  status: "approved" | "rejected";
+  status: PamAccessRequestDecision;
   comment?: string;
 };
 
@@ -541,6 +544,6 @@ export type TRevokePamAccessRequestDTO = {
 export type TSetPamApprovalConfigDTO = {
   folderId: string;
   steps: {
-    approvers: { type: "user" | "group"; id: string }[];
+    approvers: { type: PamApproverType; id: string }[];
   }[];
 };

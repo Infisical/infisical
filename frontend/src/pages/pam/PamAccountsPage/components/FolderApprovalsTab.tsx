@@ -42,6 +42,8 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
+  PamAccessRequestStatus,
+  PamApproverType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   useGetPamApprovalConfig,
@@ -69,18 +71,18 @@ const RelativeTime = ({ date }: { date: string }) => (
   </Tooltip>
 );
 
-type ApproverEntry = { type: "user" | "group"; id: string };
+type ApproverEntry = { type: PamApproverType; id: string };
 
 type ApproverOption = {
   value: string;
   label: string;
-  kind: "user" | "group";
+  kind: PamApproverType;
   subtitle: string;
 };
 
-const KIND_ICON: Record<"user" | "group", typeof UserIcon> = {
-  user: UserIcon,
-  group: UsersIcon
+const KIND_ICON: Record<PamApproverType, typeof UserIcon> = {
+  [PamApproverType.User]: UserIcon,
+  [PamApproverType.Group]: UsersIcon
 };
 
 const ApproverSelectOption = ({ children, ...props }: OptionProps<ApproverOption>) => {
@@ -199,7 +201,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const approverOptions = useMemo<ApproverOption[]>(() => {
     const groups: ApproverOption[] = (orgGroups ?? [])
       .filter((g) => memberGroupIds.has(g.id) && !selectedIds.has(`group:${g.id}`))
-      .map((g) => ({ value: g.id, label: g.name, kind: "group" as const, subtitle: "Group" }));
+      .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
     const users: ApproverOption[] = (orgUsers ?? [])
       .filter(
@@ -211,7 +213,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         return {
           value: ou.user.id,
           label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: "user" as const,
+          kind: PamApproverType.User,
           subtitle: ou.user.email ?? ou.inviteEmail ?? ""
         };
       });
@@ -300,11 +302,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 {approvers.map((approver, idx) => {
                   const Icon = KIND_ICON[approver.type];
                   const displayName =
-                    approver.type === "user"
+                    approver.type === PamApproverType.User
                       ? (userMap.get(approver.id)?.label ?? approver.id)
                       : (groupMap.get(approver.id) ?? approver.id);
                   const subtitle =
-                    approver.type === "user" ? userMap.get(approver.id)?.email : undefined;
+                    approver.type === PamApproverType.User
+                      ? userMap.get(approver.id)?.email
+                      : undefined;
 
                   return (
                     <TableRow key={`${approver.type}-${approver.id}`} className="h-14">
@@ -319,7 +323,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="neutral">
-                          {approver.type === "user" ? "User" : "Group"}
+                          {approver.type === PamApproverType.User ? "User" : "Group"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -366,9 +370,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <DropdownMenuLabel>Status</DropdownMenuLabel>
                 {[
                   { value: "all", label: "All" },
-                  { value: "pending", label: "Pending Review" },
-                  { value: "approved", label: "Approved" },
-                  { value: "rejected", label: "Rejected" }
+                  { value: PamAccessRequestStatus.Pending, label: "Pending Review" },
+                  { value: PamAccessRequestStatus.Approved, label: "Approved" },
+                  { value: PamAccessRequestStatus.Rejected, label: "Rejected" }
                 ].map((opt) => (
                   <DropdownMenuCheckboxItem
                     key={opt.value}

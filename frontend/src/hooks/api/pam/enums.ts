@@ -66,3 +66,34 @@ export enum PamResourcePermissionActions {
   ManageMembers = "manage-members",
   ViewAuditLogs = "view-audit-logs"
 }
+
+// The caller's just-in-time approval state for an account gated behind an access request flow
+export enum PamAccessStatus {
+  None = "none",
+  Pending = "pending",
+  Granted = "granted"
+}
+
+export enum PamAccessRequestStatus {
+  Pending = "pending",
+  Approved = "approved",
+  Rejected = "rejected",
+  Expired = "expired",
+  Cancelled = "cancelled"
+}
+
+export enum PamAccessRequestDecision {
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
+export enum PamAccessGrantStatus {
+  Active = "active",
+  Expired = "expired",
+  Revoked = "revoked"
+}
+
+export enum PamApproverType {
+  User = "user",
+  Group = "group"
+}

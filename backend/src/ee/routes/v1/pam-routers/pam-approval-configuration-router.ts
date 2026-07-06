@@ -3,10 +3,11 @@ import z from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const ApproverSchema = z.object({
-  type: z.enum(["user", "group"]),
+  type: z.nativeEnum(ApproverType),
   id: z.string().uuid()
 });
 

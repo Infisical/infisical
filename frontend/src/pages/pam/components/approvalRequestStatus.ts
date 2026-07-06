@@ -1,13 +1,14 @@
+import { PamAccessGrantStatus, PamAccessRequestStatus } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
 type StatusInfo = { variant: "warning" | "success" | "danger" | "neutral"; label: string };
 
 const STATUS_BADGE: Record<string, StatusInfo> = {
-  pending: { variant: "warning", label: "Pending Review" },
-  approved: { variant: "success", label: "Approved" },
-  rejected: { variant: "danger", label: "Rejected" },
-  expired: { variant: "neutral", label: "Expired" },
-  revoked: { variant: "danger", label: "Revoked" }
+  [PamAccessRequestStatus.Pending]: { variant: "warning", label: "Pending Review" },
+  [PamAccessRequestStatus.Approved]: { variant: "success", label: "Approved" },
+  [PamAccessRequestStatus.Rejected]: { variant: "danger", label: "Rejected" },
+  [PamAccessRequestStatus.Expired]: { variant: "neutral", label: "Expired" },
+  [PamAccessGrantStatus.Revoked]: { variant: "danger", label: "Revoked" }
 };
 
 // The underlying request status stays "approved" after approval; the grant carries the real
@@ -15,20 +16,21 @@ const STATUS_BADGE: Record<string, StatusInfo> = {
 export const getRequestStatusInfo = (
   request: Pick<TPamAccessRequest, "status" | "grantExpiresAt" | "grantStatus">
 ): StatusInfo => {
-  if (request.status === "approved") {
-    if (request.grantStatus === "revoked") return STATUS_BADGE.revoked;
+  if (request.status === PamAccessRequestStatus.Approved) {
+    if (request.grantStatus === PamAccessGrantStatus.Revoked)
+      return STATUS_BADGE[PamAccessGrantStatus.Revoked];
     const grantExpired =
       !!request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now();
-    if (grantExpired) return STATUS_BADGE.expired;
+    if (grantExpired) return STATUS_BADGE[PamAccessRequestStatus.Expired];
   }
 
-  return STATUS_BADGE[request.status] ?? STATUS_BADGE.pending;
+  return STATUS_BADGE[request.status] ?? STATUS_BADGE[PamAccessRequestStatus.Pending];
 };
 
 // A grant is revocable while the request is approved and the grant is neither revoked nor expired.
 export const isGrantActive = (
   request: Pick<TPamAccessRequest, "status" | "grantExpiresAt" | "grantStatus"> | null
 ): boolean =>
-  request?.status === "approved" &&
-  request.grantStatus !== "revoked" &&
+  request?.status === PamAccessRequestStatus.Approved &&
+  request.grantStatus !== PamAccessGrantStatus.Revoked &&
   !(request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now());

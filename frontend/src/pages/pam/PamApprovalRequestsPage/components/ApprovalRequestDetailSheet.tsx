@@ -5,7 +5,12 @@ import { Check, Clock, ShieldCheck, X } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, TextArea } from "@app/components/v3";
-import { useReviewPamAccessRequest, useRevokePamAccessRequest } from "@app/hooks/api/pam";
+import {
+  PamAccessRequestDecision,
+  PamAccessRequestStatus,
+  useReviewPamAccessRequest,
+  useRevokePamAccessRequest
+} from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
@@ -29,12 +34,14 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
     setComment("");
   }, [request?.id]);
 
-  const status = getRequestStatusInfo(request ?? { status: "pending", grantExpiresAt: null });
+  const status = getRequestStatusInfo(
+    request ?? { status: PamAccessRequestStatus.Pending, grantExpiresAt: null }
+  );
   const requestData = request?.requestData?.requestData;
-  const isPending = request?.status === "pending";
+  const isPending = request?.status === PamAccessRequestStatus.Pending;
   const canRevoke = isGrantActive(request);
 
-  const handleReview = (decision: "approved" | "rejected") => {
+  const handleReview = (decision: PamAccessRequestDecision) => {
     if (!request) return;
     reviewMutation.mutate(
       {
@@ -45,7 +52,10 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
       {
         onSuccess: () => {
           createNotification({
-            text: decision === "approved" ? "Request approved" : "Request denied",
+            text:
+              decision === PamAccessRequestDecision.Approved
+                ? "Request approved"
+                : "Request denied",
             type: "success"
           });
           onOpenChange(false);
@@ -156,7 +166,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                   <>
                     <Button
                       variant="outline"
-                      onClick={() => handleReview("rejected")}
+                      onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
                       isPending={reviewMutation.isPending}
                     >
                       <X className="mr-1.5 size-4" />
@@ -164,7 +174,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                     </Button>
                     <Button
                       variant="pam"
-                      onClick={() => handleReview("approved")}
+                      onClick={() => handleReview(PamAccessRequestDecision.Approved)}
                       isPending={reviewMutation.isPending}
                     >
                       <Check className="mr-1.5 size-4" />

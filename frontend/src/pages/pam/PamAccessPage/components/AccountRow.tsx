@@ -10,7 +10,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { PamAccountType, TAccessiblePamAccount, usePamAccountTypeMap } from "@app/hooks/api/pam";
+import {
+  PamAccessStatus,
+  PamAccountType,
+  TAccessiblePamAccount,
+  usePamAccountTypeMap
+} from "@app/hooks/api/pam";
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
@@ -28,9 +33,9 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
   const { canLaunch, requiresApproval, accessStatus, disabledReason } = account;
 
   const isDisabled = !!disabledReason;
-  const isGranted = accessStatus === "granted";
+  const isGranted = accessStatus === PamAccessStatus.Granted;
   const needsApproval = requiresApproval && !isGranted && !isDisabled;
-  const isPending = accessStatus === "pending";
+  const isPending = accessStatus === PamAccessStatus.Pending;
   // A granted approval authorizes launching even without standing LaunchSessions permission.
   const canLaunchNow = canLaunch || isGranted;
   const canClick = canLaunchNow && !needsApproval && !isDisabled;

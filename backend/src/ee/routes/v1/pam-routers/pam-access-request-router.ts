@@ -4,6 +4,7 @@ import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { ApprovalRequestApprovalDecision } from "@app/services/approval-policy/approval-policy-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
@@ -167,7 +168,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         requestId: z.string().uuid()
       }),
       body: z.object({
-        status: z.enum(["approved", "rejected"]),
+        status: z.nativeEnum(ApprovalRequestApprovalDecision),
         comment: z.string().max(500).optional()
       }),
       response: {

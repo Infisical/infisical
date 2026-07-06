@@ -19,6 +19,7 @@ import {
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import {
+  ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
   ApprovalRequestGrantStatus,
@@ -45,7 +46,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessStatus, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
 import {
   checkAccountAccess,
@@ -70,8 +71,6 @@ import {
   TRevokeAccessRequestDTO,
   TSetApprovalConfigurationDTO
 } from "./pam-access-request-types";
-
-const PAM_FOLDER_SCOPE_TYPE = "pam-folder";
 
 type TPamAccessRequestServiceFactoryDep = {
   approvalPolicyDAL: Pick<
@@ -148,7 +147,7 @@ export const pamAccessRequestServiceFactory = ({
   const findFolderPolicy = async (folderId: string) => {
     const policy = await approvalPolicyDAL.findOne({
       type: ApprovalPolicyType.PamAccess,
-      scopeType: PAM_FOLDER_SCOPE_TYPE,
+      scopeType: ApprovalPolicyScope.PamFolder,
       scopeId: folderId
     });
     return policy ?? null;
@@ -368,7 +367,7 @@ export const pamAccessRequestServiceFactory = ({
           organizationId: ctx.actorOrgId,
           type: ApprovalPolicyType.PamAccess,
           name: `PAM Folder Approval - ${folder.name}`,
-          scopeType: PAM_FOLDER_SCOPE_TYPE,
+          scopeType: ApprovalPolicyScope.PamFolder,
           scopeId: folderId,
           enforcementLevel: "hard",
           conditions: { version: 1, conditions: [] },
@@ -512,7 +511,7 @@ export const pamAccessRequestServiceFactory = ({
         requesterUserId: ctx.actorId,
         requesterName: requesterName || "Unknown",
         requesterEmail: user.email || "",
-        scopeType: PAM_FOLDER_SCOPE_TYPE,
+        scopeType: ApprovalPolicyScope.PamFolder,
         scopeId: account.folderId
       },
       {
@@ -593,7 +592,7 @@ export const pamAccessRequestServiceFactory = ({
 
     if (status) filter.status = status;
     // PAM requests store their folder as scopeId, so pagination/filtering happens at the DB level.
-    filter.scopeType = PAM_FOLDER_SCOPE_TYPE;
+    filter.scopeType = ApprovalPolicyScope.PamFolder;
     filter.scopeId = folderId;
 
     const requests = await approvalRequestDAL.find(filter, {
@@ -642,7 +641,7 @@ export const pamAccessRequestServiceFactory = ({
       userId: ctx.actorId,
       groupIds: [...userGroupIds],
       type: ApprovalPolicyType.PamAccess,
-      scopeType: PAM_FOLDER_SCOPE_TYPE
+      scopeType: ApprovalPolicyScope.PamFolder
     });
     if (!isApprover) return { requests: [] };
 
@@ -698,7 +697,7 @@ export const pamAccessRequestServiceFactory = ({
       userId: ctx.actorId,
       groupIds: [...userGroupIds],
       type: ApprovalPolicyType.PamAccess,
-      scopeType: PAM_FOLDER_SCOPE_TYPE
+      scopeType: ApprovalPolicyScope.PamFolder
     });
 
     // A non-approver can never have requests awaiting their approval.
@@ -737,7 +736,7 @@ export const pamAccessRequestServiceFactory = ({
 
     // Self-approval is a conflict of interest and always blocked. Denying your own request is harmless
     // (it only withdraws your own pending access), so it is allowed.
-    if (status === "approved" && request.requesterId === ctx.actorId) {
+    if (status === ApprovalRequestApprovalDecision.Approved && request.requesterId === ctx.actorId) {
       throw new ForbiddenRequestError({ message: "You cannot approve your own request" });
     }
 
@@ -748,7 +747,7 @@ export const pamAccessRequestServiceFactory = ({
     // moved or deleted. Approving would then grant access governed by the old folder's approvers,
     // bypassing the account's current folder policy, so block approval of a stale request. Rejection
     // stays allowed so the stale request can be cleared.
-    if (status === "approved") {
+    if (status === ApprovalRequestApprovalDecision.Approved) {
       const requestedAccountId = requestData?.requestData?.accountId;
       const account = requestedAccountId ? await pamAccountDAL.findOne({ id: requestedAccountId }) : undefined;
       if (!account || account.projectId !== projectId || account.folderId !== folderId) {
@@ -806,7 +805,7 @@ export const pamAccessRequestServiceFactory = ({
       throw new BadRequestError({ message: "You have already reviewed this request" });
     }
 
-    if (status === "rejected") {
+    if (status === ApprovalRequestApprovalDecision.Rejected) {
       const updatedRequest = await approvalRequestDAL.transaction(async (tx) => {
         // Row lock serializes concurrent reviews; the pre-transaction checks may be stale by now
         const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
@@ -1037,7 +1036,7 @@ export const pamAccessRequestServiceFactory = ({
     // Deleting the policy cascades to its steps and approvers, which also stops the now-defunct
     // folder from keeping its approvers "active" for approver-eligibility scans.
     const policy = await approvalPolicyDAL.findOne(
-      { type: ApprovalPolicyType.PamAccess, scopeType: PAM_FOLDER_SCOPE_TYPE, scopeId: folderId },
+      { type: ApprovalPolicyType.PamAccess, scopeType: ApprovalPolicyScope.PamFolder, scopeId: folderId },
       tx
     );
     if (policy) {
@@ -1047,7 +1046,7 @@ export const pamAccessRequestServiceFactory = ({
     await approvalRequestDAL.update(
       {
         type: ApprovalPolicyType.PamAccess,
-        scopeType: PAM_FOLDER_SCOPE_TYPE,
+        scopeType: ApprovalPolicyScope.PamFolder,
         scopeId: folderId,
         status: ApprovalRequestStatus.Pending
       },
@@ -1070,7 +1069,7 @@ export const pamAccessRequestServiceFactory = ({
       const pending = await approvalRequestDAL.find(
         {
           type: ApprovalPolicyType.PamAccess,
-          scopeType: PAM_FOLDER_SCOPE_TYPE,
+          scopeType: ApprovalPolicyScope.PamFolder,
           scopeId: folderId,
           status: ApprovalRequestStatus.Pending
         },
@@ -1131,8 +1130,8 @@ export const pamAccessRequestServiceFactory = ({
     userId: string,
     accountIds: string[],
     projectId: string
-  ): Promise<Map<string, { accessStatus: "none" | "pending" | "granted"; grantExpiresAt: Date | null }>> => {
-    const result = new Map<string, { accessStatus: "none" | "pending" | "granted"; grantExpiresAt: Date | null }>();
+  ): Promise<Map<string, { accessStatus: PamAccessStatus; grantExpiresAt: Date | null }>> => {
+    const result = new Map<string, { accessStatus: PamAccessStatus; grantExpiresAt: Date | null }>();
     if (accountIds.length === 0) return result;
 
     const now = new Date();
@@ -1149,7 +1148,7 @@ export const pamAccessRequestServiceFactory = ({
       const attrs = grant.attributes as { accountId?: string } | null;
       if (!isExpired && attrs?.accountId && accountIds.includes(attrs.accountId)) {
         result.set(attrs.accountId, {
-          accessStatus: "granted",
+          accessStatus: PamAccessStatus.Granted,
           grantExpiresAt: grant.expiresAt ? new Date(grant.expiresAt) : null
         });
       }
@@ -1166,7 +1165,7 @@ export const pamAccessRequestServiceFactory = ({
       const data = request.requestData as { version: number; requestData: TPamAccessRequestData } | null;
       const acctId = data?.requestData?.accountId;
       if (acctId && accountIds.includes(acctId) && !result.has(acctId)) {
-        result.set(acctId, { accessStatus: "pending", grantExpiresAt: null });
+        result.set(acctId, { accessStatus: PamAccessStatus.Pending, grantExpiresAt: null });
       }
     }
 
@@ -1179,7 +1178,7 @@ export const pamAccessRequestServiceFactory = ({
     if (folderIds.length === 0) return new Set();
     const scopeIds = await approvalPolicyDAL.findScopeIdsWithApprovers({
       type: ApprovalPolicyType.PamAccess,
-      scopeType: PAM_FOLDER_SCOPE_TYPE,
+      scopeType: ApprovalPolicyScope.PamFolder,
       scopeIds: folderIds
     });
     return new Set(scopeIds);
