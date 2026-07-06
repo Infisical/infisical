@@ -68,9 +68,8 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
                 size="xs"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!isPending) onRequestAccess(account);
+                  onRequestAccess(account);
                 }}
-                isDisabled={isPending}
               >
                 {isPending ? (
                   <>
@@ -86,7 +85,11 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
               </Button>
             </div>
           </TooltipTrigger>
-          {isPending && <TooltipContent>Your access request is awaiting approval</TooltipContent>}
+          {isPending && (
+            <TooltipContent>
+              Your access request is awaiting approval. Click for details.
+            </TooltipContent>
+          )}
         </Tooltip>
       );
     }

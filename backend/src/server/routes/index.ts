@@ -1829,6 +1829,7 @@ export const registerRoutes = async (
     permissionService,
     notificationService,
     smtpService,
+    groupDAL,
     userGroupMembershipDAL,
     userDAL
   });

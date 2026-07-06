@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -47,13 +48,13 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessStatus, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
-import { resolveAccessControls } from "../pam/pam-policies";
 import {
   checkAccountAccess,
   checkFolderPermission,
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
+import { resolveAccessControls } from "../pam/pam-policies";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
@@ -63,6 +64,7 @@ import {
   TCheckGrantDTO,
   TCreateAccessRequestDTO,
   TGetAccessRequestCountDTO,
+  TGetAccountApproversDTO,
   TGetApprovalConfigurationDTO,
   TListAccessRequestsDTO,
   TListPendingMyApprovalDTO,
@@ -114,6 +116,7 @@ type TPamAccessRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
 };
@@ -139,6 +142,7 @@ export const pamAccessRequestServiceFactory = ({
   permissionService,
   notificationService,
   smtpService,
+  groupDAL,
   userGroupMembershipDAL,
   userDAL
 }: TPamAccessRequestServiceFactoryDep) => {
@@ -1201,8 +1205,53 @@ export const pamAccessRequestServiceFactory = ({
     return new Set(scopeIds);
   };
 
+  // Requesters need to know who to ping for approval, so this is gated on LaunchSessions (the
+  // request-access permission) rather than the policy-management check used for the full config.
+  const getAccountApprovers = async ({ accountId, projectId, ...ctx }: TGetAccountApproversDTO) => {
+    await verifyProductMembership(permissionService, projectId, ctx);
+
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: "Account not found" });
+    }
+
+    await checkAccountAccess(
+      permissionService,
+      account.id,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.LaunchSessions,
+      ctx
+    );
+
+    if (!account.folderId) return { approvers: [] };
+    const policy = await findFolderPolicy(account.folderId);
+    if (!policy) return { approvers: [] };
+
+    const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
+    const approverEntries = steps.flatMap((s) => s.approvers);
+    const userIds = approverEntries.filter((a) => a.type === ApproverType.User).map((a) => a.id);
+    const groupIds = approverEntries.filter((a) => a.type === ApproverType.Group).map((a) => a.id);
+
+    const [users, groups] = await Promise.all([
+      userIds.length > 0 ? userDAL.find({ $in: { id: userIds } }) : [],
+      groupIds.length > 0 ? groupDAL.find({ $in: { id: groupIds } }) : []
+    ]);
+
+    return {
+      approvers: [
+        ...users.map((u) => ({
+          type: ApproverType.User,
+          name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.email || "Unknown user"
+        })),
+        ...groups.map((g) => ({ type: ApproverType.Group, name: g.name }))
+      ]
+    };
+  };
+
   return {
     getApprovalConfiguration,
+    getAccountApprovers,
     setApprovalConfiguration,
     createRequest,
     listRequests,

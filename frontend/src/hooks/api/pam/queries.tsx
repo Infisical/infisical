@@ -12,7 +12,12 @@ import {
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
 
-import { PamAccountType, PamResourcePermissionActions, PamResourcePermissionSub } from "./enums";
+import {
+  PamAccountType,
+  PamApproverType,
+  PamResourcePermissionActions,
+  PamResourcePermissionSub
+} from "./enums";
 import {
   PamAccountAccessibilityIssue,
   PamFolderPermissionSet,
@@ -69,6 +74,8 @@ export const pamKeys = {
   pendingMyApproval: (params?: { folderId?: string }) =>
     [...pamKeys.accessRequest(), "pending-my-approval", params] as const,
   accessRequestCount: () => [...pamKeys.accessRequest(), "count"] as const,
+  accountApprovers: (accountId: string) =>
+    [...pamKeys.accessRequest(), "account-approvers", accountId] as const,
   listAccessRequests: (params?: {
     folderId?: string;
     status?: string;
@@ -445,6 +452,19 @@ export const useGetPamAccessCapabilities = () => {
 };
 
 // Access Requests / Approvals
+
+export const useGetPamAccountApprovers = (accountId?: string) => {
+  return useQuery({
+    queryKey: pamKeys.accountApprovers(accountId ?? ""),
+    enabled: Boolean(accountId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        approvers: { type: PamApproverType; name: string }[];
+      }>(`/api/v1/pam/access-requests/accounts/${accountId}/approvers`);
+      return data.approvers;
+    }
+  });
+};
 
 export const useListPamPendingMyApproval = (params?: { folderId?: string }) => {
   return useQuery({

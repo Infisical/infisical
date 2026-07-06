@@ -65,3 +65,8 @@ export type TPamAccessRequestData = {
   reason?: string;
   duration: string;
 };
+
+export type TGetAccountApproversDTO = {
+  accountId: string;
+  projectId: string;
+} & TActorContext;

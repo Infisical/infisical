@@ -4,7 +4,7 @@ import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ApprovalRequestApprovalDecision } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
@@ -149,6 +149,39 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getCount({
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/accounts/:accountId/approvers",
+    config: { rateLimit: readLimit },
+    schema: {
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          approvers: z.array(
+            z.object({
+              type: z.nativeEnum(ApproverType),
+              name: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.pamAccessRequest.getAccountApprovers({
+        accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,
