@@ -42,6 +42,19 @@ export type TAzureAdCsCertificateAuthority = {
   };
 };
 
+export type TAdcsCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.ADCS;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    caName: string;
+  };
+};
+
 export type TAwsPcaCertificateAuthority = {
   id: string;
   projectId: string;
@@ -164,6 +177,7 @@ export const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
+  | TAdcsCertificateAuthority
   | TAwsPcaCertificateAuthority
   | TDigiCertCertificateAuthority
   | TGoDaddyCertificateAuthority
@@ -240,6 +254,11 @@ export type TAzureAdCsTemplate = {
   id: string;
   name: string;
   description?: string;
+};
+
+export type TAdcsTemplate = {
+  id: string;
+  name: string;
 };
 
 export type TImportCaCertificateDTO = {

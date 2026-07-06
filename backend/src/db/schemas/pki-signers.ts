@@ -23,7 +23,8 @@ export const PkiSignersSchema = z.object({
   certificateTtlDays: z.number().nullable().optional(),
   certificateRenewBeforeDays: z.number().nullable().optional(),
   certificateFailureReason: z.string().nullable().optional(),
-  keyAlgorithm: z.string().default("RSA_2048")
+  keyAlgorithm: z.string().default("RSA_2048"),
+  externalCaConfig: z.unknown().nullable().optional()
 });
 
 export type TPkiSigners = z.infer<typeof PkiSignersSchema>;

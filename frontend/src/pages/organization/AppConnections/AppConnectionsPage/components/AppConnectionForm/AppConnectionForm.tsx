@@ -15,6 +15,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
+import { AdcsConnectionForm } from "./AdcsConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
 import { AppConnectionFormProvider } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
@@ -201,6 +202,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureAppConfigurationConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.AzureADCS:
         return <AzureADCSConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ADCS:
+        return <AdcsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Humanitec:
@@ -434,6 +437,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         );
       case AppConnection.AzureADCS:
         return <AzureADCSConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      case AppConnection.ADCS:
+        return <AdcsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Humanitec:

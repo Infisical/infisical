@@ -1,5 +1,6 @@
 import { AppConnection } from "../enums";
 import { TOnePassConnection } from "./1password-connection";
+import { TAdcsConnection } from "./adcs-connection";
 import { TAnthropicConnection } from "./anthropic-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
@@ -75,6 +76,7 @@ import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
+export * from "./adcs-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-adcs-connection";
@@ -155,6 +157,7 @@ export type TAppConnection =
   | TAzureClientSecretsConnection
   | TAzureDevOpsConnection
   | TAzureADCSConnection
+  | TAdcsConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
