@@ -149,7 +149,6 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
-      userId: ctx.actorId,
       ...pagination
     });
   };
