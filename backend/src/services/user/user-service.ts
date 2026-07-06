@@ -136,6 +136,8 @@ export const userServiceFactory = ({
       mfaMethods = isMfaEnabled ? ["email"] : [];
     }
 
+    let recoveryCodes: string[] | undefined;
+
     const updatedUser = await userDAL.transaction(async (tx) => {
       const user2fa = await userDAL.updateById(
         userId,
@@ -148,8 +150,7 @@ export const userServiceFactory = ({
       );
 
       if (isMfaEnabled === true && !wasMfaEnabled) {
-        // MFA was just enabled in this transaction, so skip the redundant re-read.
-        await mfaRecoveryCodeService.rotateRecoveryCodes({ userId, tx, skipMfaEnabledCheck: true });
+        recoveryCodes = await mfaRecoveryCodeService.rotateRecoveryCodes({ userId, tx, skipMfaEnabledCheck: true });
       } else if (isMfaEnabled === false) {
         await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
         await totpConfigDAL.delete({ userId }, tx);
@@ -159,7 +160,7 @@ export const userServiceFactory = ({
       return user2fa;
     });
 
-    return updatedUser;
+    return { user: updatedUser, recoveryCodes };
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {

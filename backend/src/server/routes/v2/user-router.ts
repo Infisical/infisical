@@ -46,19 +46,20 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: SanitizedUserSchema
+          user: SanitizedUserSchema,
+          recoveryCodes: z.string().array().optional()
         })
       }
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
-      const user = await server.services.user.updateUserMfa({
+      const { user, recoveryCodes } = await server.services.user.updateUserMfa({
         userId: req.permission.id,
         isMfaEnabled: req.body.isMfaEnabled,
         selectedMfaMethod: req.body.selectedMfaMethod
       });
 
-      return { user };
+      return { user, recoveryCodes };
     }
   });
 

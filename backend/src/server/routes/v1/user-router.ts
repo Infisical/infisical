@@ -3,14 +3,71 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
+import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 
 const SantizedUserSchema = UsersSchema.omit({
   hashedPassword: true
 });
+
+// Recovery codes double as a login second factor, so reading or rotating them must
+// require a fresh MFA challenge — not just a valid session token. This binds the
+// step-up MFA session to a dedicated resource so a session minted for another
+// feature (e.g. PAM access) can't be replayed here.
+const RECOVERY_CODE_MFA_RESOURCE = "mfa-recovery-codes";
+
+/**
+ * Enforces that the caller has completed an MFA challenge before recovery codes
+ * are revealed or rotated, reusing the Redis-backed step-up MFA session primitive
+ * (mirrors the PAM account-access flow).
+ *
+ * A verified session is reusable for the remainder of its TTL (5 min): once the
+ * user has completed MFA they can view and rotate their codes repeatedly without
+ * re-challenging. The session is NOT consumed on use — expiry is handled purely by
+ * the Redis TTL.
+ *
+ * - With a valid, verified session for this user + resource: returns immediately.
+ * - Otherwise (no session id, or one that is missing/expired/unverified/foreign):
+ *   mints a fresh pending session (emailing the code when the user's method is
+ *   email) and throws `SESSION_MFA_REQUIRED` carrying the new session id + method
+ *   so the client can drive the challenge and retry.
+ */
+const ensureRecoveryCodeMfa = async (server: FastifyZodProvider, userId: string, mfaSessionId?: string) => {
+  if (mfaSessionId) {
+    const mfaSession = await server.services.mfaSession.getMfaSession(mfaSessionId);
+    if (
+      mfaSession &&
+      mfaSession.userId === userId &&
+      mfaSession.resourceId === RECOVERY_CODE_MFA_RESOURCE &&
+      mfaSession.status === MfaSessionStatus.ACTIVE
+    ) {
+      return;
+    }
+  }
+
+  const user = await server.services.user.getMe(userId);
+  const mfaMethod = (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+
+  const newMfaSessionId = await server.services.mfaSession.createMfaSession(
+    userId,
+    RECOVERY_CODE_MFA_RESOURCE,
+    mfaMethod
+  );
+
+  if (mfaMethod === MfaMethod.EMAIL && user.email) {
+    await server.services.mfaSession.sendMfaCode(userId, user.email);
+  }
+
+  throw new BadRequestError({
+    message: "MFA verification is required to access recovery codes",
+    name: "SESSION_MFA_REQUIRED",
+    details: { mfaSessionId: newMfaSessionId, mfaMethod }
+  });
+};
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -295,6 +352,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "getUserMfaRecoveryCodes",
+      querystring: z.object({
+        mfaSessionId: z.string().trim().optional()
+      }),
       response: {
         200: z.object({
           recoveryCodes: z.string().array()
@@ -303,6 +363,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
+      await ensureRecoveryCodeMfa(server, req.permission.id, req.query.mfaSessionId);
       const recoveryCodes = await server.services.mfaRecoveryCode.getRecoveryCodes({
         userId: req.permission.id
       });
@@ -318,6 +379,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "regenerateUserMfaRecoveryCodes",
+      body: z
+        .object({
+          mfaSessionId: z.string().trim().optional()
+        })
+        .optional(),
       response: {
         200: z.object({
           recoveryCodes: z.string().array()
@@ -326,6 +392,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      await ensureRecoveryCodeMfa(server, req.permission.id, req.body?.mfaSessionId);
       const recoveryCodes = await server.services.mfaRecoveryCode.rotateRecoveryCodes({
         userId: req.permission.id
       });

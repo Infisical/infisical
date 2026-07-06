@@ -4,7 +4,6 @@ import { TriangleAlertIcon } from "lucide-react";
 
 import { MethodStep, RecoveryCodesView, VerifyStep, WIZARD_STEPS } from "@app/components/mfa/setup";
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -22,7 +21,6 @@ import {
 } from "@app/components/v3";
 import { userKeys, useUpdateUserMfa } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { useGetMfaRecoveryCodes } from "@app/hooks/api/users";
 
 type Props = {
   isOpen: boolean;
@@ -36,12 +34,7 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
   const [step, setStep] = useState(0);
   const [selectedMethod, setSelectedMethod] = useState<MfaMethod>(MfaMethod.TOTP);
   const [hasSaved, setHasSaved] = useState(false);
-
-  const {
-    data: recoveryCodes = [],
-    isFetching: isRecoveryCodesFetching,
-    refetch: refetchRecoveryCodes
-  } = useGetMfaRecoveryCodes(isOpen && step === 2);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   const hasRecoveryCodes = recoveryCodes.length > 0;
 
@@ -51,12 +44,17 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
       setStep(0);
       setSelectedMethod(MfaMethod.TOTP);
       setHasSaved(false);
+      setRecoveryCodes([]);
     }
   }, [isOpen]);
 
   const handleVerified = async () => {
     try {
-      await updateUserMfa({ isMfaEnabled: true, selectedMfaMethod: selectedMethod });
+      const { recoveryCodes: codes } = await updateUserMfa({
+        isMfaEnabled: true,
+        selectedMfaMethod: selectedMethod
+      });
+      setRecoveryCodes(codes ?? []);
     } catch (error: any) {
       createNotification({
         text: error?.response?.data?.message || "Failed to enable two-factor authentication",
@@ -105,41 +103,36 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
             <MethodStep selectedMethod={selectedMethod} onSelect={setSelectedMethod} />
           )}
           {step === 1 && <VerifyStep method={selectedMethod} onVerified={handleVerified} />}
-          {step === 2 &&
-            (isRecoveryCodesFetching ? (
-              <ContentLoader />
-            ) : (
-              <div className="flex flex-col gap-4">
-                {hasRecoveryCodes ? (
-                  <>
-                    <Alert variant="warning">
-                      <TriangleAlertIcon />
-                      <AlertTitle>Save your recovery codes</AlertTitle>
-                      <AlertDescription>
-                        Store these somewhere safe. Each code works once and lets you sign in if you
-                        lose access to your other methods.
-                      </AlertDescription>
-                    </Alert>
-                    <RecoveryCodesView
-                      recoveryCodes={recoveryCodes}
-                      onSaved={() => setHasSaved(true)}
-                    />
-                  </>
-                ) : (
-                  <Alert variant="danger">
+          {step === 2 && (
+            <div className="flex flex-col gap-4">
+              {hasRecoveryCodes ? (
+                <>
+                  <Alert variant="warning">
                     <TriangleAlertIcon />
-                    <AlertTitle>Couldn&apos;t load recovery codes</AlertTitle>
-                    <AlertDescription className="flex flex-col items-start gap-3">
-                      Two-factor authentication is enabled, but we couldn&apos;t retrieve your
-                      recovery codes. Generate them before closing so you don&apos;t get locked out.
-                      <Button variant="outline" size="sm" onClick={() => refetchRecoveryCodes()}>
-                        Try again
-                      </Button>
+                    <AlertTitle>Save your recovery codes</AlertTitle>
+                    <AlertDescription>
+                      Store these somewhere safe. Each code works once and lets you sign in if you
+                      lose access to your other methods.
                     </AlertDescription>
                   </Alert>
-                )}
-              </div>
-            ))}
+                  <RecoveryCodesView
+                    recoveryCodes={recoveryCodes}
+                    onSaved={() => setHasSaved(true)}
+                  />
+                </>
+              ) : (
+                <Alert variant="danger">
+                  <TriangleAlertIcon />
+                  <AlertTitle>Couldn&apos;t load recovery codes</AlertTitle>
+                  <AlertDescription>
+                    Two-factor authentication is enabled, but we couldn&apos;t display your recovery
+                    codes. Regenerate them from the Recovery options section so you don&apos;t get
+                    locked out.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
         </div>
 
         <SheetFooter className="items-center justify-between border-t">

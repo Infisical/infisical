@@ -2,7 +2,6 @@ import { useState } from "react";
 import { EyeIcon, KeyRoundIcon, RefreshCwIcon } from "lucide-react";
 
 import { RecoveryCodesView } from "@app/components/mfa/setup";
-import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +11,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Badge,
   Button,
   Sheet,
   SheetContent,
@@ -20,31 +18,20 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useGetMfaRecoveryCodes, useRotateMfaRecoveryCodes } from "@app/hooks/api/users";
+
+import { useRecoveryCodesMfa } from "./useRecoveryCodesMfa";
 
 export const RecoveryOptionsCard = () => {
-  const [isViewOpen, setIsViewOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [hasViewed, setHasViewed] = useState(false);
 
-  const { data: recoveryCodes = [] } = useGetMfaRecoveryCodes(isViewOpen);
-  const { mutateAsync: rotate, isPending: isRotating } = useRotateMfaRecoveryCodes();
+  // Viewing and regenerating recovery codes both require a fresh MFA challenge,
+  // which this hook drives before returning the codes.
+  const { isBusy, codes, isSheetOpen, closeSheet, viewCodes, regenerateCodes } =
+    useRecoveryCodesMfa();
 
-  const handleRegenerate = async () => {
-    try {
-      await rotate();
-      setIsConfirmOpen(false);
-      setIsViewOpen(true);
-      createNotification({
-        text: "Generated new recovery codes. Your previous codes no longer work.",
-        type: "success"
-      });
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to regenerate recovery codes",
-        type: "error"
-      });
-    }
+  const handleRegenerate = () => {
+    setIsConfirmOpen(false);
+    regenerateCodes();
   };
 
   return (
@@ -54,10 +41,7 @@ export const RecoveryOptionsCard = () => {
         <div className="flex items-start gap-3">
           <KeyRoundIcon className="mt-0.5 text-muted" />
           <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-foreground">Recovery codes</p>
-              {hasViewed && <Badge variant="neutral">Viewed</Badge>}
-            </div>
+            <p className="text-sm text-foreground">Recovery codes</p>
             <p className="text-xs text-muted">
               Recovery codes let you sign in if you lose access to your other methods. Each code
               works once.
@@ -65,23 +49,21 @@ export const RecoveryOptionsCard = () => {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Button variant="outline" size="sm" isDisabled={isBusy} onClick={viewCodes}>
+            <EyeIcon /> View
+          </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setHasViewed(true);
-              setIsViewOpen(true);
-            }}
+            isDisabled={isBusy}
+            onClick={() => setIsConfirmOpen(true)}
           >
-            <EyeIcon /> View
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setIsConfirmOpen(true)}>
             <RefreshCwIcon /> Regenerate
           </Button>
         </div>
       </div>
 
-      <Sheet open={isViewOpen} onOpenChange={setIsViewOpen}>
+      <Sheet open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
         <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
           <SheetHeader className="border-b">
             <SheetTitle>Recovery codes</SheetTitle>
@@ -90,7 +72,7 @@ export const RecoveryOptionsCard = () => {
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
-            <RecoveryCodesView recoveryCodes={recoveryCodes} />
+            <RecoveryCodesView recoveryCodes={codes ?? []} />
           </div>
         </SheetContent>
       </Sheet>
@@ -101,12 +83,12 @@ export const RecoveryOptionsCard = () => {
             <AlertDialogTitle>Regenerate recovery codes?</AlertDialogTitle>
             <AlertDialogDescription>
               This generates a new set of recovery codes and immediately invalidates all existing
-              ones. Make sure to save the new codes.
+              ones. You&apos;ll be asked to verify with MFA first. Make sure to save the new codes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isRotating} onClick={handleRegenerate}>
+            <AlertDialogAction variant="danger" isPending={isBusy} onClick={handleRegenerate}>
               Regenerate
             </AlertDialogAction>
           </AlertDialogFooter>

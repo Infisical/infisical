@@ -4,19 +4,16 @@ export {
   useRemoveMyDuplicateAccounts,
   useRequestEmailChangeOTP,
   useRevokeMySessionById,
-  useRotateMfaRecoveryCodes,
   useSendEmailVerificationCode,
   useUpdateUserEmail,
   useVerifyCurrentEmailOTP,
   useVerifyUserTotpRegistration
 } from "./mutation";
 export {
-  fetchMfaRecoveryCodes,
   fetchOrgUsers,
   useAddUsersToOrg,
   useDeleteMe,
   useDeleteOrgMembership,
-  useGetMfaRecoveryCodes,
   useGetMyDuplicateAccount,
   useGetMyIp,
   useGetMyOrganizationProjects,

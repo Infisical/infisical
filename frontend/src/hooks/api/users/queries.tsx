@@ -417,14 +417,15 @@ export const useUpdateUserMfa = () => {
       isMfaEnabled?: boolean;
       selectedMfaMethod?: MfaMethod;
     }) => {
-      const {
-        data: { user }
-      } = await apiRequest.patch("/api/v2/users/me/mfa", {
-        isMfaEnabled,
-        selectedMfaMethod
-      });
+      const { data } = await apiRequest.patch<{ user: unknown; recoveryCodes?: string[] }>(
+        "/api/v2/users/me/mfa",
+        {
+          isMfaEnabled,
+          selectedMfaMethod
+        }
+      );
 
-      return user;
+      return { user: data.user, recoveryCodes: data.recoveryCodes };
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
@@ -492,28 +493,5 @@ export const useGetUserTotpConfiguration = () => {
         throw error;
       }
     }
-  });
-};
-
-export const fetchMfaRecoveryCodes = async () => {
-  try {
-    const { data } = await apiRequest.get<{ recoveryCodes: string[] }>(
-      "/api/v1/user/me/mfa/recovery-codes"
-    );
-
-    return data.recoveryCodes;
-  } catch (error) {
-    if (error instanceof AxiosError && [404, 400].includes(error.response?.data?.statusCode)) {
-      return [];
-    }
-    throw error;
-  }
-};
-
-export const useGetMfaRecoveryCodes = (enabled = true) => {
-  return useQuery({
-    queryKey: userKeys.mfaRecoveryCodes,
-    enabled,
-    queryFn: fetchMfaRecoveryCodes
   });
 };

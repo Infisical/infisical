@@ -98,23 +98,6 @@ export const useDeleteUserTotpConfiguration = () => {
   });
 };
 
-export const useRotateMfaRecoveryCodes = () => {
-  const queryClient = useQueryClient();
-  return useMutation<{ recoveryCodes: string[] }, unknown, void>({
-    mutationFn: async () => {
-      const { data } = await apiRequest.post<{ recoveryCodes: string[] }>(
-        "/api/v1/user/me/mfa/recovery-codes"
-      );
-
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(userKeys.mfaRecoveryCodes, data.recoveryCodes);
-      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
-    }
-  });
-};
-
 export const useResendOrgMemberInvitation = () => {
   return useMutation({
     mutationFn: async (dto: { membershipId: string }) => {
