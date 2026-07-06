@@ -32,10 +32,12 @@ export const pamProjectResolverFactory = ({
   membershipRoleDAL,
   keyStore
 }: TResolverDeps) => {
-  const findDefaultProjectId = async (orgId: string): Promise<string | null> => {
+  // projectDAL.find already excludes soft-deleted (deleteAfter) projects. Passing tx runs the read
+  // on the primary inside the caller's transaction (used for the in-lock re-check).
+  const findDefaultProjectId = async (orgId: string, tx?: Knex): Promise<string | null> => {
     const projects = await projectDAL.find(
       { orgId, type: ProjectType.PAM },
-      { sort: [["createdAt", "desc"]], limit: 1 }
+      { sort: [["createdAt", "desc"]], limit: 1, tx }
     );
     return projects.length ? projects[0].id : null;
   };
@@ -50,16 +52,11 @@ export const pamProjectResolverFactory = ({
       // have several), and the advisory lock auto-releases when this transaction ends.
       await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`pam-bootstrap:${orgId}`]);
 
-      // Re-check inside the lock on the primary, with the same semantics as findDefaultProjectId
-      // (newest first, soft-deleted excluded). This resolves the race winner and, when several PAM
-      // projects exist (consolidated + old zombies), returns the consolidated one rather than an
-      // arbitrary row.
-      const existing = await tx(TableName.Project)
-        .where({ orgId, type: ProjectType.PAM })
-        .whereNull("deleteAfter")
-        .orderBy("createdAt", "desc")
-        .first("id");
-      if (existing) return existing.id;
+      // Re-check inside the lock on the primary (tx). Resolves the race winner and, when several PAM
+      // projects exist (consolidated + old zombies), returns the consolidated one rather than a
+      // stale/arbitrary row.
+      const existingId = await findDefaultProjectId(orgId, tx);
+      if (existingId) return existingId;
 
       const adminRows = (await tx(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
