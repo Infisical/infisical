@@ -3,7 +3,7 @@ title: "OpenAI Connection"
 description: "Learn how to configure an OpenAI connection for Infisical."
 ---
 
-Infisical supports connecting to OpenAI using an **API Key** (an Admin API key). This connection is used to manage and rotate OpenAI admin API keys via [Secret Rotation](/documentation/platform/secret-rotation/openai-admin-api-key).
+Infisical supports connecting to OpenAI using an **Admin API Key**. This connection is used to manage and rotate OpenAI admin API keys via [Secret Rotation](/documentation/platform/secret-rotation/openai-admin-api-key).
 
 ## Prerequisites
 
@@ -12,15 +12,35 @@ You need an OpenAI **Admin API key** created by an **Organization Owner**. Admin
 ## Create an OpenAI Admin API Key
 
 <Steps>
-    <Step title="Navigate to Admin Keys">
-        In the [OpenAI dashboard](https://platform.openai.com/settings/organization/admin-keys), go to **Settings** → **Organization** → **Admin keys** and click **Create new admin key**.
+    <Step title="Open your account menu">
+        In the [OpenAI dashboard](https://platform.openai.com/), click your account in the bottom-left corner to open the menu.
 
-        ![OpenAI Admin Keys](/images/app-connections/openai/step-1.png)
+        ![OpenAI Account Menu](/images/app-connections/openai/step-1.png)
+    </Step>
+    <Step title="Open Organization settings">
+        Select **Organization settings** from the menu.
+
+        ![OpenAI Organization Settings](/images/app-connections/openai/step-2.png)
+    </Step>
+    <Step title="Navigate to Admin keys">
+        In the organization settings, open the **Admin keys** tab.
+
+        ![OpenAI Admin Keys Tab](/images/app-connections/openai/step-3.png)
+    </Step>
+    <Step title="Create a new Admin key">
+        Click **Create new Admin key** on the top right corner.
+
+        ![Create New Admin Key](/images/app-connections/openai/step-4.png)
     </Step>
     <Step title="Name and create the key">
-        Give the key a descriptive name (e.g. `infisical-rotation`) and create it. Copy the generated Admin API key. It will only be shown once.
+        Give the key a descriptive name (e.g. `infisical-key`), set the permissions as needed, and click **Create admin key**.
 
-        ![OpenAI Admin Key Created](/images/app-connections/openai/step-2.png)
+        ![Name and Create Admin Key](/images/app-connections/openai/step-5.png)
+    </Step>
+    <Step title="Copy the Admin API key">
+        Copy the generated Admin API key and store it securely. It will only be shown once.
+
+        ![Copy Admin API Key](/images/app-connections/openai/step-6.png)
     </Step>
 </Steps>
 
@@ -34,27 +54,27 @@ You need an OpenAI **Admin API key** created by an **Organization Owner**. Admin
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Navigate to App Connections">
-                In your Infisical dashboard, go to **Organization Settings** → **App Connections**.
+                In your Infisical dashboard, go to **Integrations** → **App Connections** tab in your project.
 
-                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+                ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
             </Step>
             <Step title="Select OpenAI Connection">
                 Click **Add Connection** and choose **OpenAI** from the list of available connections.
 
-                ![Select OpenAI Connection](/images/app-connections/openai/openai-app-connection-option.png)
+                ![Select OpenAI Connection](/images/app-connections/openai/step-7.png)
             </Step>
             <Step title="Fill out Connection Form">
                 Complete the form with:
-                - A **name** for the connection (e.g. `openai-prod`)
+                - A **name** for the connection 
                 - An optional **description**
                 - Your **Admin API Key** (from the steps above)
 
-                ![OpenAI Connection Form](/images/app-connections/openai/openai-app-connection-form.png)
+                ![OpenAI Connection Form](/images/app-connections/openai/step-8.png)
             </Step>
             <Step title="Connection Created">
-                After clicking **Create**, Infisical validates the key against the OpenAI API. Your **OpenAI Connection** is then ready to use for [OpenAI Admin API Key Secret Rotation](/documentation/platform/secret-rotation/openai-admin-api-key).
+                After clicking **Connect to OpenAI**, Infisical validates the key against the OpenAI API. Your **OpenAI Connection** is then ready to use for [OpenAI Admin API Key Secret Rotation](/documentation/platform/secret-rotation/openai-admin-api-key).
 
-                ![OpenAI Connection Created](/images/app-connections/openai/openai-app-connection-created.png)
+                ![OpenAI Connection Created](/images/app-connections/openai/step-9.png)
             </Step>
         </Steps>
     </Tab>
