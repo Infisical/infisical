@@ -62,7 +62,10 @@ Windows AD accounts require session recordings to be stored in an external S3 bu
     infisical pam access <folder>/<account>
     ```
 
-    If the account has multiple allowed hosts, you'll be prompted to select one.
+    If the account has multiple allowed hosts, use `--target` to specify which one:
+    ```bash
+    infisical pam access <folder>/<account> --target <host>
+    ```
 
     The command prints the local port. Connect your RDP client to `localhost` on that port:
 

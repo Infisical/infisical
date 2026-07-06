@@ -26,14 +26,8 @@ This guide walks through setting up SSH certificate authentication. Instead of m
     Open the account you just created. You'll see a **CA Setup** section.
 
     <Tabs>
-      <Tab title="Automated Setup (Recommended)">
-        Copy the setup script and run it on your server:
-
-        ```bash
-        curl -sSL "https://app.infisical.com/api/v1/pam/accounts/<account-id>/ssh-ca-setup" | sudo bash
-        ```
-
-        The script downloads the CA public key, configures sshd to trust it, and restarts the service.
+      <Tab title="Automated Setup">
+        Copy the setup command from the account page and run it on your server. The script downloads the CA public key, configures sshd to trust it, and restarts the service.
       </Tab>
       <Tab title="Manual Setup">
         1. Copy the **CA Public Key** from the account page
