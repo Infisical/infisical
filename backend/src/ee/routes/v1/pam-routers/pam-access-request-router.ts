@@ -135,7 +135,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
 
   server.route({
     method: "GET",
-    url: "/count",
+    url: "/pending-my-approval/count",
     config: { rateLimit: readLimit },
     schema: {
       response: {

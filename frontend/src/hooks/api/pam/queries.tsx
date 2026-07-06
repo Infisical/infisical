@@ -465,7 +465,7 @@ export const useGetPamAccessRequestCount = () => {
     queryKey: pamKeys.accessRequestCount(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ pendingCount: number; isApprover: boolean }>(
-        "/api/v1/pam/access-requests/count"
+        "/api/v1/pam/access-requests/pending-my-approval/count"
       );
       return data;
     },
