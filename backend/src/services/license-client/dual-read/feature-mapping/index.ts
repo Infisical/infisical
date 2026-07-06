@@ -13,7 +13,8 @@ export const FEATURE_MAPPINGS: TFeatureMapping[] = [
   ...limitsMappings
 ];
 
-// v1 TFeatureSet keys intentionally not compared (live usage counters + plan metadata).
+// v1 TFeatureSet keys intentionally not compared: live usage counters, plan metadata, and v1 fields
+// with no License Server v2 feature (v2 never returns them, so a mapping would be permanently v2_missing).
 export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "_id",
   "slug",
@@ -24,5 +25,9 @@ export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "workspacesUsed",
   "membersUsed",
   "identitiesUsed",
-  "environmentsUsed"
+  "environmentsUsed",
+  "workspaceLimit",
+  "memberLimit",
+  "enterpriseCertificateSyncs",
+  "pkiLegacyTemplates"
 ]);
