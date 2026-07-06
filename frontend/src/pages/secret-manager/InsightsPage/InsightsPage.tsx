@@ -25,6 +25,7 @@ import { useGetInsightsCounts } from "@app/hooks/api/secretInsights/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import {
+  AuditReportsCard,
   AuthMethodChart,
   CalendarCard,
   DuplicatedSecretsCard,
@@ -126,6 +127,9 @@ export const InsightsPage = withProjectPermission(
         </PageHeader>
         {headerStats.length > 0 && renderStatStrip("mb-6 flex justify-start dashboard:hidden")}
         <InsightsSummaryCards />
+        <div className="mt-6">
+          <AuditReportsCard />
+        </div>
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
           <div className="flex flex-col gap-6">
             <DuplicatedSecretsCard />

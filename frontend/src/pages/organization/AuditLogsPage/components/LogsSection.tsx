@@ -144,8 +144,9 @@ const LogsSectionComponent = ({
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
           </CardTitle>
           <CardDescription>
-            Search and review a detailed history of events{" "}
-            {project ? "in this project" : "across your organization"}.
+            Search and review a detailed history of events
+            {!project && " across your organization"}
+            {project && project.type !== ProjectType.PAM && " in this project"}.
           </CardDescription>
           {showFilters && (
             <CardAction>

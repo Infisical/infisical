@@ -49,8 +49,10 @@ import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -111,7 +113,7 @@ import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "find">;
   secretVersionDAL: TSecretVersionV2DALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -147,6 +149,8 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -176,7 +180,9 @@ export const secretV2BridgeServiceFactory = ({
   keyStore,
   reminderService,
   reminderDAL,
-  secretValidationRuleService
+  secretValidationRuleService,
+  projectFolderGrantDAL,
+  orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -184,14 +190,18 @@ export const secretV2BridgeServiceFactory = ({
     references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
     tx?: Knex
   ) => {
-    if (!references.length) return;
+    // Cross-project refs are authorized at resolution time via project grants — skip them here
+    const sameProjReferences = references.filter((el) => !el.targetProjectSlug);
+    if (!sameProjReferences.length) return;
 
-    const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
+    const uniqueReferenceEnvironmentSlugs = Array.from(new Set(sameProjReferences.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
 
     // Filter out references to non-existent environments
     const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
-    const validEnvironmentReferences = references.filter((el) => referencesEnvironmentGroupBySlug[el.environment]);
+    const validEnvironmentReferences = sameProjReferences.filter(
+      (el) => referencesEnvironmentGroupBySlug[el.environment]
+    );
 
     if (validEnvironmentReferences.length === 0) return;
 
@@ -1476,7 +1486,15 @@ export const secretV2BridgeServiceFactory = ({
           personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) &&
         expandPersonalOverrides
           ? actorId
-          : undefined
+          : undefined,
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService,
+      // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
+      // reads on the raw DAL so source imports are not resolved through this target project.
+      crossProjectSecretDAL: secretDAL
     });
 
     if (shouldExpandSecretReferences) {
@@ -1580,6 +1598,15 @@ export const secretV2BridgeServiceFactory = ({
           ? expandImportedSecretReferences
           : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+      importAccessScopeByFolderId: new Map(
+        paths.map((folderPath) => [
+          folderPath.folderId,
+          {
+            environment,
+            secretPath: folderPath.path
+          }
+        ])
+      ),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
         const canDescribe = hasSecretReadValueOrDescribePermission(
           permission,
@@ -1604,7 +1631,12 @@ export const secretV2BridgeServiceFactory = ({
         );
 
         return viewSecretValue ? canDescribe && canReadValue : canDescribe;
-      }
+      },
+      projectId,
+      projectFolderGrantDAL,
+      actorOrgId,
+      orgDAL,
+      kmsService
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
@@ -1804,7 +1836,12 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: expandSecretTags
         });
       },
-      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined
+      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
 
     // now if secret is not found
@@ -1824,6 +1861,7 @@ export const secretV2BridgeServiceFactory = ({
         personalOverridesBehavior: secretType === SecretType.Personal ? PersonalOverridesBehavior.Priority : undefined,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         expandSecretReferences: shouldExpandSecretReferences && viewSecretValue ? expandSecretReferences : undefined,
+        importAccessScopeByFolderId: new Map([[folderId, { environment, secretPath: path }]]),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
           return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
             environment: expandEnvironment,
@@ -1831,7 +1869,12 @@ export const secretV2BridgeServiceFactory = ({
             secretName: expandSecretKey,
             secretTags: expandSecretTags
           });
-        }
+        },
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -1849,8 +1892,8 @@ export const secretV2BridgeServiceFactory = ({
             if (viewSecretValue) {
               if (
                 !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-                  environment: importedSecret.environment,
-                  secretPath: importedSecrets[i].secretPath,
+                  environment: importedSecrets[i].accessScope.environment,
+                  secretPath: importedSecrets[i].accessScope.secretPath,
                   secretName: importedSecret.key,
                   secretTags: (importedSecret.secretTags || []).map((el) => el.slug)
                 }) &&
@@ -3084,17 +3127,8 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath
-    });
-
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder)
-      throw new NotFoundError({
-        message: "Folder not found for the given environment slug & secret path",
-        name: "Create secret"
-      });
+    if (!folder) throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
     const folderId = folder.id;
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -3132,7 +3166,12 @@ export const secretV2BridgeServiceFactory = ({
           secretPath: expandSecretPath,
           secretName: expandSecretName,
           secretTags: expandSecretTags
-        })
+        }),
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
 
     if (
@@ -3201,6 +3240,11 @@ export const secretV2BridgeServiceFactory = ({
       secretName,
       secretTags: (secret?.tags || []).map((el) => el.slug)
     });
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: "Project not found" });
+    }
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -3280,6 +3324,77 @@ export const secretV2BridgeServiceFactory = ({
       return results;
     };
 
+    const findCrossProjectSecretsReferencingSecret = async (env: string, path: string, key: string) => {
+      const sourceFolder = await folderDAL.findBySecretPath(projectId, env, path);
+      if (!sourceFolder) return [];
+
+      const crossProjectRefs = await secretDAL.findCrossProjectSecretReferencesByTargetSecretKey(
+        project.slug,
+        env,
+        path,
+        key,
+        project.orgId
+      );
+
+      if (!crossProjectRefs.length) return [];
+
+      const grants = await projectFolderGrantDAL.find({
+        sourceProjectId: projectId,
+        sourceFolderId: sourceFolder.id
+      });
+      const grantedTargetProjectIds = new Set(grants.map((g) => g.targetProjectId));
+
+      const refsByProject = new Map<string, typeof crossProjectRefs>();
+      for (const ref of crossProjectRefs) {
+        const refProjectId = ref.referencingProjectId;
+        if (!grantedTargetProjectIds.has(refProjectId)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        const existing = refsByProject.get(refProjectId) || [];
+        existing.push(ref);
+        refsByProject.set(refProjectId, existing);
+      }
+
+      const results: Array<{
+        key: string;
+        environment: string;
+        secretPath: string;
+        project: { id: string; slug: string; name: string };
+      }> = [];
+
+      const refProjectIds = [...refsByProject.keys()];
+      const refProjects = refProjectIds.length > 0 ? await projectDAL.find({ $in: { id: refProjectIds } }) : [];
+      const projectInfoMap = new Map(refProjects.map((p) => [p.id, { id: p.id, slug: p.slug, name: p.name }]));
+
+      for (const [refProjectId, refs] of refsByProject) {
+        const projectInfo = projectInfoMap.get(refProjectId);
+        if (!projectInfo) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const folderIds = [...new Set(refs.map((r) => r.folderId))];
+        // eslint-disable-next-line no-await-in-loop
+        const folderPaths = await folderDAL.findSecretPathByFolderIds(refProjectId, folderIds);
+        const folderPathMap = new Map(folderPaths.filter(Boolean).map((fp) => [fp!.id, fp]));
+
+        for (const ref of refs) {
+          const folderPath = folderPathMap.get(ref.folderId);
+          if (folderPath) {
+            results.push({
+              key: ref.secretVKey,
+              environment: folderPath.environmentSlug,
+              secretPath: folderPath.path,
+              project: projectInfo
+            });
+          }
+        }
+      }
+
+      return results;
+    };
+
     const createSecretId = (env: string, path: string, key: string) => `${env}:${path}:${key}`;
     const visitedSecrets = new Set<string>();
     const MAX_DEPTH = 10;
@@ -3288,6 +3403,7 @@ export const secretV2BridgeServiceFactory = ({
       key: string;
       environment: string;
       secretPath: string;
+      project?: { id: string; slug: string; name: string };
       children: DependencyNode[];
     };
 
@@ -3335,6 +3451,17 @@ export const secretV2BridgeServiceFactory = ({
           );
           node.children.push(childNode);
         }
+      }
+
+      const crossProjectRefs = await findCrossProjectSecretsReferencingSecret(env, path, key);
+      for (const crossRef of crossProjectRefs) {
+        node.children.push({
+          key: crossRef.key,
+          environment: crossRef.environment,
+          secretPath: crossRef.secretPath,
+          project: crossRef.project,
+          children: []
+        });
       }
 
       return node;

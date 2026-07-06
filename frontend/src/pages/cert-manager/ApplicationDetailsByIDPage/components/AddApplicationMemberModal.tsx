@@ -57,6 +57,12 @@ const APP_ROLES: AppRoleOption[] = [
   }
 ];
 
+const formatMemberOptionLabel = (option: Option, meta: { context: "menu" | "value" }) => (
+  <span className={meta.context === "value" ? "block max-w-[22rem] truncate" : "block truncate"}>
+    {option.label}
+  </span>
+);
+
 const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Promise<void> => {
   await items.reduce<Promise<void>>(async (prev, item) => {
     await prev;
@@ -66,22 +72,22 @@ const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Pr
 
 const NoUserOptions = () => (
   <p>
-    No matching project members. Grant users access from the Access Control page, then return here
-    to attach them to this Application.
+    No matching members. Grant users access from the Access Control page, then return here to attach
+    them to this Application.
   </p>
 );
 
 const NoIdentityOptions = () => (
   <p>
-    No matching project identities. Grant machine identities access from the Access Control page,
-    then return here to attach them to this Application.
+    No matching identities. Grant machine identities access from the Access Control page, then
+    return here to attach them to this Application.
   </p>
 );
 
 const NoGroupOptions = () => (
   <p>
-    No matching project groups. Grant groups access from the Access Control page, then return here
-    to attach them to this Application.
+    No matching groups. Grant groups access from the Access Control page, then return here to attach
+    them to this Application.
   </p>
 );
 
@@ -269,8 +275,8 @@ export const AddApplicationMemberModal = ({
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>
-            Grant access to this Application. Select existing project members, identities, or groups
-            to attach. New members must first be granted access from the Access Control page.
+            Grant access to this Application. Select existing members, identities, or groups to
+            attach. New members must first be granted access from the Access Control page.
           </DialogDescription>
         </DialogHeader>
 
@@ -304,7 +310,8 @@ export const AddApplicationMemberModal = ({
                 options={userOptions}
                 value={selectedUsers}
                 onChange={(v) => setSelectedUsers((v ?? []) as Option[])}
-                placeholder="Select existing project members…"
+                placeholder="Select existing members…"
+                formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoUserOptions}
               />
             </FormControl>
@@ -319,6 +326,7 @@ export const AddApplicationMemberModal = ({
                 value={selectedIdentities}
                 onChange={(v) => setSelectedIdentities((v ?? []) as Option[])}
                 placeholder="Select existing identities…"
+                formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoIdentityOptions}
               />
             </FormControl>
@@ -333,6 +341,7 @@ export const AddApplicationMemberModal = ({
                 value={selectedGroups}
                 onChange={(v) => setSelectedGroups((v ?? []) as Option[])}
                 placeholder="Select groups…"
+                formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoGroupOptions}
               />
             </FormControl>

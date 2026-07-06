@@ -90,7 +90,7 @@ import {
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "invalidateSecretCacheByProjectId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   orgDAL: TOrgDALFactory;
   roleDAL: TRoleDALFactory;
@@ -443,6 +443,7 @@ export const orgServiceFactory = ({
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
+      allowCrossProjectSecretSharing,
       secretShareBrandConfig
     }
   }: TUpdateOrgDTO) => {
@@ -648,9 +649,16 @@ export const orgServiceFactory = ({
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
+      allowCrossProjectSecretSharing,
       secretShareBrandConfig
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+
+    if (allowCrossProjectSecretSharing !== undefined) {
+      const projectIds = await projectDAL.findOrgProjectIds(orgId);
+      await Promise.all(projectIds.map((id) => secretV2BridgeDAL.invalidateSecretCacheByProjectId(id)));
+    }
+
     return org;
   };
   /*
