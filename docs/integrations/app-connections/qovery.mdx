@@ -1,0 +1,104 @@
+---
+title: "Qovery Connection"
+description: "Learn how to configure a Qovery Connection for Infisical."
+---
+
+Infisical supports the use of [Project Access Tokens](https://www.qovery.com/docs/api-reference/introduction) to connect with Qovery.
+
+## Create Qovery Access Token
+
+<Steps>
+    <Step title="Navigate to your organization Settings">
+        In the Qovery console, select the **Settings** tab for your organization.
+
+        ![Qovery Organization Settings](/images/app-connections/qovery/step-1-settings.png)
+    </Step>
+    <Step title="Open the 'API token' section">
+        In the settings sidebar, select **API token**.
+
+        ![Qovery API Token Section](/images/app-connections/qovery/step-2-api-token.png)
+    </Step>
+    <Step title="Click 'Add new'">
+        ![Add New API Token](/images/app-connections/qovery/step-3-add-new-token.png)
+    </Step>
+    <Step title="Create the token">
+        Give the token a name and assign it a role that can read organizations, projects, and environments and manage variables at the scope you intend to sync to, then click **Create**. After creating the token, a modal containing your project access token will appear. Save this token for later steps.
+
+        ![Create Qovery API Token](/images/app-connections/qovery/step-4-create-token.png)
+    </Step>
+</Steps>
+
+## Create Qovery Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+
+                ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
+            </Step>
+            <Step title="Select Qovery Connection">
+                Click the **+ Add Connection** button and select the **Qovery Connection** option from the available integrations.
+
+                ![Select Qovery Connection](/images/app-connections/qovery/step-5-search-qovery.png)
+            </Step>
+            <Step title="Fill out the Qovery Connection form">
+                Complete the Qovery Connection form by entering:
+                - A descriptive **Name** for the connection
+                - An optional **Description** for future reference
+                - The **Method**, set to **Personal Access Token**
+                - The **Project Access Token** from earlier steps
+
+                Then click **Connect to Qovery**.
+
+                ![Qovery Connection Modal](/images/app-connections/qovery/step-6-fill-sync.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Connect to Qovery, your **Qovery Connection** is established and ready to use with your Infisical project.
+                ![Qovery App Connection](/images/app-connections/qovery/step-7-created-app-connection.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Qovery Connection, make an API request to the [Create Qovery Connection](/api-reference/endpoints/app-connections/qovery/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/qovery \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-qovery-connection",
+                    "method": "access-token",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                    "credentials": {
+                        "accessToken": "[PROJECT ACCESS TOKEN]"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-qovery-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "qovery",
+              "method": "access-token",
+              "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

@@ -574,7 +574,15 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect GoDaddy to Infisical for ACME DNS validation.",
       category: "Networking & DNS",
-    }
+    },
+    {
+      name: "Qovery",
+      slug: "qovery",
+      path: "/integrations/app-connections/qovery",
+      description:
+        "Learn how to connect Qovery to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

@@ -277,6 +277,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "HOSTING",
     description: "Environment variables for Trigger.dev projects."
   },
+  [SecretSync.Qovery]: {
+    name: "Qovery",
+    image: "Qovery.png",
+    category: "HOSTING",
+    description: "Environment secrets and variables for Qovery projects."
+  },
   [SecretSync.Cloud66]: {
     name: "Cloud 66",
     image: "Cloud 66.png",
@@ -336,6 +342,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
   [SecretSync.TriggerDev]: AppConnection.TriggerDev,
+  [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
