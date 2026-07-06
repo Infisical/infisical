@@ -4,7 +4,18 @@ import { Check, Clock, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger, TextArea } from "@app/components/v3";
+import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
   PamAccessRequestStatus,
@@ -25,6 +36,7 @@ type Props = {
 };
 
 export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Props) => {
+  const { user } = useUser();
   const reviewMutation = useReviewPamAccessRequest();
   const revokeMutation = useRevokePamAccessRequest();
   const [comment, setComment] = useState("");
@@ -39,6 +51,8 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
   );
   const requestData = request?.requestData?.requestData;
   const isPending = request?.status === PamAccessRequestStatus.Pending;
+  // Self-approval is always blocked server-side; denying your own request stays allowed
+  const isOwnRequest = Boolean(request?.requesterId && request.requesterId === user?.id);
   const canRevoke = isGrantActive(request);
 
   const handleReview = (decision: PamAccessRequestDecision) => {
@@ -172,14 +186,24 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                       <X className="mr-1.5 size-4" />
                       Deny
                     </Button>
-                    <Button
-                      variant="pam"
-                      onClick={() => handleReview(PamAccessRequestDecision.Approved)}
-                      isPending={reviewMutation.isPending}
-                    >
-                      <Check className="mr-1.5 size-4" />
-                      Approve
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant="pam"
+                            onClick={() => handleReview(PamAccessRequestDecision.Approved)}
+                            isPending={reviewMutation.isPending}
+                            isDisabled={isOwnRequest}
+                          >
+                            <Check className="mr-1.5 size-4" />
+                            Approve
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {isOwnRequest && (
+                        <TooltipContent>You cannot approve your own request</TooltipContent>
+                      )}
+                    </Tooltip>
                   </>
                 )}
                 {canRevoke && (
