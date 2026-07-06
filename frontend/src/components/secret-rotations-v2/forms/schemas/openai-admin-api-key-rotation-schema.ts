@@ -3,8 +3,8 @@ import { z } from "zod";
 import { BaseSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/base-secret-rotation-v2-schema";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
-/** Max length for OpenAI admin API key name (matches backend schema). */
-const OPENAI_ADMIN_API_KEY_NAME_MAX_LENGTH = 100;
+/** Max length for the user-provided base name (matches backend schema). */
+export const OPENAI_ADMIN_API_KEY_NAME_MAX_LENGTH = 100;
 
 export const OpenAIAdminApiKeyRotationSchema = z
   .object({

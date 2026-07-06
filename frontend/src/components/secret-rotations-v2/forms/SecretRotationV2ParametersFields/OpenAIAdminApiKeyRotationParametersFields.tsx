@@ -1,11 +1,9 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { OPENAI_ADMIN_API_KEY_NAME_MAX_LENGTH } from "@app/components/secret-rotations-v2/forms/schemas/openai-admin-api-key-rotation-schema";
 import { FormControl, Input } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
-
-/** Max length for OpenAI admin API key name (matches backend schema). */
-const OPENAI_ADMIN_API_KEY_NAME_MAX_LENGTH = 100;
 
 export const OpenAIAdminApiKeyRotationParametersFields = () => {
   const { control } = useFormContext<
@@ -23,12 +21,12 @@ export const OpenAIAdminApiKeyRotationParametersFields = () => {
           isError={Boolean(error)}
           errorText={error?.message}
           label="Key Name"
-          tooltipText="A descriptive name for the generated admin API key"
+          tooltipText="A descriptive name for the generated admin API key. This will be saved in the OpenAI dashboard for reference with a suffix of the timestamp of the key creation."
         >
           <Input
             value={value}
             onChange={onChange}
-            placeholder="My Rotated Admin API Key"
+            placeholder="OpenAI Admin API Key Name"
             maxLength={OPENAI_ADMIN_API_KEY_NAME_MAX_LENGTH}
           />
         </FormControl>

@@ -19,7 +19,7 @@ export const OpenAIAdminApiKeyRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-/** Max length for OpenAI admin API key name. */
+/** Max length for the user-provided base name; the created key name also gets a `-<timestamp>` suffix. */
 export const OPENAI_ADMIN_API_KEY_NAME_MAX_LENGTH = 100;
 
 const OpenAIAdminApiKeyRotationParametersSchema = z.object({

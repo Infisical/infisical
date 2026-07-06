@@ -10,7 +10,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { OPENAI_API_BASE_URL } from "@app/services/app-connection/openai";
+import { OPENAI_API_BASE_URL, verifyOpenAIAdminApiKey } from "@app/services/app-connection/openai";
 
 import {
   TOpenAIAdminApiKeyCreateResponse,
@@ -51,6 +51,11 @@ export const openAIAdminApiKeyRotationFactory: TRotationFactory<
 
   const provisioningApiKey = connection.credentials.apiKey;
 
+  const provisioningHeaders = {
+    Authorization: `Bearer ${provisioningApiKey}`,
+    "Content-Type": "application/json"
+  };
+
   /**
    * Creates a new admin API key via the OpenAI Admin API.
    */
@@ -64,12 +69,7 @@ export const openAIAdminApiKeyRotationFactory: TRotationFactory<
       const { data } = await request.post<TOpenAIAdminApiKeyCreateResponse>(
         `${OPENAI_API_BASE_URL}/organization/admin_api_keys`,
         { name: keyName },
-        {
-          headers: {
-            Authorization: `Bearer ${provisioningApiKey}`,
-            "Content-Type": "application/json"
-          }
-        }
+        { headers: provisioningHeaders }
       );
 
       if (!data.value || !data.id) {
@@ -93,10 +93,7 @@ export const openAIAdminApiKeyRotationFactory: TRotationFactory<
   const $deleteApiKey = async (keyId: string) => {
     try {
       await request.delete(`${OPENAI_API_BASE_URL}/organization/admin_api_keys/${keyId}`, {
-        headers: {
-          Authorization: `Bearer ${provisioningApiKey}`,
-          "Content-Type": "application/json"
-        }
+        headers: provisioningHeaders
       });
     } catch (error: unknown) {
       // If key doesn't exist (404), consider it already deleted
@@ -167,12 +164,7 @@ export const openAIAdminApiKeyRotationFactory: TRotationFactory<
   > = async ({ apiKey }) => {
     try {
       // A valid admin key can list admin keys; a 200 confirms the rotated key is still active.
-      await request.get(`${OPENAI_API_BASE_URL}/organization/admin_api_keys?limit=1`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        }
-      });
+      await verifyOpenAIAdminApiKey(apiKey);
     } catch (error: unknown) {
       throw new BadRequestError({
         message: `OpenAI admin API key verification failed: ${createErrorMessage(error)}`
