@@ -329,8 +329,7 @@ const isProjectRecordMerged = (vercelSecret: VercelApiSecret) => {
   return totalScope > 1;
 };
 
-// True when a record covers this sync's env at all (regardless of branch). Used to spot merged
-// multi-env records we must detach our env from before creating a dedicated record.
+// True when a record covers this sync's env at all (regardless of branch).
 const projectRecordCoversSyncEnv = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) => {
   if (!isVercelDefaultEnvType(destinationConfig.env)) {
     return Boolean(vercelSecret.customEnvironmentIds?.includes(destinationConfig.env));
@@ -338,13 +337,11 @@ const projectRecordCoversSyncEnv = (vercelSecret: VercelApiSecret, destinationCo
   return vercelSecret.target.includes(destinationConfig.env);
 };
 
-// True when a record's scope exactly matches this sync's env/branch — i.e. the dedicated record
-// this sync should update in place. Vercel keys its conflict space on (target, gitBranch), so for
-// preview the branch must match too (both branch-agnostic, or the same gitBranch). A branch is
-// only meaningful for preview, and an empty-string branch is treated as branch-agnostic.
-const isProjectSecretOwnedByThisSync = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) => {
-  // A merged record covers more than our env; it's never a dedicated record for this sync.
-  if (isProjectRecordMerged(vercelSecret)) return false;
+// True when a record's scope overlaps this sync's conflict space: the same env, and for preview
+// the same branch scope (both branch-agnostic, or the same gitBranch). Vercel keys its conflict
+// space on (target, gitBranch), so a branch-agnostic and a branch-specific record for the same key
+// coexist. A branch is only meaningful for preview; an empty-string branch is branch-agnostic.
+const projectRecordMatchesSyncScope = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) => {
   if (!projectRecordCoversSyncEnv(vercelSecret, destinationConfig)) return false;
 
   if (destinationConfig.env === VercelEnvironmentType.Preview) {
@@ -353,6 +350,10 @@ const isProjectSecretOwnedByThisSync = (vercelSecret: VercelApiSecret, destinati
 
   return true;
 };
+
+// The dedicated record this sync should update in place: a non-merged record whose scope matches.
+const isProjectSecretOwnedByThisSync = (vercelSecret: VercelApiSecret, destinationConfig: ProjectDestinationConfig) =>
+  !isProjectRecordMerged(vercelSecret) && projectRecordMatchesSyncScope(vercelSecret, destinationConfig);
 
 // Remove the sync's env from an existing Vercel project record, preserving the original value
 // for the remaining environments. Falls back to a full delete if removing our env would leave
@@ -964,15 +965,16 @@ export const VercelSyncFns = {
       // The dedicated record for this sync's exact env/branch scope, if any.
       const ownedRecord = records.find((record) => isProjectSecretOwnedByThisSync(record, projectDestinationConfig));
 
-      // Merged records (cover other environments too) that include our env: detach our env from
-      // each — preserving the original value for the remaining environments — so a dedicated
-      // record can own our scope. Non-merged siblings on a different branch scope are left alone;
-      // Vercel lets a branch-agnostic and a branch-specific record for the same key coexist.
+      // Merged records (cover other environments too) that overlap our exact scope: detach our
+      // env from each — preserving the original value for the remaining environments — so a
+      // dedicated record can own our scope. The branch scope must match too: a branch-agnostic
+      // merged record does not conflict with a branch-specific sync (and vice versa), so detaching
+      // it would wrongly strip our env from every other branch it covers.
       const mergedRecords = records.filter(
         (record) =>
           record.id !== ownedRecord?.id &&
           isProjectRecordMerged(record) &&
-          projectRecordCoversSyncEnv(record, projectDestinationConfig)
+          projectRecordMatchesSyncScope(record, projectDestinationConfig)
       );
       for await (const merged of mergedRecords) {
         await detachEnvFromProjectSecret(secretSync, merged);
