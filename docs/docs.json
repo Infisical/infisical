@@ -136,6 +136,7 @@
                       "integrations/app-connections/f5-big-ip",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
+                      "integrations/app-connections/gitea",
                       "integrations/app-connections/github",
                       "integrations/app-connections/github-radar",
                       "integrations/app-connections/gitlab",
@@ -645,6 +646,7 @@
                       "integrations/secret-syncs/digital-ocean-app-platform",
                       "integrations/secret-syncs/flyio",
                       "integrations/secret-syncs/gcp-secret-manager",
+                      "integrations/secret-syncs/gitea",
                       "integrations/secret-syncs/github",
                       "integrations/secret-syncs/gitlab",
                       "integrations/secret-syncs/hashicorp-vault",
@@ -1662,6 +1664,18 @@
                       "api-reference/endpoints/app-connections/gcp/create",
                       "api-reference/endpoints/app-connections/gcp/update",
                       "api-reference/endpoints/app-connections/gcp/delete"
+                    ]
+                  },
+                  {
+                    "group": "Gitea",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/gitea/list",
+                      "api-reference/endpoints/app-connections/gitea/available",
+                      "api-reference/endpoints/app-connections/gitea/get-by-id",
+                      "api-reference/endpoints/app-connections/gitea/get-by-name",
+                      "api-reference/endpoints/app-connections/gitea/create",
+                      "api-reference/endpoints/app-connections/gitea/update",
+                      "api-reference/endpoints/app-connections/gitea/delete"
                     ]
                   },
                   {
@@ -2904,6 +2918,19 @@
                       "api-reference/endpoints/secret-syncs/gcp-secret-manager/sync-secrets",
                       "api-reference/endpoints/secret-syncs/gcp-secret-manager/import-secrets",
                       "api-reference/endpoints/secret-syncs/gcp-secret-manager/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Gitea",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/gitea/list",
+                      "api-reference/endpoints/secret-syncs/gitea/get-by-id",
+                      "api-reference/endpoints/secret-syncs/gitea/get-by-name",
+                      "api-reference/endpoints/secret-syncs/gitea/create",
+                      "api-reference/endpoints/secret-syncs/gitea/update",
+                      "api-reference/endpoints/secret-syncs/gitea/delete",
+                      "api-reference/endpoints/secret-syncs/gitea/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/gitea/remove-secrets"
                     ]
                   },
                   {

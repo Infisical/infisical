@@ -46,6 +46,7 @@ import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionFo
 import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
+import { GiteaConnectionForm } from "./GiteaConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { GitLabConnectionForm } from "./GitLabConnectionForm";
@@ -333,6 +334,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Gitea:
+        return <GiteaConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -590,6 +593,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Gitea:
+        return (
+          <GiteaConnectionForm
+            onSubmit={onSubmit}
+            appConnection={appConnection}
+            projectId={appConnection.projectId}
+          />
+        );
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

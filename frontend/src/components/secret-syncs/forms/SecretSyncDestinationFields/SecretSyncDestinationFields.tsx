@@ -24,6 +24,7 @@ import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSync
 import { ExternalInfisicalSyncFields } from "./ExternalInfisicalSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
+import { GiteaSyncFields } from "./GiteaSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { GitLabSyncFields } from "./GitLabSyncFields";
 import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
@@ -142,6 +143,8 @@ export const SecretSyncDestinationFields = () => {
       return <SnowflakeSyncFields />;
     case SecretSync.TriggerDev:
       return <TriggerDevSyncFields />;
+    case SecretSync.Gitea:
+      return <GiteaSyncFields />;
     case SecretSync.HasuraCloud:
       return <HasuraCloudSyncFields />;
     case SecretSync.Qovery:

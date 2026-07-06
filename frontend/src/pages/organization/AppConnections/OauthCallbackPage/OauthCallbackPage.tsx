@@ -9,6 +9,7 @@ import {
   consumeCsrfToken,
   getConnectionFlowReturnNavigateOptions,
   getIntegrationsListTab,
+  GITEA_CONNECTION_FORM_STORAGE_KEY,
   GITHUB_CONNECTION_FORM_STORAGE_KEY,
   readConnectionFormData
 } from "@app/helpers/appConnections";
@@ -17,6 +18,7 @@ import {
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
+  GiteaConnectionMethod,
   GitHubConnectionMethod,
   GitLabConnectionMethod,
   HerokuConnectionMethod,
@@ -36,7 +38,8 @@ const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
   [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData",
-  [AppConnection.Heroku]: "herokuConnectionFormData"
+  [AppConnection.Heroku]: "herokuConnectionFormData",
+  [AppConnection.Gitea]: GITEA_CONNECTION_FORM_STORAGE_KEY
 };
 
 export const OAuthCallbackPage = () => {
@@ -605,6 +608,59 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleGitea = useCallback(async () => {
+    const formData = getFormData(AppConnection.Gitea);
+    if (formData === null) return null;
+
+    clearState(AppConnection.Gitea);
+
+    const { connectionId, name, description, returnUrl, isUpdate, projectId, credentials } =
+      formData;
+
+    let connection: TAppConnection;
+
+    try {
+      if (isUpdate && connectionId) {
+        connection = await updateAppConnection.mutateAsync({
+          app: AppConnection.Gitea,
+          connectionId,
+          credentials: {
+            code: code as string,
+            instanceUrl: credentials.instanceUrl as string
+          }
+        });
+      } else {
+        connection = await createAppConnection.mutateAsync({
+          app: AppConnection.Gitea,
+          name,
+          description,
+          projectId,
+          method: GiteaConnectionMethod.OAuth,
+          credentials: {
+            code: code as string,
+            instanceUrl: credentials.instanceUrl as string
+          }
+        });
+      }
+
+      return {
+        connectionId,
+        returnUrl,
+        appConnectionName: formData.app,
+        projectId,
+        connection
+      };
+    } catch {
+      navigate({
+        to: returnUrl,
+        params: {
+          projectId
+        }
+      });
+      return null;
+    }
+  }, []);
+
   // Ensure that the localstorage is ready for use, to avoid the form data being malformed
   useEffect(() => {
     if (!isReady) {
@@ -641,6 +697,8 @@ export const OAuthCallbackPage = () => {
           data = await handleAzureDevOps();
         } else if (appConnection === AppConnection.Heroku) {
           data = await handleHeroku();
+        } else if (appConnection === AppConnection.Gitea) {
+          data = await handleGitea();
         }
       } catch {
         createNotification({

@@ -22,6 +22,7 @@ import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync"
 import { TExternalInfisicalSync } from "./external-infisical-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
+import { TGiteaSync } from "./gitea-sync";
 import { TGitHubSync } from "./github-sync";
 import { TGitLabSync } from "./gitlab-sync";
 import { THasuraCloudSync } from "./hasura-cloud-sync";
@@ -102,6 +103,7 @@ export type TSecretSync =
   | TTravisCISync
   | TSnowflakeSync
   | TTriggerDevSync
+  | TGiteaSync
   | THasuraCloudSync
   | TQoverySync
   | TCloud66Sync;

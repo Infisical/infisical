@@ -110,6 +110,7 @@ import {
 } from "@app/services/app-connection/f5-big-ip";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
+import { GiteaConnectionListItemSchema, SanitizedGiteaConnectionSchema } from "@app/services/app-connection/gitea";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
   GitHubRadarConnectionListItemSchema,
@@ -298,6 +299,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDatadogConnectionSchema.options,
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
+  ...SanitizedGiteaConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options
 ]);
 
@@ -374,6 +376,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
+  GiteaConnectionListItemSchema,
   QoveryConnectionListItemSchema
 ]);
 

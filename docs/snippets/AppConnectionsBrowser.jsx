@@ -584,6 +584,14 @@ export const AppConnectionsBrowser = () => {
       category: "DevOps Tools",
     },
     {
+      name: "Gitea",
+      slug: "gitea",
+      path: "/integrations/app-connections/gitea",
+      description:
+        "Learn how to connect your Gitea application to pull secrets from Infisical.",
+      category: "CI/CD",
+    },
+    {
       name: "Cloud 66",
       slug: "cloud-66",
       path: "/integrations/app-connections/cloud-66",

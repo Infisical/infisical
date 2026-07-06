@@ -51,6 +51,7 @@ import {
 } from "@app/services/secret-sync/external-infisical";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
+import { GiteaSyncListItemSchema, GiteaSyncSchema } from "@app/services/secret-sync/gitea";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
 import {
@@ -123,6 +124,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OnaSyncSchema,
   TravisCISyncSchema,
   SnowflakeSyncSchema,
+  GiteaSyncSchema,
   HasuraCloudSyncSchema,
   QoverySyncSchema,
   Cloud66SyncSchema
@@ -172,6 +174,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
   SnowflakeSyncListItemSchema,
+  GiteaSyncListItemSchema,
   HasuraCloudSyncListItemSchema,
   QoverySyncListItemSchema,
   Cloud66SyncListItemSchema

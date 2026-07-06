@@ -66,6 +66,7 @@ import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
+import { GiteaConnectionMethod } from "@app/hooks/api/appConnections/types/gitea-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
@@ -552,6 +553,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "TriggerDev.png",
     category: "INFRASTRUCTURE",
     description: "Trigger.dev access."
+  },
+  [AppConnection.Gitea]: {
+    name: "Gitea",
+    image: "Gitea.png",
+    category: "VERSION CONTROL",
+    description: "Authenticate via OAuth or an access token."
   }
 };
 
@@ -688,6 +695,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Certificate", icon: faCertificate };
     case F5BigIpConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case GiteaConnectionMethod.PersonalAccessToken:
+      return { name: "Personal Access Token", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
@@ -727,6 +736,7 @@ export const AWS_REGIONS = [
 
 export const CSRF_TOKEN_STORAGE_KEY = "latestCSRFToken";
 export const GITHUB_CONNECTION_FORM_STORAGE_KEY = "githubConnectionFormData";
+export const GITEA_CONNECTION_FORM_STORAGE_KEY = "giteaConnectionFormData";
 
 export const buildGitHubHostUrl = (host?: string | null) =>
   host && host.trim().length > 0 ? `https://${host.trim()}` : "https://github.com";

@@ -302,6 +302,11 @@ export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
 
+export type TGiteaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Gitea;
+  oauthClientId?: string;
+};
+
 export type THasuraCloudConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.HasuraCloud;
 };
@@ -378,6 +383,7 @@ export type TAppConnectionOption =
   | TF5BigIpConnectionOption
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
+  | TGiteaConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption;
 
@@ -453,6 +459,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
+  [AppConnection.Gitea]: TGiteaConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
 };

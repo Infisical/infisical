@@ -150,6 +150,7 @@ import {
 } from "./f5-big-ip";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
+import { getGiteaConnectionListItem, validateGiteaConnectionCredentials } from "./gitea";
 import {
   getGitHubConnectionListItem,
   GitHubConnectionMethod,
@@ -377,6 +378,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
+    getGiteaConnectionListItem(),
     getQoveryConnectionListItem()
   ]
     .filter((option) => {
@@ -621,6 +623,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Gitea]: validateGiteaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -870,6 +873,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
+  [AppConnection.Gitea]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported
 };
 

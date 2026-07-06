@@ -25,6 +25,7 @@ import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanApp
 import { ExternalInfisicalSyncDestinationSection } from "./ExternalInfisicalSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
+import { GiteaSyncDestinationSection } from "./GiteaSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
 import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationSection";
@@ -197,6 +198,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.TriggerDev:
       DestinationComponents = <TriggerDevSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Gitea:
+      DestinationComponents = <GiteaSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Qovery:
       DestinationComponents = <QoverySyncDestinationSection secretSync={secretSync} />;

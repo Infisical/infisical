@@ -31,6 +31,7 @@ import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TF5BigIpConnection } from "./f5-big-ip-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
+import { TGiteaConnection } from "./gitea-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { TGitLabConnection } from "./gitlab-connection";
@@ -103,6 +104,7 @@ export * from "./external-infisical-connection";
 export * from "./f5-big-ip-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
+export * from "./gitea-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
 export * from "./gitlab-connection";
@@ -217,6 +219,7 @@ export type TAppConnection =
   | TF5BigIpConnection
   | TConvexConnection
   | TTriggerDevConnection
+  | TGiteaConnection
   | THasuraCloudConnection
   | TQoveryConnection;
 

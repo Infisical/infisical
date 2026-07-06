@@ -33,6 +33,7 @@ import { registerExternalInfisicalConnectionRouter } from "./external-infisical-
 import { registerF5BigIpConnectionRouter } from "./f5-big-ip-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
+import { registerGiteaConnectionRouter } from "./gitea-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
@@ -149,6 +150,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Datadog]: registerDatadogConnectionRouter,
     [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
     [AppConnection.Convex]: registerConvexConnectionRouter,
+    [AppConnection.Gitea]: registerGiteaConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter
   };

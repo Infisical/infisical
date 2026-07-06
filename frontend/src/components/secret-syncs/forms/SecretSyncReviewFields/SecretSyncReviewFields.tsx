@@ -44,6 +44,7 @@ import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatfo
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
 import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
+import { GiteaSyncReviewFields } from "./GiteaSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
@@ -239,6 +240,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.TriggerDev:
       DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Gitea:
+      DestinationFieldsComponent = <GiteaSyncReviewFields />;
       break;
     case SecretSync.Qovery:
       DestinationFieldsComponent = <QoverySyncReviewFields />;

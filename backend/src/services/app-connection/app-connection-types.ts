@@ -203,6 +203,12 @@ import {
   TValidateGcpConnectionCredentialsSchema
 } from "./gcp";
 import {
+  TGiteaConnection,
+  TGiteaConnectionConfig,
+  TGiteaConnectionInput,
+  TValidateGiteaConnectionCredentialsSchema
+} from "./gitea";
+import {
   TGitHubConnection,
   TGitHubConnectionConfig,
   TGitHubConnectionInput,
@@ -506,6 +512,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TGiteaConnection
   | THasuraCloudConnection
   | TQoveryConnection
 );
@@ -590,6 +597,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TGiteaConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
 );
@@ -706,6 +714,7 @@ export type TAppConnectionConfig =
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
+  | TGiteaConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig;
 
@@ -781,6 +790,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
+  | TValidateGiteaConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema;
 

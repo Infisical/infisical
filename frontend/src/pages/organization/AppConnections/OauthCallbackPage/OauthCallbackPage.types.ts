@@ -10,6 +10,7 @@ import {
   THerokuConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TGiteaConnection } from "@app/hooks/api/appConnections/types/gitea-connection";
 
 type BaseFormData = {
   returnUrl: string;
@@ -63,6 +64,9 @@ export type AzureDevOpsFormData = BaseFormData &
 export type HerokuFormData = BaseFormData &
   Pick<THerokuConnection, "name" | "method" | "description">;
 
+export type GiteaFormData = BaseFormData &
+  Pick<TGiteaConnection, "name" | "method" | "description" | "credentials">;
+
 export type FormDataMap = {
   [AppConnection.GitHub]: GitHubFormData & { app: AppConnection.GitHub };
   [AppConnection.GitHubRadar]: GitHubRadarFormData & { app: AppConnection.GitHubRadar };
@@ -79,5 +83,8 @@ export type FormDataMap = {
   };
   [AppConnection.Heroku]: HerokuFormData & {
     app: AppConnection.Heroku;
+  };
+  [AppConnection.Gitea]: GiteaFormData & {
+    app: AppConnection.Gitea;
   };
 };

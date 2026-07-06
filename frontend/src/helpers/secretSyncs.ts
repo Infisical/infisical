@@ -277,6 +277,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "HOSTING",
     description: "Environment variables for Trigger.dev projects."
   },
+  [SecretSync.Gitea]: {
+    name: "Gitea",
+    image: "Gitea.png",
+    category: "VERSION CONTROL",
+    description: "Repository or organization-level secrets."
+  },
   [SecretSync.HasuraCloud]: {
     name: "Hasura Cloud",
     image: "Hasura.svg",
@@ -348,6 +354,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TravisCI]: AppConnection.TravisCI,
   [SecretSync.Snowflake]: AppConnection.Snowflake,
   [SecretSync.TriggerDev]: AppConnection.TriggerDev,
+  [SecretSync.Gitea]: AppConnection.Gitea,
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66

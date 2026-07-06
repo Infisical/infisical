@@ -21,6 +21,7 @@ import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlat
 import { ExternalInfisicalSyncDestinationCol } from "./ExternalInfisicalSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
+import { GiteaSyncDestinationCol } from "./GiteaSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { GitLabSyncDestinationCol } from "./GitLabSyncDestinationCol";
 import { HasuraCloudSyncDestinationCol } from "./HasuraCloudSyncDestinationCol";
@@ -141,6 +142,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <SnowflakeSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TriggerDev:
       return <TriggerDevSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Gitea:
+      return <GiteaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Qovery:
       return <QoverySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Cloud66:

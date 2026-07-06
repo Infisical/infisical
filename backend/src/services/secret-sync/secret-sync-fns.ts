@@ -64,6 +64,7 @@ import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from ".
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
+import { GITEA_SYNC_LIST_OPTION, GiteaSyncFns } from "./gitea";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
 import { HASURA_CLOUD_SYNC_LIST_OPTION } from "./hasura-cloud/hasura-cloud-sync-constants";
 import { HasuraCloudSyncFns } from "./hasura-cloud/hasura-cloud-sync-fns";
@@ -136,6 +137,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
   [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
   [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
+  [SecretSync.Gitea]: GITEA_SYNC_LIST_OPTION,
   [SecretSync.HasuraCloud]: HASURA_CLOUD_SYNC_LIST_OPTION,
   [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION,
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION
@@ -438,6 +440,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Gitea:
+        return GiteaSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Qovery:
         return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
@@ -606,6 +610,9 @@ export const SecretSyncFns = {
       case SecretSync.Snowflake:
         secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Gitea:
+        secretMap = await GiteaSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Qovery:
         secretMap = await QoverySyncFns.getSecrets(secretSync);
         break;
@@ -758,6 +765,8 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Gitea:
+        return GiteaSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Qovery:
         return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
