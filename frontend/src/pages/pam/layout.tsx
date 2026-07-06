@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { BreadcrumbTypes } from "@app/components/v2";
 import { projectKeys } from "@app/hooks/api";
-import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
+import { organizationKeys } from "@app/hooks/api/organization/queries";
 import { Organization } from "@app/hooks/api/organization/types";
 import { fetchPamProjectId } from "@app/hooks/api/pam/queries";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
@@ -22,14 +22,14 @@ export const Route = createFileRoute(
     let pamProjectId = org?.pamProjectId;
     if (!pamProjectId) {
       // The org has no consolidated PAM project yet (lazy creation). Hitting the PAM endpoint
-      // bootstraps it server-side; refetch the org so pamProjectId is populated for the contexts
-      // that read it (ProjectContext / ProjectPermissionContext).
+      // bootstraps it server-side and returns its id. Patch it straight into the cached org so the
+      // contexts that read it (ProjectContext / ProjectPermissionContext) pick it up. We inject the
+      // id we just got rather than refetching the org, which avoids a round-trip and the read-replica
+      // lag window where getOrgById could still re-derive pamProjectId=null right after the write.
       pamProjectId = await fetchPamProjectId();
-      const refreshedOrg = await context.queryClient.fetchQuery({
-        queryKey: organizationKeys.getOrgById(params.orgId),
-        queryFn: () => fetchOrganizationById(params.orgId)
-      });
-      pamProjectId = refreshedOrg?.pamProjectId ?? pamProjectId;
+      context.queryClient.setQueryData<Organization>(organizationKeys.getOrgById(params.orgId), (old) =>
+        old ? { ...old, pamProjectId } : old
+      );
     }
 
     if (!pamProjectId) {
