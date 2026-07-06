@@ -26,9 +26,11 @@ export const Route = createFileRoute(
       // contexts that read it (ProjectContext / ProjectPermissionContext) pick it up. We inject the
       // id we just got rather than refetching the org, which avoids a round-trip and the read-replica
       // lag window where getOrgById could still re-derive pamProjectId=null right after the write.
-      pamProjectId = await fetchPamProjectId();
-      context.queryClient.setQueryData<Organization>(organizationKeys.getOrgById(params.orgId), (old) =>
-        old ? { ...old, pamProjectId } : old
+      const resolvedPamProjectId = await fetchPamProjectId();
+      pamProjectId = resolvedPamProjectId;
+      context.queryClient.setQueryData<Organization>(
+        organizationKeys.getOrgById(params.orgId),
+        (old) => (old ? { ...old, pamProjectId: resolvedPamProjectId } : old)
       );
     }
 

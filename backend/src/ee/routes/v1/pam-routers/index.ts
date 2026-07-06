@@ -1,12 +1,12 @@
 import { registerPamAccountRouter } from "./pam-account-router";
 import { registerPamAccountTemplateRouter } from "./pam-account-template-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
-import { registerPamProjectRouter } from "./pam-project-router";
 import {
   registerPamAccountMembershipRouter,
   registerPamFolderMembershipRouter,
   registerPamProductMembershipRouter
 } from "./pam-membership-router";
+import { registerPamProjectRouter } from "./pam-project-router";
 import { registerPamResourceRoleRouter } from "./pam-resource-role-router";
 import { registerPamSessionChunkRouter } from "./pam-session-chunk-router";
 import { registerPamSessionRouter, registerPamWebAccessRouter } from "./pam-session-router";
