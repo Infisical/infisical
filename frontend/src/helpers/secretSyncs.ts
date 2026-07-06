@@ -180,6 +180,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "DATA",
     description: "Project secrets for Supabase."
   },
+  [SecretSync.Rundeck]: {
+    name: "Rundeck",
+    image: "Rundeck.svg",
+    category: "CI/CD",
+    description: "Job and project secrets for Rundeck Key Storage."
+  },
   [SecretSync.DigitalOceanAppPlatform]: {
     name: "Digital Ocean App Platform",
     image: "Digital Ocean.png",
@@ -329,6 +335,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
+  [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,

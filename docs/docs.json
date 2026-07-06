@@ -166,6 +166,7 @@
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
+                      "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
                       "integrations/app-connections/supabase",
@@ -662,6 +663,7 @@
                       "integrations/secret-syncs/qovery",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
+                      "integrations/secret-syncs/rundeck",
                       "integrations/secret-syncs/snowflake",
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
@@ -1977,6 +1979,18 @@
                     ]
                   },
                   {
+                    "group": "Rundeck",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/rundeck/list",
+                      "api-reference/endpoints/app-connections/rundeck/available",
+                      "api-reference/endpoints/app-connections/rundeck/get-by-id",
+                      "api-reference/endpoints/app-connections/rundeck/get-by-name",
+                      "api-reference/endpoints/app-connections/rundeck/create",
+                      "api-reference/endpoints/app-connections/rundeck/update",
+                      "api-reference/endpoints/app-connections/rundeck/delete"
+                    ]
+                  },
+                  {
                     "group": "Salesforce",
                     "pages": [
                       "api-reference/endpoints/app-connections/salesforce/list",
@@ -3107,6 +3121,19 @@
                       "api-reference/endpoints/secret-syncs/render/sync-secrets",
                       "api-reference/endpoints/secret-syncs/render/import-secrets",
                       "api-reference/endpoints/secret-syncs/render/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Rundeck",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/rundeck/list",
+                      "api-reference/endpoints/secret-syncs/rundeck/get-by-id",
+                      "api-reference/endpoints/secret-syncs/rundeck/get-by-name",
+                      "api-reference/endpoints/secret-syncs/rundeck/create",
+                      "api-reference/endpoints/secret-syncs/rundeck/update",
+                      "api-reference/endpoints/secret-syncs/rundeck/delete",
+                      "api-reference/endpoints/secret-syncs/rundeck/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/rundeck/remove-secrets"
                     ]
                   },
                   {

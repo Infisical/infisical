@@ -187,6 +187,12 @@ import {
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
 import {
+  TRundeckSync,
+  TRundeckSyncInput,
+  TRundeckSyncListItem,
+  TRundeckSyncWithCredentials
+} from "./rundeck/rundeck-sync-types";
+import {
   TSnowflakeSync,
   TSnowflakeSyncInput,
   TSnowflakeSyncListItem,
@@ -252,6 +258,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -298,6 +305,7 @@ export type TSecretSyncWithCredentials =
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
+  | TRundeckSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -346,6 +354,7 @@ export type TSecretSyncInput =
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
+  | TRundeckSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -395,6 +404,7 @@ export type TSecretSyncListItem =
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
+  | TRundeckSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem

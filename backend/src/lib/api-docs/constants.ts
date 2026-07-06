@@ -2891,6 +2891,10 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    RUNDECK: {
+      instanceUrl: "The Rundeck instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Rundeck."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },

@@ -60,6 +60,7 @@ import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TRundeckConnection } from "./rundeck-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
@@ -132,6 +133,7 @@ export * from "./qovery-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./rundeck-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
@@ -220,6 +222,7 @@ export type TAppConnection =
   | TF5BigIpConnection
   | TConvexConnection
   | TTriggerDevConnection
+  | TRundeckConnection
   | THasuraCloudConnection
   | TQoveryConnection;
 
