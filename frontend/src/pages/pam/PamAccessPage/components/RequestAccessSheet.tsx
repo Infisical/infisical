@@ -37,11 +37,11 @@ import {
   TAccessiblePamAccount,
   TPamApprovalWorkflowStep,
   useCreatePamAccessRequest,
-  useGetPamAccountApprovers,
-  usePamAccountTypeMap
+  useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
 import { PamDetailSheet } from "../../components/PamDetailSheet";
+import { useAccountSheetDetails } from "./accountSheetDetails";
 
 // Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
 // without "No expiry" since every approved access must be time-boxed.
@@ -137,12 +137,9 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
 };
 
 export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => {
-  const { map } = usePamAccountTypeMap();
+  const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
   const isPending = account?.accessStatus === PamAccessStatus.Pending;
-  const typeName = account
-    ? (map[account.accountType as PamAccountType]?.name ?? account.accountType)
-    : undefined;
 
   const {
     control,
@@ -184,9 +181,9 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       isLoading={!account}
       accountType={account?.accountType as PamAccountType}
       title={account?.name}
-      subtitle={account?.folderName}
+      subtitle={subtitle}
       typeBadge={typeName}
-      metadata={[{ label: "Description", value: account?.description || "—" }]}
+      metadata={metadata}
       isDirty={isDirty && !isPending}
     >
       <Tabs defaultValue="request" className="flex h-full flex-col">
