@@ -1281,9 +1281,40 @@ export const pamAccessRequestServiceFactory = ({
 
     if (!account.folderId) return { steps: [] };
     const policy = await findFolderPolicy(account.folderId);
-    if (!policy) return { steps: [] };
+    const livePolicySteps = policy ? await approvalPolicyDAL.findStepsByPolicyId(policy.id) : [];
 
-    const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
+    // A pending request is reviewed against its snapshotted approvers AND the live policy, so its
+    // workflow shows the intersection; the compose state shows the live policy a new request
+    // would snapshot.
+    let policySteps = livePolicySteps.map((step) => ({
+      requiredApprovals: step.requiredApprovals,
+      approvers: step.approvers
+    }));
+
+    const pendingRequests = await approvalRequestDAL.find({
+      requesterId: ctx.actorId,
+      type: ApprovalPolicyType.PamAccess,
+      status: ApprovalRequestStatus.Pending,
+      projectId
+    });
+    const pendingForAccount = pendingRequests.find((r) => {
+      const data = r.requestData as { version: number; requestData: TPamAccessRequestData } | null;
+      return data?.requestData?.accountId === account.id;
+    });
+
+    if (pendingForAccount) {
+      const liveApproverKeys = new Set(
+        livePolicySteps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))
+      );
+      const requestSteps = await approvalRequestDAL.findStepsByRequestId(pendingForAccount.id);
+      policySteps = requestSteps.map((step) => ({
+        requiredApprovals: step.requiredApprovals,
+        approvers: step.approvers.filter((a) => liveApproverKeys.has(`${a.type}:${a.id}`))
+      }));
+    }
+
+    if (policySteps.length === 0) return { steps: [] };
+
     const approverEntries = policySteps.flatMap((s) => s.approvers);
     const userIds = approverEntries.filter((a) => a.type === ApproverType.User).map((a) => a.id);
     const groupIds = approverEntries.filter((a) => a.type === ApproverType.Group).map((a) => a.id);
