@@ -605,6 +605,13 @@ export const AppConnectionsBrowser = () => {
       description: "Learn how to connect Hasura Cloud to pull secrets from Infisical.",
       category: "Platform",
     },
+    {
+      name: "LiteLLM",
+      slug: "litellm",
+      path: "/integrations/app-connections/litellm",
+      description: "Learn how to connect LiteLLM to pull secrets from Infisical.",
+      category: "AI & LLM",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

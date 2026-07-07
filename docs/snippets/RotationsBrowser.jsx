@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS", "AI & LLM"];
 
   const rotations = [
     {
@@ -186,7 +186,15 @@ export const RotationsBrowser = () => {
         "Learn how to automatically rotate Datadog application keys.",
       category: "Monitoring",
       rotationType: "Dual-Phase",
-    }
+    },
+    {
+      name: "LiteLLM API Key",
+      slug: "litellm-api-key",
+      path: "/documentation/platform/secret-rotation/litellm-api-key",
+      description: "Learn how to automatically rotate LiteLLM API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
