@@ -10,8 +10,8 @@ Credential Rotation automatically changes the password of a PAM account on a fix
 
 Rotation is configured in two places that work together:
 
-- **Account template**: defines *whether* accounts rotate, *how often*, and the *format* of the generated password. Every account created from the template inherits these settings.
-- **Account**: defines *which privileged account* performs the rotation (the **rotation account**).
+- **[Account template](/documentation/platform/pam/templates/overview)**: defines *whether* accounts rotate, *how often*, and the *format* of the generated password. Every account created from the template inherits these settings.
+- **[Account](/documentation/platform/pam/accounts/overview)**: defines *which privileged account* performs the rotation (the **rotation account**).
 
 An account rotates only once both parts are in place: its template has rotation enabled and the account has a rotation account set.
 
@@ -24,7 +24,7 @@ The rotation account is the account whose credentials are used to connect to the
 - **None**: no rotation account is set. The account will not rotate until one is chosen, even if its template has rotation enabled.
 
 <Note>
-  The rotation account must belong to the **same resource** as the account being rotated, because the password change runs against that resource using the rotation account's connection.
+  A delegated rotation account must connect to the **same host and port** as the account being rotated, because the password change runs over the rotation account's own connection. In practice, both accounts point at the same database server, though they can be different users on it (for example, a privileged administrator rotating a less privileged account).
 </Note>
 
 ## How it Works
@@ -36,22 +36,20 @@ When a rotation runs, Infisical:
 3. Verifies the new password by opening a fresh connection with it.
 4. Promotes the new password to the live credential once verification succeeds. If any step fails, the existing credential is left untouched and the account's rotation status records the error.
 
-Rotations run through the same [Gateway](/documentation/platform/gateways/overview) path used for normal account access, so no additional network exposure is required.
-
 ## Configuring a Template
 
-Open your PAM project, go to **Account Templates**, and open the template used by the accounts you want to rotate. In the **Credential settings** section:
+Template-level rotation settings are managed by a [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership). Go to **Privileged Access Management → Account Templates** and open the template used by the accounts you want to rotate. In the **Credential settings** section:
 
 <Steps>
   <Step title="Enable rotation">
-    Turn on rotation and set the **frequency** (for example, every 30 days). This frequency applies to all accounts created from the template.
+    Turn on **Automatically rotate credentials** and set the **frequency**: every 1 hour, 12 hours, 24 hours, 7 days, or 30 days. This frequency applies to all accounts created from the template.
+
+    Leave rotation off to make the template **on-demand only**. Accounts still rotate when triggered manually, but never on a schedule.
   </Step>
   <Step title="Set the password format">
     Choose the length and the character classes (uppercase, lowercase, digits, symbols) for generated passwords. Pick a format that satisfies the target system's password policy.
 
-    <Note>
-      The allowed symbols cannot include `'`, `"`, `` ` ``, `\`, `;`, or `?`, because those characters would break the password-change statement run against the target.
-    </Note>
+    The allowed symbols cannot include `'`, `"`, `` ` ``, `\`, `;`, or `?`, because those characters would break the password-change statement run against the target.
   </Step>
 </Steps>
 
@@ -61,7 +59,7 @@ Open your PAM project, go to **Account Templates**, and open the template used b
 
 ## Configuring an Account
 
-Open an account that belongs to a rotation-enabled template and go to the **Rotation** tab.
+Setting an account's rotation account and running manual rotations require an [Admin](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships) role on the account's folder or on the account itself. Open an account that belongs to a rotation-enabled template and go to the **Rotation** tab.
 
 The tab shows the frequency and password format inherited from the template. To finish setup, choose a **rotation account** from the list of eligible accounts on the same resource. To have the account rotate its own password, select the account itself from that list (shown as **this account**). Leaving the rotation account as **None** means rotation stays unconfigured and the account will not rotate.
 
@@ -86,7 +84,3 @@ Each resource type applies the password change differently and has its own requi
     Rotates a SQL Server login's password with `ALTER LOGIN`.
   </Card>
 </CardGroup>
-
-## Permissions
-
-Managing rotation on an account (setting the rotation account or triggering a manual rotation) requires the **Manage Rotation** permission on that account. Editing a template's rotation settings requires permission to edit the account template.
