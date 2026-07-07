@@ -269,7 +269,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardTitle>
           <CardDescription>
             Users and groups who can approve access requests for accounts in this folder. Only
-            folder members are eligible; add someone under the Permissions tab first.
+            folder members are eligible. Add someone under the Permissions tab first.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
