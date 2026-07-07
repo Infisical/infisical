@@ -28,7 +28,7 @@ import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./V
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
-import { ViewOpenAIAdminApiKeyRotationGeneratedCredentials } from "./ViewOpenAIAdminApiKeyRotationGeneratedCredentials";
+import { ViewOpenAIServiceAccountRotationGeneratedCredentials } from "./ViewOpenAIServiceAccountRotationGeneratedCredentials";
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewSalesforceOauthCredentialsRotationGeneratedCredentials } from "./ViewSalesforceOauthCredentialsRotationGeneratedCredentials";
@@ -162,9 +162,9 @@ const Content = ({ secretRotation }: ContentProps) => {
         />
       );
       break;
-    case SecretRotation.OpenAIAdminApiKey:
+    case SecretRotation.OpenAIServiceAccount:
       Component = (
-        <ViewOpenAIAdminApiKeyRotationGeneratedCredentials
+        <ViewOpenAIServiceAccountRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

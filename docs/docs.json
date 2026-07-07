@@ -499,7 +499,7 @@
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/hp-ilo-local-account",
                       "documentation/platform/secret-rotation/okta-client-secret",
-                      "documentation/platform/secret-rotation/openai-admin-api-key",
+                      "documentation/platform/secret-rotation/openai-service-account",
                       "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
@@ -2523,16 +2523,16 @@
                     ]
                   },
                   {
-                    "group": "OpenAI Admin API Key",
+                    "group": "OpenAI Service Account",
                     "pages": [
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/create",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/delete",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/get-by-id",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/get-by-name",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/list",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/openai-admin-api-key/update"
+                      "api-reference/endpoints/secret-rotations/openai-service-account/create",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/delete",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/list",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/update"
                     ]
                   },
                   {

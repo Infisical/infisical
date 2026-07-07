@@ -14,7 +14,7 @@ import { HpIloRotationParametersFields } from "./HpIloRotationParametersFields";
 import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
 import { MongoRotationParametersFields } from "./MongoRotationParametersFields";
 import { OktaClientSecretRotationParametersFields } from "./OktaClientSecretRotationParametersFields";
-import { OpenAIAdminApiKeyRotationParametersFields } from "./OpenAIAdminApiKeyRotationParametersFields";
+import { OpenAIServiceAccountRotationParametersFields } from "./OpenAIServiceAccountRotationParametersFields";
 import { OpenRouterApiKeyRotationParametersFields } from "./OpenRouterApiKeyRotationParametersFields";
 import { RedisCredentialsRotationParametersFields } from "./RedisCredentialsRotationParametersFields";
 import { SalesforceOauthCredentialsRotationParametersFields } from "./SalesforceOauthCredentialsRotationParametersFields";
@@ -41,7 +41,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationParametersFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationParametersFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields,
-  [SecretRotation.OpenAIAdminApiKey]: OpenAIAdminApiKeyRotationParametersFields,
+  [SecretRotation.OpenAIServiceAccount]: OpenAIServiceAccountRotationParametersFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationParametersFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationParametersFields,
   [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationParametersFields,

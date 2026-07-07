@@ -2923,7 +2923,7 @@ export const AppConnections = {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     },
     OPENAI: {
-      apiKey: "The OpenAI Admin API key used to manage API keys."
+      apiKey: "The OpenAI Admin API key used to manage project service accounts."
     },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
@@ -3457,8 +3457,9 @@ export const SecretRotations = {
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     },
-    OPENAI_ADMIN_API_KEY: {
-      name: "The name for the generated OpenAI admin API key."
+    OPENAI_SERVICE_ACCOUNT: {
+      projectId: "The ID of the OpenAI project to create service accounts in.",
+      name: "The name for the generated OpenAI service account."
     },
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
@@ -3534,8 +3535,8 @@ export const SecretRotations = {
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     },
-    OPENAI_ADMIN_API_KEY: {
-      apiKey: "The name of the secret that the rotated OpenAI admin API key will be mapped to."
+    OPENAI_SERVICE_ACCOUNT: {
+      apiKey: "The name of the secret that the rotated OpenAI service account API key will be mapped to."
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."

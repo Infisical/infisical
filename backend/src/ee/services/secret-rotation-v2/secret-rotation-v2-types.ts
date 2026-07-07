@@ -105,12 +105,12 @@ import {
   TOpenRouterApiKeyRotationWithConnection
 } from "./open-router-api-key";
 import {
-  TOpenAIAdminApiKeyRotation,
-  TOpenAIAdminApiKeyRotationGeneratedCredentials,
-  TOpenAIAdminApiKeyRotationInput,
-  TOpenAIAdminApiKeyRotationListItem,
-  TOpenAIAdminApiKeyRotationWithConnection
-} from "./openai-admin-api-key";
+  TOpenAIServiceAccountRotation,
+  TOpenAIServiceAccountRotationGeneratedCredentials,
+  TOpenAIServiceAccountRotationInput,
+  TOpenAIServiceAccountRotationListItem,
+  TOpenAIServiceAccountRotationWithConnection
+} from "./openai-service-account";
 import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
@@ -178,7 +178,7 @@ export type TSecretRotationV2 =
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
-  | TOpenAIAdminApiKeyRotation
+  | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
@@ -202,7 +202,7 @@ export type TSecretRotationV2WithConnection =
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
-  | TOpenAIAdminApiKeyRotationWithConnection
+  | TOpenAIServiceAccountRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
   | TSalesforceOauthCredentialsRotationWithConnection
@@ -222,7 +222,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
-  | TOpenAIAdminApiKeyRotationGeneratedCredentials
+  | TOpenAIServiceAccountRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
   | TSalesforceOauthCredentialsRotationGeneratedCredentials
@@ -246,7 +246,7 @@ export type TSecretRotationV2Input =
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
-  | TOpenAIAdminApiKeyRotationInput
+  | TOpenAIServiceAccountRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
   | TSalesforceOauthCredentialsRotationInput
@@ -270,7 +270,7 @@ export type TSecretRotationV2ListItem =
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
-  | TOpenAIAdminApiKeyRotationListItem
+  | TOpenAIServiceAccountRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
   | TSalesforceOauthCredentialsRotationListItem

@@ -1,13 +1,13 @@
 import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
-import { TOpenAIAdminApiKeyRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/openai-admin-api-key-rotation";
+import { TOpenAIServiceAccountRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/openai-service-account-rotation";
 
 import { ViewRotationGeneratedCredentialsDisplay } from "./shared";
 
 type Props = {
-  generatedCredentialsResponse: TOpenAIAdminApiKeyRotationGeneratedCredentialsResponse;
+  generatedCredentialsResponse: TOpenAIServiceAccountRotationGeneratedCredentialsResponse;
 };
 
-export const ViewOpenAIAdminApiKeyRotationGeneratedCredentials = ({
+export const ViewOpenAIServiceAccountRotationGeneratedCredentials = ({
   generatedCredentialsResponse: { generatedCredentials, activeIndex }
 }: Props) => {
   const inactiveIndex = activeIndex === 0 ? 1 : 0;

@@ -6,14 +6,14 @@ import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secret
 
 import { SecretsMappingTable } from "./shared";
 
-export const OpenAIAdminApiKeyRotationSecretsMappingFields = () => {
+export const OpenAIServiceAccountRotationSecretsMappingFields = () => {
   const { control } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.OpenAIAdminApiKey;
+      type: SecretRotation.OpenAIServiceAccount;
     }
   >();
 
-  const { rotationOption } = useSecretRotationV2Option(SecretRotation.OpenAIAdminApiKey);
+  const { rotationOption } = useSecretRotationV2Option(SecretRotation.OpenAIServiceAccount);
 
   const items = [
     {

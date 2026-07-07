@@ -6,10 +6,10 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
 
-export const OpenAIAdminApiKeyRotationReviewFields = () => {
+export const OpenAIServiceAccountRotationReviewFields = () => {
   const { watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.OpenAIAdminApiKey;
+      type: SecretRotation.OpenAIServiceAccount;
     }
   >();
 
@@ -18,7 +18,8 @@ export const OpenAIAdminApiKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Key Name">{parameters.name}</GenericFieldLabel>
+        <GenericFieldLabel label="Project ID">{parameters.projectId}</GenericFieldLabel>
+        <GenericFieldLabel label="Service Account Name">{parameters.name}</GenericFieldLabel>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>

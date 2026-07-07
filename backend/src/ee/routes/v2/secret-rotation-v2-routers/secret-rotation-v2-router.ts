@@ -15,7 +15,7 @@ import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
-import { OpenAIAdminApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/openai-admin-api-key";
+import { OpenAIServiceAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/openai-service-account";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
@@ -46,7 +46,7 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
-  OpenAIAdminApiKeyRotationListItemSchema,
+  OpenAIServiceAccountRotationListItemSchema,
   HpIloRotationListItemSchema,
   SupabaseApiKeyRotationListItemSchema,
   SalesforceOauthCredentialsRotationListItemSchema,

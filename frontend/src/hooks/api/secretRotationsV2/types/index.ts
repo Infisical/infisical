@@ -76,10 +76,10 @@ import {
   TOpenRouterApiKeyRotationOption
 } from "./open-router-api-key-rotation";
 import {
-  TOpenAIAdminApiKeyRotation,
-  TOpenAIAdminApiKeyRotationGeneratedCredentialsResponse,
-  TOpenAIAdminApiKeyRotationOption
-} from "./openai-admin-api-key-rotation";
+  TOpenAIServiceAccountRotation,
+  TOpenAIServiceAccountRotationGeneratedCredentialsResponse,
+  TOpenAIServiceAccountRotationOption
+} from "./openai-service-account-rotation";
 import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationGeneratedCredentialsResponse
@@ -127,7 +127,7 @@ export type TSecretRotationV2 = (
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
-  | TOpenAIAdminApiKeyRotation
+  | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
@@ -151,7 +151,7 @@ export type TSecretRotationV2Option =
   | TDbtServiceTokenRotationOption
   | TWindowsLocalAccountRotationOption
   | TOpenRouterApiKeyRotationOption
-  | TOpenAIAdminApiKeyRotationOption
+  | TOpenAIServiceAccountRotationOption
   | THpIloRotationOption
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
@@ -179,7 +179,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TDbtServiceTokenRotationGeneratedCredentialsResponse
   | TWindowsLocalAccountRotationGeneratedCredentialsResponse
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse
-  | TOpenAIAdminApiKeyRotationGeneratedCredentialsResponse
+  | TOpenAIServiceAccountRotationGeneratedCredentialsResponse
   | THpIloRotationGeneratedCredentialsResponse
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
@@ -255,7 +255,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationOption;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
-  [SecretRotation.OpenAIAdminApiKey]: TOpenAIAdminApiKeyRotationOption;
+  [SecretRotation.OpenAIServiceAccount]: TOpenAIServiceAccountRotationOption;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationOption;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
@@ -280,7 +280,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationGeneratedCredentialsResponse;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
-  [SecretRotation.OpenAIAdminApiKey]: TOpenAIAdminApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.OpenAIServiceAccount]: TOpenAIServiceAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationGeneratedCredentialsResponse;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;

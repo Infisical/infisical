@@ -20,3 +20,19 @@ export type TValidateOpenAIConnectionCredentialsSchema = typeof ValidateOpenAICo
 export type TOpenAIConnectionConfig = DiscriminativePick<TOpenAIConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export type TOpenAIProject = {
+  id: string;
+  name: string;
+  status: string;
+  created_at: number;
+  archived_at: number | null;
+};
+
+export type TOpenAIListProjectsResponse = {
+  object: string;
+  data: TOpenAIProject[];
+  first_id: string;
+  last_id: string;
+  has_more: boolean;
+};
