@@ -144,7 +144,7 @@ export const AwsIamAccessContent = ({ account }: Props) => {
 
   if (step === "reason" && (policy.requireReason || !hasRequestedRef.current)) {
     return (
-      <WebAccessStatusCard icon={ShieldAlert} title="Before You Continue">
+      <WebAccessStatusCard icon={ShieldAlert} title="Before you continue">
         <div className="flex flex-col gap-3">
           <div>
             <Label className="mb-1 text-label">

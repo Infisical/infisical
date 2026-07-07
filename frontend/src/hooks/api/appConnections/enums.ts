@@ -50,6 +50,7 @@ export enum AppConnection {
   Dbt = "dbt",
   SMB = "smb",
   OpenRouter = "open-router",
+  OpenAI = "openai",
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
@@ -74,5 +75,6 @@ export enum AppConnection {
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
-  LiteLLM = "litellm"
+  LiteLLM = "litellm",
+  Fireworks = "fireworks"
 }

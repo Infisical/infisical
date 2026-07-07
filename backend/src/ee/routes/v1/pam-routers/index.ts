@@ -1,5 +1,7 @@
+import { registerPamAccessRequestRouter } from "./pam-access-request-router";
 import { registerPamAccountRouter } from "./pam-account-router";
 import { registerPamAccountTemplateRouter } from "./pam-account-template-router";
+import { registerPamApprovalConfigurationRouter } from "./pam-approval-configuration-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import {
   registerPamAccountMembershipRouter,
@@ -14,13 +16,30 @@ import { registerPamSessionRouter, registerPamWebAccessRouter } from "./pam-sess
 export const registerPamRouters = async (server: FastifyZodProvider) => {
   await server.register(registerPamProjectRouter, { prefix: "/project" });
   await server.register(registerPamAccountTemplateRouter, { prefix: "/account-templates" });
-  await server.register(registerPamFolderRouter, { prefix: "/folders" });
-  await server.register(registerPamFolderMembershipRouter, { prefix: "/folders" });
-  await server.register(registerPamAccountRouter, { prefix: "/accounts" });
-  await server.register(registerPamAccountMembershipRouter, { prefix: "/accounts" });
-  await server.register(registerPamWebAccessRouter, { prefix: "/accounts" });
+  await server.register(
+    async (folderServer) => {
+      await folderServer.register(registerPamFolderRouter);
+      await folderServer.register(registerPamFolderMembershipRouter);
+      await folderServer.register(registerPamApprovalConfigurationRouter);
+    },
+    { prefix: "/folders" }
+  );
+  await server.register(
+    async (accountServer) => {
+      await accountServer.register(registerPamAccountRouter);
+      await accountServer.register(registerPamAccountMembershipRouter);
+      await accountServer.register(registerPamWebAccessRouter);
+    },
+    { prefix: "/accounts" }
+  );
   await server.register(registerPamProductMembershipRouter, { prefix: "/memberships" });
   await server.register(registerPamResourceRoleRouter, { prefix: "/roles" });
-  await server.register(registerPamSessionRouter, { prefix: "/sessions" });
-  await server.register(registerPamSessionChunkRouter, { prefix: "/sessions" });
+  await server.register(
+    async (sessionServer) => {
+      await sessionServer.register(registerPamSessionRouter);
+      await sessionServer.register(registerPamSessionChunkRouter);
+    },
+    { prefix: "/sessions" }
+  );
+  await server.register(registerPamAccessRequestRouter, { prefix: "/access-requests" });
 };

@@ -8,6 +8,7 @@ import { ConvexAccessKeyRotationListItemSchema } from "@app/ee/services/secret-r
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
 import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
+import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { LiteLLMApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
@@ -16,6 +17,7 @@ import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
+import { OpenAIServiceAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/openai-service-account";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
@@ -47,11 +49,13 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
   LiteLLMApiKeyRotationListItemSchema,
+  OpenAIServiceAccountRotationListItemSchema,
   HpIloRotationListItemSchema,
   SupabaseApiKeyRotationListItemSchema,
   SalesforceOauthCredentialsRotationListItemSchema,
   DatadogApplicationKeySecretRotationListItemSchema,
-  ConvexAccessKeyRotationListItemSchema
+  ConvexAccessKeyRotationListItemSchema,
+  FireworksApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

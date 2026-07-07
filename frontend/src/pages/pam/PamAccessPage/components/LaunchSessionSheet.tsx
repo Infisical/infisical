@@ -1,6 +1,6 @@
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Copy, FolderOpen, Globe, Rocket, Terminal } from "lucide-react";
+import { Copy, Globe, Rocket, Terminal } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -24,16 +24,11 @@ import {
   SelectValue
 } from "@app/components/v3/generic/Select";
 import { useOrganization } from "@app/context";
-import {
-  PamAccountType,
-  TAccessiblePamAccount,
-  TPamFieldDescriptor,
-  useGetPamAccountById,
-  usePamAccountTypeMap
-} from "@app/hooks/api/pam";
+import { TAccessiblePamAccount } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { PamDetailSheet } from "../../components/PamDetailSheet";
+import { useAccountSheetDetails } from "./accountSheetDetails";
 
 type Props = {
   account: TAccessiblePamAccount | null;
@@ -42,13 +37,6 @@ type Props = {
 };
 
 type LaunchMethod = "browser" | "cli";
-
-const formatFieldValue = (value: unknown): ReactNode => {
-  if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
-  const str = String(value);
-  if (str.length > 48) return "Provided";
-  return <span className="font-mono">{str}</span>;
-};
 
 const LaunchTab = ({
   account,
@@ -190,41 +178,11 @@ const LaunchTab = ({
 };
 
 export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
-  const { map } = usePamAccountTypeMap();
-  const { data: fullAccount } = useGetPamAccountById(isOpen ? account?.id : undefined);
+  const { typeMeta, typeName, subtitle, metadata, hosts } = useAccountSheetDetails(account, isOpen);
 
   if (!account) return null;
 
-  const typeMeta = map[account.accountType as PamAccountType];
-  const typeName = typeMeta?.name ?? account.accountType;
   const supportsWebAccess = Boolean(typeMeta?.supportsWebAccess);
-
-  const subtitle = account.folderName ? (
-    <span className="flex items-center gap-1.5">
-      <FolderOpen className="size-3.5" />
-      {account.folderName}
-    </span>
-  ) : undefined;
-
-  const conn = (fullAccount?.connectionDetails ?? {}) as Record<string, unknown>;
-  const credentials = (fullAccount?.credentials ?? {}) as Record<string, unknown>;
-
-  const hosts =
-    account.accountType === PamAccountType.WindowsAd && Array.isArray(conn.hosts)
-      ? (conn.hosts as unknown[]).filter((host): host is string => typeof host === "string")
-      : [];
-
-  const fieldRows = (fields: TPamFieldDescriptor[] | undefined, source: Record<string, unknown>) =>
-    (fields ?? [])
-      .filter((f) => !f.secret)
-      .filter((f) => source[f.key] !== undefined && source[f.key] !== null && source[f.key] !== "")
-      .map((f) => ({ label: f.label, value: formatFieldValue(source[f.key]) }));
-
-  const metadata = [
-    ...(account.description ? [{ label: "Description", value: account.description }] : []),
-    ...fieldRows(typeMeta?.connectionFields, conn),
-    ...fieldRows(typeMeta?.credentialFields, credentials)
-  ];
 
   return (
     <PamDetailSheet

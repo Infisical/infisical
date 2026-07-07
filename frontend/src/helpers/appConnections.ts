@@ -67,6 +67,7 @@ import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
+import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/fireworks-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
@@ -77,6 +78,7 @@ import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/n
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
+import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
@@ -422,6 +424,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "AI",
     description: "Route requests across LLM providers."
   },
+  [AppConnection.OpenAI]: {
+    name: "OpenAI",
+    image: "OpenAI.png",
+    category: "AI",
+    description: "Manage OpenAI API access."
+  },
   [AppConnection.CircleCI]: {
     name: "CircleCI",
     image: "CircleCI.png",
@@ -481,6 +489,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "LiteLLM.png",
     category: "AI",
     description: "Manage LiteLLM API access."
+  },
+  [AppConnection.Fireworks]: {
+    name: "Fireworks",
+    image: "Fireworks.png",
+    category: "AI",
+    description: "Manage Fireworks API access."
   },
   [AppConnection.HasuraCloud]: {
     name: "Hasura Cloud",
@@ -673,8 +687,10 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case OpenAIConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
     case LiteLLMConnectionMethod.ApiKey:
+    case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:

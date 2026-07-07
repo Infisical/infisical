@@ -31,15 +31,10 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProject,
-  useUser
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useDeleteUserFromWorkspace, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useGetWorkspaceUsers } from "@app/hooks/api";
+import { useRemovePamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -48,7 +43,6 @@ import { MemberRoleModal } from "./MemberRoleModal";
 
 export const MembersTab = () => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const { user } = useUser();
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<TWorkspaceUser | null>(null);
@@ -56,7 +50,7 @@ export const MembersTab = () => {
   const [memberToRemove, setMemberToRemove] = useState<TWorkspaceUser | null>(null);
 
   const { data: members = [], isPending } = useGetWorkspaceUsers(currentProject.id);
-  const deleteMember = useDeleteUserFromWorkspace();
+  const deleteMember = useRemovePamProductUserMember();
 
   const filteredMembers = useMemo(
     () =>
@@ -74,8 +68,7 @@ export const MembersTab = () => {
     if (!memberToRemove) return;
     await deleteMember.mutateAsync({
       projectId: currentProject.id,
-      usernames: [memberToRemove.user.username],
-      orgId: currentOrg.id
+      userId: memberToRemove.user.id
     });
     createNotification({ text: "Member removed", type: "success" });
     setMemberToRemove(null);

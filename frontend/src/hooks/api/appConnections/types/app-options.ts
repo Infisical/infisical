@@ -228,6 +228,10 @@ export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OpenRouter;
 };
 
+export type TOpenAIConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OpenAI;
+};
+
 export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
 };
@@ -261,6 +265,9 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
 
 export type TLiteLLMConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.LiteLLM;
+};
+export type TFireworksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Fireworks;
 };
 
 export type TOvhConnectionOption = TAppConnectionOptionBase & {
@@ -358,6 +365,7 @@ export type TAppConnectionOption =
   | TNorthflankConnectionOption
   | TOktaConnectionOption
   | TOpenRouterConnectionOption
+  | TOpenAIConnectionOption
   | TCircleCISyncConnectionOption
   | TCloud66ConnectionOption
   | TAzureAdCsConnectionOption
@@ -394,7 +402,8 @@ export type TAppConnectionOption =
   | TRundeckConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
-  | TLiteLLMConnectionOption;
+  | TLiteLLMConnectionOption
+  | TFireworksConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -437,6 +446,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.OpenRouter]: TOpenRouterConnectionOption;
+  [AppConnection.OpenAI]: TOpenAIConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.ADCS]: TAdcsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
@@ -473,4 +483,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
+  [AppConnection.Fireworks]: TFireworksConnectionOption;
 };

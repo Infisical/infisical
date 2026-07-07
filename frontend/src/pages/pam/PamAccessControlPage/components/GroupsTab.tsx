@@ -34,8 +34,9 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useDeleteGroupFromWorkspace, useListWorkspaceGroups } from "@app/hooks/api";
+import { useListWorkspaceGroups } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
+import { useRemovePamProductGroupMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddGroupModal } from "./AddGroupModal";
@@ -49,7 +50,7 @@ export const GroupsTab = () => {
   const [groupToRemove, setGroupToRemove] = useState<TGroupMembership | null>(null);
 
   const { data: groups = [], isPending } = useListWorkspaceGroups(currentProject.id);
-  const deleteGroup = useDeleteGroupFromWorkspace();
+  const deleteGroup = useRemovePamProductGroupMember();
 
   const filteredGroups = useMemo(
     () =>

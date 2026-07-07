@@ -45,6 +45,7 @@ import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
+import { FireworksConnectionForm } from "./FireworksConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -68,6 +69,7 @@ import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OnaConnectionForm } from "./OnaConnectionForm";
+import { OpenAIConnectionForm } from "./OpenAIConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
@@ -298,10 +300,14 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.OpenAI:
+        return <OpenAIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} />;
       case AppConnection.LiteLLM:
         return <LiteLLMConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Fireworks:
+        return <FireworksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
@@ -559,10 +565,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.OpenAI:
+        return <OpenAIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.LiteLLM:
         return <LiteLLMConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Fireworks:
+        return <FireworksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:

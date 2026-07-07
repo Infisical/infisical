@@ -7,6 +7,7 @@ import { registerConvexAccessKeyRotationRouter } from "./convex-access-key-rotat
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
 import { registerDatadogApplicationKeySecretRotationRouter } from "./datadog-application-key-secret-rotation-router";
 import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
+import { registerFireworksApiKeyRotationRouter } from "./fireworks-api-key-rotation-router";
 import { registerHpIloRotationRouter } from "./hp-ilo-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
 import { registerLiteLLMApiKeyRotationRouter } from "./litellm-api-key-rotation-router";
@@ -15,6 +16,7 @@ import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rota
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
 import { registerOktaClientSecretRotationRouter } from "./okta-client-secret-rotation-router";
 import { registerOpenRouterApiKeyRotationRouter } from "./open-router-api-key-rotation-router";
+import { registerOpenAIServiceAccountRotationRouter } from "./openai-service-account-rotation-router";
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
@@ -46,9 +48,11 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter,
   [SecretRotation.LiteLLMApiKey]: registerLiteLLMApiKeyRotationRouter,
+  [SecretRotation.OpenAIServiceAccount]: registerOpenAIServiceAccountRotationRouter,
   [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter,
   [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter,
   [SecretRotation.SalesforceOauthCredentials]: registerSalesforceOauthCredentialsRotationRouter,
   [SecretRotation.DatadogApplicationKeySecret]: registerDatadogApplicationKeySecretRotationRouter,
-  [SecretRotation.ConvexAccessKey]: registerConvexAccessKeyRotationRouter
+  [SecretRotation.ConvexAccessKey]: registerConvexAccessKeyRotationRouter,
+  [SecretRotation.FireworksApiKey]: registerFireworksApiKeyRotationRouter
 };
