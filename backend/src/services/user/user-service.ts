@@ -17,7 +17,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { TMfaRecoveryCodeDALFactory } from "../mfa-recovery-code/mfa-recovery-code-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TWebAuthnCredentialDALFactory } from "../webauthn/webauthn-credential-dal";
@@ -58,7 +58,7 @@ type TUserServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
-  mfaRecoveryCodeDAL: Pick<TMfaRecoveryCodeDALFactory, "findOne">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -74,7 +74,7 @@ export const userServiceFactory = ({
   userAliasDAL,
   totpConfigDAL,
   webAuthnCredentialDAL,
-  mfaRecoveryCodeDAL
+  mfaRecoveryCodeService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -133,10 +133,10 @@ export const userServiceFactory = ({
     }
   };
 
-  // Enables MFA for the account. Recovery codes are NOT minted here: they are
-  // issued only by the enrollment flow, which proves a live factor first (see
-  // POST /me/mfa/enroll). This keeps recovery codes off any session that has not
-  // proven a factor.
+  // Enables MFA for the account. Enabling always issues a fresh recovery-code pool
+  // (invalidating any prior codes) and returns it so the caller can surface the
+  // codes to the user once. EMAIL requires no prior enrollment, so this doubles as
+  // first-time setup; other methods must already be configured (asserted below).
   const activateMfa = async ({ userId, selectedMfaMethod }: TActivateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
     if (!user || !user.email) throw new BadRequestError({ name: "Failed to enable MFA" });
@@ -144,22 +144,22 @@ export const userServiceFactory = ({
     const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
     await assertMfaMethodConfigured(userId, method);
 
-    const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOne({ userId });
-    if (!recoveryCodeConfig) {
-      throw new BadRequestError({
-        message: "Cannot enable MFA before enrolling a factor. Complete enrollment to generate recovery codes first."
-      });
-    }
+    const recoveryCodes = await mfaRecoveryCodeService.rotateRecoveryCodes({
+      userId,
+      skipMfaEnabledCheck: true
+    });
 
-    return userDAL.updateById(userId, {
+    const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled: true,
       selectedMfaMethod: method
     });
+
+    return { user: updatedUser, recoveryCodes };
   };
 
-  // Disables MFA. Enrolled factors and recovery codes are intentionally preserved
-  // so re-enabling does not require re-enrollment; removing a factor is done
-  // explicitly via its own endpoint.
+  // Disables MFA. Enrolled factors are preserved so re-enabling does not require
+  // re-enrollment, but the recovery-code pool is wiped so codes never outlive the
+  // enabled state; a fresh pool is issued on the next enable.
   const deactivateMfa = async ({ userId }: TDeactivateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Failed to disable MFA" });
@@ -180,9 +180,13 @@ export const userServiceFactory = ({
       }
     }
 
-    return userDAL.updateById(userId, {
+    const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled: false
     });
+
+    await mfaRecoveryCodeService.deleteRecoveryCodes({ userId });
+
+    return updatedUser;
   };
 
   // Updates only the preferred challenge method among already-configured factors.

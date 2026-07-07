@@ -15,7 +15,7 @@ export type TRotateRecoveryCodesDTO = {
   skipMfaEnabledCheck?: boolean;
 };
 
-export type TEnsureRecoveryCodesDTO = {
+export type TDeleteRecoveryCodesDTO = {
   userId: string;
   tx?: Knex;
 };

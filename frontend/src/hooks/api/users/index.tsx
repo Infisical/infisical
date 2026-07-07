@@ -12,7 +12,6 @@ export {
   fetchOrgUsers,
   useActivateMfa,
   useAddUsersToOrg,
-  useDeactivateMfa,
   useDeleteMe,
   useDeleteOrgMembership,
   useEnrollMfa,

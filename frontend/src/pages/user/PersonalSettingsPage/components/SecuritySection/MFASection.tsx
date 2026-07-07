@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CircleAlertIcon, PowerIcon, ShieldCheckIcon } from "lucide-react";
 
-import { MFA_METHOD_ICONS, MFA_METHOD_LABELS } from "@app/components/mfa/setup";
+import { MFA_METHOD_ICONS, MFA_METHOD_LABELS, RecoveryCodesView } from "@app/components/mfa/setup";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import {
@@ -19,23 +19,22 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
 } from "@app/components/v3";
-import {
-  useActivateMfa,
-  useDeactivateMfa,
-  useGetOrganizations,
-  useGetUser,
-  useSetMfaMethod
-} from "@app/hooks/api";
+import { useActivateMfa, useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 
 import { MfaMethodsCard } from "./MfaMethodsCard";
-import { MfaSetupWizard } from "./MfaSetupWizard";
 import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
+import { useDisableMfa } from "./useDisableMfa";
 
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
@@ -43,15 +42,16 @@ export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
   const { mutateAsync: setMfaMethod } = useSetMfaMethod();
   const { mutateAsync: activateMfa } = useActivateMfa();
-  const { mutateAsync: deactivateMfa, isPending: isUpdating } = useDeactivateMfa();
+  const { isBusy: isDisabling, disableMfa } = useDisableMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
   const { data: organizations = [] } = useGetOrganizations();
 
   const isMfaEnforced = organizations.some((org) => org.enforceMfa);
 
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isDisableOpen, setIsDisableOpen] = useState(false);
+  // Holds the fresh recovery codes returned on enable so they can be shown once.
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
 
   if (isPending || !user) {
     return <ContentLoader />;
@@ -79,20 +79,14 @@ export const MFASection = () => {
     ? preferredMethod
     : availableMethods[0];
 
-  // A configured non-email factor means the user can re-enable MFA directly
-  // (factors and recovery codes survive a disable), without re-running enrollment.
-  const hasConfiguredFactor =
-    Boolean(totpConfiguration?.isVerified) || webAuthnCredentials.length > 0;
-
-  const hasRecoveryCodes = hasConfiguredFactor || user.isMfaEnabled;
+  // Recovery codes are issued on enable and wiped on disable, so they exist iff
+  // MFA is currently enabled.
+  const hasRecoveryCodes = user.isMfaEnabled;
 
   const handleEnable = async () => {
-    if (!hasConfiguredFactor) {
-      setIsWizardOpen(true);
-      return;
-    }
     try {
-      await activateMfa({ selectedMfaMethod: selectedMethod });
+      const { recoveryCodes } = await activateMfa({ selectedMfaMethod: selectedMethod });
+      setNewRecoveryCodes(recoveryCodes);
       createNotification({ text: "Two-factor authentication enabled", type: "success" });
     } catch (error: any) {
       createNotification({
@@ -114,18 +108,9 @@ export const MFASection = () => {
     }
   };
 
-  const handleDisable = async () => {
-    try {
-      await deactivateMfa();
-      setIsDisableOpen(false);
-      createNotification({ text: "Two-factor authentication disabled", type: "success" });
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to disable two-factor authentication",
-        type: "error"
-      });
-    }
-  };
+  // Disabling is a sensitive action, so it requires a fresh MFA challenge (same
+  // step-up flow as viewing recovery codes) before it goes through.
+  const handleDisable = () => disableMfa(() => setIsDisableOpen(false));
 
   const disabledBanner = (
     <div className="rounded-lg border border-border bg-card p-6">
@@ -202,7 +187,7 @@ export const MFASection = () => {
         <p className="text-sm text-muted">
           {isMfaEnforced
             ? "Your organization requires two-factor authentication, so it can't be disabled."
-            : "Turning this off keeps your configured methods and recovery codes so you can re-enable it later."}
+            : "Turning this off keeps your configured methods, but your recovery codes are invalidated and a new set is issued when you re-enable."}
         </p>
         <Button variant="danger" isDisabled={isMfaEnforced} onClick={() => setIsDisableOpen(true)}>
           <PowerIcon /> Disable two-factor authentication
@@ -224,22 +209,37 @@ export const MFASection = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
             <AlertDialogDescription>
-              You will no longer be prompted for a second factor when signing in. Your configured
-              methods and recovery codes are kept, so you can re-enable it at any time.
+              You will first be asked to verify with MFA. After that, you will no longer be prompted
+              for a second factor when signing in. Your configured methods are kept, but your
+              current recovery codes are invalidated. Re-enabling issues a fresh set.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isUpdating} onClick={handleDisable}>
+            <AlertDialogAction variant="danger" isPending={isDisabling} onClick={handleDisable}>
               Disable
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Mounted at a stable position so enabling MFA mid-wizard (which flips the
-          banner above) does not unmount the dialog and interrupt the flow. */}
-      <MfaSetupWizard isOpen={isWizardOpen} onOpenChange={setIsWizardOpen} />
+      <Sheet
+        open={newRecoveryCodes !== null}
+        onOpenChange={(open) => !open && setNewRecoveryCodes(null)}
+      >
+        <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
+          <SheetHeader className="border-b">
+            <SheetTitle>Save your recovery codes</SheetTitle>
+            <SheetDescription>
+              Store these somewhere safe. Each code can only be used once, and this is the only time
+              they are shown.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+            <RecoveryCodesView recoveryCodes={newRecoveryCodes ?? []} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 };

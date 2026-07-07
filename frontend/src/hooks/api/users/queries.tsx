@@ -409,10 +409,8 @@ export const useRevokeMySessions = () => {
   });
 };
 
-// Enroll an MFA factor: proves the factor and, on the first enrollment, returns
-// the freshly minted recovery codes so they can be shown once. Recovery codes are
-// never returned by the enable toggle — only by this proven-factor flow (or the
-// step-up-gated recovery-code endpoints).
+// Enroll an MFA factor: proves and persists the factor. This does not mint or
+// return recovery codes; those are issued only when MFA is enabled (useActivateMfa).
 export const useEnrollMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -426,12 +424,7 @@ export const useEnrollMfa = () => {
             name?: string;
           }
     ) => {
-      const { data } = await apiRequest.post<{ recoveryCodes?: string[] }>(
-        "/api/v2/users/me/mfa/enroll",
-        dto
-      );
-
-      return { recoveryCodes: data.recoveryCodes };
+      await apiRequest.post("/api/v2/users/me/mfa/enroll", dto);
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
@@ -452,34 +445,24 @@ export const useSendMfaEnrollmentEmailCode = () =>
     }
   });
 
-// Enable MFA. Requires the selected method to be configured; never mints codes.
+// Enable MFA. Issues a fresh recovery-code pool (invalidating any prior codes)
+// and returns it once so the caller can display it to the user.
 export const useActivateMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ selectedMfaMethod }: { selectedMfaMethod?: MfaMethod }) => {
-      const { data } = await apiRequest.post<{ user: unknown }>("/api/v2/users/me/mfa/activate", {
-        selectedMfaMethod
-      });
+      const { data } = await apiRequest.post<{ user: unknown; recoveryCodes: string[] }>(
+        "/api/v2/users/me/mfa/activate",
+        {
+          selectedMfaMethod
+        }
+      );
 
-      return { user: data.user };
+      return { user: data.user, recoveryCodes: data.recoveryCodes };
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
-    }
-  });
-};
-
-// Disable MFA. Enrolled factors and recovery codes are preserved (no wipe).
-export const useDeactivateMfa = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await apiRequest.post<{ user: unknown }>("/api/v2/users/me/mfa/deactivate");
-
-      return { user: data.user };
-    },
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+      queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes });
     }
   });
 };

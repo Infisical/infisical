@@ -7,6 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
+import { ensureStepUpMfa, MfaStepUpResource } from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
@@ -63,10 +64,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Enroll a factor: proves possession of the factor in-request and, on the first
-  // enrollment, mints and returns the recovery-code pool once. Recovery codes are
-  // only ever returned by this proven-factor flow (or the step-up-gated
-  // recovery-code endpoints), never by a bare enable toggle.
+  // Enroll a factor: proves possession of the factor in-request and persists it.
+  // This does NOT mint recovery codes; those are issued only when MFA is enabled
+  // (POST /me/mfa/activate).
   server.route({
     method: "POST",
     url: "/me/mfa/enroll",
@@ -104,9 +104,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       ]),
       response: {
-        200: z.object({
-          recoveryCodes: z.string().array().optional()
-        })
+        200: z.object({})
       }
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
@@ -129,11 +127,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      const recoveryCodes = await server.services.mfaRecoveryCode.ensureRecoveryCodes({
-        userId: req.permission.id
-      });
-
-      return { recoveryCodes };
+      // Enrollment only proves/persists the factor. Recovery codes are minted
+      // solely when MFA is enabled (POST /me/mfa/activate), not here.
+      return {};
     }
   });
 
@@ -163,7 +159,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Enable MFA. Requires the selected method to be configured; does not mint codes.
+  // Enable MFA. Requires the selected method to be configured (email always is),
+  // and issues a fresh recovery-code pool (invalidating any prior codes), returned
+  // once so the client can surface them to the user.
   server.route({
     method: "POST",
     url: "/me/mfa/activate",
@@ -177,22 +175,25 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: SanitizedUserSchema
+          user: SanitizedUserSchema,
+          recoveryCodes: z.string().array()
         })
       }
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
-      const user = await server.services.user.activateMfa({
+      const { user, recoveryCodes } = await server.services.user.activateMfa({
         userId: req.permission.id,
         selectedMfaMethod: req.body.selectedMfaMethod
       });
 
-      return { user };
+      return { user, recoveryCodes };
     }
   });
 
-  // Disable MFA. Enrolled factors and recovery codes are preserved (no wipe).
+  // Disable MFA. Disabling weakens account security, so it is gated behind a fresh
+  // step-up MFA challenge (same primitive as viewing recovery codes). Enrolled
+  // factors are preserved; the recovery-code pool is wiped by the service.
   server.route({
     method: "POST",
     url: "/me/mfa/deactivate",
@@ -201,6 +202,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "deactivateUserMfa",
+      body: z
+        .object({
+          mfaSessionId: z.string().trim().optional()
+        })
+        .optional(),
       response: {
         200: z.object({
           user: SanitizedUserSchema
@@ -209,6 +215,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
+      await ensureStepUpMfa(server, {
+        userId: req.permission.id,
+        resourceId: MfaStepUpResource.DisableMfa,
+        mfaSessionId: req.body?.mfaSessionId,
+        message: "MFA verification is required to disable two-factor authentication"
+      });
+
       const user = await server.services.user.deactivateMfa({
         userId: req.permission.id
       });
