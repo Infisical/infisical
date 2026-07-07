@@ -32,6 +32,7 @@ import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-
 import { registerDopplerConnectionRouter } from "./doppler-connection-router";
 import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
 import { registerF5BigIpConnectionRouter } from "./f5-big-ip-connection-router";
+import { registerFireworksConnectionRouter } from "./fireworks-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -54,6 +55,7 @@ import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connecti
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
+import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
@@ -132,6 +134,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
+    [AppConnection.OpenAI]: registerOpenAIConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
     [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
@@ -154,5 +157,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
-    [AppConnection.Qovery]: registerQoveryConnectionRouter
+    [AppConnection.Qovery]: registerQoveryConnectionRouter,
+    [AppConnection.Fireworks]: registerFireworksConnectionRouter
   };

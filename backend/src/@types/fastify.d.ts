@@ -36,6 +36,7 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
@@ -437,6 +438,7 @@ declare module "fastify" {
       pamMembership: TPamMembershipServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamSessionChunk: TPamSessionChunkServiceFactory;
+      pamAccessRequest: TPamAccessRequestServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
       membershipUser: TMembershipUserServiceFactory;

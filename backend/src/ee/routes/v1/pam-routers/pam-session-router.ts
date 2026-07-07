@@ -302,7 +302,11 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .optional()
           .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
         mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
-        accessMethod: z.enum(["cli", "web"]).optional().default("cli").describe("Access method (cli or web)"),
+        accessMethod: z
+          .nativeEnum(PamAccessMethod)
+          .optional()
+          .default(PamAccessMethod.Cli)
+          .describe("Access method (cli or web)"),
         targetHost: z
           .string()
           .trim()

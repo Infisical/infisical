@@ -347,7 +347,8 @@ export const GitHubAppSelector = ({
             e.preventDefault();
             containerRef.current?.focus({ preventScroll: true });
           }}
-          className="max-w-xl"
+          className="z-[80] max-w-xl"
+          overlayClassName="z-[80]"
         >
           <DialogHeader>
             <DialogTitle>Manage GitHub Apps</DialogTitle>

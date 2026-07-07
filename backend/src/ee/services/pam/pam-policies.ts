@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
+  RequiresApproval = "requires-approval",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
@@ -63,6 +64,12 @@ type TPamPolicyDefinition = {
 };
 
 export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition> = {
+  [PamPolicyType.RequiresApproval]: {
+    label: "Require Approval",
+    description: "Users must request and receive approval before launching sessions.",
+    appliesTo: "all",
+    schema: z.boolean()
+  },
   [PamPolicyType.RequireMfa]: {
     label: "Require MFA",
     description: "Users must re-authenticate with MFA before accessing.",
@@ -163,6 +170,7 @@ export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknow
 };
 
 export type TPamAccessControls = {
+  requiresApproval: boolean;
   requireReason: boolean;
   requireMfa: boolean;
   maxSessionDurationSeconds: number | null;
@@ -181,6 +189,7 @@ export const PamPolicyRulesSchema = z
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   return {
+    requiresApproval: resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true,
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,
     maxSessionDurationSeconds: typeof duration === "number" ? duration : null

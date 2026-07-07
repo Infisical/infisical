@@ -20,6 +20,7 @@ type Props = {
   accountType: string;
   filterActive: boolean;
   onLaunch: (account: TAccessiblePamAccount) => void;
+  onRequestAccess: (account: TAccessiblePamAccount) => void;
   onResultCount: (folderId: string, count: number) => void;
 };
 
@@ -31,6 +32,7 @@ export const FolderAccountGroup = ({
   accountType,
   filterActive,
   onLaunch,
+  onRequestAccess,
   onResultCount
 }: Props) => {
   // Debounced term drives the server query; one request per open folder
@@ -122,6 +124,7 @@ export const FolderAccountGroup = ({
             account={account}
             search={search}
             onLaunch={onLaunch}
+            onRequestAccess={onRequestAccess}
             indented
           />
         ))}

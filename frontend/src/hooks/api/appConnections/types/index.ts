@@ -30,6 +30,7 @@ import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TDopplerConnection } from "./doppler-connection";
 import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TF5BigIpConnection } from "./f5-big-ip-connection";
+import { TFireworksConnection } from "./fireworks-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -52,6 +53,7 @@ import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
 import { TOnaConnection } from "./ona-connection";
+import { TOpenAIConnection } from "./open-ai-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
@@ -104,6 +106,7 @@ export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
 export * from "./external-infisical-connection";
 export * from "./f5-big-ip-connection";
+export * from "./fireworks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -125,6 +128,7 @@ export * from "./oci-connection";
 export * from "./octopus-deploy-connection";
 export * from "./okta-connection";
 export * from "./ona-connection";
+export * from "./open-ai-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
@@ -201,6 +205,7 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
+  | TOpenAIConnection
   | TAnthropicConnection
   | TCircleCIConnection
   | TCloud66Connection
@@ -224,7 +229,8 @@ export type TAppConnection =
   | TTriggerDevConnection
   | TRundeckConnection
   | THasuraCloudConnection
-  | TQoveryConnection;
+  | TQoveryConnection
+  | TFireworksConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
