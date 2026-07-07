@@ -19,7 +19,7 @@ export const validateFireworksConnectionCredentials = async (config: TFireworksC
   const { apiKey, accountId } = config.credentials;
 
   try {
-    await request.get(`${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}`, {
+    await request.get(`${FIREWORKS_API_BASE_URL}/v1/accounts/${encodeURIComponent(accountId)}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`
       },
@@ -47,7 +47,7 @@ export const listFireworksUsers = async (appConnection: TFireworksConnection) =>
   const { apiKey, accountId } = appConnection.credentials;
 
   const { data } = await request.get<{ users: TFireworksUser[] }>(
-    `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users`,
+    `${FIREWORKS_API_BASE_URL}/v1/accounts/${encodeURIComponent(accountId)}/users`,
     {
       headers: {
         Authorization: `Bearer ${apiKey}`

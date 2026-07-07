@@ -31,7 +31,7 @@ const $createApiKey = async (
 ): Promise<{ keyId: string; apiKey: string }> => {
   try {
     const { data } = await request.post<TFireworksCreateApiKeyResponse>(
-      `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users/${userId}/apiKeys`,
+      `${FIREWORKS_API_BASE_URL}/v1/accounts/${encodeURIComponent(accountId)}/users/${encodeURIComponent(userId)}/apiKeys`,
       { apiKey: { displayName } },
       {
         headers: {
@@ -59,7 +59,7 @@ const $createApiKey = async (
 
 const $checkApiKey = async (generatedApiKey: string, accountId: string): Promise<void> => {
   try {
-    await request.get(`${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}`, {
+    await request.get(`${FIREWORKS_API_BASE_URL}/v1/accounts/${encodeURIComponent(accountId)}`, {
       headers: {
         Authorization: `Bearer ${generatedApiKey}`
       }
@@ -74,7 +74,7 @@ const $checkApiKey = async (generatedApiKey: string, accountId: string): Promise
 const $deleteApiKey = async (authKey: string, accountId: string, userId: string, keyId: string): Promise<void> => {
   try {
     await request.post(
-      `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users/${userId}/apiKeys:delete`,
+      `${FIREWORKS_API_BASE_URL}/v1/accounts/${encodeURIComponent(accountId)}/users/${encodeURIComponent(userId)}/apiKeys:delete`,
       { keyId },
       {
         headers: {
