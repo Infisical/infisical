@@ -91,6 +91,9 @@ export const catalogResponseSchema = z
 const subscriptionItemDimensionSchema = z
   .object({
     key: z.string(),
+    // Stable feature key the dimension caps against; used to overlay live per-org usage. Dimension
+    // keys drift (e.g. a display rename), so usage is matched on this, not on key.
+    featureKey: z.string().nullish(),
     unit: z.string().optional(),
     metered: z.boolean().default(false),
     aggregation: z.string().optional(),

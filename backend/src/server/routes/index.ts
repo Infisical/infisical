@@ -829,7 +829,8 @@ export const registerRoutes = async (
     orgDAL,
     identityOrgMembershipDAL,
     permissionService,
-    licenseClient
+    licenseClient,
+    meteredFeatures
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
