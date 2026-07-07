@@ -367,7 +367,7 @@ export const licenseV2ServiceFactory = ({
     await Promise.all(
       [...featureKeys].map(async (featureKey) => {
         const count = counterByFeatureKey.get(featureKey);
-        if (!count) {
+        if (count === undefined) {
           return;
         }
         try {
