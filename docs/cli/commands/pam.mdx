@@ -1,6 +1,6 @@
 ---
 title: "infisical pam"
-description: "Access databases, SSH servers, Kubernetes clusters, AWS IAM roles, and Windows servers through Infisical's Privileged Access Management"
+description: "Access databases, SSH servers, Kubernetes clusters, AWS IAM roles, GCP service accounts, and Windows servers through Infisical's Privileged Access Management"
 ---
 
 ```bash
@@ -9,7 +9,7 @@ infisical pam access <path> [flags]
 
 ## Description
 
-The `infisical pam` command provides privileged access management capabilities for securely accessing databases, SSH servers, Kubernetes clusters, AWS IAM roles, and Windows/RDP servers through Infisical's Gateway.
+The `infisical pam` command provides privileged access management capabilities for securely accessing databases, SSH servers, Kubernetes clusters, AWS IAM roles, GCP service accounts, and Windows/RDP servers through Infisical's Gateway.
 
 All PAM commands require the user to be logged in via `infisical login`.
 
@@ -22,7 +22,7 @@ infisical pam
 
 ## infisical pam access
 
-Access PAM-managed resources through Infisical's Gateway. This unified command handles all resource types — databases, SSH servers, Kubernetes clusters, AWS IAM roles, and Windows/RDP servers. The account type is determined by the template assigned to the account.
+Access PAM-managed resources through Infisical's Gateway. This unified command handles all resource types — databases, SSH servers, Kubernetes clusters, AWS IAM roles, GCP service accounts, and Windows/RDP servers. The account type is determined by the template assigned to the account.
 
 ```bash
 infisical pam access <path> [flags]
@@ -170,6 +170,24 @@ aws s3 ls
 ```
 
 The session blocks until `Ctrl+C` or credential expiry. When the session ends, the profile is removed from the credentials file.
+
+### GCP Service Account
+
+Starts a local proxy on `127.0.0.1` and automatically configures `gcloud` to route through it (via the `proxy/*`, `auth/access_token_file`, and `core/custom_ca_certs_file` config properties). Requires the [`gcloud` CLI](https://cloud.google.com/sdk/docs/install) to be installed. All traffic is proxied through the Infisical Gateway, which injects the brokered credentials before forwarding to `googleapis.com`.
+
+```bash
+# Example
+infisical pam access gcp/prod-deployer
+```
+
+Run `gcloud` and other Google Cloud tooling as normal — no per-command configuration needed:
+
+```bash
+gcloud compute instances list
+gcloud storage ls
+```
+
+The access token is capped at Google's maximum lifetime of 1 hour. The session blocks until `Ctrl+C` or token expiry; on shutdown the CLI reverts the `gcloud` configuration and deletes the temporary token and certificate files.
 
 ### Windows / RDP
 
