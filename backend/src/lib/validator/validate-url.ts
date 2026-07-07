@@ -42,6 +42,28 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
   if (isInternalIp && !allowInternal) throw new BadRequestError({ message: "Local IPs not allowed as URL" });
 };
 
+const AZURE_KEY_VAULT_HOST_REGEX = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.vault\.azure\.net$/);
+
+/**
+ * Validates that a URL is a legitimate Azure Key Vault data-plane base URL
+ * (`https://<vault-name>.vault.azure.net`).
+ */
+export const isValidAzureKeyVaultUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.port) return false;
+    if (parsed.search || parsed.hash) return false;
+    if (parsed.pathname !== "/" && parsed.pathname !== "") return false;
+
+    return AZURE_KEY_VAULT_HOST_REGEX.test(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+};
+
 type FQDNOptions = {
   require_tld?: boolean;
   allow_underscores?: boolean;
