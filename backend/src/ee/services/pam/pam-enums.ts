@@ -8,6 +8,7 @@ export enum PamAccountType {
   Redis = "redis",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
+  GcpServiceAccount = "gcp-service-account",
   Windows = "windows",
   WindowsAd = "windows-ad"
 }
@@ -28,6 +29,11 @@ export enum PamSessionStatus {
   Active = "active",
   Ended = "ended",
   Terminated = "terminated"
+}
+
+export enum GcpServiceAccountAuthMethod {
+  Impersonation = "impersonation",
+  StaticKey = "static-key"
 }
 
 export enum PamAccessMethod {
