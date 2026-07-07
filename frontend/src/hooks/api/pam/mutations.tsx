@@ -32,6 +32,7 @@ import {
   TRemovePamProductIdentityMemberDTO,
   TReviewPamAccessRequestDTO,
   TRevokePamAccessRequestDTO,
+  TRotatePamAccountDTO,
   TSetPamApprovalConfigDTO,
   TUpdateAccountGroupMemberRoleDTO,
   TUpdateAccountIdentityMemberRoleDTO,
@@ -40,6 +41,7 @@ import {
   TUpdateFolderIdentityMemberRoleDTO,
   TUpdateFolderMemberRoleDTO,
   TUpdatePamAccountDTO,
+  TUpdatePamAccountRotationDTO,
   TUpdatePamAccountTemplateDTO,
   TUpdatePamFolderDTO,
   TUpdatePamProductIdentityMemberDTO
@@ -599,6 +601,20 @@ export const useRemoveFolderIdentityMember = () => {
   });
 };
 
+export const useUpdatePamAccountRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, ...params }: TUpdatePamAccountRotationDTO) => {
+      const { data } = await apiRequest.patch(`/api/v1/pam/accounts/${accountId}/rotation`, params);
+      return data;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+    }
+  });
+};
+
 // Access Requests / Approvals
 
 export const useCreatePamAccessRequest = () => {
@@ -611,6 +627,20 @@ export const useCreatePamAccessRequest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
       queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useRotatePamAccount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: TRotatePamAccountDTO) => {
+      const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountId}/rotation/rotate`);
+      return data;
+    },
+    onSettled: (_, __, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
     }
   });
 };

@@ -1,4 +1,4 @@
-import { type LucideIcon, Settings, Settings2, ShieldCheck, Users } from "lucide-react";
+import { type LucideIcon, RotateCcw, Settings, Settings2, ShieldCheck, Users } from "lucide-react";
 
 import { PamResourcePermissionActions } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
@@ -22,6 +22,12 @@ export const PAM_ACCOUNT_TABS: PamResourceTab[] = [
     label: "Configuration",
     icon: Settings,
     action: PamResourcePermissionActions.EditAccounts
+  },
+  {
+    value: PamSheetTab.Rotation,
+    label: "Rotation",
+    icon: RotateCcw,
+    action: PamResourcePermissionActions.ManageRotation
   },
   {
     value: PamSheetTab.Advanced,

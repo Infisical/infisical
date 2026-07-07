@@ -1007,6 +1007,15 @@
                   },
                   "documentation/platform/pam/access-requests/overview",
                   {
+                    "group": "Credential Rotation",
+                    "pages": [
+                      "documentation/platform/pam/product-reference/credential-rotation/overview",
+                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
+                    ]
+                  },
+                  {
                     "group": "Sessions",
                     "pages": [
                       "documentation/platform/pam/sessions/overview",
@@ -4097,6 +4106,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation",
+      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+    },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",
       "destination": "/documentation/platform/pki/guides/applications/k8s-cert-manager-acme"

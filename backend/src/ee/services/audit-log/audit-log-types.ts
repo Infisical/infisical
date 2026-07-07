@@ -744,6 +744,8 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
+  PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_ACCESS_REQUEST_CREATE = "pam-access-request-create",
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
@@ -6140,6 +6142,26 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamAccountRotateCredentialsEvent {
+  type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
+  metadata: {
+    accountId: string;
+    accountType: string;
+    rotationStatus: string;
+    manual: boolean;
+    rotationAccountId?: string | null;
+    message?: string;
+  };
+}
+
+interface PamAccountSetRotationAccountEvent {
+  type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
+  metadata: {
+    accountId: string;
+    rotationAccountId: string | null;
+  };
+}
+
 interface PamAccessRequestCreateEvent {
   type: EventType.PAM_ACCESS_REQUEST_CREATE;
   metadata: {
@@ -7816,6 +7838,8 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamAccountRotateCredentialsEvent
+  | PamAccountSetRotationAccountEvent
   | PamAccessRequestCreateEvent
   | PamAccessRequestReviewEvent
   | PamAccessGrantRevokeEvent

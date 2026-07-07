@@ -51,6 +51,7 @@ import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   accountTypeRequiresRecording,
+  isRotatablePamAccountType,
   PamAccountAccessibilityIssue,
   PamAccountType,
   TPamMember,
@@ -84,6 +85,7 @@ import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatf
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
+import { RotationTab } from "./RotationTab";
 
 type Props = {
   isOpen: boolean;
@@ -850,7 +852,11 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   const typeInfo = accountType ? accountTypeMap[accountType] : undefined;
 
   const { can } = usePamAccountActions(accountId ?? "", isOpen && Boolean(accountId));
-  const availableTabs = visiblePamTabs(PAM_ACCOUNT_TABS, can);
+  const availableTabs = visiblePamTabs(PAM_ACCOUNT_TABS, can).filter(
+    (tabDef) =>
+      tabDef.value !== PamSheetTab.Rotation ||
+      (accountType !== undefined && isRotatablePamAccountType(accountType))
+  );
 
   const tabsWithIssues = new Set(
     (account?.accessibilityIssues ?? []).map((issue) => ISSUE_TO_TAB[issue])
@@ -908,6 +914,9 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
       ) : null,
     [PamSheetTab.Configuration]: accountId ? (
       <EditAccountForm accountId={accountId} onDirtyChange={setIsFormDirty} />
+    ) : null,
+    [PamSheetTab.Rotation]: accountId ? (
+      <RotationTab accountId={accountId} onDirtyChange={setIsFormDirty} />
     ) : null,
     [PamSheetTab.Advanced]: accountId ? (
       <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />

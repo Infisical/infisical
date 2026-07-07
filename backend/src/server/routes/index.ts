@@ -108,6 +108,8 @@ import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-
 import { pamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountRotationQueueServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-queue";
+import { pamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
 import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
@@ -1798,6 +1800,7 @@ export const registerRoutes = async (
 
   const pamAccountTemplateService = pamAccountTemplateServiceFactory({
     pamAccountTemplateDAL,
+    pamAccountDAL,
     permissionService,
     gatewayV2DAL,
     gatewayPoolService,
@@ -1857,6 +1860,18 @@ export const registerRoutes = async (
     gatewayPoolService,
     appConnectionDAL,
     pamAccessRequestService
+  });
+
+  const pamAccountRotationService = pamAccountRotationServiceFactory({
+    pamAccountDAL,
+    permissionService,
+    membershipDAL,
+    membershipRoleDAL,
+    kmsService,
+    keyStore,
+    gatewayService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -3578,6 +3593,14 @@ export const registerRoutes = async (
     orgDAL
   });
 
+  await pamAccountRotationQueueServiceFactory({
+    queueService,
+    cronJob,
+    auditLogService,
+    pamAccountDAL,
+    pamAccountRotationService
+  });
+
   const secretScanningV2Queue = secretScanningV2QueueServiceFactory({
     auditLogService,
     secretScanningV2DAL,
@@ -3807,6 +3830,7 @@ export const registerRoutes = async (
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
+    pamAccountRotation: pamAccountRotationService,
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,

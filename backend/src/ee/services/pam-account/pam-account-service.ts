@@ -38,6 +38,7 @@ import {
 } from "../pam/pam-validators";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
@@ -77,6 +78,46 @@ type TPamAccountServiceFactoryDep = {
     TPamAccessRequestServiceFactory,
     "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources"
   >;
+};
+
+const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings: unknown) => {
+  const requirements = PamTemplateSettingsSchema.safeParse(templateSettings).data?.passwordRequirements;
+  const { password } = credentials as { password?: string };
+  if (!requirements || !password) return;
+
+  let upper = 0;
+  let lower = 0;
+  let digit = 0;
+  let symbol = 0;
+  const allowed = requirements.allowedSymbols ? new Set(requirements.allowedSymbols.split("")) : null;
+  const disallowed = new Set<string>();
+  for (const ch of password) {
+    if (ch >= "A" && ch <= "Z") upper += 1;
+    else if (ch >= "a" && ch <= "z") lower += 1;
+    else if (ch >= "0" && ch <= "9") digit += 1;
+    else {
+      symbol += 1;
+      if (allowed && !allowed.has(ch)) disallowed.add(ch);
+    }
+  }
+
+  const violations: string[] = [];
+  if (password.length < requirements.length) violations.push(`be at least ${requirements.length} characters long`);
+  if (upper < requirements.required.uppercase)
+    violations.push(`include at least ${requirements.required.uppercase} uppercase letter(s)`);
+  if (lower < requirements.required.lowercase)
+    violations.push(`include at least ${requirements.required.lowercase} lowercase letter(s)`);
+  if (digit < requirements.required.digits)
+    violations.push(`include at least ${requirements.required.digits} number(s)`);
+  if (symbol < requirements.required.symbols)
+    violations.push(`include at least ${requirements.required.symbols} symbol(s)`);
+  if (allowed && disallowed.size > 0) violations.push(`only use these symbols: ${requirements.allowedSymbols}`);
+
+  if (violations.length > 0) {
+    throw new BadRequestError({
+      message: `Password does not meet this template's requirements: it must ${violations.join(", ")}.`
+    });
+  }
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -282,6 +323,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
+    assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
     const encryptedCredentials = await encrypt(projectId, validatedCredentials);
@@ -447,15 +489,53 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       updateData.encryptedConnectionDetails = await encrypt(projectId, validated);
     }
 
+    let principalChanged = false;
     if (credentials) {
       const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
       const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
+      const templateSettings = templateId
+        ? (await pamAccountTemplateDAL.findById(templateId))?.settings
+        : existing.templateSettings;
+      assertPasswordMeetsRequirements(validated, templateSettings);
       updateData.encryptedCredentials = await encrypt(projectId, validated);
       updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
+      const oldUsername = (existingCredentials as { username?: string }).username;
+      const newUsername = (validated as { username?: string }).username;
+      if (oldUsername !== newUsername) principalChanged = true;
+    }
+
+    let routingChanged =
+      (gatewayId !== undefined && gatewayId !== existing.gatewayId) ||
+      (gatewayPoolId !== undefined && gatewayPoolId !== existing.gatewayPoolId);
+    if (connectionDetails) {
+      const oldConn = validateConnectionDetails(
+        accountType,
+        await decrypt(projectId, existing.encryptedConnectionDetails)
+      ) as { host?: string; port?: number };
+      const newConn = validateConnectionDetails(accountType, connectionDetails) as { host?: string; port?: number };
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) routingChanged = true;
+    }
+    if ((routingChanged || principalChanged) && existing.rotationAccountId) {
+      updateData.rotationAccountId = null;
     }
 
     try {
-      const account = await pamAccountDAL.updateById(accountId, updateData);
+      const account = await pamAccountDAL.transaction(async (tx) => {
+        const updated = await pamAccountDAL.updateById(accountId, updateData, tx);
+        if (routingChanged) {
+          await pamAccountDAL.update(
+            { rotationAccountId: accountId },
+            { rotationAccountId: null, nextRotationAt: null },
+            tx
+          );
+        }
+        // A template move, credential change, or a cleared binding can flip rotation readiness; re-derive the schedule
+        // atomically with the write so a failure can't leave a stale nextRotationAt.
+        if (templateId !== undefined || credentials || routingChanged) {
+          await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
+        }
+        return updated;
+      });
       const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
       return { ...account, corsProbeUrl };
     } catch (err) {
@@ -488,29 +568,70 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ctx
     );
 
-    return pamAccountDAL.transaction(async (tx) => {
-      const memberships = await membershipDAL.find(
-        {
-          scope: RESOURCE_SCOPE,
-          scopeResourceType: ResourceType.PamAccount,
-          scopeResourceId: accountId
-        },
-        { tx }
-      );
+    try {
+      return await pamAccountDAL.transaction(async (tx) => {
+        const memberships = await membershipDAL.find(
+          {
+            scope: RESOURCE_SCOPE,
+            scopeResourceType: ResourceType.PamAccount,
+            scopeResourceId: accountId
+          },
+          { tx }
+        );
 
-      if (memberships.length > 0) {
-        const ids = memberships.map((m) => m.id);
-        await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
-        await membershipDAL.delete({ $in: { id: ids } }, tx);
+        if (memberships.length > 0) {
+          const ids = memberships.map((m) => m.id);
+          await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
+          await membershipDAL.delete({ $in: { id: ids } }, tx);
+        }
+
+        await pamAccountDAL.updateById(accountId, { rotationAccountId: null }, tx);
+
+        await deps.pamAccessRequestService.cleanupAccountResources(
+          { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
+          tx
+        );
+
+        return pamAccountDAL.deleteById(accountId, tx);
+      });
+    } catch (err) {
+      // The ON DELETE RESTRICT FK on rotationAccountId is the race-safe guard; on violation, look up the dependents
+      // to name them (rather than paying for that lookup on every delete).
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code?: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        const dependents = (await pamAccountDAL.find({ rotationAccountId: accountId })).filter(
+          (dependent) => dependent.id !== accountId
+        );
+        const readChecks = await Promise.all(
+          dependents.map(async (dependent) => ({
+            name: dependent.name,
+            canRead: await checkAccount(
+              dependent.id,
+              dependent.folderId,
+              projectId,
+              ResourcePermissionPamResourceActions.ReadAccounts,
+              ctx
+            )
+              .then(() => true)
+              .catch(() => false)
+          }))
+        );
+        const readableNames = readChecks.filter((c) => c.canRead).map((c) => c.name);
+        const hiddenCount = readChecks.length - readableNames.length;
+        const parts = [
+          ...(readableNames.length ? [readableNames.join(", ")] : []),
+          ...(hiddenCount ? [`${hiddenCount} other account${hiddenCount > 1 ? "s" : ""}`] : [])
+        ];
+        throw new BadRequestError({
+          message: parts.length
+            ? `This account is the rotation account for: ${parts.join(", and ")}. Reassign or clear their rotation account before deleting this one.`
+            : "This account is used as the rotation account for another account. Reassign it before deleting this one."
+        });
       }
-
-      await deps.pamAccessRequestService.cleanupAccountResources(
-        { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
-        tx
-      );
-
-      return pamAccountDAL.deleteById(accountId, tx);
-    });
+      throw err;
+    }
   };
 
   const listAccessible = async ({
