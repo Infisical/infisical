@@ -139,6 +139,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   // selectOrganization), so reaching this handler already proves the org-required
   // method. The transient post-password no-org token used during login/onboarding
   // is rejected here and cannot obtain recovery codes.
+  //
+  // This is enable-only: the org-scoped token proves the org method was completed at
+  // login but NOT a fresh step-up challenge, so re-running it on an already-enabled
+  // account would mint fresh recovery codes without the step-up gate the recovery-code
+  // endpoints enforce. The service rejects already-enabled accounts; rotating codes on
+  // an enabled account goes through the step-up-gated POST /me/mfa/recovery-codes route.
   server.route({
     method: "POST",
     url: "/me/mfa/activate",
@@ -194,6 +200,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
+        orgId: req.permission.orgId,
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
         message: "MFA verification is required to disable two-factor authentication"

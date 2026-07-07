@@ -26,7 +26,7 @@ export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStep
  *
  * - With a valid, verified session for this user + resource: returns immediately.
  * - Otherwise (no session id, or one that is missing/expired/unverified/foreign):
- *   mints a fresh pending session (emailing the code when the user's method is
+ *   mints a fresh pending session (emailing the code when the required method is
  *   email) and throws `SESSION_MFA_REQUIRED` carrying the new session id + method
  *   so the client can drive the challenge and retry.
  */
@@ -34,11 +34,13 @@ export const ensureStepUpMfa = async (
   server: FastifyZodProvider,
   {
     userId,
+    orgId,
     resourceId,
     mfaSessionId,
     message
   }: {
     userId: string;
+    orgId: string;
     resourceId: TMfaStepUpResource;
     mfaSessionId?: string;
     message: string;
@@ -56,7 +58,8 @@ export const ensureStepUpMfa = async (
   }
 
   const user = await server.services.user.getMe(userId);
-  const mfaMethod = (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+
+  const mfaMethod = await server.services.user.getStepUpMfaMethod(userId, orgId);
 
   const newMfaSessionId = await server.services.mfaSession.createMfaSession(userId, resourceId, mfaMethod);
 

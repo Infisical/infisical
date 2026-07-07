@@ -14,6 +14,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
+import { getRequiredMfaMethod } from "../auth/auth-fns";
 import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -137,7 +138,7 @@ export const userServiceFactory = ({
   // first-time setup; other methods must already be configured (asserted below).
   const activateMfa = async ({ userId, selectedMfaMethod }: TActivateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
-    if (!user || !user.email) throw new BadRequestError({ name: "Failed to enable MFA" });
+    if (!user || !user.email || user.isMfaEnabled) throw new BadRequestError({ name: "Failed to enable MFA" });
 
     const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
     await assertMfaMethodConfigured(userId, method);
@@ -479,6 +480,19 @@ export const userServiceFactory = ({
     };
   };
 
+  // Resolves the MFA method a step-up challenge must use, from the current org
+  // context. Recovery codes bypass the org-required method at login, so the step-up
+  // that gates them must challenge that same method rather than the user's personal
+  // preference (which could be weaker, e.g. email while the org enforces passkeys).
+  // Mirrors login via the shared getRequiredMfaMethod: an org enforcing MFA dictates
+  // the method, otherwise the user's own preference applies. Reaching a step-up-gated
+  // route already proves membership of this org, so no permission check is needed.
+  const getStepUpMfaMethod = async (userId: string, orgId: string): Promise<MfaMethod> => {
+    const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
+    return requiredMfaMethod;
+  };
+
   const deleteUser = async (userId: string) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
@@ -642,6 +656,7 @@ export const userServiceFactory = ({
     updateUserEmail,
     deleteUser,
     getMe,
+    getStepUpMfaMethod,
     createUserAction,
     listUserGroups,
     getUserAction,
