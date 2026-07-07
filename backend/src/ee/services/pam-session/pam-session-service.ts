@@ -225,17 +225,45 @@ export const pamSessionServiceFactory = ({
       const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
 
-      let sourceClient;
+      let tokenResponse;
+
       if (credentials.authMethod === GcpServiceAccountAuthMethod.StaticKey) {
         const keyJson = JSON.parse(credentials.serviceAccountKeyJson as string) as {
           client_email: string;
           private_key: string;
         };
-        sourceClient = new JWT({
+        const jwtClient = new JWT({
           email: keyJson.client_email,
           key: keyJson.private_key,
           scopes: ["https://www.googleapis.com/auth/cloud-platform"]
         });
+
+        if (keyJson.client_email === serviceAccountEmail) {
+          try {
+            tokenResponse = await jwtClient.getAccessToken();
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new BadRequestError({
+              message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
+            });
+          }
+        } else {
+          const impersonated = new Impersonated({
+            sourceClient: jwtClient,
+            targetPrincipal: serviceAccountEmail,
+            lifetime: sessionTtlSeconds,
+            delegates: [],
+            targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
+          });
+          try {
+            tokenResponse = await impersonated.getAccessToken();
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new BadRequestError({
+              message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
+            });
+          }
+        }
       } else {
         const appCfg = getConfig();
         if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
@@ -243,25 +271,22 @@ export const pamSessionServiceFactory = ({
             message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"
           });
         }
-        sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
-      }
-
-      const impersonated = new Impersonated({
-        sourceClient,
-        targetPrincipal: serviceAccountEmail,
-        lifetime: sessionTtlSeconds,
-        delegates: [],
-        targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
-      });
-
-      let tokenResponse;
-      try {
-        tokenResponse = await impersonated.getAccessToken();
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new BadRequestError({
-          message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
+        const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+        const impersonated = new Impersonated({
+          sourceClient,
+          targetPrincipal: serviceAccountEmail,
+          lifetime: sessionTtlSeconds,
+          delegates: [],
+          targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
         });
+        try {
+          tokenResponse = await impersonated.getAccessToken();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new BadRequestError({
+            message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
+          });
+        }
       }
 
       if (!tokenResponse?.token) {
