@@ -86,7 +86,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: sanitizedOrganizationSchema
+          organization: sanitizedOrganizationSchema.extend({
+            pamProjectId: z.string().nullable()
+          })
         })
       }
     },
@@ -682,8 +684,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           }),
           pam: z.object({
             accountsCount: z.number(),
-            resourcesCount: z.number(),
-            projectsCount: z.number()
+            accountTemplatesCount: z.number(),
+            foldersCount: z.number()
           })
         })
       }

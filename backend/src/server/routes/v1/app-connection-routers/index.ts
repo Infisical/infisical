@@ -60,6 +60,7 @@ import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
@@ -151,6 +152,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Datadog]: registerDatadogConnectionRouter,
     [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
     [AppConnection.Convex]: registerConvexConnectionRouter,
+    [AppConnection.Rundeck]: registerRundeckConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter
   };

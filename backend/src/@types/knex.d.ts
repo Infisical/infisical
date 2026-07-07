@@ -746,6 +746,11 @@ import {
   TPamAccountPoliciesInsert,
   TPamAccountPoliciesUpdate
 } from "@app/db/schemas/pam-account-policies";
+import {
+  TPamAccountTemplates,
+  TPamAccountTemplatesInsert,
+  TPamAccountTemplatesUpdate
+} from "@app/db/schemas/pam-account-templates";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import {
   TPamDiscoverySourceAccounts,
@@ -1741,6 +1746,11 @@ declare module "knex/types/tables" {
       TKeyValueStore,
       TKeyValueStoreInsert,
       TKeyValueStoreUpdate
+    >;
+    [TableName.PamAccountTemplate]: KnexOriginal.CompositeTableType<
+      TPamAccountTemplates,
+      TPamAccountTemplatesInsert,
+      TPamAccountTemplatesUpdate
     >;
     [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;

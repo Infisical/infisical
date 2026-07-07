@@ -237,6 +237,7 @@ export enum TableName {
   KeyValueStore = "key_value_store",
 
   // PAM
+  PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
@@ -377,7 +378,9 @@ export enum ResourceMembershipRole {
 
 export enum ResourceType {
   CertificateApplication = "certificate-application",
-  Signer = "pki-signer"
+  Signer = "pki-signer",
+  PamFolder = "pam-folder",
+  PamAccount = "pam-account"
 }
 
 export enum SecretEncryptionAlgo {

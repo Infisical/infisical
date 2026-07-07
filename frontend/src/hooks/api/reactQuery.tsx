@@ -87,10 +87,18 @@ function ValidationErrorModal({
   );
 }
 
-export const onRequestError = (error: unknown) => {
+export const onRequestError = (
+  error: unknown,
+  _variables?: unknown,
+  _context?: unknown,
+  mutation?: { meta?: Record<string, unknown> }
+) => {
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
     if (serverResponse?.error === ApiErrorTypes.ValidationError) {
+      if (mutation?.meta?.skipValidationToast) {
+        return;
+      }
       let requestBody: Record<string, unknown> | undefined;
       try {
         const configData = error.config?.data;

@@ -69,6 +69,7 @@ import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/
 import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
+import { RundeckSyncListItemSchema, RundeckSyncSchema } from "@app/services/secret-sync/rundeck";
 import { SnowflakeSyncListItemSchema, SnowflakeSyncSchema } from "@app/services/secret-sync/snowflake";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
@@ -105,6 +106,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
   SupabaseSyncSchema,
+  RundeckSyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -158,6 +160,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
+  RundeckSyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,

@@ -279,6 +279,8 @@ Enterprise code lives in `src/ee/`:
 
 EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
 
+**PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md). It documents the permission model, shared helpers, account type checklist, and session lifecycle. Any new PAM core logic or helpers must be documented there.
+
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:
@@ -292,6 +294,19 @@ Key plugins in `src/server/plugins/`:
 - `swagger.ts` — Swagger/OpenAPI UI
 - `maintenanceMode.ts` — maintenance mode middleware
 - `ip.ts` — IP extraction and validation
+
+### Telemetry / Metrics
+
+OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are defined in `metrics.ts` (resolved lazily so they bind to the real MeterProvider installed by `instrumentation.ts` after boot).
+
+**Meter split by cardinality:**
+- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the single choke point: any attribute passed at a call site that isn't in the allowlist is silently dropped.
+- **Legacy `Infisical` / `API` / `SecretSyncs` / `PkiSyncs` / `Integrations`** — have no View and carry unbounded per-actor labels. Dropped wholesale via `OTEL_DROP_HIGH_CARDINALITY_METERS=true` in multi-tenant/cloud.
+
+**Rules for InfisicalCore metrics:**
+- **No per-tenant / per-actor identifiers** as labels — no org id, user id/email, identity id, ip, user agent, request id, or free-form values (e.g. environment slug). These scale series count with customer count, which breaks CloudWatch's 1000-datapoint-per-OTLP-request limit and drives per-GB ingestion cost. Use the **audit log table** for per-org / per-actor breakdowns.
+- Adding a new label means adding it to the allowlist in `telemetry-attributes.ts`. Only add **bounded** keys (fixed enums / static route templates), and document why.
+- `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path.
 
 ### Database Configuration
 

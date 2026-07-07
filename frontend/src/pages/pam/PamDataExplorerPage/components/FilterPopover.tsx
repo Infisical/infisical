@@ -13,8 +13,9 @@ import {
 } from "@app/components/v3/generic/Select";
 
 import type { ColumnInfo } from "../data-explorer-types";
-import type { FilterCondition, FilterOperator } from "../sql-generation";
+import type { FilterCondition, FilterOperator, SqlDialect } from "../sql-generation";
 
+// TODO: split by dialect when we add more DB engines
 function getFilterPlaceholder(columnType: string, operator: FilterOperator): string {
   switch (operator) {
     case "LIKE":
@@ -30,7 +31,10 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
       break;
   }
 
-  const t = columnType.toLowerCase().replace("[]", "");
+  const t = columnType
+    .toLowerCase()
+    .replace("[]", "")
+    .replace(/\(\d+\)/g, "");
   switch (t) {
     case "int2":
     case "int4":
@@ -41,6 +45,9 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "integer":
     case "bigint":
     case "smallint":
+    case "tinyint":
+    case "mediumint":
+    case "int":
       return "42";
     case "float4":
     case "float8":
@@ -49,6 +56,8 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "real":
     case "double precision":
     case "money":
+    case "float":
+    case "double":
       return "3.14";
     case "bool":
     case "boolean":
@@ -59,6 +68,7 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
       return "2024-01-15";
     case "timestamp":
     case "timestamptz":
+    case "datetime":
       return "2024-01-15 09:30:00";
     case "time":
     case "timetz":
@@ -75,6 +85,10 @@ function getFilterPlaceholder(columnType: string, operator: FilterOperator): str
     case "bpchar":
     case "name":
     case "citext":
+    case "tinytext":
+    case "mediumtext":
+    case "longtext":
+    case "enum":
       return "some text";
     default:
       return "Value";
@@ -99,9 +113,15 @@ type FilterPopoverProps = {
   columns: ColumnInfo[];
   filters: FilterCondition[];
   onFiltersChange: (filters: FilterCondition[]) => Promise<boolean>;
+  dialect: SqlDialect;
 };
 
-export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopoverProps) => {
+export const FilterPopover = ({
+  columns,
+  filters,
+  onFiltersChange,
+  dialect
+}: FilterPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FilterCondition[]>(filters);
   const [isApplying, setIsApplying] = useState(false);
@@ -164,7 +184,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
       </PopoverTrigger>
       <PopoverContent className="w-[580px] p-3" align="start">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-mineshaft-200">Filters</span>
+          <span className="text-sm font-medium text-foreground">Filters</span>
           {draft.length > 0 && (
             <Button variant="ghost" size="xs" onClick={clearAll} className="h-auto p-0 text-xs">
               Clear all
@@ -173,7 +193,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
         </div>
 
         {draft.length === 0 ? (
-          <p className="py-3 text-center text-xs text-mineshaft-400">No filters applied</p>
+          <p className="py-3 text-center text-xs text-muted">No filters applied</p>
         ) : (
           <div className="space-y-2">
             {draft.map((filter, index) => {
@@ -188,12 +208,12 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                   >
                     <SelectTrigger
                       size="sm"
-                      className="w-40 text-xs text-mineshaft-200"
+                      className="w-40 text-xs text-foreground"
                       title={filter.column}
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {columns.map((col) => (
                         <SelectItem key={col.name} value={col.name}>
                           {col.name}
@@ -208,15 +228,17 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                       updateFilter(index, { operator: val as FilterOperator })
                     }
                   >
-                    <SelectTrigger size="sm" className="w-28 text-xs text-mineshaft-200">
+                    <SelectTrigger size="sm" className="w-28 text-xs text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      {OPERATORS.map((op) => (
-                        <SelectItem key={op.value} value={op.value}>
-                          {op.label}
-                        </SelectItem>
-                      ))}
+                    <SelectContent position="popper">
+                      {OPERATORS.filter((op) => dialect !== "mysql" || op.value !== "ILIKE").map(
+                        (op) => (
+                          <SelectItem key={op.value} value={op.value}>
+                            {op.label}
+                          </SelectItem>
+                        )
+                      )}
                     </SelectContent>
                   </Select>
 
@@ -225,14 +247,14 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                       value={filter.value}
                       onChange={(e) => updateFilter(index, { value: e.target.value })}
                       placeholder={getFilterPlaceholder(colInfo?.type ?? "", filter.operator)}
-                      className="h-7 flex-1 text-xs text-mineshaft-200"
+                      className="h-7 flex-1 text-xs text-foreground"
                     />
                   )}
 
                   <button
                     type="button"
                     onClick={() => removeFilter(index)}
-                    className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-700 hover:text-mineshaft-200"
+                    className="rounded p-1 text-muted hover:bg-container-hover hover:text-foreground"
                   >
                     <XIcon className="size-3" />
                   </button>

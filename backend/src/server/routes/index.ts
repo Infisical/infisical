@@ -104,36 +104,20 @@ import { licenseServiceFactory } from "@app/ee/services/license/license-service"
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
-import { pamAccountPolicyDALFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-dal";
-import { pamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
-import { pamAccountDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependencies-dal";
-import { pamDiscoveryQueueFactory } from "@app/ee/services/pam-discovery/pam-discovery-queue";
-import { pamDiscoverySourceAccountsDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-accounts-dal";
-import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
-import { pamDiscoverySourceDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dependencies-dal";
-import { pamDiscoverySourceResourcesDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-resources-dal";
-import { pamDiscoveryRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
-import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
-import { pamDomainDALFactory } from "@app/ee/services/pam-domain/pam-domain-dal";
-import { pamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-service";
+import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
+import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
-import { pamInsightsServiceFactory } from "@app/ee/services/pam-insights/pam-insights-service";
-import { pamProjectRecordingConfigDALFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-dal";
-import { pamProjectRecordingConfigServiceFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-service";
-import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
-import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
-import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
-import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
-import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
-import { pamSessionAiSummaryServiceFactory } from "@app/ee/services/pam-session/pam-session-ai-summary-queue";
-import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session/pam-session-chunk-service";
+import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
+import { pamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { pamSessionEventBatchDALFactory } from "@app/ee/services/pam-session/pam-session-event-batch-dal";
-import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session/pam-session-event-chunk-dal";
+import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session/pam-session-expiration-queue";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-dal";
+import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -424,8 +408,6 @@ import { orgAssetDALFactory } from "@app/services/org-asset/org-asset-dal";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { orgProductStatsDALFactory } from "@app/services/org-product-stats/org-product-stats-dal";
 import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
-import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
-import { pamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
@@ -545,6 +527,7 @@ import { injectPermission } from "../plugins/auth/inject-permission";
 import { goSidecarPlugin } from "../plugins/go-sidecar";
 // import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
+import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
@@ -1019,6 +1002,7 @@ export const registerRoutes = async (
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
     : undefined;
 
+  const pamAccountDAL = pamAccountDALFactory(db);
   const auditLogService = auditLogServiceFactory({
     auditLogDAL,
     clickhouseAuditLogDAL,
@@ -1027,7 +1011,14 @@ export const registerRoutes = async (
     keyStore,
     smtpService,
     userDAL,
-    notificationService
+    notificationService,
+    resolvePamAuditScope: pamAuditLogScopeResolverFactory({
+      projectDAL,
+      permissionService,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL
+    })
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
@@ -1191,6 +1182,13 @@ export const registerRoutes = async (
     userDAL,
     tokenService,
     keyStore
+  });
+
+  const mfaSessionService = mfaSessionServiceFactory({
+    keyStore,
+    tokenService,
+    smtpService,
+    totpService
   });
 
   const loginService = authLoginServiceFactory({
@@ -1526,9 +1524,6 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
-  const pamResourceDAL = pamResourceDALFactory(db);
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
-  const pamDomainDAL = pamDomainDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
@@ -1662,6 +1657,35 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const pamProjectResolver = pamProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    keyStore
+  });
+
+  const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
+  const pamFolderDAL = pamFolderDALFactory(db);
+
+  const pamFolderService = pamFolderServiceFactory({
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService
+  });
+
+  const pamMembershipService = pamMembershipServiceFactory({
+    membershipDAL,
+    membershipRoleDAL,
+    pamFolderDAL,
+    pamAccountDAL,
+    userDAL,
+    groupDAL,
+    identityDAL,
+    permissionService
+  });
+
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
@@ -1768,8 +1792,6 @@ export const registerRoutes = async (
     smtpService,
     appConnectionDAL,
     dynamicSecretDAL,
-    pamResourceDAL,
-    pamDiscoverySourceDAL,
     identityKubernetesAuthDAL,
     aiMcpServerDAL,
     pkiDiscoveryConfigDAL,
@@ -1785,11 +1807,77 @@ export const registerRoutes = async (
     licenseService,
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
-    pamDomainDAL,
-    pamResourceDAL,
-    pamDiscoverySourceDAL,
     appConnectionDAL,
     dynamicSecretDAL
+  });
+
+  const pamAccountTemplateService = pamAccountTemplateServiceFactory({
+    pamAccountTemplateDAL,
+    permissionService,
+    gatewayV2DAL,
+    gatewayPoolService,
+    appConnectionDAL,
+    kmsService
+  });
+
+  const pamAccountService = pamAccountServiceFactory({
+    pamAccountDAL,
+    pamFolderDAL,
+    pamAccountTemplateDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayPoolService,
+    appConnectionDAL
+  });
+
+  const pamSessionDAL = pamSessionDALFactory(db);
+  const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
+
+  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
+    queueService,
+    pamSessionDAL
+  });
+
+  const pamSessionService = pamSessionServiceFactory({
+    pamSessionDAL,
+    pamAccountDAL,
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    userDAL,
+    pamSessionExpirationService,
+    mfaSessionService,
+    orgDAL
+  });
+
+  const pamSessionChunkService = pamSessionChunkServiceFactory({
+    pamSessionDAL,
+    pamSessionEventChunkDAL,
+    pamAccountDAL,
+    permissionService,
+    kmsService,
+    appConnectionDAL
+  });
+
+  const pamWebAccessService = pamWebAccessServiceFactory({
+    pamAccountDAL,
+    permissionService,
+    auditLogService,
+    tokenService,
+    pamSessionDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    kmsService,
+    userDAL,
+    mfaSessionService,
+    orgDAL
   });
 
   const gitHubAppService = gitHubAppServiceFactory({
@@ -3496,219 +3584,12 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
-  const pamFolderDAL = pamFolderDALFactory(db);
-  const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
-  const pamAccountDAL = pamAccountDALFactory(db);
-  const pamAccountPolicyDAL = pamAccountPolicyDALFactory(db);
-  const pamSessionDAL = pamSessionDALFactory(db);
-  const pamSessionEventBatchDAL = pamSessionEventBatchDALFactory(db);
-  const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
-  const pamProjectRecordingConfigDAL = pamProjectRecordingConfigDALFactory(db);
-  const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
-  const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
-  const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
-  const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
-  const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
-  const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
-
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
   const aiMcpActivityLogDAL = aiMcpActivityLogDALFactory(db);
   const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
   const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
   const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
-
-  const pamFolderService = pamFolderServiceFactory({
-    pamFolderDAL,
-    permissionService
-  });
-
-  const pamProjectRecordingConfigService = pamProjectRecordingConfigServiceFactory({
-    pamProjectRecordingConfigDAL,
-    pamSessionDAL,
-    permissionService,
-    appConnectionService,
-    appConnectionDAL,
-    kmsService
-  });
-
-  const pamSessionChunkService = pamSessionChunkServiceFactory({
-    pamSessionDAL,
-    pamSessionEventChunkDAL,
-    permissionService,
-    kmsService,
-    pamProjectRecordingConfigService
-  });
-
-  const pamResourceService = pamResourceServiceFactory({
-    pamResourceDAL,
-    pamResourceFavoriteDAL,
-    pamDomainDAL,
-    pamAccountDAL,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    resourceMetadataDAL,
-    appConnectionDAL,
-    pamProjectRecordingConfigDAL,
-    usageMeteringService
-  });
-
-  const pamDomainService = pamDomainServiceFactory({
-    pamDomainDAL,
-    pamResourceDAL,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    resourceMetadataDAL
-  });
-
-  const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({
-    pamResourceRotationRulesDAL,
-    pamResourceDAL,
-    permissionService
-  });
-
-  const mfaSessionService = mfaSessionServiceFactory({
-    keyStore,
-    tokenService,
-    smtpService,
-    totpService
-  });
-
-  const pamSessionAiSummaryService = pamSessionAiSummaryServiceFactory({
-    queueService,
-    pamSessionDAL,
-    pamSessionEventBatchDAL,
-    pamResourceDAL,
-    appConnectionDAL,
-    kmsService
-  });
-
-  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
-    queueService,
-    pamSessionDAL,
-    pamSessionAiSummaryService
-  });
-
-  const pamAccountPolicyService = pamAccountPolicyServiceFactory({
-    pamAccountPolicyDAL,
-    permissionService
-  });
-
-  const pamAccountService = pamAccountServiceFactory({
-    pamAccountDAL,
-    pamDomainDAL,
-    pamAccountPolicyDAL,
-    pamResourceRotationRulesDAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    kmsService,
-    pamResourceDAL,
-    pamSessionDAL,
-    permissionService,
-    projectDAL,
-    orgDAL,
-    userDAL,
-    auditLogService,
-    mfaSessionService,
-    tokenService,
-    smtpService,
-    approvalRequestGrantsDAL,
-    approvalPolicyDAL,
-    pamSessionExpirationService,
-    resourceMetadataDAL,
-    pamAccountDependenciesDAL,
-    keyStore,
-    pamProjectRecordingConfigDAL,
-    pamProjectRecordingConfigService
-  });
-
-  const pamAccountRotation = pamAccountRotationServiceFactory({
-    cronJob,
-    pamAccountService
-  });
-
-  const pamSessionService = pamSessionServiceFactory({
-    pamSessionDAL,
-    pamSessionEventBatchDAL,
-    projectDAL,
-    userDAL,
-    permissionService,
-    kmsService,
-    gatewayV2Service,
-    pamSessionAiSummaryService
-  });
-
-  const pamInsightsService = pamInsightsServiceFactory({
-    permissionService,
-    pamSessionDAL,
-    pamResourceDAL,
-    pamAccountDAL,
-    pamResourceRotationRulesDAL,
-    keyStore
-  });
-
-  const pamWebAccessService = pamWebAccessServiceFactory({
-    pamAccountDAL,
-    pamDomainDAL,
-    pamAccountPolicyDAL,
-    pamResourceDAL,
-    pamProjectRecordingConfigDAL,
-    permissionService,
-    auditLogService,
-    tokenService,
-    pamSessionDAL,
-    pamSessionExpirationService,
-    gatewayV2Service,
-    gatewayPoolService,
-    kmsService,
-    userDAL,
-    mfaSessionService,
-    approvalPolicyDAL,
-    approvalRequestGrantsDAL,
-    orgDAL,
-    projectDAL
-  });
-
-  const pamDiscoveryQueue = pamDiscoveryQueueFactory({
-    pamDiscoverySourceDAL,
-    pamDiscoveryRunDAL,
-    pamDiscoverySourceResourcesDAL,
-    pamDiscoverySourceAccountsDAL,
-    pamDiscoverySourceDependenciesDAL,
-    pamAccountDependenciesDAL,
-    pamDomainDAL,
-    pamResourceDAL,
-    pamAccountDAL,
-    kmsService,
-    queueService,
-    cronJob,
-    gatewayV2Service,
-    gatewayV2DAL,
-    gatewayPoolService
-  });
-
-  const pamDiscoverySourceService = pamDiscoverySourceServiceFactory({
-    pamDiscoverySourceDAL,
-    pamDiscoveryRunDAL,
-    pamDiscoverySourceResourcesDAL,
-    pamDiscoverySourceAccountsDAL,
-    pamDiscoverySourceDependenciesDAL,
-    pamAccountDependenciesDAL,
-    pamAccountDAL,
-    pamResourceDAL,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    pamDiscoveryQueue
-  });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
     aiMcpServerDAL,
@@ -3801,10 +3682,6 @@ export const registerRoutes = async (
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
-  pamDiscoveryQueue.startPamDiscoveryQueue();
-  pamAccountRotation.init();
-  pamSessionExpirationService.init();
-  pamSessionAiSummaryService.init();
   dailyReminderQueueService.startDailyRemindersJob();
   secretSyncQueue.startDailySecretSyncRetryJob();
   dailyExpiringPkiItemAlert.startSendingAlerts();
@@ -3815,6 +3692,7 @@ export const registerRoutes = async (
   certificateV3Queue.init();
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
+  pamSessionExpirationService.init();
   godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();
@@ -3908,6 +3786,14 @@ export const registerRoutes = async (
     signerPolicy: signerPolicyService,
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
+    pamProjectResolver,
+    pamAccountTemplate: pamAccountTemplateService,
+    pamFolder: pamFolderService,
+    pamAccount: pamAccountService,
+    pamMembership: pamMembershipService,
+    pamSession: pamSessionService,
+    pamSessionChunk: pamSessionChunkService,
+    pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
@@ -3961,7 +3847,6 @@ export const registerRoutes = async (
     assumePrivileges: assumePrivilegeService,
     insights: insightsService,
     auditReport: auditReportService,
-    pamInsights: pamInsightsService,
     githubOrgSync: githubOrgSyncConfigService,
     gitHubApp: gitHubAppService,
     honeyTokenConfig: honeyTokenConfigService,
@@ -3974,17 +3859,6 @@ export const registerRoutes = async (
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
     announcement: announcementService,
-    pamFolder: pamFolderService,
-    pamResource: pamResourceService,
-    pamDomain: pamDomainService,
-    pamResourceRotationRules: pamResourceRotationRulesService,
-    pamAccount: pamAccountService,
-    pamAccountPolicy: pamAccountPolicyService,
-    pamSession: pamSessionService,
-    pamSessionChunk: pamSessionChunkService,
-    pamProjectRecordingConfig: pamProjectRecordingConfigService,
-    pamWebAccess: pamWebAccessService,
-    pamDiscoverySource: pamDiscoverySourceService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,
     membershipIdentity: membershipIdentityService,
@@ -4086,6 +3960,7 @@ export const registerRoutes = async (
   await server.register(injectIdentity, { shouldForwardWritesToPrimaryInstance });
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
+  await server.register(injectPamProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
 
