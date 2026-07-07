@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
-import { format } from "date-fns";
 import { Ban, FilterIcon, Trash2, User as UserIcon, Users as UsersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -57,18 +56,7 @@ import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
-import { formatDuration } from "../../components/formatDuration";
-import { formatRelativeExpiry } from "../../components/PamDetailSheet";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-
-const RelativeTime = ({ date }: { date: string }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span className="cursor-default">{formatRelativeExpiry(date).replace("about ", "")}</span>
-    </TooltipTrigger>
-    <TooltipContent>{format(new Date(date), "MMM d, yyyy h:mm a")}</TooltipContent>
-  </Tooltip>
-);
 
 type ApproverEntry = { type: PamApproverType; id: string };
 
@@ -403,7 +391,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                   <TableRow>
                     <TableHead>Requester</TableHead>
                     <TableHead>Account</TableHead>
-                    <TableHead>Requested</TableHead>
                     <TableHead>Status</TableHead>
                     {canRevoke && <TableHead className="w-12" />}
                   </TableRow>
@@ -411,7 +398,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <TableBody>
                   {folderRequests.map((request) => {
                     const status = getRequestStatusInfo(request);
-                    const duration = request.requestData?.requestData?.duration;
                     return (
                       <TableRow key={request.id}>
                         <TableCell className="h-[50px]">
@@ -426,16 +412,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                               <AccountPlatformIcon accountType={request.accountType} size={16} />
                             )}
                             {request.accountName ?? "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <div className="flex flex-col">
-                            <RelativeTime date={request.createdAt} />
-                            {duration && (
-                              <span className="text-xs text-muted">
-                                for {formatDuration(duration)}
-                              </span>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell>
