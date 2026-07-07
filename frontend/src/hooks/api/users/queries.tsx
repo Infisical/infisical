@@ -11,6 +11,7 @@ import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { setAuthToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
+import { webAuthnKeys } from "../webauthn/queries";
 import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
@@ -435,6 +436,9 @@ export const useEnrollMfa = () => {
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
       queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
+      // Enrollment is method-agnostic; a WEBAUTHN enroll adds a credential, so
+      // keep the passkey list in sync regardless of the method used.
+      queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials });
     }
   });
 };

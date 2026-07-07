@@ -65,23 +65,6 @@ export const useUpdateUserProjectFavorites = () => {
   });
 };
 
-export const useVerifyUserTotpRegistration = () => {
-  const queryClient = useQueryClient();
-  return useMutation<{ success: boolean }, unknown, { totp: string }>({
-    mutationFn: async ({ totp }: { totp: string }) => {
-      const { data } = await apiRequest.post<{ success: boolean }>("/api/v1/user/me/totp/verify", {
-        totp
-      });
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
-      queryClient.removeQueries({ queryKey: userKeys.totpRegistration });
-    }
-  });
-};
-
 export const useDeleteUserTotpConfiguration = () => {
   const queryClient = useQueryClient();
   return useMutation({

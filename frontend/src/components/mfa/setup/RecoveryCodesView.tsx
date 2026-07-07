@@ -53,7 +53,7 @@ export const RecoveryCodesView = ({ recoveryCodes, onSaved }: Props) => {
           <DownloadIcon /> Download
         </Button>
         <Button variant="outline" isFullWidth onClick={handleCopy}>
-          <CopyIcon /> {copied ? "Copied!" : "Copy"}
+          <CopyIcon /> {copied ? "Copied" : "Copy"}
         </Button>
       </div>
     </div>

@@ -84,6 +84,8 @@ export const MFASection = () => {
   const hasConfiguredFactor =
     Boolean(totpConfiguration?.isVerified) || webAuthnCredentials.length > 0;
 
+  const hasRecoveryCodes = hasConfiguredFactor || user.isMfaEnabled;
+
   const handleEnable = async () => {
     if (!hasConfiguredFactor) {
       setIsWizardOpen(true);
@@ -125,8 +127,8 @@ export const MFASection = () => {
     }
   };
 
-  const disabledView = (
-    <div className="mb-6 rounded-lg border border-border bg-card p-6">
+  const disabledBanner = (
+    <div className="rounded-lg border border-border bg-card p-6">
       <div className="flex items-start justify-between">
         <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
         <Badge variant="danger">
@@ -153,68 +155,69 @@ export const MFASection = () => {
     </div>
   );
 
-  const enabledView = (
-    <div className="mb-6 flex flex-col gap-6">
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-start justify-between">
-          <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
-          <Badge variant="success">
-            <ShieldCheckIcon /> Enabled
-          </Badge>
-        </div>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Two-factor authentication is protecting your account. Manage your methods and recovery
-          options below.
+  const enabledBanner = (
+    <div className="rounded-lg border border-border bg-card p-6">
+      <div className="flex items-start justify-between">
+        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
+        <Badge variant="success">
+          <ShieldCheckIcon /> Enabled
+        </Badge>
+      </div>
+      <p className="mt-2 max-w-2xl text-sm text-muted">
+        Two-factor authentication is protecting your account. Manage your methods and recovery
+        options below.
+      </p>
+
+      <div className="mt-6 border-t border-border pt-6">
+        <p className="text-sm font-medium text-foreground">Preferred 2FA method</p>
+        <p className="mb-3 text-sm text-muted">
+          Set the method used first when signing in to Infisical.
         </p>
-
-        <div className="mt-6 border-t border-border pt-6">
-          <p className="text-sm font-medium text-foreground">Preferred 2FA method</p>
-          <p className="mb-3 text-sm text-muted">
-            Set the method used first when signing in to Infisical.
-          </p>
-          <div className="max-w-xs">
-            <Select
-              value={selectedMethod}
-              onValueChange={(value) => handlePreferredMethodChange(value as MfaMethod)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a method" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableMethods.map((method) => {
-                  const Icon = MFA_METHOD_ICONS[method];
-                  return (
-                    <SelectItem key={method} value={method}>
-                      <span className="flex items-center gap-2">
-                        <Icon />
-                        {MFA_METHOD_LABELS[method]}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-6">
-          <p className="text-sm text-muted">
-            {isMfaEnforced
-              ? "Your organization requires two-factor authentication, so it can't be disabled."
-              : "Turning this off keeps your configured methods and recovery codes so you can re-enable it later."}
-          </p>
-          <Button
-            variant="danger"
-            isDisabled={isMfaEnforced}
-            onClick={() => setIsDisableOpen(true)}
+        <div className="max-w-xs">
+          <Select
+            value={selectedMethod}
+            onValueChange={(value) => handlePreferredMethodChange(value as MfaMethod)}
           >
-            <PowerIcon /> Disable two-factor authentication
-          </Button>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a method" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableMethods.map((method) => {
+                const Icon = MFA_METHOD_ICONS[method];
+                return (
+                  <SelectItem key={method} value={method}>
+                    <span className="flex items-center gap-2">
+                      <Icon />
+                      {MFA_METHOD_LABELS[method]}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <MfaMethodsCard />
-      <RecoveryOptionsCard />
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-6">
+        <p className="text-sm text-muted">
+          {isMfaEnforced
+            ? "Your organization requires two-factor authentication, so it can't be disabled."
+            : "Turning this off keeps your configured methods and recovery codes so you can re-enable it later."}
+        </p>
+        <Button variant="danger" isDisabled={isMfaEnforced} onClick={() => setIsDisableOpen(true)}>
+          <PowerIcon /> Disable two-factor authentication
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="mb-6 flex flex-col gap-6">
+        {user.isMfaEnabled ? enabledBanner : disabledBanner}
+        <MfaMethodsCard />
+        {hasRecoveryCodes && <RecoveryOptionsCard />}
+      </div>
 
       <AlertDialog open={isDisableOpen} onOpenChange={setIsDisableOpen}>
         <AlertDialogContent>
@@ -233,14 +236,9 @@ export const MFASection = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
 
-  return (
-    <>
-      {user.isMfaEnabled ? enabledView : disabledView}
       {/* Mounted at a stable position so enabling MFA mid-wizard (which flips the
-          view above) does not unmount the dialog and interrupt the flow. */}
+          banner above) does not unmount the dialog and interrupt the flow. */}
       <MfaSetupWizard isOpen={isWizardOpen} onOpenChange={setIsWizardOpen} />
     </>
   );

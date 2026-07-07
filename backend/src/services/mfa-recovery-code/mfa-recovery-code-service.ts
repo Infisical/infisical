@@ -1,5 +1,3 @@
-import { Knex } from "knex";
-
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -7,7 +5,6 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TMfaRecoveryCodeDALFactory } from "./mfa-recovery-code-dal";
 import { generateRecoveryCode } from "./mfa-recovery-code-fns";
 import {
-  TDeleteRecoveryCodesDTO,
   TEnsureRecoveryCodesDTO,
   TGetRecoveryCodesDTO,
   TRotateRecoveryCodesDTO,
@@ -110,21 +107,7 @@ export const mfaRecoveryCodeServiceFactory = ({
 
     const { recoveryCodes, encryptedRecoveryCodes } = generateEncryptedRecoveryCodes();
 
-    const upsert = async (tx: Knex) => {
-      const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOne({ userId }, tx);
-
-      if (recoveryCodeConfig) {
-        await mfaRecoveryCodeDAL.updateById(recoveryCodeConfig.id, { encryptedRecoveryCodes }, tx);
-      } else {
-        await mfaRecoveryCodeDAL.create({ userId, encryptedRecoveryCodes }, tx);
-      }
-    };
-
-    if (externalTx) {
-      await upsert(externalTx);
-    } else {
-      await mfaRecoveryCodeDAL.transaction(upsert);
-    }
+    await mfaRecoveryCodeDAL.upsert([{ userId, encryptedRecoveryCodes }], "userId", externalTx);
 
     return recoveryCodes;
   };
@@ -142,15 +125,10 @@ export const mfaRecoveryCodeServiceFactory = ({
     return rotateRecoveryCodes({ userId, tx, skipMfaEnabledCheck: true });
   };
 
-  const deleteRecoveryCodes = async ({ userId, tx }: TDeleteRecoveryCodesDTO) => {
-    await mfaRecoveryCodeDAL.delete({ userId }, tx);
-  };
-
   return {
     getRecoveryCodes,
     verifyAndConsumeRecoveryCode,
     rotateRecoveryCodes,
-    ensureRecoveryCodes,
-    deleteRecoveryCodes
+    ensureRecoveryCodes
   };
 };

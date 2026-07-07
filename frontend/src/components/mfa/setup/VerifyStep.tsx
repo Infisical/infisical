@@ -81,7 +81,7 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
         isDisabled={totp.trim().length !== 6}
         onClick={handleVerify}
       >
-        Verify code
+        Verify Code
       </Button>
     </div>
   );
@@ -137,7 +137,7 @@ const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
           isDisabled={code.trim().length !== 6}
           onClick={handleVerify}
         >
-          Verify code
+          Verify Code
         </Button>
       </div>
     </div>
@@ -176,7 +176,7 @@ const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => 
         placeholder="Passkey name (optional)"
       />
       <Button variant="org" isPending={isRegistering} onClick={handleRegister}>
-        <FingerprintIcon /> Register passkey
+        <FingerprintIcon /> Register Passkey
       </Button>
     </div>
   );

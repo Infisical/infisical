@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { ContentLoader } from "@app/components/v2";
 import { Button } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
@@ -21,7 +20,7 @@ type Props = {
 // MFA -> save codes.
 export const MfaEnrollment = ({ method, onComplete }: Props) => {
   const { mutateAsync: activateMfa } = useActivateMfa();
-  const [phase, setPhase] = useState<"preparing" | "verify" | "recovery">("preparing");
+  const [phase, setPhase] = useState<"verify" | "recovery">("verify");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [hasSaved, setHasSaved] = useState(false);
   const hasPrepared = useRef(false);
@@ -33,7 +32,6 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
     hasPrepared.current = true;
 
     SecurityClient.setMfaToken("");
-    setPhase("verify");
   }, []);
 
   const handleVerified = async (codes?: string[]) => {
@@ -63,8 +61,6 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
           Your organization requires {MFA_METHOD_LABELS[method]} to be configured.
         </p>
       </div>
-
-      {phase === "preparing" && <ContentLoader />}
 
       {phase === "verify" && <VerifyStep method={method} onVerified={handleVerified} />}
 
