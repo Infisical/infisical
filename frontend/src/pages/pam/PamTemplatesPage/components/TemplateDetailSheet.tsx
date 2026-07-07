@@ -380,35 +380,33 @@ const SettingsTab = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
-      {applicablePolicies.length > 0 && (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="text-base">Policies</CardTitle>
-            <CardDescription>
-              Policies available for {typeName} accounts using this template.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            {applicablePolicies.map((p) => {
-              const Editor = POLICY_EDITORS[p.key]!;
-              return (
-                <Editor
-                  key={p.key}
-                  label={p.label}
-                  description={p.description}
-                  value={policies[p.key]}
-                  onChange={(value) => {
-                    const next = { ...policies };
-                    if (value === null || value === undefined) delete next[p.key];
-                    else next[p.key] = value;
-                    setValue("policies", next, { shouldDirty: true });
-                  }}
-                />
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Policies</CardTitle>
+          <CardDescription>
+            Policies available for {typeName} accounts using this template.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          {applicablePolicies.map((p) => {
+            const Editor = POLICY_EDITORS[p.key]!;
+            return (
+              <Editor
+                key={p.key}
+                label={p.label}
+                description={p.description}
+                value={policies[p.key]}
+                onChange={(value) => {
+                  const next = { ...policies };
+                  if (value === null || value === undefined) delete next[p.key];
+                  else next[p.key] = value;
+                  setValue("policies", next, { shouldDirty: true });
+                }}
+              />
+            );
+          })}
+        </CardContent>
+      </Card>
 
       {showGatewaySettings && (
         <Card>

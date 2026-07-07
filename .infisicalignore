@@ -65,3 +65,4 @@ backend/src/ee/services/honey-token/honey-token-service.ts:generic-api-key:49
 
 docs/integrations/app-connections/ovh.mdx:private-key:84
 docs/integrations/app-connections/datadog.mdx:generic-api-key:161
+docs/integrations/app-connections/qovery.mdx:generic-api-key:96

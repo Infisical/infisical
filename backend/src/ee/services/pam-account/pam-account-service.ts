@@ -21,7 +21,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -29,18 +29,21 @@ import {
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
+import { resolveAccessControls } from "../pam/pam-policies";
 import {
   mintCorsProbeUrl,
   resolveOverridesS3Config,
   validateGatewayAttachment,
   validateRecordingConnection
 } from "../pam/pam-validators";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
   isCredentialConfigured,
+  PamAccountAccessibilityIssue,
   parseInternalMetadata,
   sanitizeCredentials,
   type TSshInternalMetadata,
@@ -70,6 +73,10 @@ type TPamAccountServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
+  pamAccessRequestService: Pick<
+    TPamAccessRequestServiceFactory,
+    "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources"
+  >;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -138,23 +145,41 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       search
     });
 
-    return accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      folderId: a.folderId,
-      folderName: a.folderName,
-      templateId: a.templateId,
-      templateName: a.templateName,
-      accountType: a.accountType,
-      projectId: a.projectId,
-      gatewayId: a.gatewayId,
-      gatewayPoolId: a.gatewayPoolId,
-      recordingConnectionId: a.recordingConnectionId,
-      ...computeAccessibility(a),
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt
-    }));
+    const folderIdsRequiringApproval = [
+      ...new Set(
+        accounts
+          .filter((a) => resolveAccessControls(a.templatePolicies).requiresApproval && a.folderId)
+          .map((a) => a.folderId!)
+      )
+    ];
+    const foldersWithApprovalPolicy =
+      await deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval);
+
+    return accounts.map((a) => {
+      const { accessibilityIssues, isAccessible } = computeAccessibility(a);
+      const { requiresApproval } = resolveAccessControls(a.templatePolicies);
+      if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
+        accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
+      }
+      return {
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        folderId: a.folderId,
+        folderName: a.folderName,
+        templateId: a.templateId,
+        templateName: a.templateName,
+        accountType: a.accountType,
+        projectId: a.projectId,
+        gatewayId: a.gatewayId,
+        gatewayPoolId: a.gatewayPoolId,
+        recordingConnectionId: a.recordingConnectionId,
+        isAccessible: isAccessible && accessibilityIssues.length === 0,
+        accessibilityIssues,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt
+      };
+    });
   };
 
   const checkAccount = (
@@ -348,6 +373,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       if (!folder || folder.projectId !== projectId) {
         throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
       }
+      // Moving an account into a different folder requires create rights on the destination: folder
+      // roles cascade to the accounts inside, so EditAccounts alone must not relocate an account into a
+      // folder where the actor would gain ViewCredentials/LaunchSessions.
+      if (folderId !== existing.folderId) {
+        const { permission } = await checkFolder(folderId, projectId, ctx);
+        ForbiddenError.from(permission).throwUnlessCan(
+          ResourcePermissionPamResourceActions.CreateAccounts,
+          ResourcePermissionSub.PamResource
+        );
+      }
     }
 
     let template: TPamAccountTemplates | undefined;
@@ -360,6 +395,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         throw new BadRequestError({
           message: `Template '${templateId}' is for type '${template.type}', not '${accountType}'`
         });
+      }
+      // A template carries governance settings (e.g. requiresApproval) and is product-admin-managed, so
+      // re-pointing an account's template is an admin-only action to prevent bypassing those controls.
+      if (templateId !== existing.templateId) {
+        const { hasRole } = await verifyMembership(projectId, ctx);
+        if (!hasRole(PamProductRole.Admin)) {
+          throw new ForbiddenRequestError({ message: "Only PAM admins can change an account's template" });
+        }
       }
     }
 
@@ -461,6 +504,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         await membershipDAL.delete({ $in: { id: ids } }, tx);
       }
 
+      await deps.pamAccessRequestService.cleanupAccountResources(
+        { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
+        tx
+      );
+
       return pamAccountDAL.deleteById(accountId, tx);
     });
   };
@@ -504,21 +552,49 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       onlyAccessible: true
     });
 
+    const accountsRequiringApproval = accounts.filter(
+      (a) => resolveAccessControls(a.templatePolicies).requiresApproval
+    );
+    const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
+
+    const folderIdsRequiringApproval = [
+      ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
+    ];
+    const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
+    ]);
+
     return {
-      accounts: accounts.map((a) => ({
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        folderId: a.folderId,
-        folderName: a.folderName,
-        templateId: a.templateId,
-        templateName: a.templateName,
-        accountType: a.accountType,
-        projectId: a.projectId,
-        canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
-        createdAt: a.createdAt,
-        updatedAt: a.updatedAt
-      })),
+      accounts: accounts.map((a) => {
+        const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
+        const statusEntry = accessStatusMap.get(a.id);
+        const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
+        let disabledReason: string | null = null;
+        if (requiresApproval && !hasPolicyConfigured) {
+          disabledReason =
+            "This account requires approval, but its folder has no approvers yet. Ask a folder admin to add approvers under the folder's Approvals tab.";
+        }
+        return {
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          folderId: a.folderId,
+          folderName: a.folderName,
+          templateId: a.templateId,
+          templateName: a.templateName,
+          accountType: a.accountType,
+          projectId: a.projectId,
+          canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
+          requiresApproval,
+          requireReason,
+          accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+          grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+          disabledReason,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt
+        };
+      }),
       totalCount
     };
   };
