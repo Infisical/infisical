@@ -24,6 +24,7 @@ const FireworksApiKeyRotationParametersSchema = z.object({
     .string()
     .trim()
     .min(1, "Service account required")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Service account user ID contains invalid characters")
     .describe(SecretRotations.PARAMETERS.FIREWORKS_API_KEY.serviceAccountUserId)
 });
 

@@ -12,7 +12,12 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { FireworksConnectionMethod } from "./fireworks-connection-enums";
 
 export const FireworksConnectionApiKeyCredentialsSchema = z.object({
-  accountId: z.string().trim().min(1, "Account ID required").describe(AppConnections.CREDENTIALS.FIREWORKS.accountId),
+  accountId: z
+    .string()
+    .trim()
+    .min(1, "Account ID required")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Account ID contains invalid characters")
+    .describe(AppConnections.CREDENTIALS.FIREWORKS.accountId),
   apiKey: z.string().trim().min(1, "API Key required").describe(AppConnections.CREDENTIALS.FIREWORKS.apiKey)
 });
 

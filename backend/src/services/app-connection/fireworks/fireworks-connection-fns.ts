@@ -46,32 +46,18 @@ export type TFireworksUser = {
 export const listFireworksUsers = async (appConnection: TFireworksConnection) => {
   const { apiKey, accountId } = appConnection.credentials;
 
-  const users: TFireworksUser[] = [];
-  let pageToken: string | undefined;
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // eslint-disable-next-line no-await-in-loop
-    const { data } = await request.get<{ users: TFireworksUser[]; nextPageToken?: string }>(
-      `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        },
-        params: {
-          pageSize: 200,
-          ...(pageToken ? { pageToken } : {})
-        }
+  const { data } = await request.get<{ users: TFireworksUser[] }>(
+    `${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}/users`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`
+      },
+      params: {
+        pageSize: 200,
+        filter: "service_account=true"
       }
-    );
-
-    if (data.users) {
-      users.push(...data.users.filter((u) => u.serviceAccount));
     }
+  );
 
-    if (!data.nextPageToken) break;
-    pageToken = data.nextPageToken;
-  }
-
-  return users;
+  return (data.users ?? []).filter((u) => u.serviceAccount);
 };
