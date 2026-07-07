@@ -104,6 +104,14 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
+    name: "gcp-service-account",
+    type: PamAccountType.GcpServiceAccount,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
+    }
+  },
+  {
     name: "windows",
     type: PamAccountType.Windows,
     settings: {

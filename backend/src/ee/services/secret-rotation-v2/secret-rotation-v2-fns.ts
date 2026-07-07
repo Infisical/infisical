@@ -16,6 +16,7 @@ import {
   TDatadogApplicationKeySecretRotation
 } from "./datadog-application-key-secret";
 import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
+import { FIREWORKS_API_KEY_ROTATION_LIST_OPTION } from "./fireworks-api-key";
 import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
@@ -23,6 +24,7 @@ import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
 import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key";
+import { OPENAI_SERVICE_ACCOUNT_ROTATION_LIST_OPTION, TOpenAIServiceAccountRotation } from "./openai-service-account";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
@@ -65,11 +67,13 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.OpenAIServiceAccount]: OPENAI_SERVICE_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION,
   [SecretRotation.SupabaseApiKey]: SUPABASE_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.SalesforceOauthCredentials]: SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatadogApplicationKeySecret]: DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION,
-  [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.FireworksApiKey]: FIREWORKS_API_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -390,6 +394,17 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update service account ID" });
+      }
+      break;
+    case SecretRotation.OpenAIServiceAccount:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TOpenAIServiceAccountRotation["parameters"],
+          secretRotation.parameters as TOpenAIServiceAccountRotation["parameters"],
+          ["projectId"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update project ID" });
       }
       break;
     default:
