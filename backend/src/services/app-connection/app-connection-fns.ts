@@ -35,6 +35,7 @@ import {
   OnePassConnectionMethod,
   validateOnePassConnectionCredentials
 } from "./1password";
+import { ADCSConnectionMethod, getADCSConnectionListItem, validateADCSConnectionCredentials } from "./adcs";
 import {
   AnthropicConnectionMethod,
   getAnthropicConnectionListItem,
@@ -226,6 +227,7 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
   getSalesforceConnectionListItem,
   SalesforceConnectionMethod,
@@ -296,6 +298,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.AWS,
   AppConnection.Cloudflare,
   AppConnection.AzureADCS,
+  AppConnection.ADCS,
   AppConnection.AzureKeyVault,
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
@@ -318,6 +321,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAzureAppConfigurationConnectionListItem(),
     getAzureDevopsConnectionListItem(),
     getAzureADCSConnectionListItem(),
+    getADCSConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getTerraformCloudConnectionListItem(),
@@ -382,6 +386,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
+    getRundeckConnectionListItem(),
     getQoveryConnectionListItem(),
     getFireworksConnectionListItem()
   ]
@@ -557,6 +562,7 @@ export const validateAppConnectionCredentials = async (
       validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ADCS]: validateADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -627,6 +633,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator
   };
@@ -680,6 +687,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
+    case RundeckConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -691,6 +699,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case ADCSConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
@@ -815,6 +824,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureDevOps]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureADCS]: platformManagedCredentialsNotSupported,
+  [AppConnection.ADCS]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
@@ -878,6 +888,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
+  [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported
 };

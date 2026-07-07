@@ -1,5 +1,6 @@
 import { AppConnection } from "../enums";
 import { TOnePassConnection } from "./1password-connection";
+import { TAdcsConnection } from "./adcs-connection";
 import { TAnthropicConnection } from "./anthropic-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
@@ -60,6 +61,7 @@ import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TRundeckConnection } from "./rundeck-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
@@ -76,6 +78,7 @@ import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
+export * from "./adcs-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-adcs-connection";
@@ -132,6 +135,7 @@ export * from "./qovery-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./rundeck-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
@@ -157,6 +161,7 @@ export type TAppConnection =
   | TAzureClientSecretsConnection
   | TAzureDevOpsConnection
   | TAzureADCSConnection
+  | TAdcsConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -219,6 +224,7 @@ export type TAppConnection =
   | TF5BigIpConnection
   | TConvexConnection
   | TTriggerDevConnection
+  | TRundeckConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TFireworksConnection;

@@ -1,0 +1,123 @@
+---
+title: "Rundeck Connection"
+description: "Learn how to configure a Rundeck Connection for Infisical."
+---
+
+Infisical supports connecting to Rundeck using an **API Token**.
+
+## Generate a Rundeck API Token
+
+<Steps>
+    <Step title="Open your Rundeck profile menu">
+        Log in to your Rundeck instance and click the user icon in the top-right corner.
+        ![Rundeck profile menu](/images/app-connections/rundeck/step-1.png)
+    </Step>
+    <Step title="Go to your Profile">
+        Select **Profile** from the dropdown.
+        ![Select Profile](/images/app-connections/rundeck/step-2.png)
+    </Step>
+    <Step title="Add a new User API Token">
+        In the **User API Tokens** section, click the **+** button.
+        ![User API Tokens](/images/app-connections/rundeck/step-3.png)
+    </Step>
+    <Step title="Generate the token">
+        In the **Generate New Token** dialog, enter:
+        - **Name**: a label to identify the token (e.g., `INFISICAL_TOKEN`)
+        - **User**: the username associated with the token
+        - **Roles**: comma-separated roles/groups, or leave blank to use all of your current roles
+        - **Expiration in**: an optional lifetime; set to `0` for the maximum allowed duration
+
+        Click **Generate New Token**.
+        ![Generate New Token](/images/app-connections/rundeck/step-4.png)
+
+        <Note>
+            The API token inherits the access of the user and roles it is generated with. Grant only the
+            permissions required to read projects and manage Key Storage for your target projects.
+        </Note>
+    </Step>
+    <Step title="Copy the API Token">
+        Copy the generated token and store it securely, as you won't be able to view it again after
+        closing the dialog. Click **Close** when done.
+        ![Save Your new Token](/images/app-connections/rundeck/step-5.png)
+
+        <Note>
+            If you configure an expiration for your API token, you must manually rotate to a new token
+            before it expires to prevent service interruption.
+        </Note>
+    </Step>
+</Steps>
+
+## Setup Rundeck Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add a Rundeck Connection">
+                In your Infisical dashboard, navigate to the **Integrations** tab in the desired project,
+                select **App Connections**, and click **+ Add Connection**. Search for and select the
+                **Rundeck** option.
+                ![Select Rundeck Connection](/images/app-connections/rundeck/step-6.png)
+            </Step>
+            <Step title="Fill out the Rundeck Connection form">
+                Complete the connection form by entering:
+                - A descriptive **Name** for the connection (must be slug-friendly)
+                - An optional **Description** for future reference
+                - The **Method** (**API Token**)
+                - The **Rundeck Instance URL** (e.g., `https://rundeck.example.com`)
+                - The **Rundeck API Token** you generated above
+
+                Click **Connect to Rundeck**.
+                ![Rundeck Connection Form](/images/app-connections/rundeck/step-7.png)
+            </Step>
+            <Step title="Connection Created">
+                Your **Rundeck Connection** is established and ready to use with your Infisical project.
+                ![Rundeck Connection Created](/images/app-connections/rundeck/step-8.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Rundeck Connection, make an API request to the [Create Rundeck
+        Connection](/api-reference/endpoints/app-connections/rundeck/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/rundeck \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-rundeck-connection",
+                    "method": "api-token",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "credentials": {
+                        "instanceUrl": "https://rundeck.example.com",
+                        "apiToken": "..."
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+            "name": "my-rundeck-connection",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": null,
+            "version": 1,
+            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+            "createdAt": "2025-04-23T19:46:34.831Z",
+            "updatedAt": "2025-04-23T19:46:34.831Z",
+            "isPlatformManagedCredentials": false,
+            "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+            "app": "rundeck",
+            "method": "api-token",
+            "credentials": {
+              "instanceUrl": "https://rundeck.example.com"
+            }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

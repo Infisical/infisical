@@ -582,6 +582,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect GoDaddy to Infisical for ACME DNS validation.",
       category: "Networking & DNS",
+    }, 
+    {
+      name: "Rundeck",
+      slug: "rundeck",
+      path: "/integrations/app-connections/rundeck",
+      description:
+        "Learn how to connect Rundeck to pull secrets from Infisical.",
+      category: "DevOps Tools",
     },
     {
       name: "Qovery",

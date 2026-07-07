@@ -12,12 +12,11 @@ export type TPamPlaybackChunk = {
   presignedGetUrl: string | null;
 };
 
-export type TPamPlaybackBundle = {
-  legacy: boolean;
+export type TPamSessionPlayback = {
   sessionComplete: boolean;
-  sessionKey: string | null;
-  projectId?: string;
-  storageBackend?: TPamRecordingStorageBackend;
+  sessionKey: string;
+  projectId: string;
+  storageBackend: TPamRecordingStorageBackend;
   chunks: TPamPlaybackChunk[];
 };
 

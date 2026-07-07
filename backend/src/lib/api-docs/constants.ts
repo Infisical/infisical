@@ -93,6 +93,12 @@ export enum ApiDocsTags {
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
+  PamAccounts = "PAM Accounts",
+  PamFolders = "PAM Folders",
+  PamAccountTemplates = "PAM Account Templates",
+  PamSessions = "PAM Sessions",
+  PamMemberships = "PAM Memberships",
+  PamRoles = "PAM Roles",
   KmipServers = "KMIP Servers"
 }
 
@@ -2199,6 +2205,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_ADCS: {
     caId: "The ID of the CA to install the certificate for via Azure AD CS."
   },
+  INSTALL_CERT_ADCS_NATIVE: {
+    caId: "The ID of the CA to install the certificate for via ADCS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -2887,6 +2896,10 @@ export const AppConnections = {
     OCTOPUS_DEPLOY: {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
+    },
+    RUNDECK: {
+      instanceUrl: "The Rundeck instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Rundeck."
     },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."

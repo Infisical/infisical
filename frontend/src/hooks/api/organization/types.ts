@@ -40,6 +40,7 @@ export type Organization = {
   parentOrgId: string | null;
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
+  pamProjectId: string | null;
 };
 
 export type UpdateOrgDTO = {
@@ -205,7 +206,7 @@ export type TOrgProductStats = {
   };
   pam: {
     accountsCount: number;
-    resourcesCount: number;
-    projectsCount: number;
+    accountTemplatesCount: number;
+    foldersCount: number;
   };
 };

@@ -1,0 +1,195 @@
+---
+title: "Microsoft ADCS"
+description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over MS-WCCE through an Infisical Gateway."
+---
+
+Issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over the Windows Client Certificate Enrollment protocol (MS-WCCE). Requests are relayed through an Infisical [Gateway](/documentation/platform/gateways/overview) that runs inside your network, so the AD CS server is never exposed to Infisical.
+
+## Prerequisites
+
+Before setting up a Microsoft ADCS certificate authority, configure a [Microsoft ADCS app connection](/integrations/app-connections/adcs). It covers the AD CS server, the Infisical [Gateway](/documentation/platform/gateways/overview) (including the network and port requirements), and the domain account used for enrollment.
+
+You can use AD CS in a few ways: as an **External CA** that issues certificates directly, to back a **code signing signer**, or to **sign internal intermediate CAs** so you can build an Infisical-managed CA hierarchy backed by your AD CS server. In every case the certificate template is chosen by the issuance flow (profile, signer, or intermediate CA), not by the CA itself.
+
+<Note>
+  The certificate authority name is discovered automatically from the CA host. Provide it explicitly only when discovery cannot run in your environment.
+</Note>
+
+<Tabs>
+  <Tab title="External CA">
+    <Steps>
+      <Step title="Navigate to External Certificate Authorities">
+        In **Certificate Manager**, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
+      </Step>
+
+      <Step title="Create a New Microsoft ADCS Certificate Authority">
+        Click **Create CA** and configure:
+        - **Type**: Choose **Microsoft ADCS**
+        - **Name**: Friendly name for this CA (for example, `production-adcs`)
+        - **Microsoft ADCS Connection**: Choose your Microsoft ADCS connection
+        - **Certificate Authority**: Optional. Leave blank to discover it automatically from the CA host.
+      </Step>
+
+      <Step title="Create a Certificate Profile">
+        Go to **Certificate Manager → Certificate Profiles** and create a new profile:
+        - **Certificate Authority**: Select your ADCS CA
+        - **Certificate Template**: Select from the templates published on your CA
+        - Configure the default certificate attributes (TTL, key algorithm, and so on)
+      </Step>
+
+      <Step title="Create an Application and Configure Enrollment">
+        Go to **Certificate Manager → Applications** and create an Application:
+        - Attach the profile you created
+        - Configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, or SCEP)
+        - Assign the members who need to issue certificates
+      </Step>
+
+      <Step title="Issue a Certificate">
+        In your Application, go to the **Certificate Requests** tab and click **Request**:
+        - Select the profile linked to your ADCS CA
+        - Fill in the certificate details (common name, SANs, TTL)
+        - Click **Submit**
+
+        The request is relayed through the Gateway to AD CS and issued using the profile's template.
+      </Step>
+    </Steps>
+
+    ## Certificate Templates
+
+    Infisical retrieves the templates published on your CA in real time, so a profile can only reference a template that exists and is reachable. The template lives on the issuance flow (the profile), not on the CA.
+
+    Before using a template, verify the following in AD CS:
+
+    - **Enroll permission**: The domain account you configured in the ADCS connection must have Enroll permission on the template.
+    - **Subject name**: The template's subject name policy must be compatible with the certificates you plan to request (required fields, allowed patterns, and so on).
+    - **Key usage**: The template's key usage and extended key usage must match what you need (for example, Server Authentication for TLS certificates).
+  </Tab>
+
+  <Tab title="Code Signing Signers">
+    A [code signing signer](/documentation/platform/pki/code-signing/signers) backed by an ADCS CA requests a code-signing certificate from AD CS. The signer owns its certificate template.
+
+    When you create or edit a signer whose CA is an ADCS CA, the **Certificate** step shows a required **Certificate Template** field. Pick a code-signing template published on your CA (one that carries the Code Signing extended key usage).
+
+    <Note>
+      The issued certificate must carry the Code Signing extended key usage or Infisical rejects it. Use a template configured for code signing on your CA.
+    </Note>
+  </Tab>
+
+  <Tab title="Signing Internal Intermediate CAs">
+    You can use AD CS to **sign internal intermediate CAs** in Infisical. This lets you build an Infisical-managed CA hierarchy where the intermediate CA's certificate is issued by your AD CS server, with support for auto-renewal. Infisical generates the CSR, relays it to AD CS through the Gateway using the configured template, and imports the signed certificate and chain.
+
+    <Warning>
+      The certificate template must allow "Supply in the request" for subject information so that the CSR's subject fields are honored. A subordinate CA template (for example, `SubCA`) is the typical choice.
+    </Warning>
+
+    ## Installing an Intermediate CA Certificate via AD CS
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step title="Create an Intermediate CA">
+            Go to **Certificate Authorities → Internal Certificate Authorities** and press **Create CA**. Set the type to **Intermediate** and fill out the CA details.
+          </Step>
+          <Step title="Open the Install Certificate Modal">
+            Press **Install CA Certificate** on the intermediate CA, select **External CA (Automated)**, and press **Choose Integration**.
+          </Step>
+          <Step title="Select Microsoft ADCS">
+            Choose **Microsoft ADCS** as the integration provider.
+          </Step>
+          <Step title="Configure Signing Details">
+            Configure the following:
+            - **Microsoft ADCS Connection**: Select your Microsoft ADCS connection.
+            - **Certificate Template**: The subordinate CA template name (for example, `SubCA`).
+            - **Path Length**: Max intermediate CAs below this one (`-1` for no limit, `0` to prevent chaining).
+          </Step>
+          <Step title="Install">
+            Press **Install**. The request is queued and processed asynchronously.
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        <Steps>
+          <Step title="Create a Signing Configuration">
+            ```bash Request
+            curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/signing-config' \
+              --header 'Authorization: Bearer <access-token>' \
+              --header 'Content-Type: application/json' \
+              --data-raw '{
+                  "type": "adcs",
+                  "appConnectionId": "<adcs-connection-id>",
+                  "destinationConfig": {
+                      "template": "SubCA"
+                  }
+              }'
+            ```
+          </Step>
+          <Step title="Install the Certificate">
+            ```bash Request
+            curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/install-certificate-microsoft-adcs' \
+              --header 'Authorization: Bearer <access-token>' \
+              --header 'Content-Type: application/json' \
+              --data-raw '{
+                  "maxPathLength": -1
+              }'
+            ```
+
+            Returns HTTP 202. Poll the CA details endpoint to check when the certificate has been installed.
+          </Step>
+        </Steps>
+      </Tab>
+    </Tabs>
+
+    ## Auto-Renewal
+
+    Infisical supports automatic renewal of intermediate CA certificates signed by AD CS. When enabled, Infisical submits a fresh CSR to AD CS through the Gateway and imports the renewed certificate before the current one expires.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        Navigate to the CA details page of your AD CS-signed intermediate CA. Click the **edit** (pencil) icon in the Details section to open the renewal settings.
+
+        Toggle **Auto-Renewal** on and set the **Days Before Expiry** to configure when the renewal should be triggered.
+      </Tab>
+      <Tab title="API">
+        ```bash Request
+        curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/auto-renewal' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "autoRenewalEnabled": true,
+              "autoRenewalDaysBeforeExpiry": 7
+          }'
+        ```
+
+        <Note>
+          - `autoRenewalDaysBeforeExpiry` must be less than the certificate's TTL and at most 30 days
+          - Auto-renewal is only available for CAs with an external signing configuration
+        </Note>
+      </Tab>
+    </Tabs>
+  </Tab>
+</Tabs>
+
+## Limitations
+
+- Templates that require manual approval or are held by CA policy are not supported. Requests are issued immediately.
+- Authentication uses NTLM. Kerberos is not yet supported.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The requested certificate template is not supported">
+    The CA rejected the request with `CERTSRV_E_UNSUPPORTED_CERT_TYPE`. The template is either not published on the CA or the name is wrong. Confirm the template is published (`certutil -CATemplates`) and that the name matches exactly.
+  </Accordion>
+  <Accordion title="Enroll permission denied">
+    The connection account does not have Enroll permission on the requested template. Grant Enroll to the account on the template's security settings.
+  </Accordion>
+  <Accordion title="The certificate authority name could not be discovered">
+    Discovery reads the CA name from the host's registry over the network, which requires the Remote Registry service to be running and reachable from the Gateway. If it cannot run, set the certificate authority name explicitly on the external CA.
+  </Accordion>
+  <Accordion title="Signer rejected: missing Code Signing extended key usage">
+    The template used for a code signing signer does not produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.
+  </Accordion>
+  <Accordion title="Gateway connectivity issues">
+    Verify the Gateway can reach the AD CS host over DCOM (MS-WCCE) and that the domain account credentials are correct.
+  </Accordion>
+</AccordionGroup>

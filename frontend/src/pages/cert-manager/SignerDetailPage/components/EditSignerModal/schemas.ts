@@ -39,7 +39,9 @@ export const certificateSchema = z
     keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
     hsmConnectorId: z.string().uuid().optional().nullable(),
     // DigiCert code signing only: reissue into this existing order instead of placing a new one.
-    reissueFromExternalOrderId: z.string().nullable().optional().default(null)
+    reissueFromExternalOrderId: z.string().nullable().optional().default(null),
+    // AD CS only: the certificate template this signer requests when issuing.
+    adcsTemplate: z.string().trim().optional().default("")
   })
   .refine(
     (data) =>

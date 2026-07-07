@@ -124,6 +124,15 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
 
+  useEffect(() => {
+    if (projectType === ProjectType.PAM) {
+      navigate({
+        to: "/organizations/$orgId/pam/access",
+        params: { orgId }
+      });
+    }
+  }, [projectType, orgId, navigate]);
+
   if (projectType === ProjectType.CertificateManager) {
     return (
       <CertManagerNotConfiguredModal
@@ -139,6 +148,10 @@ export const ProjectTypePage = () => {
         }}
       />
     );
+  }
+
+  if (projectType === ProjectType.PAM) {
+    return null;
   }
 
   return <ProjectTypeContent projectType={projectType} orgId={orgId} />;

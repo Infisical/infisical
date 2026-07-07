@@ -41,6 +41,7 @@ import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
 import { QoverySyncDestinationSection } from "./QoverySyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { RundeckSyncDestinationSection } from "./RundeckSyncDestinationSection";
 import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
@@ -147,6 +148,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Supabase:
       DestinationComponents = <SupabaseSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationComponents = <RundeckSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationComponents = (

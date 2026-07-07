@@ -50,6 +50,7 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { AdcsConnectionMethod } from "@app/hooks/api/appConnections/types/adcs-connection";
 import { AnthropicConnectionMethod } from "@app/hooks/api/appConnections/types/anthropic-connection";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
@@ -80,6 +81,7 @@ import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
@@ -154,10 +156,16 @@ export const APP_CONNECTION_MAP: Record<
     description: "Pipeline and project access for Azure DevOps."
   },
   [AppConnection.AzureADCS]: {
-    name: "Azure ADCS",
+    name: "Azure ADCS (Web Enrollment)",
     image: "Microsoft Azure.png",
     category: "CERTIFICATES",
-    description: "Issue certificates via Active Directory Certificate Services."
+    description: "Issue certificates via Active Directory Certificate Services web enrollment."
+  },
+  [AppConnection.ADCS]: {
+    name: "Microsoft ADCS",
+    image: "Windows.png",
+    category: "CERTIFICATES",
+    description: "Issue certificates via Active Directory Certificate Services over the Gateway."
   },
   [AppConnection.AzureDNS]: {
     name: "Azure DNS",
@@ -559,6 +567,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "TriggerDev.png",
     category: "INFRASTRUCTURE",
     description: "Trigger.dev access."
+  },
+  [AppConnection.Rundeck]: {
+    name: "Rundeck",
+    image: "Rundeck.svg",
+    category: "INFRASTRUCTURE",
+    description: "Job and project access for Rundeck."
   }
 };
 
@@ -614,6 +628,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
+    case RundeckConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
@@ -622,6 +637,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };

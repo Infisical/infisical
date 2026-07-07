@@ -15,7 +15,6 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
-import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
@@ -98,20 +97,28 @@ export enum PostHogEventTypes {
   GatewayCertExchanged = "Gateway Cert Exchanged",
   GatewayUpdated = "Gateway Updated",
   GatewayDeleted = "Gateway Deleted",
-  PamResourceCreated = "PAM Resource Created",
-  PamResourceDeleted = "PAM Resource Deleted",
+  PamAccountTemplateCreated = "PAM Account Template Created",
+  PamAccountTemplateUpdated = "PAM Account Template Updated",
+  PamAccountTemplateDeleted = "PAM Account Template Deleted",
+  PamFolderCreated = "PAM Folder Created",
+  PamFolderUpdated = "PAM Folder Updated",
+  PamFolderDeleted = "PAM Folder Deleted",
   PamAccountCreated = "PAM Account Created",
+  PamAccountUpdated = "PAM Account Updated",
   PamAccountDeleted = "PAM Account Deleted",
   PamAccountAccessed = "PAM Account Accessed",
-  PamAccountRotated = "PAM Account Rotated",
   PamSessionStarted = "PAM Session Started",
   PamSessionEnded = "PAM Session Ended",
-  PamWebAccessStarted = "PAM Web Access Started",
-  PamDiscoverySourceCreated = "PAM Discovery Source Created",
-  PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
-  PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
-  PamRotationRuleCreated = "PAM Rotation Rule Created",
-  PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
+  PamSessionTerminated = "PAM Session Terminated",
+  PamProductMemberAdded = "PAM Product Member Added",
+  PamProductMemberUpdated = "PAM Product Member Updated",
+  PamProductMemberRemoved = "PAM Product Member Removed",
+  PamFolderMemberAdded = "PAM Folder Member Added",
+  PamFolderMemberUpdated = "PAM Folder Member Updated",
+  PamFolderMemberRemoved = "PAM Folder Member Removed",
+  PamAccountMemberAdded = "PAM Account Member Added",
+  PamAccountMemberUpdated = "PAM Account Member Updated",
+  PamAccountMemberRemoved = "PAM Account Member Removed",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
   ResourceAuthMethodUpdated = "Resource Auth Method Updated",
@@ -958,88 +965,88 @@ export type TGatewayDeletedEvent = {
   };
 };
 
-export type TPamResourceEvent = {
-  event: PostHogEventTypes.PamResourceCreated | PostHogEventTypes.PamResourceDeleted;
+export type TPamAccountTemplateEvent = {
+  event:
+    | PostHogEventTypes.PamAccountTemplateCreated
+    | PostHogEventTypes.PamAccountTemplateUpdated
+    | PostHogEventTypes.PamAccountTemplateDeleted;
   properties: {
-    resourceType: string;
-    projectId: string;
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamFolderEvent = {
+  event: PostHogEventTypes.PamFolderCreated | PostHogEventTypes.PamFolderUpdated | PostHogEventTypes.PamFolderDeleted;
+  properties: {
+    orgId: string;
   };
 };
 
 export type TPamAccountEvent = {
-  event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
+  event:
+    | PostHogEventTypes.PamAccountCreated
+    | PostHogEventTypes.PamAccountUpdated
+    | PostHogEventTypes.PamAccountDeleted;
   properties: {
-    parentType: PamParentType;
-    projectId: string;
+    accountType: string;
+    orgId: string;
   };
 };
 
 export type TPamAccountAccessedEvent = {
   event: PostHogEventTypes.PamAccountAccessed;
   properties: {
-    resourceType: string;
-    projectId: string;
+    accountType: string;
+    orgId: string;
     duration: number;
-  };
-};
-
-export type TPamAccountRotatedEvent = {
-  event: PostHogEventTypes.PamAccountRotated;
-  properties: {
-    parentType: PamParentType;
-    projectId: string;
   };
 };
 
 export type TPamSessionStartedEvent = {
   event: PostHogEventTypes.PamSessionStarted;
   properties: {
-    projectId: string;
+    accountType: string;
+    orgId: string;
   };
 };
 
 export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded;
+  event: PostHogEventTypes.PamSessionEnded | PostHogEventTypes.PamSessionTerminated;
   properties: {
-    resourceType: string;
-    projectId: string;
+    accountType: string;
+    orgId: string;
     durationMs?: number;
   };
 };
 
-export type TPamWebAccessStartedEvent = {
-  event: PostHogEventTypes.PamWebAccessStarted;
-  properties: {
-    projectId: string;
-  };
-};
-
-export type TPamDiscoveryEvent = {
+export type TPamProductMemberEvent = {
   event:
-    | PostHogEventTypes.PamDiscoverySourceCreated
-    | PostHogEventTypes.PamDiscoverySourceDeleted
-    | PostHogEventTypes.PamDiscoveryScanTriggered;
+    | PostHogEventTypes.PamProductMemberAdded
+    | PostHogEventTypes.PamProductMemberUpdated
+    | PostHogEventTypes.PamProductMemberRemoved;
   properties: {
-    discoveryType: string;
-    projectId: string;
+    orgId: string;
   };
 };
 
-export type TPamRotationRuleCreatedEvent = {
-  event: PostHogEventTypes.PamRotationRuleCreated;
+export type TPamFolderMemberEvent = {
+  event:
+    | PostHogEventTypes.PamFolderMemberAdded
+    | PostHogEventTypes.PamFolderMemberUpdated
+    | PostHogEventTypes.PamFolderMemberRemoved;
   properties: {
-    resourceType: string;
-    projectId: string;
-    enabled: boolean;
-    hasSchedule: boolean;
+    orgId: string;
   };
 };
 
-export type TPamRotationRuleDeletedEvent = {
-  event: PostHogEventTypes.PamRotationRuleDeleted;
+export type TPamAccountMemberEvent = {
+  event:
+    | PostHogEventTypes.PamAccountMemberAdded
+    | PostHogEventTypes.PamAccountMemberUpdated
+    | PostHogEventTypes.PamAccountMemberRemoved;
   properties: {
-    resourceType: string;
-    projectId: string;
+    orgId: string;
   };
 };
 
@@ -1969,16 +1976,15 @@ export type TPostHogEvent = {
   | TGatewayCertExchangedEvent
   | TGatewayUpdatedEvent
   | TGatewayDeletedEvent
-  | TPamResourceEvent
+  | TPamAccountTemplateEvent
+  | TPamFolderEvent
   | TPamAccountEvent
   | TPamAccountAccessedEvent
-  | TPamAccountRotatedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
-  | TPamWebAccessStartedEvent
-  | TPamDiscoveryEvent
-  | TPamRotationRuleCreatedEvent
-  | TPamRotationRuleDeletedEvent
+  | TPamProductMemberEvent
+  | TPamFolderMemberEvent
+  | TPamAccountMemberEvent
   | TResourceAuthMethodEvent
   | THoneyTokenCreatedEvent
   | THoneyTokenUpdatedEvent

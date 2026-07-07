@@ -16,6 +16,10 @@ import {
   SanitizedOnePassConnectionSchema
 } from "@app/services/app-connection/1password";
 import {
+  ADCSConnectionListItemSchema,
+  SanitizedADCSConnectionSchema
+} from "@app/services/app-connection/adcs/adcs-connection-schemas";
+import {
   AnthropicConnectionListItemSchema,
   SanitizedAnthropicConnectionSchema
 } from "@app/services/app-connection/anthropic";
@@ -186,6 +190,10 @@ import {
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
 import {
+  RundeckConnectionListItemSchema,
+  SanitizedRundeckConnectionSchema
+} from "@app/services/app-connection/rundeck";
+import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
 } from "@app/services/app-connection/salesforce";
@@ -273,6 +281,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNorthflankConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
+  ...SanitizedADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
@@ -302,6 +311,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDatadogConnectionSchema.options,
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
+  ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options
 ]);
@@ -350,6 +360,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NorthflankConnectionListItemSchema,
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
+  ADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
@@ -379,6 +390,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
+  RundeckConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   FireworksConnectionListItemSchema
 ]);

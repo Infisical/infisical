@@ -117,6 +117,7 @@ export const KeyStorePrefixes = {
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
+  PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
@@ -170,6 +171,7 @@ export const KeyStoreTtls = {
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
+  PamDefaultProjectInSeconds: 300, // 5 minutes
   LicenseEntitlementsInSeconds: 1800, // 30 minutes
   LicenseUsageLastReportedInSeconds: 7776000, // 90 days (~3 billing cycles) so orphaned meter keys self-clean
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes

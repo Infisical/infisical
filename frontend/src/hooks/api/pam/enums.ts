@@ -1,30 +1,31 @@
-// Resources
-export enum PamResourceType {
+export enum PamAccountType {
+  SSH = "ssh",
   Postgres = "postgres",
   MySQL = "mysql",
-  SSH = "ssh",
-  Kubernetes = "kubernetes",
-  OracleDB = "oracledb",
-  SQLite = "sqlite",
   MsSQL = "mssql",
-  MCP = "mcp",
-  Redis = "redis",
+  OracleDB = "oracledb",
   MongoDB = "mongodb",
-  WebApp = "webapp",
-  Cassandra = "cassandra",
-  CockroachDB = "cockroachdb",
-  Elasticsearch = "elasticsearch",
-  Snowflake = "snowflake",
-  DynamoDB = "dynamodb",
+  Redis = "redis",
+  Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
-  Windows = "windows"
+  Windows = "windows",
+  WindowsAd = "windows-ad"
 }
 
-export enum PamResourceOrderBy {
-  Name = "name"
+export enum PamPolicyType {
+  RequireMfa = "require-mfa",
+  RequireReason = "require-reason",
+  MaxSessionDuration = "max-session-duration",
+  CommandBlocking = "command-blocking"
 }
 
-// Sessions
+export enum SessionChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp",
+  Rdp = "rdp"
+}
+
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
@@ -32,13 +33,6 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
-export enum SessionChannelType {
-  Terminal = "terminal",
-  Exec = "exec",
-  Sftp = "sftp"
-}
-
-// Accounts
 export enum PamAccountOrderBy {
   Name = "name"
 }
@@ -48,9 +42,26 @@ export enum PamAccountView {
   Nested = "nested"
 }
 
-export enum PamAccountRotationStatus {
-  Rotating = "rotating",
-  Success = "success",
-  PartialSuccess = "partial-success",
-  Failed = "failed"
+export enum PamResourcePermissionSub {
+  PamResource = "pam-resource"
+}
+
+export enum PamResourcePermissionActions {
+  ReadFolder = "read-folder",
+  EditFolder = "edit-folder",
+  DeleteFolder = "delete-folder",
+  ReadAccounts = "read-accounts",
+  CreateAccounts = "create-accounts",
+  EditAccounts = "edit-accounts",
+  DeleteAccounts = "delete-accounts",
+  LaunchSessions = "launch-sessions",
+  ViewSessions = "view-sessions",
+  TerminateSessions = "terminate-sessions",
+  ViewCredentials = "view-credentials",
+  RequestAccess = "request-access",
+  ApproveRequests = "approve-requests",
+  ManagePolicies = "manage-policies",
+  ManageRotation = "manage-rotation",
+  ManageMembers = "manage-members",
+  ViewAuditLogs = "view-audit-logs"
 }

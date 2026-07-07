@@ -63,6 +63,19 @@ const CERT_MANAGER_ROLES = [
   }
 ];
 
+const PAM_ROLES = [
+  {
+    slug: "admin",
+    name: "Admin",
+    description: "Full administrative access over Privileged Access Manager"
+  },
+  {
+    slug: "member",
+    name: "Member",
+    description: "Access scoped to the folders and accounts they've been added to"
+  }
+];
+
 type ProductDefinition = {
   type: ProjectType;
   name: string;
@@ -89,6 +102,12 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     type: ProjectType.SecretScanning,
     name: getProjectTitle(ProjectType.SecretScanning),
     isSingleton: false
+  },
+  {
+    type: ProjectType.PAM,
+    name: getProjectTitle(ProjectType.PAM),
+    isSingleton: true,
+    roles: PAM_ROLES
   }
 ];
 
