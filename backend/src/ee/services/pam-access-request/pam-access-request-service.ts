@@ -43,6 +43,7 @@ import {
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -738,6 +739,34 @@ export const pamAccessRequestServiceFactory = ({
     return { pendingCount, isApprover: true };
   };
 
+  // The review sheet promises the requester will see the reviewer's comment; the notification
+  // center is where that happens, since a decided request disappears from the requester's UI.
+  const notifyRequesterOfDecision = async (
+    request: { requesterId?: string | null; organizationId: string },
+    decision: ApprovalRequestApprovalDecision,
+    accountName: string | undefined,
+    comment: string | undefined
+  ) => {
+    if (!request.requesterId) return;
+    try {
+      const approved = decision === ApprovalRequestApprovalDecision.Approved;
+      await notificationService.createUserNotifications([
+        {
+          userId: request.requesterId,
+          orgId: request.organizationId,
+          type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
+          title: approved ? "Access request approved" : "Access request denied",
+          body: `Your access request for **${accountName ?? "a PAM account"}** was ${
+            approved ? "approved" : "denied"
+          }.${comment ? ` Reviewer comment: "${comment}"` : ""}`,
+          link: `/organizations/${request.organizationId}/pam/access`
+        }
+      ]);
+    } catch (err) {
+      logger.error(err, "Failed to notify PAM access requester of review decision");
+    }
+  };
+
   const reviewRequest = async ({ requestId, projectId, status, comment, ...ctx }: TReviewAccessRequestDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
 
@@ -854,6 +883,17 @@ export const pamAccessRequestServiceFactory = ({
         return approvalRequestDAL.findById(requestId, tx);
       });
 
+      const rejectedAccountId = requestData?.requestData?.accountId;
+      const rejectedAccount = rejectedAccountId
+        ? await pamAccountDAL.findOne({ id: rejectedAccountId, projectId })
+        : undefined;
+      await notifyRequesterOfDecision(
+        updatedRequest,
+        ApprovalRequestApprovalDecision.Rejected,
+        rejectedAccount?.name,
+        comment
+      );
+
       return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };
     }
 
@@ -947,6 +987,19 @@ export const pamAccessRequestServiceFactory = ({
         },
         updatedRequest,
         { userGroupMembershipDAL, notificationService }
+      );
+    }
+
+    if (updatedRequest.status === ApprovalRequestStatus.Approved) {
+      const approvedAccountId = requestData?.requestData?.accountId;
+      const approvedAccount = approvedAccountId
+        ? await pamAccountDAL.findOne({ id: approvedAccountId, projectId })
+        : undefined;
+      await notifyRequesterOfDecision(
+        updatedRequest,
+        ApprovalRequestApprovalDecision.Approved,
+        approvedAccount?.name,
+        comment
       );
     }
 
