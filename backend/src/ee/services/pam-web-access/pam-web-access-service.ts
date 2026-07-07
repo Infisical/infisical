@@ -411,6 +411,40 @@ export const pamWebAccessServiceFactory = ({
 
       enforceRecordingConfig(account);
 
+      // The single-use ticket outlives its issuance check by up to 30s, so a grant revoked in the
+      // meantime must be caught here; the revoke-time session sweep can't see sessions that don't
+      // exist yet.
+      const { requiresApproval } = resolveAccessControls(account.templatePolicies);
+      let sessionDurationCapMs = policyDurationMs || DEFAULT_WEB_SESSION_DURATION_MS;
+      if (requiresApproval) {
+        const grant = await pamAccessRequestService.checkGrant({
+          userId,
+          accountId,
+          accountFolderId: account.folderId,
+          projectId
+        });
+        if (!grant) {
+          sendMessage(socket, {
+            type: TerminalServerMessageType.Output,
+            data: `${SessionEndReason.ApprovalRevoked}\n`
+          });
+          sendSessionEndAndClose(socket, SessionEndReason.ApprovalRevoked);
+          return;
+        }
+        if (grant.expiresAt) {
+          const grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
+          if (grantRemainingMs <= 0) {
+            sendMessage(socket, {
+              type: TerminalServerMessageType.Output,
+              data: `${SessionEndReason.ApprovalRevoked}\n`
+            });
+            sendSessionEndAndClose(socket, SessionEndReason.ApprovalRevoked);
+            return;
+          }
+          sessionDurationCapMs = Math.min(sessionDurationCapMs, grantRemainingMs);
+        }
+      }
+
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: account.gatewayId ?? account.templateGatewayId,
         gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
@@ -436,7 +470,7 @@ export const pamWebAccessServiceFactory = ({
       const credentials = await decrypt(projectId, account.encryptedCredentials);
 
       const user = await userDAL.findById(userId);
-      const sessionDurationMs = policyDurationMs || DEFAULT_WEB_SESSION_DURATION_MS;
+      const sessionDurationMs = sessionDurationCapMs;
       const expiresAt = new Date(Date.now() + sessionDurationMs);
 
       session = await pamSessionDAL.create({
