@@ -597,6 +597,13 @@ export const AppConnectionsBrowser = () => {
       description: "Learn how to connect Hasura Cloud to pull secrets from Infisical.",
       category: "Platform",
     },
+    {
+      name: "OpenAI",
+      slug: "openai",
+      path: "/integrations/app-connections/openai",
+      description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
