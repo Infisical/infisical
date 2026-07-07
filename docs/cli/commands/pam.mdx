@@ -187,7 +187,7 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
     gcloud storage ls
     ```
 
-    The access token is capped at Google's maximum lifetime of 1 hour. The session blocks until `Ctrl+C` or token expiry; on shutdown the CLI reverts the `gcloud` configuration and deletes the temporary token and certificate files.
+    The session blocks until `Ctrl+C` or expiry. On shutdown, your `gcloud` configuration is restored.
   </Accordion>
 
   <Accordion title="Windows / RDP">
