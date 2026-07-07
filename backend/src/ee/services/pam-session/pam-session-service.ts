@@ -88,7 +88,10 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant" | "getAccessStatusBatch">;
+  pamAccessRequestService: Pick<
+    TPamAccessRequestServiceFactory,
+    "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
+  >;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -417,17 +420,19 @@ export const pamSessionServiceFactory = ({
         projectId
       });
       if (!grant) {
-        // Distinguish "no request yet" from "request awaiting review" so the CLI can guide the
-        // user to their existing request instead of prompting into a duplicate-request error
-        const statusEntry = (
-          await pamAccessRequestService.getAccessStatusBatch(actor.actorId, [account.id], projectId)
-        ).get(account.id);
+        // Distinguish "no request yet" from "request awaiting review" and from "folder has no
+        // approvers", so the CLI can guide the user instead of prompting into a 400
+        const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
+          pamAccessRequestService.getAccessStatusBatch(actor.actorId, [account.id], projectId),
+          pamAccessRequestService.getFolderPolicyConfigured(account.folderId ? [account.folderId] : [])
+        ]);
         throw new ForbiddenRequestError({
           name: "PAM_APPROVAL_REQUIRED",
           message: "Access request required",
           details: {
             requireReason: policy.requireReason,
-            hasPendingRequest: statusEntry?.accessStatus === PamAccessStatus.Pending
+            hasPendingRequest: statusMap.get(account.id)?.accessStatus === PamAccessStatus.Pending,
+            hasApprovalPolicy: Boolean(account.folderId && foldersWithApprovalPolicy.has(account.folderId))
           }
         });
       }
