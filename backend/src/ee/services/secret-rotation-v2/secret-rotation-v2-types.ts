@@ -73,6 +73,13 @@ import {
   TLdapPasswordRotationWithConnection
 } from "./ldap-password";
 import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentials,
+  TLiteLLMApiKeyRotationInput,
+  TLiteLLMApiKeyRotationListItem,
+  TLiteLLMApiKeyRotationWithConnection
+} from "./litellm-api-key";
+import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationInput,
   TMongoDBCredentialsRotationListItem,
@@ -171,6 +178,7 @@ export type TSecretRotationV2 =
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
@@ -194,6 +202,7 @@ export type TSecretRotationV2WithConnection =
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
+  | TLiteLLMApiKeyRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
   | TSalesforceOauthCredentialsRotationWithConnection
@@ -213,6 +222,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
+  | TLiteLLMApiKeyRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
   | TSalesforceOauthCredentialsRotationGeneratedCredentials
@@ -236,6 +246,7 @@ export type TSecretRotationV2Input =
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
+  | TLiteLLMApiKeyRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
   | TSalesforceOauthCredentialsRotationInput
@@ -259,6 +270,7 @@ export type TSecretRotationV2ListItem =
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
+  | TLiteLLMApiKeyRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
   | TSalesforceOauthCredentialsRotationListItem

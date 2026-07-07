@@ -133,6 +133,7 @@ import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
+import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
 import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
@@ -1382,6 +1383,7 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    litellm: liteLLMConnectionService(connectAppConnectionById)
   };
 };

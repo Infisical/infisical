@@ -12,6 +12,7 @@ import { DatadogApplicationKeySecretRotationSecretsMappingFields } from "./Datad
 import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
 import { HpIloRotationSecretsMappingFields } from "./HpIloRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
+import { LiteLLMApiKeyRotationSecretsMappingFields } from "./LiteLLMApiKeyRotationSecretsMappingFields";
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
 import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKeyRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
@@ -39,6 +40,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationSecretsMappingFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationSecretsMappingFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationSecretsMappingFields,
+  [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationSecretsMappingFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationSecretsMappingFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationSecretsMappingFields,
   [SecretRotation.SalesforceOauthCredentials]:

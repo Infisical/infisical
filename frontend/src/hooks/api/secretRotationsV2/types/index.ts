@@ -57,6 +57,11 @@ import {
   THpIloRotationOption
 } from "./hp-ilo-rotation";
 import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentialsResponse,
+  TLiteLLMApiKeyRotationOption
+} from "./litellm-api-key-rotation";
+import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationGeneratedCredentialsResponse,
   TMongoDBCredentialsRotationOption
@@ -122,6 +127,7 @@ export type TSecretRotationV2 = (
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
@@ -145,6 +151,7 @@ export type TSecretRotationV2Option =
   | TDbtServiceTokenRotationOption
   | TWindowsLocalAccountRotationOption
   | TOpenRouterApiKeyRotationOption
+  | TLiteLLMApiKeyRotationOption
   | THpIloRotationOption
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
@@ -172,6 +179,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TDbtServiceTokenRotationGeneratedCredentialsResponse
   | TWindowsLocalAccountRotationGeneratedCredentialsResponse
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse
+  | TLiteLLMApiKeyRotationGeneratedCredentialsResponse
   | THpIloRotationGeneratedCredentialsResponse
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
@@ -247,6 +255,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationOption;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
+  [SecretRotation.LiteLLMApiKey]: TLiteLLMApiKeyRotationOption;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationOption;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
@@ -271,6 +280,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationGeneratedCredentialsResponse;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.LiteLLMApiKey]: TLiteLLMApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationGeneratedCredentialsResponse;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;

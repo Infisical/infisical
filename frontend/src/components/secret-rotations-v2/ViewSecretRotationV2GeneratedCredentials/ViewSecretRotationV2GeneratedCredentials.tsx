@@ -27,6 +27,7 @@ import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUs
 import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./ViewDatadogApplicationKeySecretRotationGeneratedCredentials";
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
+import { ViewLiteLLMApiKeyRotationGeneratedCredentials } from "./ViewLiteLLMApiKeyRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
@@ -157,6 +158,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.OpenRouterApiKey:
       Component = (
         <ViewOpenRouterApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.LiteLLMApiKey:
+      Component = (
+        <ViewLiteLLMApiKeyRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

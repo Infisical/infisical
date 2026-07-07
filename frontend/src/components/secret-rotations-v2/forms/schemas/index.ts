@@ -19,6 +19,7 @@ import { ConvexAccessKeyRotationSchema } from "./convex-access-key-rotation-sche
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
+import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
@@ -48,6 +49,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         DbtServiceTokenRotationSchema,
         WindowsLocalAccountRotationSchema,
         OpenRouterApiKeyRotationSchema,
+        LiteLLMApiKeyRotationSchema,
         HpIloRotationSchema,
         SupabaseApiKeyRotationSchema,
         SalesforceOauthCredentialsRotationSchema,

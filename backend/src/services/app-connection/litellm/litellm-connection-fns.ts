@@ -6,7 +6,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { LiteLLMConnectionMethod } from "./litellm-connection-enums";
-import { TLiteLLMConnectionConfig } from "./litellm-connection-types";
+import { TLiteLLMConnection, TLiteLLMConnectionConfig } from "./litellm-connection-types";
 
 export const getLiteLLMConnectionListItem = () => {
   return {
@@ -42,4 +42,70 @@ export const validateLiteLLMConnectionCredentials = async (config: TLiteLLMConne
   }
 
   return config.credentials;
+};
+
+type TLiteLLMListItem = { id: string; name: string };
+
+const getLiteLLMBaseUrl = (connection: TLiteLLMConnection) => removeTrailingSlash(connection.credentials.instanceUrl);
+
+const getLiteLLMErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "Unknown error");
+
+export const listLiteLLMUsers = async (connection: TLiteLLMConnection): Promise<TLiteLLMListItem[]> => {
+  const baseUrl = getLiteLLMBaseUrl(connection);
+  await blockLocalAndPrivateIpAddresses(baseUrl);
+
+  try {
+    const { data } = await request.get<{
+      users?: { user_id: string; user_email?: string | null; user_alias?: string | null }[];
+    }>(`${baseUrl}/user/list`, {
+      params: { page_size: 100 },
+      headers: { Authorization: `Bearer ${connection.credentials.apiKey}` }
+    });
+
+    return (data.users ?? []).map((user) => ({
+      id: user.user_id,
+      name: user.user_email || user.user_alias || user.user_id
+    }));
+  } catch (error: unknown) {
+    throw new BadRequestError({ message: `Failed to list LiteLLM users: ${getLiteLLMErrorMessage(error)}` });
+  }
+};
+
+export const listLiteLLMTeams = async (
+  connection: TLiteLLMConnection,
+  userId?: string
+): Promise<TLiteLLMListItem[]> => {
+  const baseUrl = getLiteLLMBaseUrl(connection);
+  await blockLocalAndPrivateIpAddresses(baseUrl);
+
+  try {
+    const { data } = await request.get<{
+      teams?: { team_id: string; team_alias?: string | null }[];
+    }>(`${baseUrl}/v2/team/list`, {
+      params: { user_id: userId, page_size: 100 },
+      headers: { Authorization: `Bearer ${connection.credentials.apiKey}` }
+    });
+
+    return (data.teams ?? []).map((team) => ({
+      id: team.team_id,
+      name: team.team_alias || team.team_id
+    }));
+  } catch (error: unknown) {
+    throw new BadRequestError({ message: `Failed to list LiteLLM teams: ${getLiteLLMErrorMessage(error)}` });
+  }
+};
+
+export const listLiteLLMModels = async (connection: TLiteLLMConnection): Promise<TLiteLLMListItem[]> => {
+  const baseUrl = getLiteLLMBaseUrl(connection);
+  await blockLocalAndPrivateIpAddresses(baseUrl);
+
+  try {
+    const { data } = await request.get<{ data?: { id: string }[] }>(`${baseUrl}/models`, {
+      headers: { Authorization: `Bearer ${connection.credentials.apiKey}` }
+    });
+
+    return (data.data ?? []).map((model) => ({ id: model.id, name: model.id }));
+  } catch (error: unknown) {
+    throw new BadRequestError({ message: `Failed to list LiteLLM models: ${getLiteLLMErrorMessage(error)}` });
+  }
 };

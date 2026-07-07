@@ -3471,6 +3471,14 @@ export const SecretRotations = {
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     },
+    LITELLM_API_KEY: {
+      name: "The name for the generated LiteLLM API key. Infisical appends a timestamp to keep each rotated key unique and record its creation time.",
+      userId: "The ID of the LiteLLM user to associate the generated key with.",
+      teamId: "The ID of the LiteLLM team to associate the generated key with.",
+      models: "The list of model names the generated key is allowed to access. An empty list allows all models.",
+      additionalOptions:
+        "A JSON object of additional LiteLLM /key/generate options (e.g. max_budget, tpm_limit, metadata). Reserved fields (key_alias, auto_rotate, rotation_interval, duration, send_invite_email, key_type, user_id, team_id, models) are managed by Infisical or set via dedicated fields and cannot be set here."
+    },
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
@@ -3544,6 +3552,9 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
+    },
+    LITELLM_API_KEY: {
+      apiKey: "The name of the secret that the rotated LiteLLM API key will be mapped to."
     },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."

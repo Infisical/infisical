@@ -12,6 +12,7 @@ import { DatadogApplicationKeySecretRotationParametersFields } from "./DatadogAp
 import { DbtServiceTokenRotationParametersFields } from "./DbtServiceTokenRotationParametersFields";
 import { HpIloRotationParametersFields } from "./HpIloRotationParametersFields";
 import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
+import { LiteLLMApiKeyRotationParametersFields } from "./LiteLLMApiKeyRotationParametersFields";
 import { MongoRotationParametersFields } from "./MongoRotationParametersFields";
 import { OktaClientSecretRotationParametersFields } from "./OktaClientSecretRotationParametersFields";
 import { OpenRouterApiKeyRotationParametersFields } from "./OpenRouterApiKeyRotationParametersFields";
@@ -40,6 +41,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationParametersFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationParametersFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields,
+  [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationParametersFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationParametersFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationParametersFields,
   [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationParametersFields,

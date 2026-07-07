@@ -15,6 +15,7 @@ import { DatadogApplicationKeySecretRotationReviewFields } from "./DatadogApplic
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
+import { LiteLLMApiKeyRotationReviewFields } from "./LiteLLMApiKeyRotationReviewFields";
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
 import { OpenRouterApiKeyRotationReviewFields } from "./OpenRouterApiKeyRotationReviewFields";
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
@@ -42,6 +43,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationReviewFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields,
+  [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationReviewFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
   [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields,
