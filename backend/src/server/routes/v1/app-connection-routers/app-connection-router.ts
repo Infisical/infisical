@@ -16,6 +16,10 @@ import {
   SanitizedOnePassConnectionSchema
 } from "@app/services/app-connection/1password";
 import {
+  ADCSConnectionListItemSchema,
+  SanitizedADCSConnectionSchema
+} from "@app/services/app-connection/adcs/adcs-connection-schemas";
+import {
   AnthropicConnectionListItemSchema,
   SanitizedAnthropicConnectionSchema
 } from "@app/services/app-connection/anthropic";
@@ -121,6 +125,10 @@ import {
   SanitizedGoDaddyConnectionSchema
 } from "@app/services/app-connection/godaddy";
 import {
+  HasuraCloudConnectionListItemSchema,
+  SanitizedHasuraCloudConnectionSchema
+} from "@app/services/app-connection/hasura-cloud";
+import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
@@ -177,6 +185,10 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import {
+  RundeckConnectionListItemSchema,
+  SanitizedRundeckConnectionSchema
+} from "@app/services/app-connection/rundeck";
 import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
@@ -247,6 +259,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
   ...SanitizedHerokuConnectionSchema.options,
+  ...SanitizedHasuraCloudConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedTriggerDevConnectionSchema.options,
@@ -264,6 +277,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNorthflankConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
+  ...SanitizedADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
@@ -293,6 +307,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDatadogConnectionSchema.options,
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
+  ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options
 ]);
 
@@ -322,6 +337,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
   HerokuConnectionListItemSchema,
+  HasuraCloudConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   TriggerDevConnectionListItemSchema,
@@ -339,6 +355,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NorthflankConnectionListItemSchema,
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
+  ADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
@@ -368,6 +385,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DatadogConnectionListItemSchema,
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
+  RundeckConnectionListItemSchema,
   QoveryConnectionListItemSchema
 ]);
 

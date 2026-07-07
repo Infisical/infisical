@@ -53,8 +53,9 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | List sessions | `ViewSessions` (via `getResourceIdsWithActions`) |
 | List folder/account members | `ManageMembers` (via `checkManageMembers`) |
 | Get account by ID | `ReadAccounts` (via `checkAccountAccess`) |
-| Launch session / web access | `LaunchSessions` (via `checkAccountAccess`) |
+| Launch session / web access | `LaunchSessions` always. Gated account (`requiresApproval`): `LaunchSessions` AND a valid approval grant, enforced in both `pam-session-service.access()` and `pam-web-access-service.issueWebSocketTicket()`. Approval is a layer on top of standing access, never a substitute for it. |
 | View recording | `ViewSessions` (via `checkAccountAccess`) |
+| Revoke access grant | `RevokeGrants` on the grant's account (via `checkAccountAccess`) |
 | Create account | `CreateAccounts` (via folder permission) |
 | Edit/delete account | `EditAccounts`/`DeleteAccounts` (via `checkAccountAccess`) |
 | Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
@@ -77,9 +78,20 @@ PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, e
 ### Roles
 
 - **Product roles** (`PamProductRole`): `Admin`, `Member`
-- **Resource roles** (`PamResourceRole`): `Admin`, `Requester`, `Auditor`, `Connector`
+- **Resource roles** (`PamResourceRole`): `Admin`, `Connector`, `Auditor`. `Connector` grants `ReadFolder` + `ReadAccounts` + `LaunchSessions` (direct launch on non-gated accounts; on gated ones `LaunchSessions` also authorizes submitting an access request, since there is no dedicated request permission).
 
 Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via the generic membership system (`ResourceType.PamFolder` / `ResourceType.PamAccount`).
+
+## Consolidated Project & Lazy Bootstrap
+
+There is exactly one PAM project (`ProjectType.PAM`) per org, holding all folders, accounts, templates, and memberships. New orgs get it eagerly at creation time. Orgs that had no PAM data at migration time get **no** project up front; it is created lazily on first PAM access. Code lives in `pam-project/`.
+
+- **`pamProjectResolverFactory` (`pam-project-resolver.ts`)** -- `resolve(orgId)` returns the project id, creating it on first use. It is wrapped in `withCache` (Redis, `KeyStorePrefixes.PamDefaultProject`, `PamDefaultProjectInSeconds` TTL); on a miss it calls `findDefaultProjectId` (newest `type=pam` project via `projectDAL.find`, already excludes soft-deleted) and falls back to `ensureDefaultProject`.
+- **`ensureDefaultProject`** serializes concurrent first-use bootstraps for an org with `SELECT pg_advisory_xact_lock(hashtext('pam-bootstrap:' || orgId))` inside a transaction, then **re-checks** `findDefaultProjectId(orgId, tx)` on the primary before creating. There is no DB unique constraint to lean on because old zombie PAM projects also have `type=pam`, so an org can legitimately have several rows; the lock + in-lock re-check is what prevents duplicates and picks the consolidated one. The lock auto-releases at transaction end.
+- **Admin seeding:** the bootstrap seeds the org's current admins (users, identities, and groups with a non-temporary org `admin` role) as PAM **project** admins. This is required because the PAM permission model has **no org-admin fallback** (`getProjectPermission` needs project-scoped membership) -- without seeding, no one could administer the freshly-created project.
+- **`bootstrapPamProject` (`pam-project-bootstrap.ts`)** creates the project, the `DEFAULT_ACCOUNT_TEMPLATES` (11 of them), and the admin memberships. It takes `adminUserIds` / `adminIdentityIds` / `adminGroupIds`; the migration and sub-org creation call it directly, the resolver derives those lists from current org admins.
+- **Request wiring:** the `injectPamProjectId` preValidation hook (on all `/api/v1/pam/*` routes) calls `resolve(actorOrgId)` and sets `req.internalPamProjectId`, so by the time any PAM handler runs the project exists. `GET /api/v1/pam/project` just returns that id -- the frontend hits it to trigger the lazy create for an org whose `getOrgById.pamProjectId` came back null, then seeds the id into its org cache.
+- **`getOrgById` derivation:** `pamProjectId` in the org DTO is derived from the newest `type=pam` project (nullable), it is **not** a stored column and is not resolved/bootstrapped there (keeps the read a pure query).
 
 ## Account Types
 

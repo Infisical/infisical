@@ -105,6 +105,7 @@ import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
+import { pamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
@@ -1508,6 +1509,9 @@ export const registerRoutes = async (
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
+  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
+  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
@@ -1645,23 +1649,20 @@ export const registerRoutes = async (
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
+    db,
     projectDAL,
+    membershipDAL,
+    membershipRoleDAL,
     keyStore
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
   const pamFolderDAL = pamFolderDALFactory(db);
 
-  const pamFolderService = pamFolderServiceFactory({
-    pamFolderDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService
-  });
-
   const pamMembershipService = pamMembershipServiceFactory({
     membershipDAL,
     membershipRoleDAL,
+    approvalPolicyDAL,
     pamFolderDAL,
     pamAccountDAL,
     userDAL,
@@ -1804,6 +1805,46 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const pamSessionDAL = pamSessionDALFactory(db);
+  const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
+
+  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
+    queueService,
+    pamSessionDAL
+  });
+
+  const pamAccessRequestService = pamAccessRequestServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    approvalRequestGrantsDAL,
+    pamAccountDAL,
+    pamAccountTemplateDAL,
+    pamFolderDAL,
+    pamSessionDAL,
+    gatewayV2Service,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    notificationService,
+    smtpService,
+    groupDAL,
+    userGroupMembershipDAL,
+    userDAL
+  });
+
+  const pamFolderService = pamFolderServiceFactory({
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    pamAccessRequestService
+  });
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     pamFolderDAL,
@@ -1814,15 +1855,8 @@ export const registerRoutes = async (
     kmsService,
     gatewayV2DAL,
     gatewayPoolService,
-    appConnectionDAL
-  });
-
-  const pamSessionDAL = pamSessionDALFactory(db);
-  const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
-
-  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
-    queueService,
-    pamSessionDAL
+    appConnectionDAL,
+    pamAccessRequestService
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -1837,6 +1871,7 @@ export const registerRoutes = async (
     gatewayPoolService,
     userDAL,
     pamSessionExpirationService,
+    pamAccessRequestService,
     mfaSessionService,
     orgDAL
   });
@@ -1852,6 +1887,7 @@ export const registerRoutes = async (
 
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
+    pamAccessRequestService,
     permissionService,
     auditLogService,
     tokenService,
@@ -2998,7 +3034,8 @@ export const registerRoutes = async (
     appConnectionService,
     pkiSyncDAL,
     pkiSyncQueue,
-    internalCertificateAuthorityDAL
+    internalCertificateAuthorityDAL,
+    hsmConnectorService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -3019,7 +3056,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     caSigningConfigDAL,
-    usageMeteringService
+    usageMeteringService,
+    hsmConnectorService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -3029,7 +3067,9 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     internalCertificateAuthorityService,
     appConnectionDAL,
-    kmsService
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const caSigningConfigService = caSigningConfigServiceFactory({
@@ -3038,6 +3078,7 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     permissionService,
     appConnectionDAL,
+    appConnectionService,
     caAutoRenewalQueue
   });
 
@@ -3060,7 +3101,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     gatewayV2Service,
     gatewayPoolService,
-    usageMeteringService
+    usageMeteringService,
+    hsmConnectorService,
+    certificateAuthoritySecretDAL
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3122,7 +3165,8 @@ export const registerRoutes = async (
     pkiAlertV2Queue,
     pkiApplicationDAL,
     licenseService,
-    usageMeteringService
+    usageMeteringService,
+    hsmConnectorService
   });
 
   const digicertCaFns = DigiCertCertificateAuthorityFns({
@@ -3205,10 +3249,7 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL
   });
 
-  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
-  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
-  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
@@ -3769,6 +3810,7 @@ export const registerRoutes = async (
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,
+    pamAccessRequest: pamAccessRequestService,
     pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,

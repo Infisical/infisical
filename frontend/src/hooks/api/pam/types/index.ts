@@ -1,8 +1,11 @@
 import { OrderByDirection } from "../../generic/types";
 import {
+  PamAccessRequestDecision,
+  PamAccessStatus,
   PamAccountOrderBy,
   PamAccountType,
   PamAccountView,
+  PamApproverType,
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
@@ -64,7 +67,8 @@ export type TPamAccessResponse = {
 export enum PamAccountAccessibilityIssue {
   NoGateway = "no-gateway",
   NoRecordingConfig = "no-recording-config",
-  NoCredential = "no-credential"
+  NoCredential = "no-credential",
+  NoApprovalConfig = "no-approval-config"
 }
 
 export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
@@ -204,6 +208,11 @@ export type TAccessiblePamAccount = {
   templateName: string;
   accountType: PamAccountType;
   canLaunch: boolean;
+  requiresApproval?: boolean;
+  requireReason?: boolean;
+  accessStatus?: PamAccessStatus;
+  grantExpiresAt?: string | null;
+  disabledReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -455,4 +464,83 @@ export type TUpdatePamProductIdentityMemberDTO = {
 export type TRemovePamProductIdentityMemberDTO = {
   identityId: string;
   projectId: string;
+};
+
+// Access Requests / Approvals
+
+export type TPamAccessRequest = {
+  id: string;
+  projectId: string;
+  policyId: string;
+  requesterId: string | null;
+  requesterName: string;
+  requesterEmail: string;
+  type: string;
+  status: string;
+  justification: string | null;
+  currentStep: number;
+  requestData: {
+    version: number;
+    requestData: {
+      accountId: string;
+      folderId: string;
+      reason?: string;
+      duration: string;
+    };
+  } | null;
+  expiresAt: string | null;
+  scopeType: string | null;
+  scopeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // joined fields (populated by backend list endpoints)
+  accountName?: string;
+  accountType?: PamAccountType;
+  folderName?: string;
+  host?: string;
+  grantExpiresAt?: string | null;
+  grantStatus?: string | null;
+};
+
+export type TPamApprovalConfig = {
+  steps: {
+    approvers: { type: PamApproverType; id: string }[];
+  }[];
+};
+
+export type TPamAccessGrant = {
+  id: string;
+  requestId: string;
+  granteeUserId: string | null;
+  status: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  attributes: {
+    accountId?: string;
+    folderId?: string;
+  } | null;
+  createdAt: string;
+};
+
+export type TCreatePamAccessRequestDTO = {
+  accountId: string;
+  reason?: string;
+  duration: string;
+};
+
+export type TReviewPamAccessRequestDTO = {
+  requestId: string;
+  status: PamAccessRequestDecision;
+  comment?: string;
+};
+
+export type TRevokePamAccessRequestDTO = {
+  requestId: string;
+};
+
+export type TSetPamApprovalConfigDTO = {
+  folderId: string;
+  steps: {
+    approvers: { type: PamApproverType; id: string }[];
+  }[];
 };

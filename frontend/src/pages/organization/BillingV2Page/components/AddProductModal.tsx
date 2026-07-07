@@ -98,12 +98,22 @@ export const AddProductModal = ({ orgId, product, plan, cadence, onClose }: Prop
                   {fmtMoney(dueToday, 2)}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-mineshaft-300">New recurring total</span>
-                <span className="font-semibold text-foreground tabular-nums">
-                  {fmtMoney(preview.data.nextRecurringTotal, 2)}
-                </span>
-              </div>
+              {preview.data.estimatedUsage > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-mineshaft-300">Estimated usage this period</span>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      ~{fmtMoney(preview.data.estimatedUsage, 2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border pt-1.5">
+                    <span className="text-mineshaft-300">New Recurring total</span>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      ~{fmtMoney(preview.data.estimatedTotal, 2)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -9,7 +9,7 @@ import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certif
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -24,7 +24,14 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { GcpServiceAccountAuthMethod, PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import {
+  GcpServiceAccountAuthMethod,
+  PamAccessMethod,
+  PamAccessStatus,
+  PamAccountType,
+  PamSessionStatus
+} from "../pam/pam-enums";
+import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
@@ -40,6 +47,7 @@ import {
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   buildSessionGatewayConnectionDetails,
@@ -53,7 +61,7 @@ import {
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
@@ -64,6 +72,7 @@ import {
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
+import { sendPamSessionCancellationSignal } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -92,6 +101,10 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  pamAccessRequestService: Pick<
+    TPamAccessRequestServiceFactory,
+    "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
+  >;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -109,7 +122,8 @@ export const pamSessionServiceFactory = ({
   userDAL,
   pamSessionExpirationService,
   mfaSessionService,
-  orgDAL
+  orgDAL,
+  pamAccessRequestService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -151,7 +165,6 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
-      userId: ctx.actorId,
       ...pagination
     });
   };
@@ -305,6 +318,14 @@ export const pamSessionServiceFactory = ({
       await pamSessionDAL.activateSession(sessionId);
     }
 
+    const templateSettingsParsed = account.templateSettings
+      ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
+      : null;
+    const resolvedBackend =
+      templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
+        ? templateSettingsParsed.data.recordingStorageBackend
+        : PamRecordingStorageBackend.Postgres;
+
     let recording: {
       sessionKey: string;
       uploadToken: string;
@@ -325,17 +346,26 @@ export const pamSessionServiceFactory = ({
         gatewayUploadTokenHash: secrets.uploadTokenHash
       });
 
-      const templateSettingsParsed = account.templateSettings
-        ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
-        : null;
-      const resolvedBackend =
-        templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
-          ? templateSettingsParsed.data.recordingStorageBackend
-          : PamRecordingStorageBackend.Postgres;
-
       recording = {
         sessionKey: secrets.sessionKey.toString("base64"),
         uploadToken: secrets.uploadToken.toString("base64"),
+        storageBackend: resolvedBackend,
+        projectId: session.projectId,
+        sessionId
+      };
+    } else {
+      // On re-fetch (e.g. gateway restart) return the existing key; empty token since the gateway
+      // restores its own from disk and the server only keeps the token hash.
+      const sessionKey = await decryptSessionKey({
+        projectId: session.projectId,
+        sessionId,
+        encryptedSessionKey: session.encryptedSessionKey,
+        kmsService
+      });
+
+      recording = {
+        sessionKey: sessionKey.toString("base64"),
+        uploadToken: "",
         storageBackend: resolvedBackend,
         projectId: session.projectId,
         sessionId
@@ -400,39 +430,8 @@ export const pamSessionServiceFactory = ({
     };
   };
 
-  const resolveAccountByPath = async (projectId: string, path: string) => {
-    const separatorIdx = path.indexOf("/");
-    if (separatorIdx === -1) {
-      throw new BadRequestError({
-        message: "Path must be in the format 'folderName/accountName'"
-      });
-    }
-
-    const folderName = path.slice(0, separatorIdx);
-    const accountName = path.slice(separatorIdx + 1);
-    if (!folderName || !accountName) {
-      throw new BadRequestError({
-        message: "Path must be in the format 'folderName/accountName'"
-      });
-    }
-
-    const folder = await pamFolderDAL.findOne({ projectId, name: folderName });
-    if (!folder) {
-      throw new NotFoundError({ message: `Folder '${folderName}' not found` });
-    }
-
-    const accountRow = await pamAccountDAL.findOne({ folderId: folder.id, name: accountName });
-    if (!accountRow) {
-      throw new NotFoundError({ message: `Account '${accountName}' not found in folder '${folderName}'` });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(accountRow.id);
-    if (!account) {
-      throw new NotFoundError({ message: `Account '${accountName}' not found` });
-    }
-
-    return account;
-  };
+  const resolveAccountByPath = (projectId: string, path: string) =>
+    resolveAccountByPathFn({ pamFolderDAL, pamAccountDAL }, projectId, path);
 
   const access = async ({
     path,
@@ -463,6 +462,11 @@ export const pamSessionServiceFactory = ({
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
+    const policy = resolveAccessControls(account.templatePolicies);
+    const { requiresApproval } = policy;
+
+    // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
+    // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
     await checkAccount(
       account.id,
       account.folderId,
@@ -472,15 +476,6 @@ export const pamSessionServiceFactory = ({
     );
 
     const trimmedReason = reason?.trim() || null;
-
-    const policy = resolveAccessControls(account.templatePolicies);
-
-    if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({
-        name: "PAM_REASON_REQUIRED",
-        message: "A reason is required to access this account"
-      });
-    }
 
     if (policy.requireMfa) {
       await enforceMfa(
@@ -500,6 +495,54 @@ export const pamSessionServiceFactory = ({
         throw new BadRequestError({ message: "Invalid duration format" });
       }
       sessionDurationMs = Math.min(parsed, maxDurationMs);
+    }
+
+    // The approval gate comes before the launch-reason check: a user without a grant should be
+    // guided into requesting access (where the request reason is collected) rather than being
+    // blocked on a launch reason for a session they cannot start yet.
+    if (requiresApproval) {
+      const grant = await pamAccessRequestService.checkGrant({
+        userId: actor.actorId,
+        accountId: account.id,
+        accountFolderId: account.folderId,
+        projectId
+      });
+      if (!grant) {
+        // Distinguish "no request yet" from "request awaiting review" and from "folder has no
+        // approvers", so the CLI can guide the user instead of prompting into a 400
+        const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
+          pamAccessRequestService.getAccessStatusBatch(actor.actorId, [account.id], projectId),
+          pamAccessRequestService.getFolderPolicyConfigured(account.folderId ? [account.folderId] : [])
+        ]);
+        throw new ForbiddenRequestError({
+          name: "PAM_APPROVAL_REQUIRED",
+          message: "Access request required",
+          details: {
+            requireReason: policy.requireReason,
+            hasPendingRequest: statusMap.get(account.id)?.accessStatus === PamAccessStatus.Pending,
+            hasApprovalPolicy: Boolean(account.folderId && foldersWithApprovalPolicy.has(account.folderId))
+          }
+        });
+      }
+      // A null expiresAt means a never-expiring grant per the checkGrant contract
+      if (grant.expiresAt) {
+        const grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
+        if (grantRemainingMs <= 0) {
+          throw new ForbiddenRequestError({
+            name: "PAM_GRANT_EXPIRED",
+            message: "Your approved access has expired",
+            details: { requireReason: policy.requireReason }
+          });
+        }
+        sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
+      }
+    }
+
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
     }
 
     // AWS IAM: no gateway, no proxy -- generate STS credentials directly
@@ -577,14 +620,6 @@ export const pamSessionServiceFactory = ({
         sessionDurationMs
       };
     }
-
-    await checkAccount(
-      account.id,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      actor
-    );
 
     enforceRecordingConfig(account);
 
@@ -719,46 +754,15 @@ export const pamSessionServiceFactory = ({
     }
 
     if (session.gatewayId) {
-      void (async () => {
-        let relayConn: net.Socket | null = null;
-        try {
-          const user = await userDAL.findById(ctx.actorId);
-          const certs = await gatewayV2Service.getPAMConnectionDetails({
-            gatewayId: session.gatewayId!,
-            sessionId,
-            accountType: session.accountType as PamAccountType,
-            host: "0.0.0.0",
-            port: 0,
-            actorMetadata: { id: ctx.actorId, type: ActorType.USER, name: user?.email ?? "" }
-          });
-          if (!certs) {
-            logger.error(
-              { sessionId, gatewayId: session.gatewayId },
-              `Failed to get gateway [gatewayId=${session.gatewayId}] connection details for PAM session [sessionId=${sessionId}] termination`
-            );
-            return;
-          }
-          relayConn = await createRelayConnection({
-            relayHost: certs.relayHost,
-            clientCertificate: certs.relay.clientCertificate,
-            clientPrivateKey: certs.relay.clientPrivateKey,
-            serverCertificateChain: certs.relay.serverCertificateChain
-          });
-          const cancelConn = await createGatewayConnection(
-            relayConn,
-            certs.gateway,
-            GatewayProxyProtocol.PamSessionCancellation
-          );
-          cancelConn.end();
-        } catch (err) {
-          logger.error(
-            { sessionId, err },
-            `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`
-          );
-        } finally {
-          relayConn?.destroy();
-        }
-      })();
+      const user = await userDAL.findById(ctx.actorId);
+      sendPamSessionCancellationSignal({
+        sessionId,
+        gatewayId: session.gatewayId,
+        accountType: session.accountType,
+        actorId: ctx.actorId,
+        actorEmail: user?.email ?? "",
+        gatewayV2Service
+      });
     }
 
     return { session: updated, projectId: session.projectId, accountName: session.accountName };

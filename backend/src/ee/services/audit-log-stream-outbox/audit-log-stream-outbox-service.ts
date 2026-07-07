@@ -240,8 +240,7 @@ export const auditLogStreamOutboxServiceFactory = ({
       const sendChunk = async (chunk: TAuditLogStreamOutboxRow[]) => {
         const deliveryStart = Date.now();
         const metricAttrs = {
-          "audit_log_stream.provider": provider,
-          "infisical.organization.id": orgId
+          "audit_log_stream.provider": provider
         };
         try {
           if (isSingleMode) {
@@ -327,7 +326,6 @@ export const auditLogStreamOutboxServiceFactory = ({
         }
         auditLogStreamDeliveryExhaustedCounter.add(exhausted.length, {
           "audit_log_stream.id": streamId,
-          "infisical.organization.id": orgId,
           "audit_log_stream.provider": provider
         });
       }
@@ -380,20 +378,16 @@ export const auditLogStreamOutboxServiceFactory = ({
       );
     }
     if (dropped.length > 0) {
-      // Stale claims that used up their attempts are dropped (no DLQ); count them
-      // alongside delivery-path exhaustions, keyed by the same stream/org dimensions.
-      // No provider attribute here — the row doesn't carry it and the sweep isn't tied
-      // to a specific delivery attempt.
-      const droppedByStream = new Map<string, { streamId: string; orgId: string; count: number }>();
-      for (const { streamId, orgId } of dropped) {
-        const entry = droppedByStream.get(streamId);
-        if (entry) entry.count += 1;
-        else droppedByStream.set(streamId, { streamId, orgId, count: 1 });
+      // Stale claims that used up their attempts are dropped (no DLQ); count them alongside
+      // delivery-path exhaustions, keyed by stream. No provider attribute here — the row doesn't carry
+      // it and the sweep isn't tied to a specific delivery attempt.
+      const droppedCountByStream = new Map<string, number>();
+      for (const { streamId } of dropped) {
+        droppedCountByStream.set(streamId, (droppedCountByStream.get(streamId) ?? 0) + 1);
       }
-      for (const { streamId, orgId, count } of droppedByStream.values()) {
+      for (const [streamId, count] of droppedCountByStream) {
         auditLogStreamDeliveryExhaustedCounter.add(count, {
-          "audit_log_stream.id": streamId,
-          "infisical.organization.id": orgId
+          "audit_log_stream.id": streamId
         });
       }
     }

@@ -10,12 +10,14 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
+import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums";
 import { getResourceIdsWithActions, TActorContext } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
@@ -41,6 +43,7 @@ type TPamMembershipServiceFactoryDep = {
     "create" | "find" | "findById" | "delete" | "deleteById" | "findResourceMembershipsForActor" | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
@@ -55,15 +58,15 @@ const VALID_PRODUCT_ROLES = Object.values(PamProductRole);
 const VALID_RESOURCE_ROLES = Object.values(PamResourceRole);
 
 const resolveActorColumn = (dto: { userId?: string; groupId?: string; identityId?: string }) => {
-  if (dto.userId) return { column: "actorUserId" as const, id: dto.userId, kind: "user" as const };
-  if (dto.groupId) return { column: "actorGroupId" as const, id: dto.groupId, kind: "group" as const };
-  if (dto.identityId) return { column: "actorIdentityId" as const, id: dto.identityId, kind: "identity" as const };
+  if (dto.userId) return { column: "actorUserId" as const, id: dto.userId, kind: PamMemberKind.User };
+  if (dto.groupId) return { column: "actorGroupId" as const, id: dto.groupId, kind: PamMemberKind.Group };
+  if (dto.identityId) return { column: "actorIdentityId" as const, id: dto.identityId, kind: PamMemberKind.Identity };
   throw new BadRequestError({ message: "Either userId, groupId, or identityId is required" });
 };
 
-const kindLabel = (kind: "user" | "group" | "identity") => {
-  if (kind === "user") return "User";
-  if (kind === "group") return "Group";
+const kindLabel = (kind: PamMemberKind) => {
+  if (kind === PamMemberKind.User) return "User";
+  if (kind === PamMemberKind.Group) return "Group";
   return "Identity";
 };
 
@@ -77,6 +80,7 @@ const resourceScope = (projectId: string, resourceType: ResourceType, resourceId
 export const pamMembershipServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
+  approvalPolicyDAL,
   pamFolderDAL,
   pamAccountDAL,
   userDAL,
@@ -161,7 +165,7 @@ export const pamMembershipServiceFactory = ({
   ) => {
     const { column, id, kind } = resolveActorColumn(dto);
 
-    if (kind === "user") {
+    if (kind === PamMemberKind.User) {
       const user = await userDAL.findById(id);
       if (!user) throw new NotFoundError({ message: `User with ID '${id}' not found` });
 
@@ -174,7 +178,7 @@ export const pamMembershipServiceFactory = ({
       if (orgMemberships.length === 0) {
         throw new BadRequestError({ message: "User must be an active member of this organization" });
       }
-    } else if (kind === "group") {
+    } else if (kind === PamMemberKind.Group) {
       const group = await groupDAL.findById(id);
       if (!group) throw new NotFoundError({ message: `Group with ID '${id}' not found` });
       if (group.orgId !== orgId) throw new BadRequestError({ message: "Group does not belong to this organization" });
@@ -297,9 +301,9 @@ export const pamMembershipServiceFactory = ({
 
       return {
         membershipId: membership.id,
-        userId: kind === "user" ? id : undefined,
-        groupId: kind === "group" ? id : undefined,
-        identityId: kind === "identity" ? id : undefined,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
         role: membershipRole.role,
         createdAt: membership.createdAt
       };
@@ -455,9 +459,9 @@ export const pamMembershipServiceFactory = ({
 
       return {
         membershipId: membership.id,
-        userId: kind === "user" ? id : undefined,
-        groupId: kind === "group" ? id : undefined,
-        identityId: kind === "identity" ? id : undefined,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
         role
       };
     });
@@ -505,13 +509,26 @@ export const pamMembershipServiceFactory = ({
         })
       );
 
+      // A user/group removed from the product must no longer be an approver on any folder policy.
+      if (kind !== PamMemberKind.Identity) {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            userId: kind === PamMemberKind.User ? id : undefined,
+            groupId: kind === PamMemberKind.Group ? id : undefined
+          },
+          tx
+        );
+      }
+
       await membershipDAL.deleteById(membership.id, tx);
 
       return {
         membershipId: membership.id,
-        userId: kind === "user" ? id : undefined,
-        groupId: kind === "group" ? id : undefined,
-        identityId: kind === "identity" ? id : undefined
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined
       };
     });
   };
@@ -520,7 +537,7 @@ export const pamMembershipServiceFactory = ({
 
   const listResourceMembers = async (projectId: string, resourceType: ResourceType, resourceId: string) => {
     const memberships = await membershipDAL.find(resourceScope(projectId, resourceType, resourceId));
-    return resolveMemberships(memberships, PamResourceRole.Requester);
+    return resolveMemberships(memberships, PamResourceRole.Connector);
   };
 
   const addResourceMember = async (
@@ -598,9 +615,9 @@ export const pamMembershipServiceFactory = ({
       return {
         membershipId: membership.id,
         [resourceKey]: resourceId,
-        userId: kind === "user" ? id : undefined,
-        groupId: kind === "group" ? id : undefined,
-        identityId: kind === "identity" ? id : undefined,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
         role: membershipRole.role,
         expiresAt: membershipRole.temporaryAccessEndTime ?? null,
         createdAt: membership.createdAt
@@ -648,9 +665,9 @@ export const pamMembershipServiceFactory = ({
       return {
         membershipId: membership.id,
         [resourceKey]: resourceId,
-        userId: kind === "user" ? id : undefined,
-        groupId: kind === "group" ? id : undefined,
-        identityId: kind === "identity" ? id : undefined,
+        userId: kind === PamMemberKind.User ? id : undefined,
+        groupId: kind === PamMemberKind.Group ? id : undefined,
+        identityId: kind === PamMemberKind.Identity ? id : undefined,
         role
       };
     });
@@ -691,9 +708,9 @@ export const pamMembershipServiceFactory = ({
     return {
       membershipId: membership.id,
       [resourceKey]: resourceId,
-      userId: kind === "user" ? id : undefined,
-      groupId: kind === "group" ? id : undefined,
-      identityId: kind === "identity" ? id : undefined
+      userId: kind === PamMemberKind.User ? id : undefined,
+      groupId: kind === PamMemberKind.Group ? id : undefined,
+      identityId: kind === PamMemberKind.Identity ? id : undefined
     };
   };
 
@@ -739,7 +756,52 @@ export const pamMembershipServiceFactory = ({
 
   const removeFolderMember = async ({ projectId, folderId, ...dto }: TRemovePamFolderMemberDTO & TActorContext) => {
     await checkManageMembers(projectId, { type: ResourceType.PamFolder, id: folderId }, dto);
-    return removeResourceMember(projectId, ResourceType.PamFolder, folderId, "folderId", dto);
+
+    if (dto.userId && dto.userId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    if (dto.identityId && dto.identityId === dto.actorId) {
+      throw new ForbiddenRequestError({ message: "You cannot modify your own membership" });
+    }
+
+    const { column, id, kind } = resolveActorColumn(dto);
+
+    const [membership] = await membershipDAL.find({
+      ...resourceScope(projectId, ResourceType.PamFolder, folderId),
+      [column]: id
+    });
+    if (!membership) {
+      throw new NotFoundError({
+        message: `${kindLabel(kind)} is not a member of this folderId`
+      });
+    }
+
+    await membershipDAL.transaction(async (tx) => {
+      await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
+      await membershipDAL.deleteById(membership.id, tx);
+
+      if (kind !== PamMemberKind.Identity) {
+        await approvalPolicyDAL.deleteStepApproversBySubject(
+          {
+            projectId,
+            scopeType: ApprovalPolicyScope.PamFolder,
+            scopeId: folderId,
+            userId: kind === PamMemberKind.User ? id : undefined,
+            groupId: kind === PamMemberKind.Group ? id : undefined
+          },
+          tx
+        );
+      }
+    });
+
+    return {
+      membershipId: membership.id,
+      folderId,
+      userId: kind === PamMemberKind.User ? id : undefined,
+      groupId: kind === PamMemberKind.Group ? id : undefined,
+      identityId: kind === PamMemberKind.Identity ? id : undefined
+    };
   };
 
   // Account members

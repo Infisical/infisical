@@ -178,6 +178,7 @@ export enum QueueJobs {
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
+  CaNativeAdcsInstall = "ca-native-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
   DigiCertOrderPolling = "digicert-order-polling-job",
@@ -495,6 +496,10 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.CaAdcsInstall;
+        payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaNativeAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
   [QueueName.ProjectHardDelete]: {

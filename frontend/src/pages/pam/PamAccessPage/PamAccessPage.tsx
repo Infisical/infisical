@@ -7,6 +7,9 @@ import { PageHeader } from "@app/components/v2";
 import {
   Card,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -35,11 +38,13 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { FolderAccountGroup } from "./components/FolderAccountGroup";
 import { LaunchSessionSheet } from "./components/LaunchSessionSheet";
+import { RequestAccessSheet } from "./components/RequestAccessSheet";
 
 export const PamAccessPage = () => {
   const { t } = useTranslation();
 
   const [sheetAccount, setSheetAccount] = useState<TAccessiblePamAccount | null>(null);
+  const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
@@ -91,14 +96,15 @@ export const PamAccessPage = () => {
         <title>{t("common.head-title", { title: "My Access" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <PageHeader
-          scope={ProjectType.PAM}
-          icon={KeyRound}
-          title="My Access"
-          description="Every account you can connect to or request access to."
-        />
+        <PageHeader scope={ProjectType.PAM} icon={KeyRound} title="My Access" />
 
         <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>My Access</CardTitle>
+            <CardDescription>
+              Every account you can connect to or request access to.
+            </CardDescription>
+          </CardHeader>
           <CardContent className="flex items-center gap-3">
             <InputGroup className="flex-1">
               <InputGroupAddon align="inline-start">
@@ -197,6 +203,7 @@ export const PamAccessPage = () => {
                     accountType={selectedAccountType}
                     filterActive={filterActive}
                     onLaunch={setSheetAccount}
+                    onRequestAccess={setRequestAccount}
                     onResultCount={handleResultCount}
                   />
                 ))}
@@ -211,6 +218,14 @@ export const PamAccessPage = () => {
         isOpen={!!sheetAccount}
         onOpenChange={(open) => {
           if (!open) setSheetAccount(null);
+        }}
+      />
+
+      <RequestAccessSheet
+        account={requestAccount}
+        isOpen={!!requestAccount}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccount(null);
         }}
       />
     </>

@@ -16,7 +16,6 @@ export enum PamAccountType {
 export enum PamResourceRole {
   Admin = "admin",
   Connector = "connector",
-  Requester = "requester",
   Auditor = "auditor"
 }
 
@@ -40,4 +39,17 @@ export enum GcpServiceAccountAuthMethod {
 export enum PamAccessMethod {
   Web = "web",
   Cli = "cli"
+}
+
+// The caller's just-in-time approval state for an account gated behind an access request flow
+export enum PamAccessStatus {
+  None = "none",
+  Pending = "pending",
+  Granted = "granted"
+}
+
+export enum PamMemberKind {
+  User = "user",
+  Group = "group",
+  Identity = "identity"
 }

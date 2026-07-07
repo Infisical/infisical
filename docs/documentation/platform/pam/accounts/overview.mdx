@@ -1,0 +1,96 @@
+---
+title: "Accounts"
+sidebarTitle: "Overview"
+description: "Manage credentials for databases and servers."
+---
+
+Accounts are the databases and servers you want to manage through PAM. Each account stores the connection details and credentials needed to connect — hostname, port, username, password, and so on.
+
+When users connect to an account, they never see the actual credentials. The connection is proxied, credentials are injected automatically, and everything is recorded.
+
+## Account Types
+
+PAM supports the following account types:
+
+| Type | What it connects to | Web Access |
+|------|---------------------|------------|
+| [**PostgreSQL**](/documentation/platform/pam/accounts/postgresql) | PostgreSQL databases | ✓ |
+| [**MySQL**](/documentation/platform/pam/accounts/mysql) | MySQL databases | ✓ |
+| [**MS SQL**](/documentation/platform/pam/accounts/mssql) | Microsoft SQL Server | |
+| [**MongoDB**](/documentation/platform/pam/accounts/mongodb) | MongoDB databases | |
+| [**SSH**](/documentation/platform/pam/accounts/ssh) | Linux/Unix servers | ✓ |
+| [**Kubernetes**](/documentation/platform/pam/accounts/kubernetes) | Kubernetes clusters | |
+| [**AWS IAM**](/documentation/platform/pam/accounts/aws-iam) | AWS IAM roles | ✓ |
+| [**Windows**](/documentation/platform/pam/accounts/windows) | Windows servers (RDP) | ✓ |
+| [**Windows AD**](/documentation/platform/pam/accounts/windows-ad) | Windows via Active Directory | ✓ |
+
+Each type has specific connection details. See the type-specific pages for details.
+
+## Adding an Account
+
+Accounts live inside [folders](/documentation/platform/pam/folders/overview). To add one:
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which folder to add the account to, then select a [template](/documentation/platform/pam/templates/overview). The template determines the account type and all the rules that apply.
+  </Step>
+  <Step title="Enter connection details">
+    Provide the hostname, port, and other connection information.
+  </Step>
+  <Step title="Enter credentials">
+    Provide the username and password (or SSH key/certificate settings).
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+
+## Connecting to an Account
+
+Once an account exists, users with access can connect from the **My Access** page:
+
+### Web Access
+
+Go to **Privileged Access Management → My Access**, find the account, and click **Launch → Connect in Browser**. This opens:
+- **PostgreSQL / MySQL** — a Data Explorer for browsing tables and a SQL Editor for running queries
+- **SSH** — an interactive terminal
+- **AWS IAM** — opens the AWS Console with federated credentials
+- **Windows / Windows AD** — an RDP connection to the server
+
+### CLI Access
+
+Run the CLI command to start a local proxy:
+
+```bash
+infisical pam access <folder>/<account>
+```
+
+The command outputs the local port to connect to. Then connect with your preferred client (psql, pgAdmin, ssh, etc.) against `localhost` using that port. The proxy handles authentication automatically.
+
+**Flags:**
+
+| Flag | What it does |
+|------|--------------|
+| `--port` | Use a specific local port (otherwise one is assigned automatically) |
+| `--reason` | Provide a reason (if required by the template) |
+
+## Direct Account Memberships
+
+Most access is granted at the folder level — if you have access to the folder, you have access to all accounts in it.
+
+But sometimes you need to grant access to just one account. For that, use direct account memberships:
+
+1. Open the account and go to the **Permissions** tab
+2. Click **Assign Access**
+3. Select the user/group, role, and optional expiration
+4. Click **Add**
+
+Direct memberships are for exceptions — a contractor who needs one specific database, or temporary elevated access to a single account.
+
+## Next Steps
+
+For detailed instructions on creating and connecting to specific account types, see the type-specific pages in the sidebar.

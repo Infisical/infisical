@@ -1,0 +1,92 @@
+---
+title: "AWS IAM Accounts"
+sidebarTitle: "AWS IAM"
+description: "Add and connect to AWS accounts via IAM role assumption."
+---
+
+AWS IAM accounts let you manage access to AWS through IAM role assumption. Users can open the AWS console directly or use the CLI to get temporary credentials, and every access is logged.
+
+<Note>
+AWS IAM accounts do not require a Gateway — Infisical connects directly to AWS.
+</Note>
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an AWS IAM [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `prod-admin-access`) |
+    | **PAM Role ARN** | The ARN of the IAM role that Infisical assumes to broker access |
+  </Step>
+  <Step title="Enter credentials">
+    | Field | Description |
+    |-------|-------------|
+    | **Target Role ARN** | The ARN of the IAM role the user will assume |
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## How It Works
+
+When a user accesses an AWS IAM account:
+
+1. Infisical assumes the **PAM Role** (configured at the account level)
+2. Using that role, Infisical assumes the **Target Role** on behalf of the user
+3. The user receives temporary AWS credentials for the target role
+
+This lets you centralize access control through Infisical while using standard AWS IAM roles.
+
+## Connecting
+
+<Tabs>
+  <Tab title="AWS Console">
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch → Connect in Browser**
+    3. You'll be taken directly to the AWS console, logged in with the target role
+  </Tab>
+  <Tab title="CLI">
+    The CLI writes temporary credentials to your AWS credentials file as a named profile:
+
+    ```bash
+    infisical pam access my-folder/prod-admin-access
+    ```
+
+    This creates a profile named `infisical-pam/my-folder/prod-admin-access` in `~/.aws/credentials`. Use it with the AWS CLI:
+
+    ```bash
+    aws s3 ls --profile "infisical-pam/my-folder/prod-admin-access"
+    ```
+
+    Or set the `AWS_PROFILE` environment variable:
+
+    ```bash
+    export AWS_PROFILE="infisical-pam/my-folder/prod-admin-access"
+    aws sts get-caller-identity
+    ```
+
+    Press **Ctrl+C** to stop and remove the credentials profile.
+
+    **Flags:**
+    - `--reason <reason>` — provide an access reason (if required by template)
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Kubernetes Accounts" icon="dharmachakra" href="/documentation/platform/pam/accounts/kubernetes">
+    Add Kubernetes cluster accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

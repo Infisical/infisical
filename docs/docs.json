@@ -109,9 +109,9 @@
                       "integrations/app-connections/1password",
                       "integrations/app-connections/anthropic",
                       "integrations/app-connections/auth0",
+                      "integrations/app-connections/adcs",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
-                      "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-dns",
@@ -141,6 +141,7 @@
                       "integrations/app-connections/gitlab",
                       "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
+                      "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
                       "integrations/app-connections/external-infisical",
@@ -165,6 +166,7 @@
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
+                      "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
                       "integrations/app-connections/supabase",
@@ -647,6 +649,7 @@
                       "integrations/secret-syncs/github",
                       "integrations/secret-syncs/gitlab",
                       "integrations/secret-syncs/hashicorp-vault",
+                      "integrations/secret-syncs/hasura-cloud",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/external-infisical",
@@ -660,6 +663,7 @@
                       "integrations/secret-syncs/qovery",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
+                      "integrations/secret-syncs/rundeck",
                       "integrations/secret-syncs/snowflake",
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
@@ -890,7 +894,7 @@
                           "documentation/platform/pki/ca/digicert-direct",
                           "documentation/platform/pki/ca/godaddy",
                           "documentation/platform/pki/ca/sectigo",
-                          "documentation/platform/pki/ca/azure-adcs",
+                          "documentation/platform/pki/ca/adcs",
                           "documentation/platform/pki/ca/aws-pca",
                           "documentation/platform/pki/ca/aws-acm-public-ca",
                           "documentation/platform/pki/ca/venafi",
@@ -947,67 +951,65 @@
             ]
           },
           {
-            "item": "Infisical PAM",
+            "item": "Privileged Access Manager",
             "groups": [
               {
-                "group": "Infisical PAM",
+                "group": "Privileged Access Manager",
                 "pages": [
                   "documentation/platform/pam/overview",
                   {
-                    "group": "Getting Started",
+                    "group": "Quickstarts",
                     "pages": [
-                      "documentation/platform/pam/getting-started/setup",
-                      {
-                        "group": "Resources",
-                        "pages": [
-                          "documentation/platform/pam/getting-started/resources",
-                          "documentation/platform/pam/getting-started/resources/active-directory",
-                          "documentation/platform/pam/getting-started/resources/aws-iam",
-                          "documentation/platform/pam/getting-started/resources/kubernetes",
-                          "documentation/platform/pam/getting-started/resources/mongodb",
-                          "documentation/platform/pam/getting-started/resources/mssql",
-                          "documentation/platform/pam/getting-started/resources/mysql",
-                          "documentation/platform/pam/getting-started/resources/oracle",
-                          "documentation/platform/pam/getting-started/resources/postgresql",
-                          "documentation/platform/pam/getting-started/resources/redis",
-                          "documentation/platform/pam/getting-started/resources/ssh",
-                          "documentation/platform/pam/getting-started/resources/windows-server"
-                        ]
-                      },
-                      "documentation/platform/pam/getting-started/accounts"
+                      "documentation/platform/pam/quick-starts/launch-first-session"
                     ]
                   },
                   {
-                    "group": "Discovery",
+                    "group": "Concepts",
                     "pages": [
-                      "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory"
+                      "documentation/platform/pam/concepts/pam-components",
+                      "documentation/platform/pam/concepts/session-lifecycle",
+                      "documentation/platform/pam/concepts/access-control"
                     ]
                   },
-                  "documentation/platform/pam/architecture"
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pam/guides/team-access",
+                      "documentation/platform/pam/guides/ssh-certificate-auth"
+                    ]
+                  }
                 ]
               },
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/pam/product-reference/access-policies",
-                  "documentation/platform/pam/product-reference/account-policies",
-                  "documentation/platform/pam/product-reference/auditing",
-                  "documentation/platform/pam/product-reference/session-recording",
-                  "documentation/platform/pam/product-reference/external-storage",
-                  "documentation/platform/pam/product-reference/ai-session-insights",
-                  "documentation/platform/pam/product-reference/credential-rotation",
-                  "documentation/platform/pam/product-reference/view-credentials",
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
                   {
-                    "group": "Web Access",
+                    "group": "Accounts",
                     "pages": [
-                      "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql",
-                      "documentation/platform/pam/product-reference/web-access/redis",
-                      "documentation/platform/pam/product-reference/web-access/ssh",
-                      "documentation/platform/pam/product-reference/web-access/windows-rdp"
+                      "documentation/platform/pam/accounts/overview",
+                      "documentation/platform/pam/accounts/postgresql",
+                      "documentation/platform/pam/accounts/mysql",
+                      "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/ssh",
+                      "documentation/platform/pam/accounts/kubernetes",
+                      "documentation/platform/pam/accounts/aws-iam",
+                      "documentation/platform/pam/accounts/windows",
+                      "documentation/platform/pam/accounts/windows-ad"
                     ]
-                  }
+                  },
+                  {
+                    "group": "Sessions",
+                    "pages": [
+                      "documentation/platform/pam/sessions/overview",
+                      "documentation/platform/pam/sessions/session-recording",
+                      "documentation/platform/pam/sessions/external-storage"
+                    ]
+                  },
+                  "documentation/platform/pam/auditing",
+                  "documentation/platform/pam/architecture"
                 ]
               }
             ]
@@ -1711,6 +1713,18 @@
                     ]
                   },
                   {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/hasura-cloud/list",
+                      "api-reference/endpoints/app-connections/hasura-cloud/available",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/app-connections/hasura-cloud/create",
+                      "api-reference/endpoints/app-connections/hasura-cloud/update",
+                      "api-reference/endpoints/app-connections/hasura-cloud/delete"
+                    ]
+                  },
+                  {
                     "group": "Heroku",
                     "pages": [
                       "api-reference/endpoints/app-connections/heroku/list",
@@ -1960,6 +1974,18 @@
                       "api-reference/endpoints/app-connections/render/create",
                       "api-reference/endpoints/app-connections/render/update",
                       "api-reference/endpoints/app-connections/render/delete"
+                    ]
+                  },
+                  {
+                    "group": "Rundeck",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/rundeck/list",
+                      "api-reference/endpoints/app-connections/rundeck/available",
+                      "api-reference/endpoints/app-connections/rundeck/get-by-id",
+                      "api-reference/endpoints/app-connections/rundeck/get-by-name",
+                      "api-reference/endpoints/app-connections/rundeck/create",
+                      "api-reference/endpoints/app-connections/rundeck/update",
+                      "api-reference/endpoints/app-connections/rundeck/delete"
                     ]
                   },
                   {
@@ -2933,6 +2959,20 @@
                     ]
                   },
                   {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/list",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/create",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/update",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/delete",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/import-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Heroku",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/heroku/list",
@@ -3079,6 +3119,19 @@
                       "api-reference/endpoints/secret-syncs/render/sync-secrets",
                       "api-reference/endpoints/secret-syncs/render/import-secrets",
                       "api-reference/endpoints/secret-syncs/render/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Rundeck",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/rundeck/list",
+                      "api-reference/endpoints/secret-syncs/rundeck/get-by-id",
+                      "api-reference/endpoints/secret-syncs/rundeck/get-by-name",
+                      "api-reference/endpoints/secret-syncs/rundeck/create",
+                      "api-reference/endpoints/secret-syncs/rundeck/update",
+                      "api-reference/endpoints/secret-syncs/rundeck/delete",
+                      "api-reference/endpoints/secret-syncs/rundeck/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/rundeck/remove-secrets"
                     ]
                   },
                   {

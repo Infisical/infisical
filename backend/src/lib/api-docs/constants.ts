@@ -2205,6 +2205,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_ADCS: {
     caId: "The ID of the CA to install the certificate for via Azure AD CS."
   },
+  INSTALL_CERT_ADCS_NATIVE: {
+    caId: "The ID of the CA to install the certificate for via ADCS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -2666,6 +2669,12 @@ export const CertificateAuthorities = {
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      keySource:
+        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
+      hsmConnectorId:
+        "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
+      hsmKeyLabel:
+        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a per-CA label built from the CA name and a random 5-character suffix (ca-<name>-<slug>).",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
@@ -2888,6 +2897,10 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    RUNDECK: {
+      instanceUrl: "The Rundeck instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Rundeck."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -2931,6 +2944,9 @@ export const AppConnections = {
     CONVEX: {
       accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
       instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
+    },
+    HASURA_CLOUD: {
+      accessToken: "The Hasura Cloud access token used to authenticate with the Hasura Cloud GraphQL API."
     },
     OVH: {
       privateKey:
@@ -3239,6 +3255,10 @@ export const SecretSyncs = {
       environmentName: "The Railway environment to sync secrets to.",
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
+    },
+    HASURA_CLOUD: {
+      projectId: "The ID of the Hasura Cloud project to sync secrets to.",
+      projectName: "The name of the Hasura Cloud project to sync secrets to."
     },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."
