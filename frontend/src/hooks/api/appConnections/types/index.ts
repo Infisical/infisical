@@ -52,6 +52,7 @@ import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
 import { TOnaConnection } from "./ona-connection";
+import { TOpenAIConnection } from "./open-ai-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
@@ -125,6 +126,7 @@ export * from "./oci-connection";
 export * from "./octopus-deploy-connection";
 export * from "./okta-connection";
 export * from "./ona-connection";
+export * from "./open-ai-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
@@ -201,6 +203,7 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
+  | TOpenAIConnection
   | TAnthropicConnection
   | TCircleCIConnection
   | TCloud66Connection

@@ -85,6 +85,11 @@ export const SECRET_ROTATION_MAP: Record<
     image: "OpenRouter.png",
     size: 50
   },
+  [SecretRotation.OpenAIServiceAccount]: {
+    name: "OpenAI Service Account",
+    image: "OpenAI.png",
+    size: 50
+  },
   [SecretRotation.HpIloLocalAccount]: {
     name: "HP iLO Local Account",
     image: "SSH.png",
@@ -129,6 +134,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
   [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
+  [SecretRotation.OpenAIServiceAccount]: AppConnection.OpenAI,
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
@@ -154,6 +160,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.DbtServiceToken]: true,
   [SecretRotation.WindowsLocalAccount]: false,
   [SecretRotation.OpenRouterApiKey]: true,
+  [SecretRotation.OpenAIServiceAccount]: true,
   [SecretRotation.HpIloLocalAccount]: false,
   [SecretRotation.SupabaseApiKey]: true,
   [SecretRotation.SalesforceOauthCredentials]: true,
