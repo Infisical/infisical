@@ -6,7 +6,7 @@ import { ContentLoader } from "@app/components/v2";
 import { Button } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
-import { useUpdateUserMfa } from "@app/hooks/api/users";
+import { useActivateMfa } from "@app/hooks/api/users";
 
 import { MFA_METHOD_LABELS, RecoveryCodesStep, VerifyStep } from "./setup";
 
@@ -17,9 +17,10 @@ type Props = {
 
 // Guided enrollment used when an org enforces MFA but the user has not yet set
 // up the required method (e.g. right after signup). Mirrors the settings wizard:
-// enable MFA (which mints recovery codes) -> verify the method -> save codes.
+// enroll the method (which proves the factor and mints recovery codes) -> enable
+// MFA -> save codes.
 export const MfaEnrollment = ({ method, onComplete }: Props) => {
-  const { mutateAsync: updateUserMfa } = useUpdateUserMfa();
+  const { mutateAsync: activateMfa } = useActivateMfa();
   const [phase, setPhase] = useState<"preparing" | "verify" | "recovery">("preparing");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [hasSaved, setHasSaved] = useState(false);
@@ -31,19 +32,13 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
     if (hasPrepared.current) return;
     hasPrepared.current = true;
 
-    // The verification/enable endpoints authenticate with the base access token, so clear the
-    // temporary MFA token before mounting the verify step (TOTP fires a registration request on
-    // mount). MFA itself is enabled only once the method is verified — see handleVerified.
     SecurityClient.setMfaToken("");
     setPhase("verify");
   }, []);
 
-  const handleVerified = async () => {
+  const handleVerified = async (codes?: string[]) => {
     try {
-      const { recoveryCodes: codes } = await updateUserMfa({
-        isMfaEnabled: true,
-        selectedMfaMethod: method
-      });
+      await activateMfa({ selectedMfaMethod: method });
       setRecoveryCodes(codes ?? []);
       setPhase("recovery");
     } catch (error: any) {

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlertIcon, PowerIcon, ShieldCheckIcon } from "lucide-react";
 
 import { MFA_METHOD_ICONS, MFA_METHOD_LABELS } from "@app/components/mfa/setup";
@@ -22,12 +21,17 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useGetOrganizations, useGetUser, userKeys, useUpdateUserMfa } from "@app/hooks/api";
+import {
+  useActivateMfa,
+  useDeactivateMfa,
+  useGetOrganizations,
+  useGetUser,
+  useSetMfaMethod
+} from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
-import { webAuthnKeys } from "@app/hooks/api/webauthn/queries";
 
 import { MfaMethodsCard } from "./MfaMethodsCard";
 import { MfaSetupWizard } from "./MfaSetupWizard";
@@ -37,11 +41,12 @@ const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
-  const { mutateAsync: updateUserMfa, isPending: isUpdating } = useUpdateUserMfa();
+  const { mutateAsync: setMfaMethod } = useSetMfaMethod();
+  const { mutateAsync: activateMfa } = useActivateMfa();
+  const { mutateAsync: deactivateMfa, isPending: isUpdating } = useDeactivateMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
   const { data: organizations = [] } = useGetOrganizations();
-  const queryClient = useQueryClient();
 
   const isMfaEnforced = organizations.some((org) => org.enforceMfa);
 
@@ -74,9 +79,30 @@ export const MFASection = () => {
     ? preferredMethod
     : availableMethods[0];
 
+  // A configured non-email factor means the user can re-enable MFA directly
+  // (factors and recovery codes survive a disable), without re-running enrollment.
+  const hasConfiguredFactor =
+    Boolean(totpConfiguration?.isVerified) || webAuthnCredentials.length > 0;
+
+  const handleEnable = async () => {
+    if (!hasConfiguredFactor) {
+      setIsWizardOpen(true);
+      return;
+    }
+    try {
+      await activateMfa({ selectedMfaMethod: selectedMethod });
+      createNotification({ text: "Two-factor authentication enabled", type: "success" });
+    } catch (error: any) {
+      createNotification({
+        text: error?.response?.data?.message || "Failed to enable two-factor authentication",
+        type: "error"
+      });
+    }
+  };
+
   const handlePreferredMethodChange = async (method: MfaMethod) => {
     try {
-      await updateUserMfa({ selectedMfaMethod: method });
+      await setMfaMethod({ selectedMfaMethod: method });
       createNotification({ text: "Updated preferred 2FA method", type: "success" });
     } catch (error: any) {
       createNotification({
@@ -88,13 +114,7 @@ export const MFASection = () => {
 
   const handleDisable = async () => {
     try {
-      await updateUserMfa({ isMfaEnabled: false });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: userKeys.getUser }),
-        queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration }),
-        queryClient.invalidateQueries({ queryKey: userKeys.mfaRecoveryCodes }),
-        queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials })
-      ]);
+      await deactivateMfa();
       setIsDisableOpen(false);
       createNotification({ text: "Two-factor authentication disabled", type: "success" });
     } catch (error: any) {
@@ -126,7 +146,7 @@ export const MFASection = () => {
         </a>
       </p>
       <div className="mt-5">
-        <Button variant="org" onClick={() => setIsWizardOpen(true)}>
+        <Button variant="org" onClick={handleEnable}>
           <ShieldCheckIcon /> Enable two-factor authentication
         </Button>
       </div>
@@ -181,7 +201,7 @@ export const MFASection = () => {
           <p className="text-sm text-muted">
             {isMfaEnforced
               ? "Your organization requires two-factor authentication, so it can't be disabled."
-              : "Turning this off removes all configured methods and recovery codes."}
+              : "Turning this off keeps your configured methods and recovery codes so you can re-enable it later."}
           </p>
           <Button
             variant="danger"
@@ -201,8 +221,8 @@ export const MFASection = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes every configured method (authenticator app, passkeys) and your recovery
-              codes. You can re-enable it at any time.
+              You will no longer be prompted for a second factor when signing in. Your configured
+              methods and recovery codes are kept, so you can re-enable it at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -15,7 +15,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { userKeys, useUpdateUserMfa } from "@app/hooks/api";
+import { useActivateMfa, userKeys } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 
 type Props = {
@@ -25,7 +25,7 @@ type Props = {
 
 export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
   const queryClient = useQueryClient();
-  const { mutateAsync: updateUserMfa } = useUpdateUserMfa();
+  const { mutateAsync: activateMfa } = useActivateMfa();
 
   const [step, setStep] = useState(0);
   const [selectedMethod, setSelectedMethod] = useState<MfaMethod>(MfaMethod.TOTP);
@@ -44,12 +44,9 @@ export const MfaSetupWizard = ({ isOpen, onOpenChange }: Props) => {
     }
   }, [isOpen]);
 
-  const handleVerified = async () => {
+  const handleVerified = async (codes?: string[]) => {
     try {
-      const { recoveryCodes: codes } = await updateUserMfa({
-        isMfaEnabled: true,
-        selectedMfaMethod: selectedMethod
-      });
+      await activateMfa({ selectedMfaMethod: selectedMethod });
       setRecoveryCodes(codes ?? []);
     } catch (error: any) {
       createNotification({

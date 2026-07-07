@@ -1,3 +1,4 @@
+import type { RegistrationResponseJSON } from "@simplewebauthn/browser";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
@@ -407,25 +408,88 @@ export const useRevokeMySessions = () => {
   });
 };
 
-export const useUpdateUserMfa = () => {
+// Enroll an MFA factor: proves the factor and, on the first enrollment, returns
+// the freshly minted recovery codes so they can be shown once. Recovery codes are
+// never returned by the enable toggle — only by this proven-factor flow (or the
+// step-up-gated recovery-code endpoints).
+export const useEnrollMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      isMfaEnabled,
-      selectedMfaMethod
-    }: {
-      isMfaEnabled?: boolean;
-      selectedMfaMethod?: MfaMethod;
-    }) => {
-      const { data } = await apiRequest.patch<{ user: unknown; recoveryCodes?: string[] }>(
-        "/api/v2/users/me/mfa",
-        {
-          isMfaEnabled,
-          selectedMfaMethod
-        }
+    mutationFn: async (
+      dto:
+        | { method: MfaMethod.EMAIL; code: string }
+        | { method: MfaMethod.TOTP; totp: string }
+        | {
+            method: MfaMethod.WEBAUTHN;
+            registrationResponse: RegistrationResponseJSON;
+            name?: string;
+          }
+    ) => {
+      const { data } = await apiRequest.post<{ recoveryCodes?: string[] }>(
+        "/api/v2/users/me/mfa/enroll",
+        dto
       );
 
-      return { user: data.user, recoveryCodes: data.recoveryCodes };
+      return { recoveryCodes: data.recoveryCodes };
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
+    }
+  });
+};
+
+// Email enrollment begin: emails a one-time code to the account address that the
+// user submits via useEnrollMfa to prove inbox control before codes are minted.
+export const useSendMfaEnrollmentEmailCode = () =>
+  useMutation({
+    mutationFn: async () => {
+      await apiRequest.post("/api/v2/users/me/mfa/enroll/email/code");
+    }
+  });
+
+// Enable MFA. Requires the selected method to be configured; never mints codes.
+export const useActivateMfa = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ selectedMfaMethod }: { selectedMfaMethod?: MfaMethod }) => {
+      const { data } = await apiRequest.post<{ user: unknown }>("/api/v2/users/me/mfa/activate", {
+        selectedMfaMethod
+      });
+
+      return { user: data.user };
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+    }
+  });
+};
+
+// Disable MFA. Enrolled factors and recovery codes are preserved (no wipe).
+export const useDeactivateMfa = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post<{ user: unknown }>("/api/v2/users/me/mfa/deactivate");
+
+      return { user: data.user };
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+    }
+  });
+};
+
+// Set the preferred challenge method among already-configured factors.
+export const useSetMfaMethod = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ selectedMfaMethod }: { selectedMfaMethod: MfaMethod }) => {
+      const { data } = await apiRequest.patch<{ user: unknown }>("/api/v2/users/me/mfa", {
+        selectedMfaMethod
+      });
+
+      return { user: data.user };
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });

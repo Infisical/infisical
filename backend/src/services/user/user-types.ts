@@ -11,10 +11,27 @@ export enum UserEncryption {
   V2 = 2
 }
 
-export type TUpdateUserMfaDTO = {
+export type TActivateUserMfaDTO = {
   userId: string;
-  isMfaEnabled?: boolean;
   selectedMfaMethod?: MfaMethod;
+};
+
+export type TDeactivateUserMfaDTO = {
+  userId: string;
+};
+
+export type TSetSelectedMfaMethodDTO = {
+  userId: string;
+  selectedMfaMethod: MfaMethod;
+};
+
+export type TSendMfaEnrollmentEmailCodeDTO = {
+  userId: string;
+};
+
+export type TVerifyMfaEnrollmentEmailCodeDTO = {
+  userId: string;
+  code: string;
 };
 
 export type TUpdateUserEmailDTO = {

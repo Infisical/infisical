@@ -8,6 +8,7 @@ import { TMfaRecoveryCodeDALFactory } from "./mfa-recovery-code-dal";
 import { generateRecoveryCode } from "./mfa-recovery-code-fns";
 import {
   TDeleteRecoveryCodesDTO,
+  TEnsureRecoveryCodesDTO,
   TGetRecoveryCodesDTO,
   TRotateRecoveryCodesDTO,
   TVerifyAndConsumeRecoveryCodeDTO
@@ -128,6 +129,19 @@ export const mfaRecoveryCodeServiceFactory = ({
     return recoveryCodes;
   };
 
+  /**
+   * Mints the initial recovery-code pool the first time a user enrolls an MFA
+   * factor. If a pool already exists (e.g. enrolling a second factor) it is left
+   * untouched so previously saved codes stay valid, and `undefined` is returned.
+   * Returns the freshly minted codes so the caller can display them once.
+   */
+  const ensureRecoveryCodes = async ({ userId, tx }: TEnsureRecoveryCodesDTO) => {
+    const existingConfig = await mfaRecoveryCodeDAL.findOne({ userId }, tx);
+    if (existingConfig) return undefined;
+
+    return rotateRecoveryCodes({ userId, tx, skipMfaEnabledCheck: true });
+  };
+
   const deleteRecoveryCodes = async ({ userId, tx }: TDeleteRecoveryCodesDTO) => {
     await mfaRecoveryCodeDAL.delete({ userId }, tx);
   };
@@ -136,6 +150,7 @@ export const mfaRecoveryCodeServiceFactory = ({
     getRecoveryCodes,
     verifyAndConsumeRecoveryCode,
     rotateRecoveryCodes,
+    ensureRecoveryCodes,
     deleteRecoveryCodes
   };
 };

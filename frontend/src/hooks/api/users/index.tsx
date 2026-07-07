@@ -11,9 +11,12 @@ export {
 } from "./mutation";
 export {
   fetchOrgUsers,
+  useActivateMfa,
   useAddUsersToOrg,
+  useDeactivateMfa,
   useDeleteMe,
   useDeleteOrgMembership,
+  useEnrollMfa,
   useGetMyDuplicateAccount,
   useGetMyIp,
   useGetMyOrganizationProjects,
@@ -29,8 +32,9 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
+  useSendMfaEnrollmentEmailCode,
+  useSetMfaMethod,
   useUpdateOrgMembership,
-  useUpdateUserAuthMethods,
-  useUpdateUserMfa
+  useUpdateUserAuthMethods
 } from "./queries";
 export { userKeys } from "./query-keys";

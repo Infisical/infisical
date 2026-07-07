@@ -1175,8 +1175,7 @@ export const registerRoutes = async (
     userAliasDAL,
     membershipUserDAL,
     totpConfigDAL,
-    webAuthnCredentialDAL,
-    mfaRecoveryCodeService
+    webAuthnCredentialDAL
   });
 
   const totpService = totpServiceFactory({

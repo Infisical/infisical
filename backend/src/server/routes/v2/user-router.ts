@@ -1,3 +1,4 @@
+import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { z } from "zod";
 
 import { AuthTokenSessionsSchema } from "@app/db/schemas";
@@ -32,6 +33,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Set the preferred challenge method among already-configured factors. This
+  // never enables/disables MFA and never issues recovery codes.
   server.route({
     method: "PATCH",
     url: "/me/mfa",
@@ -39,27 +42,178 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "updateUserMfa",
+      operationId: "updateUserMfaMethod",
       body: z.object({
-        isMfaEnabled: z.boolean().optional(),
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
+        selectedMfaMethod: z.nativeEnum(MfaMethod)
       }),
       response: {
         200: z.object({
-          user: SanitizedUserSchema,
-          recoveryCodes: z.string().array().optional()
+          user: SanitizedUserSchema
         })
       }
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
-      const { user, recoveryCodes } = await server.services.user.updateUserMfa({
+      const user = await server.services.user.setSelectedMfaMethod({
         userId: req.permission.id,
-        isMfaEnabled: req.body.isMfaEnabled,
         selectedMfaMethod: req.body.selectedMfaMethod
       });
 
-      return { user, recoveryCodes };
+      return { user };
+    }
+  });
+
+  // Enroll a factor: proves possession of the factor in-request and, on the first
+  // enrollment, mints and returns the recovery-code pool once. Recovery codes are
+  // only ever returned by this proven-factor flow (or the step-up-gated
+  // recovery-code endpoints), never by a bare enable toggle.
+  server.route({
+    method: "POST",
+    url: "/me/mfa/enroll",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "enrollUserMfa",
+      body: z.discriminatedUnion("method", [
+        z.object({
+          method: z.literal(MfaMethod.EMAIL),
+          code: z.string().trim()
+        }),
+        z.object({
+          method: z.literal(MfaMethod.TOTP),
+          totp: z.string().trim()
+        }),
+        z.object({
+          method: z.literal(MfaMethod.WEBAUTHN),
+          registrationResponse: z
+            .object({
+              id: z.string(),
+              rawId: z.string(),
+              response: z
+                .object({
+                  clientDataJSON: z.string(),
+                  attestationObject: z.string()
+                })
+                .passthrough(),
+              clientExtensionResults: z.record(z.unknown()).default({}),
+              type: z.literal("public-key")
+            })
+            .passthrough(),
+          name: z.string().optional()
+        })
+      ]),
+      response: {
+        200: z.object({
+          recoveryCodes: z.string().array().optional()
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      if (req.body.method === MfaMethod.EMAIL) {
+        await server.services.user.verifyMfaEnrollmentEmailCode({
+          userId: req.permission.id,
+          code: req.body.code
+        });
+      } else if (req.body.method === MfaMethod.TOTP) {
+        await server.services.totp.verifyUserTotpConfig({
+          userId: req.permission.id,
+          totp: req.body.totp
+        });
+      } else {
+        await server.services.webAuthn.verifyRegistrationResponse({
+          userId: req.permission.id,
+          registrationResponse: req.body.registrationResponse as RegistrationResponseJSON,
+          name: req.body.name
+        });
+      }
+
+      const recoveryCodes = await server.services.mfaRecoveryCode.ensureRecoveryCodes({
+        userId: req.permission.id
+      });
+
+      return { recoveryCodes };
+    }
+  });
+
+  // Email enrollment begin: emails a one-time code the user submits to POST
+  // /me/mfa/enroll to prove control of the account inbox before codes are minted.
+  server.route({
+    method: "POST",
+    url: "/me/mfa/enroll/email/code",
+    config: {
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => req.permission?.id ?? req.realIp
+      })
+    },
+    schema: {
+      operationId: "sendMfaEnrollmentEmailCode",
+      response: {
+        200: z.object({})
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      await server.services.user.sendMfaEnrollmentEmailCode({
+        userId: req.permission.id
+      });
+
+      return {};
+    }
+  });
+
+  // Enable MFA. Requires the selected method to be configured; does not mint codes.
+  server.route({
+    method: "POST",
+    url: "/me/mfa/activate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "activateUserMfa",
+      body: z.object({
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
+      }),
+      response: {
+        200: z.object({
+          user: SanitizedUserSchema
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
+    handler: async (req) => {
+      const user = await server.services.user.activateMfa({
+        userId: req.permission.id,
+        selectedMfaMethod: req.body.selectedMfaMethod
+      });
+
+      return { user };
+    }
+  });
+
+  // Disable MFA. Enrolled factors and recovery codes are preserved (no wipe).
+  server.route({
+    method: "POST",
+    url: "/me/mfa/deactivate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "deactivateUserMfa",
+      response: {
+        200: z.object({
+          user: SanitizedUserSchema
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
+    handler: async (req) => {
+      const user = await server.services.user.deactivateMfa({
+        userId: req.permission.id
+      });
+
+      return { user };
     }
   });
 

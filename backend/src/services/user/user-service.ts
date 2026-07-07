@@ -17,12 +17,20 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TWebAuthnCredentialDALFactory } from "../webauthn/webauthn-credential-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO, TVerifyCurrentEmailOTPDTO } from "./user-types";
+import {
+  TActivateUserMfaDTO,
+  TDeactivateUserMfaDTO,
+  TListUserGroupsDTO,
+  TSendMfaEnrollmentEmailCodeDTO,
+  TSetSelectedMfaMethodDTO,
+  TUpdateUserEmailDTO,
+  TVerifyCurrentEmailOTPDTO,
+  TVerifyMfaEnrollmentEmailCodeDTO
+} from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -47,9 +55,8 @@ type TUserServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
-  totpConfigDAL: Pick<TTotpConfigDALFactory, "delete" | "findOne">;
-  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "delete" | "find">;
-  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "deleteRecoveryCodes" | "rotateRecoveryCodes">;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
+  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -64,8 +71,7 @@ export const userServiceFactory = ({
   permissionService,
   userAliasDAL,
   totpConfigDAL,
-  webAuthnCredentialDAL,
-  mfaRecoveryCodeService
+  webAuthnCredentialDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -104,73 +110,114 @@ export const userServiceFactory = ({
     });
   };
 
-  const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
+  // A method can only be selected/activated once the user has actually configured
+  // that factor. EMAIL is always available since it uses the account email.
+  const assertMfaMethodConfigured = async (userId: string, method: MfaMethod) => {
+    if (method === MfaMethod.TOTP) {
+      const totpConfig = await totpConfigDAL.findOne({ userId, isVerified: true });
+      if (!totpConfig) {
+        throw new BadRequestError({
+          message: "Cannot select an authenticator app without a verified authenticator configured"
+        });
+      }
+    } else if (method === MfaMethod.WEBAUTHN) {
+      const credentials = await webAuthnCredentialDAL.find({ userId });
+      if (credentials.length === 0) {
+        throw new BadRequestError({
+          message: "Cannot select a passkey without a registered passkey"
+        });
+      }
+    }
+  };
+
+  // Enables MFA for the account. Recovery codes are NOT minted here: they are
+  // issued only by the enrollment flow, which proves a live factor first (see
+  // POST /me/mfa/enroll). This keeps recovery codes off any session that has not
+  // proven a factor.
+  const activateMfa = async ({ userId, selectedMfaMethod }: TActivateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
+    if (!user || !user.email) throw new BadRequestError({ name: "Failed to enable MFA" });
 
-    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
+    const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+    await assertMfaMethodConfigured(userId, method);
 
-    const wasMfaEnabled = user.isMfaEnabled;
+    return userDAL.updateById(userId, {
+      isMfaEnabled: true,
+      selectedMfaMethod: method
+    });
+  };
+
+  // Disables MFA. Enrolled factors and recovery codes are intentionally preserved
+  // so re-enabling does not require re-enrollment; removing a factor is done
+  // explicitly via its own endpoint.
+  const deactivateMfa = async ({ userId }: TDeactivateUserMfaDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to disable MFA" });
 
     // MFA cannot be turned off while any organization the user belongs to enforces
-    // it — doing so would lock them out of that org on the next login.
-    if (isMfaEnabled === false) {
-      const userOrgMemberships = await membershipUserDAL.find({
-        actorUserId: userId,
-        scope: AccessScope.Organization
-      });
-      if (userOrgMemberships.length) {
-        const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
-        const organizations = await orgDAL.find({ $in: { id: orgIds } });
-        if (organizations.some((org) => org.enforceMfa)) {
-          throw new ForbiddenRequestError({
-            message: "Two-factor authentication is required by your organization and cannot be disabled"
-          });
-        }
+    // it, since doing so would lock them out of that org on the next login.
+    const userOrgMemberships = await membershipUserDAL.find({
+      actorUserId: userId,
+      scope: AccessScope.Organization
+    });
+    if (userOrgMemberships.length) {
+      const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
+      const organizations = await orgDAL.find({ $in: { id: orgIds } });
+      if (organizations.some((org) => org.enforceMfa)) {
+        throw new ForbiddenRequestError({
+          message: "Two-factor authentication is required by your organization and cannot be disabled"
+        });
       }
     }
 
-    if (isMfaEnabled !== false && selectedMfaMethod && selectedMfaMethod !== MfaMethod.EMAIL) {
-      if (selectedMfaMethod === MfaMethod.TOTP) {
-        const totpConfig = await totpConfigDAL.findOne({ userId, isVerified: true });
-        if (!totpConfig) {
-          throw new BadRequestError({
-            message: "Cannot select an authenticator app without a verified authenticator configured"
-          });
-        }
-      } else if (selectedMfaMethod === MfaMethod.WEBAUTHN) {
-        const credentials = await webAuthnCredentialDAL.find({ userId });
-        if (credentials.length === 0) {
-          throw new BadRequestError({
-            message: "Cannot select a passkey without a registered passkey"
-          });
-        }
-      }
-    }
+    return userDAL.updateById(userId, {
+      isMfaEnabled: false
+    });
+  };
 
-    let recoveryCodes: string[] | undefined;
+  // Updates only the preferred challenge method among already-configured factors.
+  const setSelectedMfaMethod = async ({ userId, selectedMfaMethod }: TSetSelectedMfaMethodDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to update MFA method" });
 
-    const updatedUser = await userDAL.transaction(async (tx) => {
-      const user2fa = await userDAL.updateById(
-        userId,
-        {
-          isMfaEnabled,
-          selectedMfaMethod: isMfaEnabled === false ? MfaMethod.EMAIL : selectedMfaMethod
-        },
-        tx
-      );
+    await assertMfaMethodConfigured(userId, selectedMfaMethod);
 
-      if (isMfaEnabled === true && !wasMfaEnabled) {
-        recoveryCodes = await mfaRecoveryCodeService.rotateRecoveryCodes({ userId, tx, skipMfaEnabledCheck: true });
-      } else if (isMfaEnabled === false) {
-        await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
-        await totpConfigDAL.delete({ userId }, tx);
-        await webAuthnCredentialDAL.delete({ userId }, tx);
-      }
+    return userDAL.updateById(userId, { selectedMfaMethod });
+  };
 
-      return user2fa;
+  // Email enrollment begin: sends a one-time code to the account email so control
+  // of the inbox can be proven before recovery codes are minted (mirrors the login
+  // MFA email code, but scoped to a dedicated enrollment token type).
+  const sendMfaEnrollmentEmailCode = async ({ userId }: TSendMfaEnrollmentEmailCodeDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user || !user.email) throw new BadRequestError({ name: "Failed to send MFA enrollment code" });
+
+    const code = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_MFA_ENROLLMENT,
+      userId
     });
 
-    return { user: updatedUser, recoveryCodes };
+    await smtpService.sendMail({
+      template: SmtpTemplates.EmailMfa,
+      subjectLine: "Infisical MFA code",
+      recipients: [user.email],
+      substitutions: {
+        code
+      }
+    });
+  };
+
+  // Email enrollment proof: throws unless the code matches the one emailed above.
+  const verifyMfaEnrollmentEmailCode = async ({ userId, code }: TVerifyMfaEnrollmentEmailCodeDTO) => {
+    try {
+      await tokenService.validateTokenForUser({
+        type: TokenType.TOKEN_EMAIL_MFA_ENROLLMENT,
+        userId,
+        code
+      });
+    } catch (error) {
+      throw new BadRequestError({ message: "Invalid verification code", name: "VerifyMfaEnrollmentEmailCode" });
+    }
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
@@ -599,7 +646,11 @@ export const userServiceFactory = ({
 
   return {
     sendEmailVerificationCode,
-    updateUserMfa,
+    activateMfa,
+    deactivateMfa,
+    setSelectedMfaMethod,
+    sendMfaEnrollmentEmailCode,
+    verifyMfaEnrollmentEmailCode,
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,

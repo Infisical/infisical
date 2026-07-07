@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FingerprintIcon, MailIcon } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -6,18 +6,22 @@ import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { Button, Input } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { useGetUserTotpRegistration, useVerifyUserTotpRegistration } from "@app/hooks/api/users";
+import {
+  useEnrollMfa,
+  useGetUserTotpRegistration,
+  useSendMfaEnrollmentEmailCode
+} from "@app/hooks/api/users";
 import { useRegisterPasskey } from "@app/hooks/api/webauthn";
 
 type Props = {
   method: MfaMethod;
-  onVerified: () => void | Promise<void>;
+  onVerified: (recoveryCodes?: string[]) => void | Promise<void>;
 };
 
 const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   const [hasRegistered, setHasRegistered] = useState(false);
   const { data: registration, isPending } = useGetUserTotpRegistration({ enabled: !hasRegistered });
-  const { mutateAsync: verifyTotp, isPending: isVerifying } = useVerifyUserTotpRegistration();
+  const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
 
@@ -32,9 +36,9 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
 
   const handleVerify = async () => {
     try {
-      await verifyTotp({ totp: totp.trim() });
+      const { recoveryCodes } = await enrollMfa({ method: MfaMethod.TOTP, totp: totp.trim() });
       createNotification({ text: "Authenticator app configured", type: "success" });
-      await onVerified();
+      await onVerified(recoveryCodes);
     } catch (error: any) {
       createNotification({
         text: error?.response?.data?.message || "Invalid verification code",
@@ -84,14 +88,30 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
 };
 
 const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
-  const [isEnabling, setIsEnabling] = useState(false);
+  const { mutateAsync: sendCode } = useSendMfaEnrollmentEmailCode();
+  const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
+  const [code, setCode] = useState("");
+  const hasSentInitialCode = useRef(false);
 
-  const handleEnable = async () => {
-    setIsEnabling(true);
+  // Send the first code automatically when the step mounts.
+  useEffect(() => {
+    if (hasSentInitialCode.current) return;
+    hasSentInitialCode.current = true;
+    sendCode().catch(() => {
+      createNotification({ text: "Failed to send verification code", type: "error" });
+    });
+  }, [sendCode]);
+
+  const handleVerify = async () => {
     try {
-      await onVerified();
-    } finally {
-      setIsEnabling(false);
+      const { recoveryCodes } = await enrollMfa({ method: MfaMethod.EMAIL, code: code.trim() });
+      createNotification({ text: "Email authentication configured", type: "success" });
+      await onVerified(recoveryCodes);
+    } catch (error: any) {
+      createNotification({
+        text: error?.response?.data?.message || "Invalid verification code",
+        type: "error"
+      });
     }
   };
 
@@ -100,24 +120,47 @@ const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
       <div className="flex items-start gap-3 rounded-lg border border-border bg-container p-4">
         <MailIcon className="mt-0.5 text-muted" />
         <p className="text-sm text-muted">
-          A one-time code will be sent to your account email each time you sign in. No setup is
-          needed for this method.
+          We sent a one-time code to your account email. Enter it below to confirm you can receive
+          codes. A code will be sent the same way each time you sign in.
         </p>
       </div>
-      <Button variant="org" isPending={isEnabling} onClick={handleEnable}>
-        Enable email authentication
-      </Button>
+      <Input
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        placeholder="Enter 6-digit code"
+        maxLength={6}
+      />
+      <div className="flex items-center gap-3">
+        <Button
+          variant="org"
+          isPending={isVerifying}
+          isDisabled={code.trim().length !== 6}
+          onClick={handleVerify}
+        >
+          Verify code
+        </Button>
+      </div>
     </div>
   );
 };
 
 const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   const { registerPasskey, isRegistering } = useRegisterPasskey();
+  const { mutateAsync: enrollMfa } = useEnrollMfa();
   const [name, setName] = useState("");
 
   const handleRegister = async () => {
-    if (await registerPasskey(name)) {
-      await onVerified();
+    let recoveryCodes: string[] | undefined;
+    const ok = await registerPasskey(name, async (registrationResponse, resolvedName) => {
+      const res = await enrollMfa({
+        method: MfaMethod.WEBAUTHN,
+        registrationResponse,
+        name: resolvedName
+      });
+      recoveryCodes = res.recoveryCodes;
+    });
+    if (ok) {
+      await onVerified(recoveryCodes);
     }
   };
 

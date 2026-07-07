@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
+import { RegistrationResponseJSON, startRegistration } from "@simplewebauthn/browser";
 
 import { createNotification } from "@app/components/notifications";
 
 import { useGenerateRegistrationOptions, useVerifyRegistration } from "./mutations";
 
 const DEFAULT_PASSKEY_NAME = "Passkey";
+
+type VerifyAttestation = (
+  registrationResponse: RegistrationResponseJSON,
+  name: string
+) => Promise<void>;
 
 // Shared passkey registration flow (browser support guard -> options -> prompt ->
 // verify) with consistent success/error notifications. Returns true on success so
@@ -15,7 +20,7 @@ export const useRegisterPasskey = () => {
   const { mutateAsync: verifyRegistration } = useVerifyRegistration();
   const [isRegistering, setIsRegistering] = useState(false);
 
-  const registerPasskey = async (name?: string): Promise<boolean> => {
+  const registerPasskey = async (name?: string, verify?: VerifyAttestation): Promise<boolean> => {
     if (
       !window.PublicKeyCredential ||
       !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
@@ -38,10 +43,12 @@ export const useRegisterPasskey = () => {
     try {
       const options = await generateOptions();
       const registrationResponse = await startRegistration({ optionsJSON: options });
-      await verifyRegistration({
-        registrationResponse,
-        name: name?.trim() || DEFAULT_PASSKEY_NAME
-      });
+      const resolvedName = name?.trim() || DEFAULT_PASSKEY_NAME;
+      if (verify) {
+        await verify(registrationResponse, resolvedName);
+      } else {
+        await verifyRegistration({ registrationResponse, name: resolvedName });
+      }
       createNotification({ text: "Passkey registered", type: "success" });
       return true;
     } catch (error: any) {
