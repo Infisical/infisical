@@ -12,6 +12,7 @@ import {
   TAddFolderIdentityMemberDTO,
   TAddFolderUserMemberDTO,
   TAddPamProductIdentityMemberDTO,
+  TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
   TCreatePamFolderDTO,
@@ -29,7 +30,10 @@ import {
   TRemoveFolderIdentityMemberDTO,
   TRemoveFolderMemberDTO,
   TRemovePamProductIdentityMemberDTO,
+  TReviewPamAccessRequestDTO,
+  TRevokePamAccessRequestDTO,
   TRotatePamAccountDTO,
+  TSetPamApprovalConfigDTO,
   TUpdateAccountGroupMemberRoleDTO,
   TUpdateAccountIdentityMemberRoleDTO,
   TUpdateAccountMemberRoleDTO,
@@ -173,6 +177,8 @@ export const useCreatePamAccountTemplate = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.template() });
+      // Template policies/settings feed account accessibility (approval gating, recording config)
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
@@ -469,6 +475,38 @@ export const useRemovePamProductIdentityMember = () => {
   });
 };
 
+// Product user/group removal must go through the PAM endpoints so approver assignments and
+// folder memberships are stripped alongside the membership (the generic workspace routes skip that).
+export const useRemovePamProductUserMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId }: { userId: string; projectId: string }) => {
+      const { data } = await apiRequest.delete(`/api/v1/pam/memberships/users/${userId}`);
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+    }
+  });
+};
+
+export const useRemovePamProductGroupMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId }: { groupId: string; projectId: string }) => {
+      const { data } = await apiRequest.delete(`/api/v1/pam/memberships/groups/${groupId}`);
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
+      });
+    }
+  });
+};
+
 export const useAddAccountIdentityMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -577,6 +615,22 @@ export const useUpdatePamAccountRotation = () => {
   });
 };
 
+// Access Requests / Approvals
+
+export const useCreatePamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreatePamAccessRequestDTO) => {
+      const { data } = await apiRequest.post("/api/v1/pam/access-requests", params);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
 export const useRotatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -587,6 +641,54 @@ export const useRotatePamAccount = () => {
     onSuccess: (_, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
       queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+    }
+  });
+};
+
+export const useReviewPamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, status, comment }: TReviewPamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(`/api/v1/pam/access-requests/${requestId}/review`, {
+        status,
+        comment
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useRevokePamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId }: TRevokePamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(`/api/v1/pam/access-requests/${requestId}/revoke`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useSetPamApprovalConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId, steps }: TSetPamApprovalConfigDTO) => {
+      const { data } = await apiRequest.put(
+        `/api/v1/pam/folders/${folderId}/approval-configuration`,
+        { steps }
+      );
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.approvalConfig(folderId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };

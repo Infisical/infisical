@@ -343,7 +343,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use only `infisical.organization.id` and bounded enums as labels. No project IDs, names, emails, IPs, or user agents. Per-project and per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you are a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
@@ -440,6 +440,21 @@ These metrics track all HTTP API requests to Infisical, including request counts
       - `client.address` (string, optional): IP address
       - `user_agent.original` (string, optional): User agent information
   </Accordion>
+
+  <Accordion title="API Errors (InfisicalCore)">
+    **Metric Name**: `infisical.core.http.error.count`
+
+    **Type**: Counter
+
+    **Unit**: `{error}`
+
+    **Description**: API errors with bounded error classification. The low-cardinality counterpart to `infisical.http.server.error.count`; same error volume, but labels are restricted to the InfisicalCore allowlist so the series count stays independent of org/user/identity count. Use this for alerting and dashboards at scale; use `infisical.http.server.error.count` (high-cardinality meter) when you need per-actor attribution. For per-org error breakdowns, query the audit log.
+
+    **Attributes**:
+      - `http.request.method` (string): HTTP method
+      - `http.route` (string): Parameterized route template where the error occurred (e.g. `/api/v1/secrets/:secretName`), never the raw path
+      - `error.type` (string): Bounded error classification
+  </Accordion>
 </AccordionGroup>
 
 ### Secret Operations Metrics
@@ -514,7 +529,6 @@ These metrics track authentication attempts and outcomes, enabling you to monito
       - `infisical.auth.method` (string): Authentication method (`email`, `saml`, `oidc`, `google`, `github`, `gitlab`, `ldap`, `universal-auth`, `kubernetes-auth`, `aws-auth`, `gcp-auth`, `azure-auth`, `oci-auth`, `alicloud-auth`, `tls-cert-auth`, `oidc-auth`, `jwt-auth`, `ldap-auth`, `spiffe-auth`)
       - `infisical.auth.result` (string): `success` or `failure`
       - `error.type` (string, optional): Bounded failure classification (present on failures)
-      - `infisical.organization.id` (string, optional): Organization ID when known
   </Accordion>
   <Accordion title="Token Renewal (InfisicalCore)">
     **Metric Name**: `infisical.auth.token.renewal.count`
@@ -558,7 +572,6 @@ These metrics track changes to SSO configuration, helping you detect unexpected 
     **Attributes** (bounded):
       - `sso.provider` (string): `saml`, `oidc`, or `ldap`
       - `sso.action` (string): `create` or `update`
-      - `infisical.organization.id` (string, optional): Organization ID
   </Accordion>
 </AccordionGroup>
 
@@ -579,7 +592,6 @@ These metrics track SCIM provisioning operations (user and group lifecycle), ena
     **Attributes** (bounded):
       - `scim.operation` (string): `create_user`, `update_user`, `replace_user`, `delete_user`, `create_group`, `update_group`, `replace_group`, `delete_group`
       - `outcome` (string): `success` or `failure`
-      - `infisical.organization.id` (string, optional): Organization ID
       - `error.type` (string, optional): Bounded failure classification (present on failures)
   </Accordion>
   <Accordion title="SCIM Operation Latency">
@@ -777,7 +789,6 @@ End-to-end audit-log pipeline observability: how many events get enqueued per ev
     **Attributes**:
       - `audit_log.event_type` (string): e.g. `LOGIN_USER`, `CREATE_SECRET`, ...
       - `audit_log.actor_type` (string): `user`, `identity`, `service`
-      - `infisical.organization.id` (string, optional)
   </Accordion>
 
   <Accordion title="Audit Log Persist Duration">
@@ -792,7 +803,6 @@ End-to-end audit-log pipeline observability: how many events get enqueued per ev
     **Attributes**:
       - `audit_log.backend` (string): `postgres` or `clickhouse`
       - `audit_log.event_type` (string)
-      - `infisical.organization.id` (string)
   </Accordion>
 
   <Accordion title="Audit Log Dropped">
@@ -807,7 +817,6 @@ End-to-end audit-log pipeline observability: how many events get enqueued per ev
     **Attributes**:
       - `audit_log.event_type` (string)
       - `audit_log.drop_reason` (string): `max_retries`
-      - `infisical.organization.id` (string, optional)
   </Accordion>
 </AccordionGroup>
 
@@ -827,7 +836,7 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
 
     **Attributes**:
       - `audit_log_stream.provider` (string): `datadog`, `splunk`, `custom`, `azure`, `cribl`
-      - `infisical.organization.id` (string)
+      - `audit_log_stream.id` (string): stream config ID (on the exhausted-drop counter)
       - `outcome` (string): `success` or `failure`
       - `error.type` (string, only on failure): one of the closed enum values
   </Accordion>
@@ -841,7 +850,7 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
 
     **Description**: Per-provider stream delivery latency (HTTP round trip to the SIEM).
 
-    **Attributes**: `audit_log_stream.provider`, `infisical.organization.id`, `outcome`, `error.type` (on failure)
+    **Attributes**: `audit_log_stream.provider`, `outcome`, `error.type` (on failure)
   </Accordion>
 </AccordionGroup>
 

@@ -62,6 +62,7 @@ type TPamAccountTemplateInheritedFields = {
   templateGatewayPoolId: string | null;
   templateRecordingConnectionId: string | null;
   templateSettings: unknown;
+  templatePolicies: unknown;
 };
 
 export type TPamAccountListItem = Pick<
@@ -169,6 +170,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccountTemplate}.type as accountType`,
         `${TableName.PamAccountTemplate}.name as templateName`,
         `${TableName.PamAccountTemplate}.settings as templateSettings`,
+        `${TableName.PamAccountTemplate}.policies as templatePolicies`,
         `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
         `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
         `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,

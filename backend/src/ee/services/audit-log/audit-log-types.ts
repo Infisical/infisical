@@ -371,6 +371,7 @@ export enum EventType {
   DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
   GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
   GET_AZURE_AD_TEMPLATES = "get-azure-ad-templates",
+  GET_ADCS_TEMPLATES = "get-adcs-templates",
   GET_SSH_HOST = "get-ssh-host",
   CREATE_SSH_HOST = "create-ssh-host",
   UPDATE_SSH_HOST = "update-ssh-host",
@@ -746,6 +747,10 @@ export enum EventType {
   PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
   PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
+  PAM_ACCESS_REQUEST_CREATE = "pam-access-request-create",
+  PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
+  PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
+  PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -3099,6 +3104,8 @@ interface CreateCa {
     caId: string;
     name: string;
     dn?: string;
+    keySource?: string;
+    hsmConnectorId?: string;
   };
 }
 
@@ -3732,6 +3739,14 @@ interface CreateCertificateTemplateEstConfig {
 
 interface GetAzureAdCsTemplatesEvent {
   type: EventType.GET_AZURE_AD_TEMPLATES;
+  metadata: {
+    caId: string;
+    amount: number;
+  };
+}
+
+interface GetAdcsTemplatesEvent {
+  type: EventType.GET_ADCS_TEMPLATES;
   metadata: {
     caId: string;
     amount: number;
@@ -6147,6 +6162,47 @@ interface PamAccountSetRotationAccountEvent {
   };
 }
 
+interface PamAccessRequestCreateEvent {
+  type: EventType.PAM_ACCESS_REQUEST_CREATE;
+  metadata: {
+    requestId: string;
+    accountId: string;
+    folderId: string;
+    duration: string;
+    reason?: string;
+  };
+}
+
+interface PamAccessRequestReviewEvent {
+  type: EventType.PAM_ACCESS_REQUEST_REVIEW;
+  metadata: {
+    requestId: string;
+    accountId?: string;
+    folderId?: string;
+    status: string;
+    comment?: string;
+  };
+}
+
+interface PamAccessGrantRevokeEvent {
+  type: EventType.PAM_ACCESS_GRANT_REVOKE;
+  metadata: {
+    requestId: string;
+    grantId: string;
+    accountId?: string;
+    folderId?: string;
+  };
+}
+
+interface PamApprovalConfigUpdateEvent {
+  type: EventType.PAM_APPROVAL_CONFIG_UPDATE;
+  metadata: {
+    folderId: string;
+    policyId: string | null;
+    stepCount: number;
+  };
+}
+
 interface UpdateCertificateRenewalConfigEvent {
   type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -7558,6 +7614,7 @@ export type Event =
   | OrderCertificateFromProfile
   | RenewCertificate
   | GetAzureAdCsTemplatesEvent
+  | GetAdcsTemplatesEvent
   | AttemptCreateSlackIntegration
   | AttemptReinstallSlackIntegration
   | UpdateSlackIntegration
@@ -7783,6 +7840,10 @@ export type Event =
   | PamAccountSshCaCreateEvent
   | PamAccountRotateCredentialsEvent
   | PamAccountSetRotationAccountEvent
+  | PamAccessRequestCreateEvent
+  | PamAccessRequestReviewEvent
+  | PamAccessGrantRevokeEvent
+  | PamApprovalConfigUpdateEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

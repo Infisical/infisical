@@ -105,7 +105,8 @@ type ResolvedMember = {
 const ISSUE_TO_TAB: Record<PamAccountAccessibilityIssue, PamSheetTab> = {
   [PamAccountAccessibilityIssue.NoCredential]: PamSheetTab.Configuration,
   [PamAccountAccessibilityIssue.NoGateway]: PamSheetTab.Advanced,
-  [PamAccountAccessibilityIssue.NoRecordingConfig]: PamSheetTab.Advanced
+  [PamAccountAccessibilityIssue.NoRecordingConfig]: PamSheetTab.Advanced,
+  [PamAccountAccessibilityIssue.NoApprovalConfig]: PamSheetTab.Configuration
 };
 
 const PermissionsTab = ({

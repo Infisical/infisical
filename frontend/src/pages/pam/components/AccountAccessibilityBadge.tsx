@@ -6,11 +6,19 @@ import { PamAccountAccessibilityIssue } from "@app/hooks/api/pam";
 const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
   [PamAccountAccessibilityIssue.NoGateway]: "No gateway is configured",
   [PamAccountAccessibilityIssue.NoRecordingConfig]: "No recording bucket is configured",
-  [PamAccountAccessibilityIssue.NoCredential]: "No password is set"
+  [PamAccountAccessibilityIssue.NoCredential]: "No password is set",
+  [PamAccountAccessibilityIssue.NoApprovalConfig]:
+    "No approvers are configured for its folder. Ask a folder admin to add approvers under the folder's Approvals tab."
 };
 
 type Props = {
   issues: PamAccountAccessibilityIssue[];
+};
+
+// Inline the label into the sentence: lowercase the lead-in and avoid doubling the final period
+const formatSingleIssue = (label: string) => {
+  const trimmed = label.endsWith(".") ? label.slice(0, -1) : label;
+  return `${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}.`;
 };
 
 export const AccountAccessibilityBadge = ({ issues }: Props) => {
@@ -24,12 +32,9 @@ export const AccountAccessibilityBadge = ({ issues }: Props) => {
           Unavailable
         </Badge>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="max-w-xs">
         {issues.length === 1 ? (
-          <p>
-            This account can&apos;t be used yet:{" "}
-            {ISSUE_LABELS[issues[0]].charAt(0).toLowerCase() + ISSUE_LABELS[issues[0]].slice(1)}.
-          </p>
+          <p>This account can&apos;t be used yet: {formatSingleIssue(ISSUE_LABELS[issues[0]])}</p>
         ) : (
           <>
             <p className="mb-1 font-medium">This account can&apos;t be used yet</p>

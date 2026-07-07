@@ -15,6 +15,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
+import { AdcsConnectionForm } from "./AdcsConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
 import { AppConnectionFormProvider } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
@@ -50,6 +51,7 @@ import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { GitLabConnectionForm } from "./GitLabConnectionForm";
 import { GoDaddyConnectionForm } from "./GoDaddyConnectionForm";
+import { HasuraCloudConnectionForm } from "./HasuraCloudConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
@@ -73,6 +75,7 @@ import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
@@ -200,6 +203,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureAppConfigurationConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.AzureADCS:
         return <AzureADCSConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ADCS:
+        return <AdcsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Humanitec:
@@ -238,6 +243,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OnePassConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Heroku:
         return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
+      case AppConnection.HasuraCloud:
+        return <HasuraCloudConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Render:
         return <RenderConnectionForm onSubmit={onSubmit} />;
       case AppConnection.LaravelForge:
@@ -330,6 +337,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Rundeck:
+        return <RundeckConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -431,6 +440,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         );
       case AppConnection.AzureADCS:
         return <AzureADCSConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      case AppConnection.ADCS:
+        return <AdcsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Humanitec:
@@ -487,6 +498,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
             projectId={appConnection.projectId}
           />
         );
+      case AppConnection.HasuraCloud:
+        return <HasuraCloudConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Render:
         return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.LaravelForge:
@@ -579,6 +592,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Rundeck:
+        return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

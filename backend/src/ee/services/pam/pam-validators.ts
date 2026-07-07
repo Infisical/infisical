@@ -86,6 +86,13 @@ const enforceAppConnectionConnect = async (
   if (conn.orgId !== ctx.actorOrgId) {
     throw new NotFoundError({ message: "Recording connection not found" });
   }
+
+  // PAM recording connections are org-scoped. Org-level Connect does not authorize a project-scoped
+  // connection (that requires project-level Connect on its own project), so reject them outright.
+  if (conn.projectId) {
+    throw new BadRequestError({ message: "Recording connection must be an organization-level connection" });
+  }
+
   const { permission: orgPermission } = await permissionService.getOrgPermission({
     actorId: ctx.actorId,
     actor: ctx.actor,

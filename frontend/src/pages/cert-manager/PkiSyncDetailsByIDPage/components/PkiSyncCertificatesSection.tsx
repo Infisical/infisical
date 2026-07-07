@@ -32,7 +32,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, CopyButton } from "@app/components/v3";
 import {
   useClearDefaultCertificate,
   useListPkiSyncCertificates,
@@ -198,9 +198,10 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
               <Table>
                 <THead>
                   <Tr>
-                    <Th className="w-2/8">SAN / CN</Th>
-                    <Th className="w-3/16">Certificate Status</Th>
-                    <Th className="w-3/16">Serial Number</Th>
+                    <Th className="w-3/16">SAN / CN</Th>
+                    <Th className="w-1/8">Certificate Status</Th>
+                    <Th className="w-1/8">Serial Number</Th>
+                    <Th className="w-3/16">External ID</Th>
                     <Th className="w-1/8">Sync Status</Th>
                     <Th className="w-1/8">Expires At</Th>
                     <Th className="w-1/8" />
@@ -280,6 +281,26 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
                             })()}
                           </div>
+                        </Td>
+                        <Td className="max-w-0">
+                          {syncCert.externalIdentifier ? (
+                            <div className="flex items-center gap-1">
+                              <Tooltip
+                                content={syncCert.externalIdentifier}
+                                className="max-w-none whitespace-nowrap"
+                              >
+                                <span className="truncate text-xs text-bunker-300">
+                                  {syncCert.externalIdentifier}
+                                </span>
+                              </Tooltip>
+                              <CopyButton
+                                value={syncCert.externalIdentifier}
+                                ariaLabel="Copy external identifier"
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-xs text-bunker-400">-</span>
+                          )}
                         </Td>
                         <Td>
                           {syncCert.lastSyncMessage &&
