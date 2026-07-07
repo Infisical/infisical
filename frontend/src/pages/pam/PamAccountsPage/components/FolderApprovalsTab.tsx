@@ -268,7 +268,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
             <Badge variant="pam">{approvers.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Users and groups who can approve access requests for accounts in this folder.
+            Users and groups who can approve access requests for accounts in this folder. Only
+            folder members are eligible; add someone under the Permissions tab first.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -280,7 +281,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
             getOptionLabel={(opt) => opt.label}
             components={{ Option: ApproverSelectOption }}
             placeholder="Add a user or group..."
-            noOptionsMessage={() => "No users or groups available to add."}
+            noOptionsMessage={() =>
+              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
+            }
           />
 
           {approvers.length === 0 ? (
