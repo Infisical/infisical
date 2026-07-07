@@ -60,10 +60,22 @@ export type TUpdateDiscoverySourceDTO = {
   configuration?: Record<string, unknown>;
 } & TActorContext;
 
-export type TDeleteDiscoverySourceDTO = { projectId: string; sourceId: string } & TActorContext;
-export type TGetDiscoverySourceDTO = { projectId: string; sourceId: string } & TActorContext;
+export type TDeleteDiscoverySourceDTO = {
+  projectId: string;
+  sourceId: string;
+  discoveryType: PamDiscoveryType;
+} & TActorContext;
+export type TGetDiscoverySourceDTO = {
+  projectId: string;
+  sourceId: string;
+  discoveryType: PamDiscoveryType;
+} & TActorContext;
 export type TListDiscoverySourcesDTO = { projectId: string; search?: string } & TActorContext;
-export type TTriggerScanDTO = { projectId: string; sourceId: string } & TActorContext;
+export type TTriggerScanDTO = {
+  projectId: string;
+  sourceId: string;
+  discoveryType: PamDiscoveryType;
+} & TActorContext;
 export type TListRunsDTO = { projectId: string; sourceId: string; offset?: number; limit?: number } & TActorContext;
 export type TListDiscoveredDTO = { projectId: string; sourceId: string; search?: string } & TActorContext;
 

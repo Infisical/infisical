@@ -132,7 +132,8 @@ const runLdap = <T>(
       ...(conn.useLdaps && {
         tlsOptions: {
           rejectUnauthorized: conn.ldapRejectUnauthorized,
-          ...(conn.ldapCaCert && { ca: [conn.ldapCaCert], servername: conn.ldapTlsServerName || conn.dcAddress })
+          servername: conn.ldapTlsServerName || conn.dcAddress,
+          ...(conn.ldapCaCert && { ca: [conn.ldapCaCert] })
         }
       })
     });

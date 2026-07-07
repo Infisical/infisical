@@ -6147,12 +6147,26 @@ interface PamDiscoverySourceDeleteEvent {
 
 interface PamDiscoveryScanEvent {
   type: EventType.PAM_DISCOVERY_SCAN;
-  metadata: { sourceId: string; discoveryType: string };
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    runId?: string;
+    status?: string;
+    triggeredBy?: string;
+    discoveredCount?: number;
+    newCount?: number;
+    errorMessage?: string;
+  };
 }
 
 interface PamDiscoveredAccountImportEvent {
   type: EventType.PAM_DISCOVERED_ACCOUNT_IMPORT;
-  metadata: { sourceId: string; folderId: string; importedCount: number };
+  metadata: {
+    sourceId: string;
+    folderId: string;
+    importedCount: number;
+    importedAccounts: { discoveredAccountId: string; accountId?: string; name?: string }[];
+  };
 }
 
 interface UpdateCertificateRenewalConfigEvent {

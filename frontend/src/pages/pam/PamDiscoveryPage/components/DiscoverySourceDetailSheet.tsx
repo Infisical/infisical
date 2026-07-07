@@ -243,7 +243,12 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
     if (!source) return;
     triggerScan.mutate(
       { discoveryType: source.discoveryType, sourceId: source.id },
-      { onSuccess: () => createNotification({ type: "success", text: "Scan started" }) }
+      {
+        onSuccess: () => {
+          createNotification({ type: "success", text: "Scan started" });
+          setTab(PamSheetTab.Runs);
+        }
+      }
     );
   };
 
@@ -443,7 +448,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
 
   const tabContent: Partial<Record<PamSheetTab, ReactNode>> = {
     [PamSheetTab.General]: stagedTab,
-    [PamSheetTab.Advanced]: runsTab,
+    [PamSheetTab.Runs]: runsTab,
     [PamSheetTab.Configuration]: source ? (
       <ConfigurationTab source={source} onDirtyChange={setIsFormDirty} />
     ) : null

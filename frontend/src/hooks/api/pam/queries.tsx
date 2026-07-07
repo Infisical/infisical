@@ -453,7 +453,7 @@ export const useListPamDiscoveryTypes = () => {
     queryKey: pamKeys.discoveryTypes(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ discoveryTypes: TPamDiscoveryTypeOption[] }>(
-        "/api/v1/pam/discovery-sources/options"
+        "/api/v1/pam/discovery-sources/types"
       );
       return data.discoveryTypes;
     },

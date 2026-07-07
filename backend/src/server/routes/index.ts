@@ -1840,7 +1840,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     queueService,
-    cronJob
+    cronJob,
+    auditLogService
   });
 
   const pamSessionDAL = pamSessionDALFactory(db);

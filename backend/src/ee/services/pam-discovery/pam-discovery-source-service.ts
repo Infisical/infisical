@@ -1,3 +1,4 @@
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -9,6 +10,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -19,6 +21,7 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
 import { TPamDiscoveredAccountDALFactory } from "./pam-discovered-account-dal";
 import {
+  PamDiscoveryImportStatus,
   PamDiscoveryRunStatus,
   PamDiscoveryRunTrigger,
   PamDiscoverySchedule,
@@ -63,6 +66,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
   >;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TPamDiscoverySourceServiceFactory = ReturnType<typeof pamDiscoverySourceServiceFactory>;
@@ -79,7 +83,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     gatewayV2Service,
     gatewayPoolService,
     queueService,
-    cronJob
+    cronJob,
+    auditLogService
   } = deps;
 
   const enqueueScan = (sourceId: string, triggeredBy: PamDiscoveryRunTrigger) =>
@@ -145,16 +150,23 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
 
   const withLastRunStatus = async <T extends { id: string }>(sources: T[]) => {
     if (sources.length === 0) {
-      return sources.map((s) => ({ ...s, lastRunStatus: null as string | null, lastRunError: null as string | null }));
+      return sources.map((s) => ({
+        ...s,
+        lastRunStatus: null as PamDiscoveryRunStatus | null,
+        lastRunError: null as string | null
+      }));
     }
     const runs = await pamDiscoverySourceRunDAL.find(
       { $in: { discoverySourceId: sources.map((s) => s.id) } },
       { sort: [["createdAt", "desc"]] }
     );
-    const latestBySource = new Map<string, { status: string; errorMessage?: string | null }>();
+    const latestBySource = new Map<string, { status: PamDiscoveryRunStatus; errorMessage?: string | null }>();
     runs.forEach((r) => {
       if (!latestBySource.has(r.discoverySourceId)) {
-        latestBySource.set(r.discoverySourceId, { status: r.status, errorMessage: r.errorMessage });
+        latestBySource.set(r.discoverySourceId, {
+          status: r.status as PamDiscoveryRunStatus,
+          errorMessage: r.errorMessage
+        });
       }
     });
     return sources.map((s) => {
@@ -172,10 +184,10 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     return withLastRunStatus(sources);
   };
 
-  const getById = async ({ projectId, sourceId, ...ctx }: TGetDiscoverySourceDTO) => {
+  const getById = async ({ projectId, sourceId, discoveryType, ...ctx }: TGetDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
-    if (!source || source.projectId !== projectId) {
+    if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
     const [withStatus] = await withLastRunStatus([source]);
@@ -234,7 +246,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
   }: TUpdateDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
-    if (!source || source.projectId !== projectId) {
+    if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
 
@@ -261,10 +273,10 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
   };
 
-  const deleteSource = async ({ projectId, sourceId, ...ctx }: TDeleteDiscoverySourceDTO) => {
+  const deleteSource = async ({ projectId, sourceId, discoveryType, ...ctx }: TDeleteDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
-    if (!source || source.projectId !== projectId) {
+    if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
     return pamDiscoverySourceDAL.deleteById(sourceId);
@@ -315,29 +327,64 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         )
       );
 
+      const newCount = results.filter((r) => r.isNew).length;
       await pamDiscoverySourceRunDAL.updateById(run.id, {
         status: PamDiscoveryRunStatus.Completed,
         discoveredCount: accounts.length,
-        newCount: results.filter((r) => r.isNew).length,
+        newCount,
         machineErrors: machineErrors.length ? JSON.stringify(machineErrors) : null,
         completedAt: new Date()
       });
+
+      await auditLogService.createAuditLog({
+        projectId: source.projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.PAM_DISCOVERY_SCAN,
+          metadata: {
+            sourceId,
+            discoveryType: source.discoveryType,
+            runId: run.id,
+            status: PamDiscoveryRunStatus.Completed,
+            triggeredBy,
+            discoveredCount: accounts.length,
+            newCount
+          }
+        }
+      });
     } catch (err) {
       logger.error(err, `PAM discovery scan failed [sourceId=${sourceId}]`);
+      const errorMessage = err instanceof Error ? err.message : "Scan failed";
       await pamDiscoverySourceRunDAL.updateById(run.id, {
         status: PamDiscoveryRunStatus.Failed,
-        errorMessage: err instanceof Error ? err.message : "Scan failed",
+        errorMessage,
         completedAt: new Date()
+      });
+
+      await auditLogService.createAuditLog({
+        projectId: source.projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.PAM_DISCOVERY_SCAN,
+          metadata: {
+            sourceId,
+            discoveryType: source.discoveryType,
+            runId: run.id,
+            status: PamDiscoveryRunStatus.Failed,
+            triggeredBy,
+            errorMessage
+          }
+        }
       });
     } finally {
       await pamDiscoverySourceDAL.updateById(sourceId, { lastRunAt: new Date() });
     }
   };
 
-  const triggerScan = async ({ projectId, sourceId, ...ctx }: TTriggerScanDTO) => {
+  const triggerScan = async ({ projectId, sourceId, discoveryType, ...ctx }: TTriggerScanDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
-    if (!source || source.projectId !== projectId) {
+    if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
     const running = await pamDiscoverySourceRunDAL.findOne({
@@ -372,7 +419,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     const accounts = await pamDiscoveredAccountDAL.listStaged(sourceId, search);
     return accounts.map((a) => ({
       id: a.id,
-      accountType: a.accountType,
+      accountType: a.accountType as PamAccountType,
       name: a.name,
       fingerprint: a.fingerprint,
       createdAt: a.createdAt
@@ -414,11 +461,16 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           });
 
           await pamDiscoveredAccountDAL.updateById(discovered.id, { importedAccountId: account.id });
-          return { discoveredAccountId: item.discoveredAccountId, status: "imported" as const, accountId: account.id };
+          return {
+            discoveredAccountId: item.discoveredAccountId,
+            status: PamDiscoveryImportStatus.Imported,
+            accountId: account.id,
+            name: item.name ?? discovered.name
+          };
         } catch (err) {
           return {
             discoveredAccountId: item.discoveredAccountId,
-            status: "error" as const,
+            status: PamDiscoveryImportStatus.Error,
             message: err instanceof Error ? err.message : "Import failed"
           };
         }

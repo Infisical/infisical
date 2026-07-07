@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 export type TPamDiscoveredAccountDALFactory = ReturnType<typeof pamDiscoveredAccountDALFactory>;
@@ -30,7 +31,7 @@ export const pamDiscoveredAccountDALFactory = (db: TDbClient) => {
       .replicaNode()(TableName.PamDiscoveredAccount)
       .where({ discoverySourceId })
       .whereNull("importedAccountId");
-    if (search) void query.andWhere("name", "ilike", `%${search}%`);
+    if (search) void query.andWhere("name", "ilike", `%${sanitizeSqlLikeString(search)}%`);
     return query.orderBy("name", "asc");
   };
 

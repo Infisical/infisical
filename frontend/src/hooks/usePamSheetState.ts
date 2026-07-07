@@ -6,6 +6,7 @@ export enum PamSheetTab {
   Permissions = "permissions",
   Configuration = "configuration",
   Advanced = "advanced",
+  Runs = "runs",
   General = "general"
 }
 

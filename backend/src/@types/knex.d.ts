@@ -755,21 +755,6 @@ import {
   TPamDiscoveredAccountsUpdate
 } from "@app/db/schemas/pam-discovered-accounts";
 import {
-  TPamDiscoverySourceAccounts,
-  TPamDiscoverySourceAccountsInsert,
-  TPamDiscoverySourceAccountsUpdate
-} from "@app/db/schemas/pam-discovery-source-accounts";
-import {
-  TPamDiscoverySourceDependencies,
-  TPamDiscoverySourceDependenciesInsert,
-  TPamDiscoverySourceDependenciesUpdate
-} from "@app/db/schemas/pam-discovery-source-dependencies";
-import {
-  TPamDiscoverySourceResources,
-  TPamDiscoverySourceResourcesInsert,
-  TPamDiscoverySourceResourcesUpdate
-} from "@app/db/schemas/pam-discovery-source-resources";
-import {
   TPamDiscoverySourceRuns,
   TPamDiscoverySourceRunsInsert,
   TPamDiscoverySourceRunsUpdate
@@ -1798,21 +1783,6 @@ declare module "knex/types/tables" {
       TPamDiscoveredAccounts,
       TPamDiscoveredAccountsInsert,
       TPamDiscoveredAccountsUpdate
-    >;
-    [TableName.PamDiscoverySourceResource]: KnexOriginal.CompositeTableType<
-      TPamDiscoverySourceResources,
-      TPamDiscoverySourceResourcesInsert,
-      TPamDiscoverySourceResourcesUpdate
-    >;
-    [TableName.PamDiscoverySourceAccount]: KnexOriginal.CompositeTableType<
-      TPamDiscoverySourceAccounts,
-      TPamDiscoverySourceAccountsInsert,
-      TPamDiscoverySourceAccountsUpdate
-    >;
-    [TableName.PamDiscoverySourceDependency]: KnexOriginal.CompositeTableType<
-      TPamDiscoverySourceDependencies,
-      TPamDiscoverySourceDependenciesInsert,
-      TPamDiscoverySourceDependenciesUpdate
     >;
     [TableName.PamAccountDependency]: KnexOriginal.CompositeTableType<
       TPamAccountDependencies,

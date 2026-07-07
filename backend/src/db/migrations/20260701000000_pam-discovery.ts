@@ -27,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("gatewayPoolId");
       t.foreign("gatewayPoolId").references("id").inTable(TableName.GatewayPool).onDelete("SET NULL");
       t.uuid("credentialAccountId").notNullable();
-      t.foreign("credentialAccountId").references("id").inTable(TableName.PamAccount).onDelete("RESTRICT");
+      t.foreign("credentialAccountId").references("id").inTable(TableName.PamAccount).deferrable("deferred");
       t.jsonb("discoveryConfiguration").notNullable();
       t.string("schedule").notNullable().defaultTo("manual");
       t.timestamp("lastRunAt");

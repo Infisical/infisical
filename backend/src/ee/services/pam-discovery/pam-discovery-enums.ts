@@ -18,3 +18,8 @@ export enum PamDiscoveryRunTrigger {
   Manual = "manual",
   Schedule = "schedule"
 }
+
+export enum PamDiscoveryImportStatus {
+  Imported = "imported",
+  Error = "error"
+}

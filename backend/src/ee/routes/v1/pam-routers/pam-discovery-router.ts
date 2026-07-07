@@ -2,7 +2,12 @@ import { z } from "zod";
 
 import { PamDiscoverySourceRunsSchema, PamDiscoverySourcesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamDiscoverySchedule } from "@app/ee/services/pam-discovery/pam-discovery-enums";
+import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import {
+  PamDiscoveryImportStatus,
+  PamDiscoveryRunStatus,
+  PamDiscoverySchedule
+} from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   buildPamDiscoveryTypeMetadata,
   DISCOVERY_TYPE_CONFIGS,
@@ -21,13 +26,13 @@ type TSupportedConfigs = typeof DISCOVERY_TYPE_CONFIGS;
 type TSupportedDiscoveryType = keyof TSupportedConfigs;
 
 const SourceSchema = PamDiscoverySourcesSchema.extend({
-  lastRunStatus: z.string().nullable().optional(),
+  lastRunStatus: z.nativeEnum(PamDiscoveryRunStatus).nullable().optional(),
   lastRunError: z.string().nullable().optional()
 });
 
 const DiscoveredAccountSchema = z.object({
   id: z.string(),
-  accountType: z.string(),
+  accountType: z.nativeEnum(PamAccountType),
   name: z.string(),
   fingerprint: z.string(),
   createdAt: z.date()
@@ -52,7 +57,7 @@ const registerPerTypeEndpoints = (
     schema: {
       operationId: `create${typeId}PamDiscoverySource`,
       description: `Create a new ${discoveryType} PAM discovery source`,
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       body: z.object({
         name: slugSchema({ field: "Name" }),
         credentialAccountId: z.string().uuid().describe("The PAM account used to authenticate and scan"),
@@ -110,7 +115,7 @@ const registerPerTypeEndpoints = (
     schema: {
       operationId: `update${typeId}PamDiscoverySource`,
       description: `Update a ${discoveryType} PAM discovery source`,
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       body: z.object({
         name: slugSchema({ field: "Name" }).optional(),
@@ -165,7 +170,7 @@ const registerPerTypeEndpoints = (
     schema: {
       operationId: `get${typeId}PamDiscoverySource`,
       description: `Get a ${discoveryType} PAM discovery source`,
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       response: { 200: z.object({ source: SourceSchema }) }
     },
@@ -174,6 +179,7 @@ const registerPerTypeEndpoints = (
     handler: async (req) => {
       const source = await server.services.pamDiscovery.getById({
         sourceId: req.params.sourceId,
+        discoveryType,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -190,7 +196,7 @@ const registerPerTypeEndpoints = (
     schema: {
       operationId: `delete${typeId}PamDiscoverySource`,
       description: `Delete a ${discoveryType} PAM discovery source`,
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       response: { 200: z.object({ source: SourceSchema }) }
     },
@@ -199,6 +205,7 @@ const registerPerTypeEndpoints = (
     handler: async (req) => {
       const source = await server.services.pamDiscovery.deleteSource({
         sourceId: req.params.sourceId,
+        discoveryType,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -235,7 +242,7 @@ const registerPerTypeEndpoints = (
     schema: {
       operationId: `scan${typeId}PamDiscoverySource`,
       description: `Trigger a scan for a ${discoveryType} PAM discovery source`,
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       response: { 200: z.object({ message: z.string() }) }
     },
@@ -244,6 +251,7 @@ const registerPerTypeEndpoints = (
     handler: async (req) => {
       const result = await server.services.pamDiscovery.triggerScan({
         sourceId: req.params.sourceId,
+        discoveryType,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -278,11 +286,11 @@ const registerPerTypeEndpoints = (
 export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/options",
+    url: "/types",
     schema: {
       operationId: "listPamDiscoveryTypes",
       description: "List supported PAM discovery source types",
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       response: { 200: z.object({ discoveryTypes: z.array(PamDiscoveryTypeMetadataSchema) }) }
     },
     config: { rateLimit: readLimit },
@@ -296,7 +304,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     schema: {
       operationId: "listPamDiscoverySources",
       description: "List PAM discovery sources",
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       querystring: z.object({ search: z.string().optional() }),
       response: { 200: z.object({ sources: z.array(SourceSchema) }) }
     },
@@ -321,7 +329,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     schema: {
       operationId: "listPamDiscoveryRuns",
       description: "List scan runs for a PAM discovery source",
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).optional(),
@@ -352,7 +360,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     schema: {
       operationId: "listPamDiscoveredAccounts",
       description: "List staged accounts discovered by a PAM discovery source",
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       querystring: z.object({ search: z.string().optional() }),
       response: { 200: z.object({ discoveredAccounts: z.array(DiscoveredAccountSchema) }) }
@@ -379,7 +387,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     schema: {
       operationId: "importPamDiscoveredAccounts",
       description: "Import staged accounts into a folder",
-      tags: [ApiDocsTags.PamAccounts],
+      tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       body: z.object({
         folderId: z.string().uuid(),
@@ -391,14 +399,16 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
           })
           .array()
           .min(1)
+          .max(1000)
       }),
       response: {
         200: z.object({
           results: z
             .object({
               discoveredAccountId: z.string(),
-              status: z.string(),
+              status: z.nativeEnum(PamDiscoveryImportStatus),
               accountId: z.string().optional(),
+              name: z.string().optional(),
               message: z.string().optional()
             })
             .array()
@@ -419,7 +429,11 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod
       });
 
-      const importedCount = results.filter((r) => r.status === "imported").length;
+      const importedAccounts = results.flatMap((r) =>
+        r.status === PamDiscoveryImportStatus.Imported
+          ? [{ discoveredAccountId: r.discoveredAccountId, accountId: r.accountId, name: r.name }]
+          : []
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -427,7 +441,12 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_DISCOVERED_ACCOUNT_IMPORT,
-          metadata: { sourceId: req.params.sourceId, folderId: req.body.folderId, importedCount }
+          metadata: {
+            sourceId: req.params.sourceId,
+            folderId: req.body.folderId,
+            importedCount: importedAccounts.length,
+            importedAccounts
+          }
         }
       });
 
@@ -436,7 +455,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
           event: PostHogEventTypes.PamDiscoveredAccountsImported,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
-          properties: { orgId: req.permission.orgId, importedCount }
+          properties: { orgId: req.permission.orgId, importedCount: importedAccounts.length }
         })
         .catch(() => {});
 

@@ -50,16 +50,13 @@ export const discoveryConfigFromSource = (
 
 export const buildDiscoveryConfiguration = (
   data: TDiscoveryConfigFields
-): Record<string, unknown> => {
-  if (!data.scanLocalAccounts) return { scanLocalAccounts: false };
-  return {
-    scanLocalAccounts: true,
-    winrmPort: data.winrmPort,
-    useWinrmHttps: data.useWinrmHttps,
-    winrmRejectUnauthorized: data.winrmRejectUnauthorized,
-    ...(data.winrmCaCert.trim() ? { winrmCaCert: data.winrmCaCert.trim() } : {})
-  };
-};
+): Record<string, unknown> => ({
+  scanLocalAccounts: data.scanLocalAccounts,
+  winrmPort: data.winrmPort,
+  useWinrmHttps: data.useWinrmHttps,
+  winrmRejectUnauthorized: data.winrmRejectUnauthorized,
+  ...(data.winrmCaCert.trim() ? { winrmCaCert: data.winrmCaCert.trim() } : {})
+});
 
 type ToggleName = "scanLocalAccounts" | "useWinrmHttps" | "winrmRejectUnauthorized";
 
