@@ -10,12 +10,9 @@ import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 import { AZURE_KEY_VAULT_CERTIFICATE_NAMING } from "./azure-key-vault-pki-sync-constants";
 
 export const AzureKeyVaultPkiSyncConfigSchema = z.object({
-  vaultBaseUrl: z
-    .string()
-    .url("Invalid vault base URL format")
-    .refine(isValidAzureKeyVaultUrl, {
-      message: "Vault base URL must be a valid Azure Key Vault URL (https://<vault-name>.vault.azure.net)"
-    })
+  vaultBaseUrl: z.string().url("Invalid vault base URL format").refine(isValidAzureKeyVaultUrl, {
+    message: "Vault base URL must be a valid Azure Key Vault URL (https://<vault-name>.vault.azure.net)"
+  })
 });
 
 export const AzureKeyVaultPkiSyncOptionsSchema = z.object({

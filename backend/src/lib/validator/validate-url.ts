@@ -42,22 +42,23 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
   if (isInternalIp && !allowInternal) throw new BadRequestError({ message: "Local IPs not allowed as URL" });
 };
 
+const AZURE_KEY_VAULT_HOST_REGEX = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.vault\.azure\.net$/);
+
 /**
- * Validates that a URL points at a legitimate Azure Key Vault data-plane host.
- * The Azure AD access token minted for these syncs is scoped to
- * `https://vault.azure.net/.default`, and certificate private keys / secret
- * values are sent to this host, so accepting any URL would leak both the bearer
- * token and the private key material to an attacker-controlled server.
+ * Validates that a URL is a legitimate Azure Key Vault data-plane base URL
+ * (`https://<vault-name>.vault.azure.net`).
  */
 export const isValidAzureKeyVaultUrl = (url: string): boolean => {
   try {
-    const { protocol, hostname } = new URL(url);
+    const parsed = new URL(url);
 
-    if (protocol !== "https:") return false;
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.port) return false;
+    if (parsed.search || parsed.hash) return false;
+    if (parsed.pathname !== "/" && parsed.pathname !== "") return false;
 
-    const normalizedHost = hostname.toLowerCase();
-
-    return normalizedHost === "vault.azure.net" || normalizedHost.endsWith(".vault.azure.net");
+    return AZURE_KEY_VAULT_HOST_REGEX.test(parsed.hostname.toLowerCase());
   } catch {
     return false;
   }
