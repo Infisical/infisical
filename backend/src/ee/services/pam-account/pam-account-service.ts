@@ -1,7 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -264,7 +264,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+    const effectiveGatewayId = gatewayId ?? template.gatewayId;
+    await validateGatewayAttachment(
+      deps,
+      effectiveGatewayId,
+      effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
+      ctx
+    );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const resolvedS3Config = await resolveOverridesS3Config(
@@ -379,8 +385,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       }
     }
 
+    let template: TPamAccountTemplates | undefined;
     if (templateId) {
-      const template = await pamAccountTemplateDAL.findById(templateId);
+      template = await pamAccountTemplateDAL.findById(templateId);
       if (!template || template.projectId !== projectId) {
         throw new NotFoundError({ message: `Template with ID '${templateId}' not found` });
       }
@@ -399,7 +406,22 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       }
     }
 
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+    // Re-validate whenever the effective gateway binding could change. The binding is the account's own
+    // gateway/pool falling back to the template's, so an inherited gateway still requires AttachGateways.
+    if (gatewayId !== undefined || gatewayPoolId !== undefined || templateId !== undefined) {
+      const nextGatewayId = gatewayId !== undefined ? gatewayId : existing.gatewayId;
+      const nextGatewayPoolId = gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId;
+      const nextTemplateGatewayId = template ? template.gatewayId : existing.templateGatewayId;
+      const nextTemplateGatewayPoolId = template ? template.gatewayPoolId : existing.templateGatewayPoolId;
+
+      const effectiveGatewayId = nextGatewayId ?? nextTemplateGatewayId;
+      await validateGatewayAttachment(
+        deps,
+        effectiveGatewayId,
+        effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
+        ctx
+      );
+    }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const resolvedS3Config = await resolveOverridesS3Config(
@@ -683,9 +705,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ResourcePermissionSub.PamResource
     );
 
+    // Only member managers get the roster; read-only roles must not enumerate members.
+    const canManageMembers = mergedPermission.can(
+      ResourcePermissionPamResourceActions.ManageMembers,
+      ResourcePermissionSub.PamResource
+    );
+
     return {
       permissions: packRules(mergedPermission.rules),
-      memberships: allMemberships
+      memberships: canManageMembers ? allMemberships : []
     };
   };
 

@@ -7,6 +7,9 @@ import { PageHeader } from "@app/components/v2";
 import {
   Card,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -93,14 +96,15 @@ export const PamAccessPage = () => {
         <title>{t("common.head-title", { title: "My Access" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <PageHeader
-          scope={ProjectType.PAM}
-          icon={KeyRound}
-          title="My Access"
-          description="Every account you can connect to or request access to."
-        />
+        <PageHeader scope={ProjectType.PAM} icon={KeyRound} title="My Access" />
 
         <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>My Access</CardTitle>
+            <CardDescription>
+              Every account you can connect to or request access to.
+            </CardDescription>
+          </CardHeader>
           <CardContent className="flex items-center gap-3">
             <InputGroup className="flex-1">
               <InputGroupAddon align="inline-start">

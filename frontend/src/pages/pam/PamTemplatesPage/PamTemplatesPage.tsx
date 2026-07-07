@@ -9,7 +9,12 @@ import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -47,6 +52,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
+import { PamDocsUrls } from "../pam-docs-urls";
 import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
 import { DeleteTemplateModal } from "./components/DeleteTemplateModal";
@@ -174,14 +180,24 @@ export const PamTemplatesPage = () => {
         <title>{t("common.head-title", { title: "Account Templates" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <PageHeader
-          scope={ProjectType.PAM}
-          icon={ClipboardList}
-          title="Account Templates"
-          description="Templates define the policies, rotation behavior, and settings for a type of account."
-        />
+        <PageHeader scope={ProjectType.PAM} icon={ClipboardList} title="Account Templates" />
 
         <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>
+              Account Templates
+              <DocumentationLinkBadge href={PamDocsUrls.templates.overview} />
+            </CardTitle>
+            <CardDescription>
+              Templates define the policies, rotation behavior, and settings for a type of account.
+            </CardDescription>
+            <CardAction>
+              <Button variant="pam" onClick={() => handlePopUpOpen("createTemplate")}>
+                <Plus />
+                Create Template
+              </Button>
+            </CardAction>
+          </CardHeader>
           <CardContent className="flex items-center gap-3">
             <InputGroup className="flex-1">
               <InputGroupAddon align="inline-start">
@@ -217,11 +233,6 @@ export const PamTemplatesPage = () => {
                 ))}
               </SelectContent>
             </Select>
-
-            <Button variant="pam" onClick={() => handlePopUpOpen("createTemplate")}>
-              <Plus />
-              Create Template
-            </Button>
           </CardContent>
 
           {isLoading && (

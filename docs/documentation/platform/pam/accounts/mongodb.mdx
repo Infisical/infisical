@@ -1,0 +1,71 @@
+---
+title: "MongoDB Accounts"
+sidebarTitle: "MongoDB"
+description: "Add and connect to MongoDB databases."
+---
+
+MongoDB accounts let you manage access to your MongoDB databases. Users connect through the CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a MongoDB [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `users-db`) |
+    | **Connection String** | MongoDB URI (see below) |
+    | **Database** | Database name (default: admin) |
+    | **SSL Enabled** | Enable SSL for the connection |
+    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
+    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+
+    The connection string supports both `mongodb://` and `mongodb+srv://` URIs. Do not include credentials or database name in the URI — use the separate fields instead.
+
+    Example: `mongodb://mongo.example.com:27017` or `mongodb+srv://cluster.example.com`
+  </Step>
+  <Step title="Enter credentials">
+    | Field | Description |
+    |-------|-------------|
+    | **Username** | MongoDB username |
+    | **Password** | MongoDB password |
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Connecting
+
+The CLI starts a local proxy that you connect to with your preferred MongoDB client.
+
+```bash
+infisical pam access my-folder/users-db
+```
+
+The command outputs the local port to connect to. Then use `mongosh` or any MongoDB client:
+```bash
+mongosh "mongodb://localhost:<port>/users"
+```
+
+No password needed since the proxy handles authentication.
+
+**Flags:**
+- `--port <port>` — use a specific local port (otherwise one is assigned automatically)
+- `--reason <reason>` — provide an access reason (if required by template)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
+    Add PostgreSQL database accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

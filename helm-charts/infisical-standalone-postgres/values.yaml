@@ -99,6 +99,27 @@ infisical:
   # --     value: /etc/ssl/certs/ca-certificates.crt
   extraEnv: []
 
+  # -- Pod-level security context for the Infisical pod. Sets only `fsGroup` so mounted volumes
+  # -- are writable by the non-root user. Other hardening lives in `containerSecurityContext`,
+  # -- so `extraContainers` and `extraInitContainers` keep their original user. Set to `null` to omit.
+  podSecurityContext:
+    fsGroup: 1001
+
+  # -- Container-level security context for Infisical's containers, including the bootstrap Job.
+  # -- Secure by default and compliant with the Pod Security "restricted" standard on its own.
+  # -- `readOnlyRootFilesystem` stays false because the app writes temporary files; to enable it,
+  # -- mount emptyDir volumes for writable paths like /tmp via `infisical.extraVolumes` and
+  # -- `infisical.extraVolumeMounts`. Set to `null` to omit.
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 1001
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+
   resources:
     limits:
       # -- Memory limit for Infisical container

@@ -9,6 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaSigningConfigType } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-enums";
 import {
+  AdcsDestinationConfigSchema,
   AzureAdCsDestinationConfigSchema,
   DestinationConfigSchema,
   VenafiDestinationConfigSchema
@@ -718,7 +719,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       hide: false,
       operationId: "installCaCertificateAdcs",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
-      description: "Install a CA certificate via Azure AD CS",
+      description: "Install a CA certificate via Azure AD CS (Web Enrollment)",
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS.caId)
       }),
@@ -734,6 +735,60 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     },
     handler: async (req, reply) => {
       const { ca } = await server.services.caSigningConfig.installCertificateAzureAdCs({
+        caId: req.params.caId,
+        maxPathLength: req.body.maxPathLength,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.INSTALL_CA_CERT_ADCS,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return reply.status(202).send({
+        message: "Certificate installation queued",
+        caId: req.params.caId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/install-certificate-microsoft-adcs",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "installCaCertificateAdcsNative",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Install a CA certificate via ADCS",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.INSTALL_CERT_ADCS_NATIVE.caId)
+      }),
+      body: z.object({
+        maxPathLength: z.number().min(-1).default(-1)
+      }),
+      response: {
+        202: z.object({
+          message: z.string(),
+          caId: z.string()
+        })
+      }
+    },
+    handler: async (req, reply) => {
+      const { ca } = await server.services.caSigningConfig.installCertificateAdcsNative({
         caId: req.params.caId,
         maxPathLength: req.body.maxPathLength,
         actor: req.permission.type,
@@ -793,6 +848,11 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           type: z.literal(CaSigningConfigType.AzureAdCs),
           appConnectionId: z.string().uuid(),
           destinationConfig: AzureAdCsDestinationConfigSchema
+        }),
+        z.object({
+          type: z.literal(CaSigningConfigType.Adcs),
+          appConnectionId: z.string().uuid(),
+          destinationConfig: AdcsDestinationConfigSchema
         })
       ]),
       response: {
@@ -806,7 +866,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -903,7 +964,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

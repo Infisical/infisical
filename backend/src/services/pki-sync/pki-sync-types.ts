@@ -211,6 +211,7 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  externalIdentifier?: string;
   syncMetadata?: TSyncMetadata;
 };
 

@@ -217,9 +217,15 @@ export const pamFolderServiceFactory = ({
       ResourcePermissionSub.PamResource
     );
 
+    // Only member managers get the roster; read-only roles must not enumerate members.
+    const canManageMembers = permission.can(
+      ResourcePermissionPamResourceActions.ManageMembers,
+      ResourcePermissionSub.PamResource
+    );
+
     return {
       permissions: packRules(permission.rules),
-      memberships
+      memberships: canManageMembers ? memberships : []
     };
   };
 

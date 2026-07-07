@@ -28,6 +28,12 @@ import {
   TValidateOnePassConnectionCredentialsSchema
 } from "./1password";
 import {
+  TADCSConnection,
+  TADCSConnectionConfig,
+  TADCSConnectionInput,
+  TValidateADCSConnectionCredentialsSchema
+} from "./adcs/adcs-connection-types";
+import {
   TAnthropicConnection,
   TAnthropicConnectionConfig,
   TAnthropicConnectionInput,
@@ -227,6 +233,12 @@ import {
   TValidateGoDaddyConnectionCredentialsSchema
 } from "./godaddy";
 import {
+  THasuraCloudConnection,
+  THasuraCloudConnectionConfig,
+  THasuraCloudConnectionInput,
+  TValidateHasuraCloudConnectionCredentialsSchema
+} from "./hasura-cloud";
+import {
   THCVaultConnection,
   THCVaultConnectionConfig,
   THCVaultConnectionInput,
@@ -342,6 +354,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TRundeckConnection,
+  TRundeckConnectionConfig,
+  TRundeckConnectionInput,
+  TValidateRundeckConnectionCredentialsSchema
+} from "./rundeck";
+import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
   TSalesforceConnectionInput,
@@ -437,6 +455,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TAzureAppConfigurationConnection
   | TAzureDevOpsConnection
   | TAzureADCSConnection
+  | TADCSConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -500,6 +519,8 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TRundeckConnection
+  | THasuraCloudConnection
   | TQoveryConnection
 );
 
@@ -520,6 +541,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureAppConfigurationConnectionInput
   | TAzureDevOpsConnectionInput
   | TAzureADCSConnectionInput
+  | TADCSConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TTerraformCloudConnectionInput
@@ -583,6 +605,8 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TRundeckConnectionInput
+  | THasuraCloudConnectionInput
   | TQoveryConnectionInput
 );
 
@@ -638,6 +662,7 @@ export type TAppConnectionConfig =
   | TAzureAppConfigurationConnectionConfig
   | TAzureDevOpsConnectionConfig
   | TAzureADCSConnectionConfig
+  | TADCSConnectionConfig
   | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
@@ -698,6 +723,8 @@ export type TAppConnectionConfig =
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
+  | TRundeckConnectionConfig
+  | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -710,6 +737,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateAzureDevOpsConnectionCredentialsSchema
   | TValidateAzureADCSConnectionCredentialsSchema
+  | TValidateADCSConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
@@ -772,6 +800,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
+  | TValidateRundeckConnectionCredentialsSchema
+  | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

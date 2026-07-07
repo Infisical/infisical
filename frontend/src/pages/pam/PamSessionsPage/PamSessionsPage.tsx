@@ -13,6 +13,10 @@ import {
   Button,
   Card,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -58,6 +62,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { LiveDot } from "../components/LiveDot";
+import { PamDocsUrls } from "../pam-docs-urls";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "./constants";
 
@@ -197,14 +202,16 @@ export const PamSessionsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Sessions" })}</title>
       </Helmet>
-      <PageHeader
-        scope={ProjectType.PAM}
-        icon={Video}
-        title="Sessions"
-        description="Monitor and manage active and historical sessions."
-      />
+      <PageHeader scope={ProjectType.PAM} icon={Video} title="Sessions" />
 
       <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>
+            Sessions
+            <DocumentationLinkBadge href={PamDocsUrls.sessions.overview} />
+          </CardTitle>
+          <CardDescription>Monitor and manage active and historical sessions.</CardDescription>
+        </CardHeader>
         <CardContent className="flex items-center gap-4">
           <div className="flex-1">
             <InputGroup>
