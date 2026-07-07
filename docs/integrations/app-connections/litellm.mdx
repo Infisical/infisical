@@ -19,15 +19,63 @@ description: "Learn how to configure a LiteLLM connection for Infisical."
 <Tabs>
     <Tab title="Infisical UI">
         <Steps>
+            <Step title="Create a user and issue a scoped key in LiteLLM">
+                We recommend creating a dedicated user and issuing a scoped key for Infisical to manage your API keys, rather than using the master key directly. This restricts Infisical's access to only the routes it needs.
+
+                First, create a user with the `proxy_admin` role. This role is required so the key can delete keys it did not issue:
+
+                ```bash Create user
+                curl --request POST \
+                  --url <LITELLM_HOST>/user/new \
+                  --header 'Authorization: Bearer <master-key>' \
+                  --header 'Content-Type: application/json' \
+                  --data '{
+                    "user_id": "infisical-user-rotation",
+                    "user_role": "proxy_admin",
+                    "user_alias": "infisical-proxy-admin-client"
+                  }'
+                ```
+
+                Then issue a scoped key for that user:
+
+                ```bash Issue scoped key
+                curl --request POST \
+                  --url <LITELLM_HOST>/key/generate \
+                  --header 'Authorization: Bearer <master-key>' \
+                  --header 'Content-Type: application/json' \
+                  --data '{
+                    "key_alias": "admin-key-rotation",
+                    "user_id": "infisical-user-rotation",
+                    "allowed_routes": [
+                      "/key/generate",
+                      "/key/delete",
+                      "/key/info",
+                      "/health/readiness",
+                      "/models",
+                      "/v2/team/list",
+                      "/user/list"
+                    ]
+                  }'
+                ```
+
+                <Note>
+
+                The `/models`, `/v2/team/list`, and `/user/list` routes are optional. They are only used to populate the user, team, and model dropdowns in the Infisical UI when configuring a rotation.
+                </Note>
+
+
+
+                Use the generated key as your **API Key** and your instance address as the **Instance URL** when creating the connection below.
+            </Step>
             <Step title="Navigate to App Connections">
                 In your Infisical dashboard, go to **Organization Settings** → **App Connections** (or the **Integrations** → **App Connections** tab in your project).
 
-                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+                ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
             </Step>
             <Step title="Select LiteLLM Connection">
                 Click **Add Connection** and choose **LiteLLM** from the list of available connections.
 
-                ![Select LiteLLM Connection](/images/app-connections/litellm/litellm-app-connection-option.png)
+                ![Select LiteLLM Connection](/images/app-connections/litellm/step-1.png)
             </Step>
             <Step title="Fill out Connection Form">
                 Complete the form with:
@@ -36,12 +84,12 @@ description: "Learn how to configure a LiteLLM connection for Infisical."
                 - Your **LiteLLM Instance URL** (e.g. `https://litellm.example.com`)
                 - Your **LiteLLM API Key** (a management-capable key, as described above)
 
-                ![LiteLLM Connection Form](/images/app-connections/litellm/litellm-app-connection-form.png)
+                ![LiteLLM Connection Form](/images/app-connections/litellm/step-2.png)
             </Step>
             <Step title="Connection Created">
-                After clicking **Create**, Infisical validates the credentials against your LiteLLM instance. Your **LiteLLM Connection** is then ready to use for [LiteLLM API Key Secret Rotation](/documentation/platform/secret-rotation/litellm-api-key).
+                After clicking **Connect to LiteLLM**, Infisical validates the credentials against your LiteLLM instance. Your **LiteLLM Connection** is then ready to use for [LiteLLM API Key Secret Rotation](/documentation/platform/secret-rotation/litellm-api-key).
 
-                ![LiteLLM Connection Created](/images/app-connections/litellm/litellm-app-connection-created.png)
+                ![LiteLLM Connection Created](/images/app-connections/litellm/step-3.png)
             </Step>
         </Steps>
     </Tab>

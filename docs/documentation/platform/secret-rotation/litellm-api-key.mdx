@@ -23,20 +23,21 @@ description: "Learn how to automatically rotate LiteLLM API keys."
 
         2. Select the **LiteLLM API Key** option.
 
-        ![Select LiteLLM API Key](/images/secret-rotations-v2/litellm-api-key/select-litellm-api-key.png)
+        ![Select LiteLLM API Key](/images/secret-rotations-v2/litellm/step-1.png)
 
         3. Configure the rotation behavior, then click **Next**.
 
-        ![Rotation Configuration](/images/secret-rotations-v2/litellm-api-key/configuration.png)
+        ![Rotation Configuration](/images/secret-rotations-v2/litellm/step-2.png)
 
-        - **LiteLLM Connection** – The connection (with a management-capable API key) that will create and delete API keys during rotation.
+        - **Environment** – The environment where the rotated secret will be stored.
+        - **LiteLLM Connection** – The connection that will create and delete API keys during rotation.
         - **Rotation Interval** – The interval, in days, after which a rotation is triggered.
         - **Rotate At** – The local time of day when rotation runs once the interval has elapsed.
         - **Auto-Rotation Enabled** – Whether to rotate automatically on the interval. Turn off to rotate only manually or pause rotation.
 
         4. Set the LiteLLM API key parameters, then click **Next**. The parameters are split across two tabs, **General** and **Advanced**.
 
-        ![Rotation Parameters](/images/secret-rotations-v2/litellm-api-key/parameters.png)
+        ![Rotation Parameters](/images/secret-rotations-v2/litellm/step-3.png)
 
         **General**
 
@@ -51,24 +52,24 @@ description: "Learn how to automatically rotate LiteLLM API keys."
 
         5. Specify the secret name that the rotated API key will be mapped to. Then click **Next**.
 
-        ![Rotation Secrets Mapping](/images/secret-rotations-v2/litellm-api-key/secrets-mapping.png)
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/litellm/step-4.png)
 
         - **API Key** – The name of the secret in Infisical where the rotated API key value will be stored.
 
         6. Give your rotation a name and description (optional). Then click **Next**.
 
-        ![Rotation Details](/images/secret-rotations-v2/litellm-api-key/details.png)
+        ![Rotation Details](/images/secret-rotations-v2/litellm/step-5.png)
 
         - **Name** – A slug-friendly name for this rotation configuration.
         - **Description** (optional) – Notes about this rotation.
 
         7. Review your configuration, then click **Create Secret Rotation**.
 
-        ![Rotation Review](/images/secret-rotations-v2/litellm-api-key/review.png)
+        ![Rotation Review](/images/secret-rotations-v2/litellm/step-6.png)
 
         8. Your **LiteLLM API Key** rotation is created. The current API key is available as a secret at the mapped path. Rotations will create a new key, switch the active secret to it, then revoke the previous key for zero-downtime rotation.
 
-        ![Rotation Created](/images/secret-rotations-v2/litellm-api-key/created.png)
+        ![Rotation Created](/images/secret-rotations-v2/litellm/step-7.png)
     </Tab>
     <Tab title="API">
         To create a LiteLLM API Key rotation, call the [Create LiteLLM API Key Rotation](/api-reference/endpoints/secret-rotations/litellm-api-key/create) API endpoint.
