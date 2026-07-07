@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { Clock, LockKeyhole, Rocket } from "lucide-react";
 
 import { HighlightText } from "@app/components/v2/HighlightText";
@@ -19,9 +20,31 @@ import {
 
 import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
+// One shared 30s ticker for every row's countdown; the interval only runs while rows are mounted
+const tickListeners = new Set<() => void>();
+let tickNow = Date.now();
+let tickTimer: ReturnType<typeof setInterval> | null = null;
+const subscribeToTick = (listener: () => void) => {
+  tickListeners.add(listener);
+  if (!tickTimer) {
+    tickTimer = setInterval(() => {
+      tickNow = Date.now();
+      tickListeners.forEach((notify) => notify());
+    }, 30_000);
+  }
+  return () => {
+    tickListeners.delete(listener);
+    if (tickListeners.size === 0 && tickTimer) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+    }
+  };
+};
+const useNow = () => useSyncExternalStore(subscribeToTick, () => tickNow);
+
 // Compact remaining time for the grant-expiry badge, e.g. "3h 41m"
-const formatRemaining = (expiresAt: string) => {
-  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+const formatRemaining = (expiresAt: string, now: number) => {
+  const remainingMs = new Date(expiresAt).getTime() - now;
   if (remainingMs <= 0) return "Expired";
   const totalMinutes = Math.floor(remainingMs / 60000);
   const days = Math.floor(totalMinutes / 1440);
@@ -41,6 +64,7 @@ type Props = {
 };
 
 export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indented }: Props) => {
+  const now = useNow();
   const { map } = usePamAccountTypeMap();
   const typeName = map[account.accountType as PamAccountType]?.name ?? account.accountType;
   const { canLaunch, requiresApproval, accessStatus, grantExpiresAt, disabledReason } = account;
@@ -156,7 +180,7 @@ export const AccountRow = ({ account, search, onLaunch, onRequestAccess, indente
           {isGranted && grantExpiresAt && (
             <Badge variant="success">
               <Clock className="mr-1 size-3" />
-              Expires in {formatRemaining(grantExpiresAt)}
+              Expires in {formatRemaining(grantExpiresAt, now)}
             </Badge>
           )}
           {renderAction()}

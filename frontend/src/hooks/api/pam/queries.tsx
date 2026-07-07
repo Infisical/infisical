@@ -13,6 +13,7 @@ import {
 } from "@app/helpers/resourcePermissions";
 
 import {
+  PamAccessStatus,
   PamAccountType,
   PamApproverType,
   PamResourcePermissionActions,
@@ -156,7 +157,18 @@ export const useListAccessiblePamAccounts = (
       return fetched < lastPage.totalCount ? fetched : undefined;
     },
     enabled: options?.enabled ?? true,
-    placeholderData: keepPreviousData
+    placeholderData: keepPreviousData,
+    // Grants and pending requests change state on their own (expiry, approval), so poll while any
+    // are on screen; a fully static list costs nothing.
+    refetchInterval: (query) => {
+      const hasLiveAccessState = query.state.data?.pages.some((page) =>
+        page.accounts.some(
+          (a) =>
+            a.accessStatus === PamAccessStatus.Granted || a.accessStatus === PamAccessStatus.Pending
+        )
+      );
+      return hasLiveAccessState ? 60_000 : false;
+    }
   });
 };
 
