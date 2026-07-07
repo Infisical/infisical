@@ -22,6 +22,7 @@ import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-sche
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
+import { OpenAIServiceAccountRotationSchema } from "./openai-service-account-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { SalesforceOauthCredentialsRotationSchema } from "./salesforce-oauth-credentials-rotation-schema";
@@ -49,6 +50,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         DbtServiceTokenRotationSchema,
         WindowsLocalAccountRotationSchema,
         OpenRouterApiKeyRotationSchema,
+        OpenAIServiceAccountRotationSchema,
         HpIloRotationSchema,
         SupabaseApiKeyRotationSchema,
         SalesforceOauthCredentialsRotationSchema,

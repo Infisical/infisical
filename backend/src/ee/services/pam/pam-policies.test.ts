@@ -86,7 +86,12 @@ describe("validatePolicyValues", () => {
 });
 
 describe("resolveAccessControls", () => {
-  const DEFAULTS = { requireReason: false, requireMfa: false, maxSessionDurationSeconds: null };
+  const DEFAULTS = {
+    requiresApproval: false,
+    requireReason: false,
+    requireMfa: false,
+    maxSessionDurationSeconds: null
+  };
 
   test("falls back to defaults for a missing or non-object map", () => {
     expect(resolveAccessControls(null)).toEqual(DEFAULTS);
@@ -106,7 +111,7 @@ describe("resolveAccessControls", () => {
         [PamPolicyType.RequireMfa]: true,
         [PamPolicyType.MaxSessionDuration]: 3600
       })
-    ).toEqual({ requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
+    ).toEqual({ requiresApproval: false, requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
   });
 
   test("resolves each policy independently of the others", () => {

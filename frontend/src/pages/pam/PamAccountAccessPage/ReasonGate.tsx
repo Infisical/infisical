@@ -209,7 +209,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
     <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-base">Before You Continue</CardTitle>
+          <CardTitle className="text-base">Before you continue</CardTitle>
           <CardDescription>
             {policy.requireReason
               ? "A reason is required for this session. It will be stored for audit purposes."

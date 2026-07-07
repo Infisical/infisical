@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "AI & LLM", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS", "AI & LLM"];
 
   const rotations = [
     {
@@ -195,7 +195,16 @@ export const RotationsBrowser = () => {
         "Learn how to automatically rotate Datadog application keys.",
       category: "Monitoring",
       rotationType: "Dual-Phase",
-    }
+    },
+    {
+      name: "OpenAI API Key",
+      slug: "openai-api-key",
+      path: "/documentation/platform/secret-rotation/openai-service-account",
+      description:
+        "Learn how to automatically rotate OpenAI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

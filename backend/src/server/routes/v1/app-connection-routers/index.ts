@@ -55,6 +55,7 @@ import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connecti
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
+import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
@@ -133,6 +134,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
+    [AppConnection.OpenAI]: registerOpenAIConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
     [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,

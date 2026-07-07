@@ -51,6 +51,7 @@ export enum AppConnection {
   Dbt = "dbt",
   SMB = "smb",
   OpenRouter = "open-router",
+  OpenAI = "openai",
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
