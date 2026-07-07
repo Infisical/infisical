@@ -28,7 +28,10 @@ export const validateLiteLLMConnectionCredentials = async (config: TLiteLLMConne
       validateStatus: (status) => status === 200
     });
   } catch (error: unknown) {
-    logger.error(error);
+    logger.error(
+      { errorMessage: error instanceof Error ? error.message : "Unknown error" },
+      "Failed to validate LiteLLM connection credentials"
+    );
     if (error instanceof BadRequestError) {
       throw error;
     }
