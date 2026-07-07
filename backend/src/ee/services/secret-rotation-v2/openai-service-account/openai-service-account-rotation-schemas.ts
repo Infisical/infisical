@@ -20,7 +20,8 @@ export const OpenAIServiceAccountRotationGeneratedCredentialsSchema = z
   .max(2);
 
 /** Max length for the user-provided base name; the created service account name also gets a `-<timestamp>` suffix. */
-export const OPENAI_SERVICE_ACCOUNT_NAME_MAX_LENGTH = 100;
+/** The max length for the service account name is 86 characters, including the timestamp suffix. */
+export const OPENAI_SERVICE_ACCOUNT_NAME_MAX_LENGTH = 86;
 
 const OpenAIServiceAccountRotationParametersSchema = z.object({
   projectId: z

@@ -65,7 +65,7 @@ export const openAIServiceAccountRotationFactory: TRotationFactory<
       const serviceAccountName = `${name}-${Date.now()}`;
 
       const { data } = await request.post<TOpenAIServiceAccountCreateResponse>(
-        `${OPENAI_API_BASE_URL}/organization/projects/${projectId}/service_accounts`,
+        `${OPENAI_API_BASE_URL}/organization/projects/${encodeURIComponent(projectId)}/service_accounts`,
         { name: serviceAccountName },
         { headers: provisioningHeaders }
       );
@@ -92,7 +92,7 @@ export const openAIServiceAccountRotationFactory: TRotationFactory<
   const $deleteServiceAccount = async (serviceAccountId: string) => {
     try {
       await request.delete(
-        `${OPENAI_API_BASE_URL}/organization/projects/${projectId}/service_accounts/${serviceAccountId}`,
+        `${OPENAI_API_BASE_URL}/organization/projects/${encodeURIComponent(projectId)}/service_accounts/${encodeURIComponent(serviceAccountId)}`,
         {
           headers: provisioningHeaders
         }
