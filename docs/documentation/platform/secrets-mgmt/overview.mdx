@@ -6,7 +6,19 @@ description: "Store, manage, and deliver secrets like API keys and database cred
 
 Infisical Secrets Management centralizes secrets such as API keys, database credentials, and application configuration. Teams eliminate hardcoded secrets, scope access by environment and path, and deliver secrets to applications and infrastructure through the CLI, SDKs, agents, Kubernetes, and CI/CD.
 
-<Card title="Get Started" icon="rocket" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
+<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
+  <iframe
+    src="https://www.youtube.com/embed/BMeng7nkRYs"
+    title="YouTube video player"
+    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
+</div>
+
+## Get Started
+
+<Card title="Deliver Your First Secret" icon="rocket" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
   New to Infisical? Store a secret and deliver it to an application in under 10 minutes.
 </Card>
 
@@ -36,24 +48,16 @@ Infisical Secrets Management centralizes secrets such as API keys, database cred
   <Card title="Dynamic Secrets" icon="bolt" href="/documentation/platform/secrets-mgmt/concepts/dynamic-secrets">
     Generate short-lived credentials on demand that expire after use.
   </Card>
-  <Card title="Approval Workflows" icon="code-pull-request" href="/documentation/platform/secrets-mgmt/concepts/approval-workflows">
-    Require review before changes reach sensitive environments.
-  </Card>
   <Card title="Secret Syncs" icon="arrow-right-arrow-left" href="/integrations/secret-syncs/overview">
     Push secrets to GitHub, AWS, Vercel, and other external platforms.
   </Card>
+  <Card title="Honey Tokens" icon="jar" href="/documentation/platform/honey-tokens/overview">
+    Plant decoy credentials that alert you the moment an attacker uses them.
+  </Card>
+  <Card title="Approval Workflows" icon="code-pull-request" href="/documentation/platform/secrets-mgmt/concepts/approval-workflows">
+    Require review before changes reach sensitive environments.
+  </Card>
+  <Card title="Point-in-Time Recovery" icon="clock-rotate-left" href="/documentation/platform/pit-recovery">
+    Roll back a secret or an entire environment to any previous state.
+  </Card>
 </CardGroup>
-
-## Product Tour
-
-The short video below provides a guided overview of Infisical's secrets management capabilities and key concepts.
-
-<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
-  <iframe
-    src="https://www.youtube.com/embed/BMeng7nkRYs"
-    title="YouTube video player"
-    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-    allowfullscreen
-  ></iframe>
-</div>
