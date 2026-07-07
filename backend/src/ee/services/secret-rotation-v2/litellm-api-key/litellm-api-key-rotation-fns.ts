@@ -8,10 +8,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn/string";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 
 import {
   TLiteLLMApiKeyGenerateResponse,
@@ -60,9 +59,6 @@ export const litellmApiKeyRotationFactory: TRotationFactory<
    * Creates a new virtual key via the LiteLLM key-management API.
    */
   const $createApiKey = async () => {
-    // Guard the user-supplied instance host against SSRF, matching the connection validator.
-    await blockLocalAndPrivateIpAddresses(baseUrl);
-
     try {
       const userOptions: Record<string, unknown> = additionalOptions
         ? (JSON.parse(additionalOptions) as Record<string, unknown>)
@@ -80,7 +76,7 @@ export const litellmApiKeyRotationFactory: TRotationFactory<
         send_invite_email: false
       };
 
-      const { data } = await request.post<TLiteLLMApiKeyGenerateResponse>(`${baseUrl}/key/generate`, requestBody, {
+      const { data } = await safeRequest.post<TLiteLLMApiKeyGenerateResponse>(`${baseUrl}/key/generate`, requestBody, {
         headers: {
           Authorization: `Bearer ${provisioningApiKey}`,
           "Content-Type": "application/json"
@@ -101,10 +97,8 @@ export const litellmApiKeyRotationFactory: TRotationFactory<
    * Deletes a virtual key via the LiteLLM key-management API. LiteLLM deletes by the key value.
    */
   const $deleteApiKey = async (apiKey: string) => {
-    await blockLocalAndPrivateIpAddresses(baseUrl);
-
     try {
-      await request.post(
+      await safeRequest.post(
         `${baseUrl}/key/delete`,
         { keys: [apiKey] },
         {
@@ -181,11 +175,9 @@ export const litellmApiKeyRotationFactory: TRotationFactory<
   const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
     TLiteLLMApiKeyRotationGeneratedCredentials
   > = async ({ apiKey }) => {
-    await blockLocalAndPrivateIpAddresses(baseUrl);
-
     try {
       // Verify the rotated key exists using the management key.
-      await request.get(`${baseUrl}/key/info`, {
+      await safeRequest.get(`${baseUrl}/key/info`, {
         params: { key: apiKey },
         headers: { Authorization: `Bearer ${provisioningApiKey}` }
       });

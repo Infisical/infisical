@@ -1,8 +1,7 @@
-import { request } from "@app/lib/config/request";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn/string";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { LiteLLMConnectionMethod } from "./litellm-connection-enums";
@@ -20,11 +19,9 @@ export const validateLiteLLMConnectionCredentials = async (config: TLiteLLMConne
   const { apiKey, instanceUrl } = config.credentials;
   const baseUrl = removeTrailingSlash(instanceUrl);
 
-  // Guard the user-supplied host against SSRF (blocks localhost/private IPs outside of dev mode)
-  await blockLocalAndPrivateIpAddresses(baseUrl);
-
+  // safeRequest guards the user-supplied host against SSRF (blocks localhost/private IPs outside of dev mode)
   try {
-    await request.get(`${baseUrl}/key/info`, {
+    await safeRequest.get(`${baseUrl}/key/info`, {
       headers: {
         Authorization: `Bearer ${apiKey}`
       },
@@ -52,10 +49,9 @@ const getLiteLLMErrorMessage = (error: unknown) => (error instanceof Error ? err
 
 export const listLiteLLMUsers = async (connection: TLiteLLMConnection): Promise<TLiteLLMListItem[]> => {
   const baseUrl = getLiteLLMBaseUrl(connection);
-  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   try {
-    const { data } = await request.get<{
+    const { data } = await safeRequest.get<{
       users?: { user_id: string; user_email?: string | null; user_alias?: string | null }[];
     }>(`${baseUrl}/user/list`, {
       params: { page_size: 100 },
@@ -76,10 +72,9 @@ export const listLiteLLMTeams = async (
   userId?: string
 ): Promise<TLiteLLMListItem[]> => {
   const baseUrl = getLiteLLMBaseUrl(connection);
-  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   try {
-    const { data } = await request.get<{
+    const { data } = await safeRequest.get<{
       teams?: { team_id: string; team_alias?: string | null }[];
     }>(`${baseUrl}/v2/team/list`, {
       params: { user_id: userId, page_size: 100 },
@@ -97,10 +92,9 @@ export const listLiteLLMTeams = async (
 
 export const listLiteLLMModels = async (connection: TLiteLLMConnection): Promise<TLiteLLMListItem[]> => {
   const baseUrl = getLiteLLMBaseUrl(connection);
-  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   try {
-    const { data } = await request.get<{ data?: { id: string }[] }>(`${baseUrl}/models`, {
+    const { data } = await safeRequest.get<{ data?: { id: string }[] }>(`${baseUrl}/models`, {
       headers: { Authorization: `Bearer ${connection.credentials.apiKey}` }
     });
 

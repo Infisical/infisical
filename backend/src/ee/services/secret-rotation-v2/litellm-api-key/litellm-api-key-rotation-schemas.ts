@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { LITELLM_RESERVED_KEY_OPTIONS } from "@app/ee/services/secret-rotation-v2/litellm-api-key/litellm-api-key-rotation-constants";
+import {
+  LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS,
+  LITELLM_FORBIDDEN_KEY_OPTIONS,
+  LITELLM_RESERVED_KEY_OPTIONS
+} from "@app/ee/services/secret-rotation-v2/litellm-api-key/litellm-api-key-rotation-constants";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   BaseCreateSecretRotationSchema,
@@ -42,7 +46,26 @@ const AdditionalOptionsSchema = z
       return;
     }
 
-    const reservedKeys = Object.keys(parsed).filter((key) => LITELLM_RESERVED_KEY_OPTIONS.includes(key));
+    const keys = Object.keys(parsed);
+
+    if (keys.length > LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Additional options cannot contain more than ${LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS} keys (received ${keys.length}).`
+      });
+      return;
+    }
+
+    const forbiddenKeys = keys.filter((key) => LITELLM_FORBIDDEN_KEY_OPTIONS.includes(key));
+    if (forbiddenKeys.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `The following options are not allowed in additional options: ${forbiddenKeys.join(", ")}. They would grant key-management permissions that could modify other keys.`
+      });
+      return;
+    }
+
+    const reservedKeys = keys.filter((key) => LITELLM_RESERVED_KEY_OPTIONS.includes(key));
     if (reservedKeys.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

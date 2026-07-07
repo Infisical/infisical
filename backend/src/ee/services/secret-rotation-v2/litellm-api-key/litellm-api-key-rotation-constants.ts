@@ -24,6 +24,16 @@ export const LITELLM_RESERVED_KEY_OPTIONS = [
   "models"
 ];
 
+/**
+ * Additional options that must not be set on rotated keys. Unlike reserved options (Infisical-owned
+ * fields), these are blocked because they would grant permissions that could affect other keys —
+ * e.g. allowed_routes, permission, or object_permission.
+ */
+export const LITELLM_FORBIDDEN_KEY_OPTIONS = ["allowed_routes", "permission", "object_permission"];
+
+/** Max number of top-level keys allowed in the additional options JSON object. */
+export const LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS = 55;
+
 export const LITELLM_API_KEY_ROTATION_LIST_OPTION: TSecretRotationV2ListItem = {
   name: "LiteLLM API Key",
   type: SecretRotation.LiteLLMApiKey,

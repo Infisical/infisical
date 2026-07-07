@@ -19,6 +19,10 @@ const LITELLM_RESERVED_KEY_OPTIONS = [
   "models"
 ];
 
+const LITELLM_FORBIDDEN_KEY_OPTIONS = ["allowed_routes", "permission", "object_permission"];
+
+const LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS = 55;
+
 export const LiteLLMApiKeyRotationSchema = z
   .object({
     type: z.literal(SecretRotation.LiteLLMApiKey),
@@ -57,9 +61,26 @@ export const LiteLLMApiKeyRotationSchema = z
             return;
           }
 
-          const reservedKeys = Object.keys(parsed).filter((key) =>
-            LITELLM_RESERVED_KEY_OPTIONS.includes(key)
-          );
+          const keys = Object.keys(parsed);
+
+          if (keys.length > LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Additional options cannot contain more than ${LITELLM_ADDITIONAL_OPTIONS_MAX_KEYS} keys (received ${keys.length}).`
+            });
+            return;
+          }
+
+          const forbiddenKeys = keys.filter((key) => LITELLM_FORBIDDEN_KEY_OPTIONS.includes(key));
+          if (forbiddenKeys.length) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `The following options are not allowed in additional options: ${forbiddenKeys.join(", ")}. They would grant key-management permissions that could modify other keys.`
+            });
+            return;
+          }
+
+          const reservedKeys = keys.filter((key) => LITELLM_RESERVED_KEY_OPTIONS.includes(key));
           if (reservedKeys.length) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
