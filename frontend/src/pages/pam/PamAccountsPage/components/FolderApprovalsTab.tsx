@@ -60,7 +60,6 @@ import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRe
 import { formatDuration } from "../../components/formatDuration";
 import { formatRelativeExpiry } from "../../components/PamDetailSheet";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-import { ApprovalRequestDetailSheet } from "../../PamApprovalRequestsPage/components/ApprovalRequestDetailSheet";
 
 const RelativeTime = ({ date }: { date: string }) => (
   <Tooltip>
@@ -146,7 +145,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const [approvers, setApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<TPamAccessRequest | null>(null);
 
   const savedApprovers = useMemo(() => {
     if (!config?.steps?.[0]) return [];
@@ -412,11 +410,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                     const status = getRequestStatusInfo(request);
                     const duration = request.requestData?.requestData?.duration;
                     return (
-                      <TableRow
-                        key={request.id}
-                        className="cursor-pointer"
-                        onClick={() => setSelectedRequest(request)}
-                      >
+                      <TableRow key={request.id}>
                         <TableCell className="h-[50px]">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{request.requesterName}</span>
@@ -490,14 +484,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           )}
         </CardContent>
       </Card>
-
-      <ApprovalRequestDetailSheet
-        request={selectedRequest}
-        isOpen={!!selectedRequest}
-        onOpenChange={(open) => {
-          if (!open) setSelectedRequest(null);
-        }}
-      />
 
       <DeleteActionModal
         isOpen={!!requestToRevoke}
