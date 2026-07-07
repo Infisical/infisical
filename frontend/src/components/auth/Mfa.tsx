@@ -9,6 +9,7 @@ import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Tooltip } from "@app/components/v2";
+import { Checkbox, FieldLabel } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
@@ -283,17 +284,20 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   if (newRecoveryCodes) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 pt-4 pb-4 md:mb-16 md:px-8">
-        <div className="text-center">
-          <h2 className="text-xl font-medium text-bunker-100">Save your recovery codes</h2>
-          <p className="mt-2 text-sm text-bunker-300">
-            Store these somewhere safe. Each code can be used once if you lose access to your second
-            factor. This is the only time they are shown.
-          </p>
+        <RecoveryCodesStep recoveryCodes={newRecoveryCodes} />
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="acknowledge-recovery-codes"
+            isChecked={hasSavedRecoveryCodes}
+            onCheckedChange={(checked) => setHasSavedRecoveryCodes(checked === true)}
+          />
+          <FieldLabel
+            htmlFor="acknowledge-recovery-codes"
+            className="cursor-pointer text-sm font-normal text-bunker-200"
+          >
+            I have saved my recovery codes in a safe place
+          </FieldLabel>
         </div>
-        <RecoveryCodesStep
-          recoveryCodes={newRecoveryCodes}
-          onSaved={() => setHasSavedRecoveryCodes(true)}
-        />
         <Button
           colorSchema="primary"
           isFullWidth

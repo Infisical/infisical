@@ -87,10 +87,13 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   );
 };
 
+const RESEND_COOLDOWN_SECONDS = 60;
+
 const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   const { mutateAsync: sendCode } = useSendMfaEnrollmentEmailCode();
   const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
   const [code, setCode] = useState("");
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const hasSentInitialCode = useRef(false);
 
   // Send the first code automatically when the step mounts.
@@ -101,6 +104,22 @@ const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
       createNotification({ text: "Failed to send verification code", type: "error" });
     });
   }, [sendCode]);
+
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const timer = setTimeout(() => setCooldown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const handleResend = async () => {
+    try {
+      await sendCode();
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      createNotification({ text: "Sent a new verification code", type: "success" });
+    } catch {
+      createNotification({ text: "Failed to send verification code", type: "error" });
+    }
+  };
 
   const handleVerify = async () => {
     try {
@@ -138,6 +157,9 @@ const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
           onClick={handleVerify}
         >
           Verify Code
+        </Button>
+        <Button variant="ghost" isDisabled={cooldown > 0} onClick={handleResend}>
+          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
         </Button>
       </div>
     </div>

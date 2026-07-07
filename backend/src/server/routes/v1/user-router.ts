@@ -306,7 +306,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
@@ -340,7 +340,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,

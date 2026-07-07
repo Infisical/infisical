@@ -2,30 +2,20 @@ import { FingerprintIcon, LucideIcon, MailIcon, SmartphoneIcon } from "lucide-re
 
 import { MfaMethod } from "@app/hooks/api/auth/types";
 
-export type MfaMethodOption = {
-  value: MfaMethod;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-};
-
-export const MFA_METHOD_OPTIONS: MfaMethodOption[] = [
+const MFA_METHOD_OPTIONS: { value: MfaMethod; label: string; icon: LucideIcon }[] = [
   {
     value: MfaMethod.TOTP,
     label: "Authenticator app",
-    description: "Use a TOTP app like 1Password or Authy.",
     icon: SmartphoneIcon
   },
   {
     value: MfaMethod.EMAIL,
     label: "Email",
-    description: "Receive one-time codes by email.",
     icon: MailIcon
   },
   {
     value: MfaMethod.WEBAUTHN,
     label: "Passkey",
-    description: "Use Face ID, Touch ID, a security key, or your device.",
     icon: FingerprintIcon
   }
 ];
@@ -39,15 +29,3 @@ export const MFA_METHOD_ICONS = MFA_METHOD_OPTIONS.reduce(
   (acc, option) => ({ ...acc, [option.value]: option.icon }),
   {} as Record<MfaMethod, LucideIcon>
 );
-
-export type WizardStep = {
-  key: "method" | "verify" | "recovery";
-  title: string;
-  description: string;
-};
-
-export const WIZARD_STEPS: WizardStep[] = [
-  { key: "method", title: "Method", description: "Choose method" },
-  { key: "verify", title: "Verify", description: "Confirm it works" },
-  { key: "recovery", title: "Recovery", description: "Save backup codes" }
-];

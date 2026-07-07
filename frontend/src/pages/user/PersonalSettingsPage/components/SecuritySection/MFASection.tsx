@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Checkbox,
+  FieldLabel,
   Select,
   SelectContent,
   SelectItem,
@@ -23,6 +25,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
@@ -52,6 +55,14 @@ export const MFASection = () => {
   const [isDisableOpen, setIsDisableOpen] = useState(false);
   // Holds the fresh recovery codes returned on enable so they can be shown once.
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
+  // Gate closing the "save your codes" sheet until the user acknowledges they
+  // saved them, since this is the only time the freshly minted codes are shown.
+  const [hasAcknowledgedCodes, setHasAcknowledgedCodes] = useState(false);
+
+  const closeRecoveryCodesSheet = () => {
+    setNewRecoveryCodes(null);
+    setHasAcknowledgedCodes(false);
+  };
 
   if (isPending || !user) {
     return <ContentLoader />;
@@ -234,9 +245,17 @@ export const MFASection = () => {
 
       <Sheet
         open={newRecoveryCodes !== null}
-        onOpenChange={(open) => !open && setNewRecoveryCodes(null)}
+        onOpenChange={(open) => {
+          if (!open && hasAcknowledgedCodes) closeRecoveryCodesSheet();
+        }}
       >
-        <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
+        <SheetContent
+          side="right"
+          className="flex flex-col gap-0 sm:max-w-lg"
+          // Block accidental dismissal so the one-time codes aren't lost.
+          onInteractOutside={(e) => !hasAcknowledgedCodes && e.preventDefault()}
+          onEscapeKeyDown={(e) => !hasAcknowledgedCodes && e.preventDefault()}
+        >
           <SheetHeader className="border-b">
             <SheetTitle>Save your recovery codes</SheetTitle>
             <SheetDescription>
@@ -247,6 +266,29 @@ export const MFASection = () => {
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
             <RecoveryCodesView recoveryCodes={newRecoveryCodes ?? []} />
           </div>
+          <SheetFooter className="flex-col items-stretch gap-3 border-t">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="acknowledge-recovery-codes"
+                isChecked={hasAcknowledgedCodes}
+                onCheckedChange={(checked) => setHasAcknowledgedCodes(checked === true)}
+              />
+              <FieldLabel
+                htmlFor="acknowledge-recovery-codes"
+                className="cursor-pointer text-sm font-normal text-foreground"
+              >
+                I have saved my recovery codes in a safe place
+              </FieldLabel>
+            </div>
+            <Button
+              variant="org"
+              isFullWidth
+              isDisabled={!hasAcknowledgedCodes}
+              onClick={closeRecoveryCodesSheet}
+            >
+              Done
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </>

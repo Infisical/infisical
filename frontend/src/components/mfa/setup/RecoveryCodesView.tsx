@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CopyIcon, DownloadIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
 
 type Props = {
@@ -32,7 +33,10 @@ export const RecoveryCodesView = ({ recoveryCodes, onSaved }: Props) => {
       setTimeout(() => setCopied(false), 2000);
       onSaved?.();
     } catch {
-      // ignore clipboard failures
+      createNotification({
+        text: "Failed to copy recovery codes. Please download them instead.",
+        type: "error"
+      });
     }
   };
 

@@ -189,11 +189,11 @@ export const userServiceFactory = ({
       }
     }
 
-    const updatedUser = await userDAL.updateById(userId, {
-      isMfaEnabled: false
+    const updatedUser = await userDAL.transaction(async (tx) => {
+      const updated = await userDAL.updateById(userId, { isMfaEnabled: false }, tx);
+      await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
+      return updated;
     });
-
-    await mfaRecoveryCodeService.deleteRecoveryCodes({ userId });
 
     return updatedUser;
   };

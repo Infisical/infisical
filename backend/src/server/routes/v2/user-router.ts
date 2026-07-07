@@ -53,7 +53,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const user = await server.services.user.setSelectedMfaMethod({
         userId: req.permission.id,
@@ -222,7 +222,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
