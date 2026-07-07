@@ -539,101 +539,9 @@ const SettingsTab = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <Controller
-              control={control}
-              name="settings.rotationEnabled"
-              render={({ field }) => (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Automatically rotate credentials
-                    </p>
-                    <p className="text-xs text-muted">
-                      Infisical rotates credentials on a fixed schedule. When off, credentials
-                      rotate only when triggered manually.
-                    </p>
-                  </div>
-                  <Switch
-                    variant="pam"
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                  />
-                </div>
-              )}
-            />
-            {rotationEnabled &&
-              template.rotationImpact &&
-              (template.rotationImpact.needsRotationAccount > 0 ? (
-                <Alert variant="warning">
-                  <AlertTriangleIcon />
-                  <AlertTitle>
-                    {template.rotationImpact.needsRotationAccount}{" "}
-                    {template.rotationImpact.needsRotationAccount === 1 ? "account" : "accounts"}{" "}
-                    won&apos;t rotate yet
-                  </AlertTitle>
-                  <AlertDescription>
-                    Set a rotation account on{" "}
-                    {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} to enable
-                    rotation.
-                    {template.rotationImpact.willRotate > 0 &&
-                      ` ${template.rotationImpact.willRotate} ${
-                        template.rotationImpact.willRotate === 1 ? "account is" : "accounts are"
-                      } ready to rotate.`}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                // Nothing misconfigured: only surface while editing; the warning above always shows (actionable gap).
-                isDirty && (
-                  <Alert variant="info">
-                    <InfoIcon />
-                    <AlertTitle>
-                      {template.rotationImpact.willRotate === 0
-                        ? "No accounts to rotate yet"
-                        : `${template.rotationImpact.willRotate} ${
-                            template.rotationImpact.willRotate === 1 ? "account" : "accounts"
-                          } will rotate`}
-                    </AlertTitle>
-                    <AlertDescription>
-                      {template.rotationImpact.willRotate === 0
-                        ? "Accounts using this template will rotate once they have a rotation account."
-                        : "Every account using this template has a rotation account."}
-                    </AlertDescription>
-                  </Alert>
-                )
-              ))}
-            {rotationEnabled && (
-              <Controller
-                control={control}
-                name="settings.rotationIntervalSeconds"
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel>Rotate every</FieldLabel>
-                    <Select
-                      value={String(field.value ?? 86400)}
-                      onValueChange={(value) => field.onChange(Number(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                          <SelectItem key={option.seconds} value={String(option.seconds)}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription>
-                      How often credentials are rotated automatically for accounts using this
-                      template.
-                    </FieldDescription>
-                  </Field>
-                )}
-              />
-            )}
             {/* Requirements are a policy independent of rotation: they apply to onboarded credentials and to the
                 passwords generated during rotation, so they show whether or not automatic rotation is on. */}
-            <div className="border-t border-border pt-4">
+            <div>
               <p className="text-sm font-medium text-foreground">Requirements</p>
               <p className="text-xs text-muted">
                 Every credential must meet these rules, both when an account is onboarded and when a
@@ -683,6 +591,100 @@ const SettingsTab = ({
                 </Field>
               )}
             />
+            <div className="flex flex-col gap-4 border-t border-border pt-4">
+              <Controller
+                control={control}
+                name="settings.rotationEnabled"
+                render={({ field }) => (
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Automatically rotate credentials
+                      </p>
+                      <p className="text-xs text-muted">
+                        Infisical rotates credentials on a fixed schedule. When off, credentials
+                        rotate only when triggered manually.
+                      </p>
+                    </div>
+                    <Switch
+                      variant="pam"
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </div>
+                )}
+              />
+              {rotationEnabled &&
+                template.rotationImpact &&
+                (template.rotationImpact.needsRotationAccount > 0 ? (
+                  <Alert variant="warning">
+                    <AlertTriangleIcon />
+                    <AlertTitle>
+                      {template.rotationImpact.needsRotationAccount}{" "}
+                      {template.rotationImpact.needsRotationAccount === 1 ? "account" : "accounts"}{" "}
+                      won&apos;t rotate yet
+                    </AlertTitle>
+                    <AlertDescription>
+                      Set a rotation account on{" "}
+                      {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} to enable
+                      rotation.
+                      {template.rotationImpact.willRotate > 0 &&
+                        ` ${template.rotationImpact.willRotate} ${
+                          template.rotationImpact.willRotate === 1 ? "account is" : "accounts are"
+                        } ready to rotate.`}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  // Nothing misconfigured: only surface while editing; the warning above always shows (actionable gap).
+                  isDirty && (
+                    <Alert variant="info">
+                      <InfoIcon />
+                      <AlertTitle>
+                        {template.rotationImpact.willRotate === 0
+                          ? "No accounts to rotate yet"
+                          : `${template.rotationImpact.willRotate} ${
+                              template.rotationImpact.willRotate === 1 ? "account" : "accounts"
+                            } will rotate`}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {template.rotationImpact.willRotate === 0
+                          ? "Accounts using this template will rotate once they have a rotation account."
+                          : "Every account using this template has a rotation account."}
+                      </AlertDescription>
+                    </Alert>
+                  )
+                ))}
+              {rotationEnabled && (
+                <Controller
+                  control={control}
+                  name="settings.rotationIntervalSeconds"
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel>Rotate every</FieldLabel>
+                      <Select
+                        value={String(field.value ?? 86400)}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
+                            <SelectItem key={option.seconds} value={String(option.seconds)}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        How often credentials are rotated automatically for accounts using this
+                        template.
+                      </FieldDescription>
+                    </Field>
+                  )}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
