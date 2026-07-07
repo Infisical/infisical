@@ -446,6 +446,12 @@
                 "pages": [
                   "documentation/platform/secrets-mgmt/overview",
                   {
+                    "group": "Quickstarts",
+                    "pages": [
+                      "documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"
+                    ]
+                  },
+                  {
                     "group": "Concepts",
                     "pages": [
                       "documentation/platform/secrets-mgmt/concepts/secrets-mgmt",
@@ -459,13 +465,11 @@
                   {
                     "group": "Guides",
                     "pages": [
-                      "documentation/guides/introduction",
                       "documentation/guides/local-development",
                       "documentation/guides/node",
                       "documentation/guides/python",
                       "documentation/guides/nextjs-vercel",
-                      "documentation/guides/kubernetes-operator",
-                      "documentation/guides/microsoft-power-apps"
+                      "documentation/guides/kubernetes-operator"
                     ]
                   }
                 ]
@@ -475,17 +479,19 @@
                 "pages": [
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
+                  "documentation/platform/secret-reference",
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
-                  "documentation/platform/secret-reference",
-                  "documentation/platform/insights",
+                  "documentation/platform/secret-validation-rules",
                   "documentation/platform/pr-workflows",
                   "documentation/platform/access-controls/access-requests",
+                  "documentation/platform/webhooks",
+                  "documentation/platform/insights",
                   {
                     "group": "Secret Rotation",
                     "pages": [
-                      "integrations/secret-rotations",
                       "documentation/platform/secret-rotation/overview",
+                      "integrations/secret-rotations",
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
@@ -512,8 +518,8 @@
                   {
                     "group": "Dynamic Secrets",
                     "pages": [
-                      "integrations/dynamic-secrets",
                       "documentation/platform/dynamic-secrets/overview",
+                      "integrations/dynamic-secrets",
                       "documentation/platform/dynamic-secrets/aws-elasticache",
                       "documentation/platform/dynamic-secrets/aws-iam",
                       "documentation/platform/dynamic-secrets/aws-memorydb",
@@ -557,9 +563,7 @@
                         ]
                       }
                     ]
-                  },
-                  "documentation/platform/webhooks",
-                  "documentation/platform/secret-validation-rules"
+                  }
                 ]
               },
               {
@@ -621,8 +625,8 @@
               {
                 "group": "Secret Syncs",
                 "pages": [
-                  "integrations/secret-syncs",
                   "integrations/secret-syncs/overview",
+                  "integrations/secret-syncs",
                   {
                     "group": "Syncs",
                     "pages": [
@@ -723,7 +727,10 @@
               },
               {
                 "group": "Others",
-                "pages": ["integrations/external/backstage"]
+                "pages": [
+                  "integrations/external/backstage",
+                  "integrations/external/microsoft-power-apps"
+                ]
               }
             ]
           },
@@ -4041,6 +4048,22 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/guides/introduction",
+      "destination": "/documentation/platform/secrets-mgmt/overview"
+    },
+    {
+      "source": "/documentation/platform/secret-rotation/mysql",
+      "destination": "/documentation/platform/secret-rotation/mysql-credentials"
+    },
+    {
+      "source": "/documentation/platform/secret-rotation/sendgrid",
+      "destination": "/documentation/platform/secret-rotation/overview"
+    },
+    {
+      "source": "/documentation/guides/microsoft-power-apps",
+      "destination": "/integrations/external/microsoft-power-apps"
+    },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",
       "destination": "/documentation/platform/pki/guides/applications/k8s-cert-manager-acme"
