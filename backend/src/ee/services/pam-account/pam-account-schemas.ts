@@ -388,7 +388,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
   },
 
   [PamAccountType.GcpServiceAccount]: {
-    name: "Google Service Account",
+    name: "GCP Service Account",
     icon: "Google Cloud Platform.png",
     connectionDetails: z.object({
       serviceAccountEmail: z
