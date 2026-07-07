@@ -26,7 +26,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
+import { useActivateMfa, useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -35,14 +35,13 @@ import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 import { MfaMethodsCard } from "./MfaMethodsCard";
 import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
 import { useDisableMfa } from "./useDisableMfa";
-import { useEnableMfa } from "./useEnableMfa";
 
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
   const { mutateAsync: setMfaMethod } = useSetMfaMethod();
-  const { isBusy: isEnabling, enableMfa } = useEnableMfa();
+  const { mutateAsync: activateMfa, isPending: isEnabling } = useActivateMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
@@ -84,7 +83,17 @@ export const MFASection = () => {
   // MFA is currently enabled.
   const hasRecoveryCodes = user.isMfaEnabled;
 
-  const handleEnable = () => enableMfa(selectedMethod, setNewRecoveryCodes);
+  const handleEnable = async () => {
+    try {
+      const { recoveryCodes } = await activateMfa({ selectedMfaMethod: selectedMethod });
+      setNewRecoveryCodes(recoveryCodes);
+    } catch (error: any) {
+      createNotification({
+        text: error?.response?.data?.message || "Failed to enable two-factor authentication",
+        type: "error"
+      });
+    }
+  };
 
   const handlePreferredMethodChange = async (method: MfaMethod) => {
     try {

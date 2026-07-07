@@ -65,10 +65,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   // Enroll a factor: proves possession of the factor in-request and persists it.
-  // This does NOT mint recovery codes; those are issued only when MFA is enabled
-  // (POST /me/mfa/activate). Because proving the factor here is itself proof of the
-  // factor, a verified EnableMfa step-up session is minted and returned so the
-  // enrollment wizard can immediately enable MFA without a redundant challenge.
+  // Reachable pre-MFA (requireOrg:false) so the enforced-MFA onboarding flow can set
+  // up a factor at login. It NEVER mints recovery codes: those are issued only after
+  // the org-required MFA is actually completed (on the first successful verifyMfaToken,
+  // or via POST /me/mfa/activate from a full authenticated session). This keeps a
+  // password-only, pre-MFA session from bootstrapping recovery codes.
   server.route({
     method: "POST",
     url: "/me/mfa/enroll",
@@ -106,9 +107,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       ]),
       response: {
-        200: z.object({
-          mfaSessionId: z.string()
-        })
+        200: z.object({})
       }
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
@@ -131,13 +130,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      const mfaSessionId = await server.services.mfaSession.createVerifiedMfaSession(
-        req.permission.id,
-        MfaStepUpResource.EnableMfa,
-        req.body.method
-      );
-
-      return { mfaSessionId };
+      return {};
     }
   });
 
@@ -167,12 +160,17 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Enable MFA. Requires the selected method to be configured (email always is),
-  // and issues a fresh recovery-code pool (invalidating any prior codes), returned
-  // once so the client can surface them to the user. Because the user chooses the
-  // method before enabling, enabling is gated behind a fresh step-up MFA challenge
-  // against that method — this proves the user can actually satisfy the factor they
-  // just turned on, so they can't lock themselves out.
+  // Enable MFA from a fully authenticated session (personal settings). Issues a
+  // fresh recovery-code pool (invalidating any prior codes), returned once so the
+  // client can surface them.
+  //
+  // Recovery codes bypass any org-required MFA method at login, so they must never
+  // be mintable by a session that has not itself completed that method. This route
+  // requires an org-scoped token (requireOrg:true): a token for an MFA-enforcing org
+  // can only exist after that org's MFA challenge was completed (see
+  // selectOrganization), so reaching this handler already proves the org-required
+  // method. The transient post-password no-org token used during login/onboarding
+  // is rejected here and cannot obtain recovery codes.
   server.route({
     method: "POST",
     url: "/me/mfa/activate",
@@ -182,8 +180,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "activateUserMfa",
       body: z.object({
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
-        mfaSessionId: z.string().trim().optional()
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
       }),
       response: {
         200: z.object({
@@ -192,16 +189,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        resourceId: MfaStepUpResource.EnableMfa,
-        mfaSessionId: req.body.mfaSessionId,
-        mfaMethod: req.body.selectedMfaMethod,
-        message: "MFA verification is required to enable two-factor authentication"
-      });
-
       const { user, recoveryCodes } = await server.services.user.activateMfa({
         userId: req.permission.id,
         selectedMfaMethod: req.body.selectedMfaMethod

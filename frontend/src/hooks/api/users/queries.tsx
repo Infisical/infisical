@@ -424,11 +424,7 @@ export const useEnrollMfa = () => {
             name?: string;
           }
     ) => {
-      const { data } = await apiRequest.post<{ mfaSessionId: string }>(
-        "/api/v2/users/me/mfa/enroll",
-        dto
-      );
-      return { mfaSessionId: data.mfaSessionId };
+      await apiRequest.post("/api/v2/users/me/mfa/enroll", dto);
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: userKeys.getUser });
@@ -454,18 +450,11 @@ export const useSendMfaEnrollmentEmailCode = () =>
 export const useActivateMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      selectedMfaMethod,
-      mfaSessionId
-    }: {
-      selectedMfaMethod?: MfaMethod;
-      mfaSessionId?: string;
-    }) => {
+    mutationFn: async ({ selectedMfaMethod }: { selectedMfaMethod?: MfaMethod }) => {
       const { data } = await apiRequest.post<{ user: unknown; recoveryCodes: string[] }>(
         "/api/v2/users/me/mfa/activate",
         {
-          selectedMfaMethod,
-          mfaSessionId
+          selectedMfaMethod
         }
       );
 

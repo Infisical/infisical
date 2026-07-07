@@ -1377,15 +1377,13 @@ export const authLoginServiceFactory = ({
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
-      const isPendingEmailEnrollment = requiredMfaMethod === MfaMethod.EMAIL && !user.isMfaEnabled;
-
       const mfaToken = await issueMfaChallenge({
         userId: user.id,
         email: user.email,
         authMethod: userAuthMethod,
         requiredMfaMethod,
         organizationId: rootOrg.id,
-        sendEmailCode: !isPendingEmailEnrollment
+        sendEmailCode: true
       });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;

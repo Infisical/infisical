@@ -15,7 +15,7 @@ import { useRegisterPasskey } from "@app/hooks/api/webauthn";
 
 type Props = {
   method: MfaMethod;
-  onVerified: (mfaSessionId?: string) => void | Promise<void>;
+  onVerified: () => void | Promise<void>;
 };
 
 const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
@@ -36,9 +36,9 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
 
   const handleVerify = async () => {
     try {
-      const { mfaSessionId } = await enrollMfa({ method: MfaMethod.TOTP, totp: totp.trim() });
+      await enrollMfa({ method: MfaMethod.TOTP, totp: totp.trim() });
       createNotification({ text: "Authenticator app configured", type: "success" });
-      await onVerified(mfaSessionId);
+      await onVerified();
     } catch (error: any) {
       createNotification({
         text: error?.response?.data?.message || "Invalid verification code",
@@ -104,9 +104,9 @@ const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
 
   const handleVerify = async () => {
     try {
-      const { mfaSessionId } = await enrollMfa({ method: MfaMethod.EMAIL, code: code.trim() });
+      await enrollMfa({ method: MfaMethod.EMAIL, code: code.trim() });
       createNotification({ text: "Email authentication configured", type: "success" });
-      await onVerified(mfaSessionId);
+      await onVerified();
     } catch (error: any) {
       createNotification({
         text: error?.response?.data?.message || "Invalid verification code",
@@ -150,16 +150,15 @@ const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => 
   const [name, setName] = useState("");
 
   const handleRegister = async () => {
-    let mfaSessionId: string | undefined;
     const ok = await registerPasskey(name, async (registrationResponse, resolvedName) => {
-      ({ mfaSessionId } = await enrollMfa({
+      await enrollMfa({
         method: MfaMethod.WEBAUTHN,
         registrationResponse,
         name: resolvedName
-      }));
+      });
     });
     if (ok) {
-      await onVerified(mfaSessionId);
+      await onVerified();
     }
   };
 

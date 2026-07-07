@@ -1,31 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
-import { useActivateMfa } from "@app/hooks/api/users";
 
-import { MFA_METHOD_LABELS, RecoveryCodesStep, VerifyStep } from "./setup";
+import { MFA_METHOD_LABELS, VerifyStep } from "./setup";
 
 type Props = {
   method: MfaMethod;
   onComplete: () => void | Promise<void>;
 };
 
-// Guided enrollment used when an org enforces MFA but the user has not yet set
-// up the required method (e.g. right after signup). Mirrors the settings wizard:
-// enroll the method (which proves the factor and mints recovery codes) -> enable
-// MFA -> save codes.
+// Guided factor setup shown at login when an org enforces MFA but the user has not
+// yet configured the required method (e.g. right after signup). It only enrolls the
+// factor (proves and persists it). It deliberately does NOT enable MFA or mint
+// recovery codes: those happen when the user completes the org MFA challenge next
+// (verifyMfaToken), so a pre-MFA session can never bootstrap recovery codes.
 export const MfaEnrollment = ({ method, onComplete }: Props) => {
-  const { mutateAsync: activateMfa } = useActivateMfa();
-  const [phase, setPhase] = useState<"verify" | "recovery">("verify");
-  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [hasSaved, setHasSaved] = useState(false);
   const hasPrepared = useRef(false);
-
-  const hasRecoveryCodes = recoveryCodes.length > 0;
 
   useEffect(() => {
     if (hasPrepared.current) return;
@@ -34,24 +26,7 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
     SecurityClient.setMfaToken("");
   }, []);
 
-  const handleVerified = async (mfaSessionId?: string) => {
-    try {
-      const { recoveryCodes: codes } = await activateMfa({
-        selectedMfaMethod: method,
-        mfaSessionId
-      });
-      setRecoveryCodes(codes);
-      setPhase("recovery");
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to enable two-factor authentication",
-        type: "error"
-      });
-    }
-  };
-
-  const handleContinue = async () => {
-    // Restore the temp token so downstream MFA verification can proceed.
+  const handleVerified = async () => {
     SecurityClient.setMfaToken(getMfaTempToken());
     await onComplete();
   };
@@ -65,21 +40,7 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
         </p>
       </div>
 
-      {phase === "verify" && <VerifyStep method={method} onVerified={handleVerified} />}
-
-      {phase === "recovery" && (
-        <div className="flex flex-col gap-4">
-          <RecoveryCodesStep recoveryCodes={recoveryCodes} onSaved={() => setHasSaved(true)} />
-          <Button
-            variant="org"
-            isFullWidth
-            isDisabled={hasRecoveryCodes && !hasSaved}
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
-        </div>
-      )}
+      <VerifyStep method={method} onVerified={handleVerified} />
     </div>
   );
 };

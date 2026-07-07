@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -10,7 +10,7 @@ import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Tooltip } from "@app/components/v2";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useLogoutUser, useSendMfaToken } from "@app/hooks/api";
+import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
   checkUserTotpMfa,
   checkUserWebAuthnMfa,
@@ -21,6 +21,8 @@ import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
+
+import { RecoveryCodesStep } from "../mfa/setup";
 
 // The style for the verification code input
 const codeInputProps = {
@@ -78,7 +80,10 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
   const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
   const [shouldShowWebAuthnRegistration, setShouldShowWebAuthnRegistration] = useState(false);
-  const [shouldShowEmailRegistration, setShouldShowEmailRegistration] = useState(false);
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
+  const [hasSavedRecoveryCodes, setHasSavedRecoveryCodes] = useState(false);
+  const wasMfaEnabledRef = useRef(true);
+  const { mutateAsync: activateMfa } = useActivateMfa();
   const logout = useLogoutUser();
 
   const { mutateAsync: generateWebAuthnAuthenticationOptions } = useGenerateAuthenticationOptions();
@@ -87,6 +92,14 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const sendMfaToken = useSendMfaToken();
 
   useEffect(() => {
+    fetchUserDetails()
+      .then((user) => {
+        wasMfaEnabledRef.current = Boolean(user.isMfaEnabled);
+      })
+      .catch(() => {
+        // Keep the safe default (treat as enabled) so existing codes are never rotated.
+      });
+
     if (method === MfaMethod.TOTP) {
       checkUserTotpMfa().then((isVerified) => {
         if (!isVerified) {
@@ -100,16 +113,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           setShouldShowWebAuthnRegistration(true);
         }
       });
-    } else if (method === MfaMethod.EMAIL) {
-      fetchUserDetails()
-        .then((user) => {
-          if (!user.isMfaEnabled) {
-            setShouldShowEmailRegistration(true);
-          }
-        })
-        .catch(() => {
-          // If we can't determine enrollment state, fall back to the normal email challenge.
-        });
     }
   }, [method]);
 
@@ -127,6 +130,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     if (method === MfaMethod.WEBAUTHN) return "Use passkey instead";
     if (method === MfaMethod.EMAIL) return "Use email code";
     return "Use authenticator code";
+  };
+
+  const completeLogin = async () => {
+    await successCallback();
+    if (closeMfa) {
+      closeMfa();
+    }
   };
 
   const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -151,10 +161,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       SecurityClient.setMfaToken("");
       SecurityClient.setToken(result.token);
 
-      await successCallback();
-      if (closeMfa) {
-        closeMfa();
+      if (!showRecoveryCodeInput && !wasMfaEnabledRef.current) {
+        const { recoveryCodes } = await activateMfa({ selectedMfaMethod: method });
+        setNewRecoveryCodes(recoveryCodes);
+        return;
       }
+
+      await completeLogin();
     } catch {
       if (typeof triesLeft === "number") {
         const newTriesLeft = triesLeft - 1;
@@ -219,10 +232,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         SecurityClient.setMfaToken("");
         SecurityClient.setToken(mfaResult.token);
 
-        await successCallback();
-        if (closeMfa) {
-          closeMfa();
+        if (!wasMfaEnabledRef.current) {
+          const { recoveryCodes } = await activateMfa({ selectedMfaMethod: MfaMethod.WEBAUTHN });
+          setNewRecoveryCodes(recoveryCodes);
+          return;
         }
+
+        await completeLogin();
       }
     } catch (error: any) {
       console.error("WebAuthn verification failed:", error);
@@ -264,7 +280,37 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   };
 
-  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration || shouldShowEmailRegistration) {
+  if (newRecoveryCodes) {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-col gap-4 pt-4 pb-4 md:mb-16 md:px-8">
+        <div className="text-center">
+          <h2 className="text-xl font-medium text-bunker-100">Save your recovery codes</h2>
+          <p className="mt-2 text-sm text-bunker-300">
+            Store these somewhere safe. Each code can be used once if you lose access to your second
+            factor. This is the only time they are shown.
+          </p>
+        </div>
+        <RecoveryCodesStep
+          recoveryCodes={newRecoveryCodes}
+          onSaved={() => setHasSavedRecoveryCodes(true)}
+        />
+        <Button
+          colorSchema="primary"
+          isFullWidth
+          isDisabled={!hasSavedRecoveryCodes}
+          isLoading={isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            await completeLogin();
+          }}
+        >
+          Continue
+        </Button>
+      </div>
+    );
+  }
+
+  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
     return (
       <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
         <MfaEnrollment
@@ -272,7 +318,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           onComplete={async () => {
             setShouldShowTotpRegistration(false);
             setShouldShowWebAuthnRegistration(false);
-            setShouldShowEmailRegistration(false);
             await successCallback();
           }}
         />
