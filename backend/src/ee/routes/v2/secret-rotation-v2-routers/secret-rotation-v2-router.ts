@@ -8,6 +8,7 @@ import { ConvexAccessKeyRotationListItemSchema } from "@app/ee/services/secret-r
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
 import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
+import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MongoDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
@@ -51,7 +52,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   SupabaseApiKeyRotationListItemSchema,
   SalesforceOauthCredentialsRotationListItemSchema,
   DatadogApplicationKeySecretRotationListItemSchema,
-  ConvexAccessKeyRotationListItemSchema
+  ConvexAccessKeyRotationListItemSchema,
+  FireworksApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

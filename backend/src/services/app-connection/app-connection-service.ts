@@ -110,6 +110,8 @@ import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
+import { ValidateFireworksConnectionCredentialsSchema } from "./fireworks";
+import { fireworksConnectionService } from "./fireworks/fireworks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -284,7 +286,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
-  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema
+  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
+  [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1384,6 +1387,7 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    fireworks: fireworksConnectionService(connectAppConnectionById)
   };
 };

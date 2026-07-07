@@ -161,6 +161,15 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Fireworks API Key",
+      slug: "fireworks-api-key",
+      path: "/documentation/platform/secret-rotation/fireworks-api-key",
+      description:
+        "Learn how to automatically rotate Fireworks AI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Supabase API Key",
       slug: "supabase-api-key",
       path: "/documentation/platform/secret-rotation/supabase-api-key",

@@ -52,6 +52,11 @@ import {
   TDbtServiceTokenRotationOption
 } from "./dbt-service-token-rotation";
 import {
+  TFireworksApiKeyRotation,
+  TFireworksApiKeyRotationGeneratedCredentialsResponse,
+  TFireworksApiKeyRotationOption
+} from "./fireworks-api-key-rotation";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentialsResponse,
   THpIloRotationOption
@@ -133,6 +138,7 @@ export type TSecretRotationV2 = (
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
   | TConvexAccessKeyRotation
+  | TFireworksApiKeyRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -156,7 +162,8 @@ export type TSecretRotationV2Option =
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
   | TDatadogApplicationKeySecretRotationOption
-  | TConvexAccessKeyRotationOption;
+  | TConvexAccessKeyRotationOption
+  | TFireworksApiKeyRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -184,7 +191,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
   | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse
-  | TConvexAccessKeyRotationGeneratedCredentialsResponse;
+  | TConvexAccessKeyRotationGeneratedCredentialsResponse
+  | TFireworksApiKeyRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -261,6 +269,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationOption;
+  [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -286,6 +295,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

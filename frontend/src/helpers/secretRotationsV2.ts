@@ -114,6 +114,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Convex Access Key",
     image: "Convex.png",
     size: 50
+  },
+  [SecretRotation.FireworksApiKey]: {
+    name: "Fireworks Secret",
+    image: "Fireworks.png",
+    size: 50
   }
 };
 
@@ -139,7 +144,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
   [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog,
-  [SecretRotation.ConvexAccessKey]: AppConnection.Convex
+  [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
+  [SecretRotation.FireworksApiKey]: AppConnection.Fireworks
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -165,7 +171,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.SupabaseApiKey]: true,
   [SecretRotation.SalesforceOauthCredentials]: true,
   [SecretRotation.DatadogApplicationKeySecret]: true,
-  [SecretRotation.ConvexAccessKey]: true
+  [SecretRotation.ConvexAccessKey]: true,
+  [SecretRotation.FireworksApiKey]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

@@ -13,6 +13,7 @@ import { ConvexAccessKeyRotationReviewFields } from "./ConvexAccessKeyRotationRe
 import { DatabricksServicePrincipalSecretRotationReviewFields } from "./DatabricksServicePrincipalSecretRotationReviewFields";
 import { DatadogApplicationKeySecretRotationReviewFields } from "./DatadogApplicationKeySecretRotationReviewFields";
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
+import { FireworksApiKeyRotationReviewFields } from "./FireworksApiKeyRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
@@ -48,7 +49,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,
   [SecretRotation.SalesforceOauthCredentials]: SalesforceOauthCredentialsRotationReviewFields,
   [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields,
-  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields
+  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields,
+  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

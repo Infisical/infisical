@@ -30,6 +30,7 @@ import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TDopplerConnection } from "./doppler-connection";
 import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TF5BigIpConnection } from "./f5-big-ip-connection";
+import { TFireworksConnection } from "./fireworks-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -105,6 +106,7 @@ export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
 export * from "./external-infisical-connection";
 export * from "./f5-big-ip-connection";
+export * from "./fireworks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -227,7 +229,8 @@ export type TAppConnection =
   | TTriggerDevConnection
   | TRundeckConnection
   | THasuraCloudConnection
-  | TQoveryConnection;
+  | TQoveryConnection
+  | TFireworksConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

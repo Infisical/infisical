@@ -16,6 +16,7 @@ import {
   TDatadogApplicationKeySecretRotation
 } from "./datadog-application-key-secret";
 import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
+import { FIREWORKS_API_KEY_ROTATION_LIST_OPTION } from "./fireworks-api-key";
 import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
@@ -71,7 +72,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.SupabaseApiKey]: SUPABASE_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.SalesforceOauthCredentials]: SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatadogApplicationKeySecret]: DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION,
-  [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.FireworksApiKey]: FIREWORKS_API_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {

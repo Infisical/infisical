@@ -76,7 +76,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Rundeck]: "Rundeck",
   [AppConnection.HasuraCloud]: "Hasura Cloud",
   [AppConnection.Qovery]: "Qovery",
-  [AppConnection.Cloud66]: "Cloud 66"
+  [AppConnection.Cloud66]: "Cloud 66",
+  [AppConnection.Fireworks]: "Fireworks"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -155,5 +156,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
   [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
-  [AppConnection.Cloud66]: AppConnectionPlanType.Regular
+  [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
+  [AppConnection.Fireworks]: AppConnectionPlanType.Regular
 };

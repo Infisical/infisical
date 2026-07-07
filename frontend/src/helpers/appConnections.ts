@@ -67,6 +67,7 @@ import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
+import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/fireworks-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
@@ -482,6 +483,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "AI",
     description: "Manage Anthropic API access."
   },
+  [AppConnection.Fireworks]: {
+    name: "Fireworks",
+    image: "Fireworks.png",
+    category: "AI",
+    description: "Manage Fireworks API access."
+  },
   [AppConnection.HasuraCloud]: {
     name: "Hasura Cloud",
     image: "Hasura.svg",
@@ -675,6 +682,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case OpenRouterConnectionMethod.ApiKey:
     case OpenAIConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:

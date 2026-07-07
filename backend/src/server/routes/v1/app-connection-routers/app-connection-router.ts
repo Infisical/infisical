@@ -112,6 +112,10 @@ import {
   F5BigIpConnectionListItemSchema,
   SanitizedF5BigIpConnectionSchema
 } from "@app/services/app-connection/f5-big-ip";
+import {
+  FireworksConnectionListItemSchema,
+  SanitizedFireworksConnectionSchema
+} from "@app/services/app-connection/fireworks";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -310,7 +314,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
-  ...SanitizedQoveryConnectionSchema.options
+  ...SanitizedQoveryConnectionSchema.options,
+  ...SanitizedFireworksConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -389,7 +394,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
-  QoveryConnectionListItemSchema
+  QoveryConnectionListItemSchema,
+  FireworksConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
