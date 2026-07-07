@@ -10,6 +10,7 @@ export * from "./approvalRequests";
 export * from "./assumePrivileges";
 export * from "./auditLogs";
 export * from "./auditLogStreams";
+export * from "./auditReports";
 export * from "./auth";
 export * from "./billingV2";
 export * from "./bots";

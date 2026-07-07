@@ -211,6 +211,7 @@ import {
 } from "./open-router";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
@@ -369,7 +370,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSnowflakeConnectionListItem(),
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
-    getConvexConnectionListItem()
+    getConvexConnectionListItem(),
+    getQoveryConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -611,7 +613,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -712,6 +715,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
+    case QoveryConnectionMethod.AccessToken:
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
@@ -856,7 +860,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Datadog]: platformManagedCredentialsNotSupported,
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
-  [AppConnection.Convex]: platformManagedCredentialsNotSupported
+  [AppConnection.Convex]: platformManagedCredentialsNotSupported,
+  [AppConnection.Qovery]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

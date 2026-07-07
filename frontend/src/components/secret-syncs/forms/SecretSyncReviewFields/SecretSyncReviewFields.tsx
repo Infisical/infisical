@@ -57,6 +57,7 @@ import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
+import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
@@ -234,6 +235,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.TriggerDev:
       DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Qovery:
+      DestinationFieldsComponent = <QoverySyncReviewFields />;
       break;
     case SecretSync.Cloud66:
       DestinationFieldsComponent = <Cloud66SyncReviewFields />;

@@ -85,6 +85,7 @@ export enum TableName {
   SecretFolder = "secret_folders",
   SecretFolderVersion = "secret_folder_versions",
   SecretImport = "secret_imports",
+  ProjectFolderGrant = "project_folder_grants",
   Snapshot = "secret_snapshots",
   SnapshotSecret = "secret_snapshot_secrets",
   SnapshotFolder = "secret_snapshot_folders",
@@ -314,6 +315,9 @@ export enum TableName {
   HoneyToken = "honey_tokens",
   HoneyTokenEvent = "honey_token_events",
   HoneyTokenSecretMapping = "honey_token_secret_mappings",
+
+  // Audit Reports (exportable compliance reports)
+  AuditReport = "audit_reports",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",

@@ -21,8 +21,10 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -132,6 +134,8 @@ type TSecretSyncQueueFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 type SecretSyncActionJob = Job<
@@ -183,7 +187,9 @@ export const secretSyncQueueFactory = ({
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
-  telemetryService
+  telemetryService,
+  projectFolderGrantDAL,
+  orgDAL
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -275,6 +281,7 @@ export const secretSyncQueueFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const actorOrgId = secretSync.connection.orgId;
 
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
@@ -284,7 +291,12 @@ export const secretSyncQueueFactory = ({
       secretDAL: secretV2BridgeDAL,
       folderDAL,
       projectId,
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
 
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId });
@@ -329,7 +341,12 @@ export const secretSyncQueueFactory = ({
         secretImportDAL,
         secretImports,
         hasSecretAccess: () => true,
-        viewSecretValue: true
+        viewSecretValue: true,
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {

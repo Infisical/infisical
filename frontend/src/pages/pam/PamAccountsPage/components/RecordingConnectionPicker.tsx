@@ -13,7 +13,9 @@ type Props = {
 
 export const RecordingConnectionPicker = ({ value, onChange, isError, includeNone }: Props) => {
   const { data: connections = [], isPending } = useListAppConnections();
-  const awsConnections = connections.filter((connection) => connection.app === AppConnection.AWS);
+  const awsConnections = connections.filter(
+    (connection) => connection.app === AppConnection.AWS && !connection.projectId
+  );
 
   return (
     <Select

@@ -16,7 +16,14 @@ import { SecretReferenceCloseContext } from "../SecretReferenceContext";
 import { SecretNodeData } from "../utils/convertToFlowElements";
 
 export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
-  const { secretKey, environment, secretPath, isRoot, isCircular } = data;
+  const {
+    secretKey,
+    environment,
+    secretPath,
+    projectId: crossProjectId,
+    isRoot,
+    isCircular
+  } = data;
 
   const capitalizedEnv = environment.charAt(0).toUpperCase() + environment.slice(1);
 
@@ -51,7 +58,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
       to: ROUTE_PATHS.SecretManager.OverviewPage.path,
       params: {
         orgId: routeParams.orgId as string,
-        projectId: currentProject?.id || ""
+        projectId: crossProjectId || currentProject?.id || ""
       },
       search: {
         secretPath,
@@ -63,6 +70,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
     navigate,
     routeParams.orgId,
     currentProject,
+    crossProjectId,
     environment,
     secretPath,
     secretKey,

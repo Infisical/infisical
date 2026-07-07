@@ -62,6 +62,7 @@ import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/service
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
+import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SnowflakeSyncListItemSchema, SnowflakeSyncSchema } from "@app/services/secret-sync/snowflake";
@@ -118,6 +119,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OnaSyncSchema,
   TravisCISyncSchema,
   SnowflakeSyncSchema,
+  QoverySyncSchema,
   Cloud66SyncSchema
 ]);
 
@@ -165,6 +167,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
   SnowflakeSyncListItemSchema,
+  QoverySyncListItemSchema,
   Cloud66SyncListItemSchema
 ]);
 
