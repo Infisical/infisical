@@ -16,7 +16,7 @@ import {
 } from "./mfa-session-types";
 
 type TMfaSessionServiceFactoryDep = {
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
@@ -65,8 +65,21 @@ export const mfaSessionServiceFactory = ({
     await keyStore.setItemWithExpiry(mfaSessionKey, ttlSeconds, JSON.stringify(mfaSession));
   };
 
-  // Helper function to send MFA code via email
+  // Sends an MFA code via email, throttled per user (mirrors the signup resend
+  // cooldown) so a caller that repeatedly triggers a send - e.g. re-hitting a
+  // step-up-gated endpoint - can't be used to flood the account inbox. SET NX is
+  // atomic, so concurrent sends collapse onto a single slot. The already-emailed
+  // code stays valid for its full TTL and is validated by userId (not by session),
+  // so skipping a send inside the window doesn't break verification of a freshly
+  // minted step-up session.
   const sendMfaCode = async (userId: string, email: string) => {
+    const cooldownAcquired = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.MfaCodeResendCooldown(userId),
+      KeyStoreTtls.MfaCodeResendCooldownInSeconds,
+      "1"
+    );
+    if (!cooldownAcquired) return;
+
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId

@@ -85,6 +85,7 @@ export const KeyStorePrefixes = {
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
+  MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
@@ -158,6 +159,8 @@ export const KeyStoreTtls = {
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes
+  MfaCodeResendCooldownInSeconds: 60, // 1 minute
+
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2

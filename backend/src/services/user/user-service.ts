@@ -144,14 +144,23 @@ export const userServiceFactory = ({
     const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
     await assertMfaMethodConfigured(userId, method);
 
-    const recoveryCodes = await mfaRecoveryCodeService.rotateRecoveryCodes({
-      userId,
-      skipMfaEnabledCheck: true
-    });
+    const { recoveryCodes, updatedUser } = await userDAL.transaction(async (tx) => {
+      const codes = await mfaRecoveryCodeService.rotateRecoveryCodes({
+        userId,
+        skipMfaEnabledCheck: true,
+        tx
+      });
 
-    const updatedUser = await userDAL.updateById(userId, {
-      isMfaEnabled: true,
-      selectedMfaMethod: method
+      const updated = await userDAL.updateById(
+        userId,
+        {
+          isMfaEnabled: true,
+          selectedMfaMethod: method
+        },
+        tx
+      );
+
+      return { recoveryCodes: codes, updatedUser: updated };
     });
 
     return { user: updatedUser, recoveryCodes };
