@@ -73,7 +73,8 @@ export enum AppConnection {
   Rundeck = "rundeck",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
-  Cloud66 = "cloud-66"
+  Cloud66 = "cloud-66",
+  LiteLLM = "litellm"
 }
 
 export enum AWSRegion {

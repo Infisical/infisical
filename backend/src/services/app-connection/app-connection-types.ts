@@ -269,6 +269,12 @@ import {
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
 import {
+  TLiteLLMConnection,
+  TLiteLLMConnectionConfig,
+  TLiteLLMConnectionInput,
+  TValidateLiteLLMConnectionCredentialsSchema
+} from "./litellm";
+import {
   TMongoDBConnection,
   TMongoDBConnectionConfig,
   TMongoDBConnectionInput,
@@ -522,6 +528,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TRundeckConnection
   | THasuraCloudConnection
   | TQoveryConnection
+  | TLiteLLMConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -608,6 +615,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRundeckConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
+  | TLiteLLMConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -725,7 +733,8 @@ export type TAppConnectionConfig =
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
   | THasuraCloudConnectionConfig
-  | TQoveryConnectionConfig;
+  | TQoveryConnectionConfig
+  | TLiteLLMConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -802,7 +811,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
-  | TValidateQoveryConnectionCredentialsSchema;
+  | TValidateQoveryConnectionCredentialsSchema
+  | TValidateLiteLLMConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

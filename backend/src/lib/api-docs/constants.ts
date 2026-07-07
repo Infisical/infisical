@@ -2938,6 +2938,10 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    LITELLM: {
+      apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
+      instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
     CLOUD66: {
       accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
     },

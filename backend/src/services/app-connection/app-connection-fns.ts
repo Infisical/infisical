@@ -188,6 +188,7 @@ import {
   validateLaravelForgeConnectionCredentials
 } from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
+import { getLiteLLMConnectionListItem, LiteLLMConnectionMethod, validateLiteLLMConnectionCredentials } from "./litellm";
 import { getMongoDBConnectionListItem, MongoDBConnectionMethod, validateMongoDBConnectionCredentials } from "./mongodb";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
@@ -382,7 +383,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
     getRundeckConnectionListItem(),
-    getQoveryConnectionListItem()
+    getQoveryConnectionListItem(),
+    getLiteLLMConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -628,7 +630,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -724,6 +727,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case LiteLLMConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
@@ -881,7 +885,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
-  [AppConnection.Qovery]: platformManagedCredentialsNotSupported
+  [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
+  [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

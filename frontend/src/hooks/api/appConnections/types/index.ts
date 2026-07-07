@@ -42,6 +42,7 @@ import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
+import { TLiteLLMConnection } from "./litellm-connection";
 import { TMongoDBConnection } from "./mongodb-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
@@ -115,6 +116,7 @@ export * from "./heroku-connection";
 export * from "./humanitec-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
+export * from "./litellm-connection";
 export * from "./mongodb-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
@@ -224,7 +226,8 @@ export type TAppConnection =
   | TTriggerDevConnection
   | TRundeckConnection
   | THasuraCloudConnection
-  | TQoveryConnection;
+  | TQoveryConnection
+  | TLiteLLMConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

@@ -143,6 +143,10 @@ import {
 } from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import {
+  LiteLLMConnectionListItemSchema,
+  SanitizedLiteLLMConnectionSchema
+} from "@app/services/app-connection/litellm";
+import {
   MongoDBConnectionListItemSchema,
   SanitizedMongoDBConnectionSchema
 } from "@app/services/app-connection/mongodb";
@@ -308,7 +312,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
-  ...SanitizedQoveryConnectionSchema.options
+  ...SanitizedQoveryConnectionSchema.options,
+  ...SanitizedLiteLLMConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -386,7 +391,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
-  QoveryConnectionListItemSchema
+  QoveryConnectionListItemSchema,
+  LiteLLMConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
