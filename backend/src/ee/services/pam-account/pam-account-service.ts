@@ -489,6 +489,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       updateData.encryptedConnectionDetails = await encrypt(projectId, validated);
     }
 
+    let principalChanged = false;
     if (credentials) {
       const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
       const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
@@ -498,6 +499,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       assertPasswordMeetsRequirements(validated, templateSettings);
       updateData.encryptedCredentials = await encrypt(projectId, validated);
       updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
+      const oldUsername = (existingCredentials as { username?: string }).username;
+      const newUsername = (validated as { username?: string }).username;
+      if (oldUsername !== newUsername) principalChanged = true;
     }
 
     let routingChanged =
@@ -511,7 +515,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const newConn = validateConnectionDetails(accountType, connectionDetails) as { host?: string; port?: number };
       if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) routingChanged = true;
     }
-    if (routingChanged && existing.rotationAccountId) {
+    if ((routingChanged || principalChanged) && existing.rotationAccountId) {
       updateData.rotationAccountId = null;
     }
 
