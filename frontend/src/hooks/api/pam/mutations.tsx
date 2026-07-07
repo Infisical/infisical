@@ -473,6 +473,38 @@ export const useRemovePamProductIdentityMember = () => {
   });
 };
 
+// Product user/group removal must go through the PAM endpoints so approver assignments and
+// folder memberships are stripped alongside the membership (the generic workspace routes skip that).
+export const useRemovePamProductUserMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId }: { userId: string; projectId: string }) => {
+      const { data } = await apiRequest.delete(`/api/v1/pam/memberships/users/${userId}`);
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+    }
+  });
+};
+
+export const useRemovePamProductGroupMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId }: { groupId: string; projectId: string }) => {
+      const { data } = await apiRequest.delete(`/api/v1/pam/memberships/groups/${groupId}`);
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
+      });
+    }
+  });
+};
+
 export const useAddAccountIdentityMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
