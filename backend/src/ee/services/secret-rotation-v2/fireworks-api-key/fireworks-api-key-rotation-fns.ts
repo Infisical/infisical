@@ -123,7 +123,7 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
       generatedCredentials.map((credential) => $deleteApiKey(apiKey, accountId, serviceAccountUserId, credential.keyId))
     );
 
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       if (result.status === "rejected") {
         logger.error(
           result.reason,
