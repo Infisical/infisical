@@ -423,7 +423,8 @@ export const pamSessionServiceFactory = ({
       if (!grant) {
         throw new ForbiddenRequestError({
           name: "PAM_APPROVAL_REQUIRED",
-          message: "Access request required"
+          message: "Access request required",
+          details: { requireReason: policy.requireReason }
         });
       }
       // A null expiresAt means a never-expiring grant per the checkGrant contract
@@ -432,7 +433,8 @@ export const pamSessionServiceFactory = ({
         if (grantRemainingMs <= 0) {
           throw new ForbiddenRequestError({
             name: "PAM_GRANT_EXPIRED",
-            message: "Your approved access has expired"
+            message: "Your approved access has expired",
+            details: { requireReason: policy.requireReason }
           });
         }
         sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);

@@ -430,6 +430,7 @@ export const pamAccessRequestServiceFactory = ({
   };
 
   const createRequest = async ({ accountId, path, projectId, reason, duration, ...ctx }: TCreateAccessRequestDTO) => {
+    const trimmedReason = reason?.trim() || undefined;
     await verifyProductMembership(permissionService, projectId, ctx);
 
     if (!accountId && !path) {
@@ -455,8 +456,16 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!resolveAccessControls(account.templatePolicies).requiresApproval) {
+    const accessControls = resolveAccessControls(account.templatePolicies);
+    if (!accessControls.requiresApproval) {
       throw new BadRequestError({ message: "This account does not require approval" });
+    }
+
+    if (accessControls.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to request access to this account"
+      });
     }
 
     if (!account.folderId) {
@@ -521,7 +530,7 @@ export const pamAccessRequestServiceFactory = ({
     const requestData = {
       accountId: account.id,
       folderId: account.folderId,
-      reason,
+      reason: trimmedReason,
       duration
     } as unknown as TApprovalRequestData;
 
@@ -533,7 +542,7 @@ export const pamAccessRequestServiceFactory = ({
         policyType: ApprovalPolicyType.PamAccess,
         policySteps: stepsForRequest,
         requestData,
-        justification: reason,
+        justification: trimmedReason,
         requesterUserId: ctx.actorId,
         requesterName: requesterName || "Unknown",
         requesterEmail: user.email || "",
@@ -586,7 +595,7 @@ export const pamAccessRequestServiceFactory = ({
               accountName: account.name,
               folderName: account.folderName ?? undefined,
               accessDuration: formatDuration(duration),
-              reason,
+              reason: trimmedReason,
               approvalUrl
             }
           });

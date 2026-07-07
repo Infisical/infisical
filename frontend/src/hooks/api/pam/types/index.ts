@@ -209,6 +209,7 @@ export type TAccessiblePamAccount = {
   accountType: PamAccountType;
   canLaunch: boolean;
   requiresApproval?: boolean;
+  requireReason?: boolean;
   accessStatus?: PamAccessStatus;
   grantExpiresAt?: string | null;
   disabledReason?: string | null;

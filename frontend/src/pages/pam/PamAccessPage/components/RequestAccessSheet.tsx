@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -54,12 +55,16 @@ const DURATION_OPTIONS = [
   { value: "7d", label: "1 week" }
 ];
 
-const schema = z.object({
-  duration: z.string().min(1, "Required"),
-  reason: z.string().min(1, "Required").max(500)
-});
+// Reason requiredness follows the template's Require Reason policy, same as the API and CLI
+const makeSchema = (requireReason: boolean) =>
+  z.object({
+    duration: z.string().min(1, "Required"),
+    reason: requireReason
+      ? z.string().trim().min(1, "Required").max(500)
+      : z.string().trim().max(500)
+  });
 
-type FormData = z.infer<typeof schema>;
+type FormData = z.infer<ReturnType<typeof makeSchema>>;
 
 type Props = {
   account: TAccessiblePamAccount | null;
@@ -140,6 +145,8 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
   const isPending = account?.accessStatus === PamAccessStatus.Pending;
+  const requireReason = Boolean(account?.requireReason);
+  const schema = useMemo(() => makeSchema(requireReason), [requireReason]);
 
   const {
     control,
@@ -162,7 +169,7 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       {
         accountId: account.id,
         duration: data.duration,
-        reason: data.reason
+        reason: data.reason || undefined
       },
       {
         onSuccess: () => {
@@ -211,7 +218,7 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
                   render={({ field, fieldState }) => (
                     <Field>
                       <FieldLabel>
-                        Reason <span className="text-danger">*</span>
+                        Reason {requireReason && <span className="text-danger">*</span>}
                       </FieldLabel>
                       <FieldContent>
                         <TextArea

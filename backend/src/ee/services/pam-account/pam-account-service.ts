@@ -567,7 +567,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval } = resolveAccessControls(a.templatePolicies);
+        const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
         const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
@@ -587,6 +587,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           projectId: a.projectId,
           canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
           requiresApproval,
+          requireReason,
           accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           disabledReason,
