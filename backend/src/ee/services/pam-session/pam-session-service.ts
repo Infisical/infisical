@@ -17,7 +17,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccessStatus, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
@@ -88,7 +88,7 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant">;
+  pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant" | "getAccessStatusBatch">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -421,10 +421,18 @@ export const pamSessionServiceFactory = ({
         projectId
       });
       if (!grant) {
+        // Distinguish "no request yet" from "request awaiting review" so the CLI can guide the
+        // user to their existing request instead of prompting into a duplicate-request error
+        const statusEntry = (
+          await pamAccessRequestService.getAccessStatusBatch(actor.actorId, [account.id], projectId)
+        ).get(account.id);
         throw new ForbiddenRequestError({
           name: "PAM_APPROVAL_REQUIRED",
           message: "Access request required",
-          details: { requireReason: policy.requireReason }
+          details: {
+            requireReason: policy.requireReason,
+            hasPendingRequest: statusEntry?.accessStatus === PamAccessStatus.Pending
+          }
         });
       }
       // A null expiresAt means a never-expiring grant per the checkGrant contract
