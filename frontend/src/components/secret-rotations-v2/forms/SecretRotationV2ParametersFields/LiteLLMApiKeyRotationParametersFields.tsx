@@ -188,7 +188,7 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
               isError={Boolean(error)}
               errorText={error?.message}
               label="Additional Key Options (JSON)"
-              tooltipText="Common fields: max_budget (number), tpm_limit / rpm_limit (numbers), metadata (object). user_id, team_id and models are set via the fields above; key_alias, auto_rotate, rotation_interval, duration, send_invite_email and key_type are managed by Infisical and cannot be set here."
+              tooltipText="Common fields: max_budget (number), tpm_limit / rpm_limit (numbers), metadata (object). user_id, team_id and models are set on the general tab; key_alias, auto_rotate, rotation_interval, duration, send_invite_email and key_type are managed by Infisical and cannot be set here."
             >
               <TextArea
                 {...field}
