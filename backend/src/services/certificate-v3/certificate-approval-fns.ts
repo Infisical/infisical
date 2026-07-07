@@ -124,7 +124,7 @@ const buildRevalidationRequest = ({
   notAfter?: Date | null;
   altNames?: TAltNameEntry[] | null;
   profileDefaults: Parameters<typeof applyProfileDefaults>[1];
-  ttl: string;
+  ttl?: string;
 }): TCertificateRequest => {
   const reconstructedRequest: TCertificateRequest = csr
     ? applyProfileDefaults(extractCertificateRequestFromCSR(csr), profileDefaults)
@@ -154,7 +154,7 @@ const buildRevalidationRequest = ({
   if (notAfter) {
     mappedRequest.notBefore = notBefore || undefined;
     mappedRequest.notAfter = notAfter;
-  } else {
+  } else if (ttl) {
     mappedRequest.validity = { ttl };
   }
 
@@ -621,7 +621,7 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
     altNames: TAltNameEntry[] | null,
-    ttl: string
+    ttl?: string
   ): Promise<TCertificateIssuanceResponse | null> => {
     if (!profile.caId) {
       return null;
@@ -696,9 +696,11 @@ export const certificateApprovalServiceFactory = (
       ttl
     });
 
+    const isAdcsCa = caType === CaType.ADCS || caType === CaType.AZURE_AD_CS;
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest
+      mappedReconstructedRequest,
+      isAdcsCa ? { skipExtensionRequired: true } : undefined
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
@@ -1011,9 +1013,6 @@ export const certificateApprovalServiceFactory = (
       throw new BadRequestError({ message: "Certificate request is missing profile ID" });
     }
     const { ttl } = certRequest;
-    if (!ttl) {
-      throw new BadRequestError({ message: "Certificate request is missing TTL" });
-    }
     const altNames = certRequest.altNames as TAltNameEntry[] | null;
 
     await certificateRequestDAL.updateById(certificateRequestId, {
@@ -1032,10 +1031,14 @@ export const certificateApprovalServiceFactory = (
         certificateRequestId,
         targetProfile,
         altNames,
-        ttl
+        ttl || undefined
       );
       if (externalCaResult) {
         return externalCaResult;
+      }
+
+      if (!ttl) {
+        throw new BadRequestError({ message: "Certificate request is missing TTL" });
       }
 
       if (certRequest.csr) {

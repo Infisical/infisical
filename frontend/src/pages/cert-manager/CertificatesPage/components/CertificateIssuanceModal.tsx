@@ -143,7 +143,7 @@ const buildFormSchema = (isAdcs: boolean) => {
 const strictFormSchema = buildFormSchema(false);
 const adcsFormSchema = buildFormSchema(true);
 
-export type FormData = z.infer<typeof strictFormSchema>;
+export type FormData = z.infer<typeof adcsFormSchema>;
 
 type Props = {
   popUp: UsePopUpState<["issueCertificate"]>;
@@ -240,7 +240,7 @@ export const CertificateIssuanceModal = ({
   isAdcsProfileRef.current = isAdcsProfile;
 
   const externalCaHint =
-    "Validity, key usages, extended key usages and basic constraints are controlled by the ADCS's certificate template.";
+    "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
 
   const { data: policyData } = useGetCertificatePolicyById({
     policyId: actualSelectedProfile?.certificatePolicyId || "",
