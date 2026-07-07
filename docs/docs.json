@@ -134,6 +134,7 @@
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/f5-big-ip",
+                      "integrations/app-connections/fireworks",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
@@ -492,6 +493,7 @@
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/datadog-application-key-secret",
                       "documentation/platform/secret-rotation/dbt-service-token",
+                      "documentation/platform/secret-rotation/fireworks-api-key",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
@@ -1629,6 +1631,18 @@
                     ]
                   },
                   {
+                    "group": "Fireworks",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/fireworks/list",
+                      "api-reference/endpoints/app-connections/fireworks/available",
+                      "api-reference/endpoints/app-connections/fireworks/get-by-id",
+                      "api-reference/endpoints/app-connections/fireworks/get-by-name",
+                      "api-reference/endpoints/app-connections/fireworks/create",
+                      "api-reference/endpoints/app-connections/fireworks/update",
+                      "api-reference/endpoints/app-connections/fireworks/delete"
+                    ]
+                  },
+                  {
                     "group": "Fly.io",
                     "pages": [
                       "api-reference/endpoints/app-connections/flyio/list",
@@ -2441,6 +2455,19 @@
                       "api-reference/endpoints/secret-rotations/dbt-service-token/list",
                       "api-reference/endpoints/secret-rotations/dbt-service-token/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/dbt-service-token/update"
+                    ]
+                  },
+                  {
+                    "group": "Fireworks API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/create",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/delete",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/list",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/update"
                     ]
                   },
                   {

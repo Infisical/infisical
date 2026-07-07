@@ -13,6 +13,7 @@ import { logger } from "@app/lib/logger";
 import { FIREWORKS_API_BASE_URL } from "@app/services/app-connection/fireworks/fireworks-connection-fns";
 
 import {
+  TFireworksApiKeyRotationGeneratedCredential,
   TFireworksApiKeyRotationGeneratedCredentials,
   TFireworksApiKeyRotationWithConnection
 } from "./fireworks-api-key-rotation-types";
@@ -52,6 +53,20 @@ const $createApiKey = async (
     if (error instanceof BadRequestError) throw error;
     throw new BadRequestError({
       message: `Failed to create Fireworks API key: ${error instanceof AxiosError ? error.message : "Unknown error"}`
+    });
+  }
+};
+
+const $checkApiKey = async (generatedApiKey: string, accountId: string): Promise<void> => {
+  try {
+    await request.get(`${FIREWORKS_API_BASE_URL}/v1/accounts/${accountId}`, {
+      headers: {
+        Authorization: `Bearer ${generatedApiKey}`
+      }
+    });
+  } catch (error: unknown) {
+    throw new BadRequestError({
+      message: `Fireworks API key verification failed: ${error instanceof AxiosError ? error.message : "Unknown error"}`
     });
   }
 };
@@ -140,6 +155,10 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
     return callback(credentials);
   };
 
+  const checkActiveCredentials = async ({ apiKey: generatedKey }: TFireworksApiKeyRotationGeneratedCredential) => {
+    await $checkApiKey(generatedKey, accountId);
+  };
+
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TFireworksApiKeyRotationGeneratedCredentials> = (
     generatedCredentials
   ) => [{ key: secretsMapping.apiKey, value: generatedCredentials.apiKey }];
@@ -148,6 +167,7 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

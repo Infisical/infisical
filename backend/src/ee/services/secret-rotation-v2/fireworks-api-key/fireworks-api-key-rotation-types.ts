@@ -22,3 +22,5 @@ export type TFireworksApiKeyRotationWithConnection = TFireworksApiKeyRotation & 
 export type TFireworksApiKeyRotationGeneratedCredentials = z.infer<
   typeof FireworksApiKeyRotationGeneratedCredentialsSchema
 >;
+
+export type TFireworksApiKeyRotationGeneratedCredential = TFireworksApiKeyRotationGeneratedCredentials[number];

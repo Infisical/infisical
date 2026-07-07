@@ -528,6 +528,14 @@ export const AppConnectionsBrowser = () => {
       category: "AI & LLM",
     },
     {
+      name: "Fireworks",
+      slug: "fireworks",
+      path: "/integrations/app-connections/fireworks",
+      description:
+        "Learn how to connect Fireworks AI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
       name: "DigiCert",
       slug: "digicert",
       path: "/integrations/app-connections/digicert",

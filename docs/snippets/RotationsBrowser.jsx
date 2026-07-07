@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
+  const categories = ["All", "AI & LLM", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
 
   const rotations = [
     {
@@ -157,6 +157,15 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/openrouter-api-key",
       description:
         "Learn how to automatically rotate OpenRouter API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Fireworks API Key",
+      slug: "fireworks-api-key",
+      path: "/documentation/platform/secret-rotation/fireworks-api-key",
+      description:
+        "Learn how to automatically rotate Fireworks AI API keys.",
       category: "AI & LLM",
       rotationType: "Dual-Phase",
     },
