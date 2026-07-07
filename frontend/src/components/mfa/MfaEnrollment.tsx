@@ -34,9 +34,12 @@ export const MfaEnrollment = ({ method, onComplete }: Props) => {
     SecurityClient.setMfaToken("");
   }, []);
 
-  const handleVerified = async () => {
+  const handleVerified = async (mfaSessionId?: string) => {
     try {
-      const { recoveryCodes: codes } = await activateMfa({ selectedMfaMethod: method });
+      const { recoveryCodes: codes } = await activateMfa({
+        selectedMfaMethod: method,
+        mfaSessionId
+      });
       setRecoveryCodes(codes);
       setPhase("recovery");
     } catch (error: any) {

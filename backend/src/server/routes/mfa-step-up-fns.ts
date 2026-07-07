@@ -8,7 +8,8 @@ import { MfaMethod } from "@app/services/auth/auth-type";
 // disabling MFA).
 export const MfaStepUpResource = {
   RecoveryCodes: "mfa-recovery-codes",
-  DisableMfa: "mfa-disable"
+  DisableMfa: "mfa-disable",
+  EnableMfa: "mfa-enable"
 } as const;
 
 export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStepUpResource];
@@ -33,8 +34,15 @@ export const ensureStepUpMfa = async (
     userId,
     resourceId,
     mfaSessionId,
-    message
-  }: { userId: string; resourceId: TMfaStepUpResource; mfaSessionId?: string; message: string }
+    message,
+    mfaMethod: mfaMethodOverride
+  }: {
+    userId: string;
+    resourceId: TMfaStepUpResource;
+    mfaSessionId?: string;
+    message: string;
+    mfaMethod?: MfaMethod;
+  }
 ) => {
   if (
     mfaSessionId &&
@@ -48,7 +56,7 @@ export const ensureStepUpMfa = async (
   }
 
   const user = await server.services.user.getMe(userId);
-  const mfaMethod = (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+  const mfaMethod = mfaMethodOverride ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
 
   const newMfaSessionId = await server.services.mfaSession.createMfaSession(userId, resourceId, mfaMethod);
 

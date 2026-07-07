@@ -66,7 +66,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   // Enroll a factor: proves possession of the factor in-request and persists it.
   // This does NOT mint recovery codes; those are issued only when MFA is enabled
-  // (POST /me/mfa/activate).
+  // (POST /me/mfa/activate). Because proving the factor here is itself proof of the
+  // factor, a verified EnableMfa step-up session is minted and returned so the
+  // enrollment wizard can immediately enable MFA without a redundant challenge.
   server.route({
     method: "POST",
     url: "/me/mfa/enroll",
@@ -104,7 +106,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       ]),
       response: {
-        200: z.object({})
+        200: z.object({
+          mfaSessionId: z.string()
+        })
       }
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
@@ -127,9 +131,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      // Enrollment only proves/persists the factor. Recovery codes are minted
-      // solely when MFA is enabled (POST /me/mfa/activate), not here.
-      return {};
+      const mfaSessionId = await server.services.mfaSession.createVerifiedMfaSession(
+        req.permission.id,
+        MfaStepUpResource.EnableMfa,
+        req.body.method
+      );
+
+      return { mfaSessionId };
     }
   });
 
@@ -161,7 +169,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   // Enable MFA. Requires the selected method to be configured (email always is),
   // and issues a fresh recovery-code pool (invalidating any prior codes), returned
-  // once so the client can surface them to the user.
+  // once so the client can surface them to the user. Because the user chooses the
+  // method before enabling, enabling is gated behind a fresh step-up MFA challenge
+  // against that method — this proves the user can actually satisfy the factor they
+  // just turned on, so they can't lock themselves out.
   server.route({
     method: "POST",
     url: "/me/mfa/activate",
@@ -171,7 +182,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "activateUserMfa",
       body: z.object({
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        mfaSessionId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -182,6 +194,14 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
+      await ensureStepUpMfa(server, {
+        userId: req.permission.id,
+        resourceId: MfaStepUpResource.EnableMfa,
+        mfaSessionId: req.body.mfaSessionId,
+        mfaMethod: req.body.selectedMfaMethod,
+        message: "MFA verification is required to enable two-factor authentication"
+      });
+
       const { user, recoveryCodes } = await server.services.user.activateMfa({
         userId: req.permission.id,
         selectedMfaMethod: req.body.selectedMfaMethod

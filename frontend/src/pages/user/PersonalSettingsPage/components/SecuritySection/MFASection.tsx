@@ -26,7 +26,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useActivateMfa, useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
+import { useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -35,13 +35,14 @@ import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 import { MfaMethodsCard } from "./MfaMethodsCard";
 import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
 import { useDisableMfa } from "./useDisableMfa";
+import { useEnableMfa } from "./useEnableMfa";
 
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
   const { mutateAsync: setMfaMethod } = useSetMfaMethod();
-  const { mutateAsync: activateMfa } = useActivateMfa();
+  const { isBusy: isEnabling, enableMfa } = useEnableMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
@@ -83,18 +84,7 @@ export const MFASection = () => {
   // MFA is currently enabled.
   const hasRecoveryCodes = user.isMfaEnabled;
 
-  const handleEnable = async () => {
-    try {
-      const { recoveryCodes } = await activateMfa({ selectedMfaMethod: selectedMethod });
-      setNewRecoveryCodes(recoveryCodes);
-      createNotification({ text: "Two-factor authentication enabled", type: "success" });
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to enable two-factor authentication",
-        type: "error"
-      });
-    }
-  };
+  const handleEnable = () => enableMfa(selectedMethod, setNewRecoveryCodes);
 
   const handlePreferredMethodChange = async (method: MfaMethod) => {
     try {
@@ -112,45 +102,38 @@ export const MFASection = () => {
   // step-up flow as viewing recovery codes) before it goes through.
   const handleDisable = () => disableMfa(() => setIsDisableOpen(false));
 
-  const disabledBanner = (
+  const banner = (
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="flex items-start justify-between">
         <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
-        <Badge variant="danger">
-          <CircleAlertIcon /> Not enabled
-        </Badge>
+        {user.isMfaEnabled ? (
+          <Badge variant="success">
+            <ShieldCheckIcon /> Enabled
+          </Badge>
+        ) : (
+          <Badge variant="danger">
+            <CircleAlertIcon /> Not enabled
+          </Badge>
+        )}
       </div>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Two-factor authentication adds an additional layer of security to your account by requiring
-        more than just a password to sign in. Want to learn more about two-factor authentication?{" "}
-        <a
-          href={LEARN_MORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          Click here
-        </a>
-      </p>
-      <div className="mt-5">
-        <Button variant="org" onClick={handleEnable}>
-          <ShieldCheckIcon /> Enable two-factor authentication
-        </Button>
-      </div>
-    </div>
-  );
-
-  const enabledBanner = (
-    <div className="rounded-lg border border-border bg-card p-6">
-      <div className="flex items-start justify-between">
-        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
-        <Badge variant="success">
-          <ShieldCheckIcon /> Enabled
-        </Badge>
-      </div>
-      <p className="mt-2 max-w-2xl text-sm text-muted">
-        Two-factor authentication is protecting your account. Manage your methods and recovery
-        options below.
+        {user.isMfaEnabled ? (
+          "Two-factor authentication is protecting your account. Manage your methods and recovery options below."
+        ) : (
+          <>
+            Two-factor authentication adds an additional layer of security to your account by
+            requiring more than just a password to sign in. Want to learn more about two-factor
+            authentication?{" "}
+            <a
+              href={LEARN_MORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Click here
+            </a>
+          </>
+        )}
       </p>
 
       <div className="mt-6 border-t border-border pt-6">
@@ -184,14 +167,31 @@ export const MFASection = () => {
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-6">
-        <p className="text-sm text-muted">
-          {isMfaEnforced
-            ? "Your organization requires two-factor authentication, so it can't be disabled."
-            : "Turning this off keeps your configured methods, but your recovery codes are invalidated and a new set is issued when you re-enable."}
-        </p>
-        <Button variant="danger" isDisabled={isMfaEnforced} onClick={() => setIsDisableOpen(true)}>
-          <PowerIcon /> Disable two-factor authentication
-        </Button>
+        {user.isMfaEnabled ? (
+          <>
+            <p className="text-sm text-muted">
+              {isMfaEnforced
+                ? "Your organization requires two-factor authentication, so it can't be disabled."
+                : "Turning this off keeps your configured methods, but your recovery codes are invalidated and a new set is issued when you re-enable."}
+            </p>
+            <Button
+              variant="danger"
+              isDisabled={isMfaEnforced}
+              onClick={() => setIsDisableOpen(true)}
+            >
+              <PowerIcon /> Disable two-factor authentication
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted">
+              Choose your preferred method above, then enable two-factor authentication.
+            </p>
+            <Button variant="org" isPending={isEnabling} onClick={handleEnable}>
+              <ShieldCheckIcon /> Enable two-factor authentication
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -199,7 +199,7 @@ export const MFASection = () => {
   return (
     <>
       <div className="mb-6 flex flex-col gap-6">
-        {user.isMfaEnabled ? enabledBanner : disabledBanner}
+        {banner}
         <MfaMethodsCard />
         {hasRecoveryCodes && <RecoveryOptionsCard />}
       </div>

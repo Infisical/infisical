@@ -196,12 +196,39 @@ export const mfaSessionServiceFactory = ({
     return mfaSessionId;
   };
 
+  // Mints a session that is already ACTIVE, for flows where the factor was just
+  // proven in the same request (e.g. enrolling a factor proves possession of it),
+  // so the caller can satisfy a step-up gate without a redundant second challenge.
+  const createVerifiedMfaSession = async (
+    userId: string,
+    resourceId: string,
+    mfaMethod: MfaMethod
+  ): Promise<string> => {
+    const mfaSessionId = crypto.randomBytes(32).toString("hex");
+    const mfaSession: TMfaSession = {
+      sessionId: mfaSessionId,
+      userId,
+      resourceId,
+      status: MfaSessionStatus.ACTIVE,
+      mfaMethod
+    };
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.MfaSession(mfaSessionId),
+      KeyStoreTtls.MfaSessionInSeconds,
+      JSON.stringify(mfaSession)
+    );
+
+    return mfaSessionId;
+  };
+
   const deleteMfaSession = async (mfaSessionId: string) => {
     await keyStore.deleteItem(KeyStorePrefixes.MfaSession(mfaSessionId));
   };
 
   return {
     createMfaSession,
+    createVerifiedMfaSession,
     verifyMfaSession,
     getMfaSessionStatus,
     sendMfaCode,
