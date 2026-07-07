@@ -1,5 +1,4 @@
 import { Impersonated, JWT } from "google-auth-library";
-import net from "net";
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -10,9 +9,6 @@ import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-type
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
