@@ -70,6 +70,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   // the org-required MFA is actually completed (on the first successful verifyMfaToken,
   // or via POST /me/mfa/activate from a full authenticated session). This keeps a
   // password-only, pre-MFA session from bootstrapping recovery codes.
+  //
+  // Email is not an enrollable factor here: it is always available (it uses the
+  // account email) and needs no per-user setup, so only TOTP and WebAuthn are enrolled.
   server.route({
     method: "POST",
     url: "/me/mfa/enroll",
@@ -79,10 +82,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "enrollUserMfa",
       body: z.discriminatedUnion("method", [
-        z.object({
-          method: z.literal(MfaMethod.EMAIL),
-          code: z.string().trim()
-        }),
         z.object({
           method: z.literal(MfaMethod.TOTP),
           totp: z.string().trim()
@@ -112,12 +111,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
-      if (req.body.method === MfaMethod.EMAIL) {
-        await server.services.user.verifyMfaEnrollmentEmailCode({
-          userId: req.permission.id,
-          code: req.body.code
-        });
-      } else if (req.body.method === MfaMethod.TOTP) {
+      if (req.body.method === MfaMethod.TOTP) {
         await server.services.totp.verifyUserTotpConfig({
           userId: req.permission.id,
           totp: req.body.totp
@@ -129,32 +123,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
           name: req.body.name
         });
       }
-
-      return {};
-    }
-  });
-
-  // Email enrollment begin: emails a one-time code the user submits to POST
-  // /me/mfa/enroll to prove control of the account inbox before codes are minted.
-  server.route({
-    method: "POST",
-    url: "/me/mfa/enroll/email/code",
-    config: {
-      rateLimit: smtpRateLimit({
-        keyGenerator: (req) => req.permission?.id ?? req.realIp
-      })
-    },
-    schema: {
-      operationId: "sendMfaEnrollmentEmailCode",
-      response: {
-        200: z.object({})
-      }
-    },
-    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
-    handler: async (req) => {
-      await server.services.user.sendMfaEnrollmentEmailCode({
-        userId: req.permission.id
-      });
 
       return {};
     }

@@ -70,8 +70,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 600000);
       return { token, triesLeft, expiresAt };
     }
-    case TokenType.TOKEN_EMAIL_MFA:
-    case TokenType.TOKEN_EMAIL_MFA_ENROLLMENT: {
+    case TokenType.TOKEN_EMAIL_MFA: {
       const token = generateSixDigitToken();
       const triesLeft = 3;
       const expiresAt = new Date(new Date().getTime() + 300000);

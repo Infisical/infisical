@@ -25,15 +25,6 @@ export type TSetSelectedMfaMethodDTO = {
   selectedMfaMethod: MfaMethod;
 };
 
-export type TSendMfaEnrollmentEmailCodeDTO = {
-  userId: string;
-};
-
-export type TVerifyMfaEnrollmentEmailCodeDTO = {
-  userId: string;
-  code: string;
-};
-
 export type TUpdateUserEmailDTO = {
   userId: string;
   newEmail: string;

@@ -416,7 +416,6 @@ export const useEnrollMfa = () => {
   return useMutation({
     mutationFn: async (
       dto:
-        | { method: MfaMethod.EMAIL; code: string }
         | { method: MfaMethod.TOTP; totp: string }
         | {
             method: MfaMethod.WEBAUTHN;
@@ -435,15 +434,6 @@ export const useEnrollMfa = () => {
     }
   });
 };
-
-// Email enrollment begin: emails a one-time code to the account address that the
-// user submits via useEnrollMfa to prove inbox control before codes are minted.
-export const useSendMfaEnrollmentEmailCode = () =>
-  useMutation({
-    mutationFn: async () => {
-      await apiRequest.post("/api/v2/users/me/mfa/enroll/email/code");
-    }
-  });
 
 // Enable MFA. Issues a fresh recovery-code pool (invalidating any prior codes)
 // and returns it once so the caller can display it to the user.

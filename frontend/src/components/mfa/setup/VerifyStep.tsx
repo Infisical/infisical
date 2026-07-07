@@ -1,16 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { FingerprintIcon, MailIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FingerprintIcon } from "lucide-react";
 import QRCode from "qrcode";
 
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import { Button, Input } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import {
-  useEnrollMfa,
-  useGetUserTotpRegistration,
-  useSendMfaEnrollmentEmailCode
-} from "@app/hooks/api/users";
+import { useEnrollMfa, useGetUserTotpRegistration } from "@app/hooks/api/users";
 import { useRegisterPasskey } from "@app/hooks/api/webauthn";
 
 type Props = {
@@ -87,85 +83,6 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   );
 };
 
-const RESEND_COOLDOWN_SECONDS = 60;
-
-const EmailVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
-  const { mutateAsync: sendCode } = useSendMfaEnrollmentEmailCode();
-  const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
-  const [code, setCode] = useState("");
-  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
-  const hasSentInitialCode = useRef(false);
-
-  // Send the first code automatically when the step mounts.
-  useEffect(() => {
-    if (hasSentInitialCode.current) return;
-    hasSentInitialCode.current = true;
-    sendCode().catch(() => {
-      createNotification({ text: "Failed to send verification code", type: "error" });
-    });
-  }, [sendCode]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return undefined;
-    const timer = setTimeout(() => setCooldown((prev) => prev - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
-
-  const handleResend = async () => {
-    try {
-      await sendCode();
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-      createNotification({ text: "Sent a new verification code", type: "success" });
-    } catch {
-      createNotification({ text: "Failed to send verification code", type: "error" });
-    }
-  };
-
-  const handleVerify = async () => {
-    try {
-      await enrollMfa({ method: MfaMethod.EMAIL, code: code.trim() });
-      createNotification({ text: "Email authentication configured", type: "success" });
-      await onVerified();
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Invalid verification code",
-        type: "error"
-      });
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3 rounded-lg border border-border bg-container p-4">
-        <MailIcon className="mt-0.5 text-muted" />
-        <p className="text-sm text-muted">
-          We sent a one-time code to your account email. Enter it below to confirm you can receive
-          codes. A code will be sent the same way each time you sign in.
-        </p>
-      </div>
-      <Input
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        placeholder="Enter 6-digit code"
-        maxLength={6}
-      />
-      <div className="flex items-center gap-3">
-        <Button
-          variant="org"
-          isPending={isVerifying}
-          isDisabled={code.trim().length !== 6}
-          onClick={handleVerify}
-        >
-          Verify Code
-        </Button>
-        <Button variant="ghost" isDisabled={cooldown > 0} onClick={handleResend}>
-          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
 const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   const { registerPasskey, isRegistering } = useRegisterPasskey();
   const { mutateAsync: enrollMfa } = useEnrollMfa();
@@ -204,6 +121,5 @@ const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => 
 
 export const VerifyStep = ({ method, onVerified }: Props) => {
   if (method === MfaMethod.TOTP) return <TotpVerify onVerified={onVerified} />;
-  if (method === MfaMethod.EMAIL) return <EmailVerify onVerified={onVerified} />;
   return <WebAuthnVerify onVerified={onVerified} />;
 };

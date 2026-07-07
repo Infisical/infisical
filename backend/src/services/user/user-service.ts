@@ -26,11 +26,9 @@ import {
   TActivateUserMfaDTO,
   TDeactivateUserMfaDTO,
   TListUserGroupsDTO,
-  TSendMfaEnrollmentEmailCodeDTO,
   TSetSelectedMfaMethodDTO,
   TUpdateUserEmailDTO,
-  TVerifyCurrentEmailOTPDTO,
-  TVerifyMfaEnrollmentEmailCodeDTO
+  TVerifyCurrentEmailOTPDTO
 } from "./user-types";
 
 type TUserServiceFactoryDep = {
@@ -206,41 +204,6 @@ export const userServiceFactory = ({
     await assertMfaMethodConfigured(userId, selectedMfaMethod);
 
     return userDAL.updateById(userId, { selectedMfaMethod });
-  };
-
-  // Email enrollment begin: sends a one-time code to the account email so control
-  // of the inbox can be proven before recovery codes are minted (mirrors the login
-  // MFA email code, but scoped to a dedicated enrollment token type).
-  const sendMfaEnrollmentEmailCode = async ({ userId }: TSendMfaEnrollmentEmailCodeDTO) => {
-    const user = await userDAL.findById(userId);
-    if (!user || !user.email) throw new BadRequestError({ name: "Failed to send MFA enrollment code" });
-
-    const code = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_MFA_ENROLLMENT,
-      userId
-    });
-
-    await smtpService.sendMail({
-      template: SmtpTemplates.EmailMfa,
-      subjectLine: "Infisical MFA code",
-      recipients: [user.email],
-      substitutions: {
-        code
-      }
-    });
-  };
-
-  // Email enrollment proof: throws unless the code matches the one emailed above.
-  const verifyMfaEnrollmentEmailCode = async ({ userId, code }: TVerifyMfaEnrollmentEmailCodeDTO) => {
-    try {
-      await tokenService.validateTokenForUser({
-        type: TokenType.TOKEN_EMAIL_MFA_ENROLLMENT,
-        userId,
-        code
-      });
-    } catch (error) {
-      throw new BadRequestError({ message: "Invalid verification code", name: "VerifyMfaEnrollmentEmailCode" });
-    }
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
@@ -672,8 +635,6 @@ export const userServiceFactory = ({
     activateMfa,
     deactivateMfa,
     setSelectedMfaMethod,
-    sendMfaEnrollmentEmailCode,
-    verifyMfaEnrollmentEmailCode,
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,

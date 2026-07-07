@@ -30,7 +30,6 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
-  useSendMfaEnrollmentEmailCode,
   useSetMfaMethod,
   useUpdateOrgMembership,
   useUpdateUserAuthMethods
