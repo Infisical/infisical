@@ -36,6 +36,7 @@ import {
   validateRecordingConnection
 } from "../pam/pam-validators";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
@@ -70,6 +71,46 @@ type TPamAccountServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
+};
+
+const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings: unknown) => {
+  const requirements = PamTemplateSettingsSchema.safeParse(templateSettings).data?.passwordRequirements;
+  const { password } = credentials as { password?: string };
+  if (!requirements || !password) return;
+
+  let upper = 0;
+  let lower = 0;
+  let digit = 0;
+  let symbol = 0;
+  const allowed = requirements.allowedSymbols ? new Set(requirements.allowedSymbols.split("")) : null;
+  const disallowed = new Set<string>();
+  for (const ch of password) {
+    if (ch >= "A" && ch <= "Z") upper += 1;
+    else if (ch >= "a" && ch <= "z") lower += 1;
+    else if (ch >= "0" && ch <= "9") digit += 1;
+    else {
+      symbol += 1;
+      if (allowed && !allowed.has(ch)) disallowed.add(ch);
+    }
+  }
+
+  const violations: string[] = [];
+  if (password.length < requirements.length) violations.push(`be at least ${requirements.length} characters long`);
+  if (upper < requirements.required.uppercase)
+    violations.push(`include at least ${requirements.required.uppercase} uppercase letter(s)`);
+  if (lower < requirements.required.lowercase)
+    violations.push(`include at least ${requirements.required.lowercase} lowercase letter(s)`);
+  if (digit < requirements.required.digits)
+    violations.push(`include at least ${requirements.required.digits} number(s)`);
+  if (symbol < requirements.required.symbols)
+    violations.push(`include at least ${requirements.required.symbols} symbol(s)`);
+  if (allowed && disallowed.size > 0) violations.push(`only use these symbols: ${requirements.allowedSymbols}`);
+
+  if (violations.length > 0) {
+    throw new BadRequestError({
+      message: `Password does not meet this template's requirements: it must ${violations.join(", ")}.`
+    });
+  }
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -251,6 +292,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
+    assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
     const encryptedCredentials = await encrypt(projectId, validatedCredentials);
@@ -385,11 +427,25 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (credentials) {
       const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
       const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
+      const templateSettings = templateId
+        ? (await pamAccountTemplateDAL.findById(templateId))?.settings
+        : existing.templateSettings;
+      assertPasswordMeetsRequirements(validated, templateSettings);
       updateData.encryptedCredentials = await encrypt(projectId, validated);
       updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
     }
 
-    const routingChanged = connectionDetails !== undefined || gatewayId !== undefined || gatewayPoolId !== undefined;
+    let routingChanged =
+      (gatewayId !== undefined && gatewayId !== existing.gatewayId) ||
+      (gatewayPoolId !== undefined && gatewayPoolId !== existing.gatewayPoolId);
+    if (connectionDetails) {
+      const oldConn = validateConnectionDetails(
+        accountType,
+        await decrypt(projectId, existing.encryptedConnectionDetails)
+      ) as { host?: string; port?: number };
+      const newConn = validateConnectionDetails(accountType, connectionDetails) as { host?: string; port?: number };
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) routingChanged = true;
+    }
     if (routingChanged && existing.rotationAccountId) {
       updateData.rotationAccountId = null;
     }

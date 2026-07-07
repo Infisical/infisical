@@ -914,7 +914,9 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
     [PamSheetTab.Configuration]: accountId ? (
       <EditAccountForm accountId={accountId} onDirtyChange={setIsFormDirty} />
     ) : null,
-    [PamSheetTab.Rotation]: accountId ? <RotationTab accountId={accountId} /> : null,
+    [PamSheetTab.Rotation]: accountId ? (
+      <RotationTab accountId={accountId} onDirtyChange={setIsFormDirty} />
+    ) : null,
     [PamSheetTab.Advanced]: accountId ? (
       <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />
     ) : null

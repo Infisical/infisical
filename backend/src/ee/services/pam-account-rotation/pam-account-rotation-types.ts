@@ -30,5 +30,7 @@ export type TPamAccountRotationView = {
   rotationAccountId: string | null;
   rotationAccountName: string | null;
   lastRotatedAt: Date | null;
+  rotationStatus: string | null;
+  lastRotationError: string | null;
   isReady: boolean;
 };

@@ -289,7 +289,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     const rotation = parsed.success ? parsed.data.rotation : undefined;
     const enabled = rotation?.enabled === true && ROTATABLE_TYPE_VALUES.includes(template.type);
 
-    if (!enabled || !rotation) {
+    if (!enabled || !rotation || rotation.intervalSeconds == null) {
       await dbClient(TableName.PamAccount)
         .where({ templateId })
         .whereNotNull("nextRotationAt")
@@ -326,16 +326,15 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       accountId: account.id,
       accountType: account.accountType,
       rotationAccountId: account.rotationAccountId,
-      credentialConfigured: account.credentialConfigured,
-      templateSettings: account.templateSettings
+      credentialConfigured: account.credentialConfigured
     });
     const rotation = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.rotation;
     const current = account.nextRotationAt ?? null;
 
     let nextRotationAt: Date | null = current;
-    if (!readiness.ready) {
+    if (!readiness.ready || !rotation?.enabled || rotation.intervalSeconds == null) {
       nextRotationAt = null;
-    } else if (!current && rotation?.enabled) {
+    } else if (!current) {
       nextRotationAt = computeNextRotationAt({
         anchor: account.lastRotatedAt ?? null,
         intervalSeconds: rotation.intervalSeconds,

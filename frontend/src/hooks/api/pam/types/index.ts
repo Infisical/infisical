@@ -475,6 +475,8 @@ export type TPamAccountRotation = {
   rotationAccountId: string | null;
   rotationAccountName: string | null;
   lastRotatedAt: string | null;
+  rotationStatus: string | null;
+  lastRotationError: string | null;
   isReady: boolean;
 };
 

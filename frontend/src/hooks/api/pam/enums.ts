@@ -30,7 +30,7 @@ export const PAM_ROTATION_INTERVAL_OPTIONS: { seconds: number; label: string }[]
 ];
 
 export const formatRotationInterval = (seconds: number | null | undefined): string => {
-  if (!seconds) return "Not set";
+  if (seconds == null) return "Manual only";
   const preset = PAM_ROTATION_INTERVAL_OPTIONS.find((option) => option.seconds === seconds);
   if (preset) return preset.label;
   const hours = Math.round(seconds / 3600);

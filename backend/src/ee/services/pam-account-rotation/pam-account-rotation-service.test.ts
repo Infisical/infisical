@@ -35,7 +35,7 @@ const buildAccount = () => ({
   encryptedCredentials: blobOf({ username: "app", password: CURRENT_PASSWORD }),
   encryptedConnectionDetails: blobOf(connectionDetails),
   encryptedPendingCredentials: blobOf({ username: "app", password: PENDING_PASSWORD }),
-  templateSettings: { rotation: { enabled: true, intervalSeconds: 3600 } },
+  templateSettings: { rotation: { enabled: true, intervalSeconds: 3600 as number | null } },
   templateGatewayId: null,
   templateGatewayPoolId: null,
   gatewayId: null,
@@ -113,6 +113,23 @@ describe("rotateScheduledAccount recovery probe", () => {
         encryptedPendingCredentials: null,
         rotationStatus: ROTATION_STATUS.Success
       })
+    );
+  });
+
+  test("manual mode (null interval) rotates but does not schedule a next run", async () => {
+    const account = {
+      ...buildAccount(),
+      templateSettings: { rotation: { enabled: true, intervalSeconds: null } }
+    };
+    const { service, updateById } = buildService((password) => password === PENDING_PASSWORD, { account });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Success);
+    // markRotated must clear nextRotationAt for a manual account so the cron never re-selects it.
+    expect(updateById).toHaveBeenCalledWith(
+      "acc-1",
+      expect.objectContaining({ rotationStatus: ROTATION_STATUS.Success, nextRotationAt: null })
     );
   });
 

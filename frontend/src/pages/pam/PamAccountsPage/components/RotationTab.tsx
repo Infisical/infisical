@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Command,
@@ -26,8 +30,11 @@ import {
 import { TPamAccountRotation } from "@app/hooks/api/pam/types";
 
 import { formatDetailDate } from "../../components/PamDetailSheet";
+import { SheetSaveBar } from "../../components/SheetSaveBar";
 
-type Props = { accountId: string };
+type Props = { accountId: string; onDirtyChange?: (isDirty: boolean) => void };
+
+type RotationForm = { rotationAccountId: string | null };
 
 const passwordFormatBadges = (reqs: TPamAccountRotation["passwordRequirements"]) => {
   if (!reqs) return [];
@@ -48,12 +55,14 @@ const DetailRow = ({ label, children }: { label: string; children: React.ReactNo
 
 const RotationAccountPicker = ({
   accountId,
-  selectedId,
+  value,
+  onChange,
   selectedName,
   disabled
 }: {
   accountId: string;
-  selectedId: string | null;
+  value: string | null;
+  onChange: (rotationAccountId: string | null) => void;
   selectedName: string | null;
   disabled: boolean;
 }) => {
@@ -61,22 +70,16 @@ const RotationAccountPicker = ({
   const { data: candidates = [], isPending } = useGetPamRotationCandidates(accountId, {
     enabled: open
   });
-  const updateRotation = useUpdatePamAccountRotation();
 
   const allAccounts = candidates.flatMap((group) => group.accounts);
-  const selected = allAccounts.find((a) => a.id === selectedId);
-  const selectedLabel = selectedId
-    ? `${selected?.name ?? selectedName ?? selectedId}${selectedId === accountId ? " (this account)" : ""}`
+  const selected = allAccounts.find((a) => a.id === value);
+  const selectedLabel = value
+    ? `${selected?.name ?? selectedName ?? value}${value === accountId ? " (this account)" : ""}`
     : "None";
 
-  const onSelect = async (rotationAccountId: string | null) => {
+  const handleSelect = (rotationAccountId: string | null) => {
     setOpen(false);
-    try {
-      await updateRotation.mutateAsync({ accountId, rotationAccountId });
-      createNotification({ type: "success", text: "Rotation account updated" });
-    } catch {
-      createNotification({ type: "error", text: "Failed to update rotation account" });
-    }
+    onChange(rotationAccountId);
   };
 
   return (
@@ -99,9 +102,9 @@ const RotationAccountPicker = ({
               <CommandEmpty>No eligible accounts</CommandEmpty>
             )}
             <CommandGroup>
-              <CommandItem value="none" onSelect={() => onSelect(null)}>
+              <CommandItem value="none" onSelect={() => handleSelect(null)}>
                 None (not configured)
-                <Check className={`ml-auto size-4 ${selectedId ? "opacity-0" : "opacity-100"}`} />
+                <Check className={`ml-auto size-4 ${value ? "opacity-0" : "opacity-100"}`} />
               </CommandItem>
             </CommandGroup>
             {candidates.map((group) => (
@@ -113,7 +116,7 @@ const RotationAccountPicker = ({
                   <CommandItem
                     key={candidate.id}
                     value={candidate.id}
-                    onSelect={() => onSelect(candidate.id)}
+                    onSelect={() => handleSelect(candidate.id)}
                   >
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate font-medium">
@@ -123,7 +126,7 @@ const RotationAccountPicker = ({
                       <span className="truncate text-xs text-muted">{candidate.host}</span>
                     </div>
                     <Check
-                      className={`ml-auto size-4 ${selectedId === candidate.id ? "opacity-100" : "opacity-0"}`}
+                      className={`ml-auto size-4 ${value === candidate.id ? "opacity-100" : "opacity-0"}`}
                     />
                   </CommandItem>
                 ))}
@@ -136,21 +139,45 @@ const RotationAccountPicker = ({
   );
 };
 
-export const RotationTab = ({ accountId }: Props) => {
+export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
   const { data: rotation, isPending } = useGetPamAccountRotation(accountId);
   const { can } = usePamAccountActions(accountId);
   const canManage = can(PamResourcePermissionActions.ManageRotation);
   const rotateNow = useRotatePamAccount();
+  const updateRotation = useUpdatePamAccountRotation();
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isDirty }
+  } = useForm<RotationForm>({ defaultValues: { rotationAccountId: null } });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (rotation) reset({ rotationAccountId: rotation.rotationAccountId });
+  }, [rotation, reset]);
+
+  const onSubmit = async (data: RotationForm) => {
+    try {
+      await updateRotation.mutateAsync({ accountId, rotationAccountId: data.rotationAccountId });
+      createNotification({ type: "success", text: "Rotation account updated" });
+      reset(data);
+    } catch {
+      createNotification({ type: "error", text: "Failed to update rotation account" });
+    }
+  };
 
   const onRotateNow = async () => {
     try {
       await rotateNow.mutateAsync({ accountId });
       createNotification({ type: "success", text: "Credential rotated" });
     } catch {
-      createNotification({
-        type: "error",
-        text: "Rotation failed. Check the account's rotation status."
-      });
+      createNotification({ type: "error", text: "Rotation failed. See the error below." });
     }
   };
 
@@ -163,12 +190,14 @@ export const RotationTab = ({ accountId }: Props) => {
     );
   }
 
+  const hasFailure = rotation.rotationStatus === "failed" && Boolean(rotation.lastRotationError);
+
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
       <div className="rounded-lg border border-border bg-container p-4">
         <div className="mb-2 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Automatic rotation</h3>
+            <h3 className="text-sm font-semibold text-foreground">Rotation</h3>
             <p className="text-xs text-muted">
               How and when this account&apos;s password is rotated.
             </p>
@@ -176,13 +205,13 @@ export const RotationTab = ({ accountId }: Props) => {
           <span
             className={`text-xs font-medium ${rotation.enabled ? "text-success" : "text-muted"}`}
           >
-            {rotation.enabled ? "● Enabled" : "○ Disabled"}
+            {rotation.enabled ? "● Automatic" : "○ On demand"}
           </span>
         </div>
 
-        <DetailRow label="Frequency">
+        <DetailRow label="Schedule">
           <span className="text-sm text-muted">
-            {formatRotationInterval(rotation.intervalSeconds)}
+            {rotation.enabled ? formatRotationInterval(rotation.intervalSeconds) : "On demand only"}
           </span>
         </DetailRow>
         <DetailRow label="Password format">
@@ -204,6 +233,7 @@ export const RotationTab = ({ accountId }: Props) => {
           </span>
         </DetailRow>
         <Button
+          type="button"
           variant="pam"
           className="mt-4 w-full"
           isDisabled={!canManage || !rotation.isReady}
@@ -214,16 +244,30 @@ export const RotationTab = ({ accountId }: Props) => {
         </Button>
       </div>
 
+      {hasFailure && (
+        <Alert variant="danger">
+          <AlertTitle>Last rotation failed</AlertTitle>
+          <AlertDescription>{rotation.lastRotationError}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="rounded-lg border border-border bg-container p-4">
         <h3 className="text-sm font-semibold text-foreground">Rotation account</h3>
         <p className="mb-3 text-xs text-muted">
           The privileged account used to rotate this password.
         </p>
-        <RotationAccountPicker
-          accountId={accountId}
-          selectedId={rotation.rotationAccountId}
-          selectedName={rotation.rotationAccountName}
-          disabled={!canManage}
+        <Controller
+          control={control}
+          name="rotationAccountId"
+          render={({ field }) => (
+            <RotationAccountPicker
+              accountId={accountId}
+              value={field.value}
+              onChange={field.onChange}
+              selectedName={rotation.rotationAccountName}
+              disabled={!canManage}
+            />
+          )}
         />
         <p className="mt-2 text-xs text-muted">
           Select this account to have it rotate its own password. If set to None, the account will
@@ -231,13 +275,17 @@ export const RotationTab = ({ accountId }: Props) => {
         </p>
       </div>
 
-      {!rotation.isReady && rotation.enabled && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-          Rotation is enabled, but this account won&apos;t rotate until a rotation account is set.
-          Choose one above, or select this account to rotate its own password (which requires stored
-          credentials).
-        </div>
+      {!rotation.isReady && (
+        <Alert variant="warning">
+          <AlertTitle>Not rotating yet</AlertTitle>
+          <AlertDescription>
+            This account won&apos;t rotate until a rotation account is set. Choose one above, or
+            select this account to rotate its own password.
+          </AlertDescription>
+        </Alert>
       )}
-    </div>
+
+      {isDirty && <SheetSaveBar isPending={updateRotation.isPending} onDiscard={() => reset()} />}
+    </form>
   );
 };

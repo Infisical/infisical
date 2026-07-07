@@ -1,7 +1,6 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { PamAccountType } from "../pam/pam-enums";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 
 export const ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.MsSQL] as const;
 
@@ -21,7 +20,6 @@ export const PAM_ROTATION_APP_MAP: Record<
 };
 
 export enum PamRotationReadinessIssue {
-  RotationDisabled = "rotation-disabled",
   UnsupportedType = "unsupported-type",
   NotConfigured = "not-configured",
   SelfRotationNoCredential = "self-rotation-no-credential"
@@ -32,7 +30,6 @@ type TRotationReadinessInput = {
   accountType: PamAccountType | string;
   rotationAccountId?: string | null;
   credentialConfigured: boolean;
-  templateSettings: unknown;
 };
 
 // Account-level readiness as raw SQL, shared by the reconcile and impact count so they can't drift from each other
@@ -43,10 +40,6 @@ export const ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL = `"rotationAccountId" IS NULL O
 export type TRotationReadiness = { ready: boolean; issue?: PamRotationReadinessIssue };
 
 export const getRotationReadiness = (account: TRotationReadinessInput): TRotationReadiness => {
-  const parsed = PamTemplateSettingsSchema.safeParse(account.templateSettings);
-  const rotationEnabled = parsed.success && parsed.data.rotation?.enabled === true;
-
-  if (!rotationEnabled) return { ready: false, issue: PamRotationReadinessIssue.RotationDisabled };
   if (!isRotatableAccountType(account.accountType)) {
     return { ready: false, issue: PamRotationReadinessIssue.UnsupportedType };
   }

@@ -71,7 +71,7 @@ const settingsSchema = z
     settings: z.object({
       sessionLogMaskingPatterns: z.string().optional(),
       rotationEnabled: z.boolean().optional(),
-      rotationIntervalSeconds: z.coerce.number().optional(),
+      rotationIntervalSeconds: z.number().nullable().optional(),
       pwLength: z.coerce.number().optional(),
       pwUppercase: z.coerce.number().optional(),
       pwLowercase: z.coerce.number().optional(),
@@ -98,45 +98,43 @@ const settingsSchema = z
       }
     }
 
-    if (data.settings.rotationEnabled) {
-      const length = data.settings.pwLength ?? 32;
-      const mins = {
-        uppercase: data.settings.pwUppercase ?? 0,
-        lowercase: data.settings.pwLowercase ?? 0,
-        digits: data.settings.pwDigits ?? 0,
-        symbols: data.settings.pwSymbols ?? 0
-      };
-      if (length < 1 || length > 250) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["settings", "pwLength"],
-          message: "Length must be between 1 and 250"
-        });
-      }
-      (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
-        const value = data.settings[key];
-        if (value !== undefined && value < 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["settings", key],
-            message: "Cannot be negative"
-          });
-        }
+    const length = data.settings.pwLength ?? 32;
+    const mins = {
+      uppercase: data.settings.pwUppercase ?? 0,
+      lowercase: data.settings.pwLowercase ?? 0,
+      digits: data.settings.pwDigits ?? 0,
+      symbols: data.settings.pwSymbols ?? 0
+    };
+    if (length < 1 || length > 250) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["settings", "pwLength"],
+        message: "Length must be between 1 and 250"
       });
-      const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
-      if (totalRequired === 0) {
+    }
+    (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
+      const value = data.settings[key];
+      if (value !== undefined && value < 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["settings", "pwLength"],
-          message: "Require at least one character type"
-        });
-      } else if (totalRequired > length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["settings", "pwLength"],
-          message: "Length must be at least the sum of the minimums"
+          path: ["settings", key],
+          message: "Cannot be negative"
         });
       }
+    });
+    const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
+    if (totalRequired === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["settings", "pwLength"],
+        message: "Require at least one character type"
+      });
+    } else if (totalRequired > length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["settings", "pwLength"],
+        message: "Length must be at least the sum of the minimums"
+      });
     }
   });
 
@@ -326,7 +324,7 @@ const SettingsTab = ({
           ...(() => {
             const rotation = (settings.rotation ?? {}) as {
               enabled?: boolean;
-              intervalSeconds?: number;
+              intervalSeconds?: number | null;
             };
             const pw = (settings.passwordRequirements ?? {}) as {
               length?: number;
@@ -340,7 +338,8 @@ const SettingsTab = ({
             };
             return {
               rotationEnabled: rotation.enabled ?? false,
-              rotationIntervalSeconds: rotation.intervalSeconds ?? 86400,
+              rotationIntervalSeconds:
+                rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
               pwLength: pw.length ?? 32,
               pwUppercase: pw.required?.uppercase ?? 1,
               pwLowercase: pw.required?.lowercase ?? 1,
@@ -406,24 +405,20 @@ const SettingsTab = ({
       const isRotationOn = Boolean(data.settings.rotationEnabled);
       settings.rotation = {
         enabled: isRotationOn,
-        intervalSeconds: data.settings.rotationIntervalSeconds ?? 86400
+        intervalSeconds: isRotationOn ? (data.settings.rotationIntervalSeconds ?? 86400) : null
       };
-      if (isRotationOn) {
-        settings.passwordRequirements = {
-          length: data.settings.pwLength ?? 32,
-          required: {
-            uppercase: data.settings.pwUppercase ?? 0,
-            lowercase: data.settings.pwLowercase ?? 0,
-            digits: data.settings.pwDigits ?? 0,
-            symbols: data.settings.pwSymbols ?? 0
-          },
-          ...(data.settings.pwAllowedSymbols
-            ? { allowedSymbols: data.settings.pwAllowedSymbols }
-            : {})
-        };
-      } else {
-        delete settings.passwordRequirements;
-      }
+      settings.passwordRequirements = {
+        length: data.settings.pwLength ?? 32,
+        required: {
+          uppercase: data.settings.pwUppercase ?? 0,
+          lowercase: data.settings.pwLowercase ?? 0,
+          digits: data.settings.pwDigits ?? 0,
+          symbols: data.settings.pwSymbols ?? 0
+        },
+        ...(data.settings.pwAllowedSymbols
+          ? { allowedSymbols: data.settings.pwAllowedSymbols }
+          : {})
+      };
     } else {
       delete settings.rotation;
       delete settings.passwordRequirements;
@@ -554,8 +549,8 @@ const SettingsTab = ({
                       Automatically rotate credentials
                     </p>
                     <p className="text-xs text-muted">
-                      Infisical rotates credentials on a fixed schedule. When off, accounts using
-                      this template won&apos;t rotate, on a schedule or manually.
+                      Infisical rotates credentials on a fixed schedule. When off, credentials
+                      rotate only when triggered manually.
                     </p>
                   </div>
                   <Switch
@@ -578,13 +573,12 @@ const SettingsTab = ({
                   </AlertTitle>
                   <AlertDescription>
                     Set a rotation account on{" "}
-                    {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} to include{" "}
-                    {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} in the
-                    schedule.
+                    {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} to enable
+                    rotation.
                     {template.rotationImpact.willRotate > 0 &&
                       ` ${template.rotationImpact.willRotate} ${
-                        template.rotationImpact.willRotate === 1 ? "account" : "accounts"
-                      } will rotate as configured.`}
+                        template.rotationImpact.willRotate === 1 ? "account is" : "accounts are"
+                      } ready to rotate.`}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -601,8 +595,8 @@ const SettingsTab = ({
                     </AlertTitle>
                     <AlertDescription>
                       {template.rotationImpact.willRotate === 0
-                        ? "Accounts using this template will rotate on schedule once they have a rotation account."
-                        : "Every account using this template is set to rotate on schedule."}
+                        ? "Accounts using this template will rotate once they have a rotation account."
+                        : "Every account using this template has a rotation account."}
                     </AlertDescription>
                   </Alert>
                 )
@@ -630,16 +624,26 @@ const SettingsTab = ({
                       </SelectContent>
                     </Select>
                     <FieldDescription>
-                      How often credentials are rotated for accounts using this template.
+                      How often credentials are rotated automatically for accounts using this
+                      template.
                     </FieldDescription>
                   </Field>
                 )}
               />
             )}
+            {/* Requirements are a policy independent of rotation: they apply to onboarded credentials and to the
+                passwords generated during rotation, so they show whether or not automatic rotation is on. */}
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-foreground">Requirements</p>
+              <p className="text-xs text-muted">
+                Every credential must meet these rules, both when an account is onboarded and when a
+                password is generated during rotation.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {(
                 [
-                  { name: "settings.pwLength", label: "Length" },
+                  { name: "settings.pwLength", label: "Min length" },
                   { name: "settings.pwUppercase", label: "Min uppercase" },
                   { name: "settings.pwLowercase", label: "Min lowercase" },
                   { name: "settings.pwDigits", label: "Min numbers" },
@@ -673,8 +677,8 @@ const SettingsTab = ({
                   <FieldLabel>Allowed symbols</FieldLabel>
                   <Input value={field.value ?? ""} onChange={field.onChange} placeholder="-_.~!*" />
                   <FieldDescription>
-                    Symbols that generated passwords may use. Quotes, backticks, backslashes,
-                    semicolons, and question marks are not allowed.
+                    Symbols a credential may use. Quotes, backticks, backslashes, semicolons, and
+                    question marks are not allowed.
                   </FieldDescription>
                 </Field>
               )}

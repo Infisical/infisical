@@ -8,7 +8,7 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 
 export const PamRotationConfigSchema = z.object({
   enabled: z.boolean(),
-  intervalSeconds: z.number().int().min(3600).max(31_536_000) // 1 hour .. 1 year
+  intervalSeconds: z.number().int().min(3600).max(31_536_000).nullable() // 1 hour .. 1 year, or null for manual
 });
 
 export const PamRecordingS3ConfigSchema = z.object({

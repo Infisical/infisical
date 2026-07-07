@@ -38,7 +38,6 @@ export const ROTATION_STATUS = { Success: "success", Failed: "failed" } as const
 const ROTATION_IN_PROGRESS_MESSAGE = "A rotation is already in progress for this account";
 
 const ROTATION_NOT_READY_MESSAGE: Record<PamRotationReadinessIssue, string> = {
-  [PamRotationReadinessIssue.RotationDisabled]: "Rotation is not enabled for this account's template",
   [PamRotationReadinessIssue.UnsupportedType]: "Rotation is not supported for this account type",
   [PamRotationReadinessIssue.NotConfigured]: "No rotation account is configured for this account",
   [PamRotationReadinessIssue.SelfRotationNoCredential]:
@@ -122,7 +121,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
   const nextRotationAfter = (templateSettings: unknown, now: Date): Date | null => {
     const rotation = getRotationConfig(templateSettings);
-    if (!rotation?.enabled) return null;
+    if (!rotation?.enabled || rotation.intervalSeconds == null) return null;
     return computeNextRotationAt({ anchor: now, intervalSeconds: rotation.intervalSeconds, now });
   };
 
@@ -322,11 +321,10 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       accountId: account.id,
       accountType: account.accountType,
       rotationAccountId: account.rotationAccountId,
-      credentialConfigured: account.credentialConfigured,
-      templateSettings: account.templateSettings
+      credentialConfigured: account.credentialConfigured
     });
     const nextRotationAt =
-      ready && rotation?.enabled
+      ready && rotation?.enabled && rotation.intervalSeconds != null
         ? computeNextRotationAt({
             anchor: now,
             intervalSeconds: Math.min(rotation.intervalSeconds, ROTATION_FAILURE_RETRY_CAP_SECONDS),
@@ -380,8 +378,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       accountId: account.id,
       accountType: account.accountType,
       rotationAccountId: account.rotationAccountId,
-      credentialConfigured: account.credentialConfigured,
-      templateSettings: account.templateSettings
+      credentialConfigured: account.credentialConfigured
     });
 
     let rotationAccountName: string | null = null;
@@ -409,6 +406,12 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       }
     }
 
+    let lastRotationError: string | null = null;
+    if (account.rotationStatus === ROTATION_STATUS.Failed && account.encryptedLastRotationMessage) {
+      const decrypted = await decrypt(projectId, account.encryptedLastRotationMessage);
+      lastRotationError = (decrypted as { message?: string }).message ?? null;
+    }
+
     return {
       enabled: settings?.rotation?.enabled ?? false,
       intervalSeconds: settings?.rotation?.intervalSeconds ?? null,
@@ -416,6 +419,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       rotationAccountId,
       rotationAccountName,
       lastRotatedAt: account.lastRotatedAt ?? null,
+      rotationStatus: account.rotationStatus ?? null,
+      lastRotationError,
       isReady: readiness.ready
     };
   };
@@ -531,8 +536,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       accountId: account.id,
       accountType: account.accountType,
       rotationAccountId: account.rotationAccountId,
-      credentialConfigured: account.credentialConfigured,
-      templateSettings: account.templateSettings
+      credentialConfigured: account.credentialConfigured
     });
     if (!readiness.ready && readiness.issue) {
       throw new BadRequestError({ message: ROTATION_NOT_READY_MESSAGE[readiness.issue] });

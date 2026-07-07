@@ -8,12 +8,6 @@ import {
   PamRotationReadinessIssue
 } from "./pam-rotation-fns";
 
-const templateSettings = (enabled: boolean, intervalSeconds = 86400) => ({
-  recordingEnabled: true,
-  recordingStorageBackend: "postgres",
-  rotation: { enabled, intervalSeconds }
-});
-
 describe("isRotatableAccountType", () => {
   test("accepts the three SQL types", () => {
     expect(isRotatableAccountType(PamAccountType.Postgres)).toBe(true);
@@ -32,13 +26,12 @@ describe("getRotationReadiness", () => {
   const base = {
     accountId: "acc-1",
     accountType: PamAccountType.Postgres,
-    credentialConfigured: true,
-    templateSettings: templateSettings(true)
+    credentialConfigured: true
   };
 
-  test("not ready when template rotation is disabled", () => {
-    const r = getRotationReadiness({ ...base, rotationAccountId: "acc-1", templateSettings: templateSettings(false) });
-    expect(r).toEqual({ ready: false, issue: PamRotationReadinessIssue.RotationDisabled });
+  test("ready regardless of the automatic-rotation toggle (manual is always available once configured)", () => {
+    const r = getRotationReadiness({ ...base, rotationAccountId: "acc-1" });
+    expect(r).toEqual({ ready: true });
   });
 
   test("not ready for an unsupported account type", () => {
