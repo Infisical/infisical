@@ -86,7 +86,12 @@ describe("validatePolicyValues", () => {
 });
 
 describe("resolveAccessControls", () => {
-  const DEFAULTS = { requiresApproval: false, requireReason: false, requireMfa: false, maxSessionDurationSeconds: null };
+  const DEFAULTS = {
+    requiresApproval: false,
+    requireReason: false,
+    requireMfa: false,
+    maxSessionDurationSeconds: null
+  };
 
   test("falls back to defaults for a missing or non-object map", () => {
     expect(resolveAccessControls(null)).toEqual(DEFAULTS);
