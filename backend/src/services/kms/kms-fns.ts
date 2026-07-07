@@ -1,4 +1,5 @@
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -43,6 +44,14 @@ export const verifyKeyTypeAndAlgorithm = (
     if (!Object.values(AsymmetricKeyAlgorithm).includes(algorithm as AsymmetricKeyAlgorithm)) {
       throw new BadRequestError({
         message: `Unsupported sign/verify algorithm for sign/verify key: ${algorithm as string}`
+      });
+    }
+
+    // the FIPS OpenSSL provider does not include the secp256k1 curve; keep the algorithm
+    // check first so the FIPS lookup never runs on the encrypt/decrypt hot path
+    if (algorithm === AsymmetricKeyAlgorithm.ECC_SECG_P256K1 && crypto.isFipsModeEnabled()) {
+      throw new BadRequestError({
+        message: `Algorithm ${algorithm as string} is not supported in FIPS mode of operation`
       });
     }
 

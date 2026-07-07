@@ -4,6 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -294,6 +295,12 @@ export const cmekServiceFactory = ({
       return { signingAlgorithms: [encryptionAlgorithm as unknown as SigningAlgorithm], projectId: key.projectId };
     }
 
+    // secp256k1 pairs its 256-bit group with a 256-bit digest only, unlike the NIST curves
+    // which historically accepted every ECDSA hash variant here
+    if ((encryptionAlgorithm as string) === AsymmetricKeyAlgorithm.ECC_SECG_P256K1) {
+      return { signingAlgorithms: [SigningAlgorithm.ECDSA_SHA_256], projectId: key.projectId };
+    }
+
     const algos = [
       {
         keyAlgorithm: "rsa",
@@ -426,7 +433,14 @@ export const cmekServiceFactory = ({
         }
 
         let publicKey: string | undefined;
-        if (asymmetricAlgorithms.has(key.encryptionAlgorithm)) {
+        // deriving the public key is an EC operation the FIPS provider rejects for secp256k1;
+        // the stored key material itself can still be exported
+        const canDerivePublicKey =
+          asymmetricAlgorithms.has(key.encryptionAlgorithm) &&
+          !(
+            key.encryptionAlgorithm === (AsymmetricKeyAlgorithm.ECC_SECG_P256K1 as string) && crypto.isFipsModeEnabled()
+          );
+        if (canDerivePublicKey) {
           const pubKeyBuffer = await signingService(
             key.encryptionAlgorithm as AsymmetricKeyAlgorithm
           ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);

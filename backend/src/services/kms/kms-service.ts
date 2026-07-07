@@ -642,6 +642,24 @@ export const kmsServiceFactory = ({
               message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
             });
           }
+        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P384) {
+          if (keyType !== "ec" || keyDetails?.namedCurve !== "secp384r1") {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an EC P-384 key.`
+            });
+          }
+        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P521) {
+          if (keyType !== "ec" || keyDetails?.namedCurve !== "secp521r1") {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an EC P-521 key.`
+            });
+          }
+        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_SECG_P256K1) {
+          if (keyType !== "ec" || keyDetails?.namedCurve !== "secp256k1") {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an EC secp256k1 key.`
+            });
+          }
         }
       }
     }
