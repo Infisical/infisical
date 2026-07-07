@@ -478,7 +478,7 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Fireworks]: {
     name: "Fireworks",
-    image: "Fireworks.svg",
+    image: "Fireworks.png",
     category: "AI",
     description: "Manage Fireworks API access."
   },

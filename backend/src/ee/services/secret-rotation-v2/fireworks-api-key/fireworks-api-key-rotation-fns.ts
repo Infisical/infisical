@@ -127,7 +127,7 @@ export const fireworksApiKeyRotationFactory: TRotationFactory<
       if (result.status === "rejected") {
         logger.error(
           result.reason,
-          `fireworksApiKeyRotation: failed to revoke API key during cleanup [rotationId=${rotationId}] [keyId=${generatedCredentials[index].keyId}]`
+          `fireworksApiKeyRotation: failed to revoke API key during cleanup [rotationId=${rotationId}]`
         );
       }
     });

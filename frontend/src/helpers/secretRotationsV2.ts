@@ -112,7 +112,7 @@ export const SECRET_ROTATION_MAP: Record<
   },
   [SecretRotation.FireworksApiKey]: {
     name: "Fireworks Secret",
-    image: "Fireworks.svg",
+    image: "Fireworks.png",
     size: 50
   }
 };
