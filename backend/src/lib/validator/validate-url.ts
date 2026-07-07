@@ -42,6 +42,27 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
   if (isInternalIp && !allowInternal) throw new BadRequestError({ message: "Local IPs not allowed as URL" });
 };
 
+/**
+ * Validates that a URL points at a legitimate Azure Key Vault data-plane host.
+ * The Azure AD access token minted for these syncs is scoped to
+ * `https://vault.azure.net/.default`, and certificate private keys / secret
+ * values are sent to this host, so accepting any URL would leak both the bearer
+ * token and the private key material to an attacker-controlled server.
+ */
+export const isValidAzureKeyVaultUrl = (url: string): boolean => {
+  try {
+    const { protocol, hostname } = new URL(url);
+
+    if (protocol !== "https:") return false;
+
+    const normalizedHost = hostname.toLowerCase();
+
+    return normalizedHost === "vault.azure.net" || normalizedHost.endsWith(".vault.azure.net");
+  } catch {
+    return false;
+  }
+};
+
 type FQDNOptions = {
   require_tld?: boolean;
   allow_underscores?: boolean;
