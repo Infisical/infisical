@@ -19,6 +19,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .leftJoin(TableName.Project, function joinActiveProjectForFolder() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Project}.deleteAfter`
+          );
+        })
         .where({ projectId })
         .whereNull("secretBlindIndex")
         .count(`${TableName.Secret}.id` as "id");
@@ -35,6 +40,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
             `${TableName.Environment}.deleteAfter`
+          );
+        })
+        .leftJoin(TableName.Project, function joinActiveProjectForFolder() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Project}.deleteAfter`
           );
         })
         .where({ projectId })
@@ -56,6 +66,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
             `${TableName.Environment}.deleteAfter`
+          );
+        })
+        .leftJoin(TableName.Project, function joinActiveProjectForFolder() {
+          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+            `${TableName.Project}.deleteAfter`
           );
         })
         .where({ projectId })
