@@ -177,7 +177,7 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
       await rotateNow.mutateAsync({ accountId });
       createNotification({ type: "success", text: "Credential rotated" });
     } catch {
-      createNotification({ type: "error", text: "Rotation failed. See the error below." });
+      // A failed rotation returns a 4xx that the global request handler surfaces as a toast
     }
   };
 
@@ -242,14 +242,14 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
         >
           Rotate now
         </Button>
-      </div>
 
-      {hasFailure && (
-        <Alert variant="danger">
-          <AlertTitle>Last rotation failed</AlertTitle>
-          <AlertDescription>{rotation.lastRotationError}</AlertDescription>
-        </Alert>
-      )}
+        {hasFailure && (
+          <Alert variant="danger" className="mt-4">
+            <AlertTitle>Last rotation failed</AlertTitle>
+            <AlertDescription>{rotation.lastRotationError}</AlertDescription>
+          </Alert>
+        )}
+      </div>
 
       <div className="rounded-lg border border-border bg-container p-4">
         <h3 className="text-sm font-semibold text-foreground">Rotation account</h3>

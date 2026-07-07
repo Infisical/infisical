@@ -531,7 +531,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       ResourcePermissionPamResourceActions.ManageRotation,
       ctx
     );
-    // Manual rotation follows the same readiness rule as the schedule, so a not-ready account can't be rotated out-of-band.
     const readiness = getRotationReadiness({
       accountId: account.id,
       accountType: account.accountType,
