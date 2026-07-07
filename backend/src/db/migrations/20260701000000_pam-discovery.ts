@@ -51,6 +51,7 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("discoveredCount").notNullable().defaultTo(0);
       t.integer("newCount").notNullable().defaultTo(0);
       t.text("errorMessage");
+      t.jsonb("machineErrors");
       t.timestamp("startedAt");
       t.timestamp("completedAt");
       t.timestamps(true, true, true);
