@@ -1002,6 +1002,7 @@
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
                   },
+                  "documentation/platform/pam/access-requests/overview",
                   {
                     "group": "Sessions",
                     "pages": [
