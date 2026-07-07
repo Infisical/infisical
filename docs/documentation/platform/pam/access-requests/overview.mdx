@@ -117,7 +117,7 @@ Rejected, expired, and revoked requests stay in the list so the audit trail stay
     A Folder Admin. Revoking ends an active request right away and cuts off access before its duration runs out. Any active session using that access is terminated immediately.
   </Accordion>
   <Accordion title="Do changes to a folder's approvers apply to requests already in flight?">
-    No. Adding or removing approvers applies only to requests opened after the change; a request in flight is evaluated against the approvers that were in effect when it was created. An approved request is already granted and keeps its access until it expires or is revoked, whatever happens to the configuration afterward.
+    Removing an approver takes effect right away: someone dropped from the folder's approvers can no longer act on a request that is still pending. Adding an approver does not reach back into requests already in flight, so a pending request can only be cleared by the approvers it had when it was created. An approved request is already granted and keeps its access until it expires or is revoked, whatever changes afterward.
   </Accordion>
 </AccordionGroup>
 
