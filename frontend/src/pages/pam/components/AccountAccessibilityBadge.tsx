@@ -8,7 +8,7 @@ const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
   [PamAccountAccessibilityIssue.NoRecordingConfig]: "No recording bucket is configured",
   [PamAccountAccessibilityIssue.NoCredential]: "No password is set",
   [PamAccountAccessibilityIssue.NoApprovalConfig]:
-    "This account requires approval, but its folder has no approvers yet. Ask a folder admin to add approvers under the folder's Approvals tab."
+    "No approvers are configured for its folder. Ask a folder admin to add approvers under the folder's Approvals tab."
 };
 
 type Props = {
@@ -32,7 +32,7 @@ export const AccountAccessibilityBadge = ({ issues }: Props) => {
           Unavailable
         </Badge>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="max-w-xs">
         {issues.length === 1 ? (
           <p>This account can&apos;t be used yet: {formatSingleIssue(ISSUE_LABELS[issues[0]])}</p>
         ) : (

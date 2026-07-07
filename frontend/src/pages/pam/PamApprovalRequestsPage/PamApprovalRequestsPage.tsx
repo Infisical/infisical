@@ -72,9 +72,6 @@ const RequestRow = ({
         </div>
       </TableCell>
       <TableCell className="text-sm">{request.folderName ?? "-"}</TableCell>
-      <TableCell className="max-w-[200px] truncate text-sm">
-        {request.requestData?.requestData?.reason || "-"}
-      </TableCell>
       <TableCell className="text-sm">{formatDuration(duration)}</TableCell>
       <TableCell className="text-sm">
         {format(new Date(request.createdAt), "MMM d, yyyy h:mm a")}
@@ -132,7 +129,6 @@ const RequestTable = ({
           <TableHead>Requester</TableHead>
           <TableHead>Account</TableHead>
           <TableHead>Folder</TableHead>
-          <TableHead>Reason</TableHead>
           <TableHead>Duration</TableHead>
           <TableHead>Requested</TableHead>
           <TableHead>Status</TableHead>
@@ -142,7 +138,7 @@ const RequestTable = ({
         {isPending &&
           Array.from({ length: 5 }).map((_, i) => (
             <TableRow key={`skeleton-${i + 1}`}>
-              {Array.from({ length: 7 }).map((__, j) => (
+              {Array.from({ length: 6 }).map((__, j) => (
                 <TableCell key={`cell-${j + 1}`}>
                   <Skeleton className="h-4 w-full" />
                 </TableCell>
