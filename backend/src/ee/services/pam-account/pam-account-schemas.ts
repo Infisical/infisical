@@ -429,11 +429,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       authMethod: z.string()
     }),
     ui: {
-      serviceAccountEmail: {
-        label: "Service Account Email",
-        tooltip:
-          "The email address of the GCP service account to broker access to (must end in .iam.gserviceaccount.com)."
-      },
+      serviceAccountEmail: { label: "Service Account Email" },
       authMethod: {
         label: "Auth Method",
         tooltip:
