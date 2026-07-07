@@ -194,7 +194,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
-        resourceId: MfaStepUpResource.DisableMfa,
+        resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
         message: "MFA verification is required to disable two-factor authentication"
       });

@@ -310,7 +310,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
-        resourceId: MfaStepUpResource.RecoveryCodes,
+        resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
         message: "MFA verification is required to access recovery codes"
       });
@@ -344,7 +344,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
-        resourceId: MfaStepUpResource.RecoveryCodes,
+        resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
         message: "MFA verification is required to access recovery codes"
       });

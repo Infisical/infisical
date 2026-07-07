@@ -2,13 +2,16 @@ import { BadRequestError } from "@app/lib/errors";
 import { MfaMethod } from "@app/services/auth/auth-type";
 
 // Sensitive account actions that expose or weaken a login second factor require a
-// fresh MFA challenge, not just a valid session token. Each action binds its
-// step-up MFA session to a dedicated resource id so a session minted for one
-// action (e.g. viewing recovery codes) can't be replayed against another (e.g.
-// disabling MFA).
+// fresh MFA challenge, not just a valid session token. The session binds to a
+// resource id so a session minted for one flow can't be replayed against an
+// unrelated one (e.g. a PAM account-access session can't be used here).
+//
+// Viewing recovery codes, rotating recovery codes, and disabling MFA are all
+// MFA-management actions of comparable risk, so they intentionally share a single
+// resource id: one fresh challenge covers all of them for the session TTL (5 min)
+// rather than re-prompting the user for each action in quick succession.
 export const MfaStepUpResource = {
-  RecoveryCodes: "mfa-recovery-codes",
-  DisableMfa: "mfa-disable"
+  MfaManagement: "mfa-management"
 } as const;
 
 export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStepUpResource];

@@ -823,6 +823,22 @@ export const authLoginServiceFactory = ({
       mfaMethod
     });
 
+    if (isRecoveryCode && userEnc.email) {
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.MfaRecoveryCodeUsed,
+          subjectLine: "A recovery code was used to sign in to your Infisical account",
+          recipients: [userEnc.email],
+          substitutions: {
+            email: userEnc.email,
+            timestamp: new Date().toString(),
+            ip,
+            userAgent
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send MFA recovery code used email"));
+    }
+
     return { token, user: { ...userEnc, hashedPassword: null } };
   };
   /*

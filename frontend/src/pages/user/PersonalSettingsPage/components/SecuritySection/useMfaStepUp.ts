@@ -8,6 +8,15 @@ import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaS
 const MFA_POLL_INTERVAL = 2000;
 const MFA_TIMEOUT = 5 * 60 * 1000;
 
+// The most recently verified step-up MFA session id, shared across every
+// useMfaStepUp instance. The MFA-management actions (view/rotate recovery codes,
+// disable MFA) live in sibling components with their own hook instances but the
+// backend accepts one step-up session for all of them, so remembering the id in
+// module scope lets a challenge completed for one action satisfy the next until it
+// expires. It never drives rendering, and a stale id (e.g. after logout) is
+// harmless: the backend rejects it and a fresh challenge transparently re-runs.
+const sharedStepUpSession = { id: null as string | null };
+
 // An action guarded by step-up MFA. It receives the verified session id (once
 // available) so it can replay itself against the backend. When the backend
 // requires a fresh challenge it responds with SESSION_MFA_REQUIRED, and the same
@@ -38,8 +47,6 @@ export const useMfaStepUp = () => {
   const popupRef = useRef<Window | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const isPollingRef = useRef(false);
-  // The most recently verified MFA session id, reused until the backend rejects it.
-  const activeSessionIdRef = useRef<string | null>(null);
 
   const cleanup = useCallback(() => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -79,7 +86,7 @@ export const useMfaStepUp = () => {
 
             try {
               const result = await action(mfaSessionId);
-              activeSessionIdRef.current = mfaSessionId;
+              sharedStepUpSession.id = mfaSessionId;
               opts.onSuccess(result);
             } catch {
               createNotification({
@@ -116,12 +123,12 @@ export const useMfaStepUp = () => {
     async <T>(action: StepUpAction<T>, opts: RunOptions<T>) => {
       setIsBusy(true);
       try {
-        const result = await action(activeSessionIdRef.current ?? undefined);
+        const result = await action(sharedStepUpSession.id ?? undefined);
         opts.onSuccess(result);
         setIsBusy(false);
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.data?.error === "SESSION_MFA_REQUIRED") {
-          activeSessionIdRef.current = null;
+          sharedStepUpSession.id = null;
           const mfaSessionId = err.response.data.details?.mfaSessionId as string | undefined;
 
           if (!mfaSessionId) {
