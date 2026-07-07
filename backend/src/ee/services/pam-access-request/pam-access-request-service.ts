@@ -200,10 +200,12 @@ export const pamAccessRequestServiceFactory = ({
 
     const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } });
     const now = new Date();
+    const isWithinTemporaryWindow = (r: (typeof roles)[number]) =>
+      Boolean(r.temporaryAccessEndTime) &&
+      now < new Date(r.temporaryAccessEndTime as Date) &&
+      (!r.temporaryAccessStartTime || now >= new Date(r.temporaryAccessStartTime));
     const activeMembershipIds = new Set(
-      roles
-        .filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime)))
-        .map((r) => r.membershipId)
+      roles.filter((r) => !r.isTemporary || isWithinTemporaryWindow(r)).map((r) => r.membershipId)
     );
     return memberships.filter((m) => m.isActive && activeMembershipIds.has(m.id));
   };
