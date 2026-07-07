@@ -386,13 +386,6 @@ export const pamSessionServiceFactory = ({
 
     const trimmedReason = reason?.trim() || null;
 
-    if (policy.requireReason && !trimmedReason) {
-      throw new BadRequestError({
-        name: "PAM_REASON_REQUIRED",
-        message: "A reason is required to access this account"
-      });
-    }
-
     if (policy.requireMfa) {
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
@@ -413,6 +406,9 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
+    // The approval gate comes before the launch-reason check: a user without a grant should be
+    // guided into requesting access (where the request reason is collected) rather than being
+    // blocked on a launch reason for a session they cannot start yet.
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
         userId: actor.actorId,
@@ -447,6 +443,13 @@ export const pamSessionServiceFactory = ({
         }
         sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
       }
+    }
+
+    if (policy.requireReason && !trimmedReason) {
+      throw new BadRequestError({
+        name: "PAM_REASON_REQUIRED",
+        message: "A reason is required to access this account"
+      });
     }
 
     // AWS IAM: no gateway, no proxy -- generate STS credentials directly
