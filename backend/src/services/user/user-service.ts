@@ -17,6 +17,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeDALFactory } from "../mfa-recovery-code/mfa-recovery-code-dal";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TWebAuthnCredentialDALFactory } from "../webauthn/webauthn-credential-dal";
@@ -57,6 +58,7 @@ type TUserServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
+  mfaRecoveryCodeDAL: Pick<TMfaRecoveryCodeDALFactory, "findOne">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -71,7 +73,8 @@ export const userServiceFactory = ({
   permissionService,
   userAliasDAL,
   totpConfigDAL,
-  webAuthnCredentialDAL
+  webAuthnCredentialDAL,
+  mfaRecoveryCodeDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -140,6 +143,13 @@ export const userServiceFactory = ({
 
     const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
     await assertMfaMethodConfigured(userId, method);
+
+    const recoveryCodeConfig = await mfaRecoveryCodeDAL.findOne({ userId });
+    if (!recoveryCodeConfig) {
+      throw new BadRequestError({
+        message: "Cannot enable MFA before enrolling a factor. Complete enrollment to generate recovery codes first."
+      });
+    }
 
     return userDAL.updateById(userId, {
       isMfaEnabled: true,

@@ -181,7 +181,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const user = await server.services.user.activateMfa({
         userId: req.permission.id,
@@ -207,7 +207,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const user = await server.services.user.deactivateMfa({
         userId: req.permission.id
