@@ -49,6 +49,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -939,14 +940,31 @@ export const pamAccountServiceFactory = ({
     }
 
     if (mfaSessionId && account.requireMfa) {
-      const isActive = await mfaSessionService.isMfaSessionActive({
-        mfaSessionId,
-        userId: actor.id,
-        resourceId: account.id
-      });
-      if (!isActive) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
         throw new BadRequestError({
-          message: "MFA session is invalid or has not been verified. Please complete MFA verification first."
+          message: "MFA session not found or expired"
+        });
+      }
+
+      // Verify the session belongs to the current user
+      if (mfaSession.userId !== actor.id) {
+        throw new BadRequestError({
+          message: "MFA session does not belong to current user"
+        });
+      }
+
+      // Verify the session is for the same account
+      if (mfaSession.resourceId !== account.id) {
+        throw new BadRequestError({
+          message: "MFA session is for a different account"
+        });
+      }
+
+      // Check if MFA session is active
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({
+          message: "MFA session is not active. Please complete MFA verification first."
         });
       }
 
@@ -1945,15 +1963,21 @@ export const pamAccountServiceFactory = ({
     }
 
     if (mfaSessionId && accountWithParent.requireMfa) {
-      const isActive = await mfaSessionService.isMfaSessionActive({
-        mfaSessionId,
-        userId: actorId,
-        resourceId: accountWithParent.id
-      });
-      if (!isActive) {
-        throw new BadRequestError({
-          message: "MFA session is invalid or has not been verified. Please complete MFA verification first."
-        });
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
+        throw new BadRequestError({ message: "MFA session not found or expired" });
+      }
+
+      if (mfaSession.userId !== actorId) {
+        throw new BadRequestError({ message: "MFA session does not belong to current user" });
+      }
+
+      if (mfaSession.resourceId !== accountWithParent.id) {
+        throw new BadRequestError({ message: "MFA session is for a different account" });
+      }
+
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({ message: "MFA session is not active. Please complete MFA verification first." });
       }
 
       await mfaSessionService.deleteMfaSession(mfaSessionId);
