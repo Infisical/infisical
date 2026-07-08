@@ -59,6 +59,7 @@ export type SubscriptionPlan = {
   instanceUserManagement: boolean;
   gateway: boolean;
   gatewayPool: boolean;
+  pamSlackNotifications: boolean;
   externalKms: boolean;
   pkiEst: boolean;
   pkiAcme: boolean;

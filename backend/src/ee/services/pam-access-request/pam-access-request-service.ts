@@ -5,6 +5,7 @@ import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/sc
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -135,6 +136,7 @@ type TPamAccessRequestServiceFactoryDep = {
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "find">;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TPamAccessRequestServiceFactory = ReturnType<typeof pamAccessRequestServiceFactory>;
@@ -164,7 +166,8 @@ export const pamAccessRequestServiceFactory = ({
   pamFolderNotificationConfigDAL,
   workflowIntegrationDAL,
   slackIntegrationDAL,
-  kmsService
+  kmsService,
+  licenseService
 }: TPamAccessRequestServiceFactoryDep) => {
   const findFolderPolicy = async (folderId: string) => {
     const policy = await approvalPolicyDAL.findOne({
@@ -200,6 +203,9 @@ export const pamAccessRequestServiceFactory = ({
     notification: TNotification;
   }) => {
     try {
+      const plan = await licenseService.getPlan(orgId);
+      if (!plan.pamSlackNotifications) return;
+
       const configs = await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId);
       const targets = getSlackSendTargets(configs, event);
 
@@ -451,6 +457,14 @@ export const pamAccessRequestServiceFactory = ({
     // policy branches below; several of those branches return early.
     if (notificationConfigs !== undefined) {
       if (notificationConfigs.length > 0) {
+        const plan = await licenseService.getPlan(ctx.actorOrgId);
+        if (!plan.pamSlackNotifications) {
+          throw new BadRequestError({
+            message:
+              "Failed to save notification configuration due to plan restriction. Upgrade plan to configure Slack notifications for PAM approvals."
+          });
+        }
+
         const integrationIds = [...new Set(notificationConfigs.map((c) => c.workflowIntegrationId))];
         const integrations = await workflowIntegrationDAL.find({ $in: { id: integrationIds } });
         const integrationById = new Map(integrations.map((i) => [i.id, i]));

@@ -1843,7 +1843,8 @@ export const registerRoutes = async (
     pamFolderNotificationConfigDAL,
     workflowIntegrationDAL,
     slackIntegrationDAL,
-    kmsService
+    kmsService,
+    licenseService
   });
 
   const pamFolderService = pamFolderServiceFactory({

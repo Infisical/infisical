@@ -33,7 +33,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -97,6 +97,8 @@ type Props = {
 
 export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const isPamSlackEnabled = Boolean(subscription?.pamSlackNotifications);
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
@@ -249,9 +251,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
-    const hasIncompleteConfig = notificationConfigs.some(
-      (c) => !c.workflowIntegrationId || c.channels.length === 0 || c.events.length === 0
-    );
+    const hasIncompleteConfig =
+      isPamSlackEnabled &&
+      notificationConfigs.some(
+        (c) => !c.workflowIntegrationId || c.channels.length === 0 || c.events.length === 0
+      );
     if (hasIncompleteConfig) {
       createNotification({
         type: "error",
@@ -261,7 +265,12 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     }
 
     setConfig.mutate(
-      { folderId, steps: [{ approvers }], notificationConfigs },
+      {
+        folderId,
+        steps: [{ approvers }],
+        // undefined leaves server-side configs untouched when the plan doesn't include the feature
+        notificationConfigs: isPamSlackEnabled ? notificationConfigs : undefined
+      },
       {
         onSuccess: () => {
           createNotification({ type: "success", text: "Approval configuration saved" });
@@ -377,11 +386,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <FolderNotificationsSection
-        configs={notificationConfigs}
-        integrationSlugById={integrationSlugById}
-        onChange={setNotificationConfigs}
-      />
+      {isPamSlackEnabled && (
+        <FolderNotificationsSection
+          configs={notificationConfigs}
+          integrationSlugById={integrationSlugById}
+          onChange={setNotificationConfigs}
+        />
+      )}
 
       <Card>
         <CardHeader className="border-b">
