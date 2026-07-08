@@ -38,7 +38,9 @@ const throwOnUndeployedVersionError = (err: unknown) => {
   throw err;
 };
 
-const getSecretKeys = async (secretSync: TCloudflareWorkersSyncWithCredentials): Promise<TCloudflareSecretMetadata[]> => {
+const getSecretKeys = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials
+): Promise<TCloudflareSecretMetadata[]> => {
   const {
     destinationConfig,
     connection: {
@@ -90,7 +92,7 @@ export const CloudflareWorkersSyncFns = {
     } = secretSync;
 
     const existingSecrets = await getSecretKeys(secretSync);
-    const existingSecretsMap = Object.fromEntries(existingSecrets.map(({key, type}) => ([key, type])));
+    const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
     const bindingEntries: Array<[string, { value: string }]> = [];
@@ -106,6 +108,7 @@ export const CloudflareWorkersSyncFns = {
     }
 
     try {
+      /* eslint-disable no-await-in-loop */
       for (const [key, val] of secretEntries) {
         await delayMs(Math.max(0, applyJitter(100, 200)));
         await request.put(
@@ -119,6 +122,7 @@ export const CloudflareWorkersSyncFns = {
           }
         );
       }
+      /* eslint-enable no-await-in-loop */
 
       if (bindingEntries.length > 0) {
         const { data: settingsData } = await request.get<{
@@ -139,10 +143,11 @@ export const CloudflareWorkersSyncFns = {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {
               try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 return { ...binding, json: JSON.parse(newValue) };
               } catch {
                 throw new BadRequestError({
-                  message: `"${binding.name}" already existgs in cloudflare as a JSON variable: the value you provided is not valid JSON`
+                  message: `"${binding.name}" already exists in cloudflare as a JSON variable: the value you provided is not valid JSON`
                 });
               }
             }
@@ -152,7 +157,10 @@ export const CloudflareWorkersSyncFns = {
         });
 
         const formData = new FormData();
-        formData.append("settings", new Blob([JSON.stringify({ bindings: updatedBindings })], { type: "application/json" }));
+        formData.append(
+          "settings",
+          new Blob([JSON.stringify({ bindings: updatedBindings })], { type: "application/json" })
+        );
 
         await request.patch(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
@@ -183,6 +191,7 @@ export const CloudflareWorkersSyncFns = {
       const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !== "secret_text");
 
       try {
+        /* eslint-disable no-await-in-loop */
         for (const secret of secretTypeToDelete) {
           await delayMs(Math.max(0, applyJitter(100, 200)));
           await request.delete(
@@ -194,6 +203,7 @@ export const CloudflareWorkersSyncFns = {
             }
           );
         }
+        /* eslint-enable no-await-in-loop */
 
         if (bindingTypeToDelete.length > 0) {
           const bindingKeysToDelete = new Set(bindingTypeToDelete.map((b) => b.key));
@@ -264,6 +274,7 @@ export const CloudflareWorkersSyncFns = {
     const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== "secret_text");
 
     try {
+      /* eslint-disable no-await-in-loop */
       for (const secret of secretTypeToRemove) {
         await delayMs(Math.max(0, applyJitter(100, 200)));
         await request.delete(
@@ -275,6 +286,7 @@ export const CloudflareWorkersSyncFns = {
           }
         );
       }
+      /* eslint-enable no-await-in-loop */
 
       if (bindingTypeToRemove.length > 0) {
         const bindingKeysToRemove = new Set(bindingTypeToRemove.map((b) => b.key));
