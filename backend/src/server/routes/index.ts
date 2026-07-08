@@ -113,6 +113,10 @@ import { pamAccountRotationQueueServiceFactory } from "@app/ee/services/pam-acco
 import { pamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
 import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
+import { pamDiscoveredAccountDALFactory } from "@app/ee/services/pam-discovery/pam-discovered-account-dal";
+import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
+import { pamDiscoverySourceRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
+import { pamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
@@ -832,7 +836,8 @@ export const registerRoutes = async (
     orgDAL,
     identityOrgMembershipDAL,
     permissionService,
-    licenseClient
+    licenseClient,
+    meteredFeatures
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
@@ -1867,6 +1872,26 @@ export const registerRoutes = async (
     gatewayPoolService,
     appConnectionDAL,
     pamAccessRequestService
+  });
+
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
+  const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
+
+  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoverySourceRunDAL,
+    pamDiscoveredAccountDAL,
+    pamAccountDAL,
+    pamAccountService,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    queueService,
+    cronJob,
+    auditLogService
   });
 
   const pamAccountRotationService = pamAccountRotationServiceFactory({
@@ -3728,6 +3753,7 @@ export const registerRoutes = async (
   healthAlert.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
+  pamDiscoveryService.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   dailyReminderQueueService.startDailyRemindersJob();
   secretSyncQueue.startDailySecretSyncRetryJob();
@@ -3837,6 +3863,7 @@ export const registerRoutes = async (
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
+    pamDiscovery: pamDiscoveryService,
     pamAccountRotation: pamAccountRotationService,
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,

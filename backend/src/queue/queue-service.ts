@@ -103,6 +103,7 @@ export enum QueueName {
   UserNotification = "user-notification",
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
+  PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
@@ -171,6 +172,7 @@ export enum QueueJobs {
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamSessionExpiration = "pam-session-expiration",
+  PamDiscoverySourceScan = "pam-discovery-source-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -463,6 +465,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
   };
+  [QueueName.PamDiscoveryScan]: {
+    name: QueueJobs.PamDiscoverySourceScan;
+    payload: { sourceId: string; triggeredBy: string };
+  };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
     payload: { challengeId: string };
@@ -685,7 +691,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "pki-sync-cleanup",
       "pam-account-rotation",
       "pam-session-ai-summary",
-      "pam-discovery-scan",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value

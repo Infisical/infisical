@@ -107,6 +107,11 @@ export enum PostHogEventTypes {
   PamAccountUpdated = "PAM Account Updated",
   PamAccountDeleted = "PAM Account Deleted",
   PamAccountAccessed = "PAM Account Accessed",
+  PamDiscoverySourceCreated = "PAM Discovery Source Created",
+  PamDiscoverySourceUpdated = "PAM Discovery Source Updated",
+  PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
+  PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
+  PamDiscoveredAccountsImported = "PAM Discovered Accounts Imported",
   PamSessionStarted = "PAM Session Started",
   PamSessionEnded = "PAM Session Ended",
   PamSessionTerminated = "PAM Session Terminated",
@@ -991,6 +996,26 @@ export type TPamAccountEvent = {
   properties: {
     accountType: string;
     orgId: string;
+  };
+};
+
+export type TPamDiscoveryEvent = {
+  event:
+    | PostHogEventTypes.PamDiscoverySourceCreated
+    | PostHogEventTypes.PamDiscoverySourceUpdated
+    | PostHogEventTypes.PamDiscoverySourceDeleted
+    | PostHogEventTypes.PamDiscoveryScanTriggered;
+  properties: {
+    discoveryType: string;
+    orgId: string;
+  };
+};
+
+export type TPamDiscoveredAccountsImportedEvent = {
+  event: PostHogEventTypes.PamDiscoveredAccountsImported;
+  properties: {
+    orgId: string;
+    importedCount: number;
   };
 };
 
@@ -1979,6 +2004,8 @@ export type TPostHogEvent = {
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent
+  | TPamDiscoveryEvent
+  | TPamDiscoveredAccountsImportedEvent
   | TPamAccountAccessedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
