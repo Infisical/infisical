@@ -997,6 +997,13 @@
                     ]
                   },
                   {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pam/discovery/overview",
+                      "documentation/platform/pam/discovery/active-directory"
+                    ]
+                  },
+                  {
                     "group": "Sessions",
                     "pages": [
                       "documentation/platform/pam/sessions/overview",
