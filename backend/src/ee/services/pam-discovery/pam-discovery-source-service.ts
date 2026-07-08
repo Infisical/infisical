@@ -123,7 +123,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       credentialAccountId,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.LaunchSessions,
       ctx
     );
     const expectedType = getCredentialAccountType(discoveryType);
