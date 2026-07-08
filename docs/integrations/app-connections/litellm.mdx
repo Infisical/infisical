@@ -55,14 +55,14 @@ description: "Learn how to configure a LiteLLM connection for Infisical."
                       "/v2/team/list",
                       "/user/list"
                     ]
-                  }'
+                  }' | jq ".key"
+
                 ```
 
                 <Note>
 
                 The `/models`, `/v2/team/list`, and `/user/list` routes are optional. They are only used to populate the user, team, and model dropdowns in the Infisical UI when configuring a rotation.
                 </Note>
-
 
 
                 Use the generated key as your **API Key** and your instance address as the **Instance URL** when creating the connection below.

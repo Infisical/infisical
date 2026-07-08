@@ -11,14 +11,14 @@ type TGetAppConnectionFunc = (
 ) => Promise<TLiteLLMConnection>;
 
 export const liteLLMConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listUsers = async (connectionId: string, actor: OrgServiceActor) => {
+  const listUsers = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.LiteLLM, connectionId, actor);
-    return listLiteLLMUsers(appConnection);
+    return listLiteLLMUsers(appConnection, search);
   };
 
-  const listTeams = async (connectionId: string, actor: OrgServiceActor, userId?: string) => {
+  const listTeams = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.LiteLLM, connectionId, actor);
-    return listLiteLLMTeams(appConnection, userId);
+    return listLiteLLMTeams(appConnection, search);
   };
 
   const listModels = async (connectionId: string, actor: OrgServiceActor) => {

@@ -7,16 +7,17 @@ import { TLiteLLMModel, TLiteLLMTeam, TLiteLLMUser } from "./types";
 
 const litellmConnectionKeys = {
   all: [...appConnectionKeys.all, "litellm"] as const,
-  listUsers: (connectionId: string) =>
-    [...litellmConnectionKeys.all, "users", connectionId] as const,
-  listTeams: (connectionId: string, userId?: string) =>
-    [...litellmConnectionKeys.all, "teams", connectionId, { userId }] as const,
+  listUsers: (connectionId: string, search?: string) =>
+    [...litellmConnectionKeys.all, "users", connectionId, { search }] as const,
+  listTeams: (connectionId: string, search?: string) =>
+    [...litellmConnectionKeys.all, "teams", connectionId, { search }] as const,
   listModels: (connectionId: string) =>
     [...litellmConnectionKeys.all, "models", connectionId] as const
 };
 
 export const useListLiteLLMConnectionUsers = (
   connectionId: string,
+  search?: string,
   options?: Omit<
     UseQueryOptions<
       TLiteLLMUser[],
@@ -28,10 +29,11 @@ export const useListLiteLLMConnectionUsers = (
   >
 ) => {
   return useQuery({
-    queryKey: litellmConnectionKeys.listUsers(connectionId),
+    queryKey: litellmConnectionKeys.listUsers(connectionId, search),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ users: TLiteLLMUser[] }>(
-        `/api/v1/app-connections/litellm/${connectionId}/users`
+        `/api/v1/app-connections/litellm/${connectionId}/users`,
+        { params: { search } }
       );
 
       return data.users;
@@ -42,7 +44,7 @@ export const useListLiteLLMConnectionUsers = (
 
 export const useListLiteLLMConnectionTeams = (
   connectionId: string,
-  userId?: string,
+  search?: string,
   options?: Omit<
     UseQueryOptions<
       TLiteLLMTeam[],
@@ -54,11 +56,11 @@ export const useListLiteLLMConnectionTeams = (
   >
 ) => {
   return useQuery({
-    queryKey: litellmConnectionKeys.listTeams(connectionId, userId),
+    queryKey: litellmConnectionKeys.listTeams(connectionId, search),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ teams: TLiteLLMTeam[] }>(
         `/api/v1/app-connections/litellm/${connectionId}/teams`,
-        { params: { userId } }
+        { params: { search } }
       );
 
       return data.teams;

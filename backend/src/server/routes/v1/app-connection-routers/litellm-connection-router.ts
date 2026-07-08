@@ -36,6 +36,9 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
       params: z.object({
         connectionId: z.string().uuid()
       }),
+      querystring: z.object({
+        search: z.string().trim().optional()
+      }),
       response: {
         200: z.object({
           users: LiteLLMListItemSchema.array()
@@ -45,10 +48,11 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const {
-        params: { connectionId }
+        params: { connectionId },
+        query: { search }
       } = req;
 
-      const users = await server.services.appConnection.litellm.listUsers(connectionId, req.permission);
+      const users = await server.services.appConnection.litellm.listUsers(connectionId, req.permission, search);
       return { users };
     }
   });
@@ -65,7 +69,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
         connectionId: z.string().uuid()
       }),
       querystring: z.object({
-        userId: z.string().trim().optional()
+        search: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -77,10 +81,10 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const {
         params: { connectionId },
-        query: { userId }
+        query: { search }
       } = req;
 
-      const teams = await server.services.appConnection.litellm.listTeams(connectionId, req.permission, userId);
+      const teams = await server.services.appConnection.litellm.listTeams(connectionId, req.permission, search);
       return { teams };
     }
   });

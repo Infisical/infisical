@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 
@@ -12,6 +13,7 @@ import {
   Tabs,
   TextArea
 } from "@app/components/v2";
+import { useDebounce } from "@app/hooks";
 import {
   useListLiteLLMConnectionModels,
   useListLiteLLMConnectionTeams,
@@ -40,8 +42,37 @@ enum ParameterTab {
   Advanced = "advanced"
 }
 
+type LiteLLMOption = { id: string; name: string };
+
+/**
+ * Resolves the option to display for a stored id. Because the list is fetched with
+ * server-side search, the selected record may not be in the current page, so we fall
+ * back to the locally-captured selection, then to a bare id so the field never blanks.
+ */
+const resolveSelectedOption = <T extends LiteLLMOption>(
+  options: T[] | undefined,
+  selected: T | null,
+  id: string | undefined
+): T | null => {
+  if (!id) return null;
+  if (selected?.id === id) return selected;
+  return options?.find((option) => option.id === id) ?? ({ id, name: id } as T);
+};
+
+/** Ensures the selected option is present in the list so its label always renders. */
+const withSelectedOption = <T extends LiteLLMOption>(
+  options: T[] | undefined,
+  selected: T | null
+): T[] => {
+  const base = options ?? [];
+  if (selected && !base.some((option) => option.id === selected.id)) {
+    return [selected, ...base];
+  }
+  return base;
+};
+
 export const LiteLLMApiKeyRotationParametersFields = () => {
-  const { control, watch, setValue } = useFormContext<
+  const { control, watch } = useFormContext<
     TSecretRotationV2Form & {
       type: SecretRotation.LiteLLMApiKey;
     }
@@ -49,16 +80,29 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
 
   const connectionId = watch("connection.id");
   const userId = watch("parameters.userId");
+  const teamId = watch("parameters.teamId");
 
-  const { data: users, isPending: isUsersPending } = useListLiteLLMConnectionUsers(connectionId, {
-    enabled: Boolean(connectionId)
-  });
+  const [userSearch, setUserSearch] = useState("");
+  const [debouncedUserSearch] = useDebounce(userSearch);
+  const [selectedUser, setSelectedUser] = useState<TLiteLLMUser | null>(null);
 
-  const { data: teams, isPending: isTeamsPending } = useListLiteLLMConnectionTeams(
+  const [teamSearch, setTeamSearch] = useState("");
+  const [debouncedTeamSearch] = useDebounce(teamSearch);
+  const [selectedTeam, setSelectedTeam] = useState<TLiteLLMTeam | null>(null);
+
+  const { data: users, isFetching: isUsersFetching } = useListLiteLLMConnectionUsers(
     connectionId,
-    userId,
+    debouncedUserSearch.trim(),
     {
-      enabled: Boolean(connectionId && userId)
+      enabled: Boolean(connectionId)
+    }
+  );
+
+  const { data: teams, isFetching: isTeamsFetching } = useListLiteLLMConnectionTeams(
+    connectionId,
+    debouncedTeamSearch.trim(),
+    {
+      enabled: Boolean(connectionId)
     }
   );
 
@@ -68,6 +112,22 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
       enabled: Boolean(connectionId)
     }
   );
+
+  // Seed the locally-captured selection from fetched records (e.g. when editing an
+  // existing rotation) so the label survives even after the search list changes.
+  useEffect(() => {
+    if (userId && selectedUser?.id !== userId) {
+      const match = users?.find((user) => user.id === userId);
+      if (match) setSelectedUser(match);
+    }
+  }, [users, userId, selectedUser]);
+
+  useEffect(() => {
+    if (teamId && selectedTeam?.id !== teamId) {
+      const match = teams?.find((team) => team.id === teamId);
+      if (match) setSelectedTeam(match);
+    }
+  }, [teams, teamId, selectedTeam]);
 
   return (
     <Tabs defaultValue={ParameterTab.General}>
@@ -98,56 +158,78 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
         <Controller
           name="parameters.userId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isOptional
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="User"
-              tooltipText="Associate the generated key with a LiteLLM user."
-            >
-              <FilterableSelect
-                isClearable
-                isLoading={isUsersPending && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={users?.find((user) => user.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TLiteLLMUser>)?.id);
-                  // Teams are scoped to the selected user, so reset the team when the user changes.
-                  setValue("parameters.teamId", undefined);
-                }}
-                options={users}
-                placeholder="Select a user..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id}
-              />
-            </FormControl>
-          )}
+          render={({ field: { value, onChange }, fieldState: { error } }) => {
+            const selectedValue = resolveSelectedOption(users, selectedUser, value);
+            return (
+              <FormControl
+                isOptional
+                isError={Boolean(error)}
+                errorText={error?.message}
+                label="User"
+                tooltipText="Associate the generated key with a LiteLLM user. Search by email."
+              >
+                <FilterableSelect
+                  isClearable
+                  isLoading={
+                    (userSearch !== debouncedUserSearch || isUsersFetching) && Boolean(connectionId)
+                  }
+                  isDisabled={!connectionId}
+                  value={selectedValue}
+                  onChange={(option) => {
+                    const newValue = (option as SingleValue<TLiteLLMUser>) ?? null;
+                    setSelectedUser(newValue);
+                    onChange(newValue?.id);
+                  }}
+                  options={withSelectedOption(users, selectedValue)}
+                  filterOption={() => true}
+                  onInputChange={(newSearch, meta) => {
+                    if (meta.action === "input-change") setUserSearch(newSearch);
+                  }}
+                  placeholder="Search for a user..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                />
+              </FormControl>
+            );
+          }}
         />
         <Controller
           name="parameters.teamId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isOptional
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Team"
-              tooltipText="Associate the generated key with a team the selected user belongs to. Select a user first."
-            >
-              <FilterableSelect
-                isClearable
-                isLoading={isTeamsPending && Boolean(connectionId && userId)}
-                isDisabled={!connectionId || !userId}
-                value={teams?.find((team) => team.id === value) ?? null}
-                onChange={(option) => onChange((option as SingleValue<TLiteLLMTeam>)?.id)}
-                options={teams}
-                placeholder={userId ? "Select a team..." : "Select a user first"}
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id}
-              />
-            </FormControl>
-          )}
+          render={({ field: { value, onChange }, fieldState: { error } }) => {
+            const selectedValue = resolveSelectedOption(teams, selectedTeam, value);
+            return (
+              <FormControl
+                isOptional
+                isError={Boolean(error)}
+                errorText={error?.message}
+                label="Team"
+                tooltipText="Associate the generated key with a LiteLLM team. Search by team alias."
+              >
+                <FilterableSelect
+                  isClearable
+                  isLoading={
+                    (teamSearch !== debouncedTeamSearch || isTeamsFetching) && Boolean(connectionId)
+                  }
+                  isDisabled={!connectionId}
+                  value={selectedValue}
+                  onChange={(option) => {
+                    const newValue = (option as SingleValue<TLiteLLMTeam>) ?? null;
+                    setSelectedTeam(newValue);
+                    onChange(newValue?.id);
+                  }}
+                  options={withSelectedOption(teams, selectedValue)}
+                  filterOption={() => true}
+                  onInputChange={(newSearch, meta) => {
+                    if (meta.action === "input-change") setTeamSearch(newSearch);
+                  }}
+                  placeholder="Search for a team..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                />
+              </FormControl>
+            );
+          }}
         />
         <Controller
           name="parameters.models"

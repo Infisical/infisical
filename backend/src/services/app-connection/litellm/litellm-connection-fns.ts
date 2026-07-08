@@ -46,18 +46,30 @@ export const validateLiteLLMConnectionCredentials = async (config: TLiteLLMConne
 
 type TLiteLLMListItem = { id: string; name: string };
 
+// Number of records to return when no search term is provided (dropdown preview),
+// vs. when the user is actively searching (LiteLLM caps page_size at 100).
+const LITELLM_LIST_PREVIEW_LIMIT = 10;
+const LITELLM_LIST_SEARCH_LIMIT = 50;
+
 const getLiteLLMBaseUrl = (connection: TLiteLLMConnection) => removeTrailingSlash(connection.credentials.instanceUrl);
 
 const getLiteLLMErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "Unknown error");
 
-export const listLiteLLMUsers = async (connection: TLiteLLMConnection): Promise<TLiteLLMListItem[]> => {
+export const listLiteLLMUsers = async (
+  connection: TLiteLLMConnection,
+  search?: string
+): Promise<TLiteLLMListItem[]> => {
   const baseUrl = getLiteLLMBaseUrl(connection);
 
   try {
     const { data } = await safeRequest.get<{
       users?: { user_id: string; user_email?: string | null; user_alias?: string | null }[];
     }>(`${baseUrl}/user/list`, {
-      params: { page_size: 100 },
+      // LiteLLM filters users by partial email match via `user_email`.
+      params: {
+        page_size: search ? LITELLM_LIST_SEARCH_LIMIT : LITELLM_LIST_PREVIEW_LIMIT,
+        ...(search ? { user_email: search } : {})
+      },
       headers: { Authorization: `Bearer ${connection.credentials.apiKey}` }
     });
 
@@ -72,7 +84,7 @@ export const listLiteLLMUsers = async (connection: TLiteLLMConnection): Promise<
 
 export const listLiteLLMTeams = async (
   connection: TLiteLLMConnection,
-  userId?: string
+  search?: string
 ): Promise<TLiteLLMListItem[]> => {
   const baseUrl = getLiteLLMBaseUrl(connection);
 
@@ -80,7 +92,11 @@ export const listLiteLLMTeams = async (
     const { data } = await safeRequest.get<{
       teams?: { team_id: string; team_alias?: string | null }[];
     }>(`${baseUrl}/v2/team/list`, {
-      params: { user_id: userId, page_size: 100 },
+      // LiteLLM filters teams by partial alias match via `team_alias`.
+      params: {
+        page_size: search ? LITELLM_LIST_SEARCH_LIMIT : LITELLM_LIST_PREVIEW_LIMIT,
+        ...(search ? { team_alias: search } : {})
+      },
       headers: { Authorization: `Bearer ${connection.credentials.apiKey}` }
     });
 
