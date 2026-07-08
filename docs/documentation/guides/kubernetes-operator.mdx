@@ -67,11 +67,7 @@ Before you begin, make sure you have:
     ```
 
     <Note>
-      The exact pod name is derived from the Helm release name and chart name and is truncated to 15 characters, so `infisical-operator` plus `secrets-operator` becomes the `infisical-opera` prefix. If you ran `helm install` with a different release name, your prefix will differ accordingly.
-    </Note>
-
-    <Note>
-      `helm install` uses your current kubeconfig namespace. This tutorial checks the `default` namespace throughout. If the pod does not appear under `-n default`, run `kubectl get pods -A | grep infisical` to find the namespace it landed in, and adjust the `-n` flag in later commands to match.
+      The `infisical-opera` prefix comes from the Helm release and chart names truncated to 15 characters, so a different release name changes it. `helm install` also uses your current kubeconfig namespace: if the pod is not under `-n default`, run `kubectl get pods -A | grep infisical` to find it, and adjust the `-n` flag in later commands to match.
     </Note>
   </Step>
 
@@ -103,9 +99,9 @@ Before you begin, make sure you have:
         - **Key**: `SMTP_HOST`
         - **Value**: `smtp@gmail.com`
         - **Environment**: `Production`
-    3. Record the **Project Slug** and confirm the environment slug. You need both to fill in the CRDs.
-        - Open **Project Settings** and find the **Slug** field. Copy it. This is the value you paste into `sources[].projectSlug` (pull), `destination.projectSlug` (push), and `dynamicSecret.projectSlug` (dynamic). It is distinct from the project name.
-        - In the project, open the environment list (Project Settings, then **Environments**). Find the slug for the **Production** environment you added the secret to. On a new project the Production environment's slug is usually `prod`, but confirm the exact value. Each CRD's environment field must match it exactly, or the sync targets the wrong environment.
+    3. Record the **Project Slug** and confirm the environment slug; you need both for the CRDs.
+        - In **Project Settings**, copy the **Slug** field (distinct from the project name). It fills the `projectSlug` field in every CRD.
+        - In **Project Settings > Environments**, find the **Production** environment's slug. It is usually `prod`, but confirm it: each CRD's environment field must match exactly, or the sync targets the wrong environment.
     4. Open the **Project Access** tab and add the Machine Identity you created. Grant it Admin permissions for this tutorial.
 
     <Note>
@@ -211,7 +207,7 @@ Before you begin, make sure you have:
     kubectl get serviceaccount -n default | grep infisical
     ```
 
-    You should see `infisical-token-reviewer` and `infisical-service-account`.
+    You should see `infisical-token-reviewer` and `infisical-service-account` (alongside the operator's own `infisical-opera-controller-manager` service account).
 
     Confirm the two token secrets exist:
 
@@ -219,7 +215,7 @@ Before you begin, make sure you have:
     kubectl get secrets -n default | grep infisical
     ```
 
-    You should see `infisical-token-reviewer-token` and `infisical-service-account-token`, each of type `kubernetes.io/service-account-token`.
+    You should see `infisical-token-reviewer-token` and `infisical-service-account-token`, each of type `kubernetes.io/service-account-token`. The operator's own Helm release secret (`sh.helm.release.v1.infisical-operator...`) also matches the grep; ignore it.
   </Step>
 
   <Step title="Wire up the Kubernetes Auth method">
@@ -351,7 +347,7 @@ The `v1beta1` pull path splits connection and authentication into two reusable o
 
     - `identityIdRef` names the Secret (`name`, `namespace`) and the data key (`key`) holding the Identity ID. There is no inline `identityId` field in `v1beta1`.
     - `serviceAccountRef` must name the `infisical-service-account` you created. The operator mints a fresh 10-minute token for it via the TokenRequest API on every login.
-    - `method` also accepts `universal`, `aws-iam`, `azure`, `gcp-id-token`, `gcp-iam`, and `ldap`, each with its own config block. This tutorial uses `kubernetes`.
+    - `method` selects the authentication method; this tutorial uses `kubernetes`. See the [`InfisicalAuth` reference](/integrations/platforms/kubernetes/infisical-auth-crd) for the other methods.
 
     Apply the resource:
 
@@ -410,10 +406,10 @@ The [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-stati
 
     Each recorded value now lands here:
 
-    | Value you recorded | Where it lands |
+    | Recorded value | Where it's used |
     |---|---|
-    | Identity ID | The `kubernetes-credentials` Secret, read by `InfisicalAuth` via `identityIdRef` |
-    | Project Slug | `spec.sources[].projectSlug` |
+    | Identity ID | `identityId` key in the `kubernetes-credentials` Secret (via `InfisicalAuth`'s `identityIdRef`) |
+    | Project slug | `spec.sources[].projectSlug` |
     | Environment slug | `spec.sources[].environmentSlug` |
 
     Field notes:
@@ -440,7 +436,7 @@ The [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-stati
 
     ```text
     NAME                           AGE   AUTH METHOD   SYNCED   AFFECTED DEPLOYMENTS
-    infisical-static-secret-demo   15s   kubernetes    True
+    infisical-static-secret-demo   15s   kubernetes    True     0 deployments were redeployed due to secret changes
     ```
 
     Confirm the operator created the managed secret:
@@ -516,7 +512,7 @@ The [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-stati
 
 The [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) CRD does the reverse: it reads a Kubernetes Secret and writes its values into Infisical.
 
-This is a `v1alpha1` CRD, and it does not use the `InfisicalConnection` or `InfisicalAuth` objects you created. As covered in the note at the top of this tutorial, `v1beta1` has no push CRD, so this resource carries its own inline `authentication` block with the Identity ID pasted as a plain `identityId` string.
+This `v1alpha1` CRD does not use the `InfisicalConnection` or `InfisicalAuth` objects; it carries its own inline `authentication` block with the Identity ID pasted as a plain `identityId` string.
 
 <Steps titleSize="h3">
   <Step title="Create the source Kubernetes Secret">
