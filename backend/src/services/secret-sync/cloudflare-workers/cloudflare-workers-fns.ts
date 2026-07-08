@@ -136,7 +136,13 @@ export const CloudflareWorkersSyncFns = {
           if (binding.type !== "secret_text" && updatedBindingMap[binding.name] !== undefined) {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {
-              return { ...binding, json: JSON.parse(newValue) };
+              try {
+                return { ...binding, json: JSON.parse(newValue) };
+              } catch {
+                throw new BadRequestError({
+                  message: `"${binding.name}" already existgs in cloudflare as a JSON variable: the value you provided is not valid JSON`
+                });
+              }
             }
             return { ...binding, text: newValue };
           }
@@ -171,11 +177,50 @@ export const CloudflareWorkersSyncFns = {
         return !isInNewSecretMap && isManagedBySchema;
       });
 
+      const secretTypeToDelete = secretsToDelete.filter((s) => s.type === "secret_text");
+      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !== "secret_text");
+
       try {
-        for await (const key of secretsToDelete) {
+        for (const secret of secretTypeToDelete) {
           await delayMs(Math.max(0, applyJitter(100, 200)));
           await request.delete(
-            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${secret.key}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`
+              }
+            }
+          );
+        }
+
+        if (bindingTypeToDelete.length > 0) {
+          const bindingKeysToDelete = new Set(bindingTypeToDelete.map((b) => b.key));
+
+          const { data: settingsData } = await request.get<{
+            result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
+          }>(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                Accept: "application/json"
+              }
+            }
+          );
+
+          const filteredBindings = settingsData.result.bindings.filter(
+            (binding) => !bindingKeysToDelete.has(binding.name)
+          );
+
+          const formData = new FormData();
+          formData.append(
+            "settings",
+            new Blob([JSON.stringify({ bindings: filteredBindings })], { type: "application/json" })
+          );
+
+          await request.patch(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
+            formData,
             {
               headers: {
                 Authorization: `Bearer ${apiToken}`
@@ -204,26 +249,65 @@ export const CloudflareWorkersSyncFns = {
     const existingSecretNames = await getSecretKeys(secretSync);
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
-    try {
-      for await (const existingSecret of existingSecretNames) {
-        const isManagedBySchema = matchesSchema(
-          existingSecret.key,
-          secretSync.environment?.slug || "",
-          secretSync.syncOptions.keySchema
-        );
-        const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingSecret.key);
+    const secretsToRemove = existingSecretNames.filter((existingSecret) => {
+      const isManagedBySchema = matchesSchema(
+        existingSecret.key,
+        secretSync.environment?.slug || "",
+        secretSync.syncOptions.keySchema
+      );
+      return secretMapToRemoveKeys.has(existingSecret.key) && isManagedBySchema;
+    });
 
-        if (isInSecretMapToRemove && isManagedBySchema) {
-          await delayMs(Math.max(0, applyJitter(100, 200)));
-          await request.delete(
-            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingSecret}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiToken}`
-              }
+    const secretTypeToRemove = secretsToRemove.filter((s) => s.type === "secret_text");
+    const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== "secret_text");
+
+    try {
+      for (const secret of secretTypeToRemove) {
+        await delayMs(Math.max(0, applyJitter(100, 200)));
+        await request.delete(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${secret.key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`
             }
-          );
-        }
+          }
+        );
+      }
+
+      if (bindingTypeToRemove.length > 0) {
+        const bindingKeysToRemove = new Set(bindingTypeToRemove.map((b) => b.key));
+
+        const { data: settingsData } = await request.get<{
+          result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
+        }>(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+
+        const filteredBindings = settingsData.result.bindings.filter(
+          (binding) => !bindingKeysToRemove.has(binding.name)
+        );
+
+        const formData = new FormData();
+        formData.append(
+          "settings",
+          new Blob([JSON.stringify({ bindings: filteredBindings })], { type: "application/json" })
+        );
+
+        await request.patch(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`
+            }
+          }
+        );
       }
     } catch (err) {
       throwOnUndeployedVersionError(err);
