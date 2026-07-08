@@ -1970,7 +1970,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           return altNameType;
         });
 
-      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
+      // RFC 5280 4.1.2.6: subjectAltName must be marked critical when the subject is an empty sequence
+      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, leafDn.trim().length === 0);
       extensions.push(altNamesExtension);
     }
 
@@ -2423,9 +2424,6 @@ export const internalCertificateAuthorityServiceFactory = ({
           }
           return altNameType;
         });
-
-      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
-      extensions.push(altNamesExtension);
     } else {
       // attempt to read from CSR if altNames is not explicitly provided
       const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
@@ -2449,7 +2447,12 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (altNamesArray.length) {
-      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
+      // RFC 5280 4.1.2.6: subjectAltName must be marked critical when the subject is an empty sequence.
+      const finalSubject = subjectOverride || csrObj.subject;
+      const altNamesExtension = new x509.SubjectAlternativeNameExtension(
+        altNamesArray,
+        finalSubject.trim().length === 0
+      );
       extensions.push(altNamesExtension);
     }
 
