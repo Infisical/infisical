@@ -26,7 +26,7 @@ Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) thr
   </Step>
   <Step title="Configure Connection Details">
     - **Name**: Friendly name for this connection (for example, `production-adcs`)
-    - **CA Host**: The AD CS server hostname or IP reachable from the Gateway (for example, `ca01.corp.example.com`)
+    - **CA Host**: The network address the Gateway uses to reach your AD CS server. This can be a fully qualified domain name (for example, `ca01.corp.example.com`), a short hostname, or an IP address, as long as the Gateway can resolve and connect to it. Because the Gateway runs inside your network, this is almost always a private, internal address (a private DNS name or private IP) rather than a public one. Enter the address only: do not include a scheme (`https://`), port, or path, since AD CS is reached over DCOM (MS-WCCE).
     - **Username**: Domain account in the form `DOMAIN\username` or `username@domain.com`
     - **Password**: Password for the domain account
     - **Gateway**: The Gateway that can reach the AD CS server
@@ -37,3 +37,7 @@ Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) thr
     Your **Microsoft ADCS Connection** is now available for use.
   </Step>
 </Steps>
+
+<Note>
+  A fully qualified domain name is recommended over an IP address. It keeps the connection stable if the server's IP changes and avoids the certificate hostname mismatches an IP can introduce. An IP address works as long as the Gateway can reach the server over it.
+</Note>
