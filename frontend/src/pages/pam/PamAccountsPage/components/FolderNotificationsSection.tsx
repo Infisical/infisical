@@ -1,5 +1,11 @@
 import { useMemo } from "react";
-import { ChevronDown, Plus, Slack, Trash2 } from "lucide-react";
+import {
+  components as selectComponents,
+  MultiValueGenericProps,
+  OptionProps,
+  SingleValueProps
+} from "react-select";
+import { Bell, ChevronDown, Plus, Slack, Trash2 } from "lucide-react";
 
 import {
   Badge,
@@ -29,6 +35,27 @@ import {
   WorkflowIntegrationPlatform
 } from "@app/hooks/api/workflowIntegrations/types";
 
+const SlackLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 122.8 122.8" className={className} aria-hidden="true">
+    <path
+      d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9v12.9zm6.5 0c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V77.6z"
+      fill="#e01e5a"
+    />
+    <path
+      d="M45.2 25.8c-7.1 0-12.9-5.8-12.9-12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9H45.2zm0 6.5c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9h32.3z"
+      fill="#36c5f0"
+    />
+    <path
+      d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97V45.2zm-6.5 0c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9v32.3z"
+      fill="#2eb67d"
+    />
+    <path
+      d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97h12.9zm0-6.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H77.6z"
+      fill="#ecb22e"
+    />
+  </svg>
+);
+
 const EVENT_OPTIONS: { value: PamNotificationEvent; label: string }[] = [
   { value: PamNotificationEvent.AccessRequested, label: "Access requested" },
   { value: PamNotificationEvent.AccessRequestApproved, label: "Request approved" },
@@ -38,6 +65,42 @@ const EVENT_OPTIONS: { value: PamNotificationEvent; label: string }[] = [
 type IntegrationOption = { value: string; label: string };
 type ChannelOption = { id: string; name: string };
 type EventOption = (typeof EVENT_OPTIONS)[number];
+
+const WorkspaceOption = ({ children, ...props }: OptionProps<IntegrationOption>) => (
+  <selectComponents.Option {...props}>
+    <div className="flex items-center gap-2">
+      <SlackLogo className="size-4 shrink-0" />
+      <span className="truncate">{children}</span>
+    </div>
+  </selectComponents.Option>
+);
+
+const WorkspaceSingleValue = ({ children, ...props }: SingleValueProps<IntegrationOption>) => (
+  <selectComponents.SingleValue {...props}>
+    <div className="flex items-center gap-2">
+      <SlackLogo className="size-4 shrink-0" />
+      <span className="truncate">{children}</span>
+    </div>
+  </selectComponents.SingleValue>
+);
+
+const ChannelMultiValueLabel = ({ children, ...props }: MultiValueGenericProps<ChannelOption>) => (
+  <selectComponents.MultiValueLabel {...props}>
+    <div className="flex items-center gap-1.5">
+      <SlackLogo className="size-3.5 shrink-0" />
+      {children}
+    </div>
+  </selectComponents.MultiValueLabel>
+);
+
+const EventMultiValueLabel = ({ children, ...props }: MultiValueGenericProps<EventOption>) => (
+  <selectComponents.MultiValueLabel {...props}>
+    <div className="flex items-center gap-1.5">
+      <Bell className="size-3.5 shrink-0 text-muted" />
+      {children}
+    </div>
+  </selectComponents.MultiValueLabel>
+);
 
 type ConfigCardProps = {
   config: TPamNotificationConfig;
@@ -100,6 +163,7 @@ const NotificationConfigCard = ({
             }}
             getOptionValue={(opt) => opt.value}
             getOptionLabel={(opt) => opt.label}
+            components={{ Option: WorkspaceOption, SingleValue: WorkspaceSingleValue }}
             placeholder="Select a Slack workspace..."
           />
         </div>
@@ -132,6 +196,7 @@ const NotificationConfigCard = ({
               }}
               getOptionValue={(opt) => opt.id}
               getOptionLabel={(opt) => `#${opt.name}`}
+              components={{ MultiValueLabel: ChannelMultiValueLabel }}
               placeholder="Add Slack channel..."
               noOptionsMessage={() =>
                 "No channels found. Invite the Infisical Slack app to private channels to list them here."
@@ -157,6 +222,7 @@ const NotificationConfigCard = ({
               }}
               getOptionValue={(opt) => opt.value}
               getOptionLabel={(opt) => opt.label}
+              components={{ MultiValueLabel: EventMultiValueLabel }}
               placeholder="Add event..."
             />
           </div>
