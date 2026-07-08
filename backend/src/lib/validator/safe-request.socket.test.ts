@@ -11,7 +11,9 @@ import { buildSsrfSafeAgent } from "./safe-request";
 // real sockets through the agent produced by `buildSsrfSafeAgent`, so it proves
 // the connect-time behavior (that Node actually honors the pinned lookup) rather
 // than the request-shaping logic. It runs in the fast unit step, no DB, Redis,
-// or Docker, and only ever touches 127.0.0.1.
+// or Docker, and never opens a socket to anything other than 127.0.0.1 (the
+// control test does a single DNS lookup of an RFC 6761 `.invalid` name, which
+// resolves nowhere and contacts no real external host).
 const { configState } = vi.hoisted(() => ({
   configState: {
     isDevelopmentMode: false,
