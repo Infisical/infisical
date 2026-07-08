@@ -65,6 +65,7 @@ export const RequestAccessModal = ({
           </SheetHeader>
           <RequestAccessForm
             onClose={() => handleSheetOpenChange(false)}
+            onSuccess={closeSheet}
             onDirtyChange={setIsDirty}
             policies={policies}
             {...props}

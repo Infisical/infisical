@@ -365,6 +365,7 @@ type TRequestAccessForm = z.infer<typeof requestAccessSchema>;
 export const RequestAccessForm = ({
   policies,
   onClose,
+  onSuccess,
   onDirtyChange,
   selectedActions = [],
   secretPath: initialSecretPath
@@ -373,6 +374,7 @@ export const RequestAccessForm = ({
   selectedActions?: ProjectPermissionActions[];
   secretPath?: string;
   onClose?: () => void;
+  onSuccess?: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
 }) => {
   const { currentProject } = useProject();
@@ -524,7 +526,7 @@ export const RequestAccessForm = ({
       text: "Successfully requested access"
     });
     form.reset();
-    if (onClose) onClose();
+    onSuccess?.();
   };
 
   return (
