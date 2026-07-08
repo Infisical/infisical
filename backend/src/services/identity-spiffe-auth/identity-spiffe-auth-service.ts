@@ -702,7 +702,10 @@ export const identitySpiffeAuthServiceFactory = ({
         actorOrgId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.EditAuth, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
