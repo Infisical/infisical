@@ -13,7 +13,8 @@ const ERROR_COLOR = "#e74c3c";
 
 // Escapes Slack control sequences in user-supplied text so a requester can't inject
 // mentions (<!channel>) or disguised links (<url|label>) into notification channels
-const escapeSlackMrkdwn = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escapeSlackMrkdwn = (text: string) =>
+  text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
 export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
