@@ -17,6 +17,11 @@ type TCloudflareErrorResponse = {
   errors?: Array<{ code: number; message: string }>;
 };
 
+type TCloudflareSecretMetadata = {
+  key: string;
+  type: string;
+};
+
 const throwOnUndeployedVersionError = (err: unknown) => {
   if (
     err instanceof AxiosError &&
@@ -33,7 +38,7 @@ const throwOnUndeployedVersionError = (err: unknown) => {
   throw err;
 };
 
-const getSecretKeys = async (secretSync: TCloudflareWorkersSyncWithCredentials): Promise<string[]> => {
+const getSecretKeys = async (secretSync: TCloudflareWorkersSyncWithCredentials): Promise<TCloudflareSecretMetadata[]> => {
   const {
     destinationConfig,
     connection: {
@@ -41,19 +46,36 @@ const getSecretKeys = async (secretSync: TCloudflareWorkersSyncWithCredentials):
     }
   } = secretSync;
 
-  const { data } = await request.get<{
-    result: Array<{ name: string }>;
-  }>(
-    `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${destinationConfig.scriptId}/secrets`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      }
-    }
-  );
+  const headers = {
+    Authorization: `Bearer ${apiToken}`,
+    Accept: "application/json"
+  };
 
-  return data.result.map((s) => s.name);
+  const [secretsResponse, settingsResponse] = await Promise.all([
+    request.get<{
+      result: Array<{ name: string; type: string }>;
+    }>(
+      `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${destinationConfig.scriptId}/secrets`,
+      { headers }
+    ),
+    request.get<{
+      result: { bindings: Array<{ type: string; name: string; text?: string }> };
+    }>(
+      `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${destinationConfig.scriptId}/settings`,
+      { headers }
+    )
+  ]);
+
+  const secrets = secretsResponse.data.result.map((s) => ({ key: s.name, type: s.type }));
+
+  const nonSecretBindings = (settingsResponse.data.result.bindings || [])
+    .filter((b) => b.type !== "secret_text")
+    .map((b) => ({ key: b.name, type: b.type }));
+
+  const secretKeySet = new Set(secrets.map((s) => s.key));
+  const uniqueNonSecretBindings = nonSecretBindings.filter((v) => !secretKeySet.has(v.key));
+
+  return [...secrets, ...uniqueNonSecretBindings];
 };
 
 export const CloudflareWorkersSyncFns = {
@@ -65,11 +87,24 @@ export const CloudflareWorkersSyncFns = {
       destinationConfig: { scriptId }
     } = secretSync;
 
-    const existingSecretNames = await getSecretKeys(secretSync);
+    const existingSecrets = await getSecretKeys(secretSync);
+    const existingSecretsMap = Object.fromEntries(existingSecrets.map(({key, type}) => ([key, type])));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
+    const bindingEntries: Array<[string, { value: string }]> = [];
+    const secretEntries: Array<[string, { value: string }]> = [];
+
+    for (const [key, val] of Object.entries(secretMap)) {
+      const existingType = existingSecretsMap[key];
+      if (existingType && existingType !== "secret_text") {
+        bindingEntries.push([key, val]);
+      } else {
+        secretEntries.push([key, val]);
+      }
+    }
+
     try {
-      for await (const [key, val] of Object.entries(secretMap)) {
+      for (const [key, val] of secretEntries) {
         await delayMs(Math.max(0, applyJitter(100, 200)));
         await request.put(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
@@ -82,18 +117,57 @@ export const CloudflareWorkersSyncFns = {
           }
         );
       }
+
+      if (bindingEntries.length > 0) {
+        const { data: settingsData } = await request.get<{
+          result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
+        }>(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+
+        const updatedBindingMap = Object.fromEntries(bindingEntries);
+        const updatedBindings = settingsData.result.bindings.map((binding) => {
+          if (binding.type !== "secret_text" && updatedBindingMap[binding.name] !== undefined) {
+            const newValue = updatedBindingMap[binding.name].value;
+            if (binding.type === "json") {
+              return { ...binding, json: JSON.parse(newValue) };
+            }
+            return { ...binding, text: newValue };
+          }
+          return binding;
+        });
+
+        const formData = new FormData();
+        formData.append("settings", new Blob([JSON.stringify({ bindings: updatedBindings })], { type: "application/json" }));
+
+        await request.patch(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`
+            }
+          }
+        );
+      }
     } catch (err) {
       throwOnUndeployedVersionError(err);
     }
 
     if (!secretSync.syncOptions.disableSecretDeletion) {
-      const secretsToDelete = existingSecretNames.filter((existingKey) => {
+      const secretsToDelete = existingSecrets.filter((existingSecret) => {
         const isManagedBySchema = matchesSchema(
-          existingKey,
+          existingSecret.key,
           secretSync.environment?.slug || "",
           secretSync.syncOptions.keySchema
         );
-        const isInNewSecretMap = secretMapKeys.has(existingKey);
+        const isInNewSecretMap = secretMapKeys.has(existingSecret.key);
         return !isInNewSecretMap && isManagedBySchema;
       });
 
@@ -131,18 +205,18 @@ export const CloudflareWorkersSyncFns = {
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
     try {
-      for await (const existingKey of existingSecretNames) {
+      for await (const existingSecret of existingSecretNames) {
         const isManagedBySchema = matchesSchema(
-          existingKey,
+          existingSecret.key,
           secretSync.environment?.slug || "",
           secretSync.syncOptions.keySchema
         );
-        const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingKey);
+        const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingSecret.key);
 
         if (isInSecretMapToRemove && isManagedBySchema) {
           await delayMs(Math.max(0, applyJitter(100, 200)));
           await request.delete(
-            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingKey}`,
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingSecret}`,
             {
               headers: {
                 Authorization: `Bearer ${apiToken}`
