@@ -338,6 +338,7 @@ const dispatch = async <T>(
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
   const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
+  const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
@@ -350,6 +351,9 @@ const dispatch = async <T>(
     url,
     ...(data !== undefined && { data }),
     maxRedirects: 0,
+    // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
+    // pinned agent (the proxy would re-resolve the target, defeating the pin).
+    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
@@ -357,6 +361,7 @@ const dispatch = async <T>(
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
   const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
+  const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
@@ -367,6 +372,9 @@ const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
     ...axiosOpts,
     url,
     maxRedirects: 0,
+    // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
+    // pinned agent (the proxy would re-resolve the target, defeating the pin).
+    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
