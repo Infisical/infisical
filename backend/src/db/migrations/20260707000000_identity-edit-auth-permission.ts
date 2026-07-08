@@ -7,8 +7,16 @@ import { TableName } from "../schemas";
 // `create`/`edit` actions. It now requires the dedicated `edit-auth` action. To
 // avoid silently stripping this ability from existing custom roles on upgrade,
 // grandfather `edit-auth` onto any custom role that could already configure auth
-// methods (i.e. has a non-inverted identity rule granting `create` or `edit`),
-// preserving that rule's conditions so identity-scoping is retained.
+// methods (i.e. has an identity rule referencing `create` or `edit`), preserving
+// each source rule's conditions so identity-scoping is retained.
+//
+// This mirrors BOTH allow (non-inverted) and deny (inverted) source rules: a role
+// that broadly allows `edit` on identities but denies it for a specific
+// `identityId` must keep that exclusion for `edit-auth`, otherwise it could
+// configure auth methods on an identity it was explicitly barred from editing.
+// Source rules are mirrored in their original relative order, and CASL resolves
+// the last matching rule as the winner, so a deny that overrode an allow before
+// continues to override it for `edit-auth`.
 //
 // Both org roles (projectId IS NULL) and project roles live in the `roles`
 // table and use the same `identity` subject + action strings, so a single pass
@@ -34,6 +42,10 @@ const includes = (value: string | string[] | undefined, target: string) =>
 const conditionSignature = (conditions: unknown) =>
   conditions === undefined ? "__none__" : JSON.stringify(conditions);
 
+// An allow and a deny with identical conditions are distinct rules, so the
+// dedup key must include the inverted flag.
+const ruleSignature = (rule: CaslRule) => `${rule.inverted ? "deny" : "allow"}:${conditionSignature(rule.conditions)}`;
+
 export async function up(knex: Knex): Promise<void> {
   await knex.transaction(async (trx) => {
     const customRoles = await trx(TableName.Role).select("*");
@@ -42,20 +54,19 @@ export async function up(knex: Knex): Promise<void> {
       .map((role) => {
         const rules = unpackRules((role.permissions ?? []) as Parameters<typeof unpackRules>[0]) as CaslRule[];
 
-        // Condition signatures for which edit-auth is already granted (non-inverted).
+        // Signatures (inverted flag + conditions) for which an edit-auth rule
+        // already exists, so we don't duplicate it.
         const existingEditAuth = new Set(
           rules
-            .filter(
-              (rule) =>
-                !rule.inverted && includes(rule.subject, IDENTITY_SUBJECT) && includes(rule.action, EDIT_AUTH_ACTION)
-            )
-            .map((rule) => conditionSignature(rule.conditions))
+            .filter((rule) => includes(rule.subject, IDENTITY_SUBJECT) && includes(rule.action, EDIT_AUTH_ACTION))
+            .map(ruleSignature)
         );
 
-        // Source rules that granted the ability to configure auth methods.
+        // Source rules that scoped the ability to configure auth methods, in their
+        // original relative order. Both allows (grant edit-auth) and denies
+        // (exclude edit-auth) are mirrored so identity-scoping is preserved.
         const sourceRules = rules.filter(
           (rule) =>
-            !rule.inverted &&
             includes(rule.subject, IDENTITY_SUBJECT) &&
             (includes(rule.action, CREATE_ACTION) || includes(rule.action, EDIT_ACTION))
         );
@@ -63,14 +74,15 @@ export async function up(knex: Knex): Promise<void> {
         const rulesToAdd: CaslRule[] = [];
         const addedSignatures = new Set<string>();
         for (const rule of sourceRules) {
-          const signature = conditionSignature(rule.conditions);
+          const signature = ruleSignature(rule);
           if (!existingEditAuth.has(signature) && !addedSignatures.has(signature)) {
             addedSignatures.add(signature);
-            rulesToAdd.push(
+            const newRule: CaslRule =
               rule.conditions === undefined
                 ? { action: EDIT_AUTH_ACTION, subject: IDENTITY_SUBJECT }
-                : { action: EDIT_AUTH_ACTION, subject: IDENTITY_SUBJECT, conditions: rule.conditions }
-            );
+                : { action: EDIT_AUTH_ACTION, subject: IDENTITY_SUBJECT, conditions: rule.conditions };
+            if (rule.inverted) newRule.inverted = true;
+            rulesToAdd.push(newRule);
           }
         }
 
@@ -101,8 +113,8 @@ export async function down(knex: Knex): Promise<void> {
 
         let wasModified = false;
         const filteredRules = rules.filter((rule) => {
-          if (rule.inverted || !includes(rule.subject, IDENTITY_SUBJECT) || !includes(rule.action, EDIT_AUTH_ACTION))
-            return true;
+          // Mirrors up(): strip edit-auth from identity rules, both allows and denies.
+          if (!includes(rule.subject, IDENTITY_SUBJECT) || !includes(rule.action, EDIT_AUTH_ACTION)) return true;
 
           wasModified = true;
           if (Array.isArray(rule.action)) {
