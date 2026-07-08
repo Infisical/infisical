@@ -1,5 +1,6 @@
 import { RawAxiosRequestHeaders } from "axios";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { safeRequest } from "@app/lib/validator";
 
@@ -30,7 +31,8 @@ export const SumoLogicProviderFactory = () => {
     await safeRequest
       .post(url, JSON.stringify({ ping: "ok" }), {
         headers: buildStreamHeaders(credentials, "application/json"),
-        timeout: AUDIT_LOG_STREAM_TIMEOUT
+        timeout: AUDIT_LOG_STREAM_TIMEOUT,
+        allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
       })
       .catch((err) => {
         throw new BadRequestError({ message: `Failed to connect with Sumo Logic: ${(err as Error)?.message}` });
@@ -51,7 +53,8 @@ export const SumoLogicProviderFactory = () => {
 
     await safeRequest.post(url, body, {
       headers: buildStreamHeaders(credentials, "application/x-ndjson"),
-      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT,
+      allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
     });
   };
 

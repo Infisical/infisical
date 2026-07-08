@@ -95,6 +95,8 @@ export enum QueueName {
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
+  PamCredentialRotation = "pam-credential-rotation",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
@@ -151,6 +153,8 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
+  PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
@@ -180,6 +184,7 @@ export enum QueueJobs {
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
+  CaNativeAdcsInstall = "ca-native-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
   DigiCertOrderPolling = "digicert-order-polling-job",
@@ -384,6 +389,14 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecretRotationV2RotateSecrets;
     payload: TSecretRotationRotateSecretsJobPayload;
   };
+  [QueueName.PamCredentialRotation]: {
+    name: QueueJobs.PamCredentialRotationQueueRotations;
+    payload: undefined;
+  };
+  [QueueName.PamCredentialRotationRotate]: {
+    name: QueueJobs.PamCredentialRotationRotate;
+    payload: { accountId: string };
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
@@ -501,6 +514,10 @@ export type TQueueJobTypes = {
       }
     | {
         name: QueueJobs.CaAdcsInstall;
+        payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaNativeAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
       };
   [QueueName.ProjectHardDelete]: {

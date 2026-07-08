@@ -12,11 +12,17 @@ import {
   validateRecordingConnection,
   validateRecordingS3Config
 } from "../pam/pam-validators";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
+import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
-import { PamRecordingS3ConfigSchema, TPamTemplateSettings } from "./pam-account-template-schemas";
+import {
+  PamRecordingS3ConfigSchema,
+  PamTemplateSettingsSchema,
+  TPamTemplateSettings
+} from "./pam-account-template-schemas";
 import {
   TCreatePamAccountTemplateDTO,
   TDeletePamAccountTemplateDTO,
@@ -27,15 +33,20 @@ import {
 
 const SUPPORTED_ACCOUNT_TYPES = new Set<string>(Object.keys(ACCOUNT_TYPE_CONFIGS));
 
+// Symbols a rotation password may use: printable punctuation minus anything that could terminate a quoted SQL
+// string, escape it, separate a statement, or be read as a knex positional binding (' " \ ` ; ?).
+const SAFE_PASSWORD_SYMBOLS = "!@#$%^&*()-_=+[]{}|:,.<>/~";
+
 type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "reconcileRotationScheduleForTemplate">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
 };
 
 export type TPamAccountTemplateServiceFactory = ReturnType<typeof pamAccountTemplateServiceFactory>;
 
 export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServiceFactoryDep) => {
-  const { pamAccountTemplateDAL, permissionService } = deps;
+  const { pamAccountTemplateDAL, pamAccountDAL, permissionService } = deps;
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
@@ -45,6 +56,27 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const result = validatePolicyValues(accountType as PamAccountType, policies as Record<string, unknown>);
     if (!result.ok) throw new BadRequestError({ message: result.message });
     return result.data;
+  };
+
+  // Reject rotation config on non-rotatable template types (the settings schema can't, since the type is a sibling
+  // field). The supported-type list is derived from the registry so it never goes stale as types are added.
+  const validateTemplateRotationConfig = (accountType: string, settings: TPamTemplateSettings | undefined) => {
+    if (!settings) return;
+    const hasRotationConfig = settings.rotation !== undefined || settings.passwordRequirements !== undefined;
+    if (hasRotationConfig && !isRotatableAccountType(accountType)) {
+      const supported = ROTATABLE_ACCOUNT_TYPES.map((type) => ACCOUNT_TYPE_CONFIGS[type].name).join(", ");
+      throw new BadRequestError({ message: `Credential rotation is only supported for ${supported} accounts` });
+    }
+    // allowedSymbols end up interpolated into the quoted password-change statement, so validate against an
+    // allowlist rather than a denylist: an allowlist rejects anything not explicitly permitted, so a breakout
+    // character can never slip through unlisted.
+    const allowedSymbols = settings.passwordRequirements?.allowedSymbols;
+    if (allowedSymbols) {
+      const invalid = [...new Set(allowedSymbols)].filter((char) => !SAFE_PASSWORD_SYMBOLS.includes(char));
+      if (invalid.length > 0) {
+        throw new BadRequestError({ message: `Allowed symbols may only include: ${SAFE_PASSWORD_SYMBOLS}` });
+      }
+    }
   };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
@@ -92,8 +124,10 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
 
-    const accountCount = await pamAccountTemplateDAL.countAccountsByTemplateId(templateId);
-    return { ...template, accountCount };
+    const { accountCount, ...stats } = await pamAccountTemplateDAL.getTemplateRotationStats(templateId);
+    // rotationImpact only means something for rotatable types; a non-rotatable template rotates nothing regardless.
+    const rotationImpact = isRotatableAccountType(template.type) ? stats : { willRotate: 0, needsRotationAccount: 0 };
+    return { ...template, accountCount, rotationImpact };
   };
 
   const create = async ({
@@ -112,6 +146,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
     const validatedPolicies = validateTemplatePolicies(type, policies);
+    validateTemplateRotationConfig(type, settings);
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
@@ -162,6 +197,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     }
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
+    validateTemplateRotationConfig(existing.type, settings);
 
     const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
     const resolvedSettings = (settings !== undefined ? settings : existing.settings) as TPamTemplateSettings;
@@ -178,7 +214,21 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
 
     try {
-      const template = await pamAccountTemplateDAL.updateById(templateId, updateData);
+      // Write the template and re-derive its accounts' schedules atomically, so a crash can't leave the settings
+      // changed but nextRotationAt stale. Recompute already-scheduled accounts only when the interval changed.
+      const template = await pamAccountTemplateDAL.transaction(async (tx) => {
+        const updated = await pamAccountTemplateDAL.updateById(templateId, updateData, tx);
+        if (settings !== undefined) {
+          const oldInterval = PamTemplateSettingsSchema.safeParse(existing.settings).data?.rotation?.intervalSeconds;
+          const newInterval = PamTemplateSettingsSchema.safeParse(settings).data?.rotation?.intervalSeconds;
+          await pamAccountDAL.reconcileRotationScheduleForTemplate(
+            templateId,
+            { rescheduleReady: newInterval !== undefined && oldInterval !== newInterval },
+            tx
+          );
+        }
+        return updated;
+      });
       const corsProbeUrl = resolvedS3Config ? await mintCorsProbeUrl(resolvedS3Config) : null;
       return { ...template, corsProbeUrl };
     } catch (err) {

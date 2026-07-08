@@ -142,7 +142,10 @@ export const registerCertificateAuthorityEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const body = req.body as { projectId?: string };
+      const body = req.body as {
+        projectId?: string;
+        configuration?: { keySource?: string; hsmConnectorId?: string };
+      };
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
         req.permission
@@ -155,7 +158,9 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.CREATE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            keySource: body.configuration?.keySource,
+            hsmConnectorId: body.configuration?.hsmConnectorId
           }
         }
       });

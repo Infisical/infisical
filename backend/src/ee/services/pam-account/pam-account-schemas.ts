@@ -732,7 +732,8 @@ export const toNetbiosUsername = (username: string, domainFqdn: string) => {
 export enum PamAccountAccessibilityIssue {
   NoGateway = "no-gateway",
   NoRecordingConfig = "no-recording-config",
-  NoCredential = "no-credential"
+  NoCredential = "no-credential",
+  NoApprovalConfig = "no-approval-config"
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>

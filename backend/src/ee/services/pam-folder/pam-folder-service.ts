@@ -15,6 +15,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 
 import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
 import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,
@@ -32,6 +33,7 @@ type TPamFolderServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "cleanupFolderResources">;
 };
 
 export type TPamFolderServiceFactory = ReturnType<typeof pamFolderServiceFactory>;
@@ -40,7 +42,8 @@ export const pamFolderServiceFactory = ({
   pamFolderDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService
+  permissionService,
+  pamAccessRequestService
 }: TPamFolderServiceFactoryDep) => {
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
@@ -186,6 +189,8 @@ export const pamFolderServiceFactory = ({
         await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
         await membershipDAL.delete({ $in: { id: ids } }, tx);
       }
+
+      await pamAccessRequestService.cleanupFolderResources(folderId, tx);
 
       return pamFolderDAL.deleteById(folderId, tx);
     });

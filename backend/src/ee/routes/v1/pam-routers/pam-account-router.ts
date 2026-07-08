@@ -2,19 +2,22 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamAccessStatus, PamAccountType } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
+import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import {
   PamAccountSettingsOverridesSchema,
   PamTemplateSettingsSchema
 } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
+import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -395,7 +398,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
               templateName: true,
               accountType: true
             }).extend({
-              canLaunch: z.boolean().describe("Whether the caller can launch a session for this account")
+              canLaunch: z.boolean().describe("Whether the caller can launch a session for this account"),
+              requiresApproval: z
+                .boolean()
+                .describe("Whether this account requires approval before launching a session"),
+              requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+              accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
+              grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+              disabledReason: z.string().nullable().describe("Why this account is disabled, or null if usable")
             })
           ),
           totalCount: z.number()
@@ -459,6 +469,168 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
       });
       return { data };
+    }
+  });
+
+  const RotationViewSchema = z.object({
+    enabled: z.boolean(),
+    intervalSeconds: z.number().nullable(),
+    passwordRequirements: PasswordRequirementsSchema.nullable(),
+    rotationAccountId: z.string().nullable(),
+    rotationAccountName: z.string().nullable(),
+    lastRotatedAt: z.date().nullable(),
+    rotationStatus: z.string().nullable(),
+    lastRotationError: z.string().nullable(),
+    isReady: z.boolean()
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/rotation",
+    schema: {
+      operationId: "getPamAccountRotation",
+      description: "Get the credential rotation config and state for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: { 200: z.object({ rotation: RotationViewSchema }) }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const rotation = await server.services.pamAccountRotation.getRotation({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { rotation };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accountId/rotation",
+    schema: {
+      operationId: "setPamAccountRotationAccount",
+      description: "Set or clear the rotation account for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      body: z.object({
+        rotationAccountId: z
+          .string()
+          .uuid()
+          .nullable()
+          .describe("Account that performs the rotation. Its own id for self-rotation, or null to clear")
+      }),
+      response: { 200: z.object({ rotationAccountId: z.string().nullable() }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccountRotation.setRotationAccount({
+        accountId: req.params.accountId,
+        rotationAccountId: req.body.rotationAccountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
+          metadata: { accountId: req.params.accountId, rotationAccountId: result.rotationAccountId }
+        }
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/rotation/rotate",
+    schema: {
+      operationId: "rotatePamAccountCredentials",
+      description: "Rotate a PAM account's credential now",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: { 200: z.object({ rotationStatus: z.string() }) }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccountRotation.rotateNow({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
+          metadata: {
+            accountId: req.params.accountId,
+            accountType: result.accountType,
+            rotationStatus: result.rotationStatus,
+            manual: true,
+            rotationAccountId: result.rotationAccountId,
+            ...(result.message ? { message: result.message } : {})
+          }
+        }
+      });
+
+      // Audited above first, so a failed rotation is logged before the request errors.
+      if (result.rotationStatus !== ROTATION_STATUS.Success) {
+        throw new BadRequestError({ message: result.message ?? "Rotation failed" });
+      }
+      return { rotationStatus: result.rotationStatus };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/rotation/rotation-account-candidates",
+    schema: {
+      operationId: "listPamRotationAccountCandidates",
+      description: "List accounts eligible to be this account's rotation account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          candidates: z.array(
+            z.object({
+              folderId: z.string().nullable(),
+              folderName: z.string().nullable(),
+              accounts: z.array(z.object({ id: z.string(), name: z.string(), host: z.string() }))
+            })
+          )
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.pamAccountRotation.listRotationCandidates({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
     }
   });
 

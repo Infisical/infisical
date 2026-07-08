@@ -749,7 +749,6 @@ tables:
       - id
       - projectId
       - accountId
-      - resourceType
       - resourceName
       - accountName
       - userId

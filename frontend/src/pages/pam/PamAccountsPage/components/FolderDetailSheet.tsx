@@ -62,6 +62,7 @@ import { PAM_FOLDER_TABS, visiblePamTabs } from "../../components/pamResourceTab
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
+import { FolderApprovalsTab } from "./FolderApprovalsTab";
 
 type Props = {
   isOpen: boolean;
@@ -450,6 +451,9 @@ export const FolderDetailSheet = ({
 
   const tabContent: Partial<Record<PamSheetTab, JSX.Element | null>> = {
     [PamSheetTab.Permissions]: folder ? <PermissionsTab folderId={folder.id} /> : null,
+    [PamSheetTab.Approvals]: folder ? (
+      <FolderApprovalsTab folderId={folder.id} onDirtyChange={setIsFormDirty} />
+    ) : null,
     [PamSheetTab.Configuration]: folder ? (
       <GeneralTab folder={folder} onDirtyChange={setIsFormDirty} />
     ) : null

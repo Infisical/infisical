@@ -134,6 +134,12 @@ import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredenti
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
+  THasuraCloudSync,
+  THasuraCloudSyncInput,
+  THasuraCloudSyncListItem,
+  THasuraCloudSyncWithCredentials
+} from "./hasura-cloud/hasura-cloud-sync-types";
+import {
   THCVaultSync,
   THCVaultSyncInput,
   THCVaultSyncListItem,
@@ -180,6 +186,12 @@ import {
   TRenderSyncListItem,
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
+import {
+  TRundeckSync,
+  TRundeckSyncInput,
+  TRundeckSyncListItem,
+  TRundeckSyncWithCredentials
+} from "./rundeck/rundeck-sync-types";
 import {
   TSnowflakeSync,
   TSnowflakeSyncInput,
@@ -246,6 +258,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -258,6 +271,7 @@ export type TSecretSync =
   | TOnaSync
   | TTravisCISync
   | TSnowflakeSync
+  | THasuraCloudSync
   | TCloud66Sync;
 
 export type TSecretSyncWithCredentials =
@@ -291,6 +305,7 @@ export type TSecretSyncWithCredentials =
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
+  | TRundeckSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -305,6 +320,7 @@ export type TSecretSyncWithCredentials =
   | TOnaSyncWithCredentials
   | TTravisCISyncWithCredentials
   | TSnowflakeSyncWithCredentials
+  | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -338,6 +354,7 @@ export type TSecretSyncInput =
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
+  | TRundeckSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -352,6 +369,7 @@ export type TSecretSyncInput =
   | TOnaSyncInput
   | TTravisCISyncInput
   | TSnowflakeSyncInput
+  | THasuraCloudSyncInput
   | TCloud66SyncInput;
 
 export type TSecretSyncListItem =
@@ -386,6 +404,7 @@ export type TSecretSyncListItem =
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
+  | TRundeckSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -399,6 +418,7 @@ export type TSecretSyncListItem =
   | TOnaSyncListItem
   | TTravisCISyncListItem
   | TSnowflakeSyncListItem
+  | THasuraCloudSyncListItem
   | TCloud66SyncListItem;
 
 export type TSyncOptionsConfig = {

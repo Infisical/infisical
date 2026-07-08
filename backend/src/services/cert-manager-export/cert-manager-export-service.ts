@@ -16,6 +16,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TExportCertManagerProjectDTO, TExportCertManagerProjectResult } from "./cert-manager-export-types";
 
@@ -167,6 +168,29 @@ export const certManagerExportServiceFactory = ({
       );
       const sourceInternalCAs = sourceCAsRaw.filter((ca) => Boolean(ca.internalCa?.id));
 
+      const allSourceSecrets = sourceInternalCAs.length
+        ? await certificateAuthoritySecretDAL.find({ $in: { caId: sourceInternalCAs.map((ca) => ca.id) } }, { tx })
+        : [];
+      const sourceSecretsByCaId = new Map<string, typeof allSourceSecrets>();
+      for (const secret of allSourceSecrets) {
+        const existing = sourceSecretsByCaId.get(secret.caId);
+        if (existing) existing.push(secret);
+        else sourceSecretsByCaId.set(secret.caId, [secret]);
+      }
+
+      const hsmBackedCaIds = new Set(
+        allSourceSecrets.filter((s) => s.keySource === CertKeySource.Hsm).map((s) => s.caId)
+      );
+      if (hsmBackedCaIds.size) {
+        const names = sourceInternalCAs
+          .filter((ca) => hsmBackedCaIds.has(ca.id))
+          .map((ca) => ca.name)
+          .join(", ");
+        throw new BadRequestError({
+          message: `Cannot export HSM-backed certificate authorities (${names}). Their signing keys live on an HSM reached through a connector that exists only in the source project, so they cannot be recreated in the destination. Delete these certificate authorities, then export again.`
+        });
+      }
+
       const caIndexById = new Map(sourceInternalCAs.map((ca) => [ca.id, ca]));
       const visited = new Set<string>();
       const sortedCAs: typeof sourceInternalCAs = [];
@@ -205,12 +229,18 @@ export const certManagerExportServiceFactory = ({
         );
         caIdMap.set(sourceCa.id, newCa.id);
 
-        const sourceSecrets = await certificateAuthoritySecretDAL.find({ caId: sourceCa.id }, { tx });
+        const sourceSecrets = sourceSecretsByCaId.get(sourceCa.id) ?? [];
         for (const sourceSecret of sourceSecrets) {
           const newSecret = await certificateAuthoritySecretDAL.create(
             {
               caId: newCa.id,
-              encryptedPrivateKey: await reencrypt(sourceSecret.encryptedPrivateKey)
+              keySource: sourceSecret.keySource,
+              hsmConnectorId: sourceSecret.hsmConnectorId,
+              hsmKeyLabel: sourceSecret.hsmKeyLabel,
+              hsmPublicKeySpki: sourceSecret.hsmPublicKeySpki,
+              encryptedPrivateKey: sourceSecret.encryptedPrivateKey
+                ? await reencrypt(sourceSecret.encryptedPrivateKey)
+                : undefined
             },
             tx
           );

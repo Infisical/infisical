@@ -6,6 +6,7 @@ import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
 import { PamAccountType } from "../pam/pam-enums";
+import { ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL, ACCOUNT_WILL_ROTATE_SQL } from "../pam-account-rotation/pam-rotation-fns";
 
 export type TPamAccountTemplateWithCount = TPamAccountTemplates & { accountCount: number };
 
@@ -48,5 +49,20 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
     return Number(result.count);
   };
 
-  return { ...orm, findByProjectId, countAccountsByTemplateId };
+  const getTemplateRotationStats = async (templateId: string, tx?: Knex) => {
+    const [result] = (await (tx || db.replicaNode())(TableName.PamAccount)
+      .where({ templateId })
+      .select(
+        db.raw(`count(*) as "accountCount"`),
+        db.raw(`count(*) FILTER (WHERE ${ACCOUNT_WILL_ROTATE_SQL}) as "willRotate"`),
+        db.raw(`count(*) FILTER (WHERE ${ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL}) as "needsRotationAccount"`)
+      )) as unknown as [{ accountCount: string; willRotate: string; needsRotationAccount: string }];
+    return {
+      accountCount: Number(result.accountCount),
+      willRotate: Number(result.willRotate),
+      needsRotationAccount: Number(result.needsRotationAccount)
+    };
+  };
+
+  return { ...orm, findByProjectId, countAccountsByTemplateId, getTemplateRotationStats };
 };

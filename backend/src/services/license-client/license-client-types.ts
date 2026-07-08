@@ -85,13 +85,30 @@ export const catalogResponseSchema = z
   })
   .passthrough();
 
+// Per-dimension metered usage on a subscription item. metered/aggregation/freeBand/rateCents come
+// from the org's pinned plan version (not the global feature flag); freeBand/rateCents are only
+// meaningful for metered dimensions. Additive + permissive so an older server (no dimensions) parses.
+const subscriptionItemDimensionSchema = z
+  .object({
+    key: z.string(),
+    unit: z.string().optional(),
+    metered: z.boolean().default(false),
+    aggregation: z.string().optional(),
+    used: z.number().default(0),
+    limit: z.number().nullish(),
+    freeBand: z.number().nullish(),
+    rateCents: z.number().nullish()
+  })
+  .passthrough();
+
 const subscriptionItemSchema = z
   .object({
     productId: z.string(),
     plan: z.string(),
     quantities: z.record(z.string(), z.number()),
     limits: z.record(z.string(), z.number()),
-    amount: z.number().optional()
+    amount: z.number().optional(),
+    dimensions: z.array(subscriptionItemDimensionSchema).default([])
   })
   .passthrough();
 
@@ -132,6 +149,20 @@ const subscriptionPreviewLineSchema = z
   })
   .passthrough();
 
+// Projected metered cost for the change, computed by the server. estimatedUsageCents is the summed
+// projection; estimatedTotal = nextRecurringTotal + estimatedUsageCents. All additive/nullish so an
+// older server that omits them still parses (the service falls back to nextRecurringTotal).
+const subscriptionPreviewUsageLineSchema = z
+  .object({
+    dimension: z.string(),
+    unit: z.string().optional(),
+    peak: z.number().default(0),
+    freeBand: z.number().default(0),
+    rateCents: z.number().default(0),
+    amountCents: z.number().default(0)
+  })
+  .passthrough();
+
 export const subscriptionPreviewResponseSchema = z
   .object({
     currency: z.string(),
@@ -139,7 +170,10 @@ export const subscriptionPreviewResponseSchema = z
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
     prorationDate: z.number(),
-    lines: z.array(subscriptionPreviewLineSchema).default([])
+    lines: z.array(subscriptionPreviewLineSchema).default([]),
+    estimatedUsageCents: z.number().default(0),
+    estimatedUsageLines: z.array(subscriptionPreviewUsageLineSchema).default([]),
+    estimatedTotal: z.number().nullish()
   })
   .passthrough();
 

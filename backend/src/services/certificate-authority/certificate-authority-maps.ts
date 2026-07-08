@@ -4,6 +4,7 @@ export const CERTIFICATE_AUTHORITIES_TYPE_MAP: Record<CaType, string> = {
   [CaType.INTERNAL]: "Internal",
   [CaType.ACME]: "ACME-compatible CA",
   [CaType.AZURE_AD_CS]: "Active Directory Certificate Service",
+  [CaType.ADCS]: "Microsoft ADCS",
   [CaType.AWS_PCA]: "AWS Private Certificate Authority",
   [CaType.DIGICERT]: "DigiCert",
   [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA",
@@ -23,6 +24,7 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
     CaCapability.RENEW_CERTIFICATES
     // Note: REVOKE_CERTIFICATES intentionally omitted - not supported by ADCS connector
   ],
+  [CaType.ADCS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
   [CaType.AWS_PCA]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,

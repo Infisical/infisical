@@ -12,17 +12,26 @@ import {
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
 
-import { PamAccountType, PamResourcePermissionActions, PamResourcePermissionSub } from "./enums";
+import {
+  PamAccessStatus,
+  PamAccountType,
+  PamApproverType,
+  PamResourcePermissionActions,
+  PamResourcePermissionSub
+} from "./enums";
 import {
   PamAccountAccessibilityIssue,
   PamFolderPermissionSet,
   TAccessiblePamAccount,
   TListAccessiblePamAccountsDTO,
   TListPamAccountTemplatesDTO,
+  TPamAccessRequest,
   TPamAccount,
+  TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
   TPamAccountTypeMetadata,
+  TPamApprovalConfig,
   TPamDiscoveredAccount,
   TPamDiscoveryRun,
   TPamDiscoverySource,
@@ -31,6 +40,7 @@ import {
   TPamMember,
   TPamMembersData,
   TPamResourceRole,
+  TPamRotationCandidateGroup,
   TPamSession
 } from "./types";
 
@@ -81,7 +91,23 @@ export const pamKeys = {
   listDiscoveredAccounts: (
     sourceId: string,
     params?: { search?: string; offset?: number; limit?: number }
-  ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const
+  ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
+  accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  rotationCandidates: (accountId: string) =>
+    [...pamKeys.account(), "rotation-candidates", accountId] as const,
+  accessRequest: () => [...pamKeys.all, "access-request"] as const,
+  pendingMyApproval: (params?: { folderId?: string }) =>
+    [...pamKeys.accessRequest(), "pending-my-approval", params] as const,
+  accessRequestCount: () => [...pamKeys.accessRequest(), "count"] as const,
+  accountApprovers: (accountId: string) =>
+    [...pamKeys.accessRequest(), "account-approvers", accountId] as const,
+  listAccessRequests: (params?: {
+    folderId?: string;
+    status?: string;
+    offset?: number;
+    limit?: number;
+  }) => [...pamKeys.accessRequest(), "list", params] as const,
+  approvalConfig: (folderId: string) => [...pamKeys.all, "approval-config", folderId] as const
 };
 
 const fetchFolderPermissions = async (folderId: string) => {
@@ -155,7 +181,18 @@ export const useListAccessiblePamAccounts = (
       return fetched < lastPage.totalCount ? fetched : undefined;
     },
     enabled: options?.enabled ?? true,
-    placeholderData: keepPreviousData
+    placeholderData: keepPreviousData,
+    // Grants and pending requests change state on their own (expiry, approval), so poll while any
+    // are on screen; a fully static list costs nothing.
+    refetchInterval: (query) => {
+      const hasLiveAccessState = query.state.data?.pages.some((page) =>
+        page.accounts.some(
+          (a) =>
+            a.accessStatus === PamAccessStatus.Granted || a.accessStatus === PamAccessStatus.Pending
+        )
+      );
+      return hasLiveAccessState ? 60_000 : false;
+    }
   });
 };
 
@@ -278,6 +315,35 @@ export const useGetPamAccountById = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useGetPamAccountRotation = (accountId?: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: pamKeys.accountRotation(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ rotation: TPamAccountRotation }>(
+        `/api/v1/pam/accounts/${accountId}/rotation`
+      );
+      return data.rotation;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
+  });
+};
+
+export const useGetPamRotationCandidates = (
+  accountId?: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: pamKeys.rotationCandidates(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ candidates: TPamRotationCandidateGroup[] }>(
+        `/api/v1/pam/accounts/${accountId}/rotation/rotation-account-candidates`
+      );
+      return data.candidates;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
   });
 };
 
@@ -509,5 +575,84 @@ export const useListPamDiscoveredAccounts = (
     },
     enabled: Boolean(sourceId),
     placeholderData: (prev) => prev
+  });
+};
+
+// Access Requests / Approvals
+
+export type TPamApprovalWorkflowStep = {
+  requiredApprovals: number;
+  approvers: { type: PamApproverType; name: string; memberCount?: number }[];
+};
+
+export const useGetPamAccountApprovers = (accountId?: string) => {
+  return useQuery({
+    queryKey: pamKeys.accountApprovers(accountId ?? ""),
+    enabled: Boolean(accountId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ steps: TPamApprovalWorkflowStep[] }>(
+        `/api/v1/pam/access-requests/accounts/${accountId}/approvers`
+      );
+      return data.steps;
+    }
+  });
+};
+
+export const useListPamPendingMyApproval = (params?: { folderId?: string }) => {
+  return useQuery({
+    queryKey: pamKeys.pendingMyApproval(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ requests: TPamAccessRequest[] }>(
+        "/api/v1/pam/access-requests/pending-my-approval",
+        { params }
+      );
+      return data.requests;
+    },
+    refetchInterval: 30_000
+  });
+};
+
+export const useGetPamAccessRequestCount = () => {
+  return useQuery({
+    queryKey: pamKeys.accessRequestCount(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ pendingCount: number; isApprover: boolean }>(
+        "/api/v1/pam/access-requests/pending-my-approval/count"
+      );
+      return data;
+    },
+    refetchInterval: 30_000
+  });
+};
+
+export const useListPamAccessRequests = (params?: {
+  folderId?: string;
+  status?: string;
+  offset?: number;
+  limit?: number;
+}) => {
+  return useQuery({
+    queryKey: pamKeys.listAccessRequests(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ requests: TPamAccessRequest[]; totalCount: number }>(
+        "/api/v1/pam/access-requests",
+        { params }
+      );
+      return data;
+    },
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useGetPamApprovalConfig = (folderId: string, enabled = true) => {
+  return useQuery({
+    queryKey: pamKeys.approvalConfig(folderId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TPamApprovalConfig>(
+        `/api/v1/pam/folders/${folderId}/approval-configuration`
+      );
+      return data;
+    },
+    enabled: !!folderId && enabled
   });
 };
