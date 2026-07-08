@@ -21,7 +21,7 @@ import { Link } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
+import { SecretReferenceDetailsDialog } from "@app/components/secrets/SecretReferenceDetails";
 import {
   Button,
   Drawer,
@@ -35,8 +35,6 @@ import {
   FormLabel,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Switch,
   Tag,
   TextArea,
@@ -355,29 +353,23 @@ export const SecretDetailSidebar = ({
         }
         text="Secret access analysis feature can be unlocked if you upgrade to Infisical Pro plan."
       />
-      <Modal
+      <SecretReferenceDetailsDialog
         isOpen={popUp.secretReferenceTree.isOpen}
         onOpenChange={(isSecretRefOpen) =>
           handlePopUpToggle("secretReferenceTree", isSecretRefOpen)
         }
-      >
-        <ModalContent
-          className="max-w-3xl"
-          title="Secret Reference Details"
-          subTitle="Visual breakdown of secrets referenced by this secret."
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <SecretReferenceTree
-            secretPath={secretPath}
-            environment={environment}
-            secretKey={popUp.secretReferenceTree.data}
-            onClose={() => {
-              handlePopUpToggle("secretReferenceTree", false);
-              onClose();
-            }}
-          />
-        </ModalContent>
-      </Modal>
+        secretPath={secretPath}
+        environment={environment}
+        environmentName={
+          currentProject.environments.find((env) => env.slug === environment)?.name || environment
+        }
+        secretKey={popUp.secretReferenceTree.data || secretKey}
+        defaultValue={watch("value")}
+        isOverride={Boolean(secret.idOverride)}
+        isReadOnly={isReadOnly}
+        secretValueHidden={secret.secretValueHidden}
+        onNavigateAway={onClose}
+      />
 
       <Drawer
         onOpenChange={async (state) => {

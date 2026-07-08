@@ -14,8 +14,8 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
-import { DeleteActionModal, IconButton, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { SecretReferenceDetailsDialog } from "@app/components/secrets/SecretReferenceDetails";
+import { DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
@@ -152,6 +152,7 @@ export const SecretEditRow = ({
     control,
     reset,
     setValue,
+    watch,
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
@@ -166,6 +167,9 @@ export const SecretEditRow = ({
   }, [secretValueData]);
 
   const { permission } = useProjectPermission();
+  const watchedValue = watch("value");
+  const environmentName =
+    currentProject.environments.find((env) => env.slug === environment)?.name || environment;
 
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -402,24 +406,18 @@ export const SecretEditRow = ({
                 </IconButton>
               </Tooltip>
             </div>
-            <Modal
+            <SecretReferenceDetailsDialog
               isOpen={popUp.secretReferenceTree.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("secretReferenceTree", isOpen)}
-            >
-              <ModalContent
-                className="max-w-3xl"
-                title="Secret Reference Details"
-                subTitle="Visual breakdown of secrets referenced by this secret."
-                onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
-              >
-                <SecretReferenceTree
-                  secretPath={secretPath}
-                  environment={environment}
-                  secretKey={secretName}
-                  onClose={() => handlePopUpToggle("secretReferenceTree", false)}
-                />
-              </ModalContent>
-            </Modal>
+              secretPath={secretPath}
+              environment={environment}
+              environmentName={environmentName}
+              secretKey={secretName}
+              defaultValue={(watchedValue as string | null | undefined) ?? defaultValue}
+              isOverride={isOverride}
+              isReadOnly={isImportedSecret || (isManagedSecret && !isOverride)}
+              secretValueHidden={secretValueHidden}
+            />
 
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}

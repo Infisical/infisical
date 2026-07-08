@@ -18,6 +18,11 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import {
+  hasSecretReference,
+  SecretReferenceDetailsDialog,
+  SecretReferenceStateIcon
+} from "@app/components/secrets/SecretReferenceDetails";
 import { Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
@@ -125,6 +130,7 @@ export const SecretTableRow = ({
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
+  const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
 
@@ -217,6 +223,46 @@ export const SecretTableRow = ({
     }
     return secret?.value || importedSecret?.secret?.value || "";
   };
+
+  const visibleEnvironmentSlugs = environments.map(({ slug }) => slug);
+  const secretHasReferenceInVisibleEnvironments =
+    Boolean(
+      importedBy?.some(({ environment: importedByEnvironment, folders }) =>
+        visibleEnvironmentSlugs.includes(importedByEnvironment.slug)
+          ? folders?.some(({ secrets }) =>
+              secrets?.some(({ secretId }) => secretId === secretKey)
+            )
+          : false
+      )
+    ) ||
+    environments.some(({ slug }) => {
+      const secret = getSecretByKey(slug, secretKey);
+      const importedSecret = getImportedSecretByKey(slug, secretKey);
+
+      return hasSecretReference(getDefaultValue(secret, importedSecret));
+    });
+  const secretIsReferencedInVisibleEnvironments = Boolean(
+    importedBy?.some(({ folders }) =>
+      folders?.some(({ secrets }) =>
+        secrets?.some(
+          ({ referencedSecretKey, referencedSecretEnv }) =>
+            referencedSecretKey === secretKey &&
+            visibleEnvironmentSlugs.includes(referencedSecretEnv)
+        )
+      )
+    )
+  );
+  const referenceEnvironment =
+    environments.find(
+      ({ slug }) =>
+        getSecretByKey(slug, secretKey) || isImportedSecretPresentInEnv(slug, secretKey)
+    ) || environments[0];
+  const referenceSecret = referenceEnvironment
+    ? getSecretByKey(referenceEnvironment.slug, secretKey)
+    : undefined;
+  const referenceImportedSecret = referenceEnvironment
+    ? getImportedSecretByKey(referenceEnvironment.slug, secretKey)
+    : undefined;
 
   return (
     <>
@@ -350,6 +396,17 @@ export const SecretTableRow = ({
               >
                 {secretKey}
               </span>
+              {!isEditSecretNameOpen && (
+                <SecretReferenceStateIcon
+                  isConsumer={secretHasReferenceInVisibleEnvironments}
+                  isProvider={secretIsReferencedInVisibleEnvironments}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsSecretReferenceOpen(true);
+                  }}
+                />
+              )}
               {!isFormExpanded &&
                 environments.some(
                   ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
@@ -437,6 +494,23 @@ export const SecretTableRow = ({
             );
           })}
       </TableRow>
+      {referenceEnvironment && (
+        <SecretReferenceDetailsDialog
+          isOpen={isSecretReferenceOpen}
+          onOpenChange={setIsSecretReferenceOpen}
+          secretPath={secretPath}
+          environment={referenceEnvironment.slug}
+          environmentName={referenceEnvironment.name}
+          secretKey={secretKey}
+          defaultValue={getDefaultValue(referenceSecret, referenceImportedSecret)}
+          isOverride={Boolean(referenceSecret?.idOverride)}
+          isReadOnly={
+            isImportedSecretPresentInEnv(referenceEnvironment.slug, secretKey) ||
+            Boolean(referenceSecret?.isRotatedSecret || referenceSecret?.isHoneyTokenSecret)
+          }
+          secretValueHidden={referenceSecret?.secretValueHidden || false}
+        />
+      )}
       {isSingleEnvView && singleEnvShowOverride && (
         <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
           <TableCell>

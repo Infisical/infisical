@@ -33,9 +33,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   hasSecretReference,
   ResolvedSecretValuePopover,
-  SecretReferenceTree
+  SecretReferenceDetailsDialog,
+  SecretReferenceStateIcon
 } from "@app/components/secrets/SecretReferenceDetails";
-import { Input, Modal, ModalContent } from "@app/components/v2";
+import { Input } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
@@ -226,6 +227,7 @@ export const SecretEditTableRow = ({
   const isPendingBatchChange = isBatchMode && hasPendingChange;
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
+  const [isNameFieldFocused, setIsNameFieldFocused] = useToggle();
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
   const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -932,8 +934,10 @@ export const SecretEditTableRow = ({
           )}
           onBlur={(e) => {
             field.onBlur();
+            setIsNameFieldFocused.off();
             if (!isBatchMode && field.onChange) field.onChange(e);
           }}
+          onFocus={setIsNameFieldFocused.on}
         />
       )}
     />
@@ -942,7 +946,26 @@ export const SecretEditTableRow = ({
   const isDirtyState =
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode;
 
-  const secretHasReference = hasSecretReference(watchedValue as string);
+  const secretHasReference =
+    hasSecretReference(watchedValue as string) ||
+    Boolean(
+      importedBy?.some(
+        ({ environment: importedByEnvironment, folders }) =>
+          importedByEnvironment.slug === environment &&
+          folders?.some(({ secrets }) => secrets?.some(({ secretId }) => secretId === secretName))
+      )
+    );
+  const secretIsReferencedByOtherSecrets = Boolean(
+    importedBy?.some(({ folders }) =>
+      folders?.some(({ secrets }) =>
+        secrets?.some(
+          ({ referencedSecretKey, referencedSecretEnv }) =>
+            referencedSecretKey === secretName && referencedSecretEnv === environment
+        )
+      )
+    )
+  );
+  const isNameEditingActive = isNameFieldFocused || Boolean(dirtyFields.key);
 
   const valueContent = (
     <>
@@ -1861,21 +1884,18 @@ export const SecretEditTableRow = ({
           </DropdownMenu>
         </div>
       )}
-      <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
-        <ModalContent
-          className="max-w-3xl"
-          title="Secret Reference Details"
-          subTitle="Visual breakdown of secrets referenced by this secret."
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <SecretReferenceTree
-            secretPath={secretPath}
-            environment={environment}
-            secretKey={secretName}
-            onClose={() => setIsSecretReferenceOpen(false)}
-          />
-        </ModalContent>
-      </Modal>
+      <SecretReferenceDetailsDialog
+        isOpen={isSecretReferenceOpen}
+        onOpenChange={setIsSecretReferenceOpen}
+        secretPath={secretPath}
+        environment={environment}
+        environmentName={environmentName}
+        secretKey={secretName}
+        defaultValue={(watchedValue as string | null | undefined) ?? defaultValue}
+        isOverride={isOverride}
+        isReadOnly={isImportedSecret || isManagedSecret || isPendingBatchChange}
+        secretValueHidden={secretValueHidden}
+      />
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
           <SheetHeader>
@@ -2012,7 +2032,20 @@ export const SecretEditTableRow = ({
         <TableCell
           className={twMerge("border-r pt-1 align-top", isOverride && "border-b-border/50")}
         >
-          {nameInput}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">{nameInput}</div>
+            {!isNameEditingActive && (
+              <SecretReferenceStateIcon
+                isConsumer={secretHasReference}
+                isProvider={secretIsReferencedByOtherSecrets}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSecretReferenceOpen(true);
+                }}
+              />
+            )}
+          </div>
         </TableCell>
         <TableCell
           className={twMerge("relative w-full p-0 px-2", isOverride && "border-b-border/50")}
