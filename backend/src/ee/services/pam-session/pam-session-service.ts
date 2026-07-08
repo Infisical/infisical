@@ -51,6 +51,7 @@ import {
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
+  qualifyUsernameWithDomain,
   resolveGatewayAccountType,
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
@@ -395,6 +396,13 @@ export const pamSessionServiceFactory = ({
       connectionDetails,
       session.selectedHost
     );
+
+    if (account.accountType === PamAccountType.WindowsAd) {
+      credentials.username = qualifyUsernameWithDomain(
+        credentials.username as string,
+        (connectionDetails as { domain: string }).domain
+      );
+    }
 
     return {
       credentials: { ...normalizedConnectionDetails, ...credentials },

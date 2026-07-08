@@ -1,0 +1,106 @@
+---
+title: "Active Directory Discovery"
+sidebarTitle: "Active Directory"
+description: "Scan an Active Directory environment for domain and local Windows accounts."
+---
+
+Active Directory discovery scans an AD environment to enumerate privileged accounts, stages them for review, and lets you import them into PAM. It finds two kinds of accounts:
+
+| Discovered type | What it is | When it is found |
+|-----------------|------------|------------------|
+| **Windows AD** | Domain user accounts from Active Directory | Always |
+| **Windows** | Local accounts on domain-joined Windows servers | Only when local account discovery is enabled and the server is reachable |
+
+All scan traffic (LDAP, DNS, and WinRM) is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
+
+## How It Works
+
+Behind the scenes, an Active Directory scan connects entirely through the Gateway:
+
+1. **Domain accounts** are enumerated by querying the domain controller over LDAP (or LDAPS) using the credential account's connection settings.
+2. **Windows servers** are located in the same LDAP query when local account discovery is enabled.
+3. Each server's hostname is resolved to an IP through the **domain controller's DNS**, so the Gateway can reach it.
+4. Each reachable server is queried over **WinRM** to list its local users.
+
+## Prerequisites
+
+Before creating an Active Directory discovery source, make sure you have:
+
+- A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to your domain controller and, for local account discovery, to your Windows servers.
+- A [Windows AD account](/documentation/platform/pam/accounts/windows-ad) in PAM to use as the **credential account**. Discovery authenticates to your domain as this account. Its FQDN, DC address, ports, and LDAP/LDAPS settings define how the scan connects.
+- The **Product Admin** role. See [Access Control](/documentation/platform/pam/concepts/access-control).
+
+<Note>
+To discover local Windows accounts, the credential account must include a **password**, WinRM must be enabled on your servers, and your domain controller's DNS must resolve each server's hostname so the Gateway can reach it.
+</Note>
+
+## Creating a Source
+
+<Steps>
+  <Step title="Start adding a source">
+    Go to **Privileged Access Management → Discovery** and click **Add Source**, then choose **Active Directory**.
+  </Step>
+  <Step title="Configure the source">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `corp-active-directory`) |
+    | **Credential Account** | The [Windows AD account](/documentation/platform/pam/accounts/windows-ad) used to authenticate and scan |
+    | **Gateway** | The [Gateway](/documentation/platform/gateways/overview) or Gateway pool that scan traffic tunnels through |
+    | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
+  </Step>
+  <Step title="Configure local account discovery">
+    Leave **Discover local accounts** on to enumerate local users on your Windows servers over WinRM, or turn it off to discover domain accounts only. See [Local Account Discovery](#local-account-discovery) for the WinRM options.
+  </Step>
+  <Step title="Save">
+    Click **Create**. The source appears in the Discovery table.
+  </Step>
+</Steps>
+
+## Local Account Discovery
+
+When **Discover local accounts** is enabled, discovery locates domain-joined Windows servers, resolves each one through the domain controller's DNS, and queries it over WinRM to enumerate local users. These become **Windows** (local) staged accounts.
+
+The following WinRM options are available:
+
+| Field | Description |
+|-------|-------------|
+| **WinRM Port** | Port used to reach WinRM on each server (default: 5985) |
+| **Use HTTPS** | Connect to WinRM over HTTPS |
+| **Reject Unauthorized** | Verify the server's TLS certificate (HTTPS only) |
+| **CA Certificate** | Optional PEM certificate, needed only when WinRM HTTPS uses a private CA |
+
+<Note>
+If a scan cannot reach WinRM on a particular server, that server is skipped and the failure is reported on the run. The rest of the scan still completes.
+</Note>
+
+## Running a Scan
+
+Trigger a scan manually with **Scan Now** from the source's row menu or its detail panel. Scans run in the background, and a source can only have one scan running at a time.
+
+If the source is on a **Daily** or **Weekly** schedule, Infisical also scans it automatically when its interval has elapsed. **Manual** sources are only scanned when you trigger them.
+
+## Importing Accounts
+
+From the **Staged Accounts** tab, select the accounts you want and click **Import Accounts**. Then choose:
+
+| Field | Description |
+|-------|-------------|
+| **Destination Folder** | The [folder](/documentation/platform/pam/folders/overview) to import the accounts into |
+| **Template** | An [account template](/documentation/platform/pam/templates/overview) for each account type in your selection |
+
+Once imported, the accounts become regular PAM accounts in the chosen folder and inherit their template's rules.
+
+<Warning>
+Imported accounts arrive without a credential because discovery finds accounts with a username but no password. Open each imported account and add a credential before connecting.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Discovery Overview" icon="radar" href="/documentation/platform/pam/discovery/overview">
+    Understand staging, importing, and schedules.
+  </Card>
+  <Card title="Windows AD Accounts" icon="windows" href="/documentation/platform/pam/accounts/windows-ad">
+    Learn about the account type used to authenticate scans.
+  </Card>
+</CardGroup>

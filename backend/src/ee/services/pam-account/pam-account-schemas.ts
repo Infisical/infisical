@@ -711,6 +711,22 @@ export const buildSessionGatewayConnectionDetails = (
   return validated;
 };
 
+// A username already carries its domain if it's NT4 (`DOMAIN\user`) or UPN (`user@domain`)
+export const isDomainQualifiedUsername = (username: string) => username.includes("\\") || username.includes("@");
+
+// Domain-qualifies a bare username to `NETBIOS\user` for RDP/NLA; already-qualified forms pass through
+export const qualifyUsernameWithDomain = (username: string, domainFqdn: string) => {
+  if (isDomainQualifiedUsername(username)) return username;
+  return `${domainFqdn.split(".")[0].toUpperCase()}\\${username}`;
+};
+
+// Normalizes any form to a NetBIOS `DOMAIN\user` login
+export const toNetbiosUsername = (username: string, domainFqdn: string) => {
+  if (username.includes("\\")) return username;
+  const localPart = username.includes("@") ? username.split("@")[0] : username;
+  return `${domainFqdn.split(".")[0].toUpperCase()}\\${localPart}`;
+};
+
 // -- Account accessibility
 
 export enum PamAccountAccessibilityIssue {
