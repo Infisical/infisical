@@ -392,12 +392,12 @@ export const identityLdapAuthServiceFactory = ({
       });
 
       ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
       ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
@@ -596,12 +596,12 @@ export const identityLdapAuthServiceFactory = ({
       });
 
       ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
       ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionIdentityActions.Edit,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }

@@ -215,8 +215,8 @@ export const IdentityAuthMethodSheet = ({
               type={projectId ? "project" : "org"}
               I={
                 projectId
-                  ? ProjectPermissionIdentityActions.Edit
-                  : OrgPermissionIdentityActions.Edit
+                  ? ProjectPermissionIdentityActions.EditAuth
+                  : OrgPermissionIdentityActions.EditAuth
               }
               a={
                 projectId

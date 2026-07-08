@@ -82,6 +82,7 @@ export enum ProjectPermissionIdentityActions {
   AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -407,6 +408,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]

@@ -121,8 +121,8 @@ export const IdentityAuthMethodsTable = ({
                         type={projectId ? "project" : "org"}
                         I={
                           projectId
-                            ? ProjectPermissionIdentityActions.Edit
-                            : OrgPermissionIdentityActions.Edit
+                            ? ProjectPermissionIdentityActions.EditAuth
+                            : OrgPermissionIdentityActions.EditAuth
                         }
                         a={
                           projectId
