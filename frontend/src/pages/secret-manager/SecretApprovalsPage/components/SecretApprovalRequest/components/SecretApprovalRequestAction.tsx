@@ -25,12 +25,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
 } from "@app/hooks/api";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 type Props = {
   approvalRequestId: string;
@@ -60,6 +61,7 @@ export const SecretApprovalRequestAction = ({
   bypassReason
 }: Props) => {
   const { projectId } = useProject();
+  const { hasProjectRole } = useProjectPermission();
   const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
     usePerformSecretApprovalRequestMerge();
 
@@ -96,6 +98,9 @@ export const SecretApprovalRequestAction = ({
   };
 
   const isSoftEnforcement = enforcementLevel === EnforcementLevel.Soft;
+  // Mirrors the backend merge privilege check: project admins, the request author,
+  // and policy approvers can all merge once the required approvals are met.
+  const canMerge = canApprove || isCommitter || hasProjectRole(ProjectMembershipRole.Admin);
 
   if (!hasMerged && status === "open") {
     return (
@@ -156,7 +161,7 @@ export const SecretApprovalRequestAction = ({
               )}
             </div>
           </div>
-          {canApprove || isSoftEnforcement || isCommitter ? (
+          {canMerge || isSoftEnforcement ? (
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => handleSecretApprovalStatusChange("close")}
@@ -170,21 +175,23 @@ export const SecretApprovalRequestAction = ({
               <Button
                 isDisabled={
                   !(
-                    (isMergable && canApprove) ||
+                    (isMergable && canMerge) ||
                     (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReasonInput))
                   )
                 }
                 isPending={isMerging}
                 onClick={handleSecretApprovalRequestMerge}
-                variant={isSoftEnforcement && !canApprove ? "danger" : "project"}
+                variant={isSoftEnforcement && !canMerge ? "danger" : "project"}
                 size="sm"
               >
-                {!canApprove ? <ShieldAlertIcon /> : <GitMergeIcon />}
+                {!canMerge ? <ShieldAlertIcon /> : <GitMergeIcon />}
                 Merge
               </Button>
             </div>
           ) : (
-            <span className="text-sm text-muted">Only approvers can merge</span>
+            <span className="text-sm text-muted">
+              Only approvers, the request author, or project admins can merge
+            </span>
           )}
         </div>
       </div>
