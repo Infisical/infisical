@@ -19,6 +19,7 @@ import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
 import { FIREWORKS_API_KEY_ROTATION_LIST_OPTION } from "./fireworks-api-key";
 import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
+import { LITELLM_API_KEY_ROTATION_LIST_OPTION } from "./litellm-api-key";
 import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
@@ -67,6 +68,7 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.LiteLLMApiKey]: LITELLM_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.OpenAIServiceAccount]: OPENAI_SERVICE_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION,
   [SecretRotation.SupabaseApiKey]: SUPABASE_API_KEY_ROTATION_LIST_OPTION,

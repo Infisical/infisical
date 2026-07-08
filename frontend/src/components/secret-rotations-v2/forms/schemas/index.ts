@@ -20,6 +20,7 @@ import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
+import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
 import { OpenAIServiceAccountRotationSchema } from "./openai-service-account-rotation-schema";
@@ -50,6 +51,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         DbtServiceTokenRotationSchema,
         WindowsLocalAccountRotationSchema,
         OpenRouterApiKeyRotationSchema,
+        LiteLLMApiKeyRotationSchema,
         OpenAIServiceAccountRotationSchema,
         HpIloRotationSchema,
         SupabaseApiKeyRotationSchema,

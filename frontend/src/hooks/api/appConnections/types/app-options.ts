@@ -263,6 +263,9 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TLiteLLMConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.LiteLLM;
+};
 export type TFireworksConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Fireworks;
 };
@@ -399,6 +402,7 @@ export type TAppConnectionOption =
   | TRundeckConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
+  | TLiteLLMConnectionOption
   | TFireworksConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -478,5 +482,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Rundeck]: TRundeckConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
+  [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
   [AppConnection.Fireworks]: TFireworksConnectionOption;
 };

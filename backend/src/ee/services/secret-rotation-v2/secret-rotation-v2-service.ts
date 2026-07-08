@@ -105,6 +105,7 @@ import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-
 import { hpIloRotationFactory } from "./hp-ilo-rotation/hp-ilo-rotation-fns";
 import { HpIloRotationMethod } from "./hp-ilo-rotation/hp-ilo-rotation-schemas";
 import { THpIloRotation, THpIloRotationGeneratedCredentials } from "./hp-ilo-rotation/hp-ilo-rotation-types";
+import { litellmApiKeyRotationFactory } from "./litellm-api-key/litellm-api-key-rotation-fns";
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
@@ -200,6 +201,7 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.LiteLLMApiKey]: litellmApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenAIServiceAccount]: openAIServiceAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation,

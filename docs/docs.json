@@ -148,6 +148,7 @@
                       "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
+                      "integrations/app-connections/litellm",
                       "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mongodb",
@@ -497,6 +498,7 @@
                       "documentation/platform/secret-rotation/dbt-service-token",
                       "documentation/platform/secret-rotation/fireworks-api-key",
                       "documentation/platform/secret-rotation/ldap-password",
+                      "documentation/platform/secret-rotation/litellm-api-key",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
@@ -1809,6 +1811,18 @@
                       "api-reference/endpoints/app-connections/ldap/create",
                       "api-reference/endpoints/app-connections/ldap/update",
                       "api-reference/endpoints/app-connections/ldap/delete"
+                    ]
+                  },
+                  {
+                    "group": "LiteLLM",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/litellm/list",
+                      "api-reference/endpoints/app-connections/litellm/available",
+                      "api-reference/endpoints/app-connections/litellm/get-by-id",
+                      "api-reference/endpoints/app-connections/litellm/get-by-name",
+                      "api-reference/endpoints/app-connections/litellm/create",
+                      "api-reference/endpoints/app-connections/litellm/update",
+                      "api-reference/endpoints/app-connections/litellm/delete"
                     ]
                   },
                   {

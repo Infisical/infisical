@@ -6,6 +6,7 @@ import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotatio
 import { DatabricksServicePrincipalSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
 import { DatadogApplicationKeySecretRotationSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
+import { LiteLLMApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
 import { MongoDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
@@ -42,6 +43,7 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationSchema,
   WindowsLocalAccountRotationSchema,
   OpenRouterApiKeyRotationSchema,
+  LiteLLMApiKeyRotationSchema,
   OpenAIServiceAccountRotationSchema,
   HpIloRotationSchema,
   SupabaseApiKeyRotationSchema,

@@ -45,6 +45,7 @@ import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
+import { registerLiteLLMConnectionRouter } from "./litellm-connection-router";
 import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
@@ -158,5 +159,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
+    [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
     [AppConnection.Fireworks]: registerFireworksConnectionRouter
   };

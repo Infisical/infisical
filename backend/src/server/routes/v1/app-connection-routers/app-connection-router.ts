@@ -147,6 +147,10 @@ import {
 } from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import {
+  LiteLLMConnectionListItemSchema,
+  SanitizedLiteLLMConnectionSchema
+} from "@app/services/app-connection/litellm";
+import {
   MongoDBConnectionListItemSchema,
   SanitizedMongoDBConnectionSchema
 } from "@app/services/app-connection/mongodb";
@@ -315,6 +319,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
+  ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options
 ]);
 
@@ -395,6 +400,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
   QoveryConnectionListItemSchema,
+  LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema
 ]);
 

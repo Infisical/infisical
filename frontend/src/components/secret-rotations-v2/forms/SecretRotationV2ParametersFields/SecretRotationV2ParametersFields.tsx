@@ -13,6 +13,7 @@ import { DbtServiceTokenRotationParametersFields } from "./DbtServiceTokenRotati
 import { FireworksApiKeyRotationParametersFields } from "./FireworksApiKeyRotationParametersFields";
 import { HpIloRotationParametersFields } from "./HpIloRotationParametersFields";
 import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
+import { LiteLLMApiKeyRotationParametersFields } from "./LiteLLMApiKeyRotationParametersFields";
 import { MongoRotationParametersFields } from "./MongoRotationParametersFields";
 import { OktaClientSecretRotationParametersFields } from "./OktaClientSecretRotationParametersFields";
 import { OpenAIServiceAccountRotationParametersFields } from "./OpenAIServiceAccountRotationParametersFields";
@@ -42,6 +43,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationParametersFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationParametersFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields,
+  [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationParametersFields,
   [SecretRotation.OpenAIServiceAccount]: OpenAIServiceAccountRotationParametersFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationParametersFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationParametersFields,

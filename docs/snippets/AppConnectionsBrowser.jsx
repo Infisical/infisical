@@ -614,6 +614,13 @@ export const AppConnectionsBrowser = () => {
       category: "Platform",
     },
     {
+      name: "LiteLLM",
+      slug: "litellm",
+      path: "/integrations/app-connections/litellm",
+      description: "Learn how to connect LiteLLM to pull secrets from Infisical.",
+      category: "AI & LLM",
+    },
+    {
       name: "OpenAI",
       slug: "openai",
       path: "/integrations/app-connections/openai",

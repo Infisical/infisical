@@ -16,6 +16,7 @@ import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationRe
 import { FireworksApiKeyRotationReviewFields } from "./FireworksApiKeyRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
+import { LiteLLMApiKeyRotationReviewFields } from "./LiteLLMApiKeyRotationReviewFields";
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
 import { OpenAIServiceAccountRotationReviewFields } from "./OpenAIServiceAccountRotationReviewFields";
 import { OpenRouterApiKeyRotationReviewFields } from "./OpenRouterApiKeyRotationReviewFields";
@@ -44,6 +45,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationReviewFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields,
+  [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationReviewFields,
   [SecretRotation.OpenAIServiceAccount]: OpenAIServiceAccountRotationReviewFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationReviewFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationReviewFields,

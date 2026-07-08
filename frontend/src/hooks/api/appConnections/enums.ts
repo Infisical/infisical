@@ -75,5 +75,6 @@ export enum AppConnection {
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
+  LiteLLM = "litellm",
   Fireworks = "fireworks"
 }
