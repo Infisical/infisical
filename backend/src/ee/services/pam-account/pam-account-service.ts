@@ -445,24 +445,37 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ctx
     );
 
-    return pamAccountDAL.transaction(async (tx) => {
-      const memberships = await membershipDAL.find(
-        {
-          scope: RESOURCE_SCOPE,
-          scopeResourceType: ResourceType.PamAccount,
-          scopeResourceId: accountId
-        },
-        { tx }
-      );
+    try {
+      return await pamAccountDAL.transaction(async (tx) => {
+        const memberships = await membershipDAL.find(
+          {
+            scope: RESOURCE_SCOPE,
+            scopeResourceType: ResourceType.PamAccount,
+            scopeResourceId: accountId
+          },
+          { tx }
+        );
 
-      if (memberships.length > 0) {
-        const ids = memberships.map((m) => m.id);
-        await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
-        await membershipDAL.delete({ $in: { id: ids } }, tx);
+        if (memberships.length > 0) {
+          const ids = memberships.map((m) => m.id);
+          await membershipRoleDAL.delete({ $in: { membershipId: ids } }, tx);
+          await membershipDAL.delete({ $in: { id: ids } }, tx);
+        }
+
+        return pamAccountDAL.deleteById(accountId, tx);
+      });
+    } catch (err) {
+      // The only restricting reference to an account is a discovery source using it as its credential
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code?: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        throw new BadRequestError({
+          message: "This account is used as the credential for a discovery source. Delete that source first."
+        });
       }
-
-      return pamAccountDAL.deleteById(accountId, tx);
-    });
+      throw err;
+    }
   };
 
   const listAccessible = async ({

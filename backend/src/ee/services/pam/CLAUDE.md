@@ -181,6 +181,28 @@ No migration, no router or response-schema change (beyond `policyRules` for gate
 - List queries that respect permissions use the accessible-resource pattern: join to the resource table and filter with `WHERE (folderId IN (...) OR accountId IN (...))`
 - Gateway joins (for `gatewayName`/`gatewayIdentityId`) are repeated per-method since the select/join context differs
 
+## Search
+
+Searchable lists filter on **both tiers** — server for correctness/scale, client for instant feedback:
+
+- **Server**: the DAL filters with ormify's `$search` operator (case-insensitive ILIKE that wraps and sanitizes the term). Pass `{ $search: { name: term } }` — do NOT pre-wrap with `%…%`.
+- **Frontend**: pass a **debounced** value (`useDebounce`) to the query so the server narrows results, and also filter the returned list **client-side on the immediate value** for instant feedback. Wrap every searchable field (names) in `<HighlightText text={value} highlight={search} />`.
+
+`PamSessionsPage` and `PamDiscoveryPage` are the reference implementations.
+
+## Discovery
+
+Discovery lives in `backend/src/ee/services/pam-discovery/`. A **source** references an existing PAM **credential account** (+ gateway) and, on scan, stages **discovered accounts** for import into a folder.
+
+- **Registry**: `DISCOVERY_TYPE_CONFIGS` (`pam-discovery-schemas.ts`) mirrors `ACCOUNT_TYPE_CONFIGS`. Adding a source type = one entry (`name`, `icon`, `credentialAccountType`, `configuration` zod schema) + a factory in `PAM_DISCOVERY_FACTORY_MAP`.
+- **Provider contract** (`TPamDiscoveryFactory`): returns `{ validateConnection, scan }`. `scan()` returns `TDiscoveredAccount[]` (`accountType`, `name`, `fingerprint`, `details`); the **service** owns encryption, staging, and fingerprint dedupe. Providers never touch the DB.
+- **Config vs credential split**: connection settings that identify the target (domain, DC, LDAP) come from the **credential account**; discovery-only settings live in the per-type `configuration` blob (e.g. `active-directory-discovery-schemas.ts`).
+- **A single source can stage multiple account types.** AD stages `windows-ad` (domain, via LDAP) and, when `scanLocalAccounts` is enabled, `windows` (local) accounts. Import maps each staged account to a template of the matching type.
+
+### Active Directory local accounts
+
+Gated by `scanLocalAccounts` in the AD config (default on, matching `main`). When on, `scan()` also: enumerates domain servers over LDAP (`(&(objectClass=computer)(operatingSystem=*Server*))`) → resolves each hostname to an IP via **DNS-over-TCP through the DC** (`dns-over-dc.ts`, port 53) so the gateway can reach it → WinRM `Get-LocalUser` per server (`winrm-client`) → stages each as a `windows` account pointed at that server's host + the AD account's `rdpPort`. A single unreachable server is logged and skipped, never aborting the scan. Domain/resource/dependency objects from `main`'s discovery were intentionally dropped in the revamp — discovery only produces accounts.
+
 ## Deferred Cleanup
 
 Old tables, columns, and code kept temporarily so data can be recovered if the migration causes issues. Target removal: ~1 month after all deployments are running the new model (safe after 2026-08-01). A follow-up migration should handle the drops.
@@ -198,7 +220,7 @@ Old tables, columns, and code kept temporarily so data can be recovered if the m
 - `pam_account_dependencies`
 - `pam_resource_favorites`
 - `pam_project_recording_configs`
-- `pam_discovery_sources`, `pam_discovery_source_runs`, `pam_discovery_source_resources`, `pam_discovery_source_accounts`, `pam_discovery_source_dependencies` (when discovery is reimplemented)
+- The old discovery tables (`pam_discovery_source_resources`, `pam_discovery_source_accounts`, `pam_discovery_source_dependencies`) are already dropped by the reimplemented discovery migration, which recreates `pam_discovery_sources`/`pam_discovery_source_runs` and adds `pam_discovered_accounts` — nothing to defer here.
 - `pam_session_event_batches` (legacy logging, replaced by chunks)
 
 ### Columns to drop from `pam_accounts`

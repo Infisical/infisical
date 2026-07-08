@@ -13,6 +13,16 @@ export enum PamAccountType {
   WindowsAd = "windows-ad"
 }
 
+export enum PamDiscoveryType {
+  ActiveDirectory = "active-directory"
+}
+
+export enum PamDiscoverySchedule {
+  Manual = "manual",
+  Daily = "daily",
+  Weekly = "weekly"
+}
+
 export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",

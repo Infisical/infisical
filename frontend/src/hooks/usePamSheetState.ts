@@ -6,6 +6,7 @@ export enum PamSheetTab {
   Permissions = "permissions",
   Configuration = "configuration",
   Advanced = "advanced",
+  Runs = "runs",
   General = "general"
 }
 
@@ -14,10 +15,16 @@ export const pamSheetSearchParams = z.object({
   folderId: z.string().optional().catch(undefined),
   templateId: z.string().optional().catch(undefined),
   sessionId: z.string().optional().catch(undefined),
+  discoverySourceId: z.string().optional().catch(undefined),
   tab: z.nativeEnum(PamSheetTab).optional().catch(undefined)
 });
 
-export type PamSheetKey = "accountId" | "folderId" | "templateId" | "sessionId";
+export type PamSheetKey =
+  | "accountId"
+  | "folderId"
+  | "templateId"
+  | "sessionId"
+  | "discoverySourceId";
 
 export const usePamSheetState = (key: PamSheetKey) => {
   const navigate = useNavigate();

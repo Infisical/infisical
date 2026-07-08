@@ -1,4 +1,4 @@
-import { type LucideIcon, Settings, Settings2, Users } from "lucide-react";
+import { FolderOpen, History, type LucideIcon, Settings, Settings2, Users } from "lucide-react";
 
 import { PamResourcePermissionActions } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
@@ -48,6 +48,12 @@ export const PAM_FOLDER_TABS: PamResourceTab[] = [
 
 export const PAM_TEMPLATE_TABS: PamResourceTab[] = [
   { value: PamSheetTab.General, label: "General", icon: Settings2 },
+  { value: PamSheetTab.Configuration, label: "Configuration", icon: Settings }
+];
+
+export const PAM_DISCOVERY_TABS: PamResourceTab[] = [
+  { value: PamSheetTab.General, label: "Staged Accounts", icon: FolderOpen },
+  { value: PamSheetTab.Runs, label: "Runs", icon: History },
   { value: PamSheetTab.Configuration, label: "Configuration", icon: Settings }
 ];
 
