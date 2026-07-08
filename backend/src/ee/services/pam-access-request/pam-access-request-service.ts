@@ -14,6 +14,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { formatDuration, ms } from "@app/lib/ms";
+import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
@@ -40,14 +41,19 @@ import {
   createApprovalRequestWithSteps,
   notifyApproversForStep
 } from "@app/services/approval-policy/approval-request-fns";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { sendSlackNotification } from "@app/services/slack/slack-fns";
+import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
+import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
-import { PamAccessStatus, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessStatus, PamNotificationEvent, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
 import {
   checkAccountAccess,
@@ -61,6 +67,7 @@ import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-accou
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { sendPamSessionCancellationSignal } from "../pam-session/pam-session-fns";
+import { getSlackSendTargets, parseNotificationChannels, parseNotificationEvents } from "./pam-access-request-fns";
 import {
   TCheckGrantDTO,
   TCreateAccessRequestDTO,
@@ -74,6 +81,7 @@ import {
   TRevokeAccessRequestDTO,
   TSetApprovalConfigurationDTO
 } from "./pam-access-request-types";
+import { TPamFolderNotificationConfigDALFactory } from "./pam-folder-notification-config-dal";
 
 type TPamAccessRequestServiceFactoryDep = {
   approvalPolicyDAL: Pick<
@@ -120,6 +128,13 @@ type TPamAccessRequestServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
+  pamFolderNotificationConfigDAL: Pick<
+    TPamFolderNotificationConfigDALFactory,
+    "findByFolderIdWithIntegration" | "delete" | "insertMany" | "transaction"
+  >;
+  workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "find">;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TPamAccessRequestServiceFactory = ReturnType<typeof pamAccessRequestServiceFactory>;
@@ -145,7 +160,11 @@ export const pamAccessRequestServiceFactory = ({
   smtpService,
   groupDAL,
   userGroupMembershipDAL,
-  userDAL
+  userDAL,
+  pamFolderNotificationConfigDAL,
+  workflowIntegrationDAL,
+  slackIntegrationDAL,
+  kmsService
 }: TPamAccessRequestServiceFactoryDep) => {
   const findFolderPolicy = async (folderId: string) => {
     const policy = await approvalPolicyDAL.findOne({
@@ -154,6 +173,90 @@ export const pamAccessRequestServiceFactory = ({
       scopeId: folderId
     });
     return policy ?? null;
+  };
+
+  const getNotificationConfigs = async (folderId: string) => {
+    const configs = await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId);
+    return configs.map((config) => ({
+      id: config.id,
+      workflowIntegrationId: config.workflowIntegrationId,
+      integration: config.integration,
+      integrationSlug: config.slug,
+      channels: parseNotificationChannels(config.channels),
+      events: parseNotificationEvents(config.events)
+    }));
+  };
+
+  // Chat notifications are best-effort: they must never fail or delay the request flow itself.
+  const triggerFolderSlackNotifications = async ({
+    folderId,
+    event,
+    orgId,
+    notification
+  }: {
+    folderId: string;
+    event: PamNotificationEvent;
+    orgId: string;
+    notification: TNotification;
+  }) => {
+    try {
+      const configs = await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId);
+      const targets = getSlackSendTargets(configs, event);
+
+      for (const target of targets) {
+        // eslint-disable-next-line no-await-in-loop
+        const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(
+          target.workflowIntegrationId
+        );
+        if (slackIntegration) {
+          // eslint-disable-next-line no-await-in-loop
+          await sendSlackNotification({
+            orgId,
+            notification,
+            kmsService,
+            targetChannelIds: target.channelIds,
+            slackIntegration
+          });
+        }
+      }
+    } catch (err) {
+      logger.error(err, `Failed to send PAM Slack notifications [folderId=${folderId}] [event=${event}]`);
+    }
+  };
+
+  const notifyFolderChannelsOfDecision = async (params: {
+    folderId: string;
+    decision: ApprovalRequestApprovalDecision;
+    requesterName?: string | null;
+    requesterEmail?: string | null;
+    accountName?: string;
+    comment?: string;
+    orgId: string;
+    requestId: string;
+  }) => {
+    const approved = params.decision === ApprovalRequestApprovalDecision.Approved;
+    try {
+      const folder = await pamFolderDAL.findById(params.folderId);
+      const cfg = getConfig();
+      await triggerFolderSlackNotifications({
+        folderId: params.folderId,
+        event: approved ? PamNotificationEvent.AccessRequestApproved : PamNotificationEvent.AccessRequestDenied,
+        orgId: params.orgId,
+        notification: {
+          type: approved ? TriggerFeature.PAM_ACCESS_REQUEST_APPROVED : TriggerFeature.PAM_ACCESS_REQUEST_DENIED,
+          payload: {
+            requesterFullName: params.requesterName || "Unknown",
+            requesterEmail: params.requesterEmail || "",
+            accountName: params.accountName ?? "a PAM account",
+            folderName: folder?.name ?? "",
+            comment: params.comment,
+            approvalUrl: `${cfg.SITE_URL}/organizations/${params.orgId}/pam/approval-requests?requestId=${params.requestId}`
+          }
+        }
+      });
+    } catch (err) {
+      logger.error(err, `Failed to send PAM review Slack notifications [requestId=${params.requestId}]`);
+    }
   };
 
   // npm ms returns undefined (not an error) for strings it can't parse, e.g. Go-style "2h30m"
@@ -298,17 +401,25 @@ export const pamAccessRequestServiceFactory = ({
       });
     }
 
+    const notificationConfigs = await getNotificationConfigs(folderId);
+
     const policy = await findFolderPolicy(folderId);
     if (!policy) {
-      return { steps: [] };
+      return { steps: [], notificationConfigs };
     }
 
     // The policy row and step tuning fields are internal; the UI only needs the approver lists.
     const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
-    return { steps: steps.map((s) => ({ approvers: s.approvers })) };
+    return { steps: steps.map((s) => ({ approvers: s.approvers })), notificationConfigs };
   };
 
-  const setApprovalConfiguration = async ({ folderId, projectId, steps, ...ctx }: TSetApprovalConfigurationDTO) => {
+  const setApprovalConfiguration = async ({
+    folderId,
+    projectId,
+    steps,
+    notificationConfigs,
+    ...ctx
+  }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
     const folder = await assertFolderPolicyManagement(folderId, projectId, ctx);
 
@@ -334,6 +445,45 @@ export const pamAccessRequestServiceFactory = ({
       }
     }
 
+    // Notification configs live independent of the policy row, so they are persisted before the
+    // policy branches below; several of those branches return early.
+    if (notificationConfigs !== undefined) {
+      if (notificationConfigs.length > 0) {
+        const integrationIds = [...new Set(notificationConfigs.map((c) => c.workflowIntegrationId))];
+        const integrations = await workflowIntegrationDAL.find({ $in: { id: integrationIds } });
+        const integrationById = new Map(integrations.map((i) => [i.id, i]));
+
+        for (const config of notificationConfigs) {
+          const integration = integrationById.get(config.workflowIntegrationId);
+          if (!integration || integration.orgId !== ctx.actorOrgId) {
+            throw new BadRequestError({ message: "Workflow integration not found in your organization" });
+          }
+          if (integration.integration !== WorkflowIntegration.SLACK) {
+            throw new BadRequestError({
+              message: "Only Slack workflow integrations are supported for PAM notifications"
+            });
+          }
+        }
+      }
+
+      await pamFolderNotificationConfigDAL.transaction(async (tx) => {
+        await pamFolderNotificationConfigDAL.delete({ folderId }, tx);
+        if (notificationConfigs.length > 0) {
+          await pamFolderNotificationConfigDAL.insertMany(
+            notificationConfigs.map((config) => ({
+              folderId,
+              workflowIntegrationId: config.workflowIntegrationId,
+              // arrays must be pre-serialized or knex binds them as PG arrays instead of jsonb
+              channels: JSON.stringify(config.channels),
+              events: JSON.stringify(config.events)
+            })),
+            tx
+          );
+        }
+      });
+    }
+    const notificationConfigCount = notificationConfigs?.length;
+
     const existingPolicy = await findFolderPolicy(folderId);
 
     const hasApprovers = steps.length === 1 && steps[0].approvers.length > 0;
@@ -342,11 +492,11 @@ export const pamAccessRequestServiceFactory = ({
         await approvalPolicyStepsDAL.delete({ policyId: existingPolicy.id }, tx);
         await approvalPolicyDAL.deleteById(existingPolicy.id, tx);
       });
-      return { policyId: existingPolicy.id, folderId, stepCount: steps.length };
+      return { policyId: existingPolicy.id, folderId, stepCount: steps.length, notificationConfigCount };
     }
 
     if (!hasApprovers) {
-      return { policyId: null, folderId, stepCount: 0 };
+      return { policyId: null, folderId, stepCount: 0, notificationConfigCount };
     }
 
     if (existingPolicy) {
@@ -379,7 +529,7 @@ export const pamAccessRequestServiceFactory = ({
         }
       });
 
-      return { policyId: existingPolicy.id, folderId, stepCount: steps.length };
+      return { policyId: existingPolicy.id, folderId, stepCount: steps.length, notificationConfigCount };
     }
 
     const newPolicy = await approvalPolicyDAL.transaction(async (tx) => {
@@ -426,7 +576,7 @@ export const pamAccessRequestServiceFactory = ({
       return policy;
     });
 
-    return { policyId: newPolicy.id, folderId, stepCount: steps.length };
+    return { policyId: newPolicy.id, folderId, stepCount: steps.length, notificationConfigCount };
   };
 
   const createRequest = async ({ accountId, path, projectId, reason, duration, ...ctx }: TCreateAccessRequestDTO) => {
@@ -556,6 +706,8 @@ export const pamAccessRequestServiceFactory = ({
       }
     );
 
+    const approvalUrl = `${getConfig().SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
+
     const firstStep = stepsForRequest[0];
     if (firstStep) {
       try {
@@ -582,9 +734,6 @@ export const pamAccessRequestServiceFactory = ({
         const recipients = approverUsers.filter((u) => u.email).map((u) => u.email as string);
 
         if (recipients.length > 0) {
-          const cfg = getConfig();
-          const approvalUrl = `${cfg.SITE_URL}/organizations/${ctx.actorOrgId}/pam/approval-requests?requestId=${request.id}`;
-
           await smtpService.sendMail({
             recipients,
             subjectLine: "PAM Access Request",
@@ -603,6 +752,24 @@ export const pamAccessRequestServiceFactory = ({
       } catch (err) {
         logger.error(err, `Failed to send approval emails for PAM access request [requestId=${request.id}]`);
       }
+
+      await triggerFolderSlackNotifications({
+        folderId: account.folderId,
+        event: PamNotificationEvent.AccessRequested,
+        orgId: ctx.actorOrgId,
+        notification: {
+          type: TriggerFeature.PAM_ACCESS_REQUESTED,
+          payload: {
+            requesterFullName: requesterName || "Unknown",
+            requesterEmail: user.email ?? "",
+            accountName: account.name,
+            folderName: account.folderName ?? "",
+            accessDuration: formatDuration(duration),
+            reason: trimmedReason,
+            approvalUrl
+          }
+        }
+      });
     }
 
     return { request, accountId: account.id, folderId: account.folderId };
@@ -905,6 +1072,19 @@ export const pamAccessRequestServiceFactory = ({
         comment
       );
 
+      if (folderId) {
+        await notifyFolderChannelsOfDecision({
+          folderId,
+          decision: ApprovalRequestApprovalDecision.Rejected,
+          requesterName: request.requesterName,
+          requesterEmail: request.requesterEmail,
+          accountName: rejectedAccount?.name,
+          comment,
+          orgId: request.organizationId,
+          requestId: request.id
+        });
+      }
+
       return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };
     }
 
@@ -1012,6 +1192,19 @@ export const pamAccessRequestServiceFactory = ({
         approvedAccount?.name,
         comment
       );
+
+      if (folderId) {
+        await notifyFolderChannelsOfDecision({
+          folderId,
+          decision: ApprovalRequestApprovalDecision.Approved,
+          requesterName: request.requesterName,
+          requesterEmail: request.requesterEmail,
+          accountName: approvedAccount?.name,
+          comment,
+          orgId: request.organizationId,
+          requestId: request.id
+        });
+      }
     }
 
     return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };

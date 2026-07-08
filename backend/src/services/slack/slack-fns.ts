@@ -255,6 +255,113 @@ const buildSlackPayload = (notification: TNotification) => {
         color: ERROR_COLOR
       };
     }
+    case TriggerFeature.PAM_ACCESS_REQUESTED: {
+      const { payload } = notification;
+
+      const messageBody = `${payload.requesterFullName} (${payload.requesterEmail}) has requested access to ${payload.accountName} in the ${payload.folderName} folder.\n\nDuration: ${payload.accessDuration}${
+        payload.reason ? `\n\nReason: ${payload.reason}` : ""
+      }`;
+
+      const headerBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "New PAM access request pending review",
+            emoji: true
+          }
+        }
+      ];
+
+      const payloadBlocks = [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${payload.requesterFullName}* (${payload.requesterEmail}) has requested access to *${payload.accountName}* in the *${payload.folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
+              payload.reason ? `\n\n*Reason:* ${payload.reason}` : ""
+            }`
+          }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View request",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
+        }
+      ];
+
+      return {
+        headerBlocks,
+        payloadMessage: messageBody,
+        payloadBlocks,
+        color: COMPANY_BRAND_COLOR
+      };
+    }
+    case TriggerFeature.PAM_ACCESS_REQUEST_APPROVED:
+    case TriggerFeature.PAM_ACCESS_REQUEST_DENIED: {
+      const { payload } = notification;
+      const isApproved = notification.type === TriggerFeature.PAM_ACCESS_REQUEST_APPROVED;
+      const decision = isApproved ? "approved" : "denied";
+
+      const messageBody = `The access request from ${payload.requesterFullName} (${payload.requesterEmail}) for ${payload.accountName} in the ${payload.folderName} folder has been ${decision}.${
+        payload.comment ? `\n\nReviewer comment: ${payload.comment}` : ""
+      }`;
+
+      const headerBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `PAM access request ${decision}`,
+            emoji: true
+          }
+        }
+      ];
+
+      const payloadBlocks = [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `The access request from *${payload.requesterFullName}* (${payload.requesterEmail}) for *${payload.accountName}* in the *${payload.folderName}* folder has been *${decision}*.${
+              payload.comment ? `\n\n*Reviewer comment:* ${payload.comment}` : ""
+            }`
+          }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View request",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
+        }
+      ];
+
+      return {
+        headerBlocks,
+        payloadMessage: messageBody,
+        payloadBlocks,
+        color: isApproved ? COMPANY_BRAND_COLOR : ERROR_COLOR
+      };
+    }
     default: {
       throw new BadRequestError({
         message: "Slack notification type not supported."

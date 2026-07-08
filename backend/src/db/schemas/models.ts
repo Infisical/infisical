@@ -238,6 +238,7 @@ export enum TableName {
   // PAM
   PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
+  PamFolderNotificationConfig = "pam_folder_notification_configs",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",

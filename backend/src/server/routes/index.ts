@@ -106,6 +106,7 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
 import { pamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
+import { pamFolderNotificationConfigDALFactory } from "@app/ee/services/pam-access-request/pam-folder-notification-config-dal";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { pamAccountRotationQueueServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-queue";
@@ -1660,6 +1661,7 @@ export const registerRoutes = async (
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
   const pamFolderDAL = pamFolderDALFactory(db);
+  const pamFolderNotificationConfigDAL = pamFolderNotificationConfigDALFactory(db);
 
   const pamMembershipService = pamMembershipServiceFactory({
     membershipDAL,
@@ -1837,7 +1839,11 @@ export const registerRoutes = async (
     smtpService,
     groupDAL,
     userGroupMembershipDAL,
-    userDAL
+    userDAL,
+    pamFolderNotificationConfigDAL,
+    workflowIntegrationDAL,
+    slackIntegrationDAL,
+    kmsService
   });
 
   const pamFolderService = pamFolderServiceFactory({

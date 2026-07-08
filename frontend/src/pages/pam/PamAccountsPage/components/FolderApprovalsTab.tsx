@@ -52,11 +52,12 @@ import {
   useRevokePamAccessRequest,
   useSetPamApprovalConfig
 } from "@app/hooks/api/pam";
-import { TPamAccessRequest } from "@app/hooks/api/pam/types";
+import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
+import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
 
@@ -133,11 +134,22 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const [approvers, setApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
+  const [notificationConfigs, setNotificationConfigs] = useState<TPamNotificationConfig[]>([]);
 
   const savedApprovers = useMemo(() => {
     if (!config?.steps?.[0]) return [];
     return config.steps[0].approvers.map((a) => ({ type: a.type, id: a.id }));
   }, [config]);
+
+  const savedNotificationConfigs = useMemo<TPamNotificationConfig[]>(
+    () =>
+      (config?.notificationConfigs ?? []).map((c) => ({
+        workflowIntegrationId: c.workflowIntegrationId,
+        channels: c.channels,
+        events: c.events
+      })),
+    [config]
+  );
 
   useEffect(() => {
     setApprovers(savedApprovers);
@@ -145,9 +157,19 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   }, [savedApprovers]);
 
   useEffect(() => {
-    onDirtyChange?.(isDirty);
+    setNotificationConfigs(savedNotificationConfigs);
+  }, [savedNotificationConfigs]);
+
+  const isNotifDirty = useMemo(
+    () => JSON.stringify(notificationConfigs) !== JSON.stringify(savedNotificationConfigs),
+    [notificationConfigs, savedNotificationConfigs]
+  );
+  const isAnyDirty = isDirty || isNotifDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(isAnyDirty);
     return () => onDirtyChange?.(false);
-  }, [isDirty, onDirtyChange]);
+  }, [isAnyDirty, onDirtyChange]);
 
   const selectedIds = useMemo(
     () => new Set(approvers.map((a) => `${a.type}:${a.id}`)),
@@ -219,8 +241,19 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
+    const hasIncompleteConfig = notificationConfigs.some(
+      (c) => !c.workflowIntegrationId || c.channels.length === 0 || c.events.length === 0
+    );
+    if (hasIncompleteConfig) {
+      createNotification({
+        type: "error",
+        text: "Each notification needs a Slack workspace, at least one channel, and at least one event"
+      });
+      return;
+    }
+
     setConfig.mutate(
-      { folderId, steps: [{ approvers }] },
+      { folderId, steps: [{ approvers }], notificationConfigs },
       {
         onSuccess: () => {
           createNotification({ type: "success", text: "Approval configuration saved" });
@@ -235,6 +268,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const handleDiscard = () => {
     setApprovers(savedApprovers);
+    setNotificationConfigs(savedNotificationConfigs);
     setIsDirty(false);
   };
 
@@ -334,6 +368,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           )}
         </CardContent>
       </Card>
+
+      <FolderNotificationsSection configs={notificationConfigs} onChange={setNotificationConfigs} />
 
       <Card>
         <CardHeader className="border-b">
@@ -477,7 +513,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       />
 
       <div aria-hidden className="h-8 shrink-0" />
-      {isDirty && (
+      {isAnyDirty && (
         <div className="sticky bottom-0 -mx-4 mt-auto -mb-4 flex items-center justify-end gap-2 border-t border-border bg-popover px-4 py-3">
           <Button type="button" variant="ghost" onClick={handleDiscard}>
             Discard
