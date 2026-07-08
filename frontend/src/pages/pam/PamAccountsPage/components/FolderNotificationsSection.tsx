@@ -70,7 +70,10 @@ const NotificationConfigCard = ({
   // saved config was returned with to keep the selected workspace readable
   const workspaceOptions = useMemo<IntegrationOption[]>(() => {
     const { workflowIntegrationId } = config;
-    if (!workflowIntegrationId || integrationOptions.some((opt) => opt.value === workflowIntegrationId)) {
+    if (
+      !workflowIntegrationId ||
+      integrationOptions.some((opt) => opt.value === workflowIntegrationId)
+    ) {
       return integrationOptions;
     }
     const fallbackLabel = integrationSlugById[workflowIntegrationId];
