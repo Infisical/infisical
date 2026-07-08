@@ -2,6 +2,7 @@ import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { Control, Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { Play, Radar, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
@@ -36,11 +37,13 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
+import { useOrganization } from "@app/context";
 import {
   PamAccountType,
   PamDiscoverySchedule,
   pamKeys,
   TPamDiscoverySource,
+  useListPamAccountsAdmin,
   useListPamDiscoveredAccounts,
   useListPamDiscoveryRuns,
   useListPamDiscoverySources,
@@ -214,12 +217,21 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
 
+  const { currentOrg } = useOrganization();
   const { tab, setTab } = usePamSheetState("discoverySourceId");
   const { data: sources = [] } = useListPamDiscoverySources();
   const { data: discoveryTypes = [] } = useListPamDiscoveryTypes();
+  const { data: adminAccounts = [] } = useListPamAccountsAdmin();
   const { map: accountTypeMap } = usePamAccountTypeMap();
   const source = sources.find((s) => s.id === sourceId);
   const typeMeta = discoveryTypes.find((t) => t.type === source?.discoveryType);
+  const credentialAccount = adminAccounts.find((a) => a.id === source?.credentialAccountId);
+  const credentialAccountLabel = (() => {
+    if (!credentialAccount) return "View account";
+    return credentialAccount.folderName
+      ? `${credentialAccount.folderName} / ${credentialAccount.name}`
+      : credentialAccount.name;
+  })();
 
   const { data: runs = [] } = useListPamDiscoveryRuns(sourceId ?? "", {
     refetchInterval: isOpen ? 5000 : undefined
@@ -490,6 +502,21 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         typeBadge={typeMeta?.name ?? "Active Directory"}
         badges={<DiscoveryStatusBadge status={runs[0]?.status} error={runs[0]?.errorMessage} />}
         metadata={[
+          {
+            label: "Credential Account",
+            value: source?.credentialAccountId ? (
+              <Link
+                to="/organizations/$orgId/pam/accounts"
+                params={{ orgId: currentOrg.id }}
+                search={{ accountId: source.credentialAccountId }}
+                className="font-medium text-foreground hover:underline"
+              >
+                {credentialAccountLabel}
+              </Link>
+            ) : (
+              "None"
+            )
+          },
           { label: "Schedule", value: <span className="capitalize">{source?.schedule}</span> },
           {
             label: "Last Run",
