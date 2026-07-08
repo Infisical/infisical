@@ -32,13 +32,20 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
         return;
       }
 
-      // v2 resolves an org with no license to the free tier (every feature source=default). Comparing that
-      // against the org's real v1 plan is noise, so compare v2 against the v1 free baseline instead.
+      // A v2 resolution with every feature at its default (a license that contributes nothing above
+      // defaults) is effectively the free tier; comparing that against the org's real v1 plan is noise,
+      // so compare v2 against the v1 free baseline instead.
       const featureValues = Object.values(entitlements.features);
       const isV2Unlicensed = featureValues.length > 0 && featureValues.every((f) => f.source === "default");
       let planForCompare = planV1;
       if (isV2Unlicensed) {
         planForCompare = getFreeTierPlan();
+      }
+
+      // A paid v1 org that resolves to all-defaults in v2 is a cutover downgrade risk; the swap above
+      // would otherwise mask it as identical telemetry to a genuinely free org.
+      if (isV2Unlicensed && planV1.slug && planV1.slug !== "starter") {
+        logger.warn(`license-dual-read: paid v1 org unlicensed in v2 [orgId=${orgId}] [v1Slug=${planV1.slug}]`);
       }
 
       const discrepancies = compareEntitlements(planForCompare, entitlements, FEATURE_MAPPINGS);

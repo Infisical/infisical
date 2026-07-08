@@ -167,6 +167,8 @@ export const licenseServiceFactory = ({
           .filter((tier) => tier !== "free");
         if (paidTiers.some((tier) => tier.includes("enterprise"))) {
           currentPlan.slug = "enterprise";
+        } else if (paidTiers.some((tier) => tier.includes("advanced"))) {
+          currentPlan.slug = "advanced";
         } else if (paidTiers.length > 0) {
           currentPlan.slug = "pro";
         }
