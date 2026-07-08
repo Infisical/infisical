@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BanIcon,
+  ChevronDownIcon,
+  ClockIcon,
   EyeIcon,
   FingerprintIcon,
   FolderIcon,
@@ -36,6 +38,9 @@ import {
   FieldLabel,
   IconButton,
   Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -62,18 +67,15 @@ import {
 import { useCreateAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
-const PERMANENT_DURATION_VALUE = "permanent";
-const CUSTOM_DURATION_VALUE = "custom";
-
-const DURATION_PRESETS = [
-  { label: "30 minutes", value: "30m" },
-  { label: "1 hour", value: "1h" },
-  { label: "12 hours", value: "12h" },
-  { label: "1 day", value: "1d" },
-  { label: "3 days", value: "3d" },
-  { label: "7 days", value: "7d" },
-  { label: "30 days", value: "30d" }
-];
+const parseDurationMs = (value?: string) => {
+  if (!value) return undefined;
+  try {
+    const parsed = ms(value);
+    return typeof parsed === "number" && parsed > 0 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 type TResourceAction = {
   value: string;
@@ -338,21 +340,15 @@ const requestAccessSchema = z.object({
     }),
   duration: z
     .object({
-      preset: z.string().min(1),
-      customValue: z.string().optional()
+      isTemporary: z.boolean(),
+      temporaryRange: z.string().optional()
     })
     .superRefine((val, ctx) => {
-      if (val.preset !== CUSTOM_DURATION_VALUE) return;
-      let parsed: number | undefined;
-      try {
-        parsed = val.customValue ? ms(val.customValue) : undefined;
-      } catch {
-        parsed = undefined;
-      }
-      if (typeof parsed !== "number" || parsed <= 0) {
+      if (!val.isTemporary) return;
+      if (!parseDurationMs(val.temporaryRange)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["customValue"],
+          path: ["temporaryRange"],
           message: "Invalid duration. Use formats like 30m, 2h, 1d."
         });
       }
@@ -387,7 +383,7 @@ export const RequestAccessForm = ({
       environmentSlug: currentProject.environments?.[0]?.slug,
       secretPath: initialSecretPath ?? "",
       resources: [{ subject: ProjectPermissionSub.Secrets, actions: selectedActions }],
-      duration: { preset: PERMANENT_DURATION_VALUE, customValue: "1h" },
+      duration: { isTemporary: false, temporaryRange: "1h" },
       note: ""
     }
   });
@@ -405,7 +401,8 @@ export const RequestAccessForm = ({
   const selectedEnvironment = form.watch("environmentSlug");
   const secretPath = form.watch("secretPath");
   const resources = form.watch("resources");
-  const durationPreset = form.watch("duration.preset");
+  const duration = form.watch("duration");
+  const [isDurationPopoverOpen, setIsDurationPopoverOpen] = useState(false);
 
   const selectablePaths = useMemo(
     () =>
@@ -426,9 +423,6 @@ export const RequestAccessForm = ({
   );
 
   const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
-  const allowedPresets = maxDurationMs
-    ? DURATION_PRESETS.filter((preset) => ms(preset.value) <= maxDurationMs)
-    : DURATION_PRESETS;
 
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -442,17 +436,12 @@ export const RequestAccessForm = ({
   // policies with a max time period forbid permanent access and cap the range
   useEffect(() => {
     if (!maxDurationMs || !matchedPolicy?.maxTimePeriod) return;
-    const { preset } = form.getValues("duration");
-    const exceedsMax =
-      preset === PERMANENT_DURATION_VALUE ||
-      (preset !== CUSTOM_DURATION_VALUE && ms(preset) > maxDurationMs);
-    if (!exceedsMax) return;
-    const fallback = allowedPresets[allowedPresets.length - 1];
+    const { isTemporary, temporaryRange } = form.getValues("duration");
+    const rangeMs = parseDurationMs(temporaryRange);
+    if (isTemporary && rangeMs && rangeMs <= maxDurationMs) return;
     form.setValue(
       "duration",
-      fallback
-        ? { preset: fallback.value, customValue: form.getValues("duration.customValue") }
-        : { preset: CUSTOM_DURATION_VALUE, customValue: matchedPolicy.maxTimePeriod },
+      { isTemporary: true, temporaryRange: matchedPolicy.maxTimePeriod },
       { shouldValidate: true }
     );
   }, [matchedPolicy]);
@@ -477,6 +466,45 @@ export const RequestAccessForm = ({
     form.setValue(`resources.${index}.actions`, next, { shouldDirty: true });
   };
 
+  const getAccessLabel = () => {
+    if (!duration.isTemporary || !duration.temporaryRange) return "Permanent";
+    const rangeMs = parseDurationMs(duration.temporaryRange);
+    if (!rangeMs) return `Valid for ${duration.temporaryRange} after approval`;
+    return `Valid for ${ms(rangeMs, { long: true })} after approval`;
+  };
+
+  const handleGrantTemporaryAccess = () => {
+    const rangeMs = parseDurationMs(form.getValues("duration.temporaryRange"));
+    if (!rangeMs) {
+      form.setError(
+        "duration.temporaryRange",
+        { type: "custom", message: "Invalid duration. Use formats like 30m, 2h, 1d." },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    if (maxDurationMs && rangeMs > maxDurationMs) {
+      form.setError(
+        "duration.temporaryRange",
+        {
+          type: "custom",
+          message: `Duration cannot exceed the policy maximum of ${matchedPolicy?.maxTimePeriod}.`
+        },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    form.clearErrors("duration.temporaryRange");
+    form.setValue("duration.isTemporary", true, { shouldDirty: true });
+    setIsDurationPopoverOpen(false);
+  };
+
+  const handleCancelTemporaryAccess = () => {
+    form.clearErrors("duration.temporaryRange");
+    form.setValue("duration.isTemporary", false, { shouldDirty: true });
+    setIsDurationPopoverOpen(false);
+  };
+
   const handleRequestAccess = async (data: TRequestAccessForm) => {
     if (!currentProject) {
       createNotification({
@@ -487,11 +515,7 @@ export const RequestAccessForm = ({
       return;
     }
 
-    const isTemporary = data.duration.preset !== PERMANENT_DURATION_VALUE;
-    const temporaryRange =
-      data.duration.preset === CUSTOM_DURATION_VALUE
-        ? data.duration.customValue
-        : data.duration.preset;
+    const { isTemporary, temporaryRange } = data.duration;
 
     if (
       matchedPolicy?.maxTimePeriod &&
@@ -695,51 +719,54 @@ export const RequestAccessForm = ({
             </DropdownMenu>
           )}
         </Field>
-        <Controller
-          control={form.control}
-          name="duration.preset"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel htmlFor="duration">Duration</FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="duration" className="w-full">
-                  <SelectValue placeholder="Select a duration" />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {!maxDurationMs && (
-                    <SelectItem value={PERMANENT_DURATION_VALUE}>Permanent</SelectItem>
-                  )}
-                  {allowedPresets.map((preset) => (
-                    <SelectItem value={preset.value} key={preset.value}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={CUSTOM_DURATION_VALUE}>Custom</SelectItem>
-                </SelectContent>
-              </Select>
-              {matchedPolicy?.maxTimePeriod && (
-                <FieldDescription>
-                  Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
-                </FieldDescription>
-              )}
-            </Field>
+        <Field>
+          <FieldLabel>Duration</FieldLabel>
+          <Popover open={isDurationPopoverOpen} onOpenChange={setIsDurationPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  {duration.isTemporary && <ClockIcon className="size-3.5" />}
+                  {getAccessLabel()}
+                </span>
+                <ChevronDownIcon className="size-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="flex flex-col gap-4">
+              <div className="text-sm text-foreground">Configure timed access</div>
+              <Controller
+                control={form.control}
+                name="duration.temporaryRange"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="temporaryRange">
+                      <TtlFormLabel label="Validity" />
+                    </FieldLabel>
+                    <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              <div className="flex items-center gap-2">
+                <Button size="xs" variant="project" onClick={handleGrantTemporaryAccess}>
+                  Grant
+                </Button>
+                {duration.isTemporary && !maxDurationMs && (
+                  <Button size="xs" variant="danger" onClick={handleCancelTemporaryAccess}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {!isDurationPopoverOpen && (
+            <FieldError errors={[form.formState.errors.duration?.temporaryRange]} />
           )}
-        />
-        {durationPreset === CUSTOM_DURATION_VALUE && (
-          <Controller
-            control={form.control}
-            name="duration.customValue"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel htmlFor="customDuration">
-                  <TtlFormLabel label="Custom Duration" />
-                </FieldLabel>
-                <Input id="customDuration" {...field} isError={Boolean(error?.message)} />
-                <FieldError errors={[error]} />
-              </Field>
-            )}
-          />
-        )}
+          {matchedPolicy?.maxTimePeriod && (
+            <FieldDescription>
+              Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
+            </FieldDescription>
+          )}
+        </Field>
         <Controller
           control={form.control}
           name="note"
