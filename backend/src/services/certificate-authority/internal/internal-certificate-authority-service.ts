@@ -1075,21 +1075,12 @@ export const internalCertificateAuthorityServiceFactory = ({
     };
   };
 
-  // findByIdWithAssociatedCa throws a low-level schema error for a missing CA, so guard existence
-  // up front (findById returns undefined instead of throwing) to fail early with a clean 404.
-  const $getCaWithAssociationOrThrow = async (caId: string) => {
-    const caExists = await certificateAuthorityDAL.findById(caId);
-    if (!caExists) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
-
-    return certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-  };
-
   /**
    * Return list of past and current CA certificates for a CA. CA certificates are public trust
    * material (no private keys)
    */
   const getCaCertsPublic = async ({ caId }: { caId: string }) => {
-    const ca = await $getCaWithAssociationOrThrow(caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const caCertChains = await getCaCertChains({
@@ -1151,7 +1142,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * CA certificates are public trust material (no private keys).
    */
   const getCaCertPublic = async ({ caId }: { caId: string }) => {
-    const ca = await $getCaWithAssociationOrThrow(caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -1285,7 +1276,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * CA certificates are public trust material (no private keys).
    */
   const getCaCertByIdPublic = async ({ caId, certId }: { caId: string; certId: string }) => {
-    const ca = await $getCaWithAssociationOrThrow(caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const caCert = await certificateAuthorityCertDAL.findOne({

@@ -284,7 +284,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of past and current CA certificates for a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
       }),
       response: {
         200: z.array(
@@ -319,7 +319,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get current CA cert and cert chain of a CA",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -356,8 +356,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get a specific CA certificate by ID",
       params: z.object({
-        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
-        certId: z.string().trim().describe("Certificate ID to retrieve")
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
+        certId: z.string().trim().uuid().describe("Certificate ID to retrieve")
       }),
       response: {
         200: z.object({
