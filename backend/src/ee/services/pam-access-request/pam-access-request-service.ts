@@ -250,7 +250,9 @@ export const pamAccessRequestServiceFactory = ({
             accountName: params.accountName ?? "a PAM account",
             folderName: folder?.name ?? "",
             comment: params.comment,
-            approvalUrl: `${cfg.SITE_URL}/organizations/${params.orgId}/pam/approval-requests?requestId=${params.requestId}`
+            // Decided requests leave the approver inbox, so decision messages link to the
+            // requester-facing My Access page (same destination as the in-app notification)
+            approvalUrl: `${cfg.SITE_URL}/organizations/${params.orgId}/pam/access`
           }
         }
       });
@@ -753,7 +755,7 @@ export const pamAccessRequestServiceFactory = ({
         logger.error(err, `Failed to send approval emails for PAM access request [requestId=${request.id}]`);
       }
 
-      await triggerFolderSlackNotifications({
+      void triggerFolderSlackNotifications({
         folderId: account.folderId,
         event: PamNotificationEvent.AccessRequested,
         orgId: ctx.actorOrgId,
@@ -1073,7 +1075,7 @@ export const pamAccessRequestServiceFactory = ({
       );
 
       if (folderId) {
-        await notifyFolderChannelsOfDecision({
+        void notifyFolderChannelsOfDecision({
           folderId,
           decision: ApprovalRequestApprovalDecision.Rejected,
           requesterName: request.requesterName,
@@ -1194,7 +1196,7 @@ export const pamAccessRequestServiceFactory = ({
       );
 
       if (folderId) {
-        await notifyFolderChannelsOfDecision({
+        void notifyFolderChannelsOfDecision({
           folderId,
           decision: ApprovalRequestApprovalDecision.Approved,
           requesterName: request.requesterName,

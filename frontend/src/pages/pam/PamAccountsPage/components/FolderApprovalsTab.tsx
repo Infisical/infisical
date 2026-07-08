@@ -151,6 +151,14 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     [config]
   );
 
+  const integrationSlugById = useMemo(
+    () =>
+      Object.fromEntries(
+        (config?.notificationConfigs ?? []).map((c) => [c.workflowIntegrationId, c.integrationSlug])
+      ),
+    [config]
+  );
+
   useEffect(() => {
     setApprovers(savedApprovers);
     setIsDirty(false);
@@ -369,7 +377,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <FolderNotificationsSection configs={notificationConfigs} onChange={setNotificationConfigs} />
+      <FolderNotificationsSection
+        configs={notificationConfigs}
+        integrationSlugById={integrationSlugById}
+        onChange={setNotificationConfigs}
+      />
 
       <Card>
         <CardHeader className="border-b">

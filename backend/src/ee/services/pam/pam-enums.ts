@@ -54,7 +54,7 @@ export enum PamMemberKind {
   Identity = "identity"
 }
 
-// Events a folder's chat notification config (Slack, later Teams) can subscribe to
+// Events a folder's chat notification config can subscribe to
 export enum PamNotificationEvent {
   AccessRequested = "access-requested",
   AccessRequestApproved = "access-request-approved",

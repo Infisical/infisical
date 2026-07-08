@@ -28,18 +28,27 @@ export type TFolderNotificationConfigRow = {
   events: unknown;
 };
 
-// Resolves which Slack sends a folder's configs call for on a given event. Pure so the
-// subscription/platform/status filtering is unit-testable without a DB.
-export const getSlackSendTargets = (configs: TFolderNotificationConfigRow[], event: PamNotificationEvent) =>
-  configs
-    .filter(
-      (config) =>
-        config.integration === WorkflowIntegration.SLACK &&
-        config.status === WorkflowIntegrationStatus.INSTALLED &&
-        parseNotificationEvents(config.events).includes(event)
-    )
-    .map((config) => ({
-      workflowIntegrationId: config.workflowIntegrationId,
-      channelIds: parseNotificationChannels(config.channels).map((channel) => channel.id)
-    }))
-    .filter((target) => target.channelIds.length > 0);
+// Channel ids are merged per integration so overlapping configs can't post the same message twice
+export const getSlackSendTargets = (configs: TFolderNotificationConfigRow[], event: PamNotificationEvent) => {
+  const channelIdsByIntegration = new Map<string, Set<string>>();
+
+  for (const config of configs) {
+    const isSubscribed =
+      config.integration === WorkflowIntegration.SLACK &&
+      config.status === WorkflowIntegrationStatus.INSTALLED &&
+      parseNotificationEvents(config.events).includes(event);
+    if (!isSubscribed) continue;
+
+    const channelIds = parseNotificationChannels(config.channels).map((channel) => channel.id);
+    if (!channelIds.length) continue;
+
+    const existing = channelIdsByIntegration.get(config.workflowIntegrationId) ?? new Set<string>();
+    channelIds.forEach((id) => existing.add(id));
+    channelIdsByIntegration.set(config.workflowIntegrationId, existing);
+  }
+
+  return [...channelIdsByIntegration.entries()].map(([workflowIntegrationId, channelIds]) => ({
+    workflowIntegrationId,
+    channelIds: [...channelIds]
+  }));
+};

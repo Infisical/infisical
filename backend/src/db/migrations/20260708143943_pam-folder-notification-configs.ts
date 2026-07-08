@@ -15,8 +15,7 @@ export async function up(knex: Knex): Promise<void> {
     t.foreign("workflowIntegrationId").references("id").inTable(TableName.WorkflowIntegrations).onDelete("CASCADE");
     t.index(["workflowIntegrationId"]);
     // [{ id, name }] channel objects; names are stored so the UI can render chips for viewers
-    // who lack org Settings read (the Slack channel-list API), and so Teams can extend the
-    // object shape (e.g. teamId) without a schema change.
+    // who lack org Settings read (the Slack channel-list API).
     t.jsonb("channels").notNullable();
     t.jsonb("events").notNullable();
     t.timestamps(true, true, true);

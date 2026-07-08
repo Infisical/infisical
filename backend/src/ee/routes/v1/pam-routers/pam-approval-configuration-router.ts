@@ -27,6 +27,17 @@ const NotificationConfigSchema = z.object({
   events: z.array(z.nativeEnum(PamNotificationEvent)).min(1)
 });
 
+// Responses describe stored data rather than constrain it, so a row whose jsonb fails parsing
+// (returned as an empty array) can't fail serialization and break the whole GET
+const NotificationConfigResponseSchema = z.object({
+  id: z.string().uuid(),
+  workflowIntegrationId: z.string().uuid(),
+  integration: z.string(),
+  integrationSlug: z.string(),
+  channels: z.object({ id: z.string(), name: z.string() }).array(),
+  events: z.nativeEnum(PamNotificationEvent).array()
+});
+
 export const registerPamApprovalConfigurationRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -43,13 +54,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
               approvers: z.array(ApproverSchema)
             })
           ),
-          notificationConfigs: z.array(
-            NotificationConfigSchema.extend({
-              id: z.string().uuid(),
-              integration: z.string(),
-              integrationSlug: z.string()
-            })
-          )
+          notificationConfigs: z.array(NotificationConfigResponseSchema)
         })
       }
     },

@@ -345,7 +345,7 @@ const buildSlackPayload = (notification: TNotification) => {
               type: "button",
               text: {
                 type: "plain_text",
-                text: "View request",
+                text: "View access",
                 emoji: true
               },
               style: "primary",

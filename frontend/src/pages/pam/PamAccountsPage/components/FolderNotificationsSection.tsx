@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Plus, Slack, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Slack, Trash2 } from "lucide-react";
 
 import {
   Badge,
@@ -42,6 +42,7 @@ type EventOption = (typeof EVENT_OPTIONS)[number];
 type ConfigCardProps = {
   config: TPamNotificationConfig;
   integrationOptions: IntegrationOption[];
+  integrationSlugById: Record<string, string>;
   onChange: (config: TPamNotificationConfig) => void;
   onRemove: () => void;
 };
@@ -49,6 +50,7 @@ type ConfigCardProps = {
 const NotificationConfigCard = ({
   config,
   integrationOptions,
+  integrationSlugById,
   onChange,
   onRemove
 }: ConfigCardProps) => {
@@ -64,8 +66,21 @@ const NotificationConfigCard = ({
     [slackChannels]
   );
 
+  // Viewers without org Settings read can't list integrations, so fall back to the slug the
+  // saved config was returned with to keep the selected workspace readable
+  const workspaceOptions = useMemo<IntegrationOption[]>(() => {
+    const { workflowIntegrationId } = config;
+    if (!workflowIntegrationId || integrationOptions.some((opt) => opt.value === workflowIntegrationId)) {
+      return integrationOptions;
+    }
+    const fallbackLabel = integrationSlugById[workflowIntegrationId];
+    return fallbackLabel
+      ? [...integrationOptions, { value: workflowIntegrationId, label: fallbackLabel }]
+      : integrationOptions;
+  }, [integrationOptions, config.workflowIntegrationId, integrationSlugById]);
+
   const selectedIntegration =
-    integrationOptions.find((opt) => opt.value === config.workflowIntegrationId) ?? null;
+    workspaceOptions.find((opt) => opt.value === config.workflowIntegrationId) ?? null;
 
   return (
     <div className="flex flex-col gap-4 rounded-md border border-border p-4">
@@ -73,7 +88,7 @@ const NotificationConfigCard = ({
         <div className="flex-1">
           <FilterableSelect
             value={selectedIntegration}
-            options={integrationOptions}
+            options={workspaceOptions}
             onChange={(opt) => {
               const next = opt as IntegrationOption | null;
               if (!next || next.value === config.workflowIntegrationId) return;
@@ -150,10 +165,11 @@ const NotificationConfigCard = ({
 
 type Props = {
   configs: TPamNotificationConfig[];
+  integrationSlugById: Record<string, string>;
   onChange: (configs: TPamNotificationConfig[]) => void;
 };
 
-export const FolderNotificationsSection = ({ configs, onChange }: Props) => {
+export const FolderNotificationsSection = ({ configs, integrationSlugById, onChange }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: workflowIntegrations } = useGetWorkflowIntegrations(currentOrg.id);
 
@@ -180,7 +196,7 @@ export const FolderNotificationsSection = ({ configs, onChange }: Props) => {
           <Badge variant="pam">{configs.length}</Badge>
         </CardTitle>
         <CardDescription>
-          Approvers always get in-app and email notifications. Add Slack to also post to a channel.
+          Notify external channels about access request activity for accounts in this folder.
         </CardDescription>
         <CardAction>
           <DropdownMenu>
@@ -188,6 +204,7 @@ export const FolderNotificationsSection = ({ configs, onChange }: Props) => {
               <Button variant="outline" size="sm">
                 <Plus className="size-4" />
                 Add
+                <ChevronDown className="size-4 text-muted" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={2}>
@@ -195,7 +212,6 @@ export const FolderNotificationsSection = ({ configs, onChange }: Props) => {
                 <Slack className="size-4" />
                 Slack
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>Microsoft Teams (coming soon)</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardAction>
@@ -203,7 +219,8 @@ export const FolderNotificationsSection = ({ configs, onChange }: Props) => {
       <CardContent className="flex flex-col gap-4">
         {configs.length === 0 ? (
           <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
-            No chat notifications configured.
+            No chat notifications yet. Add Slack to post this folder&apos;s approval activity to a
+            channel.
           </div>
         ) : (
           configs.map((config, idx) => (
@@ -212,6 +229,7 @@ export const FolderNotificationsSection = ({ configs, onChange }: Props) => {
               key={idx}
               config={config}
               integrationOptions={integrationOptions}
+              integrationSlugById={integrationSlugById}
               onChange={(next) => onChange(configs.map((c, i) => (i === idx ? next : c)))}
               onRemove={() => onChange(configs.filter((_, i) => i !== idx))}
             />
