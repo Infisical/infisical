@@ -7,6 +7,7 @@ import { TLicenseClientFactory } from "@app/services/license-client/license-clie
 import { DualReadDiffKind } from "./dual-read-types";
 import { compareEntitlements } from "./entitlement-comparator";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
+import { classifyUnlicensedCompare } from "./unlicensed";
 
 export type TDualReadServiceFactory = ReturnType<typeof dualReadServiceFactory>;
 
@@ -19,7 +20,7 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
   // Fire-and-forget shadow compare against the already-resolved v1 plan. Never awaited, never throws into
   // the request path; inert unless mode is read-compare. Reads v2 through the real client SDK so the
   // production read path is exercised under real traffic ahead of the cutover.
-  const compareInBackground = (orgId: string, planV1: TFeatureSet, getFreeTierPlan: () => TFeatureSet) => {
+  const compareInBackground = (orgId: string, planV1: TFeatureSet) => {
     if (!envConfig.isLicenseDualReadEnabled) {
       return;
     }
@@ -32,23 +33,15 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
         return;
       }
 
-      // A v2 resolution with every feature at its default (a license that contributes nothing above
-      // defaults) is effectively the free tier; comparing that against the org's real v1 plan is noise,
-      // so compare v2 against the v1 free baseline instead.
-      const featureValues = Object.values(entitlements.features);
-      const isV2Unlicensed = featureValues.length > 0 && featureValues.every((f) => f.source === "default");
-      let planForCompare = planV1;
-      if (isV2Unlicensed) {
-        planForCompare = getFreeTierPlan();
+      const { skip, warnPaid } = classifyUnlicensedCompare(entitlements, planV1);
+      if (skip) {
+        if (warnPaid) {
+          logger.warn(`license-dual-read: paid v1 org unlicensed in v2 [orgId=${orgId}] [v1Slug=${planV1.slug}]`);
+        }
+        return;
       }
 
-      // A paid v1 org that resolves to all-defaults in v2 is a cutover downgrade risk; the swap above
-      // would otherwise mask it as identical telemetry to a genuinely free org.
-      if (isV2Unlicensed && planV1.slug && planV1.slug !== "starter") {
-        logger.warn(`license-dual-read: paid v1 org unlicensed in v2 [orgId=${orgId}] [v1Slug=${planV1.slug}]`);
-      }
-
-      const discrepancies = compareEntitlements(planForCompare, entitlements, FEATURE_MAPPINGS);
+      const discrepancies = compareEntitlements(planV1, entitlements, FEATURE_MAPPINGS);
       const diffs = discrepancies.filter((d) => d.kind !== DualReadDiffKind.Match);
 
       for (const d of diffs) {
