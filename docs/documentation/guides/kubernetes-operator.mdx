@@ -21,10 +21,15 @@ In this tutorial, you will:
 Before you begin, make sure you have:
 
 - [helm](https://helm.sh/docs/intro/install/), [kubectl](https://kubernetes.io/docs/tasks/tools/), and [jq](https://jqlang.github.io/jq/download/) installed.
-- Access to a running Kubernetes cluster that `kubectl` is pointed at. Confirm with `kubectl cluster-info`.
+- Access to a running Kubernetes cluster that `kubectl` is pointed at, with an API server reachable from your Infisical instance. Confirm with `kubectl cluster-info`.
 - Access to an Infisical instance, either [Infisical Cloud](/documentation/getting-started/overview) or a [self-hosted instance](/self-hosting/overview).
-- A Kubernetes API server that is network-reachable from your Infisical instance. Kubernetes Auth works by having the Infisical backend call your cluster's TokenReview API at the Kubernetes Host URL you configure later. If you use Infisical Cloud, a local kind, minikube, or Docker Desktop cluster is not reachable and does not work as-is. Use a cluster with a reachable API endpoint, or self-host Infisical somewhere that can reach the cluster. Connectivity is needed in both directions: the operator also calls your Infisical instance's API from inside the cluster.
-- A running PostgreSQL database for the dynamic-secret step. The database must be network-reachable from your Infisical instance, not from your cluster. If you use Infisical Cloud, a database on your laptop or inside your cluster is not reachable. Use a database with a public or peered address. If you self-host Infisical, the database must be reachable from wherever Infisical runs.
+- A PostgreSQL database reachable from your Infisical instance, for the dynamic-secret step.
+
+<Warning>
+  **Network reachability matters in both directions.** Kubernetes Auth works by having the Infisical backend call your cluster's TokenReview API at the Kubernetes Host URL you configure later, and the operator calls your Infisical instance's API from inside the cluster.
+
+  If you use Infisical Cloud, a local kind, minikube, or Docker Desktop cluster is not reachable and will not work as-is. Use a cluster with a reachable API endpoint, or self-host Infisical somewhere that can reach the cluster. The same applies to the PostgreSQL database for the dynamic-secret step: it must be reachable from your Infisical instance, not just from your cluster, so use a database with a public or peered address.
+</Warning>
 
 <Info>
   [Dynamic Secrets](/documentation/platform/dynamic-secrets/overview) are available under the **Pro Tier** and **Enterprise Tier** on Infisical Cloud.
