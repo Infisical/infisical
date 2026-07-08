@@ -78,8 +78,10 @@ export const pamKeys = {
   listDiscoverySources: (params?: { search?: string }) =>
     [...pamKeys.discovery(), "sources", params] as const,
   listDiscoveryRuns: (sourceId: string) => [...pamKeys.discovery(), "runs", sourceId] as const,
-  listDiscoveredAccounts: (sourceId: string, search?: string) =>
-    [...pamKeys.discovery(), "discovered", sourceId, search] as const
+  listDiscoveredAccounts: (
+    sourceId: string,
+    params?: { search?: string; offset?: number; limit?: number }
+  ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const
 };
 
 const fetchFolderPermissions = async (folderId: string) => {
@@ -492,15 +494,18 @@ export const useListPamDiscoveryRuns = (
   });
 };
 
-export const useListPamDiscoveredAccounts = (sourceId: string, search?: string) => {
+export const useListPamDiscoveredAccounts = (
+  sourceId: string,
+  params?: { search?: string; offset?: number; limit?: number }
+) => {
   return useQuery({
-    queryKey: pamKeys.listDiscoveredAccounts(sourceId, search),
+    queryKey: pamKeys.listDiscoveredAccounts(sourceId, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ discoveredAccounts: TPamDiscoveredAccount[] }>(
-        `/api/v1/pam/discovery-sources/${sourceId}/discovered`,
-        { params: { search } }
-      );
-      return data.discoveredAccounts;
+      const { data } = await apiRequest.get<{
+        discoveredAccounts: TPamDiscoveredAccount[];
+        totalCount: number;
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered`, { params });
+      return data;
     },
     enabled: Boolean(sourceId),
     placeholderData: (prev) => prev

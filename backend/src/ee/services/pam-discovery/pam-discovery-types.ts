@@ -77,7 +77,13 @@ export type TTriggerScanDTO = {
   discoveryType: PamDiscoveryType;
 } & TActorContext;
 export type TListRunsDTO = { projectId: string; sourceId: string; offset?: number; limit?: number } & TActorContext;
-export type TListDiscoveredDTO = { projectId: string; sourceId: string; search?: string } & TActorContext;
+export type TListDiscoveredDTO = {
+  projectId: string;
+  sourceId: string;
+  search?: string;
+  offset?: number;
+  limit?: number;
+} & TActorContext;
 
 export type TImportDiscoveredDTO = {
   projectId: string;

@@ -29,6 +29,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -39,9 +40,15 @@ import {
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import { useOrganization } from "@app/context";
 import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import {
   PamAccountType,
   PamDiscoverySchedule,
   pamKeys,
+  TPamDiscoveredAccount,
   TPamDiscoverySource,
   useListPamAccountsAdmin,
   useListPamDiscoveredAccounts,
@@ -211,11 +218,15 @@ type Props = {
 };
 
 export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: Props) => {
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Record<string, TPamDiscoveredAccount>>({});
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("pamDiscoveredAccountsTable", PreferenceKey.PerPage, 20)
+  );
 
   const { currentOrg } = useOrganization();
   const { tab, setTab } = usePamSheetState("discoverySourceId");
@@ -236,8 +247,18 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const { data: runs = [] } = useListPamDiscoveryRuns(sourceId ?? "", {
     refetchInterval: isOpen ? 5000 : undefined
   });
-  const { data: staged = [] } = useListPamDiscoveredAccounts(sourceId ?? "", debouncedSearch);
+  const offset = (page - 1) * perPage;
+  const { data: { discoveredAccounts: staged = [], totalCount = 0 } = {} } =
+    useListPamDiscoveredAccounts(sourceId ?? "", {
+      search: debouncedSearch,
+      offset,
+      limit: perPage
+    });
   const triggerScan = useTriggerPamDiscoveryScan();
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const queryClient = useQueryClient();
   const latestRunStatus = runs[0]?.status;
@@ -266,17 +287,33 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
 
   const q = search.trim().toLowerCase();
   const visibleStaged = q ? staged.filter((a) => a.name.toLowerCase().includes(q)) : staged;
-  const selectedAccounts = staged.filter((a) => selected.includes(a.id));
-  const allVisibleSelected =
-    visibleStaged.length > 0 && visibleStaged.every((a) => selected.includes(a.id));
-  const toggle = (id: string) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const selectedAccounts = Object.values(selected);
+  const allPageSelected =
+    visibleStaged.length > 0 && visibleStaged.every((a) => Boolean(selected[a.id]));
+  const toggle = (account: TPamDiscoveredAccount) =>
+    setSelected((prev) => {
+      const next = { ...prev };
+      if (next[account.id]) {
+        delete next[account.id];
+      } else {
+        next[account.id] = account;
+      }
+      return next;
+    });
   const toggleAll = () =>
-    setSelected((prev) =>
-      allVisibleSelected
-        ? prev.filter((id) => !visibleStaged.some((a) => a.id === id))
-        : Array.from(new Set([...prev, ...visibleStaged.map((a) => a.id)]))
-    );
+    setSelected((prev) => {
+      if (allPageSelected) {
+        const next = { ...prev };
+        visibleStaged.forEach((a) => delete next[a.id]);
+        return next;
+      }
+      const next = { ...prev };
+      visibleStaged.forEach((a) => {
+        next[a.id] = a;
+      });
+      return next;
+    });
 
   const stagedTab: ReactNode = (
     <div className="flex flex-1 flex-col gap-4 p-4">
@@ -299,65 +336,83 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
             />
           </InputGroup>
 
-          {visibleStaged.length === 0 ? (
+          {totalCount === 0 ? (
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>
-                  {search
+                  {debouncedSearch
                     ? "No accounts match your search."
                     : "No staged accounts. Run a scan to discover accounts."}
                 </EmptyTitle>
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8">
-                    <Checkbox
-                      id="select-all-discovered"
-                      isChecked={allVisibleSelected}
-                      onCheckedChange={toggleAll}
-                    />
-                  </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="w-40">Type</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleStaged.map((account) => {
-                  const typeDetails = accountTypeMap[account.accountType as PamAccountType];
-                  return (
-                    <TableRow key={account.id}>
-                      <TableCell>
-                        <Checkbox
-                          id={`discovered-${account.id}`}
-                          isChecked={selected.includes(account.id)}
-                          onCheckedChange={() => toggle(account.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium text-foreground">
-                        <HighlightText text={account.name} highlight={search} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {typeDetails && (
-                            <img
-                              src={`/images/integrations/${typeDetails.icon}`}
-                              alt={typeDetails.name}
-                              className="size-5 shrink-0 rounded-sm"
-                            />
-                          )}
-                          <span className="text-sm">
-                            {typeDetails?.name ?? account.accountType}
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">
+                      <Checkbox
+                        id="select-all-discovered"
+                        isChecked={allPageSelected}
+                        onCheckedChange={toggleAll}
+                      />
+                    </TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="w-40">Type</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleStaged.map((account) => {
+                    const typeDetails = accountTypeMap[account.accountType as PamAccountType];
+                    return (
+                      <TableRow key={account.id}>
+                        <TableCell>
+                          <Checkbox
+                            id={`discovered-${account.id}`}
+                            isChecked={Boolean(selected[account.id])}
+                            onCheckedChange={() => toggle(account)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">
+                          <HighlightText text={account.name} highlight={search} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {typeDetails && (
+                              <img
+                                src={`/images/integrations/${typeDetails.icon}`}
+                                alt={typeDetails.name}
+                                className="size-5 shrink-0 rounded-sm"
+                              />
+                            )}
+                            <span className="text-sm">
+                              {typeDetails?.name ?? account.accountType}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+
+              <Pagination
+                count={totalCount}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={(newPerPage) => {
+                  setPerPage(newPerPage);
+                  setPage(1);
+                  setUserTablePreference(
+                    "pamDiscoveredAccountsTable",
+                    PreferenceKey.PerPage,
+                    newPerPage
                   );
-                })}
-              </TableBody>
-            </Table>
+                }}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -365,7 +420,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
       {selectedAccounts.length > 0 && (
         <div className="sticky bottom-0 -mx-4 mt-auto -mb-4 flex items-center gap-2 border-t border-border bg-popover px-4 py-3">
           <span className="mr-auto text-sm text-muted">{selectedAccounts.length} selected</span>
-          <Button type="button" variant="ghost" onClick={() => setSelected([])}>
+          <Button type="button" variant="ghost" onClick={() => setSelected({})}>
             Clear
           </Button>
           <Button type="button" variant="pam" onClick={() => setIsImportOpen(true)}>
@@ -479,8 +534,9 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         isOpen={isOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setSelected([]);
+            setSelected({});
             setSearch("");
+            setPage(1);
           }
           onOpenChange(open);
         }}
@@ -550,7 +606,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
           onOpenChange={setIsImportOpen}
           sourceId={sourceId}
           accounts={selectedAccounts}
-          onImported={() => setSelected([])}
+          onImported={() => setSelected({})}
         />
       )}
     </>

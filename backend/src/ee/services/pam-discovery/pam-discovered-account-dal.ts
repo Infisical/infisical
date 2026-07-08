@@ -26,13 +26,25 @@ export const pamDiscoveredAccountDALFactory = (db: TDbClient) => {
     return { isNew: true };
   };
 
-  const listStaged = async (discoverySourceId: string, search?: string) => {
-    const query = db
+  const listStaged = async (
+    discoverySourceId: string,
+    { search, offset, limit }: { search?: string; offset?: number; limit?: number } = {}
+  ) => {
+    const baseQuery = db
       .replicaNode()(TableName.PamDiscoveredAccount)
       .where({ discoverySourceId })
       .whereNull("importedAccountId");
-    if (search) void query.andWhere("name", "ilike", `%${sanitizeSqlLikeString(search)}%`);
-    return query.orderBy("name", "asc");
+    if (search) void baseQuery.andWhere("name", "ilike", `%${sanitizeSqlLikeString(search)}%`);
+
+    const countQuery = baseQuery.clone().clearSelect().count("id as count").first<{ count: string }>();
+
+    const dataQuery = baseQuery.clone().orderBy("name", "asc");
+    if (limit) void dataQuery.limit(limit);
+    if (offset) void dataQuery.offset(offset);
+
+    const [countResult, accounts] = await Promise.all([countQuery, dataQuery]);
+
+    return { accounts, totalCount: Number(countResult?.count ?? 0) };
   };
 
   return { ...orm, upsertByFingerprint, listStaged };

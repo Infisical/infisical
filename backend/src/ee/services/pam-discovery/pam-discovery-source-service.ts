@@ -410,20 +410,23 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     return runs;
   };
 
-  const listDiscovered = async ({ projectId, sourceId, search, ...ctx }: TListDiscoveredDTO) => {
+  const listDiscovered = async ({ projectId, sourceId, search, offset, limit, ...ctx }: TListDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
-    const accounts = await pamDiscoveredAccountDAL.listStaged(sourceId, search);
-    return accounts.map((a) => ({
-      id: a.id,
-      accountType: a.accountType as PamAccountType,
-      name: a.name,
-      fingerprint: a.fingerprint,
-      createdAt: a.createdAt
-    }));
+    const { accounts, totalCount } = await pamDiscoveredAccountDAL.listStaged(sourceId, { search, offset, limit });
+    return {
+      discoveredAccounts: accounts.map((a) => ({
+        id: a.id,
+        accountType: a.accountType as PamAccountType,
+        name: a.name,
+        fingerprint: a.fingerprint,
+        createdAt: a.createdAt
+      })),
+      totalCount
+    };
   };
 
   const importAccounts = async ({ projectId, sourceId, folderId, accounts, ...ctx }: TImportDiscoveredDTO) => {

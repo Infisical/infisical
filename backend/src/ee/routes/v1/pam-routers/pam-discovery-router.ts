@@ -362,22 +362,30 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       description: "List staged accounts discovered by a PAM discovery source",
       tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
-      querystring: z.object({ search: z.string().optional() }),
-      response: { 200: z.object({ discoveredAccounts: z.array(DiscoveredAccountSchema) }) }
+      querystring: z.object({
+        search: z.string().optional(),
+        offset: z.coerce.number().min(0).default(0).optional(),
+        limit: z.coerce.number().min(1).max(100).default(20).optional()
+      }),
+      response: {
+        200: z.object({ discoveredAccounts: z.array(DiscoveredAccountSchema), totalCount: z.number() })
+      }
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const discoveredAccounts = await server.services.pamDiscovery.listDiscovered({
+      const { discoveredAccounts, totalCount } = await server.services.pamDiscovery.listDiscovered({
         sourceId: req.params.sourceId,
         projectId: req.internalPamProjectId,
         search: req.query.search,
+        offset: req.query.offset,
+        limit: req.query.limit,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      return { discoveredAccounts };
+      return { discoveredAccounts, totalCount };
     }
   });
 
