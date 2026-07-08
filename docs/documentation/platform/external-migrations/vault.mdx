@@ -111,7 +111,7 @@ Before importing anything, you need to establish a secure connection between Inf
     Follow the [HashiCorp Vault App Connection documentation](/integrations/app-connections/hashicorp-vault) for detailed setup instructions. When configuring authentication (Token or AppRole), make sure the credential uses the `infisical-in-platform-migration` policy you created in the previous step.
 
     <Note>
-      You can create more than one connection if you need to migrate from several Vault instances. The Vault namespace is not part of the connection, you pick it inline each time you import a resource.
+      You can create more than one connection if you need to migrate from several Vault instances. The Vault namespace is not part of the connection; you pick it inline each time you import a resource.
     </Note>
 
   </Step>
@@ -134,7 +134,7 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
 </Info>
 
 <Warning>
-  If your Vault token is restricted and cannot list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and is **skipped**, ie. those secrets will not be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
+  If your Vault token is restricted and cannot list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and is **skipped**, i.e., those secrets will not be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
 </Warning>
 
 **To import secrets from Vault:**
