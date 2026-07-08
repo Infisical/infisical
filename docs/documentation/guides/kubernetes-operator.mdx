@@ -13,7 +13,9 @@ In this tutorial, you will:
 - Generate a dynamic database credential in your cluster with the `InfisicalDynamicSecret` CRD.
 
 <Note>
-  This tutorial's pull path uses the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) says which secrets sync where. Pushing and dynamic secrets have no `v1beta1` equivalents, so those sections use the `v1alpha1` [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) and [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRDs, which each carry their own inline `authentication` block. The `v1alpha1` [`InfisicalSecret`](/integrations/platforms/kubernetes/infisical-secret-crd) pull CRD also still exists and remains supported; see the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the full picture.
+  This tutorial's pull path uses the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) says which secrets sync where.
+
+  Pushing and dynamic secrets have no `v1beta1` equivalents, so those sections use the `v1alpha1` [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) and [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRDs, which each carry their own inline `authentication` block. See the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the other CRDs and authentication methods.
 </Note>
 
 ## Prerequisites
