@@ -25,7 +25,6 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -35,9 +34,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
   IconButton,
   Input,
   Select,
@@ -92,7 +88,6 @@ type TResourceConfig = {
   Icon: LucideIcon;
   // Tailwind extracts classes statically, so every tint must be a full literal string
   iconTileClassName: string;
-  chipSelectedClassName: string;
   countBadgeClassName: string;
   summaryIconClassName: string;
   actions: TResourceAction[];
@@ -104,8 +99,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Secrets",
     Icon: KeyIcon,
     iconTileClassName: "border-accent/10 bg-accent/15 text-accent",
-    chipSelectedClassName:
-      "border-accent/50 bg-accent/15 text-accent hover:border-accent/50 hover:bg-accent/25",
     countBadgeClassName: "border-accent/10 bg-accent/15 text-accent",
     summaryIconClassName: "text-accent",
     actions: [
@@ -140,8 +133,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Folders",
     Icon: FolderIcon,
     iconTileClassName: "border-folder/10 bg-folder/15 text-folder",
-    chipSelectedClassName:
-      "border-folder/50 bg-folder/15 text-folder hover:border-folder/50 hover:bg-folder/25",
     countBadgeClassName: "border-folder/10 bg-folder/15 text-folder",
     summaryIconClassName: "text-folder",
     actions: [
@@ -170,8 +161,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Dynamic Secrets",
     Icon: FingerprintIcon,
     iconTileClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
-    chipSelectedClassName:
-      "border-dynamic-secret/50 bg-dynamic-secret/15 text-dynamic-secret hover:border-dynamic-secret/50 hover:bg-dynamic-secret/25",
     countBadgeClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
     summaryIconClassName: "text-dynamic-secret",
     actions: [
@@ -212,8 +201,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Secret Rotation",
     Icon: RefreshCwIcon,
     iconTileClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
-    chipSelectedClassName:
-      "border-secret-rotation/50 bg-secret-rotation/15 text-secret-rotation hover:border-secret-rotation/50 hover:bg-secret-rotation/25",
     countBadgeClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
     summaryIconClassName: "text-secret-rotation",
     actions: [
@@ -260,8 +247,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Secret Imports",
     Icon: ImportIcon,
     iconTileClassName: "border-import/10 bg-import/15 text-import",
-    chipSelectedClassName:
-      "border-import/50 bg-import/15 text-import hover:border-import/50 hover:bg-import/25",
     countBadgeClassName: "border-import/10 bg-import/15 text-import",
     summaryIconClassName: "text-import",
     actions: [
@@ -296,8 +281,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Honey Tokens",
     Icon: HexagonIcon,
     iconTileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
-    chipSelectedClassName:
-      "border-yellow-700/50 bg-yellow-700/15 text-yellow-700 hover:border-yellow-700/50 hover:bg-yellow-700/25",
     countBadgeClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
     summaryIconClassName: "text-yellow-700",
     actions: [
@@ -473,13 +456,6 @@ export const RequestAccessForm = ({
       (config.subject !== ProjectPermissionSub.HoneyTokens || subscription?.honeyTokens)
   );
 
-  const summaryRows = resources.flatMap((resource) => {
-    const config = RESOURCE_CONFIGS.find((c) => c.subject === resource.subject);
-    if (!config) return [];
-    const selected = config.actions.filter((action) => resource.actions.includes(action.value));
-    return selected.length ? [{ config, selected }] : [];
-  });
-
   const totalSelectedActions = resources.reduce(
     (count, resource) => count + resource.actions.length,
     0
@@ -616,108 +592,100 @@ export const RequestAccessForm = ({
         </div>
         <Field>
           <FieldLabel>Resources & Permissions</FieldLabel>
-<<<<<<< HEAD
-          <div className="flex flex-col gap-3 rounded-lg border border-border bg-black/20 p-3">
-=======
-          <div className="flex flex-col gap-3">
->>>>>>> parent of 2aafcb29de (add background for resources)
-            {resourceFields.map((resourceField, index) => {
-              const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
-              if (!config) return null;
-              const selectedValues = resources[index]?.actions ?? [];
+          {resourceFields.map((resourceField, index) => {
+            const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
+            if (!config) return null;
+            const selectedValues = resources[index]?.actions ?? [];
 
-              return (
-                <div
-                  key={resourceField.id}
-                  className="overflow-hidden rounded-lg border border-border bg-card"
+            return (
+              <div
+                key={resourceField.id}
+                className="overflow-hidden rounded-lg border border-border bg-card"
+              >
+                <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                  <div
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-md border",
+                      config.iconTileClassName
+                    )}
+                  >
+                    <config.Icon className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{config.label}</span>
+                  <IconButton
+                    size="xs"
+                    variant="ghost-muted"
+                    className="ml-auto"
+                    aria-label={`Remove ${config.label}`}
+                    onClick={() => removeResource(index)}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+                <div className="flex flex-wrap gap-2 p-3">
+                  {config.actions.map((action) => {
+                    const isSelected = selectedValues.includes(action.value);
+
+                    return (
+                      <Tooltip key={action.value}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="xs"
+                            variant={isSelected ? "project" : "outline"}
+                            aria-pressed={isSelected}
+                            onClick={() => toggleAction(index, action.value)}
+                            className={cn(
+                              "rounded-md",
+                              !isSelected && "text-muted hover:text-foreground"
+                            )}
+                          >
+                            <action.Icon />
+                            {action.label}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{action.description}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {availableResources.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  isFullWidth
+                  className="border-dashed text-label hover:text-foreground"
                 >
-                  <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                  <PlusIcon />
+                  Add resource type
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-(--radix-dropdown-menu-trigger-width)"
+              >
+                {availableResources.map((config) => (
+                  <DropdownMenuItem
+                    key={config.subject}
+                    onSelect={() => appendResource({ subject: config.subject, actions: [] })}
+                  >
                     <div
                       className={cn(
-                        "flex size-7 items-center justify-center rounded-md border",
+                        "flex size-6 items-center justify-center rounded-sm border",
                         config.iconTileClassName
                       )}
                     >
-                      <config.Icon className="size-4" />
+                      <config.Icon className="size-3.5" />
                     </div>
-                    <span className="text-sm font-medium text-foreground">{config.label}</span>
-                    <IconButton
-                      size="xs"
-                      variant="ghost-muted"
-                      className="ml-auto"
-                      aria-label={`Remove ${config.label}`}
-                      onClick={() => removeResource(index)}
-                    >
-                      <XIcon />
-                    </IconButton>
-                  </div>
-                  <div className="flex flex-wrap gap-2 p-3">
-                    {config.actions.map((action) => {
-                      const isSelected = selectedValues.includes(action.value);
-
-                      return (
-                        <Tooltip key={action.value}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              aria-pressed={isSelected}
-                              onClick={() => toggleAction(index, action.value)}
-                              className={cn(
-                                "rounded-md",
-                                isSelected
-                                  ? config.chipSelectedClassName
-                                  : "text-muted hover:text-foreground"
-                              )}
-                            >
-                              <action.Icon />
-                              {action.label}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{action.description}</TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            {availableResources.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    isFullWidth
-                    className="border-dashed text-label hover:text-foreground"
-                  >
-                    <PlusIcon />
-                    Add resource type
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="w-(--radix-dropdown-menu-trigger-width)"
-                >
-                  {availableResources.map((config) => (
-                    <DropdownMenuItem
-                      key={config.subject}
-                      onSelect={() => appendResource({ subject: config.subject, actions: [] })}
-                    >
-                      <div
-                        className={cn(
-                          "flex size-6 items-center justify-center rounded-sm border",
-                          config.iconTileClassName
-                        )}
-                      >
-                        <config.Icon className="size-3.5" />
-                      </div>
-                      {config.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+                    {config.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </Field>
         <Controller
           control={form.control}
@@ -779,43 +747,6 @@ export const RequestAccessForm = ({
             </Field>
           )}
         />
-        <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-black/20 p-3">
-          <span className="text-xs font-medium tracking-wider text-muted uppercase">
-            Request Summary
-          </span>
-          {summaryRows.length ? (
-            <div className="flex flex-col gap-2">
-              {summaryRows.map(({ config, selected }) => (
-                <HoverCard key={config.subject} openDelay={150}>
-                  <HoverCardTrigger asChild>
-                    <div className="flex items-center gap-2">
-                      <config.Icon className={cn("size-3.5", config.summaryIconClassName)} />
-                      <span className="text-sm text-foreground">{config.label}</span>
-                      <Badge className={cn("ml-auto rounded-full", config.countBadgeClassName)}>
-                        {selected.length} {selected.length === 1 ? "permission" : "permissions"}
-                      </Badge>
-                    </div>
-                  </HoverCardTrigger>
-                  <HoverCardContent align="end" className="flex w-56 flex-col gap-1.5">
-                    {selected.map((action) => (
-                      <div
-                        key={action.value}
-                        className="flex items-center gap-2 text-sm text-foreground"
-                      >
-                        <action.Icon className={cn("size-3.5", config.summaryIconClassName)} />
-                        {action.label}
-                      </div>
-                    ))}
-                  </HoverCardContent>
-                </HoverCard>
-              ))}
-            </div>
-          ) : (
-            <span className="text-sm text-muted">
-              No resources added yet. Add a resource type to begin.
-            </span>
-          )}
-        </div>
       </div>
       <SheetFooter className="border-t">
         <Button
