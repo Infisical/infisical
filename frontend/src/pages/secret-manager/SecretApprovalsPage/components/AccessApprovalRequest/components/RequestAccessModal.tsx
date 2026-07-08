@@ -18,7 +18,7 @@ export const RequestAccessModal = ({
 }) => {
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-2xl">
         <SheetHeader className="border-b">
           <SheetTitle>Request Access</SheetTitle>
           <SheetDescription>
