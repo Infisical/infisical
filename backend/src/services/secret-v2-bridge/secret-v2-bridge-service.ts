@@ -41,7 +41,9 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   recordSecretCacheAccessMetric,
   recordSecretCacheWriteMetric,
+  recordSecretOperationDuration,
   recordSecretReadMetric,
+  recordSecretWriteMetric,
   SecretCacheAccessResult
 } from "@app/lib/telemetry/metrics";
 
@@ -1182,6 +1184,7 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   const getSecrets = async (dto: TGetSecretsDTO) => {
+    const startTime = performance.now();
     const {
       actorId,
       path,
@@ -1201,7 +1204,9 @@ export const secretV2BridgeServiceFactory = ({
       ifNoneMatch,
       ...params
     } = dto;
+    let readOutcome: "success" | "failure" = "failure";
 
+    try {
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
@@ -1237,6 +1242,7 @@ export const secretV2BridgeServiceFactory = ({
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
       if (storedEtag && storedEtag === ifNoneMatch) {
         recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED);
+        readOutcome = "success";
         return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
       }
     }
@@ -1299,6 +1305,7 @@ export const secretV2BridgeServiceFactory = ({
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
         recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
+        readOutcome = "success";
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1652,7 +1659,11 @@ export const secretV2BridgeServiceFactory = ({
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+    readOutcome = "success";
     return { ...payload, etag: computedEtag };
+    } finally {
+      recordSecretOperationDuration({ startTime, operation: "read", outcome: readOutcome });
+    }
   };
 
   const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
@@ -2004,6 +2015,9 @@ export const secretV2BridgeServiceFactory = ({
     commitChanges?: TCommitResourceChangeDTO[];
     skipPostProcessing?: boolean;
   }) => {
+    const startTime = performance.now();
+    let writeOutcome: "success" | "failure" = "failure";
+    try {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2185,6 +2199,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
+    writeOutcome = "success";
     return newSecrets.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
         permission,
@@ -2210,6 +2225,10 @@ export const secretV2BridgeServiceFactory = ({
         secretValueHidden
       );
     });
+    } finally {
+      recordSecretOperationDuration({ startTime, operation: "write", outcome: writeOutcome });
+      if (writeOutcome === "success") recordSecretWriteMetric({ operation: "create" });
+    }
   };
 
   const updateManySecret = async ({
@@ -2230,6 +2249,9 @@ export const secretV2BridgeServiceFactory = ({
     commitChanges?: TCommitResourceChangeDTO[];
     skipPostProcessing?: boolean;
   }) => {
+    const startTime = performance.now();
+    let writeOutcome: "success" | "failure" = "failure";
+    try {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2684,6 +2706,7 @@ export const secretV2BridgeServiceFactory = ({
       );
     }
 
+    writeOutcome = "success";
     return updatedSecrets.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
         permission,
@@ -2712,6 +2735,10 @@ export const secretV2BridgeServiceFactory = ({
         )
       };
     });
+    } finally {
+      recordSecretOperationDuration({ startTime, operation: "write", outcome: writeOutcome });
+      if (writeOutcome === "success") recordSecretWriteMetric({ operation: "update" });
+    }
   };
 
   const deleteManySecret = async ({
@@ -2726,6 +2753,9 @@ export const secretV2BridgeServiceFactory = ({
     tx: providedTx,
     commitChanges
   }: TDeleteManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    const startTime = performance.now();
+    let deleteOutcome: "success" | "failure" = "failure";
+    try {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2823,6 +2853,7 @@ export const secretV2BridgeServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
+      deleteOutcome = "success";
       return secretsDeleted.map((el) => {
         const secretToDeleteMatch = secretsToDelete.find(
           (i) => i.key === el.key && (i.type || SecretType.Shared) === el.type
@@ -2862,6 +2893,10 @@ export const secretV2BridgeServiceFactory = ({
       }
 
       throw err;
+    }
+    } finally {
+      recordSecretOperationDuration({ startTime, operation: "delete", outcome: deleteOutcome });
+      if (deleteOutcome === "success") recordSecretWriteMetric({ operation: "delete" });
     }
   };
 

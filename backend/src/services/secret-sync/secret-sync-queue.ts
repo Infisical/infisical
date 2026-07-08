@@ -13,6 +13,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -634,6 +635,13 @@ export const secretSyncQueueFactory = ({
       const ranAt = new Date();
       const syncStatus = isSynced ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
 
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "sync",
+        outcome: isSynced ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
+
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
         ...(auditLogInfo ?? {
@@ -762,6 +770,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const importStatus = isSuccess ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "import",
+        outcome: isSuccess ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
@@ -893,6 +908,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const removeStatus = isSuccess ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "remove",
+        outcome: isSuccess ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
