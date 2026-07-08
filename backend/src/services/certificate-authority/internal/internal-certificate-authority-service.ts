@@ -2446,9 +2446,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
+    const finalSubject = subjectOverride || csrObj.subject;
+
     if (altNamesArray.length) {
       // RFC 5280 4.1.2.6: subjectAltName must be marked critical when the subject is an empty sequence.
-      const finalSubject = subjectOverride || csrObj.subject;
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(
         altNamesArray,
         finalSubject.trim().length === 0
@@ -2471,7 +2472,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const serialNumber = createSerialNumber();
     const leafCert = await signer.createCertificate({
       serialNumber,
-      subject: subjectOverride || csrObj.subject,
+      subject: finalSubject,
       issuer: caCertObj.subject,
       notBefore: notBeforeDate,
       notAfter: notAfterDate,
