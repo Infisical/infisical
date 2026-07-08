@@ -15,11 +15,11 @@ export const PamDiscoverySourceRunsSchema = z.object({
   discoveredCount: z.number().default(0),
   newCount: z.number().default(0),
   errorMessage: z.string().nullable().optional(),
+  machineErrors: z.unknown().nullable().optional(),
   startedAt: z.date().nullable().optional(),
   completedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  machineErrors: z.unknown().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TPamDiscoverySourceRuns = z.infer<typeof PamDiscoverySourceRunsSchema>;
