@@ -768,25 +768,25 @@ export const pamAccessRequestServiceFactory = ({
       } catch (err) {
         logger.error(err, `Failed to send approval emails for PAM access request [requestId=${request.id}]`);
       }
-
-      void triggerFolderSlackNotifications({
-        folderId: account.folderId,
-        event: PamNotificationEvent.AccessRequested,
-        orgId: ctx.actorOrgId,
-        notification: {
-          type: TriggerFeature.PAM_ACCESS_REQUESTED,
-          payload: {
-            requesterFullName: requesterName || "Unknown",
-            requesterEmail: user.email ?? "",
-            accountName: account.name,
-            folderName: account.folderName ?? "",
-            accessDuration: formatDuration(duration),
-            reason: trimmedReason,
-            approvalUrl
-          }
-        }
-      });
     }
+
+    void triggerFolderSlackNotifications({
+      folderId: account.folderId,
+      event: PamNotificationEvent.AccessRequested,
+      orgId: ctx.actorOrgId,
+      notification: {
+        type: TriggerFeature.PAM_ACCESS_REQUESTED,
+        payload: {
+          requesterFullName: requesterName || "Unknown",
+          requesterEmail: user.email ?? "",
+          accountName: account.name,
+          folderName: account.folderName ?? "",
+          accessDuration: formatDuration(duration),
+          reason: trimmedReason,
+          approvalUrl
+        }
+      }
+    });
 
     return { request, accountId: account.id, folderId: account.folderId };
   };

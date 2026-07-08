@@ -24,8 +24,8 @@ export type TFolderNotificationConfigRow = {
   workflowIntegrationId: string;
   integration: string;
   status: string;
-  channels: unknown;
-  events: unknown;
+  channels?: unknown;
+  events?: unknown;
 };
 
 // Channel ids are merged per integration so overlapping configs can't post the same message twice
@@ -37,14 +37,15 @@ export const getSlackSendTargets = (configs: TFolderNotificationConfigRow[], eve
       config.integration === WorkflowIntegration.SLACK &&
       config.status === WorkflowIntegrationStatus.INSTALLED &&
       parseNotificationEvents(config.events).includes(event);
-    if (!isSubscribed) continue;
 
-    const channelIds = parseNotificationChannels(config.channels).map((channel) => channel.id);
-    if (!channelIds.length) continue;
-
-    const existing = channelIdsByIntegration.get(config.workflowIntegrationId) ?? new Set<string>();
-    channelIds.forEach((id) => existing.add(id));
-    channelIdsByIntegration.set(config.workflowIntegrationId, existing);
+    if (isSubscribed) {
+      const channelIds = parseNotificationChannels(config.channels).map((channel) => channel.id);
+      if (channelIds.length) {
+        const existing = channelIdsByIntegration.get(config.workflowIntegrationId) ?? new Set<string>();
+        channelIds.forEach((id) => existing.add(id));
+        channelIdsByIntegration.set(config.workflowIntegrationId, existing);
+      }
+    }
   }
 
   return [...channelIdsByIntegration.entries()].map(([workflowIntegrationId, channelIds]) => ({

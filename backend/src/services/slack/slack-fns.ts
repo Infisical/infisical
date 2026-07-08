@@ -11,6 +11,10 @@ import { TSendSlackNotificationDTO } from "./slack-types";
 const COMPANY_BRAND_COLOR = "#e0ed34";
 const ERROR_COLOR = "#e74c3c";
 
+// Escapes Slack control sequences in user-supplied text so a requester can't inject
+// mentions (<!channel>) or disguised links (<url|label>) into notification channels
+const escapeSlackMrkdwn = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
     name: string;
@@ -257,9 +261,14 @@ const buildSlackPayload = (notification: TNotification) => {
     }
     case TriggerFeature.PAM_ACCESS_REQUESTED: {
       const { payload } = notification;
+      const requesterFullName = escapeSlackMrkdwn(payload.requesterFullName);
+      const requesterEmail = escapeSlackMrkdwn(payload.requesterEmail);
+      const accountName = escapeSlackMrkdwn(payload.accountName);
+      const folderName = escapeSlackMrkdwn(payload.folderName);
+      const reason = payload.reason ? escapeSlackMrkdwn(payload.reason) : undefined;
 
-      const messageBody = `${payload.requesterFullName} (${payload.requesterEmail}) has requested access to ${payload.accountName} in the ${payload.folderName} folder.\n\nDuration: ${payload.accessDuration}${
-        payload.reason ? `\n\nReason: ${payload.reason}` : ""
+      const messageBody = `${requesterFullName} (${requesterEmail}) has requested access to ${accountName} in the ${folderName} folder.\n\nDuration: ${payload.accessDuration}${
+        reason ? `\n\nReason: ${reason}` : ""
       }`;
 
       const headerBlocks = [
@@ -278,8 +287,8 @@ const buildSlackPayload = (notification: TNotification) => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*${payload.requesterFullName}* (${payload.requesterEmail}) has requested access to *${payload.accountName}* in the *${payload.folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
-              payload.reason ? `\n\n*Reason:* ${payload.reason}` : ""
+            text: `*${requesterFullName}* (${requesterEmail}) has requested access to *${accountName}* in the *${folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
+              reason ? `\n\n*Reason:* ${reason}` : ""
             }`
           }
         },
@@ -312,9 +321,14 @@ const buildSlackPayload = (notification: TNotification) => {
       const { payload } = notification;
       const isApproved = notification.type === TriggerFeature.PAM_ACCESS_REQUEST_APPROVED;
       const decision = isApproved ? "approved" : "denied";
+      const requesterFullName = escapeSlackMrkdwn(payload.requesterFullName);
+      const requesterEmail = escapeSlackMrkdwn(payload.requesterEmail);
+      const accountName = escapeSlackMrkdwn(payload.accountName);
+      const folderName = escapeSlackMrkdwn(payload.folderName);
+      const comment = payload.comment ? escapeSlackMrkdwn(payload.comment) : undefined;
 
-      const messageBody = `The access request from ${payload.requesterFullName} (${payload.requesterEmail}) for ${payload.accountName} in the ${payload.folderName} folder has been ${decision}.${
-        payload.comment ? `\n\nReviewer comment: ${payload.comment}` : ""
+      const messageBody = `The access request from ${requesterFullName} (${requesterEmail}) for ${accountName} in the ${folderName} folder has been ${decision}.${
+        comment ? `\n\nReviewer comment: ${comment}` : ""
       }`;
 
       const headerBlocks = [
@@ -333,8 +347,8 @@ const buildSlackPayload = (notification: TNotification) => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `The access request from *${payload.requesterFullName}* (${payload.requesterEmail}) for *${payload.accountName}* in the *${payload.folderName}* folder has been *${decision}*.${
-              payload.comment ? `\n\n*Reviewer comment:* ${payload.comment}` : ""
+            text: `The access request from *${requesterFullName}* (${requesterEmail}) for *${accountName}* in the *${folderName}* folder has been *${decision}*.${
+              comment ? `\n\n*Reviewer comment:* ${comment}` : ""
             }`
           }
         },
