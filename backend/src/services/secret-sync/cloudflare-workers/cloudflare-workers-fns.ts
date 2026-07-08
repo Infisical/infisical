@@ -12,6 +12,7 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 
 const CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE = 10215;
+const CLOUDFLARE_SECRET_TYPE = "secret_text";
 
 type TCloudflareErrorResponse = {
   errors?: Array<{ code: number; message: string }>;
@@ -20,6 +21,27 @@ type TCloudflareErrorResponse = {
 type TCloudflareSecretMetadata = {
   key: string;
   type: string;
+};
+
+const $validateJsonBindings = (
+  bindings: Array<{ type: string; name: string }>,
+  updatedBindingMap: Record<string, { value: string }>
+) => {
+  const invalidJsonBindings: string[] = [];
+  for (const binding of bindings) {
+    if (binding.type === "json" && updatedBindingMap[binding.name] !== undefined) {
+      try {
+        JSON.parse(updatedBindingMap[binding.name].value);
+      } catch {
+        invalidJsonBindings.push(binding.name);
+      }
+    }
+  }
+  if (invalidJsonBindings.length > 0) {
+    throw new BadRequestError({
+      message: `The following bindings already exist in Cloudflare as JSON variables but the values provided are not valid JSON: ${invalidJsonBindings.join(", ")}`
+    });
+  }
 };
 
 const throwOnUndeployedVersionError = (err: unknown) => {
@@ -100,7 +122,7 @@ export const CloudflareWorkersSyncFns = {
 
     for (const [key, val] of Object.entries(secretMap)) {
       const existingType = existingSecretsMap[key];
-      if (existingType && existingType !== "secret_text") {
+      if (existingType && existingType !==  CLOUDFLARE_SECRET_TYPE) {
         bindingEntries.push([key, val]);
       } else {
         secretEntries.push([key, val]);
@@ -108,22 +130,6 @@ export const CloudflareWorkersSyncFns = {
     }
 
     try {
-      /* eslint-disable no-await-in-loop */
-      for (const [key, val] of secretEntries) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.put(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
-          { name: key, text: val.value, type: "secret_text" },
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-      }
-      /* eslint-enable no-await-in-loop */
-
       if (bindingEntries.length > 0) {
         const { data: settingsData } = await request.get<{
           result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
@@ -138,18 +144,15 @@ export const CloudflareWorkersSyncFns = {
         );
 
         const updatedBindingMap = Object.fromEntries(bindingEntries);
+
+        $validateJsonBindings(settingsData.result.bindings, updatedBindingMap);
+
         const updatedBindings = settingsData.result.bindings.map((binding) => {
-          if (binding.type !== "secret_text" && updatedBindingMap[binding.name] !== undefined) {
+          if (binding.type !==  CLOUDFLARE_SECRET_TYPE && updatedBindingMap[binding.name] !== undefined) {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                return { ...binding, json: JSON.parse(newValue) };
-              } catch {
-                throw new BadRequestError({
-                  message: `"${binding.name}" already exists in cloudflare as a JSON variable: the value you provided is not valid JSON`
-                });
-              }
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              return { ...binding, json: JSON.parse(newValue) };
             }
             return { ...binding, text: newValue };
           }
@@ -172,6 +175,22 @@ export const CloudflareWorkersSyncFns = {
           }
         );
       }
+
+      /* eslint-disable no-await-in-loop */
+      for (const [key, val] of secretEntries) {
+        await delayMs(Math.max(0, applyJitter(100, 200)));
+        await request.put(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
+          { name: key, text: val.value, type:  CLOUDFLARE_SECRET_TYPE },
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      }
+      /* eslint-enable no-await-in-loop */
     } catch (err) {
       throwOnUndeployedVersionError(err);
     }
@@ -187,8 +206,8 @@ export const CloudflareWorkersSyncFns = {
         return !isInNewSecretMap && isManagedBySchema;
       });
 
-      const secretTypeToDelete = secretsToDelete.filter((s) => s.type === "secret_text");
-      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !== "secret_text");
+      const secretTypeToDelete = secretsToDelete.filter((s) => s.type ===  CLOUDFLARE_SECRET_TYPE);
+      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !==  CLOUDFLARE_SECRET_TYPE);
 
       try {
         /* eslint-disable no-await-in-loop */
@@ -270,8 +289,8 @@ export const CloudflareWorkersSyncFns = {
       return secretMapToRemoveKeys.has(existingSecret.key) && isManagedBySchema;
     });
 
-    const secretTypeToRemove = secretsToRemove.filter((s) => s.type === "secret_text");
-    const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== "secret_text");
+    const secretTypeToRemove = secretsToRemove.filter((s) => s.type ===  CLOUDFLARE_SECRET_TYPE);
+    const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !==  CLOUDFLARE_SECRET_TYPE);
 
     try {
       /* eslint-disable no-await-in-loop */

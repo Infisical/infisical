@@ -1,8 +1,12 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Field,
   FieldContent,
   FieldError,
@@ -61,6 +65,15 @@ export const CloudflareWorkersSyncFields = () => {
           </Field>
         )}
       />
+      <Alert variant="info">
+        <Info />
+        <AlertTitle>Binding types are preserved</AlertTitle>
+        <AlertDescription>
+          Cloudflare Workers supports secret text, plain text, and JSON bindings. If a binding
+          already exists on the worker, its type will not be changed during sync. New bindings
+          created by Infisical will default to secret text.
+        </AlertDescription>
+      </Alert>
     </FieldGroup>
   );
 };
