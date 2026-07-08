@@ -29,7 +29,7 @@ export type TPamRotationCandidate = {
   encryptedConnectionDetails: Buffer;
 };
 
-const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
+const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd, PamAccountType.WebApp]
   .map((type) => `'${type}'`)
   .join(", ");
 

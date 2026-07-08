@@ -524,6 +524,19 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.WebApp]: {
+    name: "Web Application",
+    icon: "Web.png",
+    connectionDetails: z.object({
+      url: z.string().url().trim().max(500)
+    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
+    ui: {
+      url: { label: "URL", tooltip: "The internal address of the web application, reachable by the gateway." }
+    }
+  },
+
   [PamAccountType.AwsIam]: {
     name: "AWS IAM",
     icon: "Amazon Web Services.png",
@@ -625,6 +638,13 @@ export const extractGatewayTarget = async (
       const { url } = validated as { url: string };
       const parsed = new URL(url);
       return { host: parsed.hostname };
+    }
+    case PamAccountType.WebApp: {
+      const { url } = validated as { url: string };
+      const parsed = new URL(url);
+      const defaultPort = parsed.protocol === "https:" ? 443 : 80;
+      const port = parsed.port ? Number(parsed.port) : defaultPort;
+      return { host: parsed.hostname, port };
     }
     case PamAccountType.MongoDB: {
       const { connectionString } = validated as { connectionString: string };
@@ -737,7 +757,9 @@ export enum PamAccountAccessibilityIssue {
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
-  accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd;
+  accountType === PamAccountType.Windows ||
+  accountType === PamAccountType.WindowsAd ||
+  accountType === PamAccountType.WebApp;
 
 export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
