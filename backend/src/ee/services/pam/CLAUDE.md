@@ -53,8 +53,9 @@ Every list/mutation endpoint checks action-level permissions, not just membershi
 | List sessions | `ViewSessions` (via `getResourceIdsWithActions`) |
 | List folder/account members | `ManageMembers` (via `checkManageMembers`) |
 | Get account by ID | `ReadAccounts` (via `checkAccountAccess`) |
-| Launch session / web access | `LaunchSessions` (via `checkAccountAccess`) |
+| Launch session / web access | `LaunchSessions` always. Gated account (`requiresApproval`): `LaunchSessions` AND a valid approval grant, enforced in both `pam-session-service.access()` and `pam-web-access-service.issueWebSocketTicket()`. Approval is a layer on top of standing access, never a substitute for it. |
 | View recording | `ViewSessions` (via `checkAccountAccess`) |
+| Revoke access grant | `RevokeGrants` on the grant's account (via `checkAccountAccess`) |
 | Create account | `CreateAccounts` (via folder permission) |
 | Edit/delete account | `EditAccounts`/`DeleteAccounts` (via `checkAccountAccess`) |
 | Edit/delete folder | `EditFolder`/`DeleteFolder` (via folder permission) |
@@ -77,7 +78,7 @@ PAM endpoints accept both `AuthMode.JWT` and `AuthMode.IDENTITY_ACCESS_TOKEN`, e
 ### Roles
 
 - **Product roles** (`PamProductRole`): `Admin`, `Member`
-- **Resource roles** (`PamResourceRole`): `Admin`, `Requester`, `Auditor`, `Connector`
+- **Resource roles** (`PamResourceRole`): `Admin`, `Connector`, `Auditor`. `Connector` grants `ReadFolder` + `ReadAccounts` + `LaunchSessions` (direct launch on non-gated accounts; on gated ones `LaunchSessions` also authorizes submitting an access request, since there is no dedicated request permission).
 
 Resource memberships are scoped to either a `PamFolder` or a `PamAccount` via the generic membership system (`ResourceType.PamFolder` / `ResourceType.PamAccount`).
 
@@ -165,6 +166,18 @@ Session log masking (`sessionLogMaskingPatterns`) is a **setting**, not a policy
 
 No migration, no router or response-schema change (beyond `policyRules` for gateway-enforced policies), and no DB default.
 
+## Credential Rotation
+
+Scheduled + on-demand rotation of a SQL account's password. Scoped to Postgres, MySQL, MSSQL. Lives in `pam-account-rotation/`.
+
+- **Config on the template** (`settings.rotation = { enabled, intervalSeconds }` + `settings.passwordRequirements`, reusing `secret-rotation-v2`'s `PasswordRequirementsSchema` and `generatePassword`). Accounts inherit it; only the `rotationAccountId` is per-account. `validateTemplateRotationConfig` rejects rotation config on non-SQL types and rejects `' " \ ` `` ` `` `; ?` in `allowedSymbols` (the ALTER statement interpolates the password and runs via knex `.raw`).
+- **`rotationAccountId` (on `pam_accounts`)**: null = not configured (not scheduled); own id = self-rotation; another account = delegated. `ON DELETE RESTRICT` (deleting an account referenced as a rotation account is blocked). Server-specific, so it never moves to the template.
+- **Handler registry** `PAM_ROTATION_FACTORY_MAP` (`pam-rotation-handlers.ts`): all three SQL types share `sqlRotationHandler` (`applyPasswordChange` + `testCredential`). Adding a SQL dialect = add it to `ROTATABLE_ACCOUNT_TYPES` and `PAM_ROTATION_APP_MAP` (both in `pam-rotation-fns.ts`); both are full `Record`s over the rotatable types, so a missing entry is a compile error. All per-dialect SQL facts (client, ALTER statement, verify query, SSL/connection config) live once in `app-connection/shared/sql` keyed by `AppConnection` (`SQL_CONNECTION_CLIENT_MAP`, `SQL_CONNECTION_ALTER_LOGIN_STATEMENT`, `getSqlConnectionVerifyQuery`, `getConnectionConfig`) and the handler reads them via `PAM_ROTATION_APP_MAP`, so a new dialect already handled there (e.g. Oracle with `SELECT 1 FROM DUAL`) needs no rotation-side change beyond the two maps. SQL is brokered through the gateway via `withPamSqlClient` (mirrors `executeWithPotentialGateway`; the direct-connect path runs the same `verifyHostInputValidity` SSRF guard).
+- **Readiness + schedule** are pure fns in `pam-rotation-fns.ts` (`getRotationReadiness`, `computeNextRotationAt`). The account-level "will rotate" predicate is `ACCOUNT_WILL_ROTATE_SQL` / `ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL` (same file), shared by both set-based SQL paths (`reconcileRotationScheduleForTemplate`, `getTemplateRotationStats`); `getRotationReadiness` is the row-at-a-time TS mirror. `nextRotationAt` is set/cleared by `reconcileRotationScheduleForTemplate` (bulk, on template update), `reconcileRotationScheduleForAccount` (on account create/update, set rotation account), and on a failed rotation by `recordRotationFailure` (capped retry). Never schedule elsewhere.
+- **Execution** (`pam-account-rotation-service.ts` `performRotation`): per-account Redis lock (`KeyStorePrefixes.PamAccountRotationLock`), then stage `encryptedPendingCredentials` → apply → verify → promote, with a recovery probe (candidate-then-current, both through the gateway) that never discards a possibly-live credential. Every failure path (including guards that throw before staging) funnels through one `recordRotationFailure` in `performRotation`'s catch, which records the redacted message and advances `nextRotationAt` by `min(interval, ROTATION_FAILURE_RETRY_CAP_SECONDS)` so a failure never hot-loops the cron and a transient outage retries well before a long interval elapses.
+- **Scheduling**: cron `PamCredentialRotationQueueRotations` → dispatcher queue `PamCredentialRotation` → per-account worker `PamCredentialRotationRotate` (concurrency + limiter). New queue names deliberately avoid the stale `pam-account-rotation`.
+- **Audit**: manual rotation audits in the route (`PAM_ACCOUNT_ROTATE_CREDENTIALS`, user actor); scheduled rotation audits in the queue worker (platform actor). Both carry `accountId` (required for PAM audit scoping).
+
 ## Session Lifecycle
 
 - Sessions reference accounts via nullable `accountId` (SET NULL on delete) so session history survives account deletion
@@ -203,7 +216,9 @@ Old tables, columns, and code kept temporarily so data can be recovered if the m
 
 ### Columns to drop from `pam_accounts`
 
-`resourceId`, `domainId`, `policyId`, `lastRotatedAt`, `rotationStatus`, `encryptedLastRotationMessage`, `requireMfa`, `internalMetadata`, `discoveryFingerprint`
+`resourceId`, `domainId`, `policyId`, `requireMfa`, `internalMetadata`, `discoveryFingerprint`
+
+> `lastRotatedAt`, `rotationStatus`, and `encryptedLastRotationMessage` are **no longer dropped**: the credential-rotation feature (`pam-account-rotation/`) reuses them for the latest rotation state and error.
 
 ### Columns to drop from `pam_sessions`
 

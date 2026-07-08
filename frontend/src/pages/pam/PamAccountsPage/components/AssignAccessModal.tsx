@@ -161,11 +161,11 @@ export const AssignAccessModal = ({
   const [roleSlug, setRoleSlug] = useState<string>("");
   const [expiry, setExpiry] = useState<string>("none");
 
-  // Default to Requester
+  // Default to Connector
   const defaultRoleSlug = useMemo(() => {
     if (!resourceRoles?.length) return "";
     return (
-      resourceRoles.find((r) => r.slug === "requester")?.slug ??
+      resourceRoles.find((r) => r.slug === "connector")?.slug ??
       resourceRoles[resourceRoles.length - 1].slug
     );
   }, [resourceRoles]);

@@ -6,7 +6,9 @@ export enum PamSheetTab {
   Permissions = "permissions",
   Configuration = "configuration",
   Advanced = "advanced",
-  General = "general"
+  General = "general",
+  Rotation = "rotation",
+  Approvals = "approvals"
 }
 
 export const pamSheetSearchParams = z.object({

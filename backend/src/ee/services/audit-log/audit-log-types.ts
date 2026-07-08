@@ -744,7 +744,13 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
+  PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
+  PAM_ACCESS_REQUEST_CREATE = "pam-access-request-create",
+  PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
+  PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
+  PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -6136,6 +6142,67 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamAccountRotateCredentialsEvent {
+  type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
+  metadata: {
+    accountId: string;
+    accountType: string;
+    rotationStatus: string;
+    manual: boolean;
+    rotationAccountId?: string | null;
+    message?: string;
+  };
+}
+
+interface PamAccountSetRotationAccountEvent {
+  type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
+  metadata: {
+    accountId: string;
+    rotationAccountId: string | null;
+  };
+}
+
+interface PamAccessRequestCreateEvent {
+  type: EventType.PAM_ACCESS_REQUEST_CREATE;
+  metadata: {
+    requestId: string;
+    accountId: string;
+    folderId: string;
+    duration: string;
+    reason?: string;
+  };
+}
+
+interface PamAccessRequestReviewEvent {
+  type: EventType.PAM_ACCESS_REQUEST_REVIEW;
+  metadata: {
+    requestId: string;
+    accountId?: string;
+    folderId?: string;
+    status: string;
+    comment?: string;
+  };
+}
+
+interface PamAccessGrantRevokeEvent {
+  type: EventType.PAM_ACCESS_GRANT_REVOKE;
+  metadata: {
+    requestId: string;
+    grantId: string;
+    accountId?: string;
+    folderId?: string;
+  };
+}
+
+interface PamApprovalConfigUpdateEvent {
+  type: EventType.PAM_APPROVAL_CONFIG_UPDATE;
+  metadata: {
+    folderId: string;
+    policyId: string | null;
+    stepCount: number;
+  };
+}
+
 interface UpdateCertificateRenewalConfigEvent {
   type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
@@ -7771,6 +7838,12 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamAccountRotateCredentialsEvent
+  | PamAccountSetRotationAccountEvent
+  | PamAccessRequestCreateEvent
+  | PamAccessRequestReviewEvent
+  | PamAccessGrantRevokeEvent
+  | PamApprovalConfigUpdateEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

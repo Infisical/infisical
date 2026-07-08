@@ -91,7 +91,6 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     {
       viewSessionsFolderIds,
       viewSessionsAccountIds,
-      userId,
       offset,
       limit,
       search,
@@ -99,7 +98,6 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     }: {
       viewSessionsFolderIds: string[];
       viewSessionsAccountIds: string[];
-      userId: string;
       offset?: number;
       limit?: number;
       search?: string;
@@ -107,11 +105,16 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     },
     tx?: Knex
   ) => {
+    // Visibility comes solely from ViewSessions scopes; no scopes means no sessions, and skipping
+    // this guard would leave the filter block empty and match every session in the project.
+    if (viewSessionsFolderIds.length === 0 && viewSessionsAccountIds.length === 0) {
+      return { sessions: [], totalCount: 0 };
+    }
+
     const baseQuery = (tx || db.replicaNode())(TableName.PamSession)
       .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.id`, `${TableName.PamSession}.accountId`)
       .where(`${TableName.PamSession}.projectId`, projectId)
       .where((top) => {
-        void top.orWhere(`${TableName.PamSession}.userId`, userId);
         if (viewSessionsFolderIds.length > 0) {
           void top.orWhereIn(`${TableName.PamAccount}.folderId`, viewSessionsFolderIds);
         }

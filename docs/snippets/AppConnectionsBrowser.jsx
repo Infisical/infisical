@@ -528,6 +528,14 @@ export const AppConnectionsBrowser = () => {
       category: "AI & LLM",
     },
     {
+      name: "Fireworks",
+      slug: "fireworks",
+      path: "/integrations/app-connections/fireworks",
+      description:
+        "Learn how to connect Fireworks AI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
       name: "DigiCert",
       slug: "digicert",
       path: "/integrations/app-connections/digicert",
@@ -604,6 +612,20 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/hasura-cloud",
       description: "Learn how to connect Hasura Cloud to pull secrets from Infisical.",
       category: "Platform",
+    },
+    {
+      name: "LiteLLM",
+      slug: "litellm",
+      path: "/integrations/app-connections/litellm",
+      description: "Learn how to connect LiteLLM to pull secrets from Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "OpenAI",
+      slug: "openai",
+      path: "/integrations/app-connections/openai",
+      description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
     },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

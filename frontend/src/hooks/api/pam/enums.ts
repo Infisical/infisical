@@ -8,11 +8,42 @@ export enum PamAccountType {
   Redis = "redis",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
+  GcpServiceAccount = "gcp-service-account",
   Windows = "windows",
   WindowsAd = "windows-ad"
 }
 
+export const ROTATABLE_PAM_ACCOUNT_TYPES = [
+  PamAccountType.Postgres,
+  PamAccountType.MySQL,
+  PamAccountType.MsSQL
+];
+
+export const isRotatablePamAccountType = (type: PamAccountType | string) =>
+  (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
+
+export const PAM_ROTATION_INTERVAL_OPTIONS: { seconds: number; label: string }[] = [
+  { seconds: 3600, label: "1 hour" },
+  { seconds: 43200, label: "12 hours" },
+  { seconds: 86400, label: "24 hours" },
+  { seconds: 604800, label: "7 days" },
+  { seconds: 2592000, label: "30 days" }
+];
+
+export const formatRotationInterval = (seconds: number | null | undefined): string => {
+  if (seconds == null) return "Manual only";
+  const preset = PAM_ROTATION_INTERVAL_OPTIONS.find((option) => option.seconds === seconds);
+  if (preset) return preset.label;
+  const hours = Math.round(seconds / 3600);
+  if (hours % 24 === 0) {
+    const days = hours / 24;
+    return days === 1 ? "1 day" : `${days} days`;
+  }
+  return hours === 1 ? "1 hour" : `${hours} hours`;
+};
+
 export enum PamPolicyType {
+  RequiresApproval = "requires-approval",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
@@ -58,10 +89,41 @@ export enum PamResourcePermissionActions {
   ViewSessions = "view-sessions",
   TerminateSessions = "terminate-sessions",
   ViewCredentials = "view-credentials",
-  RequestAccess = "request-access",
   ApproveRequests = "approve-requests",
+  RevokeGrants = "revoke-grants",
   ManagePolicies = "manage-policies",
   ManageRotation = "manage-rotation",
   ManageMembers = "manage-members",
   ViewAuditLogs = "view-audit-logs"
+}
+
+// The caller's just-in-time approval state for an account gated behind an access request flow
+export enum PamAccessStatus {
+  None = "none",
+  Pending = "pending",
+  Granted = "granted"
+}
+
+export enum PamAccessRequestStatus {
+  Pending = "pending",
+  Approved = "approved",
+  Rejected = "rejected",
+  Expired = "expired",
+  Cancelled = "cancelled"
+}
+
+export enum PamAccessRequestDecision {
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
+export enum PamAccessGrantStatus {
+  Active = "active",
+  Expired = "expired",
+  Revoked = "revoked"
+}
+
+export enum PamApproverType {
+  User = "user",
+  Group = "group"
 }

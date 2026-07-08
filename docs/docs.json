@@ -134,6 +134,7 @@
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/f5-big-ip",
+                      "integrations/app-connections/fireworks",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
@@ -147,6 +148,7 @@
                       "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
+                      "integrations/app-connections/litellm",
                       "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mongodb",
@@ -158,6 +160,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
+                      "integrations/app-connections/openai",
                       "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/ovh",
@@ -518,6 +521,9 @@
                           "documentation/platform/secret-rotation/databricks-service-principal-secret",
                           "documentation/platform/secret-rotation/datadog-application-key-secret",
                           "documentation/platform/secret-rotation/dbt-service-token",
+                          "documentation/platform/secret-rotation/fireworks-api-key",
+                          "documentation/platform/secret-rotation/litellm-api-key",
+                          "documentation/platform/secret-rotation/openai-service-account",
                           "documentation/platform/secret-rotation/openrouter-api-key",
                           "documentation/platform/secret-rotation/salesforce-oauth-credentials",
                           "documentation/platform/secret-rotation/supabase-api-key"
@@ -1063,8 +1069,19 @@
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
+                      "documentation/platform/pam/accounts/gcp-service-account",
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
+                    ]
+                  },
+                  "documentation/platform/pam/access-requests/overview",
+                  {
+                    "group": "Credential Rotation",
+                    "pages": [
+                      "documentation/platform/pam/product-reference/credential-rotation/overview",
+                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
                     ]
                   },
                   {
@@ -1696,6 +1713,18 @@
                     ]
                   },
                   {
+                    "group": "Fireworks",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/fireworks/list",
+                      "api-reference/endpoints/app-connections/fireworks/available",
+                      "api-reference/endpoints/app-connections/fireworks/get-by-id",
+                      "api-reference/endpoints/app-connections/fireworks/get-by-name",
+                      "api-reference/endpoints/app-connections/fireworks/create",
+                      "api-reference/endpoints/app-connections/fireworks/update",
+                      "api-reference/endpoints/app-connections/fireworks/delete"
+                    ]
+                  },
+                  {
                     "group": "Fly.io",
                     "pages": [
                       "api-reference/endpoints/app-connections/flyio/list",
@@ -1852,6 +1881,18 @@
                     ]
                   },
                   {
+                    "group": "LiteLLM",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/litellm/list",
+                      "api-reference/endpoints/app-connections/litellm/available",
+                      "api-reference/endpoints/app-connections/litellm/get-by-id",
+                      "api-reference/endpoints/app-connections/litellm/get-by-name",
+                      "api-reference/endpoints/app-connections/litellm/create",
+                      "api-reference/endpoints/app-connections/litellm/update",
+                      "api-reference/endpoints/app-connections/litellm/delete"
+                    ]
+                  },
+                  {
                     "group": "Microsoft SQL Server",
                     "pages": [
                       "api-reference/endpoints/app-connections/mssql/list",
@@ -1957,6 +1998,18 @@
                       "api-reference/endpoints/app-connections/okta/create",
                       "api-reference/endpoints/app-connections/okta/update",
                       "api-reference/endpoints/app-connections/okta/delete"
+                    ]
+                  },
+                  {
+                    "group": "OpenAI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/openai/list",
+                      "api-reference/endpoints/app-connections/openai/available",
+                      "api-reference/endpoints/app-connections/openai/get-by-id",
+                      "api-reference/endpoints/app-connections/openai/get-by-name",
+                      "api-reference/endpoints/app-connections/openai/create",
+                      "api-reference/endpoints/app-connections/openai/update",
+                      "api-reference/endpoints/app-connections/openai/delete"
                     ]
                   },
                   {
@@ -2523,6 +2576,19 @@
                     ]
                   },
                   {
+                    "group": "Fireworks API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/create",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/delete",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/list",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/update"
+                    ]
+                  },
+                  {
                     "group": "LDAP Password",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/ldap-password/create",
@@ -2585,6 +2651,19 @@
                       "api-reference/endpoints/secret-rotations/okta-client-secret/list",
                       "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/okta-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "OpenAI Service Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/openai-service-account/create",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/delete",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/list",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/update"
                     ]
                   },
                   {
@@ -4123,6 +4202,10 @@
     {
       "source": "/documentation/guides/microsoft-power-apps",
       "destination": "/integrations/external/microsoft-power-apps"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation",
+      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
     },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",

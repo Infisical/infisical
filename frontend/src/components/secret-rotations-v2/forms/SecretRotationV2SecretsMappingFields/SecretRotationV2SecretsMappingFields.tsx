@@ -10,9 +10,12 @@ import { ConvexAccessKeyRotationSecretsMappingFields } from "./ConvexAccessKeyRo
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
 import { DatadogApplicationKeySecretRotationSecretsMappingFields } from "./DatadogApplicationKeySecretRotationSecretsMappingFields";
 import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
+import { FireworksApiKeyRotationSecretsMappingFields } from "./FireworksApiKeyRotationSecretsMappingFields";
 import { HpIloRotationSecretsMappingFields } from "./HpIloRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
+import { LiteLLMApiKeyRotationSecretsMappingFields } from "./LiteLLMApiKeyRotationSecretsMappingFields";
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
+import { OpenAIServiceAccountRotationSecretsMappingFields } from "./OpenAIServiceAccountRotationSecretsMappingFields";
 import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKeyRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SalesforceOauthCredentialsRotationSecretsMappingFields } from "./SalesforceOauthCredentialsRotationSecretsMappingFields";
@@ -39,13 +42,16 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationSecretsMappingFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationSecretsMappingFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationSecretsMappingFields,
+  [SecretRotation.LiteLLMApiKey]: LiteLLMApiKeyRotationSecretsMappingFields,
+  [SecretRotation.OpenAIServiceAccount]: OpenAIServiceAccountRotationSecretsMappingFields,
   [SecretRotation.HpIloLocalAccount]: HpIloRotationSecretsMappingFields,
   [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationSecretsMappingFields,
   [SecretRotation.SalesforceOauthCredentials]:
     SalesforceOauthCredentialsRotationSecretsMappingFields,
   [SecretRotation.DatadogApplicationKeySecret]:
     DatadogApplicationKeySecretRotationSecretsMappingFields,
-  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields
+  [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields,
+  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {
