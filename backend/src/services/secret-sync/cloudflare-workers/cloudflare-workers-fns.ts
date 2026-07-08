@@ -68,8 +68,10 @@ const getSecretKeys = async (secretSync: TCloudflareWorkersSyncWithCredentials):
 
   const secrets = secretsResponse.data.result.map((s) => ({ key: s.name, type: s.type }));
 
+  const SYNCABLE_BINDING_TYPES = new Set(["plain_text", "json"]);
+
   const nonSecretBindings = (settingsResponse.data.result.bindings || [])
-    .filter((b) => b.type !== "secret_text")
+    .filter((b) => SYNCABLE_BINDING_TYPES.has(b.type))
     .map((b) => ({ key: b.name, type: b.type }));
 
   const secretKeySet = new Set(secrets.map((s) => s.key));
