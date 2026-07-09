@@ -560,13 +560,14 @@ export const pamSessionServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-      const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
+      const roleArn = rawConnectionDetails.roleArn as string;
 
       const stsCredentials = await generateAwsIamSessionCredentials({
-        connectionDetails: { roleArn: rawConnectionDetails.roleArn as string },
-        targetRoleArn: rawCredentials.targetRoleArn as string,
+        roleArn,
+        // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
+        // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
+        externalId: actor.actorOrgId,
         roleSessionName: actorEmail.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64),
-        projectId,
         sessionDuration: stsDurationSeconds
       });
 
@@ -586,10 +587,10 @@ export const pamSessionServiceFactory = ({
         metadata.secretAccessKey = stsCredentials.secretAccessKey;
         metadata.sessionToken = stsCredentials.sessionToken;
         metadata.expiresAt = expiresAt.toISOString();
-        metadata.targetRoleArn = rawCredentials.targetRoleArn as string;
+        metadata.roleArn = roleArn;
         metadata.federatedUsername = actorEmail;
 
-        const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
+        const awsAccountId = extractAwsAccountIdFromArn(roleArn);
         if (awsAccountId) {
           metadata.awsAccountId = awsAccountId;
         }

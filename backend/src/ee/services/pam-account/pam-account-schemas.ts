@@ -531,20 +531,13 @@ export const ACCOUNT_TYPE_CONFIGS = {
     connectionDetails: z.object({
       roleArn: z.string().trim().min(1).max(2048)
     }),
-    credentials: z.object({
-      targetRoleArn: z.string().trim().min(1).max(2048)
-    }),
-    sanitizedCredentials: z.object({
-      targetRoleArn: z.string().optional()
-    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
     ui: {
       roleArn: {
-        label: "PAM Role ARN",
-        tooltip: "The ARN of the IAM role that Infisical assumes to broker access to the target role."
-      },
-      targetRoleArn: {
-        label: "Target Role ARN",
-        tooltip: "The ARN of the IAM role the user will assume when accessing this account."
+        label: "Role ARN",
+        tooltip:
+          "The ARN of the IAM role Infisical assumes when accessing this account. Its trust policy must allow Infisical using your Infisical Organization ID as the External ID.\n\nOrganization ID: {{organizationId}}"
       }
     }
   }
