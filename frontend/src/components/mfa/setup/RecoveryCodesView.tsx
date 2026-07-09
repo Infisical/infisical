@@ -2,14 +2,24 @@ import { useState } from "react";
 import { CopyIcon, DownloadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Button, Checkbox, FieldLabel } from "@app/components/v3";
+
+type Acknowledgment = {
+  isAcknowledged: boolean;
+  onAcknowledgedChange: (checked: boolean) => void;
+  confirmLabel: string;
+  onConfirm: () => void;
+  isConfirmPending?: boolean;
+  labelClassName?: string;
+};
 
 type Props = {
   recoveryCodes: string[];
   onSaved?: () => void;
+  acknowledgment?: Acknowledgment;
 };
 
-export const RecoveryCodesView = ({ recoveryCodes, onSaved }: Props) => {
+export const RecoveryCodesView = ({ recoveryCodes, onSaved, acknowledgment }: Props) => {
   const [copied, setCopied] = useState(false);
 
   const handleDownload = () => {
@@ -60,6 +70,34 @@ export const RecoveryCodesView = ({ recoveryCodes, onSaved }: Props) => {
           <CopyIcon /> {copied ? "Copied" : "Copy"}
         </Button>
       </div>
+      {acknowledgment && (
+        <div className="mt-1 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="acknowledge-recovery-codes"
+              isChecked={acknowledgment.isAcknowledged}
+              onCheckedChange={(checked) => acknowledgment.onAcknowledgedChange(checked === true)}
+            />
+            <FieldLabel
+              htmlFor="acknowledge-recovery-codes"
+              className={`cursor-pointer text-sm font-normal ${
+                acknowledgment.labelClassName ?? "text-foreground"
+              }`}
+            >
+              I have saved my recovery codes in a safe place
+            </FieldLabel>
+          </div>
+          <Button
+            variant="org"
+            isFullWidth
+            isDisabled={!acknowledgment.isAcknowledged}
+            isPending={acknowledgment.isConfirmPending}
+            onClick={acknowledgment.onConfirm}
+          >
+            {acknowledgment.confirmLabel}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

@@ -15,9 +15,11 @@ export const useRecoveryCodesMfa = () => {
   const { isBusy, runWithMfa } = useMfaStepUp();
   const [codes, setCodes] = useState<string[] | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [requiresAcknowledgment, setRequiresAcknowledgment] = useState(false);
 
-  const showCodes = useCallback((result: string[]) => {
+  const showCodes = useCallback((result: string[], needsAcknowledgment: boolean) => {
     setCodes(result);
+    setRequiresAcknowledgment(needsAcknowledgment);
     setIsSheetOpen(true);
   }, []);
 
@@ -31,7 +33,10 @@ export const useRecoveryCodesMfa = () => {
           );
           return data.recoveryCodes;
         },
-        { onSuccess: showCodes, errorText: "Failed to load recovery codes." }
+        {
+          onSuccess: (result) => showCodes(result, false),
+          errorText: "Failed to load recovery codes."
+        }
       ),
     [runWithMfa, showCodes]
   );
@@ -52,7 +57,7 @@ export const useRecoveryCodesMfa = () => {
               type: "success",
               text: "Generated new recovery codes. Your previous codes no longer work."
             });
-            showCodes(result);
+            showCodes(result, true);
           },
           errorText: "Failed to load recovery codes."
         }
@@ -63,7 +68,16 @@ export const useRecoveryCodesMfa = () => {
   const closeSheet = useCallback(() => {
     setIsSheetOpen(false);
     setCodes(null);
+    setRequiresAcknowledgment(false);
   }, []);
 
-  return { isBusy, codes, isSheetOpen, closeSheet, viewCodes, regenerateCodes };
+  return {
+    isBusy,
+    codes,
+    isSheetOpen,
+    requiresAcknowledgment,
+    closeSheet,
+    viewCodes,
+    regenerateCodes
+  };
 };

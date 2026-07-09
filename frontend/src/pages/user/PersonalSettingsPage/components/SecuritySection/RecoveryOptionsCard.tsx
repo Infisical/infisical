@@ -12,22 +12,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from "@app/components/v3";
 
 import { useRecoveryCodesMfa } from "./useRecoveryCodesMfa";
 
 export const RecoveryOptionsCard = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [hasAcknowledgedCodes, setHasAcknowledgedCodes] = useState(false);
 
-  // Viewing and regenerating recovery codes both require a fresh MFA challenge,
-  // which this hook drives before returning the codes.
-  const { isBusy, codes, isSheetOpen, closeSheet, viewCodes, regenerateCodes } =
-    useRecoveryCodesMfa();
+  const {
+    isBusy,
+    codes,
+    isSheetOpen,
+    requiresAcknowledgment,
+    closeSheet,
+    viewCodes,
+    regenerateCodes
+  } = useRecoveryCodesMfa();
+
+  const closeCodesDialog = () => {
+    closeSheet();
+    setHasAcknowledgedCodes(false);
+  };
 
   const handleRegenerate = () => {
     setIsConfirmOpen(false);
@@ -63,19 +74,46 @@ export const RecoveryOptionsCard = () => {
         </div>
       </div>
 
-      <Sheet open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
-        <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
-          <SheetHeader className="border-b">
-            <SheetTitle>Recovery codes</SheetTitle>
-            <SheetDescription>
+      <Dialog
+        open={isSheetOpen}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (!requiresAcknowledgment || hasAcknowledgedCodes) closeCodesDialog();
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-lg"
+          showCloseButton={!requiresAcknowledgment || hasAcknowledgedCodes}
+          onInteractOutside={(e) =>
+            requiresAcknowledgment && !hasAcknowledgedCodes && e.preventDefault()
+          }
+          onEscapeKeyDown={(e) =>
+            requiresAcknowledgment && !hasAcknowledgedCodes && e.preventDefault()
+          }
+        >
+          <DialogHeader>
+            <DialogTitle>Recovery codes</DialogTitle>
+            <DialogDescription>
               Store these somewhere safe. Each code can only be used once.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
-            <RecoveryCodesView recoveryCodes={codes ?? []} />
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto">
+            <RecoveryCodesView
+              recoveryCodes={codes ?? []}
+              acknowledgment={
+                requiresAcknowledgment
+                  ? {
+                      isAcknowledged: hasAcknowledgedCodes,
+                      onAcknowledgedChange: setHasAcknowledgedCodes,
+                      confirmLabel: "Done",
+                      onConfirm: closeCodesDialog
+                    }
+                  : undefined
+              }
+            />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>

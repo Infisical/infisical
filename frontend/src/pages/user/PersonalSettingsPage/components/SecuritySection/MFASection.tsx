@@ -15,14 +15,11 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  FieldLabel,
   Select,
   SelectContent,
   SelectItem,
@@ -251,10 +248,7 @@ export const MFASection = () => {
       >
         <DialogContent
           className="sm:max-w-lg"
-          // Hide the close button until acknowledged so the one-time codes aren't
-          // dismissed before they're saved.
           showCloseButton={hasAcknowledgedCodes}
-          // Block accidental dismissal so the one-time codes aren't lost.
           onInteractOutside={(e) => !hasAcknowledgedCodes && e.preventDefault()}
           onEscapeKeyDown={(e) => !hasAcknowledgedCodes && e.preventDefault()}
         >
@@ -266,31 +260,16 @@ export const MFASection = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto">
-            <RecoveryCodesView recoveryCodes={newRecoveryCodes ?? []} />
+            <RecoveryCodesView
+              recoveryCodes={newRecoveryCodes ?? []}
+              acknowledgment={{
+                isAcknowledged: hasAcknowledgedCodes,
+                onAcknowledgedChange: setHasAcknowledgedCodes,
+                confirmLabel: "Done",
+                onConfirm: closeRecoveryCodesDialog
+              }}
+            />
           </div>
-          <DialogFooter className="flex-col items-stretch gap-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="acknowledge-recovery-codes"
-                isChecked={hasAcknowledgedCodes}
-                onCheckedChange={(checked) => setHasAcknowledgedCodes(checked === true)}
-              />
-              <FieldLabel
-                htmlFor="acknowledge-recovery-codes"
-                className="cursor-pointer text-sm font-normal text-foreground"
-              >
-                I have saved my recovery codes in a safe place
-              </FieldLabel>
-            </div>
-            <Button
-              variant="org"
-              isFullWidth
-              isDisabled={!hasAcknowledgedCodes}
-              onClick={closeRecoveryCodesDialog}
-            >
-              Done
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
