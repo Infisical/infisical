@@ -305,9 +305,12 @@ type TSafeRequestExtras = {
   servername?: string;
 };
 
-type TSafeRequestConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "url" | "method">;
+type TSafeRequestConfig = Omit<
+  AxiosRequestConfig,
+  "httpAgent" | "httpsAgent" | "maxRedirects" | "proxy" | "url" | "method"
+>;
 
-type TSafeRequestFullConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects"> & {
+type TSafeRequestFullConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "proxy"> & {
   url: string;
 } & TSafeRequestExtras;
 
