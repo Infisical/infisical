@@ -28,6 +28,11 @@ type TAgentProxyCaServiceFactoryDep = {
 
 const ROOT_CA_ALGORITHM = CertKeyAlgorithm.ECDSA_P256;
 const INTERMEDIATE_CA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Long-lived root so the trust anchor stays stable (agents pin it and do not refresh in V1).
+// The private key never leaves Infisical and only signs short-lived intermediates.
+const ROOT_CA_VALIDITY_YEARS = 10;
+// Backdate notBefore so a fresh cert is not rejected by an agent whose clock trails the server's.
+const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
@@ -78,12 +83,13 @@ export const agentProxyCaServiceFactory = ({
 
       const rootCaSerialNumber = createSerialNumber();
       const rootCaIssuedAt = new Date();
-      const rootCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + 2));
+      const rootCaNotBefore = new Date(rootCaIssuedAt.getTime() - CLOCK_SKEW_MS);
+      const rootCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + ROOT_CA_VALIDITY_YEARS));
 
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
         name: `O=${orgId},CN=Infisical Agent Proxy Root CA`,
         serialNumber: rootCaSerialNumber,
-        notBefore: rootCaIssuedAt,
+        notBefore: rootCaNotBefore,
         notAfter: rootCaExpiration,
         signingAlgorithm: alg,
         keys: rootCaKeys,
@@ -144,6 +150,14 @@ export const agentProxyCaServiceFactory = ({
     await $assertOrgMembership(actor);
 
     const { rootCaCert, rootCaPrivateKeyBuffer } = await $getOrgRootCa(actor.orgId);
+
+    // Refuse to sign against an expired root: the resulting chain could never validate.
+    if (new Date() >= rootCaCert.notAfter) {
+      throw new BadRequestError({
+        message: "The organization's agent proxy root CA has expired and can no longer sign intermediate certificates."
+      });
+    }
+
     const alg = keyAlgorithmToAlgCfg(ROOT_CA_ALGORITHM);
 
     let intermediatePublicKey: CryptoKey;
@@ -175,13 +189,16 @@ export const agentProxyCaServiceFactory = ({
 
     const serialNumber = createSerialNumber();
     const issuedAt = new Date();
-    const expiration = new Date(Date.now() + INTERMEDIATE_CA_TTL_MS);
+    const notBefore = new Date(issuedAt.getTime() - CLOCK_SKEW_MS);
+    // Clamp so an intermediate can never outlive the root it chains to.
+    const requestedExpiration = new Date(issuedAt.getTime() + INTERMEDIATE_CA_TTL_MS);
+    const expiration = requestedExpiration < rootCaCert.notAfter ? requestedExpiration : rootCaCert.notAfter;
 
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: `O=${actor.orgId},CN=Infisical Agent Proxy Intermediate CA`,
       issuer: rootCaCert.subject,
-      notBefore: issuedAt,
+      notBefore,
       notAfter: expiration,
       signingKey: importedRootCaPrivateKey,
       publicKey: intermediatePublicKey,

@@ -6,10 +6,52 @@ import {
   ProxiedServiceHeaderPurpose,
   ProxiedServiceSubstitutionSurface
 } from "@app/ee/services/proxied-service/proxied-service-enums";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+// One host label: alphanumerics and internal hyphens, optionally a single leading "*." wildcard.
+const HOST_LABELS_RE = /^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i;
+
+// Validates the comma-separated hostPattern grammar so malformed values fail at creation
+// instead of silently never matching at proxy time.
+const hostPatternSchema = z
+  .string()
+  .trim()
+  .min(1, "Host pattern is required")
+  .max(255)
+  .superRefine((raw, ctx) => {
+    const segments = raw.split(",").map((s) => s.trim());
+    segments.forEach((seg) => {
+      if (seg === "") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Host pattern has an empty entry" });
+        return;
+      }
+      if (seg.includes("://")) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" must not include a scheme (e.g. https://)` });
+        return;
+      }
+      let hostPort = seg;
+      const slashIdx = hostPort.indexOf("/");
+      if (slashIdx !== -1) hostPort = hostPort.slice(0, slashIdx); // path portion is free-form
+      let host = hostPort;
+      const colonIdx = hostPort.lastIndexOf(":");
+      if (colonIdx !== -1) {
+        const portStr = hostPort.slice(colonIdx + 1);
+        host = hostPort.slice(0, colonIdx);
+        const port = Number(portStr);
+        if (!/^\d+$/.test(portStr) || port < 1 || port > 65535) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" has an invalid port` });
+          return;
+        }
+      }
+      if (!HOST_LABELS_RE.test(host)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" is not a valid host pattern` });
+      }
+    });
+  });
 
 const CredentialInputSchema = z
   .object({
@@ -43,6 +85,79 @@ const CredentialInputSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Credential substitution requires placeholderKey, placeholderValue, and substitutionSurfaces"
+      });
+    }
+  });
+
+// Cross-credential rules that cannot be checked one row at a time: basic-auth pairing,
+// unique header names / placeholders, and header-rewrite modes that cannot coexist.
+const CredentialsArraySchema = CredentialInputSchema.array()
+  .min(1, "At least one credential is required")
+  .superRefine((credentials, ctx) => {
+    const headerNameCounts = new Map<string, number>();
+    const placeholderKeys = new Set<string>();
+    const placeholderValues = new Set<string>();
+    let usernameCount = 0;
+    let passwordCount = 0;
+
+    credentials.forEach((cred, i) => {
+      if (cred.role === ProxiedServiceCredentialRole.HeaderRewrite) {
+        if (cred.headerPurpose === ProxiedServiceHeaderPurpose.Username) usernameCount += 1;
+        else if (cred.headerPurpose === ProxiedServiceHeaderPurpose.Password) passwordCount += 1;
+        else if (cred.headerName) {
+          const key = cred.headerName.toLowerCase();
+          headerNameCounts.set(key, (headerNameCounts.get(key) ?? 0) + 1);
+        }
+      } else {
+        if (cred.placeholderKey) {
+          if (placeholderKeys.has(cred.placeholderKey)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Duplicate placeholder env var "${cred.placeholderKey}"`,
+              path: [i, "placeholderKey"]
+            });
+          }
+          placeholderKeys.add(cred.placeholderKey);
+        }
+        if (cred.placeholderValue) {
+          if (placeholderValues.has(cred.placeholderValue)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Two credentials share the same placeholder value",
+              path: [i, "placeholderValue"]
+            });
+          }
+          placeholderValues.add(cred.placeholderValue);
+        }
+      }
+    });
+
+    headerNameCounts.forEach((count, name) => {
+      if (count > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Header "${name}" is set by more than one credential`
+        });
+      }
+    });
+
+    if (usernameCount > 1 || passwordCount > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Basic auth allows at most one username and one password credential"
+      });
+    }
+    if (usernameCount !== passwordCount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Basic auth requires both a username and a password credential"
+      });
+    }
+    // Basic auth already owns the Authorization header, so it cannot coexist with named header rewrites.
+    if (usernameCount + passwordCount > 0 && headerNameCounts.size > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Basic auth cannot be combined with other header-rewrite credentials on the same service"
       });
     }
   });
@@ -92,9 +207,9 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         environment: z.string().trim().min(1),
         secretPath: z.string().trim().default("/"),
         name: slugSchema({ field: "name" }),
-        hostPattern: z.string().trim().min(1),
+        hostPattern: hostPatternSchema,
         isEnabled: z.boolean().optional(),
-        credentials: CredentialInputSchema.array()
+        credentials: CredentialsArraySchema
       }),
       response: {
         200: z.object({ service: ServiceWithCredentialsSchema })
@@ -149,6 +264,12 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         );
         return { service };
       }
+      // No scope params: this must be a lookup by ID. Reject a bare name so it never hits the uuid column.
+      if (!z.string().uuid().safeParse(serviceIdOrName).success) {
+        throw new BadRequestError({
+          message: "projectId and environment query params are required when fetching a proxied service by name"
+        });
+      }
       const service = await server.services.proxiedService.getById({ serviceId: serviceIdOrName }, req.permission);
       return { service };
     }
@@ -163,9 +284,9 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       params: z.object({ serviceId: z.string().uuid() }),
       body: z.object({
         name: slugSchema({ field: "name" }).optional(),
-        hostPattern: z.string().trim().min(1).optional(),
+        hostPattern: hostPatternSchema.optional(),
         isEnabled: z.boolean().optional(),
-        credentials: CredentialInputSchema.array().optional()
+        credentials: CredentialsArraySchema.optional()
       }),
       response: {
         200: z.object({ service: ServiceWithCredentialsSchema })

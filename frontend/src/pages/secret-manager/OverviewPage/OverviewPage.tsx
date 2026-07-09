@@ -2718,7 +2718,6 @@ const OverviewPageContent = () => {
                     isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
                     isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
                     isHoneyTokenAvailable
-                    isProxiedServiceAvailable={Boolean(subscription?.secretsBrokering)}
                     isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}

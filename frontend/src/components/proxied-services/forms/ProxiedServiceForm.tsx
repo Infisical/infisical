@@ -128,7 +128,8 @@ const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInpu
         secretKey: h.secretKey,
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerName: h.headerName,
-        headerPrefix: h.headerPrefix || null
+        // omit rather than send null: the API field is optional and rejects null
+        headerPrefix: h.headerPrefix || undefined
       });
     });
   }
@@ -170,6 +171,13 @@ export const ProxiedServiceForm = ({
   });
 
   const headerMode = watch("headerMode");
+
+  // On edit, switching header modes discards the other mode's credentials on save (they are
+  // mutually exclusive). Warn so the change is not silent.
+  const originalHeaderMode = proxiedService?.credentials.some((c) => c.headerPurpose)
+    ? HeaderRewritingMode.BasicAuth
+    : HeaderRewritingMode.Headers;
+  const showModeSwitchWarning = isEdit && headerMode !== originalHeaderMode;
 
   const headerFields = useFieldArray({ control, name: "headers" });
   const substitutionFields = useFieldArray({ control, name: "substitutions" });
@@ -264,6 +272,14 @@ export const ProxiedServiceForm = ({
             )}
           />
         </div>
+
+        {showModeSwitchWarning && (
+          <p className="text-xs text-yellow">
+            Switching auth type will replace the{" "}
+            {originalHeaderMode === HeaderRewritingMode.BasicAuth ? "Basic Auth" : "header"}{" "}
+            credentials on this service when you save.
+          </p>
+        )}
 
         {headerMode === HeaderRewritingMode.Headers ? (
           <div className="flex flex-col gap-2">

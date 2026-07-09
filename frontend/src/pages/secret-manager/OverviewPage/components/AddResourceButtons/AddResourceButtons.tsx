@@ -44,7 +44,6 @@ type Props = {
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isHoneyTokenAvailable: boolean;
-  isProxiedServiceAvailable: boolean;
   isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
@@ -67,7 +66,6 @@ export function AddResourceButtons({
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
   isHoneyTokenAvailable,
-  isProxiedServiceAvailable,
   isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
@@ -168,25 +166,19 @@ export function AddResourceButtons({
             a={ProjectPermissionSub.ProxiedServices}
           >
             {(isAllowed) => (
-              <Tooltip
-                open={
-                  !isProxiedServiceAvailable || !isSingleEnvSelected || !isAllowed
-                    ? undefined
-                    : false
-                }
-              >
+              <Tooltip open={!isSingleEnvSelected || !isAllowed ? undefined : false}>
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     onClick={onAddProxiedService}
-                    isDisabled={!isProxiedServiceAvailable || !isSingleEnvSelected || !isAllowed}
+                    isDisabled={!isSingleEnvSelected || !isAllowed}
                   >
                     <ArrowRightLeftIcon className="text-mineshaft-300" />
                     Add Proxied Service
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  {!isProxiedServiceAvailable
-                    ? "Secrets brokering is not available on your plan"
+                  {!isAllowed
+                    ? "Access Restricted"
                     : "Select a single environment to add a proxied service"}
                 </TooltipContent>
               </Tooltip>

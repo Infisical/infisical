@@ -55,6 +55,7 @@ export const proxiedServiceFormSchema = z
   .superRefine((form, ctx) => {
     if (form.headerMode === HeaderRewritingMode.Headers) {
       // only validate the rows the user actually sees in Headers mode
+      const seenHeaderNames = new Map<string, number>();
       form.headers.forEach((row, i) => {
         if (!row.secretKey) {
           ctx.addIssue({
@@ -69,8 +70,26 @@ export const proxiedServiceFormSchema = z
             message: "Header name is required",
             path: ["headers", i, "headerName"]
           });
+        } else {
+          const key = row.headerName.trim().toLowerCase();
+          if (seenHeaderNames.has(key)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Duplicate header name",
+              path: ["headers", i, "headerName"]
+            });
+          }
+          seenHeaderNames.set(key, i);
         }
       });
+      // the backend rejects a service with no credentials at all
+      if (!form.headers.length && !form.substitutions.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Add at least one header or substitution",
+          path: ["headers"]
+        });
+      }
     } else {
       if (!form.basicAuth?.usernameSecretKey) {
         ctx.addIssue({
@@ -87,6 +106,21 @@ export const proxiedServiceFormSchema = z
         });
       }
     }
+
+    // placeholder env var names must be unique: each maps to one env var the agent sees
+    const seenPlaceholderKeys = new Map<string, number>();
+    form.substitutions.forEach((row, i) => {
+      const key = row.placeholderKey.trim();
+      if (!key) return;
+      if (seenPlaceholderKeys.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Duplicate environment variable name",
+          path: ["substitutions", i, "placeholderKey"]
+        });
+      }
+      seenPlaceholderKeys.set(key, i);
+    });
   });
 
 export type TProxiedServiceForm = z.infer<typeof proxiedServiceFormSchema>;

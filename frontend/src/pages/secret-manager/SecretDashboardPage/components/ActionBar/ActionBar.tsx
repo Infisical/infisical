@@ -1099,7 +1099,8 @@ export const ActionBar = ({
                           return;
                         }
                         handlePopUpOpen("upgradePlan", {
-                          featureName: "Secrets Brokering"
+                          featureName: "Secrets Brokering",
+                          isEnterpriseFeature: true
                         });
                       }}
                       variant="outline_bg"

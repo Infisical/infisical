@@ -1,10 +1,11 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 
 import { ActionProjectType, SecretType } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import {
   ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -92,6 +93,25 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
+  // Asserts ReadValue on each referenced secret individually (by name), not just on the folder path.
+  // A per-key check means a deny/inverted rule on a specific secret can't be bypassed by folder-wide
+  // ReadValue, so a caller can't wire a secret they were explicitly denied into a service they control.
+  const $assertCanReadReferencedSecrets = (
+    permission: MongoAbility<ProjectPermissionSet>,
+    environment: string,
+    secretPath: string,
+    credentials: TProxiedServiceCredentialInput[]
+  ) => {
+    const uniqueKeys = [...new Set(credentials.map((c) => c.secretKey))];
+    uniqueKeys.forEach((secretName) => {
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath,
+        secretName
+      });
+    });
+  };
+
   // Resolves the canonical secret path for a service's folder so scoped (glob) permission checks are accurate.
   const $resolveSecretPath = async (projectId: string, folderId: string) => {
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
@@ -120,11 +140,8 @@ export const proxiedServiceServiceFactory = ({
       ProjectPermissionProxiedServiceActions.Create,
       subject(ProjectPermissionSub.ProxiedServices, { environment, secretPath: canonicalPath })
     );
-    // caller must be able to read the referenced secrets they are wiring up
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment,
-      secretPath: canonicalPath
-    });
+    // caller must be able to read each referenced secret they are wiring up (per-key, see helper)
+    $assertCanReadReferencedSecrets(permission, environment, canonicalPath, credentials);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
@@ -305,12 +322,9 @@ export const proxiedServiceServiceFactory = ({
     }
 
     if (credentials) {
-      // same guard as create: the caller must be able to read the secrets it is wiring up,
-      // otherwise Edit-only actors could reference secrets they cannot read and exfiltrate them via the proxy
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment: service.environmentSlug,
-        secretPath: resolvedSecretPath
-      });
+      // same per-key guard as create: Edit-only actors must not reference secrets they cannot read
+      // and exfiltrate them via the proxy
+      $assertCanReadReferencedSecrets(permission, service.environmentSlug, resolvedSecretPath, credentials);
       await $validateSecretReferences(service.folderId, credentials);
     }
 
@@ -465,7 +479,13 @@ export const proxiedServiceServiceFactory = ({
       return acc;
     }, {});
 
-    return services.map((svc) => ({ ...svc, credentials: credentialsByService[svc.id] ?? [] }));
+    // DAL's folder.path carries the folder's own name, not its full path; stamp the canonical
+    // secret path so the frontend uses a correct secretPath for its scoped permission checks and pickers.
+    return services.map((svc) => ({
+      ...svc,
+      folder: { ...svc.folder, path: canonicalSecretPath },
+      credentials: credentialsByService[svc.id] ?? []
+    }));
   };
 
   return {

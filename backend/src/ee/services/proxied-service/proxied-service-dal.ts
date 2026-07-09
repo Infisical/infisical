@@ -73,6 +73,8 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
         name: row.envName,
         slug: row.envSlug
       },
+      // NOTE: this is the folder's own name, not its full path. Callers that surface this to clients
+      // (e.g. the dashboard aggregate) must override it with the canonical secret path.
       folder: {
         path: row.folderName
       }

@@ -1,4 +1,5 @@
 import {
+  ArrowRightLeftIcon,
   FilterIcon,
   FingerprintIcon,
   FolderIcon,
@@ -44,6 +45,11 @@ const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
     type: "honeyToken",
     label: "Honey Tokens",
     icon: <HexagonIcon className="text-yellow-700" />
+  },
+  {
+    type: "proxiedService",
+    label: "Proxied Services",
+    icon: <ArrowRightLeftIcon className="text-mineshaft-300" />
   },
   { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> }
 ];
