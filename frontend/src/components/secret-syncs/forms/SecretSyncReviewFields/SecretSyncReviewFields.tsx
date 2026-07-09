@@ -99,6 +99,7 @@ export const SecretSyncReviewFields = () => {
   const { hasDuplicate, duplicateProjectId, isChecking } = useDuplicateDestinationCheck({
     destination,
     projectId: currentProject?.id || "",
+    connectionId: connection?.id,
     enabled: true,
     destinationConfig: watch("destinationConfig")
   });
