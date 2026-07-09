@@ -1907,6 +1907,8 @@ export const registerRoutes = async (
     auditLogService,
     tokenService,
     pamSessionDAL,
+    pamSessionChunkService,
+    pamSessionExpirationService,
     gatewayV2Service,
     gatewayPoolService,
     kmsService,

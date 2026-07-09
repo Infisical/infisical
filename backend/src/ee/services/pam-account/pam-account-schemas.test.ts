@@ -8,13 +8,14 @@ import {
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema,
-  PamFieldDescriptorSchema
+  PamFieldDescriptorSchema,
+  parseWebResourceUrl
 } from "./pam-account-schemas";
 
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
   const metadata = buildPamAccountTypeMetadata(
-    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH])
+    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH, PamAccountType.WebResource])
   );
   const byType = new Map(metadata.map((m) => [m.type, m]));
 
@@ -22,6 +23,7 @@ describe("buildPamAccountTypeMetadata", () => {
     expect(byType.get(PamAccountType.Postgres)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.SSH)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(true);
+    expect(byType.get(PamAccountType.WebResource)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.Kubernetes)?.supportsWebAccess).toBe(false);
   });
 
@@ -167,6 +169,19 @@ describe("buildPamAccountTypeMetadata", () => {
       showWhen: { field: "authMethod", equals: "public-key" }
     });
   });
+
+  test("derives Web Resource fields from the schema", () => {
+    const webResource = byType.get(PamAccountType.WebResource);
+    expect(webResource).toBeDefined();
+    expect(webResource?.name).toBe("Web Resource");
+    expect(webResource?.connectionFields.map((f) => f.key)).toEqual(["url"]);
+    expect(fieldByKey(webResource!.connectionFields, "url")).toMatchObject({
+      widget: "text",
+      required: true
+    });
+    expect(fieldByKey(webResource!.connectionFields, "url")?.defaultValue).toBeUndefined();
+    expect(webResource?.credentialFields).toEqual([]);
+  });
 });
 
 describe("isCredentialConfigured", () => {
@@ -206,6 +221,63 @@ describe("isCredentialConfigured", () => {
     expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "public-key" })).toBe(false);
 
     expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "certificate" })).toBe(true);
+  });
+
+  test("Web Resource has no target credentials", () => {
+    expect(isCredentialConfigured(PamAccountType.WebResource, {})).toBe(true);
+  });
+});
+
+describe("parseWebResourceUrl", () => {
+  test("normalizes http URLs with default ports", () => {
+    expect(parseWebResourceUrl("http://example.com/")).toEqual({
+      url: "http://example.com",
+      scheme: "http",
+      host: "example.com",
+      port: 80,
+      basePath: "/"
+    });
+  });
+
+  test("normalizes https URLs with default ports", () => {
+    expect(parseWebResourceUrl("https://secure.example.com:443")).toEqual({
+      url: "https://secure.example.com",
+      scheme: "https",
+      host: "secure.example.com",
+      port: 443,
+      basePath: "/"
+    });
+  });
+
+  test("normalizes explicit ports and base paths", () => {
+    expect(parseWebResourceUrl("https://10.0.0.5:8443/admin/app/")).toEqual({
+      url: "https://10.0.0.5:8443/admin/app",
+      scheme: "https",
+      host: "10.0.0.5",
+      port: 8443,
+      basePath: "/admin/app"
+    });
+  });
+
+  test("normalizes IPv6 targets", () => {
+    expect(parseWebResourceUrl("http://[::1]:3005/app")).toEqual({
+      url: "http://[::1]:3005/app",
+      scheme: "http",
+      host: "::1",
+      port: 3005,
+      basePath: "/app"
+    });
+  });
+
+  test("rejects malformed URLs and unsupported protocols", () => {
+    expect(() => parseWebResourceUrl("example.com")).toThrow(/valid URL/);
+    expect(() => parseWebResourceUrl("ftp://example.com")).toThrow(/http or https/);
+  });
+
+  test("rejects credentials, query strings, and fragments", () => {
+    expect(() => parseWebResourceUrl("http://user@example.com")).toThrow(/username or password/);
+    expect(() => parseWebResourceUrl("http://example.com?x=1")).toThrow(/query string/);
+    expect(() => parseWebResourceUrl("http://example.com#top")).toThrow(/fragment/);
   });
 });
 

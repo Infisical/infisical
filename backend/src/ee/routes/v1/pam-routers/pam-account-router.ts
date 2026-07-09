@@ -327,10 +327,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async () => {
       return {
-        // AWS IAM supports browser access (console URL redirect) but not WebSocket-based terminal,
-        // so it's added separately from SESSION_HANDLERS
+        // AWS IAM and web resources support browser access without WebSocket terminal handlers,
+        // so they are added separately from SESSION_HANDLERS.
         accountTypes: buildPamAccountTypeMetadata(
-          new Set([...Object.keys(SESSION_HANDLERS), PamAccountType.AwsIam] as PamAccountType[])
+          new Set([
+            ...Object.keys(SESSION_HANDLERS),
+            PamAccountType.AwsIam,
+            PamAccountType.WebResource
+          ] as PamAccountType[])
         )
       };
     }

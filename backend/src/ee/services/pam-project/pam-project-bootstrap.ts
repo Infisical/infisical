@@ -10,6 +10,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { PamAccountType } from "../pam/pam-enums";
 import { TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { WEB_RESOURCE_DEFAULT_TEMPLATE } from "./pam-project-template-backfill";
 
 type TBootstrapDeps = {
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
@@ -95,6 +96,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
   },
+  WEB_RESOURCE_DEFAULT_TEMPLATE,
   {
     name: "aws-iam",
     type: PamAccountType.AwsIam,

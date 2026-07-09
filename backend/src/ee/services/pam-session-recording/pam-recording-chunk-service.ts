@@ -1,3 +1,5 @@
+import { createCipheriv, createHash, randomBytes } from "node:crypto";
+
 import RE2 from "re2";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -22,7 +24,7 @@ import {
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
-import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
+import { PAM_RECORDING_AAD_VERSION, PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
 import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "./pam-recording-storage-factory";
@@ -301,6 +303,68 @@ export const pamSessionChunkServiceFactory = ({
     return { ok: true as const, projectId: session.projectId, accountId: session.accountId, storageBackend: backend };
   };
 
+  const recordInternalChunk = async ({
+    sessionId,
+    chunkIndex,
+    startElapsedMs,
+    endElapsedMs,
+    sessionKey,
+    events
+  }: {
+    sessionId: string;
+    chunkIndex?: number;
+    startElapsedMs: number;
+    endElapsedMs: number;
+    sessionKey: Buffer;
+    events: unknown[];
+  }) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
+
+    await pamSessionEventChunkDAL.transaction(async (tx) => {
+      const resolvedChunkIndex = chunkIndex ?? (await pamSessionEventChunkDAL.getNextChunkIndex(sessionId, tx));
+      const plaintext = Buffer.from(JSON.stringify(events), "utf-8");
+      const iv = randomBytes(12);
+      const aad = createHash("sha256")
+        .update(
+          `${session.projectId}|${sessionId}|${resolvedChunkIndex}|${PamRecordingStorageBackend.Postgres}|${PAM_RECORDING_AAD_VERSION}`
+        )
+        .digest();
+
+      const cipher = createCipheriv("aes-256-gcm", sessionKey, iv);
+      cipher.setAAD(aad);
+      const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+      const ciphertext = Buffer.concat([encrypted, cipher.getAuthTag()]);
+
+      if (ciphertext.length <= 0 || ciphertext.length > PAM_RECORDING_MAX_CHUNK_BYTES) {
+        throw new BadRequestError({
+          message: `Chunk size out of range [bytes=${ciphertext.length}, max=${PAM_RECORDING_MAX_CHUNK_BYTES}]`
+        });
+      }
+
+      await pamSessionEventChunkDAL.insertIgnoreDuplicate(
+        {
+          sessionId,
+          chunkIndex: resolvedChunkIndex,
+          startElapsedMs,
+          endElapsedMs,
+          storageBackend: PamRecordingStorageBackend.Postgres,
+          encryptedEventsBlob: ciphertext,
+          externalChunkObjectKey: null,
+          chunkSizeBytes: null,
+          externalKeyframeObjectKey: null,
+          keyframeSizeBytes: null,
+          ciphertextSha256: createHash("sha256").update(ciphertext).digest(),
+          ciphertextBytes: ciphertext.length,
+          iv
+        },
+        tx
+      );
+    });
+
+    return { ok: true as const, projectId: session.projectId, accountId: session.accountId };
+  };
+
   const getSessionPlayback = async (sessionId: string, actor: OrgServiceActor) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
@@ -380,5 +444,5 @@ export const pamSessionChunkServiceFactory = ({
     return { ciphertext: chunk.encryptedEventsBlob };
   };
 
-  return { requestPresignedPut, recordChunk, getSessionPlayback, getChunkCiphertext };
+  return { requestPresignedPut, recordChunk, recordInternalChunk, getSessionPlayback, getChunkCiphertext };
 };

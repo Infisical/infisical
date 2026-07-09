@@ -37,5 +37,19 @@ export const pamSessionEventChunkDALFactory = (db: TDbClient) => {
     await (tx || db)(TableName.PamSessionEventChunk).insert(data).onConflict(["sessionId", "chunkIndex"]).ignore();
   };
 
-  return { ...orm, findAllBySessionId, findBySessionIdPaginated, findByChunkIndex, insertIgnoreDuplicate };
+  const getNextChunkIndex = async (sessionId: string, tx?: Knex) => {
+    const qb = tx || db;
+    await qb.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`pam-session-chunk:${sessionId}`]);
+    const row = await qb(TableName.PamSessionEventChunk).where({ sessionId }).max("chunkIndex as max").first();
+    return Number((row as { max?: string | number | null } | undefined)?.max ?? -1) + 1;
+  };
+
+  return {
+    ...orm,
+    findAllBySessionId,
+    findBySessionIdPaginated,
+    findByChunkIndex,
+    insertIgnoreDuplicate,
+    getNextChunkIndex
+  };
 };

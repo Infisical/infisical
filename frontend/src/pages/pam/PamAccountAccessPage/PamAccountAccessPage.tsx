@@ -12,6 +12,7 @@ import { RdpLauncher } from "./RdpLauncher";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
+import { WebResourceContent } from "./WebResourceContent";
 
 const TerminalContent = ({
   account,
@@ -128,6 +129,11 @@ const PageContent = () => {
           account.accountType === PamAccountType.MySQL
         ) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
+        }
+        if (account.accountType === PamAccountType.WebResource) {
+          return (
+            <WebResourceContent account={account} reason={reason} mfaSessionId={mfaSessionId} />
+          );
         }
         if (
           account.accountType === PamAccountType.Windows ||

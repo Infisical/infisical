@@ -1,8 +1,10 @@
 /* eslint-disable no-underscore-dangle */
-import dns from "dns";
+import dns from "node:dns";
+import net from "node:net";
+import { promisify } from "node:util";
+
 import ConnectionString from "mongodb-connection-string-url";
 import RE2 from "re2";
-import { promisify } from "util";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -48,6 +50,86 @@ const delimitedStringList = z.preprocess(
   normalizeDelimitedStringList,
   z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1)
 );
+
+export type TParsedWebResourceUrl = {
+  url: string;
+  scheme: "http" | "https";
+  host: string;
+  port: number;
+  basePath: string;
+};
+
+export const parseWebResourceUrl = (rawUrl: string): TParsedWebResourceUrl => {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new BadRequestError({ message: "Web resource URL must be a valid URL" });
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new BadRequestError({ message: "Web resource URL must use http or https" });
+  }
+
+  if (parsed.username || parsed.password) {
+    throw new BadRequestError({ message: "Web resource URL must not include username or password" });
+  }
+
+  if (parsed.hash) {
+    throw new BadRequestError({ message: "Web resource URL must not include a fragment" });
+  }
+
+  if (parsed.search) {
+    throw new BadRequestError({ message: "Web resource URL must not include a query string" });
+  }
+
+  const hostname = parsed.hostname.replace(/^\[/, "").replace(/\]$/, "");
+  const hostnameIsIp = net.isIP(hostname) !== 0;
+  if (!hostname || hostname.length > 255 || (!hostnameIsIp && !hostPattern.test(hostname))) {
+    throw new BadRequestError({ message: "Web resource URL must include a valid hostname or IP address" });
+  }
+
+  const scheme = parsed.protocol === "http:" ? "http" : "https";
+  let port = parsed.port ? Number(parsed.port) : 443;
+  if (!parsed.port && scheme === "http") {
+    port = 80;
+  }
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new BadRequestError({ message: "Web resource URL port must be between 1 and 65535" });
+  }
+
+  const pathname = parsed.pathname || "/";
+  const basePath = pathname === "/" ? "/" : pathname.replace(/\/+$/, "") || "/";
+  const normalizedPort = parsed.port && port !== (scheme === "http" ? 80 : 443) ? `:${port}` : "";
+  const normalizedPath = basePath === "/" ? "" : basePath;
+  const normalizedHost = net.isIP(hostname) === 6 ? `[${hostname}]` : hostname;
+
+  return {
+    url: `${scheme}://${normalizedHost}${normalizedPort}${normalizedPath}`,
+    scheme,
+    host: hostname,
+    port,
+    basePath
+  };
+};
+
+const webResourceUrl = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .transform((value, ctx) => {
+    try {
+      return parseWebResourceUrl(value).url;
+    } catch (err) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: err instanceof Error ? err.message : "Invalid web resource URL"
+      });
+      return z.NEVER;
+    }
+  });
 
 // Source of truth for account types: per-type schemas + sparse UI hints
 export const ACCOUNT_TYPE_CONFIGS = {
@@ -387,6 +469,21 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.WebResource]: {
+    name: "Web Resource",
+    icon: "Web.png",
+    connectionDetails: z.object({
+      url: webResourceUrl
+    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
+    ui: {
+      url: {
+        label: "Target URL"
+      }
+    }
+  },
+
   [PamAccountType.GcpServiceAccount]: {
     name: "GCP Service Account",
     icon: "Google Cloud Platform.png",
@@ -625,6 +722,10 @@ export const extractGatewayTarget = async (
       const { url } = validated as { url: string };
       const parsed = new URL(url);
       return { host: parsed.hostname };
+    }
+    case PamAccountType.WebResource: {
+      const target = parseWebResourceUrl((validated as { url: string }).url);
+      return { host: target.host, port: target.port };
     }
     case PamAccountType.MongoDB: {
       const { connectionString } = validated as { connectionString: string };

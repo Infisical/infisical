@@ -1,3 +1,4 @@
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type WebSocket from "ws";
 import z from "zod";
 
@@ -285,6 +286,40 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 };
 
 export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
+  const handleWebResourceProxy = async (
+    req: FastifyRequest<{
+      Params: { accountId: string; sessionId: string; "*"?: string };
+      Querystring: Record<string, unknown>;
+    }>,
+    res: FastifyReply
+  ) => {
+    const result = await server.services.pamWebAccess.proxyWebResourceRequest({
+      accountId: req.params.accountId,
+      sessionId: req.params.sessionId,
+      method: req.method,
+      path: req.params["*"] ?? "",
+      query: req.query,
+      headers: req.headers,
+      body: req.body,
+      cookieToken: req.cookies?.[`infisical_pam_web_resource_${req.params.sessionId.replace(/-/g, "")}`]
+    });
+
+    if (result.setCookie) {
+      void res.setCookie(result.setCookie.name, result.setCookie.value, {
+        path: result.setCookie.path,
+        expires: result.setCookie.expires,
+        httpOnly: true,
+        sameSite: "lax"
+      });
+    }
+
+    Object.entries(result.headers).forEach(([name, value]) => {
+      void res.header(name, value);
+    });
+
+    return res.status(result.statusCode).send(result.body);
+  };
+
   server.route({
     method: "POST",
     url: "/access",
@@ -403,6 +438,114 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         gatewayServerCertificateChain: result.gatewayServerCertificateChain
       };
     }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/web-resource-sessions",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "pamLaunchWebResourceSession",
+      description: "Launch a browser proxy session for a PAM web resource account",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        accountId: z.string().uuid().describe("The ID of the account")
+      }),
+      body: z.object({
+        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
+        mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification")
+      }),
+      response: {
+        200: z.object({
+          sessionId: z.string(),
+          iframeUrl: z.string(),
+          expiresAt: z.date()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Web resource access requires JWT authentication" });
+      }
+
+      return server.services.pamWebAccess.launchWebResourceSession({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        orgId: req.permission.orgId,
+        actor: req.permission,
+        actorEmail: req.auth.user.email ?? "",
+        actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        actorIp: req.realIp ?? "",
+        actorUserAgent: req.headers["user-agent"] ?? "",
+        auditLogInfo: req.auditLogInfo,
+        reason: req.body.reason,
+        mfaSessionId: req.body.mfaSessionId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/web-resource-sessions/:sessionId/end",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "pamEndWebResourceSession",
+      description: "End a browser proxy session for a PAM web resource account",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        accountId: z.string().uuid().describe("The ID of the account"),
+        sessionId: z.string().uuid().describe("The ID of the session")
+      }),
+      response: {
+        200: z.object({ ok: z.literal(true) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Web resource access requires JWT authentication" });
+      }
+
+      return server.services.pamWebAccess.endWebResourceSession(
+        req.params.sessionId,
+        req.params.accountId,
+        req.permission.id,
+        req.permission.orgId,
+        req.auditLogInfo
+      );
+    }
+  });
+
+  server.route({
+    method: ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"],
+    url: "/:accountId/web-resource-sessions/:sessionId",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      params: z.object({
+        accountId: z.string().uuid(),
+        sessionId: z.string().uuid()
+      }),
+      querystring: z.record(z.unknown()).optional()
+    },
+    handler: handleWebResourceProxy
+  });
+
+  server.route({
+    method: ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"],
+    url: "/:accountId/web-resource-sessions/:sessionId/*",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      params: z.object({
+        accountId: z.string().uuid(),
+        sessionId: z.string().uuid(),
+        "*": z.string().optional()
+      }),
+      querystring: z.record(z.unknown()).optional()
+    },
+    handler: handleWebResourceProxy
   });
 
   server.route({

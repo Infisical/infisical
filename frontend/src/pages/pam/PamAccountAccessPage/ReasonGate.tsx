@@ -13,7 +13,7 @@ import {
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
-import { PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
+import { PamAccountType, PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
 
 type TAccessPolicy = {
   requireReason: boolean;
@@ -65,10 +65,12 @@ export const SessionAccessGate = ({ account, children }: Props) => {
     setStep("mfa");
 
     try {
-      await apiRequest.post<{ ticket: string }>(
-        `/api/v1/pam/accounts/${account.id}/web-access-ticket`,
-        { reason: trimmed || undefined }
-      );
+      const url =
+        account.accountType === PamAccountType.WebResource
+          ? `/api/v1/pam/accounts/${account.id}/web-resource-sessions`
+          : `/api/v1/pam/accounts/${account.id}/web-access-ticket`;
+
+      await apiRequest.post(url, { reason: trimmed || undefined });
       setStep("done");
     } catch (err: unknown) {
       const axiosErr = err as {
@@ -94,7 +96,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
       );
       setStep("error");
     }
-  }, [reason, policy.requireMfa, account.id]);
+  }, [reason, policy.requireMfa, account.id, account.accountType]);
 
   const handleMfaVerify = useCallback(async () => {
     if (!mfaSessionId) return;
