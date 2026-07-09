@@ -511,7 +511,7 @@ export const RequestAccessForm = ({
       isInitialMount.current = false;
       return;
     }
-    form.setValue("secretPath", "", { shouldValidate: true });
+    form.setValue("secretPath", "", { shouldValidate: form.formState.isSubmitted });
   }, [selectedEnvironment]);
 
   // policies with a max time period forbid permanent access and cap the range
@@ -534,10 +534,10 @@ export const RequestAccessForm = ({
       (config.subject !== ProjectPermissionSub.HoneyTokens || subscription?.honeyTokens)
   );
 
-  const totalSelectedActions = resources.reduce(
-    (count, resource) => count + resource.actions.length,
-    0
-  );
+  // The "select at least one permission" refine reports on the resources array itself,
+  // which per-field revalidation never reaches, so it's cleared manually in toggleAction.
+  const resourcesFieldError = form.formState.errors.resources;
+  const resourcesError = resourcesFieldError?.root ?? resourcesFieldError;
 
   const toggleAction = (index: number, actionValue: string) => {
     const current = form.getValues(`resources.${index}.actions`);
@@ -545,6 +545,9 @@ export const RequestAccessForm = ({
       ? current.filter((value) => value !== actionValue)
       : [...current, actionValue];
     form.setValue(`resources.${index}.actions`, next, { shouldDirty: true });
+    if (form.getValues("resources").some((resource) => resource.actions.length > 0)) {
+      form.clearErrors("resources");
+    }
   };
 
   const handleRequestAccess = async (data: TRequestAccessForm) => {
@@ -626,7 +629,7 @@ export const RequestAccessForm = ({
           <Controller
             control={form.control}
             name="secretPath"
-            render={({ field }) => {
+            render={({ field, fieldState: { error } }) => {
               const secretPathField = (
                 <Field>
                   <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
@@ -635,7 +638,7 @@ export const RequestAccessForm = ({
                     onValueChange={field.onChange}
                     disabled={!selectablePaths.length}
                   >
-                    <SelectTrigger id="secretPath" className="w-full">
+                    <SelectTrigger id="secretPath" className="w-full" isError={Boolean(error)}>
                       <SelectValue placeholder="Select a secret path" />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -646,6 +649,7 @@ export const RequestAccessForm = ({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError errors={[error]} />
                 </Field>
               );
 
@@ -760,6 +764,7 @@ export const RequestAccessForm = ({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <FieldError errors={[resourcesError]} />
         </Field>
         <DurationField form={form} matchedPolicy={matchedPolicy} maxDurationMs={maxDurationMs} />
         <Controller
@@ -783,7 +788,6 @@ export const RequestAccessForm = ({
           type="submit"
           variant="project"
           isPending={form.formState.isSubmitting || requestAccess.isPending}
-          isDisabled={!policies.length || !secretPath || totalSelectedActions === 0}
         >
           Request Access
         </Button>
