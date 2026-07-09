@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import {
+  Controller,
+  useFieldArray,
+  useForm,
+  UseFormReturn,
+  useFormState,
+  useWatch
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BanIcon,
@@ -67,15 +74,11 @@ import {
 import { useCreateAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
 
-const parseDurationMs = (value?: string) => {
-  if (!value) return undefined;
-  try {
-    const parsed = ms(value);
-    return typeof parsed === "number" && parsed > 0 ? parsed : undefined;
-  } catch {
-    return undefined;
-  }
-};
+import { getAccessDurationLabel, parseAccessDurationMs } from "../AccessApprovalRequest.utils";
+
+const INVALID_DURATION_MESSAGE = "Invalid duration. Use formats like 30m, 2h, 1d.";
+const policyMaxDurationMessage = (maxTimePeriod: string) =>
+  `Requested access duration is limited to ${maxTimePeriod} by policy`;
 
 type TResourceAction = {
   value: string;
@@ -345,11 +348,11 @@ const requestAccessSchema = z.object({
     })
     .superRefine((val, ctx) => {
       if (!val.isTemporary) return;
-      if (!parseDurationMs(val.temporaryRange)) {
+      if (!parseAccessDurationMs(val.temporaryRange)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["temporaryRange"],
-          message: "Invalid duration. Use formats like 30m, 2h, 1d."
+          message: INVALID_DURATION_MESSAGE
         });
       }
     }),
@@ -357,6 +360,100 @@ const requestAccessSchema = z.object({
 });
 
 type TRequestAccessForm = z.infer<typeof requestAccessSchema>;
+
+// Self-contained so keystrokes in the Validity input only re-render this field,
+// not the whole form (resource cards, selects, note) above it.
+const DurationField = ({
+  form,
+  matchedPolicy,
+  maxDurationMs
+}: {
+  form: UseFormReturn<TRequestAccessForm>;
+  matchedPolicy?: TAccessApprovalPolicy;
+  maxDurationMs: number | null;
+}) => {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const duration = useWatch({ control: form.control, name: "duration" });
+  const { errors } = useFormState({ control: form.control, name: "duration" });
+
+  const handleGrantTemporaryAccess = () => {
+    const rangeMs = parseAccessDurationMs(form.getValues("duration.temporaryRange"));
+    if (!rangeMs) {
+      form.setError(
+        "duration.temporaryRange",
+        { type: "custom", message: INVALID_DURATION_MESSAGE },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    if (maxDurationMs && matchedPolicy?.maxTimePeriod && rangeMs > maxDurationMs) {
+      form.setError(
+        "duration.temporaryRange",
+        { type: "custom", message: policyMaxDurationMessage(matchedPolicy.maxTimePeriod) },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    form.clearErrors("duration.temporaryRange");
+    form.setValue("duration.isTemporary", true, { shouldDirty: true });
+    setIsPopoverOpen(false);
+  };
+
+  const handleCancelTemporaryAccess = () => {
+    form.clearErrors("duration.temporaryRange");
+    form.setValue("duration.isTemporary", false, { shouldDirty: true });
+    setIsPopoverOpen(false);
+  };
+
+  return (
+    <Field>
+      <FieldLabel>Duration</FieldLabel>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-full justify-between">
+            <span className="flex items-center gap-2">
+              {duration.isTemporary && <ClockIcon className="size-3.5" />}
+              {getAccessDurationLabel(duration.isTemporary, duration.temporaryRange)}
+            </span>
+            <ChevronDownIcon className="size-3.5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="flex flex-col gap-4">
+          <div className="text-sm text-foreground">Configure timed access</div>
+          <Controller
+            control={form.control}
+            name="duration.temporaryRange"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="temporaryRange">
+                  <TtlFormLabel label="Validity" />
+                </FieldLabel>
+                <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <div className="flex items-center gap-2">
+            <Button size="xs" variant="project" onClick={handleGrantTemporaryAccess}>
+              Grant
+            </Button>
+            {duration.isTemporary && !maxDurationMs && (
+              <Button size="xs" variant="danger" onClick={handleCancelTemporaryAccess}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+      {!isPopoverOpen && <FieldError errors={[errors.duration?.temporaryRange]} />}
+      {matchedPolicy?.maxTimePeriod && (
+        <FieldDescription>
+          Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
+        </FieldDescription>
+      )}
+    </Field>
+  );
+};
 
 export const RequestAccessForm = ({
   policies,
@@ -401,8 +498,6 @@ export const RequestAccessForm = ({
   const selectedEnvironment = form.watch("environmentSlug");
   const secretPath = form.watch("secretPath");
   const resources = form.watch("resources");
-  const duration = form.watch("duration");
-  const [isDurationPopoverOpen, setIsDurationPopoverOpen] = useState(false);
 
   const selectablePaths = useMemo(
     () =>
@@ -437,7 +532,7 @@ export const RequestAccessForm = ({
   useEffect(() => {
     if (!maxDurationMs || !matchedPolicy?.maxTimePeriod) return;
     const { isTemporary, temporaryRange } = form.getValues("duration");
-    const rangeMs = parseDurationMs(temporaryRange);
+    const rangeMs = parseAccessDurationMs(temporaryRange);
     if (isTemporary && rangeMs && rangeMs <= maxDurationMs) return;
     form.setValue(
       "duration",
@@ -466,45 +561,6 @@ export const RequestAccessForm = ({
     form.setValue(`resources.${index}.actions`, next, { shouldDirty: true });
   };
 
-  const getAccessLabel = () => {
-    if (!duration.isTemporary || !duration.temporaryRange) return "Permanent";
-    const rangeMs = parseDurationMs(duration.temporaryRange);
-    if (!rangeMs) return `Valid for ${duration.temporaryRange} after approval`;
-    return `Valid for ${ms(rangeMs, { long: true })} after approval`;
-  };
-
-  const handleGrantTemporaryAccess = () => {
-    const rangeMs = parseDurationMs(form.getValues("duration.temporaryRange"));
-    if (!rangeMs) {
-      form.setError(
-        "duration.temporaryRange",
-        { type: "custom", message: "Invalid duration. Use formats like 30m, 2h, 1d." },
-        { shouldFocus: true }
-      );
-      return;
-    }
-    if (maxDurationMs && rangeMs > maxDurationMs) {
-      form.setError(
-        "duration.temporaryRange",
-        {
-          type: "custom",
-          message: `Duration cannot exceed the policy maximum of ${matchedPolicy?.maxTimePeriod}.`
-        },
-        { shouldFocus: true }
-      );
-      return;
-    }
-    form.clearErrors("duration.temporaryRange");
-    form.setValue("duration.isTemporary", true, { shouldDirty: true });
-    setIsDurationPopoverOpen(false);
-  };
-
-  const handleCancelTemporaryAccess = () => {
-    form.clearErrors("duration.temporaryRange");
-    form.setValue("duration.isTemporary", false, { shouldDirty: true });
-    setIsDurationPopoverOpen(false);
-  };
-
   const handleRequestAccess = async (data: TRequestAccessForm) => {
     if (!currentProject) {
       createNotification({
@@ -523,7 +579,7 @@ export const RequestAccessForm = ({
     ) {
       createNotification({
         type: "error",
-        text: `Requested access time range is limited to ${matchedPolicy.maxTimePeriod} by policy`,
+        text: policyMaxDurationMessage(matchedPolicy.maxTimePeriod),
         title: "Error"
       });
       return;
@@ -719,54 +775,7 @@ export const RequestAccessForm = ({
             </DropdownMenu>
           )}
         </Field>
-        <Field>
-          <FieldLabel>Duration</FieldLabel>
-          <Popover open={isDurationPopoverOpen} onOpenChange={setIsDurationPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                <span className="flex items-center gap-2">
-                  {duration.isTemporary && <ClockIcon className="size-3.5" />}
-                  {getAccessLabel()}
-                </span>
-                <ChevronDownIcon className="size-3.5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="flex flex-col gap-4">
-              <div className="text-sm text-foreground">Configure timed access</div>
-              <Controller
-                control={form.control}
-                name="duration.temporaryRange"
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="temporaryRange">
-                      <TtlFormLabel label="Validity" />
-                    </FieldLabel>
-                    <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
-                    <FieldError errors={[error]} />
-                  </Field>
-                )}
-              />
-              <div className="flex items-center gap-2">
-                <Button size="xs" variant="project" onClick={handleGrantTemporaryAccess}>
-                  Grant
-                </Button>
-                {duration.isTemporary && !maxDurationMs && (
-                  <Button size="xs" variant="danger" onClick={handleCancelTemporaryAccess}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-          {!isDurationPopoverOpen && (
-            <FieldError errors={[form.formState.errors.duration?.temporaryRange]} />
-          )}
-          {matchedPolicy?.maxTimePeriod && (
-            <FieldDescription>
-              Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
-            </FieldDescription>
-          )}
-        </Field>
+        <DurationField form={form} matchedPolicy={matchedPolicy} maxDurationMs={maxDurationMs} />
         <Controller
           control={form.control}
           name="note"

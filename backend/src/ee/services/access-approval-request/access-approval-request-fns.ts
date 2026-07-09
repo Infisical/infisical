@@ -1,9 +1,11 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import { z } from "zod";
 
+import { PermissionConditionOperators } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 
-import { CASL_ACTION_SCHEMA_ENUM, CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
+import { CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
+import { PermissionConditionSchema } from "../permission/permission-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -28,18 +30,48 @@ type TUnpackedAccessApprovalRequestRule = {
   conditions?: Record<string, any>;
   action: string | string[];
   subject: string | string[];
+  inverted?: boolean;
+  fields?: string[];
+  reason?: string;
 };
 
 // Exactly the conditions shape RequestAccessForm.tsx ever produces:
 // { environment: data.environmentSlug, secretPath: { $glob: data.secretPath } }.
 // .strict() at both levels so no other operator ($in/$eq/...) or key
 // (secretName, secretTags, connectionId, metadata, ...) can be smuggled in.
+// The $glob value reuses the same validator as every other permission surface.
 const AccessApprovalRequestConditionsSchema = z
   .object({
     environment: z.string().min(1),
-    secretPath: z.object({ $glob: z.string().min(1) }).strict()
+    secretPath: z.object({ $glob: PermissionConditionSchema[PermissionConditionOperators.$GLOB] }).strict()
   })
   .strict();
+
+// Every allowed rule has the same shape: one whitelisted subject, that subject's allowed
+// actions, and the exact conditions the form produces. The whole unpacked rule is parsed
+// (not a projection of it), with .strict() so no other CASL rule attribute (field-level
+// scoping, reasons) can ride along into the privilege that gets granted on approval.
+// `inverted` needs an explicit key: unpackRules() stamps `inverted: false` on every rule,
+// which strict() would otherwise reject, while a crafted request can smuggle
+// `inverted: true` (a "cannot" rule) that must fail; literal(false).optional() allows
+// exactly the former and rejects the latter.
+// TAction admits `V | V[]` because the CASL_ACTION_SCHEMA_* transforms, while always
+// returning an array at runtime, declare their output as the union (generic narrowing).
+const accessApprovalRequestRuleSchema = <
+  TSub extends ProjectPermissionSub,
+  TAction extends z.ZodType<string | string[], z.ZodTypeDef, unknown>
+>(
+  subject: TSub,
+  action: TAction
+) =>
+  z
+    .object({
+      subject: z.literal(subject),
+      action,
+      conditions: AccessApprovalRequestConditionsSchema,
+      inverted: z.literal(false).optional()
+    })
+    .strict();
 
 // The exact resources/actions the Request Access sheet's RESOURCE_CONFIGS can submit.
 // Access requests ask an approver to grant elevated access, so unlike custom project
@@ -47,46 +79,31 @@ const AccessApprovalRequestConditionsSchema = z
 // Kms, Role, etc). Every ProjectPermissionSub not listed below is rejected automatically:
 // z.discriminatedUnion has no catch-all branch, so any other subject literal fails with
 // Zod's own "Invalid discriminator value" issue.
-export const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subject", [
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Secrets),
-    action: CASL_ACTION_SCHEMA_ENUM([
-      ProjectPermissionSecretActions.DescribeAndReadValue,
-      ProjectPermissionSecretActions.Create,
-      ProjectPermissionSecretActions.Edit,
-      ProjectPermissionSecretActions.Delete
-    ]),
-    conditions: AccessApprovalRequestConditionsSchema
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SecretFolders),
-    action: CASL_ACTION_SCHEMA_ENUM([
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Delete
-    ]),
-    conditions: AccessApprovalRequestConditionsSchema
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.DynamicSecrets),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionDynamicSecretActions),
-    conditions: AccessApprovalRequestConditionsSchema
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SecretRotation),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions),
-    conditions: AccessApprovalRequestConditionsSchema
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SecretImports),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions),
-    conditions: AccessApprovalRequestConditionsSchema
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.HoneyTokens),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions),
-    conditions: AccessApprovalRequestConditionsSchema
-  })
+const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subject", [
+  accessApprovalRequestRuleSchema(
+    ProjectPermissionSub.Secrets,
+    CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretActions)
+  ),
+  accessApprovalRequestRuleSchema(
+    ProjectPermissionSub.SecretFolders,
+    CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions)
+  ),
+  accessApprovalRequestRuleSchema(
+    ProjectPermissionSub.DynamicSecrets,
+    CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionDynamicSecretActions)
+  ),
+  accessApprovalRequestRuleSchema(
+    ProjectPermissionSub.SecretRotation,
+    CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions)
+  ),
+  accessApprovalRequestRuleSchema(
+    ProjectPermissionSub.SecretImports,
+    CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions)
+  ),
+  accessApprovalRequestRuleSchema(
+    ProjectPermissionSub.HoneyTokens,
+    CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions)
+  )
 ]);
 
 // unpackRules always splits subject/action on "," (even a single value becomes a
@@ -97,7 +114,6 @@ export const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subje
 const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessApprovalRequestRule[]) =>
   permissions.map((rule) => {
     const subjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
-    const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
 
     if (subjects.length !== 1) {
       throw new BadRequestError({
@@ -105,11 +121,7 @@ const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessAppro
       });
     }
 
-    const result = AccessApprovalRequestPermissionSchema.safeParse({
-      subject: subjects[0],
-      action: actions,
-      conditions: rule.conditions
-    });
+    const result = AccessApprovalRequestPermissionSchema.safeParse({ ...rule, subject: subjects[0] });
 
     if (!result.success) {
       throw new BadRequestError({
@@ -148,6 +160,7 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
       });
     }
 
+    // runtime is always an array; the schema's declared output keeps the bare-value union
     const actions = Array.isArray(p.action) ? p.action : [p.action];
     const subjectActions = actionsBySubject.get(p.subject) ?? new Set<string>();
     actions.forEach((action) => subjectActions.add(action));

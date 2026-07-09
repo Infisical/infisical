@@ -4,9 +4,9 @@ import { describe, expect, test } from "vitest";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 
 describe("verifyRequestedPermissions", () => {
-  const makeRule = (action: string, env: string, secretPath: string) => ({
+  const makeRule = (action: string, env: string, secretPath: string, subject = "secrets") => ({
     action,
-    subject: "secrets" as const,
+    subject,
     conditions: {
       environment: env,
       secretPath: { $glob: secretPath }
@@ -87,62 +87,14 @@ describe("verifyRequestedPermissions", () => {
     );
   });
 
-  test("accepts SecretFolders with a whitelisted action", () => {
-    const permissions = packRules([
-      {
-        action: "create",
-        subject: "secret-folders" as const,
-        conditions: { environment: "dev", secretPath: { $glob: "/apps/team-a/*" } }
-      }
-    ]);
-    const result = verifyRequestedPermissions({ permissions });
-    expect(result.envSlug).toBe("dev");
-  });
-
-  test("accepts DynamicSecrets with a whitelisted action", () => {
-    const permissions = packRules([
-      {
-        action: "lease",
-        subject: "dynamic-secrets" as const,
-        conditions: { environment: "dev", secretPath: { $glob: "/apps/team-a/*" } }
-      }
-    ]);
-    const result = verifyRequestedPermissions({ permissions });
-    expect(result.envSlug).toBe("dev");
-  });
-
-  test("accepts SecretRotation with a whitelisted action", () => {
-    const permissions = packRules([
-      {
-        action: "rotate-secrets",
-        subject: "secret-rotation" as const,
-        conditions: { environment: "dev", secretPath: { $glob: "/apps/team-a/*" } }
-      }
-    ]);
-    const result = verifyRequestedPermissions({ permissions });
-    expect(result.envSlug).toBe("dev");
-  });
-
-  test("accepts SecretImports with a whitelisted action", () => {
-    const permissions = packRules([
-      {
-        action: "edit",
-        subject: "secret-imports" as const,
-        conditions: { environment: "dev", secretPath: { $glob: "/apps/team-a/*" } }
-      }
-    ]);
-    const result = verifyRequestedPermissions({ permissions });
-    expect(result.envSlug).toBe("dev");
-  });
-
-  test("accepts HoneyTokens with a whitelisted action", () => {
-    const permissions = packRules([
-      {
-        action: "read-credentials",
-        subject: "honey-tokens" as const,
-        conditions: { environment: "dev", secretPath: { $glob: "/apps/team-a/*" } }
-      }
-    ]);
+  test.each([
+    ["secret-folders", "create"],
+    ["dynamic-secrets", "lease"],
+    ["secret-rotation", "rotate-secrets"],
+    ["secret-imports", "edit"],
+    ["honey-tokens", "read-credentials"]
+  ])("accepts %s with whitelisted action %s", (subject, action) => {
+    const permissions = packRules([makeRule(action, "dev", "/apps/team-a/*", subject)]);
     const result = verifyRequestedPermissions({ permissions });
     expect(result.envSlug).toBe("dev");
   });
@@ -160,10 +112,10 @@ describe("verifyRequestedPermissions", () => {
     );
   });
 
-  test("rejects an action excluded from the Secrets whitelist", () => {
+  test("rejects a secrets action outside ProjectPermissionSecretActions", () => {
     const permissions = packRules([
       {
-        action: "describeSecret",
+        action: "lease",
         subject: "secrets" as const,
         conditions: { environment: "dev", secretPath: { $glob: "/test/*" } }
       }
@@ -173,10 +125,10 @@ describe("verifyRequestedPermissions", () => {
     );
   });
 
-  test("rejects an action excluded from the SecretFolders whitelist", () => {
+  test("rejects a secret-folders action outside ProjectPermissionActions", () => {
     const permissions = packRules([
       {
-        action: "read",
+        action: "readValue",
         subject: "secret-folders" as const,
         conditions: { environment: "dev", secretPath: { $glob: "/test/*" } }
       }
@@ -222,14 +174,14 @@ describe("verifyRequestedPermissions", () => {
   });
 
   test("rejects an inverted (cannot) rule", () => {
-    const permissions = packRules([
-      {
-        action: "read",
-        subject: "secrets" as const,
-        conditions: { environment: "dev", secretPath: { $glob: "/test/*" } },
-        inverted: true
-      }
-    ]);
+    const permissions = packRules([{ ...makeRule("read", "dev", "/test/*"), inverted: true }]);
+    expect(() => verifyRequestedPermissions({ permissions })).toThrow(
+      'The requested permission for resource "secrets" is not allowed'
+    );
+  });
+
+  test("rejects a rule carrying extra attributes (field scoping, reason)", () => {
+    const permissions = packRules([{ ...makeRule("read", "dev", "/test/*"), fields: ["value"], reason: "why" }]);
     expect(() => verifyRequestedPermissions({ permissions })).toThrow(
       'The requested permission for resource "secrets" is not allowed'
     );

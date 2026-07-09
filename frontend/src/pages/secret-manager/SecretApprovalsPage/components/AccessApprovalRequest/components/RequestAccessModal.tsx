@@ -39,7 +39,6 @@ export const RequestAccessModal = ({
 
   const closeSheet = () => {
     setConfirmDiscardOpen(false);
-    setIsDirty(false);
     onOpenChange(false);
   };
 
@@ -48,7 +47,6 @@ export const RequestAccessModal = ({
       setConfirmDiscardOpen(true);
       return;
     }
-    if (!nextOpen) setIsDirty(false);
     onOpenChange(nextOpen);
   };
 
