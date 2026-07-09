@@ -4,6 +4,14 @@ import { FingerprintIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Input,
   Sheet,
@@ -26,9 +34,12 @@ type Props = {
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
   const { data: credentials = [], isPending } = useGetWebAuthnCredentials();
   const { registerPasskey, isRegistering } = useRegisterPasskey();
-  const { mutateAsync: deleteCredential } = useDeleteWebAuthnCredential();
+  const { mutateAsync: deleteCredential, isPending: isDeleting } = useDeleteWebAuthnCredential();
 
   const [name, setName] = useState("");
+  const [credentialToRemove, setCredentialToRemove] = useState<{ id: string; name: string } | null>(
+    null
+  );
 
   const handleAdd = async () => {
     if (await registerPasskey(name)) {
@@ -36,9 +47,11 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!credentialToRemove) return;
     try {
-      await deleteCredential({ id });
+      await deleteCredential({ id: credentialToRemove.id });
+      setCredentialToRemove(null);
       createNotification({ text: "Passkey removed", type: "success" });
     } catch (error: any) {
       createNotification({
@@ -49,65 +62,96 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
-        <SheetHeader className="border-b">
-          <SheetTitle>Manage passkeys</SheetTitle>
-          <SheetDescription>
-            Passkeys use Face ID, Touch ID, a security key, or your device to sign in.
-          </SheetDescription>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
+          <SheetHeader className="border-b">
+            <SheetTitle>Manage passkeys</SheetTitle>
+            <SheetDescription>
+              Passkeys use Face ID, Touch ID, a security key, or your device to sign in.
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-5">
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="New passkey name (optional)"
-              />
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-5">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="New passkey name (optional)"
+                />
+              </div>
+              <Button variant="org" isPending={isRegistering} onClick={handleAdd}>
+                <PlusIcon /> Add
+              </Button>
             </div>
-            <Button variant="org" isPending={isRegistering} onClick={handleAdd}>
-              <PlusIcon /> Add
-            </Button>
-          </div>
 
-          {isPending ? (
-            <ContentLoader />
-          ) : (
-            <div className="flex flex-col gap-2">
-              {credentials.length === 0 && (
-                <p className="rounded-lg border border-border bg-container p-4 text-center text-sm text-muted">
-                  No passkeys registered yet.
-                </p>
-              )}
-              {credentials.map((credential) => (
-                <div
-                  key={credential.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-container p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <FingerprintIcon className="text-muted" />
-                    <div>
-                      <p className="text-sm text-foreground">
-                        {credential.name || "Unnamed passkey"}
-                      </p>
-                      <p className="text-xs text-muted">
-                        Added {new Date(credential.createdAt).toLocaleDateString()}
-                        {credential.lastUsedAt &&
-                          ` · Last used ${new Date(credential.lastUsedAt).toLocaleDateString()}`}
-                      </p>
+            {isPending ? (
+              <ContentLoader />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {credentials.length === 0 && (
+                  <p className="rounded-lg border border-border bg-container p-4 text-center text-sm text-muted">
+                    No passkeys registered yet.
+                  </p>
+                )}
+                {credentials.map((credential) => (
+                  <div
+                    key={credential.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-container p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FingerprintIcon className="text-muted" />
+                      <div>
+                        <p className="text-sm text-foreground">
+                          {credential.name || "Unnamed passkey"}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Added {new Date(credential.createdAt).toLocaleDateString()}
+                          {credential.lastUsedAt &&
+                            ` · Last used ${new Date(credential.lastUsedAt).toLocaleDateString()}`}
+                        </p>
+                      </div>
                     </div>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() =>
+                        setCredentialToRemove({
+                          id: credential.id,
+                          name: credential.name || "Unnamed passkey"
+                        })
+                      }
+                    >
+                      <TrashIcon /> Remove
+                    </Button>
                   </div>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(credential.id)}>
-                    <TrashIcon /> Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog
+        open={credentialToRemove !== null}
+        onOpenChange={(open) => !open && setCredentialToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove passkey?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`"${credentialToRemove?.name}" will no longer be usable as a second factor. You can register it again at any time.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" isPending={isDeleting} onClick={handleDelete}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

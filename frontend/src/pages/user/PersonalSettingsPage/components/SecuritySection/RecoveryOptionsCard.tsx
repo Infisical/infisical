@@ -46,7 +46,7 @@ export const RecoveryOptionsCard = () => {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="p-6">
       <h3 className="mb-4 text-sm font-medium text-foreground">Recovery options</h3>
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-start gap-3">

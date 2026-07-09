@@ -125,7 +125,7 @@ export const MFASection = () => {
   const handleDisable = () => disableMfa(() => setIsDisableOpen(false));
 
   const banner = (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <div className="p-6">
       <div className="flex items-start justify-between">
         <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
         {user.isMfaEnabled ? (
@@ -194,7 +194,7 @@ export const MFASection = () => {
             <p className="text-sm text-muted">
               {isMfaEnforced
                 ? "Your organization requires two-factor authentication, so it can't be disabled."
-                : "Turning this off keeps your configured methods, but your recovery codes are invalidated and a new set is issued when you re-enable."}
+                : "Turning this off keeps your configured methods, but your recovery codes are invalidated."}
             </p>
             <Button
               variant="danger"
@@ -226,10 +226,18 @@ export const MFASection = () => {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-6">
+      {/* One card, sectioned with separators, so the whole 2FA context reads as a
+          single unit rather than three disconnected cards. */}
+      <div className="mb-6 rounded-lg border border-border bg-card">
         {banner}
-        <MfaMethodsCard />
-        {hasRecoveryCodes && <RecoveryOptionsCard />}
+        <div className="border-t border-border">
+          <MfaMethodsCard />
+        </div>
+        {hasRecoveryCodes && (
+          <div className="border-t border-border">
+            <RecoveryOptionsCard />
+          </div>
+        )}
       </div>
 
       <AlertDialog open={isEnableOpen} onOpenChange={setIsEnableOpen}>

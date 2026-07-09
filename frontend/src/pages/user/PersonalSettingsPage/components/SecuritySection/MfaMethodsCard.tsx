@@ -79,7 +79,7 @@ export const MfaMethodsCard = () => {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="p-6">
       <h3 className="mb-2 text-sm font-medium text-foreground">Two-factor methods</h3>
       <div className="divide-y divide-border">
         <MethodRow
