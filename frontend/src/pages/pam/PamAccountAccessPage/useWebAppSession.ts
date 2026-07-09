@@ -11,15 +11,38 @@ type UseWebAppSessionOptions = {
   onSessionEnd?: () => void;
 };
 
+type CdpFrameMetadata = {
+  deviceWidth: number;
+  deviceHeight: number;
+};
+
 type CdpScreencastFrameMessage = {
   method: "Page.screencastFrame";
-  params: { data: string; sessionId: number };
+  params: { data: string; sessionId: number; metadata: CdpFrameMetadata };
 };
 
 const isScreencastFrame = (message: unknown): message is CdpScreencastFrameMessage =>
   typeof message === "object" &&
   message !== null &&
   (message as { method?: unknown }).method === "Page.screencastFrame";
+
+export type TMouseEventParams = {
+  type: "mousePressed" | "mouseReleased" | "mouseMoved" | "mouseWheel";
+  x: number;
+  y: number;
+  button?: "none" | "left" | "middle" | "right";
+  clickCount?: number;
+  deltaX?: number;
+  deltaY?: number;
+};
+
+export type TKeyEventParams = {
+  type: "keyDown" | "keyUp";
+  key: string;
+  code: string;
+  windowsVirtualKeyCode?: number;
+  text?: string;
+};
 
 export const useWebAppSession = ({
   accountId,
@@ -31,6 +54,7 @@ export const useWebAppSession = ({
   const [error, setError] = useState<string | null>(null);
   const [frameDataUrl, setFrameDataUrl] = useState<string | null>(null);
   const [frameCount, setFrameCount] = useState(0);
+  const [frameMetadata, setFrameMetadata] = useState<CdpFrameMetadata | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const decoderRef = useRef(new CdpFrameDecoder());
@@ -90,6 +114,7 @@ export const useWebAppSession = ({
       messages.forEach((message) => {
         if (isScreencastFrame(message)) {
           setFrameDataUrl(`data:image/jpeg;base64,${message.params.data}`);
+          setFrameMetadata(message.params.metadata);
           setFrameCount((count) => count + 1);
           sendCdp({
             id: 0,
@@ -123,5 +148,29 @@ export const useWebAppSession = ({
     connect();
   }, [disconnect, connect]);
 
-  return { isConnected, error, frameDataUrl, frameCount, disconnect, reconnect };
+  const dispatchMouseEvent = useCallback(
+    (params: TMouseEventParams) => {
+      sendCdp({ id: 0, method: "Input.dispatchMouseEvent", params: { clickCount: 1, ...params } });
+    },
+    [sendCdp]
+  );
+
+  const dispatchKeyEvent = useCallback(
+    (params: TKeyEventParams) => {
+      sendCdp({ id: 0, method: "Input.dispatchKeyEvent", params });
+    },
+    [sendCdp]
+  );
+
+  return {
+    isConnected,
+    error,
+    frameDataUrl,
+    frameMetadata,
+    frameCount,
+    disconnect,
+    reconnect,
+    dispatchMouseEvent,
+    dispatchKeyEvent
+  };
 };
