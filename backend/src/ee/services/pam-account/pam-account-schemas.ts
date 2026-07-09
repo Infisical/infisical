@@ -570,12 +570,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.object({
       clientId: z.string().trim().uuid("Must be a valid Azure application (client) ID"),
-      clientSecret: z
-        .string()
-        .trim()
-        .max(512)
-        .transform((v) => v || undefined)
-        .optional()
+      clientSecret: z.string().trim().min(1).max(512)
     }),
     sanitizedCredentials: z.object({
       clientId: z.string().optional()

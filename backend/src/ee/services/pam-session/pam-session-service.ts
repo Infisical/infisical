@@ -311,9 +311,6 @@ export const pamSessionServiceFactory = ({
     }
 
     if (account.accountType === PamAccountType.AzureCli) {
-      if (!credentials.clientSecret) {
-        throw new BadRequestError({ message: "Azure account has no client secret configured" });
-      }
       credentials.tokens = await getAzureAccessTokens({
         tenantId: connectionDetails.tenantId as string,
         clientId: credentials.clientId as string,
