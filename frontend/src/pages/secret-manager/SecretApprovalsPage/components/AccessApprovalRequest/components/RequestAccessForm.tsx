@@ -93,8 +93,6 @@ type TResourceConfig = {
   Icon: LucideIcon;
   // Tailwind extracts classes statically, so every tint must be a full literal string
   iconTileClassName: string;
-  countBadgeClassName: string;
-  summaryIconClassName: string;
   actions: TResourceAction[];
 };
 
@@ -104,8 +102,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Secrets",
     Icon: KeyIcon,
     iconTileClassName: "border-accent/10 bg-accent/15 text-accent",
-    countBadgeClassName: "border-accent/10 bg-accent/15 text-accent",
-    summaryIconClassName: "text-accent",
     actions: [
       {
         value: ProjectPermissionActions.Read,
@@ -138,8 +134,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Folders",
     Icon: FolderIcon,
     iconTileClassName: "border-folder/10 bg-folder/15 text-folder",
-    countBadgeClassName: "border-folder/10 bg-folder/15 text-folder",
-    summaryIconClassName: "text-folder",
     actions: [
       {
         value: ProjectPermissionActions.Create,
@@ -166,8 +160,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Dynamic Secrets",
     Icon: FingerprintIcon,
     iconTileClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
-    countBadgeClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
-    summaryIconClassName: "text-dynamic-secret",
     actions: [
       {
         value: ProjectPermissionDynamicSecretActions.ReadRootCredential,
@@ -206,8 +198,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Secret Rotation",
     Icon: RefreshCwIcon,
     iconTileClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
-    countBadgeClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
-    summaryIconClassName: "text-secret-rotation",
     actions: [
       {
         value: ProjectPermissionSecretRotationActions.Read,
@@ -252,8 +242,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Secret Imports",
     Icon: ImportIcon,
     iconTileClassName: "border-import/10 bg-import/15 text-import",
-    countBadgeClassName: "border-import/10 bg-import/15 text-import",
-    summaryIconClassName: "text-import",
     actions: [
       {
         value: ProjectPermissionActions.Read,
@@ -286,8 +274,6 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     label: "Honey Tokens",
     Icon: HexagonIcon,
     iconTileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
-    countBadgeClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
-    summaryIconClassName: "text-yellow-700",
     actions: [
       {
         value: ProjectPermissionHoneyTokenActions.Read,
