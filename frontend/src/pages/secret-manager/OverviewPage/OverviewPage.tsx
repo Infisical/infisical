@@ -702,6 +702,7 @@ const OverviewPageContent = () => {
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
     totalUniqueHoneyTokensInPage,
+    totalUniqueProxiedServicesInPage,
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
@@ -3401,7 +3402,8 @@ const OverviewPageContent = () => {
                                 (totalUniqueSecretsInPage || 0) -
                                 (totalUniqueSecretImportsInPage || 0) -
                                 (totalUniqueSecretRotationsInPage || 0) -
-                                (totalUniqueHoneyTokensInPage || 0),
+                                (totalUniqueHoneyTokensInPage || 0) -
+                                (totalUniqueProxiedServicesInPage || 0),
                               0
                             )}
                           />
