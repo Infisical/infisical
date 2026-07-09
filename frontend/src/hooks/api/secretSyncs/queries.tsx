@@ -120,7 +120,12 @@ export const useCheckDuplicateDestination = (
   >
 ) => {
   return useQuery({
-    queryKey: secretSyncKeys.duplicateCheck(destination, destinationConfig, connectionId, excludeSyncId),
+    queryKey: secretSyncKeys.duplicateCheck(
+      destination,
+      destinationConfig,
+      connectionId,
+      excludeSyncId
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
         hasDuplicate: boolean;

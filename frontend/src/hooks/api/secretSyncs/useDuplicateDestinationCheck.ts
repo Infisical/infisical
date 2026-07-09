@@ -36,11 +36,18 @@ export const useDuplicateDestinationCheck = ({
     isLoading,
     error,
     refetch
-  } = useCheckDuplicateDestination(destination, destinationConfig, projectId, excludeSyncId, connectionId, {
-    enabled: shouldCheck,
-    staleTime: 0,
-    gcTime: 0
-  });
+  } = useCheckDuplicateDestination(
+    destination,
+    destinationConfig,
+    projectId,
+    excludeSyncId,
+    connectionId,
+    {
+      enabled: shouldCheck,
+      staleTime: 0,
+      gcTime: 0
+    }
+  );
 
   return {
     hasDuplicate: shouldCheck ? Boolean(duplicateData?.hasDuplicate) : false,

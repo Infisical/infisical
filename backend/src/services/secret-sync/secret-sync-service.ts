@@ -16,7 +16,9 @@ import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
+import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -280,31 +282,48 @@ export const secretSyncServiceFactory = ({
     try {
       const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
 
-      const duplicates = existingSyncs.filter((sync) => {
-        if (sync.id === excludeSyncId) {
-          return false;
+      const decryptConnection = async (connId: string): Promise<TAppConnection> => {
+        const conn = await appConnectionDAL.findById(connId);
+        if (!conn || conn.orgId !== actor.orgId) {
+          throw new NotFoundError({ message: `App connection with ID "${connId}" not found` });
         }
+        const credentials = await decryptAppConnectionCredentials({
+          orgId: conn.orgId,
+          encryptedCredentials: conn.encryptedCredentials,
+          kmsService,
+          projectId: conn.projectId
+        });
+        return { ...conn, credentials } as TAppConnection;
+      };
 
-        try {
-          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
-          if (baseFieldsMatch) {
-            return DESTINATION_DUPLICATE_CHECK_MAP[destination]({
+      const candidates = existingSyncs.filter((sync) => {
+        if (sync.id === excludeSyncId) return false;
+        return deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+      });
+
+      const duplicateCheckResults = await Promise.all(
+        candidates.map(async (sync) => {
+          try {
+            const isDuplicate = await DESTINATION_DUPLICATE_CHECK_MAP[destination]({
               existingConfig: sync.destinationConfig as Record<string, unknown>,
               newConfig: destinationConfig,
               existingConnectionId: sync.connectionId,
-              newConnectionId: connectionId ?? null
+              newConnectionId: connectionId ?? null,
+              decryptConnection
             });
+            return isDuplicate ? sync : null;
+          } catch {
+            return null;
           }
-          return false;
-        } catch {
-          return false;
-        }
-      });
+        })
+      );
+
+      const duplicates = duplicateCheckResults.filter(Boolean);
 
       const hasDuplicate = duplicates.length > 0;
       return {
         hasDuplicate,
-        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
+        duplicateProjectId: hasDuplicate ? duplicates[0]!.projectId : undefined
       };
     } catch (error) {
       return { hasDuplicate: false, duplicateProjectId: undefined };

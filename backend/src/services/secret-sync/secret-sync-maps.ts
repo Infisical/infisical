@@ -1,4 +1,5 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { extractAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -211,15 +212,27 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Cloud66]: ["stackName"]
 };
 
-const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
-const awsDuplicateCheck: DestinationDuplicateCheckFn = ({ existingConnectionId, newConnectionId }) => {
+const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({
+  existingConnectionId,
+  newConnectionId,
+  decryptConnection
+}) => {
   if (!newConnectionId) return true;
+  if (existingConnectionId === newConnectionId) return true;
+  if (!existingConnectionId) return false;
 
-  // TODO: we should also check the AWS account id here, otherwise
-  // two connections to the same account would cause issues.
-  // If assume role: get account id from ARN
-  // If credentials, use AWS_ACCESS_ID to infer the account id
-  return existingConnectionId === newConnectionId;
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingConnectionId),
+    decryptConnection(newConnectionId)
+  ]);
+
+  const existingAccountId = extractAwsAccountId(existingConn);
+  const newAccountId = extractAwsAccountId(newConn);
+
+  if (!existingAccountId || !newAccountId) return false;
+
+  return existingAccountId === newAccountId;
 };
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
