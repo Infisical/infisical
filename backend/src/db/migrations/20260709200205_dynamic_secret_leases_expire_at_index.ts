@@ -8,9 +8,7 @@ export async function up(knex: Knex): Promise<void> {
     const indexes = await knex.raw(
       `SELECT indexname FROM pg_indexes WHERE tablename = '${TableName.DynamicSecretLease}'`
     );
-    return indexes.rows.some(
-      (row: { indexname: string }) => row.indexname === "dynamic_secret_leases_expire_at_index"
-    );
+    return indexes.rows.some((row: { indexname: string }) => row.indexname === "dynamic_secret_leases_expire_at_index");
   });
 
   if (!hasIndex) {
