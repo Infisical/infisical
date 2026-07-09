@@ -693,6 +693,7 @@ const OverviewPageContent = () => {
     totalSecretCount,
     totalDynamicSecretCount,
     totalSecretRotationCount,
+    totalProxiedServiceCount,
     totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
@@ -3424,6 +3425,7 @@ const OverviewPageContent = () => {
                       folderCount={totalFolderCount}
                       importCount={totalImportCount}
                       secretRotationCount={totalSecretRotationCount}
+                      proxiedServiceCount={totalProxiedServiceCount}
                     />
                   }
                   count={totalCount}

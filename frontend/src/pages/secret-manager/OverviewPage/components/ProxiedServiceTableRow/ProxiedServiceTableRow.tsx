@@ -124,8 +124,8 @@ export const ProxiedServiceTableRow = ({
         "group-hover:mr-24"
       )}
     >
-      <Badge variant="neutral" className="max-w-[240px]">
-        <span className="truncate" title={proxiedService.hostPattern}>
+      <Badge variant="neutral" className="max-w-[240px] overflow-hidden">
+        <span className="block max-w-[240px] truncate" title={proxiedService.hostPattern}>
           {proxiedService.hostPattern}
         </span>
       </Badge>

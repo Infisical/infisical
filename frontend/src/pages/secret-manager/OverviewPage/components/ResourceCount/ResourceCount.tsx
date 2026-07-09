@@ -1,4 +1,11 @@
-import { FingerprintIcon, FolderIcon, ImportIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
+import {
+  ArrowRightLeftIcon,
+  FingerprintIcon,
+  FolderIcon,
+  ImportIcon,
+  KeyIcon,
+  RefreshCwIcon
+} from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
@@ -8,6 +15,7 @@ type Props = {
   secretCount?: number;
   dynamicSecretCount?: number;
   secretRotationCount?: number;
+  proxiedServiceCount?: number;
 };
 
 export function ResourceCount({
@@ -15,7 +23,8 @@ export function ResourceCount({
   dynamicSecretCount = 0,
   secretCount = 0,
   importCount = 0,
-  secretRotationCount = 0
+  secretRotationCount = 0,
+  proxiedServiceCount = 0
 }: Props) {
   return (
     <div className="flex items-center divide-x divide-border text-sm text-accent [&>*]:pr-2">
@@ -61,6 +70,17 @@ export function ResourceCount({
             </div>
           </TooltipTrigger>
           <TooltipContent>Total secret rotation count matching filters</TooltipContent>
+        </Tooltip>
+      )}
+      {proxiedServiceCount > 0 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="ml-2.5 flex items-center gap-2">
+              <ArrowRightLeftIcon className="size-4 text-proxied-service" />
+              <span>{proxiedServiceCount}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Total proxied service count matching filters</TooltipContent>
         </Tooltip>
       )}
       {secretCount > 0 && (
