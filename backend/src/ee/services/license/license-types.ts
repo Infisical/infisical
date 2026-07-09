@@ -88,8 +88,8 @@ export type TFeatureSet = {
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;
-  gateway: false;
-  gatewayPool: false;
+  gateway: boolean;
+  gatewayPool: boolean;
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
