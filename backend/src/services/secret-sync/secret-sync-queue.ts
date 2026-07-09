@@ -1126,6 +1126,13 @@ export const secretSyncQueueFactory = ({
           lastSyncJobId: job.id
         });
 
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "sync",
+          outcome: "failure",
+          attemptsExhausted: true
+        });
+
         await $queueSendSecretSyncFailedNotifications({
           secretSync,
           action: SecretSyncAction.SyncSecrets,
@@ -1143,6 +1150,13 @@ export const secretSyncQueueFactory = ({
           lastImportJobId: job.id
         });
 
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "import",
+          outcome: "failure",
+          attemptsExhausted: true
+        });
+
         await $queueSendSecretSyncFailedNotifications({
           secretSync,
           action: SecretSyncAction.ImportSecrets,
@@ -1157,6 +1171,13 @@ export const secretSyncQueueFactory = ({
           lastRemoveMessage:
             "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastRemoveJobId: job.id
+        });
+
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "remove",
+          outcome: "failure",
+          attemptsExhausted: true
         });
 
         await $queueSendSecretSyncFailedNotifications({
