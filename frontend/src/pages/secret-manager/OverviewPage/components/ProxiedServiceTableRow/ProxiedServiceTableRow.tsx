@@ -124,7 +124,11 @@ export const ProxiedServiceTableRow = ({
         "group-hover:mr-24"
       )}
     >
-      <Badge variant="neutral">{proxiedService.hostPattern}</Badge>
+      <Badge variant="neutral" className="max-w-[240px]">
+        <span className="truncate" title={proxiedService.hostPattern}>
+          {proxiedService.hostPattern}
+        </span>
+      </Badge>
       {!proxiedService.isEnabled && <Badge variant="neutral">Disabled</Badge>}
     </div>
   );
