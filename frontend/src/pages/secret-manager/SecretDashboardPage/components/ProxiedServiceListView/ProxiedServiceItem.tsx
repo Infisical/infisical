@@ -42,7 +42,7 @@ export const ProxiedServiceItem = ({ proxiedService, onEdit, onDelete }: Props) 
         aria-label={`${isExpanded ? "Collapse" : "Expand"} proxied service ${name}`}
       >
         <div className="flex w-11 items-center py-2 pl-5 text-mineshaft-400">
-          <ArrowRightLeftIcon className="size-4" />
+          <ArrowRightLeftIcon className="size-4 text-proxied-service" />
         </div>
         <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center gap-x-2.5">

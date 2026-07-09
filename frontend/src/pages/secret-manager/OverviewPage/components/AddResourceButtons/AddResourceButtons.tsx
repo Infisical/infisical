@@ -172,7 +172,7 @@ export function AddResourceButtons({
                     onClick={onAddProxiedService}
                     isDisabled={!isSingleEnvSelected || !isAllowed}
                   >
-                    <ArrowRightLeftIcon className="text-mineshaft-300" />
+                    <ArrowRightLeftIcon className="text-proxied-service" />
                     Add Proxied Service
                   </DropdownMenuItem>
                 </TooltipTrigger>

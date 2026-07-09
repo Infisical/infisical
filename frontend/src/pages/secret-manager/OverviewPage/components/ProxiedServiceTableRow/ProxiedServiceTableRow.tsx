@@ -145,7 +145,7 @@ export const ProxiedServiceTableRow = ({
           {!isSingleEnvView && isExpanded ? (
             <ChevronDownIcon className="block" />
           ) : (
-            <ArrowRightLeftIcon className="text-mineshaft-300" />
+            <ArrowRightLeftIcon className="text-proxied-service" />
           )}
         </TableCell>
         <TableCell

@@ -1,6 +1,6 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,7 +17,10 @@ import {
   Switch,
   Tabs,
   TabsList,
-  TabsTrigger
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProxiedServiceCredentialRole,
@@ -171,13 +174,6 @@ export const ProxiedServiceForm = ({
 
   const headerMode = watch("headerMode");
 
-  // On edit, switching header modes discards the other mode's credentials on save (they are
-  // mutually exclusive). Warn so the change is not silent.
-  const originalHeaderMode = proxiedService?.credentials.some((c) => c.headerPurpose)
-    ? HeaderRewritingMode.BasicAuth
-    : HeaderRewritingMode.Headers;
-  const showModeSwitchWarning = isEdit && headerMode !== originalHeaderMode;
-
   const headerFields = useFieldArray({ control, name: "headers" });
   const substitutionFields = useFieldArray({ control, name: "substitutions" });
 
@@ -247,17 +243,24 @@ export const ProxiedServiceForm = ({
         </Field>
 
         <Field>
-          <FieldLabel>Host Pattern</FieldLabel>
+          <FieldLabel>
+            Host Pattern
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                The hosts this service applies to. Match an exact host, a wildcard (*.stripe.com),
+                or a port/path (api.stripe.com:443/v1/*). Comma-separate multiple patterns.
+              </TooltipContent>
+            </Tooltip>
+          </FieldLabel>
           <FieldContent>
             <Input
               placeholder="api.stripe.com"
               isError={Boolean(errors.hostPattern)}
               {...register("hostPattern")}
             />
-            <FieldDescription>
-              Outbound requests to a matching host are intercepted. Wildcards (e.g. *.stripe.com)
-              and comma-separated patterns are supported.
-            </FieldDescription>
             <FieldError errors={[errors.hostPattern]} />
           </FieldContent>
         </Field>
@@ -282,14 +285,6 @@ export const ProxiedServiceForm = ({
               )}
             />
           </div>
-
-          {showModeSwitchWarning && (
-            <p className="text-xs text-warning">
-              Switching auth type will replace the{" "}
-              {originalHeaderMode === HeaderRewritingMode.BasicAuth ? "Basic Auth" : "header"}{" "}
-              credentials on this service when you save.
-            </p>
-          )}
 
           {headerMode === HeaderRewritingMode.Headers ? (
             <>
@@ -423,7 +418,19 @@ export const ProxiedServiceForm = ({
         {/* Credential Substitution */}
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-sm font-medium">Credential Substitution</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium">Credential Substitution</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="size-3.5 text-muted" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  The placeholder is delivered as an environment variable your application reads.
+                  Your application sends that placeholder value in its request, and the proxy swaps
+                  it for the real secret on the wire.
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <p className="mt-1 text-xs text-muted">
               Swap a placeholder in the request for the real credential, on the wire.
             </p>
