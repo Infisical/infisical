@@ -77,6 +77,7 @@ export const SelectOrgPage = () => {
     org_id: orgId,
     callback_port: callbackPort,
     is_admin_login: isBreakglassRoute,
+    force: forceOrgPicker,
     mfa_method: mfaMethodFromSearch
   } = search;
 
@@ -146,8 +147,10 @@ export const SelectOrgPage = () => {
     );
     return subOrgParent ? { org: subOrgParent, subOrgId: autoSelectOrgId } : undefined;
   }, [orgs, autoSelectOrgId]);
-  // Breakglass logins and MFA continuations need the user to act on this page, so never auto-select there
-  const shouldAutoSelect = Boolean(autoSelectTarget) && !isBreakglassRoute && !mfaMethodFromSearch;
+  // Breakglass logins, MFA continuations, and ?force=true all need the user to act on this page,
+  // so never auto-select there
+  const shouldAutoSelect =
+    Boolean(autoSelectTarget) && !isBreakglassRoute && !mfaMethodFromSearch && !forceOrgPicker;
   const [autoSelectDone, setAutoSelectDone] = useState(false);
   const autoSelectAttempted = useRef(false);
 
@@ -266,13 +269,15 @@ export const SelectOrgPage = () => {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!shouldAutoSelect || !autoSelectTarget || autoSelectAttempted.current) return;
+    // also wait for the user query: the CLI callback branch needs user.email, and firing while it's
+    // pending would freeze user as undefined in this closure
+    if (!shouldAutoSelect || !autoSelectTarget || !user || autoSelectAttempted.current) return;
     autoSelectAttempted.current = true;
     handleSelectOrganization(autoSelectTarget.org, autoSelectTarget.subOrgId).finally(() =>
       // on success this page unmounts; on failure the toast already fired, so fall back to the picker
       setAutoSelectDone(true)
     );
-  }, [shouldAutoSelect, autoSelectTarget]);
+  }, [shouldAutoSelect, autoSelectTarget, user]);
 
   // MFA pending from IdP redirect
   // eslint-disable-next-line react-hooks/exhaustive-deps
