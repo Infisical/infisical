@@ -28,6 +28,7 @@ import {
 } from "@app/components/v3";
 import { useActivateMfa, useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
@@ -46,8 +47,10 @@ export const MFASection = () => {
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
   const { data: organizations = [] } = useGetOrganizations();
+  const { data: serverDetails } = useFetchServerStatus();
 
   const isMfaEnforced = organizations.some((org) => org.enforceMfa);
+  const isEmailMfaAvailable = Boolean(serverDetails?.emailConfigured);
 
   const [isEnableOpen, setIsEnableOpen] = useState(false);
   const [isDisableOpen, setIsDisableOpen] = useState(false);
@@ -78,7 +81,7 @@ export const MFASection = () => {
   }
 
   const availableMethods = [
-    MfaMethod.EMAIL,
+    ...(isEmailMfaAvailable ? [MfaMethod.EMAIL] : []),
     ...(totpConfiguration?.isVerified ? [MfaMethod.TOTP] : []),
     ...(webAuthnCredentials.length > 0 ? [MfaMethod.WEBAUTHN] : [])
   ];
@@ -88,8 +91,8 @@ export const MFASection = () => {
     ? preferredMethod
     : availableMethods[0];
 
-  // Recovery codes are issued on enable and wiped on disable, so they exist iff
-  // MFA is currently enabled.
+  const canEnable = availableMethods.length > 0;
+
   const hasRecoveryCodes = user.isMfaEnabled;
 
   const handleEnable = async () => {
@@ -204,9 +207,15 @@ export const MFASection = () => {
         ) : (
           <>
             <p className="text-sm text-muted">
-              Choose your preferred method above, then enable two-factor authentication.
+              {canEnable
+                ? "Choose your preferred method above, then enable two-factor authentication."
+                : "Set up an authenticator app or passkey below to enable two-factor authentication. Email codes are unavailable because SMTP is not configured for this instance."}
             </p>
-            <Button variant="org" isDisabled={isEnabling} onClick={() => setIsEnableOpen(true)}>
+            <Button
+              variant="org"
+              isDisabled={isEnabling || !canEnable}
+              onClick={() => setIsEnableOpen(true)}
+            >
               <ShieldCheckIcon /> Enable two-factor authentication
             </Button>
           </>

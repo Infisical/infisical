@@ -113,9 +113,16 @@ export const userServiceFactory = ({
   };
 
   // A method can only be selected/activated once the user has actually configured
-  // that factor. EMAIL is always available since it uses the account email.
+  // that factor. EMAIL uses the account email, so it needs no enrollment, but it
+  // delivers codes over SMTP — which self-hosted instances may not have configured.
   const assertMfaMethodConfigured = async (userId: string, method: MfaMethod) => {
-    if (method === MfaMethod.TOTP) {
+    if (method === MfaMethod.EMAIL) {
+      if (!getConfig().isSmtpConfigured) {
+        throw new BadRequestError({
+          message: "Cannot use email two-factor authentication because SMTP is not configured for this instance"
+        });
+      }
+    } else if (method === MfaMethod.TOTP) {
       const totpConfig = await totpConfigDAL.findOne({ userId, isVerified: true });
       if (!totpConfig) {
         throw new BadRequestError({

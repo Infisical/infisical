@@ -18,6 +18,7 @@ import {
 } from "@app/components/v3";
 import { userKeys } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { useDeleteUserTotpConfiguration, useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 
@@ -52,7 +53,10 @@ export const MfaMethodsCard = () => {
   const queryClient = useQueryClient();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
+  const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: deleteTotp, isPending: isDeletingTotp } = useDeleteUserTotpConfiguration();
+
+  const isEmailMfaAvailable = Boolean(serverDetails?.emailConfigured);
 
   const [setupMethod, setSetupMethod] = useState<MfaMethod | null>(null);
   const [isPasskeyManagerOpen, setIsPasskeyManagerOpen] = useState(false);
@@ -81,8 +85,18 @@ export const MfaMethodsCard = () => {
         <MethodRow
           icon={MFA_METHOD_ICONS[MfaMethod.EMAIL]}
           title={MFA_METHOD_LABELS[MfaMethod.EMAIL]}
-          description="Receive one-time codes at your account email address to complete sign-in."
-          badge={<Badge variant="success">Configured</Badge>}
+          description={
+            isEmailMfaAvailable
+              ? "Receive one-time codes at your account email address to complete sign-in."
+              : "Unavailable because SMTP is not configured for this instance. Use an authenticator app or passkey instead."
+          }
+          badge={
+            isEmailMfaAvailable ? (
+              <Badge variant="success">Configured</Badge>
+            ) : (
+              <Badge variant="neutral">Unavailable</Badge>
+            )
+          }
           action={null}
         />
 
