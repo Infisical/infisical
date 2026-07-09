@@ -35,11 +35,9 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
       await enrollMfa({ method: MfaMethod.TOTP, totp: totp.trim() });
       createNotification({ text: "Authenticator app configured", type: "success" });
       await onVerified();
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Invalid verification code",
-        type: "error"
-      });
+    } catch {
+      // The mutation's global error handler already surfaces the (more detailed)
+      // failure toast; just swallow here so onVerified isn't called on failure.
     }
   };
 

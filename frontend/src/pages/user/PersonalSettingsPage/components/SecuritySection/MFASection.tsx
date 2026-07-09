@@ -49,6 +49,7 @@ export const MFASection = () => {
 
   const isMfaEnforced = organizations.some((org) => org.enforceMfa);
 
+  const [isEnableOpen, setIsEnableOpen] = useState(false);
   const [isDisableOpen, setIsDisableOpen] = useState(false);
   // Holds the fresh recovery codes returned on enable so they can be shown once.
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
@@ -94,6 +95,7 @@ export const MFASection = () => {
   const handleEnable = async () => {
     try {
       const { recoveryCodes } = await activateMfa({ selectedMfaMethod: selectedMethod });
+      setIsEnableOpen(false);
       setNewRecoveryCodes(recoveryCodes);
     } catch (error: any) {
       createNotification({
@@ -204,7 +206,7 @@ export const MFASection = () => {
             <p className="text-sm text-muted">
               Choose your preferred method above, then enable two-factor authentication.
             </p>
-            <Button variant="org" isPending={isEnabling} onClick={handleEnable}>
+            <Button variant="org" isDisabled={isEnabling} onClick={() => setIsEnableOpen(true)}>
               <ShieldCheckIcon /> Enable two-factor authentication
             </Button>
           </>
@@ -220,6 +222,25 @@ export const MFASection = () => {
         <MfaMethodsCard />
         {hasRecoveryCodes && <RecoveryOptionsCard />}
       </div>
+
+      <AlertDialog open={isEnableOpen} onOpenChange={setIsEnableOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable two-factor authentication?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This turns on two-factor authentication using {MFA_METHOD_LABELS[selectedMethod]} as
+              your preferred method. You&apos;ll be shown a set of recovery codes to save right
+              after.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="org" isPending={isEnabling} onClick={handleEnable}>
+              Enable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={isDisableOpen} onOpenChange={setIsDisableOpen}>
         <AlertDialogContent>
