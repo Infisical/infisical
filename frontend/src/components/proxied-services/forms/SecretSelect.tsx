@@ -1,6 +1,4 @@
-import { KeyIcon } from "lucide-react";
-
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 type Props = {
@@ -10,11 +8,14 @@ type Props = {
   value?: string;
   onChange: (value: string) => void;
   isDisabled?: boolean;
+  isError?: boolean;
   placeholder?: string;
 };
 
-// Picks a secret key from the current folder. The key icon appears inside the dropdown
-// options (to signal these are secret references) but not in the collapsed trigger.
+type SecretOption = { label: string; value: string };
+
+// Picks a secret key from the current folder. Uses the searchable FilterableSelect so long secret
+// lists stay usable. A stale reference (secret renamed/deleted) still renders its raw key.
 export const SecretSelect = ({
   projectId,
   environment,
@@ -22,28 +23,34 @@ export const SecretSelect = ({
   value,
   onChange,
   isDisabled,
-  placeholder = "Select secret"
+  isError,
+  placeholder = "Select a secret"
 }: Props) => {
-  const { data: secrets = [] } = useGetProjectSecrets({
+  const { data: secrets = [], isPending } = useGetProjectSecrets({
     projectId,
     environment,
     secretPath,
     viewSecretValue: false
   });
 
+  const options: SecretOption[] = secrets.map((secret) => ({
+    label: secret.key,
+    value: secret.key
+  }));
+  const selected =
+    options.find((option) => option.value === value) ?? (value ? { label: value, value } : null);
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {secrets.map((secret) => (
-          <SelectItem key={secret.key} value={secret.key}>
-            <KeyIcon />
-            {secret.key}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <FilterableSelect
+      isDisabled={isDisabled}
+      isLoading={isPending && Boolean(projectId && environment)}
+      isError={isError}
+      value={selected}
+      options={options}
+      placeholder={placeholder}
+      onChange={(newValue) => onChange((newValue as SecretOption | null)?.value ?? "")}
+      getOptionLabel={(option) => option.label}
+      getOptionValue={(option) => option.value}
+    />
   );
 };

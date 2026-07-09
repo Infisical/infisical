@@ -51,7 +51,7 @@ export const SurfaceSelect = ({ value, onChange, isDisabled }: Props) => {
                 </Badge>
               ))
             ) : (
-              <span className="text-muted-foreground">Select surfaces</span>
+              <span className="text-muted">Select surfaces</span>
             )}
           </div>
           <ChevronDownIcon className="size-4 opacity-50" />
