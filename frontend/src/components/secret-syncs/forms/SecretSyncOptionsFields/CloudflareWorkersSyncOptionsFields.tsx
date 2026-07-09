@@ -36,7 +36,8 @@ export const CloudflareWorkersSyncOptionsFields = () => {
                 <Label htmlFor="sync-non-secret-bindings">Sync plaintext and JSON variables</Label>
                 <FieldDescription>
                   When enabled, Infisical will also sync plaintext and JSON variable bindings in
-                  addition to secret bindings.
+                  addition to secret bindings. Infisical can only update existing plaintext and JSON
+                  bindings on Cloudflare Workers, not create new ones.
                 </FieldDescription>
               </FieldContent>
               <Switch
