@@ -102,6 +102,7 @@ export type TFeatureSet = {
   secretShareExternalBranding: false;
   honeyTokens: false;
   honeyTokenLimit: 0;
+  secretsBrokering: true;
 };
 
 export type TOrgPlansTableDTO = {

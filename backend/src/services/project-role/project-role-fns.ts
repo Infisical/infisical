@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from "uuid";
 
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import {
+  agentPermissions,
+  agentProxyPermissions,
   cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
@@ -54,6 +56,28 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
       createdAt: new Date(),
       updatedAt: new Date(),
       type: ProjectType.KMS
+    },
+    {
+      id: uuidv4(),
+      projectId,
+      name: "Agent",
+      slug: ProjectMembershipRole.Agent,
+      permissions: agentPermissions,
+      description: "Proxy traffic through all proxied services in a project",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: ProjectType.SecretManager
+    },
+    {
+      id: uuidv4(),
+      projectId,
+      name: "Agent Proxy",
+      slug: ProjectMembershipRole.AgentProxy,
+      permissions: agentProxyPermissions,
+      description: "Read all secret values in a project. Intended for the agent proxy",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: ProjectType.SecretManager
     },
     {
       id: uuidv4(),

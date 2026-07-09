@@ -67,6 +67,7 @@ import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { HoneyTokenListView } from "@app/pages/secret-manager/SecretDashboardPage/components/HoneyTokenListView";
+import { ProxiedServiceListView } from "@app/pages/secret-manager/SecretDashboardPage/components/ProxiedServiceListView";
 import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
 
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
@@ -327,6 +328,7 @@ const Page = () => {
     includeSecretRotations:
       canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     includeHoneyTokens: true,
+    includeProxiedServices: true,
     tags: filter.tags
   });
 
@@ -348,6 +350,7 @@ const Page = () => {
     dynamicSecrets,
     secretRotations,
     honeyTokens,
+    proxiedServices,
     secrets,
     totalImportCount = 0,
     totalFolderCount = 0,
@@ -504,7 +507,8 @@ const Page = () => {
       (secrets?.length || 0) -
       (dynamicSecrets?.length || 0) -
       (secretRotations?.length || 0) -
-      (honeyTokens?.length || 0),
+      (honeyTokens?.length || 0) -
+      (proxiedServices?.length || 0),
     0
   );
   const isNotEmpty = Boolean(
@@ -1074,6 +1078,9 @@ const Page = () => {
                   onNavigateToFolder={handleResetFilter}
                   canNavigate={isFetched}
                 />
+              )}
+              {Boolean(proxiedServices?.length) && (
+                <ProxiedServiceListView proxiedServices={proxiedServices} />
               )}
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
                 <DynamicSecretListView

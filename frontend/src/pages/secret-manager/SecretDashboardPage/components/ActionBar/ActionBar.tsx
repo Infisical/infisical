@@ -19,6 +19,7 @@ import {
   faLock,
   faPaste,
   faPlus,
+  faRightLeft,
   faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -31,6 +32,7 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification, type NotificationType } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { CreateProxiedServiceModal } from "@app/components/proxied-services";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
   Button,
@@ -68,6 +70,7 @@ import {
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -184,7 +187,8 @@ export const ActionBar = ({
     "replicateFolder",
     "confirmUpload",
     "requestAccess",
-    "importFromVault"
+    "importFromVault",
+    "addProxiedService"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -1079,6 +1083,35 @@ export const ActionBar = ({
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
+                  I={ProjectPermissionProxiedServiceActions.Create}
+                  a={subject(ProjectPermissionSub.ProxiedServices, {
+                    environment,
+                    secretPath
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faRightLeft} className="pr-2" />}
+                      onClick={() => {
+                        if (subscription && subscription.secretsBrokering) {
+                          handlePopUpOpen("addProxiedService");
+                          handlePopUpClose("misc");
+                          return;
+                        }
+                        handlePopUpOpen("upgradePlan", {
+                          featureName: "Secrets Brokering"
+                        });
+                      }}
+                      variant="outline_bg"
+                      className="h-10 text-left"
+                      isFullWidth
+                      isDisabled={!isAllowed}
+                    >
+                      Add Proxied Service
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.SecretImports, {
                     environment,
@@ -1255,6 +1288,13 @@ export const ActionBar = ({
         environment={environment}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
+      />
+      <CreateProxiedServiceModal
+        isOpen={popUp.addProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addProxiedService", isOpen)}
+        projectId={currentProject.id}
+        environment={environment}
+        secretPath={secretPath}
       />
       <Dialog
         open={popUp.addFolder.isOpen}

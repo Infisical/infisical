@@ -1,4 +1,5 @@
 import {
+  ArrowRightLeftIcon,
   ChevronDown,
   ClipboardPasteIcon,
   FingerprintIcon,
@@ -26,6 +27,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
 type Props = {
   onAddSecret: () => void;
@@ -33,6 +35,7 @@ type Props = {
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
   onAddHoneyToken: () => void;
+  onAddProxiedService: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
   onReplicateSecrets: () => void;
@@ -41,6 +44,7 @@ type Props = {
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isHoneyTokenAvailable: boolean;
+  isProxiedServiceAvailable: boolean;
   isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
@@ -54,6 +58,7 @@ export function AddResourceButtons({
   onAddDyanamicSecret,
   onAddSecretRotation,
   onAddHoneyToken,
+  onAddProxiedService,
   onAddSecretImport,
   onImportSecrets,
   onReplicateSecrets,
@@ -62,6 +67,7 @@ export function AddResourceButtons({
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
   isHoneyTokenAvailable,
+  isProxiedServiceAvailable,
   isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
@@ -153,6 +159,35 @@ export function AddResourceButtons({
                 </TooltipTrigger>
                 <TooltipContent side="left">
                   {!isAllowed ? "Access Restricted" : "Access restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionProxiedServiceActions.Create}
+            a={ProjectPermissionSub.ProxiedServices}
+          >
+            {(isAllowed) => (
+              <Tooltip
+                open={
+                  !isProxiedServiceAvailable || !isSingleEnvSelected || !isAllowed
+                    ? undefined
+                    : false
+                }
+              >
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    onClick={onAddProxiedService}
+                    isDisabled={!isProxiedServiceAvailable || !isSingleEnvSelected || !isAllowed}
+                  >
+                    <ArrowRightLeftIcon className="text-mineshaft-300" />
+                    Add Proxied Service
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isProxiedServiceAvailable
+                    ? "Secrets brokering is not available on your plan"
+                    : "Select a single environment to add a proxied service"}
                 </TooltipContent>
               </Tooltip>
             )}

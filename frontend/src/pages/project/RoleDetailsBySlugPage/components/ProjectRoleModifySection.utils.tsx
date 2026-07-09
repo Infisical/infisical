@@ -33,6 +33,7 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -72,6 +73,14 @@ const HoneyTokenPolicyActionSchema = z.object({
   [ProjectPermissionHoneyTokenActions.Edit]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional()
+});
+
+const ProxiedServicePolicyActionSchema = z.object({
+  [ProjectPermissionProxiedServiceActions.Read]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Create]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Proxy]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -701,6 +710,12 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.ProxiedServices]: ProxiedServicePolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -884,6 +899,7 @@ type TConditionalFields =
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
   | ProjectPermissionSub.HoneyTokens
+  | ProjectPermissionSub.ProxiedServices
   | ProjectPermissionSub.ProjectFolderGrant;
 
 export const isConditionalSubjects = (
@@ -911,6 +927,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Groups ||
   subject === ProjectPermissionSub.Commits ||
   subject === ProjectPermissionSub.HoneyTokens ||
+  subject === ProjectPermissionSub.ProxiedServices ||
   subject === ProjectPermissionSub.ProjectFolderGrant;
 
 const CONDITION_DISPLAY_ORDER = [
@@ -1031,6 +1048,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Webhooks,
         ProjectPermissionSub.ServiceTokens,
         ProjectPermissionSub.HoneyTokens,
+        ProjectPermissionSub.ProxiedServices,
         ProjectPermissionSub.Settings,
         ProjectPermissionSub.Environments,
         ProjectPermissionSub.AuditLogs,
@@ -1397,6 +1415,29 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ),
             [ProjectPermissionHoneyTokenActions.Revoke]: action.includes(
               ProjectPermissionHoneyTokenActions.Revoke
+            ),
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.ProxiedServices) {
+          formVal[subject]!.push({
+            [ProjectPermissionProxiedServiceActions.Read]: action.includes(
+              ProjectPermissionProxiedServiceActions.Read
+            ),
+            [ProjectPermissionProxiedServiceActions.Create]: action.includes(
+              ProjectPermissionProxiedServiceActions.Create
+            ),
+            [ProjectPermissionProxiedServiceActions.Edit]: action.includes(
+              ProjectPermissionProxiedServiceActions.Edit
+            ),
+            [ProjectPermissionProxiedServiceActions.Delete]: action.includes(
+              ProjectPermissionProxiedServiceActions.Delete
+            ),
+            [ProjectPermissionProxiedServiceActions.Proxy]: action.includes(
+              ProjectPermissionProxiedServiceActions.Proxy
             ),
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -2450,6 +2491,37 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.ProxiedServices]: {
+    title: "Proxied Services",
+    description: "Manage proxied services and route agent traffic through them",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionProxiedServiceActions.Read,
+        description: "View proxied services"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionProxiedServiceActions.Create,
+        description: "Create proxied services"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionProxiedServiceActions.Edit,
+        description: "Update proxied service configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionProxiedServiceActions.Delete,
+        description: "Delete proxied services"
+      },
+      {
+        label: "Proxy",
+        value: ProjectPermissionProxiedServiceActions.Proxy,
+        description: "Route traffic through proxied services (for agent identities)"
+      }
+    ]
+  },
   [ProjectPermissionSub.Settings]: {
     title: "Settings",
     description: "Configure project-level settings and preferences",
@@ -3373,6 +3445,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.HoneyTokens]: enabled,
+  [ProjectPermissionSub.ProxiedServices]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
@@ -3842,6 +3915,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.HoneyTokens,
           actions: [ProjectPermissionHoneyTokenActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: [ProjectPermissionProxiedServiceActions.Read]
         }
       ]
     },
@@ -3907,6 +3984,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.HoneyTokens,
           actions: Object.values(ProjectPermissionHoneyTokenActions)
+        },
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: Object.values(ProjectPermissionProxiedServiceActions)
         }
       ]
     },
@@ -3930,6 +4011,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       {
         subject: ProjectPermissionSub.HoneyTokens,
         actions: Object.values(ProjectPermissionHoneyTokenActions)
+      },
+      {
+        subject: ProjectPermissionSub.ProxiedServices,
+        actions: Object.values(ProjectPermissionProxiedServiceActions)
       },
       {
         subject: ProjectPermissionSub.Webhooks,

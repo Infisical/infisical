@@ -10,6 +10,8 @@ import {
   OrgRolesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
+  ProxiedServiceCredentialsSchema,
+  ProxiedServicesSchema,
   SecretApprovalPoliciesSchema,
   SecretSharingSchema,
   SecretTagsSchema,
@@ -287,6 +289,37 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   folder: z.object({
     path: z.string()
   })
+});
+
+export const SanitizedProxiedServiceSchema = ProxiedServicesSchema.pick({
+  id: true,
+  name: true,
+  hostPattern: true,
+  isEnabled: true,
+  folderId: true,
+  createdAt: true,
+  updatedAt: true
+}).extend({
+  environment: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string()
+  }),
+  folder: z.object({
+    path: z.string()
+  }),
+  credentials: ProxiedServiceCredentialsSchema.pick({
+    id: true,
+    serviceId: true,
+    secretKey: true,
+    role: true,
+    headerName: true,
+    headerPrefix: true,
+    headerPurpose: true,
+    placeholderKey: true,
+    placeholderValue: true,
+    substitutionSurfaces: true
+  }).array()
 });
 
 export const SanitizedProjectSchema = ProjectsSchema.pick({
