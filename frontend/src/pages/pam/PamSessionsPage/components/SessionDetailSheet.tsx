@@ -53,17 +53,21 @@ type Props = {
   onTerminate: (session: TPamSession) => void;
 };
 
+const decodeBase64Utf8 = (b64: string): string => {
+  try {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return new TextDecoder("utf-8").decode(bytes);
+  } catch {
+    return b64;
+  }
+};
+
 const getLogText = (log: TPamSessionLog): string => {
   if ("input" in log && "output" in log) {
     return [log.input, log.output].filter(Boolean).join(" ");
   }
   if ("data" in log) {
-    try {
-      const bytes = Uint8Array.from(atob(log.data), (c) => c.charCodeAt(0));
-      return new TextDecoder("utf-8").decode(bytes);
-    } catch {
-      return log.data;
-    }
+    return decodeBase64Utf8(log.data);
   }
   if ("method" in log) {
     return `${log.method} ${log.url}`;
@@ -74,6 +78,16 @@ const getLogText = (log: TPamSessionLog): string => {
   return "";
 };
 
+const getLogBody = (log: TPamSessionLog): string | null => {
+  if (!("body" in log) || !log.body) return null;
+  const decoded = decodeBase64Utf8(log.body);
+  try {
+    return JSON.stringify(JSON.parse(decoded), null, 2);
+  } catch {
+    return decoded;
+  }
+};
+
 const DESTRUCTIVE_PREFIXES = ["DROP ", "DELETE ", "TRUNCATE ", "ALTER "];
 
 const isDestructiveQuery = (text: string): boolean => {
@@ -81,10 +95,19 @@ const isDestructiveQuery = (text: string): boolean => {
   return DESTRUCTIVE_PREFIXES.some((prefix) => upper.startsWith(prefix));
 };
 
-const LogEntry = ({ log, highlight }: { log: TPamSessionLog; highlight: string }) => {
+const LogEntry = ({
+  log,
+  text,
+  bodyText,
+  highlight
+}: {
+  log: TPamSessionLog;
+  text: string;
+  bodyText: string | null;
+  highlight: string;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
-  const text = getLogText(log);
 
   const textRef = useCallback(
     (node: HTMLElement | null) => {
@@ -97,8 +120,12 @@ const LogEntry = ({ log, highlight }: { log: TPamSessionLog; highlight: string }
 
   if (!text) return null;
 
+  const term = highlight.trim().toLowerCase();
+  const bodyMatch = Boolean(bodyText) && term.length > 0 && bodyText!.toLowerCase().includes(term);
+  const showBody = Boolean(bodyText) && (expanded || bodyMatch);
+
   const destructive = isDestructiveQuery(text);
-  const expandable = overflows || expanded;
+  const expandable = overflows || expanded || Boolean(bodyText);
 
   const body = (
     <>
@@ -116,7 +143,7 @@ const LogEntry = ({ log, highlight }: { log: TPamSessionLog; highlight: string }
       <div className="flex items-start gap-2">
         {expandable && (
           <ChevronRightIcon
-            className={`mt-0.5 size-3.5 shrink-0 text-muted transition-transform ${expanded ? "rotate-90" : ""}`}
+            className={`mt-0.5 size-3.5 shrink-0 text-muted transition-transform ${showBody || expanded ? "rotate-90" : ""}`}
           />
         )}
         <code
@@ -128,6 +155,11 @@ const LogEntry = ({ log, highlight }: { log: TPamSessionLog; highlight: string }
           <HighlightText text={text} highlight={highlight} />
         </code>
       </div>
+      {showBody && bodyText && (
+        <pre className="mt-1.5 max-h-96 thin-scrollbar overflow-auto rounded bg-container px-3 py-2 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-muted">
+          <HighlightText text={bodyText} highlight={highlight} />
+        </pre>
+      )}
     </>
   );
 
@@ -173,17 +205,28 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     error: logsError
   } = useDecryptedSessionLogs(sessionId ?? "", isOpen && !!sessionId, isActive);
 
+  const decoded = useMemo(
+    () =>
+      new Map<unknown, { text: string; body: string | null }>(
+        events
+          .filter((event) => !isBrokenChunkMarker(event))
+          .map((event) => {
+            const log = event as TPamSessionLog;
+            return [event, { text: getLogText(log), body: getLogBody(log) }] as const;
+          })
+      ),
+    [events]
+  );
+
   const filteredEvents = useMemo(() => {
     const term = logSearch.trim().toLowerCase();
     if (!term) return events;
-    return events.filter(
-      (event) =>
-        !isBrokenChunkMarker(event) &&
-        getLogText(event as TPamSessionLog)
-          .toLowerCase()
-          .includes(term)
-    );
-  }, [events, logSearch]);
+    return events.filter((event) => {
+      const d = decoded.get(event);
+      if (!d) return false;
+      return `${d.text}\n${d.body ?? ""}`.toLowerCase().includes(term);
+    });
+  }, [events, logSearch, decoded]);
 
   if (!session) {
     return <PamDetailSheet isOpen={isOpen} onOpenChange={onOpenChange} isLoading={isLoading} />;
@@ -283,7 +326,16 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
           }
 
           const log = event as TPamSessionLog;
-          return <LogEntry key={`log-${log.timestamp}-${i + 1}`} log={log} highlight={logSearch} />;
+          const d = decoded.get(event);
+          return (
+            <LogEntry
+              key={`log-${log.timestamp}-${i + 1}`}
+              log={log}
+              text={d?.text ?? ""}
+              bodyText={d?.body ?? null}
+              highlight={logSearch}
+            />
+          );
         })}
       </div>
     );

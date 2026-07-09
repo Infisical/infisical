@@ -112,6 +112,14 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
     }
   },
   {
+    name: "azure-cli",
+    type: PamAccountType.AzureCli,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
+    }
+  },
+  {
     name: "windows",
     type: PamAccountType.Windows,
     settings: {

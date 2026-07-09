@@ -1070,6 +1070,7 @@
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
+                      "documentation/platform/pam/accounts/azure-cli",
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]

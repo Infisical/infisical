@@ -547,6 +547,59 @@ export const ACCOUNT_TYPE_CONFIGS = {
         tooltip: "The ARN of the IAM role the user will assume when accessing this account."
       }
     }
+  },
+
+  [PamAccountType.AzureCli]: {
+    name: "Azure CLI",
+    icon: "Microsoft Azure.png",
+    connectionDetails: z.object({
+      tenantId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(new RE2(/^[A-Za-z0-9.-]+$/), "Must be a valid Azure tenant ID or domain"),
+      subscriptionId: z
+        .string()
+        .trim()
+        .refine((v) => v === "" || z.string().uuid().safeParse(v).success, {
+          message: "Must be a valid Azure subscription ID"
+        })
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      clientId: z.string().trim().uuid("Must be a valid Azure application (client) ID"),
+      clientSecret: z
+        .string()
+        .trim()
+        .max(512)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({
+      clientId: z.string().optional()
+    }),
+    ui: {
+      tenantId: {
+        label: "Tenant ID",
+        tooltip: "The Microsoft Entra ID (Azure AD) directory (tenant) ID the service principal belongs to."
+      },
+      subscriptionId: {
+        label: "Subscription ID",
+        tooltip: "Optional. The Azure subscription the CLI session defaults to (az account set)."
+      },
+      clientId: {
+        label: "Client ID",
+        tooltip: "The application (client) ID of the service principal Infisical brokers access to."
+      },
+      clientSecret: {
+        label: "Client Secret",
+        widget: PamFieldWidget.Password,
+        secret: true,
+        tooltip: "A client secret for the service principal. Stored encrypted and never returned in read responses."
+      }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -660,6 +713,8 @@ export const extractGatewayTarget = async (
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
       throw new Error("AWS IAM accounts do not use gateway routing");
+    case PamAccountType.AzureCli:
+      return { host: "management.azure.com", port: 443 };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
