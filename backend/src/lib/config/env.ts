@@ -239,21 +239,10 @@ const envSchema = z
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // Secrets activation nudge tuning. Gates whether the member-invite activation banner shows and
-    // how long after the first secret the follow-up nudges appear.
+    // the org size/age window in which it appears.
+    SECRETS_ACTIVATION_ENABLED: zodStrBool.default("false"),
     SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
     SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
-    SECRETS_ACTIVATION_FIRST_NUDGE_DELAY: zpStr(
-      z
-        .string()
-        .default("3d")
-        .transform((val) => ms(val))
-    ),
-    SECRETS_ACTIVATION_SECOND_NUDGE_DELAY: zpStr(
-      z
-        .string()
-        .default("7d")
-        .transform((val) => ms(val))
-    ),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),

@@ -2,10 +2,16 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { ms } from "@app/lib/ms";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TUserActivationDALFactory } from "./user-activation-dal";
 import { TActivationRecord, TGetSecretsActivationStatusDTO, TSecretsActivationStatus } from "./user-activation-types";
+
+// How long after the first secret the follow-up activation nudges appear. These are product-defined
+// constants rather than deployment config — they don't vary per environment.
+const FIRST_NUDGE_DELAY = ms("3d");
+const SECOND_NUDGE_DELAY = ms("7d");
 
 type TUserActivationServiceFactoryDep = {
   userActivationDAL: TUserActivationDALFactory;
@@ -36,6 +42,8 @@ export const userActivationServiceFactory = ({
   }: TGetSecretsActivationStatusDTO): Promise<TSecretsActivationStatus> => {
     const noActivation: TSecretsActivationStatus = { shouldShowActivation: false, stage: null, activation: null };
     const appCfg = getConfig();
+
+    if (!appCfg.SECRETS_ACTIVATION_ENABLED) return noActivation;
 
     // 1. The caller must be able to invite other members to the org.
     const { permission } = await permissionService.getOrgPermission({
@@ -86,7 +94,7 @@ export const userActivationServiceFactory = ({
 
       const elapsedMs = now.getTime() - existingActivation.firstSecretCreatedAt.getTime();
 
-      if (!existingActivation.returnedAfterThreeDaysAt && elapsedMs >= appCfg.SECRETS_ACTIVATION_FIRST_NUDGE_DELAY) {
+      if (!existingActivation.returnedAfterThreeDaysAt && elapsedMs >= FIRST_NUDGE_DELAY) {
         const updatedActivation = await userActivationDAL.updateById(
           existingActivation.id,
           { returnedAfterThreeDaysAt: now },
@@ -95,13 +103,18 @@ export const userActivationServiceFactory = ({
         return { shouldShowActivation: true, stage: "THREE_DAYS", activation: toActivation(updatedActivation) };
       }
 
-      if (!existingActivation.returnedAfterSevenDaysAt && elapsedMs >= appCfg.SECRETS_ACTIVATION_SECOND_NUDGE_DELAY) {
-        const updatedActivation = await userActivationDAL.updateById(
-          existingActivation.id,
-          { returnedAfterSevenDaysAt: now },
-          tx
-        );
-        return { shouldShowActivation: true, stage: "SEVEN_DAYS", activation: toActivation(updatedActivation) };
+      // The seven-day nudge only follows the three-day nudge, so it's gated on that timestamp being set.
+      if (existingActivation.returnedAfterThreeDaysAt && !existingActivation.returnedAfterSevenDaysAt) {
+        const secondWindowElapsedMs = now.getTime() - existingActivation.returnedAfterThreeDaysAt.getTime();
+
+        if (secondWindowElapsedMs >= SECOND_NUDGE_DELAY) {
+          const updatedActivation = await userActivationDAL.updateById(
+            existingActivation.id,
+            { returnedAfterSevenDaysAt: now },
+            tx
+          );
+          return { shouldShowActivation: true, stage: "SEVEN_DAYS", activation: toActivation(updatedActivation) };
+        }
       }
 
       return { shouldShowActivation: false, stage: null, activation: toActivation(existingActivation) };

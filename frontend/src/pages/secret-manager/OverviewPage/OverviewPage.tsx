@@ -705,7 +705,7 @@ const OverviewPageContent = () => {
   const hasSecrets = !isPlaceholderData && Boolean(totalSecretCount);
   useEffect(() => {
     if (hasSecrets) {
-      checkSecretsActivation(4000);
+      checkSecretsActivation();
     }
   }, [hasSecrets, checkSecretsActivation]);
 
@@ -2134,7 +2134,6 @@ const OverviewPageContent = () => {
       // surface the activation nudge.
       const createdSecret = changes.secrets.some((s) => s.type === PendingAction.Create);
       if (createdSecret && !requiresApproval) {
-        console.log("createdSecret", createdSecret);
         checkSecretsActivation();
       }
     },

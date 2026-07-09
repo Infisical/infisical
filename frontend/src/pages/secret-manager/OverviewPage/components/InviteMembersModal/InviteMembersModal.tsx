@@ -1,14 +1,14 @@
-import { useEffect } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { useEffect, useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon, SendHorizontalIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
-  CreatableSelect,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,18 +16,20 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  FieldContent,
   FieldError,
   FieldLabel,
+  FilterableSelect,
+  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { useAddUserToWsNonE2EE, useGetOrgUsers } from "@app/hooks/api";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
+import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
 // PostHog event names for the secrets activation nudge, so we can measure the
 // shown -> invited/dismissed conversion funnel of this modal.
@@ -37,15 +39,16 @@ const ACTIVATION_EVENTS = {
   Dismissed: "Secrets Activation Modal Dismissed"
 } as const;
 
+const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
+
 const inviteMembersFormSchema = z.object({
-  members: z
-    .array(
-      z.object({
-        label: z.string().trim(),
-        value: z.string().trim()
-      })
-    )
-    .min(1)
+  emails: emailListSchema,
+  projectRole: z
+    .object({
+      slug: z.string().min(1),
+      name: z.string().min(1)
+    })
+    .default(DEFAULT_PROJECT_ROLE)
 });
 
 type TInviteMembersForm = z.infer<typeof inviteMembersFormSchema>;
@@ -58,24 +61,40 @@ type Props = {
 export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { permission: projectPermission } = useProjectPermission();
 
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
 
-  const { data: orgUsers } = useGetOrgUsers(orgId);
+  const { data: roles, isPending: isProjectRolesLoading } = useGetProjectRoles(
+    projectId,
+    currentProject?.type
+  );
+
+  const assignRoleConditions = useMemo(
+    () => getMemberAssignRoleConditions(projectPermission),
+    [projectPermission]
+  );
+
+  const filteredRoles = useMemo(
+    () =>
+      filterByGrantConditions(roles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
+      }),
+    [roles, assignRoleConditions]
+  );
 
   const {
     control,
     handleSubmit,
     reset,
-    watch,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting }
   } = useForm<TInviteMembersForm>({
     resolver: zodResolver(inviteMembersFormSchema),
-    defaultValues: { members: [] }
+    defaultValues: { emails: "", projectRole: DEFAULT_PROJECT_ROLE }
   });
-
-  const { append } = useFieldArray<TInviteMembersForm>({ control, name: "members" });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
@@ -90,9 +109,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const selectedMembers = watch("members");
-
-  const onInvite = async ({ members: selectedPeople }: TInviteMembersForm) => {
+  const onInvite = async ({ emails, projectRole }: TInviteMembersForm) => {
     if (!currentProject) return;
     if (!currentOrg?.id) return;
 
@@ -104,15 +121,15 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       return;
     }
 
-    // Every entry is a brand-new invitee typed in as an email address.
-    const usernames = selectedPeople.map((person) => person.value.toLowerCase());
+    // emails is already trimmed + lowercased by the schema; parseEmailList splits the entries.
+    const usernames = parseEmailList(emails);
     if (usernames.length) {
       await addUserToProject({
         usernames,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
-        roleSlugs: [ProjectMembershipRole.Member]
+        roleSlugs: [projectRole.slug]
       });
     }
 
@@ -153,49 +170,55 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
         <form onSubmit={handleSubmit(onInvite)} className="flex flex-col gap-4">
           <Controller
             control={control}
-            name="members"
-            render={({ field }) => (
+            name="emails"
+            render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>
-                  People
+                <FieldLabel htmlFor="invite-members-emails">Emails</FieldLabel>
+                <TextArea
+                  id="invite-members-emails"
+                  className="h-24"
+                  isError={Boolean(error)}
+                  placeholder="email@example.com, email2@example.com..."
+                  {...field}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="projectRole"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel
+                  htmlFor="invite-members-project-role"
+                  className="flex items-center gap-1.5"
+                >
+                  Project role
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Role information"
-                        className="text-muted transition-colors hover:text-foreground"
-                      >
-                        <InfoIcon className="size-3" />
-                      </button>
+                    <TooltipTrigger tabIndex={-1} asChild>
+                      <span>
+                        <InfoIcon className="size-3 text-muted" />
+                      </span>
                     </TooltipTrigger>
-                    <TooltipContent>New members join with the Member role.</TooltipContent>
+                    <TooltipContent className="max-w-md">
+                      Select which role to assign to the invited members in this project.
+                    </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
-                <FieldContent>
-                  <CreatableSelect
-                    /* eslint-disable-next-line react/no-unstable-nested-components */
-                    noOptionsMessage={() => (
-                      <p>Type an email address to invite someone new to your organization.</p>
-                    )}
-                    onCreateOption={(inputValue) =>
-                      append({ label: inputValue, value: inputValue })
-                    }
-                    formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
-                    isValidNewOption={(input) =>
-                      Boolean(input) &&
-                      z.string().email().safeParse(input).success &&
-                      !orgUsers?.some(({ user }) => user.email === input || user.username === input)
-                    }
-                    placeholder="teammate@company.com"
-                    isMulti
-                    name="members"
-                    components={{ DropdownIndicator: null, IndicatorSeparator: null }}
-                    value={field.value}
-                    onChange={field.onChange}
-                    isError={!!errors.members?.length}
-                  />
-                </FieldContent>
-                <FieldError>{errors.members?.[0]?.message}</FieldError>
+                <FilterableSelect
+                  inputId="invite-members-project-role"
+                  isLoading={Boolean(projectId) && isProjectRolesLoading}
+                  value={value}
+                  onChange={onChange}
+                  options={filteredRoles}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                  placeholder="Select role..."
+                  isError={Boolean(error)}
+                  components={{ Option: RoleOption }}
+                />
+                <FieldError>{error?.message}</FieldError>
               </Field>
             )}
           />
@@ -215,7 +238,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
               type="submit"
               variant="project"
               isPending={isSubmitting}
-              isDisabled={isSubmitting || selectedMembers.length === 0}
+              isDisabled={isSubmitting}
             >
               <SendHorizontalIcon />
               Send invites
