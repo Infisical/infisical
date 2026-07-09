@@ -2,6 +2,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { MfaMethod } from "@app/services/auth/auth-type";
+import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -20,6 +21,10 @@ type TMfaSessionServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
+  mfaLockoutService: Pick<
+    TMfaLockoutServiceFactory,
+    "enforceMfaLockStatus" | "handleFailedMfaAttempt" | "resetMfaLockStatus"
+  >;
 };
 
 export type TMfaSessionServiceFactory = ReturnType<typeof mfaSessionServiceFactory>;
@@ -28,7 +33,8 @@ export const mfaSessionServiceFactory = ({
   keyStore,
   tokenService,
   smtpService,
-  totpService
+  totpService,
+  mfaLockoutService
 }: TMfaSessionServiceFactoryDep) => {
   // Helper function to get MFA session from Redis
   const getMfaSession = async (mfaSessionId: string): Promise<TMfaSession | null> => {
@@ -117,6 +123,8 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
+    await mfaLockoutService.enforceMfaLockStatus(userId);
+
     try {
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
@@ -142,10 +150,13 @@ export const mfaSessionServiceFactory = ({
         });
       }
     } catch (error) {
+      await mfaLockoutService.handleFailedMfaAttempt(userId);
       throw new BadRequestError({
         message: "Invalid MFA code"
       });
     }
+
+    await mfaLockoutService.resetMfaLockStatus(userId);
 
     mfaSession.status = MfaSessionStatus.ACTIVE;
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);

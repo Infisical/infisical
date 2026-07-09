@@ -58,6 +58,7 @@ export const MfaSessionPage = () => {
   const [mfaCode, setMfaCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codeInputKey, setCodeInputKey] = useState(0);
 
   const { data: sessionStatus, isError: isStatusError } = useMfaSessionStatus(mfaSessionId);
   const verifyMfaSession = useVerifyMfaSession();
@@ -121,6 +122,7 @@ export const MfaSessionPage = () => {
     } catch (err: any) {
       setError(err?.response?.data?.message || "Invalid MFA code. Please try again.");
       setMfaCode("");
+      setCodeInputKey((key) => key + 1);
     } finally {
       setIsLoading(false);
     }
@@ -263,6 +265,7 @@ export const MfaSessionPage = () => {
             <div className="mx-auto hidden md:block" style={{ minWidth: "600px" }}>
               <div className="mt-8 mb-6 flex justify-center">
                 <ReactCodeInput
+                  key={`code-input-desktop-${codeInputKey}`}
                   name=""
                   inputMode="tel"
                   type="text"
@@ -277,6 +280,7 @@ export const MfaSessionPage = () => {
             <div className="mx-auto mt-4 block md:hidden" style={{ minWidth: "400px" }}>
               <div className="mt-4 mb-6 flex justify-center">
                 <ReactCodeInput
+                  key={`code-input-phone-${codeInputKey}`}
                   name=""
                   inputMode="tel"
                   type="text"

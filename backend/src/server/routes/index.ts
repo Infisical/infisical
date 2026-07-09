@@ -250,6 +250,7 @@ import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
+import { mfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
@@ -1185,11 +1186,19 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const mfaLockoutService = mfaLockoutServiceFactory({
+    userDAL,
+    tokenService,
+    smtpService,
+    keyStore
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
     smtpService,
-    totpService
+    totpService,
+    mfaLockoutService
   });
 
   const loginService = authLoginServiceFactory({
@@ -1204,8 +1213,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore,
-    permissionService
+    permissionService,
+    mfaLockoutService
   });
 
   const samlService = samlConfigServiceFactory({
