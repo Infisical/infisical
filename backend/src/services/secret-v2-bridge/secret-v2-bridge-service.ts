@@ -124,8 +124,10 @@ const withSecretMetrics = <T extends (...args: any[]) => Promise<any>>(fn: T, op
     const startTime = performance.now();
     let success = false;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const result = await fn(...args);
       success = true;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return result;
     } finally {
       recordSecretOperationDuration({ startTime, operation: op.duration, outcome: success ? "success" : "failure" });

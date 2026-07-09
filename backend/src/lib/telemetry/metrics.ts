@@ -619,7 +619,7 @@ export const registerInfrastructureMetrics = (db: Knex) => {
       for (const row of rows) {
         result.observe(Number(row.count), {
           type: row.type,
-          "outcome": row.rotationStatus
+          outcome: row.rotationStatus
         });
       }
     } catch {
