@@ -45,6 +45,7 @@ import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
 
 const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
+const WebAppReplayView = lazy(() => import("./WebAppReplayView/WebAppReplayView"));
 
 type Props = {
   sessionId?: string;
@@ -292,8 +293,10 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
   const isRdpSession =
     session.accountType === PamAccountType.Windows ||
     session.accountType === PamAccountType.WindowsAd;
+  const isWebAppSession = session.accountType === PamAccountType.WebApp;
+  const hasFrameRecording = isRdpSession || isWebAppSession;
 
-  const tabs = isRdpSession
+  const tabs = hasFrameRecording
     ? [
         {
           value: "recording",
@@ -326,7 +329,11 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
                         </div>
                       }
                     >
-                      <RdpReplayView events={filteredEvents} isStreaming={isActive} />
+                      {isWebAppSession ? (
+                        <WebAppReplayView events={filteredEvents} isStreaming={isActive} />
+                      ) : (
+                        <RdpReplayView events={filteredEvents} isStreaming={isActive} />
+                      )}
                     </Suspense>
                   )}
                 </CardContent>
