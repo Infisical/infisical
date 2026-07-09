@@ -255,7 +255,7 @@ export const secretSyncServiceFactory = ({
   };
 
   const checkDuplicateDestination = async (
-    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    { destination, destinationConfig, connectionId, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
     const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
@@ -290,7 +290,9 @@ export const secretSyncServiceFactory = ({
           if (baseFieldsMatch) {
             return DESTINATION_DUPLICATE_CHECK_MAP[destination](
               sync.destinationConfig as Record<string, unknown>,
-              destinationConfig
+              destinationConfig,
+              sync.connectionId,
+              connectionId ?? null
             );
           }
           return false;
@@ -369,6 +371,7 @@ export const secretSyncServiceFactory = ({
         {
           destination: params.destination,
           destinationConfig: params.destinationConfig,
+          connectionId: params.connectionId,
           projectId
         },
         actor
@@ -503,6 +506,7 @@ export const secretSyncServiceFactory = ({
           {
             destination,
             destinationConfig: params.destinationConfig,
+            connectionId: connectionId ?? secretSync.connectionId,
             projectId: secretSync.projectId,
             excludeSyncId: secretSync.id
           },

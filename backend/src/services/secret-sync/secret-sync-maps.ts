@@ -215,7 +215,13 @@ const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
   [SecretSync.AWSParameterStore]: defaultDuplicateCheck,
-  [SecretSync.AWSSecretsManager]: defaultDuplicateCheck,
+  [SecretSync.AWSSecretsManager]: (_existingConfig, _newConfig, existingConnectionId, newConnectionId) => {
+    // TODO: we should also check the AWS account id here, otherwise
+    // two connections to the same account would cause issues.
+    // If assume role: get account id from ARN
+    // If credentials, use AWS_ACCESS_ID to infer the account id
+    return existingConnectionId === newConnectionId;
+  },
   [SecretSync.GitHub]: defaultDuplicateCheck,
   [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
   [SecretSync.AzureKeyVault]: defaultDuplicateCheck,

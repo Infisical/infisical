@@ -473,6 +473,7 @@ export type TDeleteSecretSyncDTO = {
 export type TCheckDuplicateDestinationDTO = {
   destination: SecretSync;
   destinationConfig: Record<string, unknown>;
+  connectionId?: string | null;
   excludeSyncId?: string;
   projectId: string;
 };
@@ -571,7 +572,9 @@ export type TSecretMap = Record<
 
 export type DestinationDuplicateCheckFn = (
   existingConfig: Record<string, unknown>,
-  newConfig: Record<string, unknown>
+  newConfig: Record<string, unknown>,
+  existingConnectionId: string | null,
+  newConnectionId: string | null
 ) => boolean;
 
 export type TPreSaveTransformDeps = {
