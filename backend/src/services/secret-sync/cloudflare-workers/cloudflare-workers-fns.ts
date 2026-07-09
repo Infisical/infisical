@@ -60,9 +60,14 @@ const throwOnUndeployedVersionError = (err: unknown) => {
   throw err;
 };
 
-const getSecretKeys = async (
+type TCloudflareBindings = {
+  secrets: TCloudflareSecretMetadata[];
+  nonSecretBindings: TCloudflareSecretMetadata[];
+};
+
+const getCloudflareBindings = async (
   secretSync: TCloudflareWorkersSyncWithCredentials
-): Promise<TCloudflareSecretMetadata[]> => {
+): Promise<TCloudflareBindings> => {
   const {
     destinationConfig,
     connection: {
@@ -94,14 +99,14 @@ const getSecretKeys = async (
 
   const SYNCABLE_BINDING_TYPES = new Set(["plain_text", "json"]);
 
+  const secretKeySet = new Set(secrets.map((s) => s.key));
   const nonSecretBindings = (settingsResponse.data.result.bindings || [])
-    .filter((b) => SYNCABLE_BINDING_TYPES.has(b.type))
+    .filter((b) => SYNCABLE_BINDING_TYPES.has(b.type) && !secretKeySet.has(b.name))
     .map((b) => ({ key: b.name, type: b.type }));
 
-  const secretKeySet = new Set(secrets.map((s) => s.key));
-  const uniqueNonSecretBindings = nonSecretBindings.filter((v) => !secretKeySet.has(v.key));
-
-  return [...secrets, ...uniqueNonSecretBindings];
+  // We need to know both types because cloudflare prevents secrets and variables (plaintext or JSON)
+  // to have the same name.
+  return { secrets, nonSecretBindings };
 };
 
 export const CloudflareWorkersSyncFns = {
@@ -113,16 +118,31 @@ export const CloudflareWorkersSyncFns = {
       destinationConfig: { scriptId }
     } = secretSync;
 
-    const existingSecrets = await getSecretKeys(secretSync);
+    const shouldSyncNonSecretBindings = Boolean(secretSync.syncOptions.syncNonSecretBindings);
+    const { secrets: existingSecretBindings, nonSecretBindings } = await getCloudflareBindings(secretSync);
+
+    const existingSecrets = shouldSyncNonSecretBindings
+      ? [...existingSecretBindings, ...nonSecretBindings]
+      : existingSecretBindings;
+
+    const nonSecretBindingKeys = new Set(nonSecretBindings.map((b) => b.key));
     const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
+
+    // We cannot sync secrets that have the same name as a non-secret
+    // if shouldSyncNonSecretBindings = false. This happens because
+    // Cloudflare will reject the request due to name conflicts. A secret
+    // cannot have the same name as a non-secret variable.
+    const syncableEntries = Object.entries(secretMap).filter(
+      ([key]) => shouldSyncNonSecretBindings || !nonSecretBindingKeys.has(key)
+    );
 
     const bindingEntries: Array<[string, { value: string }]> = [];
     const secretEntries: Array<[string, { value: string }]> = [];
 
-    for (const [key, val] of Object.entries(secretMap)) {
+    for (const [key, val] of syncableEntries) {
       const existingType = existingSecretsMap[key];
-      if (existingType && existingType !==  CLOUDFLARE_SECRET_TYPE) {
+      if (existingType && existingType !== CLOUDFLARE_SECRET_TYPE) {
         bindingEntries.push([key, val]);
       } else {
         secretEntries.push([key, val]);
@@ -148,7 +168,7 @@ export const CloudflareWorkersSyncFns = {
         $validateJsonBindings(settingsData.result.bindings, updatedBindingMap);
 
         const updatedBindings = settingsData.result.bindings.map((binding) => {
-          if (binding.type !==  CLOUDFLARE_SECRET_TYPE && updatedBindingMap[binding.name] !== undefined) {
+          if (binding.type !== CLOUDFLARE_SECRET_TYPE && updatedBindingMap[binding.name] !== undefined) {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {
               // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -181,7 +201,7 @@ export const CloudflareWorkersSyncFns = {
         await delayMs(Math.max(0, applyJitter(100, 200)));
         await request.put(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
-          { name: key, text: val.value, type:  CLOUDFLARE_SECRET_TYPE },
+          { name: key, text: val.value, type: CLOUDFLARE_SECRET_TYPE },
           {
             headers: {
               Authorization: `Bearer ${apiToken}`,
@@ -206,8 +226,8 @@ export const CloudflareWorkersSyncFns = {
         return !isInNewSecretMap && isManagedBySchema;
       });
 
-      const secretTypeToDelete = secretsToDelete.filter((s) => s.type ===  CLOUDFLARE_SECRET_TYPE);
-      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !==  CLOUDFLARE_SECRET_TYPE);
+      const secretTypeToDelete = secretsToDelete.filter((s) => s.type === CLOUDFLARE_SECRET_TYPE);
+      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
 
       try {
         /* eslint-disable no-await-in-loop */
@@ -277,7 +297,13 @@ export const CloudflareWorkersSyncFns = {
       destinationConfig: { scriptId }
     } = secretSync;
 
-    const existingSecretNames = await getSecretKeys(secretSync);
+    const shouldSyncNonSecretBindings = Boolean(secretSync.syncOptions.syncNonSecretBindings);
+    const { secrets: existingSecretBindings, nonSecretBindings } = await getCloudflareBindings(secretSync);
+
+    const existingSecretNames = shouldSyncNonSecretBindings
+      ? [...existingSecretBindings, ...nonSecretBindings]
+      : existingSecretBindings;
+
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
     const secretsToRemove = existingSecretNames.filter((existingSecret) => {
@@ -289,8 +315,8 @@ export const CloudflareWorkersSyncFns = {
       return secretMapToRemoveKeys.has(existingSecret.key) && isManagedBySchema;
     });
 
-    const secretTypeToRemove = secretsToRemove.filter((s) => s.type ===  CLOUDFLARE_SECRET_TYPE);
-    const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !==  CLOUDFLARE_SECRET_TYPE);
+    const secretTypeToRemove = secretsToRemove.filter((s) => s.type === CLOUDFLARE_SECRET_TYPE);
+    const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
 
     try {
       /* eslint-disable no-await-in-loop */

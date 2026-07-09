@@ -3071,6 +3071,10 @@ export const SecretSyncs = {
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
+    },
+    CLOUDFLARE_WORKERS: {
+      syncNonSecretBindings:
+        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
     }
   },
   DESTINATION_CONFIG: {
