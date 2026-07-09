@@ -7,6 +7,17 @@ description: "Learn how to configure a Supabase Sync for Infisical."
 
 - Create a [Supabase Connection](/integrations/app-connections/supabase)
 
+<Warning>
+    Supabase enforces a hard cap of **100 secrets per project** that cannot be raised. When a sync would push the destination past that cap, the affected batch fails and the sync is reported as failed.
+
+    - **More than 100 source secrets:** Infisical batches writes to Supabase in groups of 100. Individual batches that would push the destination over 100 fail on the Supabase API call, and the sync status flips to failed. Earlier batches in the same run may have written successfully before the failing batch.
+    - **Destination already at 100:** The first create batch fails immediately with the same error path.
+    - **Where the failure surfaces:** The sync's `syncStatus` becomes `failed`, `lastSyncMessage` records the Supabase error, and auto-sync retries on its normal schedule. The error names the first secret key in the failing batch, not every affected key.
+    - **Deletion mode interaction:** With **Disable Secret Deletion** off, Infisical writes new secrets first and then deletes destination secrets no longer present in the source. Because the delete phase runs after the create phase, deleting a secret cannot free up capacity in the same sync run — if the destination is at 100 and you want the sync to free the slot itself, either lower the source below 100 first or clear the unwanted secret manually in Supabase.
+
+    Reserved Supabase-managed keys (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`) are always skipped by the sync and count against the 100-cap on the Supabase side.
+</Warning>
+
 <Tabs>
     <Tab title="Infisical UI">
         <Steps>
