@@ -1,5 +1,6 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { extractAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -227,8 +228,8 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({
     decryptConnection(newConnectionId)
   ]);
 
-  const existingAccountId = extractAwsAccountId(existingConn);
-  const newAccountId = extractAwsAccountId(newConn);
+  const existingAccountId = extractAwsAccountId(existingConn as TAwsConnection);
+  const newAccountId = extractAwsAccountId(newConn as TAwsConnection);
 
   if (!existingAccountId || !newAccountId) return false;
 
@@ -257,7 +258,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Render]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
   [SecretSync.TriggerDev]: defaultDuplicateCheck,
-  [SecretSync.GitLab]: ({ existingConfig, newConfig }) => {
+  [SecretSync.GitLab]: async ({ existingConfig, newConfig }) => {
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
 
