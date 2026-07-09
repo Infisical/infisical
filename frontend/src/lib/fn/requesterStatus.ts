@@ -6,9 +6,7 @@ export type TRequesterStatus = {
   userId?: string;
 };
 
-// Shared by the "add member" modals (generic and PAM) to resolve the `?requesterEmail=` deep link
-// from a project-access-request email into a display label and pre-fill target.
-// `memberUsernames` accepts a Set or Map since call sites already build one or the other.
+// Resolves the ?requesterEmail= deep link into a display label and pre-fill target.
 export const getRequesterStatus = (
   requesterEmail: string | undefined,
   orgUsers: OrgUser[] | undefined,

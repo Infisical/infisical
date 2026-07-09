@@ -15,12 +15,8 @@ type ProjectAccessErrorProps = {
   projectId?: string;
 };
 
-// PAM is a per-org singleton with no $projectId route param, unlike other product routes, so this
-// screen can't read the project id off the route the normal way when it fires for a PAM page. Its
-// beforeLoad throws from a parent route's error boundary (TanStack attributes a beforeLoad failure
-// to the nearest already-matched ancestor, not the failing route itself), so a PAM-specific
-// errorComponent on the PAM route never runs either. Derive the org id from the URL instead.
-// Keep in sync with the PAM route path declared in `frontend/src/pages/pam/layout.tsx`.
+// PAM has no $projectId route param, and TanStack attributes beforeLoad failures to the nearest
+// matched ancestor rather than the failing route, so derive the org id from the URL. Keep in sync with pam/layout.tsx.
 const getPamOrgIdFromPath = () =>
   window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
 

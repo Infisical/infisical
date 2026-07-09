@@ -50,8 +50,7 @@ export const fetchPamProjectId = async () => {
   return data.projectId;
 };
 
-// Shared by any imperative (non-hook) call site that needs the org's PAM project id — skips the
-// network round-trip when the caller already has it cached (e.g. from the org context).
+// For imperative (non-hook) callers; skips the fetch when the id is already cached.
 export const resolvePamProjectId = async (cachedPamProjectId?: string | null) =>
   cachedPamProjectId ?? fetchPamProjectId();
 

@@ -302,9 +302,7 @@ export const pamMembershipServiceFactory = ({
 
       const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
 
-      // The Members tab's "Add Member" UI actually adds users via the generic project-membership
-      // endpoint (whose factory already clears this), not this one. This covers direct API callers
-      // of this PAM-specific endpoint so their pending request doesn't linger either.
+      // For direct API callers; the UI's Add Member flow uses the generic endpoint, which already clears this.
       if (kind === PamMemberKind.User) {
         await projectAccessRequestDAL.delete({ projectId, requesterUserId: id }, tx);
       }

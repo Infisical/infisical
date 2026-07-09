@@ -243,8 +243,7 @@ export const ProjectCategoryOverview = () => {
   };
 
   const enterPamProject = async () => {
-    // PAM is a per-org singleton with no dedicated "instance" concept; resolving it here also
-    // lazily bootstraps the project for orgs that don't have one yet (safe for any org member).
+    // Also lazily bootstraps the PAM project for orgs that don't have one yet.
     let pamProjectId: string;
     try {
       pamProjectId = await resolvePamProjectId(currentOrg?.pamProjectId);

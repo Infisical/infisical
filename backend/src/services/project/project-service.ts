@@ -217,8 +217,7 @@ type TProjectServiceFactoryDep = {
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
-// Used by requestProjectAccess to build the admin-facing callback link/notification copy.
-// Types not listed here fall back to the raw project type/name.
+// Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
 const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
   [ProjectType.SecretManager]: "secret-management",
   [ProjectType.CertificateManager]: "cert-manager"
