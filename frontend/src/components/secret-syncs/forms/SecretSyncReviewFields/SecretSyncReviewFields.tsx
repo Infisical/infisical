@@ -37,7 +37,10 @@ import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
-import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
+import {
+  CloudflareWorkersSyncOptionsReviewFields,
+  CloudflareWorkersSyncReviewFields
+} from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
@@ -176,6 +179,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsReviewFields />;
       break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;
