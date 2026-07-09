@@ -178,26 +178,31 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
   };
 
   const deleteUserTotpConfig = async ({ userId }: TDeleteUserTotpConfigDTO) => {
-    const totpConfig = await totpConfigDAL.findOne({
-      userId
+    await totpConfigDAL.transaction(async (tx) => {
+      const totpConfig = await totpConfigDAL.findOne(
+        {
+          userId
+        },
+        tx
+      );
+
+      if (!totpConfig) {
+        throw new NotFoundError({
+          message: "TOTP configuration not found"
+        });
+      }
+
+      await totpConfigDAL.deleteById(totpConfig.id, tx);
+
+      // If the user's preferred method is the TOTP config we just removed, reset it
+      // so getRequiredMfaMethod doesn't keep challenging for a method that no longer
+      // has a verified config, which would force the user back into enrollment. Fall
+      // back to email, which is always available.
+      const user = await userDAL.findById(userId, tx);
+      if (user?.selectedMfaMethod === MfaMethod.TOTP) {
+        await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL }, tx);
+      }
     });
-
-    if (!totpConfig) {
-      throw new NotFoundError({
-        message: "TOTP configuration not found"
-      });
-    }
-
-    await totpConfigDAL.deleteById(totpConfig.id);
-
-    // If the user's preferred method is the TOTP config we just removed, reset it
-    // so getRequiredMfaMethod doesn't keep challenging for a method that no longer
-    // has a verified config, which would force the user back into enrollment. Fall
-    // back to email, which is always available.
-    const user = await userDAL.findById(userId);
-    if (user?.selectedMfaMethod === MfaMethod.TOTP) {
-      await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL });
-    }
   };
 
   return {

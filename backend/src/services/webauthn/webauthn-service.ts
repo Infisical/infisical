@@ -324,33 +324,35 @@ export const webAuthnServiceFactory = ({
    * Delete a WebAuthn credential
    */
   const deleteWebAuthnCredential = async ({ userId, id }: TDeleteWebAuthnCredentialDTO) => {
-    const credential = await webAuthnCredentialDAL.findById(id);
+    await webAuthnCredentialDAL.transaction(async (tx) => {
+      const credential = await webAuthnCredentialDAL.findById(id, tx);
 
-    if (!credential) {
-      throw new NotFoundError({
-        message: "Credential not found"
-      });
-    }
-
-    if (userId !== credential.userId) {
-      throw new ForbiddenRequestError({
-        message: "Credential does not belong to this user"
-      });
-    }
-
-    await webAuthnCredentialDAL.deleteById(credential.id);
-
-    // If that was the user's last credential and webauthn is their preferred
-    // method, reset the preference so getRequiredMfaMethod doesn't keep
-    // challenging for webauthn with no credential left, which would lock the
-    // user out. Fall back to email, which is always available.
-    const remainingCredentials = await webAuthnCredentialDAL.find({ userId });
-    if (remainingCredentials.length === 0) {
-      const user = await userDAL.findById(userId);
-      if (user?.selectedMfaMethod === MfaMethod.WEBAUTHN) {
-        await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL });
+      if (!credential) {
+        throw new NotFoundError({
+          message: "Credential not found"
+        });
       }
-    }
+
+      if (userId !== credential.userId) {
+        throw new ForbiddenRequestError({
+          message: "Credential does not belong to this user"
+        });
+      }
+
+      await webAuthnCredentialDAL.deleteById(credential.id, tx);
+
+      // If that was the user's last credential and webauthn is their preferred
+      // method, reset the preference so getRequiredMfaMethod doesn't keep
+      // challenging for webauthn with no credential left, which would lock the
+      // user out. Fall back to email, which is always available.
+      const remainingCredentials = await webAuthnCredentialDAL.find({ userId }, { tx });
+      if (remainingCredentials.length === 0) {
+        const user = await userDAL.findById(userId, tx);
+        if (user?.selectedMfaMethod === MfaMethod.WEBAUTHN) {
+          await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL }, tx);
+        }
+      }
+    });
 
     return {
       success: true
