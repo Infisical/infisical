@@ -213,12 +213,14 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
 const awsDuplicateCheck: DestinationDuplicateCheckFn = ({ existingConnectionId, newConnectionId }) => {
-    // TODO: we should also check the AWS account id here, otherwise
-    // two connections to the same account would cause issues.
-    // If assume role: get account id from ARN
-    // If credentials, use AWS_ACCESS_ID to infer the account id
-    return existingConnectionId === newConnectionId;
-  };
+  if (!newConnectionId) return true;
+
+  // TODO: we should also check the AWS account id here, otherwise
+  // two connections to the same account would cause issues.
+  // If assume role: get account id from ARN
+  // If credentials, use AWS_ACCESS_ID to infer the account id
+  return existingConnectionId === newConnectionId;
+};
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
   [SecretSync.AWSParameterStore]: awsDuplicateCheck,
