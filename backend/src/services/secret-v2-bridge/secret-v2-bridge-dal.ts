@@ -962,8 +962,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where("projectId", projectId)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
 
@@ -990,11 +992,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where({
           [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false
         })
         .where("projectId", projectId)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");
 
