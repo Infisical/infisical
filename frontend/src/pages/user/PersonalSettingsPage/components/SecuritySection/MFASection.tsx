@@ -16,18 +16,18 @@ import {
   Badge,
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   FieldLabel,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
+  SelectValue
 } from "@app/components/v3";
 import { useActivateMfa, useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -55,11 +55,11 @@ export const MFASection = () => {
   const [isDisableOpen, setIsDisableOpen] = useState(false);
   // Holds the fresh recovery codes returned on enable so they can be shown once.
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
-  // Gate closing the "save your codes" sheet until the user acknowledges they
+  // Gate closing the "save your codes" dialog until the user acknowledges they
   // saved them, since this is the only time the freshly minted codes are shown.
   const [hasAcknowledgedCodes, setHasAcknowledgedCodes] = useState(false);
 
-  const closeRecoveryCodesSheet = () => {
+  const closeRecoveryCodesDialog = () => {
     setNewRecoveryCodes(null);
     setHasAcknowledgedCodes(false);
   };
@@ -243,30 +243,32 @@ export const MFASection = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet
+      <Dialog
         open={newRecoveryCodes !== null}
         onOpenChange={(open) => {
-          if (!open && hasAcknowledgedCodes) closeRecoveryCodesSheet();
+          if (!open && hasAcknowledgedCodes) closeRecoveryCodesDialog();
         }}
       >
-        <SheetContent
-          side="right"
-          className="flex flex-col gap-0 sm:max-w-lg"
+        <DialogContent
+          className="sm:max-w-lg"
+          // Hide the close button until acknowledged so the one-time codes aren't
+          // dismissed before they're saved.
+          showCloseButton={hasAcknowledgedCodes}
           // Block accidental dismissal so the one-time codes aren't lost.
           onInteractOutside={(e) => !hasAcknowledgedCodes && e.preventDefault()}
           onEscapeKeyDown={(e) => !hasAcknowledgedCodes && e.preventDefault()}
         >
-          <SheetHeader className="border-b">
-            <SheetTitle>Save your recovery codes</SheetTitle>
-            <SheetDescription>
+          <DialogHeader>
+            <DialogTitle>Save your recovery codes</DialogTitle>
+            <DialogDescription>
               Store these somewhere safe. Each code can only be used once, and this is the only time
               they are shown.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto">
             <RecoveryCodesView recoveryCodes={newRecoveryCodes ?? []} />
           </div>
-          <SheetFooter className="flex-col items-stretch gap-3 border-t">
+          <DialogFooter className="flex-col items-stretch gap-3">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="acknowledge-recovery-codes"
@@ -284,13 +286,13 @@ export const MFASection = () => {
               variant="org"
               isFullWidth
               isDisabled={!hasAcknowledgedCodes}
-              onClick={closeRecoveryCodesSheet}
+              onClick={closeRecoveryCodesDialog}
             >
               Done
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
