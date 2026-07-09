@@ -1,12 +1,11 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, XIcon } from "lucide-react";
+import { PlusIcon, TrashIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Empty,
-  EmptyDescription,
   Field,
   FieldContent,
   FieldDescription,
@@ -225,266 +224,164 @@ export const ProxiedServiceForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-      <Controller
-        control={control}
-        name="isEnabled"
-        render={({ field }) => (
-          <Field orientation="horizontal">
-            <FieldLabel>Enabled</FieldLabel>
-            <Switch checked={field.value} onCheckedChange={field.onChange} />
-          </Field>
-        )}
-      />
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 overflow-hidden">
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <Controller
+          control={control}
+          name="isEnabled"
+          render={({ field }) => (
+            <Field orientation="horizontal">
+              <FieldLabel className="cursor-pointer">Enabled</FieldLabel>
+              <Switch variant="project" checked={field.value} onCheckedChange={field.onChange} />
+            </Field>
+          )}
+        />
 
-      <Field>
-        <FieldLabel>Service Name</FieldLabel>
-        <FieldContent>
-          <Input placeholder="stripe-api" {...register("name")} />
-          <FieldDescription>Lowercase letters, numbers, and hyphens only.</FieldDescription>
-          {errors.name && <FieldError>{errors.name.message}</FieldError>}
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel>Service Name</FieldLabel>
+          <FieldContent>
+            <Input placeholder="stripe-api" isError={Boolean(errors.name)} {...register("name")} />
+            <FieldDescription>Lowercase letters, numbers, and hyphens only.</FieldDescription>
+            <FieldError errors={[errors.name]} />
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel>Host Pattern</FieldLabel>
-        <FieldContent>
-          <Input placeholder="api.stripe.com" {...register("hostPattern")} />
-          <FieldDescription>
-            Outbound requests to a matching host are intercepted. Wildcards (e.g. *.stripe.com) and
-            comma-separated patterns are supported.
-          </FieldDescription>
-          {errors.hostPattern && <FieldError>{errors.hostPattern.message}</FieldError>}
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel>Host Pattern</FieldLabel>
+          <FieldContent>
+            <Input
+              placeholder="api.stripe.com"
+              isError={Boolean(errors.hostPattern)}
+              {...register("hostPattern")}
+            />
+            <FieldDescription>
+              Outbound requests to a matching host are intercepted. Wildcards (e.g. *.stripe.com)
+              and comma-separated patterns are supported.
+            </FieldDescription>
+            <FieldError errors={[errors.hostPattern]} />
+          </FieldContent>
+        </Field>
 
-      {/* Header Rewriting */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-foreground">Header Rewriting</p>
-            <p className="text-sm text-bunker-300">Sets these headers on every request.</p>
+        {/* Header Rewriting */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Header Rewriting</p>
+              <p className="mt-1 text-xs text-muted">Sets these headers on every request.</p>
+            </div>
+            <Controller
+              control={control}
+              name="headerMode"
+              render={({ field }) => (
+                <Tabs value={field.value} onValueChange={field.onChange}>
+                  <TabsList>
+                    <TabsTrigger value={HeaderRewritingMode.Headers}>Headers</TabsTrigger>
+                    <TabsTrigger value={HeaderRewritingMode.BasicAuth}>Basic Auth</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              )}
+            />
           </div>
-          <Controller
-            control={control}
-            name="headerMode"
-            render={({ field }) => (
-              <Tabs value={field.value} onValueChange={field.onChange}>
-                <TabsList>
-                  <TabsTrigger value={HeaderRewritingMode.Headers}>Headers</TabsTrigger>
-                  <TabsTrigger value={HeaderRewritingMode.BasicAuth}>Basic Auth</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            )}
-          />
-        </div>
 
-        {showModeSwitchWarning && (
-          <p className="text-xs text-yellow">
-            Switching auth type will replace the{" "}
-            {originalHeaderMode === HeaderRewritingMode.BasicAuth ? "Basic Auth" : "header"}{" "}
-            credentials on this service when you save.
-          </p>
-        )}
+          {showModeSwitchWarning && (
+            <p className="text-xs text-warning">
+              Switching auth type will replace the{" "}
+              {originalHeaderMode === HeaderRewritingMode.BasicAuth ? "Basic Auth" : "header"}{" "}
+              credentials on this service when you save.
+            </p>
+          )}
 
-        {headerMode === HeaderRewritingMode.Headers ? (
-          <div className="flex flex-col gap-2">
-            {headerFields.fields.length === 0 ? (
-              <Empty className="border border-dashed py-6">
-                <EmptyDescription>No headers added</EmptyDescription>
-              </Empty>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {/* shared column headers */}
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 text-sm font-medium text-foreground">Name</span>
-                  <span className="w-28 text-sm font-medium text-foreground">Prefix</span>
-                  <span className="flex-1 text-sm font-medium text-foreground">Value</span>
-                  <span className="w-9" />
-                </div>
-                {headerFields.fields.map((row, i) => {
-                  const rowError =
-                    errors.headers?.[i]?.headerName?.message ??
-                    errors.headers?.[i]?.secretKey?.message;
-                  return (
-                    <div key={row.id} className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
+          {headerMode === HeaderRewritingMode.Headers ? (
+            <>
+              <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
+                {headerFields.fields.length === 0 && (
+                  <p className="text-center text-sm text-muted">
+                    No headers added. Click below to add.
+                  </p>
+                )}
+                {headerFields.fields.map((row, i) => (
+                  <div key={row.id} className="flex items-start gap-3">
+                    <Field className="flex-1">
+                      {i === 0 && <FieldLabel className="text-xs">Name</FieldLabel>}
+                      <FieldContent>
                         <Input
-                          className="flex-1"
+                          className="h-8"
                           placeholder="Authorization"
+                          isError={Boolean(errors.headers?.[i]?.headerName)}
                           {...register(`headers.${i}.headerName`)}
                         />
+                        <FieldError errors={[errors.headers?.[i]?.headerName]} />
+                      </FieldContent>
+                    </Field>
+                    <Field className="w-28">
+                      {i === 0 && <FieldLabel className="text-xs">Prefix</FieldLabel>}
+                      <FieldContent>
                         <Input
-                          className="w-28"
+                          className="h-8"
                           placeholder="Bearer"
                           {...register(`headers.${i}.headerPrefix`)}
                         />
-                        <div className="flex-1">
-                          <Controller
-                            control={control}
-                            name={`headers.${i}.secretKey`}
-                            render={({ field }) => (
-                              <SecretSelect
-                                projectId={projectId}
-                                environment={environment}
-                                secretPath={secretPath}
-                                value={field.value}
-                                onChange={field.onChange}
-                                isError={Boolean(errors.headers?.[i]?.secretKey)}
-                              />
-                            )}
-                          />
-                        </div>
-                        <IconButton
-                          type="button"
-                          variant="ghost"
-                          aria-label="Remove header"
-                          onClick={() => headerFields.remove(i)}
-                        >
-                          <XIcon className="size-4" />
-                        </IconButton>
-                      </div>
-                      {rowError && <FieldError>{rowError}</FieldError>}
-                    </div>
-                  );
-                })}
+                      </FieldContent>
+                    </Field>
+                    <Field className="flex-1">
+                      {i === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
+                      <FieldContent>
+                        <Controller
+                          control={control}
+                          name={`headers.${i}.secretKey`}
+                          render={({ field }) => (
+                            <SecretSelect
+                              projectId={projectId}
+                              environment={environment}
+                              secretPath={secretPath}
+                              value={field.value}
+                              onChange={field.onChange}
+                              isError={Boolean(errors.headers?.[i]?.secretKey)}
+                            />
+                          )}
+                        />
+                        <FieldError errors={[errors.headers?.[i]?.secretKey]} />
+                      </FieldContent>
+                    </Field>
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      type="button"
+                      aria-label="Remove header"
+                      className={twMerge(
+                        i === 0 ? "mt-6.5" : "mt-0.5",
+                        "transition-transform hover:text-danger"
+                      )}
+                      onClick={() => headerFields.remove(i)}
+                    >
+                      <TrashIcon className="size-4" />
+                    </IconButton>
+                  </div>
+                ))}
               </div>
-            )}
-            <div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  headerFields.append({ secretKey: "", headerName: "", headerPrefix: "" })
-                }
-              >
-                <PlusIcon className="size-4" />
-                Add Header
-              </Button>
-            </div>
-            {headersRootError && <FieldError>{headersRootError}</FieldError>}
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <Field className="flex-1">
-              <FieldLabel>Username</FieldLabel>
-              <FieldContent>
-                <Controller
-                  control={control}
-                  name="basicAuth.usernameSecretKey"
-                  render={({ field }) => (
-                    <SecretSelect
-                      projectId={projectId}
-                      environment={environment}
-                      secretPath={secretPath}
-                      value={field.value}
-                      onChange={field.onChange}
-                      isError={Boolean(errors.basicAuth?.usernameSecretKey)}
-                    />
-                  )}
-                />
-                {errors.basicAuth?.usernameSecretKey && (
-                  <FieldError>{errors.basicAuth.usernameSecretKey.message}</FieldError>
-                )}
-              </FieldContent>
-            </Field>
-            <Field className="flex-1">
-              <FieldLabel>Password</FieldLabel>
-              <FieldContent>
-                <Controller
-                  control={control}
-                  name="basicAuth.passwordSecretKey"
-                  render={({ field }) => (
-                    <SecretSelect
-                      projectId={projectId}
-                      environment={environment}
-                      secretPath={secretPath}
-                      value={field.value}
-                      onChange={field.onChange}
-                      isError={Boolean(errors.basicAuth?.passwordSecretKey)}
-                    />
-                  )}
-                />
-                {errors.basicAuth?.passwordSecretKey && (
-                  <FieldError>{errors.basicAuth.passwordSecretKey.message}</FieldError>
-                )}
-              </FieldContent>
-            </Field>
-          </div>
-        )}
-      </div>
-
-      {/* Credential Substitution */}
-      <div className="flex flex-col gap-2">
-        <div>
-          <p className="text-sm font-medium text-foreground">Credential Substitution</p>
-          <p className="text-sm text-bunker-300">
-            Swap a placeholder in the request for the real credential, on the wire.
-          </p>
-        </div>
-
-        {substitutionFields.fields.length === 0 ? (
-          <Empty className="border border-dashed py-6">
-            <EmptyDescription>No substitutions added</EmptyDescription>
-          </Empty>
-        ) : (
-          substitutionFields.fields.map((row, i) => (
-            <div key={row.id} className="flex flex-col gap-3 rounded-md border p-3">
-              <div className="flex items-start gap-2">
-                <Field className="flex-1">
-                  <FieldLabel>Environment Variable</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      placeholder="ENV_VAR_NAME"
-                      {...register(`substitutions.${i}.placeholderKey`)}
-                    />
-                    {errors.substitutions?.[i]?.placeholderKey && (
-                      <FieldError>{errors.substitutions[i]?.placeholderKey?.message}</FieldError>
-                    )}
-                  </FieldContent>
-                </Field>
-                <Field className="flex-1">
-                  <FieldLabel>Placeholder Value</FieldLabel>
-                  <FieldContent>
-                    <Controller
-                      control={control}
-                      name={`substitutions.${i}.placeholderValue`}
-                      render={({ field }) => <Input readOnly value={field.value} />}
-                    />
-                  </FieldContent>
-                </Field>
-                <IconButton
-                  type="button"
+              <div>
+                <Button
                   variant="ghost"
-                  aria-label="Remove substitution"
-                  className="mt-6"
-                  onClick={() => substitutionFields.remove(i)}
+                  size="xs"
+                  type="button"
+                  onClick={() =>
+                    headerFields.append({ secretKey: "", headerName: "", headerPrefix: "" })
+                  }
                 >
-                  <XIcon className="size-4" />
-                </IconButton>
+                  <PlusIcon className="mr-1 size-4" />
+                  Add Header
+                </Button>
               </div>
-              <Field>
-                <FieldLabel>Replace In</FieldLabel>
+              {headersRootError && <FieldError>{headersRootError}</FieldError>}
+            </>
+          ) : (
+            <div className="flex gap-3">
+              <Field className="flex-1">
+                <FieldLabel>Username</FieldLabel>
                 <FieldContent>
                   <Controller
                     control={control}
-                    name={`substitutions.${i}.surfaces`}
-                    render={({ field }) => (
-                      <SurfaceSelect value={field.value} onChange={field.onChange} />
-                    )}
-                  />
-                  {errors.substitutions?.[i]?.surfaces && (
-                    <FieldError>{errors.substitutions[i]?.surfaces?.message}</FieldError>
-                  )}
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Secret</FieldLabel>
-                <FieldContent>
-                  <Controller
-                    control={control}
-                    name={`substitutions.${i}.secretKey`}
+                    name="basicAuth.usernameSecretKey"
                     render={({ field }) => (
                       <SecretSelect
                         projectId={projectId}
@@ -492,44 +389,153 @@ export const ProxiedServiceForm = ({
                         secretPath={secretPath}
                         value={field.value}
                         onChange={field.onChange}
-                        isError={Boolean(errors.substitutions?.[i]?.secretKey)}
+                        isError={Boolean(errors.basicAuth?.usernameSecretKey)}
                       />
                     )}
                   />
-                  {errors.substitutions?.[i]?.secretKey && (
-                    <FieldError>{errors.substitutions[i]?.secretKey?.message}</FieldError>
-                  )}
+                  <FieldError errors={[errors.basicAuth?.usernameSecretKey]} />
+                </FieldContent>
+              </Field>
+              <Field className="flex-1">
+                <FieldLabel>Password</FieldLabel>
+                <FieldContent>
+                  <Controller
+                    control={control}
+                    name="basicAuth.passwordSecretKey"
+                    render={({ field }) => (
+                      <SecretSelect
+                        projectId={projectId}
+                        environment={environment}
+                        secretPath={secretPath}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isError={Boolean(errors.basicAuth?.passwordSecretKey)}
+                      />
+                    )}
+                  />
+                  <FieldError errors={[errors.basicAuth?.passwordSecretKey]} />
                 </FieldContent>
               </Field>
             </div>
-          ))
-        )}
-        <div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              substitutionFields.append({
-                placeholderKey: "",
-                placeholderValue: genPlaceholder(),
-                secretKey: "",
-                surfaces: []
-              })
-            }
-          >
-            <PlusIcon className="size-4" />
-            Add Substitution
-          </Button>
+          )}
+        </div>
+
+        {/* Credential Substitution */}
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-medium">Credential Substitution</p>
+            <p className="mt-1 text-xs text-muted">
+              Swap a placeholder in the request for the real credential, on the wire.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
+            {substitutionFields.fields.length === 0 && (
+              <p className="text-center text-sm text-muted">
+                No substitutions added. Click below to add.
+              </p>
+            )}
+            {substitutionFields.fields.map((row, i) => (
+              <div key={row.id} className="flex flex-col gap-3 rounded-md border border-border p-3">
+                <div className="flex items-start gap-3">
+                  <Field className="flex-1">
+                    <FieldLabel className="text-xs">Environment Variable</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        className="h-8"
+                        placeholder="ENV_VAR_NAME"
+                        isError={Boolean(errors.substitutions?.[i]?.placeholderKey)}
+                        {...register(`substitutions.${i}.placeholderKey`)}
+                      />
+                      <FieldError errors={[errors.substitutions?.[i]?.placeholderKey]} />
+                    </FieldContent>
+                  </Field>
+                  <Field className="flex-1">
+                    <FieldLabel className="text-xs">Placeholder Value</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={control}
+                        name={`substitutions.${i}.placeholderValue`}
+                        render={({ field }) => (
+                          <Input className="h-8" readOnly value={field.value} />
+                        )}
+                      />
+                    </FieldContent>
+                  </Field>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    type="button"
+                    aria-label="Remove substitution"
+                    className="mt-6.5 transition-transform hover:text-danger"
+                    onClick={() => substitutionFields.remove(i)}
+                  >
+                    <TrashIcon className="size-4" />
+                  </IconButton>
+                </div>
+                <Field>
+                  <FieldLabel className="text-xs">Replace In</FieldLabel>
+                  <FieldContent>
+                    <Controller
+                      control={control}
+                      name={`substitutions.${i}.surfaces`}
+                      render={({ field }) => (
+                        <SurfaceSelect value={field.value} onChange={field.onChange} />
+                      )}
+                    />
+                    <FieldError errors={[errors.substitutions?.[i]?.surfaces]} />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel className="text-xs">Secret</FieldLabel>
+                  <FieldContent>
+                    <Controller
+                      control={control}
+                      name={`substitutions.${i}.secretKey`}
+                      render={({ field }) => (
+                        <SecretSelect
+                          projectId={projectId}
+                          environment={environment}
+                          secretPath={secretPath}
+                          value={field.value}
+                          onChange={field.onChange}
+                          isError={Boolean(errors.substitutions?.[i]?.secretKey)}
+                        />
+                      )}
+                    />
+                    <FieldError errors={[errors.substitutions?.[i]?.secretKey]} />
+                  </FieldContent>
+                </Field>
+              </div>
+            ))}
+          </div>
+          <div>
+            <Button
+              variant="ghost"
+              size="xs"
+              type="button"
+              onClick={() =>
+                substitutionFields.append({
+                  placeholderKey: "",
+                  placeholderValue: genPlaceholder(),
+                  secretKey: "",
+                  surfaces: []
+                })
+              }
+            >
+              <PlusIcon className="mr-1 size-4" />
+              Add Substitution
+            </Button>
+          </div>
         </div>
       </div>
 
-      <SheetFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+      <SheetFooter className="border-t">
+        <Button isPending={isSubmitting} isDisabled={isSubmitting} variant="project" type="submit">
+          {isEdit ? "Update Proxied Service" : "Create Proxied Service"}
         </Button>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
-          {isEdit ? "Save Changes" : "Create"}
+        <Button onClick={onCancel} variant="outline" type="button">
+          Cancel
         </Button>
       </SheetFooter>
     </form>

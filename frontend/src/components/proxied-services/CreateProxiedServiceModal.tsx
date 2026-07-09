@@ -19,22 +19,20 @@ export const CreateProxiedServiceModal = ({
 }: Props) => {
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-2xl">
         <SheetHeader className="border-b">
-          <SheetTitle>Add Proxied Service</SheetTitle>
+          <SheetTitle>Create Proxied Service</SheetTitle>
           <SheetDescription>
             Define a service the agent proxy can broker credentials for.
           </SheetDescription>
         </SheetHeader>
-        <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
-          <ProxiedServiceForm
-            projectId={projectId}
-            environment={environment}
-            secretPath={secretPath}
-            onComplete={() => onOpenChange(false)}
-            onCancel={() => onOpenChange(false)}
-          />
-        </div>
+        <ProxiedServiceForm
+          projectId={projectId}
+          environment={environment}
+          secretPath={secretPath}
+          onComplete={() => onOpenChange(false)}
+          onCancel={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   );
