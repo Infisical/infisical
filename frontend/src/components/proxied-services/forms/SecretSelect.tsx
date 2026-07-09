@@ -1,3 +1,5 @@
+import { KeyIcon } from "lucide-react";
+
 import { FilterableSelect } from "@app/components/v3";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
@@ -51,6 +53,12 @@ export const SecretSelect = ({
       onChange={(newValue) => onChange((newValue as SecretOption | null)?.value ?? "")}
       getOptionLabel={(option) => option.label}
       getOptionValue={(option) => option.value}
+      formatOptionLabel={(option) => (
+        <div className="flex items-center gap-2">
+          <KeyIcon className="size-4 shrink-0 text-bunker-300" />
+          <span className="truncate">{option.label}</span>
+        </div>
+      )}
     />
   );
 };
