@@ -77,11 +77,6 @@ export const coreMappings: TFeatureMapping[] = [
     extractV1: (p) => p.enterpriseSecretSyncs
   },
   {
-    v2Key: "enterprise_certificate_syncs",
-    v1Field: "enterpriseCertificateSyncs",
-    extractV1: (p) => p.enterpriseCertificateSyncs
-  },
-  {
     v2Key: "enterprise_app_connections",
     v1Field: "enterpriseAppConnections",
     extractV1: (p) => p.enterpriseAppConnections

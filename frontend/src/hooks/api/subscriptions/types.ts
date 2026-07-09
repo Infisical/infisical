@@ -2,6 +2,7 @@ export enum SubscriptionPlanTypes {
   Starter = "starter",
   Pro = "pro",
   ProAnnual = "pro-annual",
+  Advanced = "advanced",
   Team = "team",
   TeamAnnual = "team-annual",
   Enterprise = "enterprise",

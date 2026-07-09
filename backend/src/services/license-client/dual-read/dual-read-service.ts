@@ -7,6 +7,7 @@ import { TLicenseClientFactory } from "@app/services/license-client/license-clie
 import { DualReadDiffKind } from "./dual-read-types";
 import { compareEntitlements } from "./entitlement-comparator";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
+import { classifyUnlicensedCompare } from "./unlicensed";
 
 export type TDualReadServiceFactory = ReturnType<typeof dualReadServiceFactory>;
 
@@ -29,6 +30,14 @@ export const dualReadServiceFactory = ({ licenseClient, envConfig }: TDualReadSe
       if (!entitlements) {
         recordLicenseDualReadError({ error: new Error("v2 entitlements unavailable") });
         logger.warn(`license-dual-read: v2 entitlements unavailable [orgId=${orgId}]`);
+        return;
+      }
+
+      const { skip, warnPaid } = classifyUnlicensedCompare(entitlements, planV1);
+      if (skip) {
+        if (warnPaid) {
+          logger.warn(`license-dual-read: paid v1 org unlicensed in v2 [orgId=${orgId}] [v1Slug=${planV1.slug}]`);
+        }
         return;
       }
 
