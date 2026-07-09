@@ -9,8 +9,22 @@ import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
+import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
 
-export const ProjectAccessError = () => {
+type ProjectAccessErrorProps = {
+  projectId?: string;
+};
+
+// PAM is a per-org singleton with no $projectId route param, unlike other product routes, so this
+// screen can't read the project id off the route the normal way when it fires for a PAM page. Its
+// beforeLoad throws from a parent route's error boundary (TanStack attributes a beforeLoad failure
+// to the nearest already-matched ancestor, not the failing route itself), so a PAM-specific
+// errorComponent on the PAM route never runs either. Derive the org id from the URL instead.
+// Keep in sync with the PAM route path declared in `frontend/src/pages/pam/layout.tsx`.
+const getPamOrgIdFromPath = () =>
+  window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
+
+export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessErrorProps = {}) => {
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
   const navigate = useNavigate();
@@ -19,9 +33,17 @@ export const ProjectAccessError = () => {
     "requestAccessConfirmation"
   ] as const);
 
-  const { projectId } = useParams({
+  const { projectId: routeProjectId } = useParams({
     strict: false
   });
+
+  const needsPamFallback = !projectIdProp && !routeProjectId;
+  const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
+  const { data: pamOrg } = useGetOrganizationById(pamOrgId ?? "", {
+    enabled: Boolean(pamOrgId)
+  });
+
+  const projectId = projectIdProp ?? routeProjectId ?? pamOrg?.pamProjectId ?? undefined;
 
   const { data, isPending: isProjectLoading } = useSearchProjects({
     projectIds: projectId ? [projectId] : [],
@@ -43,7 +65,7 @@ export const ProjectAccessError = () => {
   };
 
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="flex h-full min-h-screen w-full items-center justify-center bg-bunker-800">
       <AccessRestrictedBanner
         body={
           <>

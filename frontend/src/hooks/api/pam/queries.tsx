@@ -50,6 +50,11 @@ export const fetchPamProjectId = async () => {
   return data.projectId;
 };
 
+// Shared by any imperative (non-hook) call site that needs the org's PAM project id — skips the
+// network round-trip when the caller already has it cached (e.g. from the org context).
+export const resolvePamProjectId = async (cachedPamProjectId?: string | null) =>
+  cachedPamProjectId ?? fetchPamProjectId();
+
 export const pamKeys = {
   all: ["pam"] as const,
   account: () => [...pamKeys.all, "account"] as const,

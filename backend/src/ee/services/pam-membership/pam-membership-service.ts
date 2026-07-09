@@ -15,6 +15,7 @@ import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-poli
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums";
@@ -44,6 +45,7 @@ type TPamMembershipServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
@@ -81,6 +83,7 @@ export const pamMembershipServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   approvalPolicyDAL,
+  projectAccessRequestDAL,
   pamFolderDAL,
   pamAccountDAL,
   userDAL,
@@ -299,6 +302,13 @@ export const pamMembershipServiceFactory = ({
 
       const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
 
+      // The Members tab's "Add Member" UI actually adds users via the generic project-membership
+      // endpoint (whose factory already clears this), not this one. This covers direct API callers
+      // of this PAM-specific endpoint so their pending request doesn't linger either.
+      if (kind === PamMemberKind.User) {
+        await projectAccessRequestDAL.delete({ projectId, requesterUserId: id }, tx);
+      }
+
       return {
         membershipId: membership.id,
         userId: kind === PamMemberKind.User ? id : undefined,
@@ -390,6 +400,9 @@ export const pamMembershipServiceFactory = ({
         );
         // eslint-disable-next-line no-await-in-loop
         const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+        // See addProductMember above for why this endpoint needs its own cleanup call.
+        // eslint-disable-next-line no-await-in-loop
+        await projectAccessRequestDAL.delete({ projectId, requesterUserId: userId }, tx);
         results.push({
           membershipId: membership.id,
           userId,
