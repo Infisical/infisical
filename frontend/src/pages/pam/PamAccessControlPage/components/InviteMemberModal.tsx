@@ -73,8 +73,12 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
     if (requesterEmail && requesterStatus.userId && !requesterStatus.isProjectUser) {
       setSelectedUsers([{ value: requesterStatus.userId, label: requesterStatus.userLabel }]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requesterEmail, requesterStatus.userId]);
+  }, [
+    requesterEmail,
+    requesterStatus.userId,
+    requesterStatus.isProjectUser,
+    requesterStatus.userLabel
+  ]);
 
   const clearRequesterEmail = () => {
     if (requesterEmail) {
