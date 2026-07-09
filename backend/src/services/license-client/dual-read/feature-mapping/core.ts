@@ -47,6 +47,11 @@ export const coreMappings: TFeatureMapping[] = [
     extractV1: (p) => p.eventSubscriptions
   },
   {
+    v2Key: "pam_slack_notifications",
+    v1Field: "pamSlackNotifications",
+    extractV1: (p) => p.pamSlackNotifications
+  },
+  {
     v2Key: "machine_identity_auth_templates",
     v1Field: "machineIdentityAuthTemplates",
     extractV1: (p) => p.machineIdentityAuthTemplates

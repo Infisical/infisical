@@ -16,6 +16,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
 | `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
+| `pam-access-request/` | Folder approval configuration and access request lifecycle (built on the generic `approval-policy` engine), plus folder-level chat notification configs (`pam-folder-notification-config-dal.ts`, pure filtering helpers in `pam-access-request-fns.ts`) |
 | `pam-web-access/` | WebSocket session handlers (Postgres, SSH, RDP), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.
@@ -165,6 +166,14 @@ Session log masking (`sessionLogMaskingPatterns`) is a **setting**, not a policy
 3. Enforcement: read it where it's enforced. A server-enforced policy extends `resolveAccessControls` and is applied in `pam-session`/`pam-web-access`. A gateway-enforced policy is read via `resolvePolicy` in `getSessionCredentials`, split/transformed as needed, and included in the `policyRules` response (see command blocking for the pattern). Both the service return and the router response schema must be updated atomically -- Fastify's Zod serializer strips unknown keys.
 
 No migration, no router or response-schema change (beyond `policyRules` for gateway-enforced policies), and no DB default.
+
+## Approval Chat Notifications (Slack)
+
+Gated by the `pamSlackNotifications` license plan flag (off by default, enabled per org from the license server): saves of `notificationConfigs` are rejected and sends are skipped when the plan lacks it, and the frontend hides the Notifications card via `subscription.pamSlackNotifications`.
+
+Folder-level, not project-level: each folder's Approvals tab can attach org `workflow_integrations` (Slack only for now) with channels and subscribed events, stored in `pam_folder_notification_configs` (`channels` and `events` are jsonb; channel objects are `{ id, name }` so the UI renders names without needing the org-gated Slack channel-list API). This intentionally does NOT use `project_slack_configs` or `triggerWorkflowIntegrationNotification`, which resolve config by projectId (the single PAM project would make the config org-wide).
+
+Flow: `createRequest` and `reviewRequest` in `pam-access-request-service.ts` call `triggerFolderSlackNotifications`, which filters configs via the pure `getSlackSendTargets` (`pam-access-request-fns.ts`) and sends through the shared `sendSlackNotification` (`services/slack/slack-fns.ts`). Events are `PamNotificationEvent` in `pam/pam-enums.ts` (mirrored in the frontend enums file). New `TriggerFeature.PAM_*` variants carry the payloads; their Slack templates live in `buildSlackPayload`. All sends are fire-and-forget (never fail the request flow). Config writes ride the existing PUT approval-configuration endpoint (undefined `notificationConfigs` leaves configs unchanged; empty array deletes all). Additional chat platforms can be added later by branching on `integration` in the trigger helper, the table needs no change.
 
 ## Credential Rotation
 

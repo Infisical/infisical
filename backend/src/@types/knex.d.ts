@@ -765,6 +765,11 @@ import {
   TPamDiscoverySourcesUpdate
 } from "@app/db/schemas/pam-discovery-sources";
 import { TPamDomains, TPamDomainsInsert, TPamDomainsUpdate } from "@app/db/schemas/pam-domains";
+import {
+  TPamFolderNotificationConfigs,
+  TPamFolderNotificationConfigsInsert,
+  TPamFolderNotificationConfigsUpdate
+} from "@app/db/schemas/pam-folder-notification-configs";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import {
   TPamProjectRecordingConfigs,
@@ -1740,6 +1745,11 @@ declare module "knex/types/tables" {
       TPamAccountTemplatesUpdate
     >;
     [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
+    [TableName.PamFolderNotificationConfig]: KnexOriginal.CompositeTableType<
+      TPamFolderNotificationConfigs,
+      TPamFolderNotificationConfigsInsert,
+      TPamFolderNotificationConfigsUpdate
+    >;
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
     [TableName.PamResourceFavorite]: KnexOriginal.CompositeTableType<
       TPamResourceFavorites,

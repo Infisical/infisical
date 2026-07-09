@@ -6244,6 +6244,7 @@ interface PamApprovalConfigUpdateEvent {
     folderId: string;
     policyId: string | null;
     stepCount: number;
+    notificationConfigCount?: number;
   };
 }
 

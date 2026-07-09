@@ -753,10 +753,10 @@ export const useRevokePamAccessRequest = () => {
 export const useSetPamApprovalConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folderId, steps }: TSetPamApprovalConfigDTO) => {
+    mutationFn: async ({ folderId, steps, notificationConfigs }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps }
+        { steps, notificationConfigs }
       );
       return data;
     },

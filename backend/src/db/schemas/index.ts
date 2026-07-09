@@ -135,6 +135,7 @@ export * from "./pam-discovered-accounts";
 export * from "./pam-discovery-source-runs";
 export * from "./pam-discovery-sources";
 export * from "./pam-domains";
+export * from "./pam-folder-notification-configs";
 export * from "./pam-folders";
 export * from "./pam-project-recording-configs";
 export * from "./pam-resource-favorites";

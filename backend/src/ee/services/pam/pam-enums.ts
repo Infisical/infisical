@@ -53,3 +53,10 @@ export enum PamMemberKind {
   Group = "group",
   Identity = "identity"
 }
+
+// Events a folder's chat notification config can subscribe to
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied"
+}
