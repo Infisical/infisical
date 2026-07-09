@@ -26,7 +26,7 @@ import {
   isPqcCryptoKey
 } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -502,7 +502,10 @@ export const internalCertificateAuthorityServiceFactory = ({
         )
         .catch((error) => {
           // unique_violation: same CA name in the same project
-          if ((error as { error?: { code?: string } })?.error?.code === DatabaseErrorCode.UniqueViolation) {
+          if (
+            error instanceof DatabaseError &&
+            (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+          ) {
             throw new BadRequestError({
               message: `A certificate authority named "${resolvedCaName}" already exists.`
             });
