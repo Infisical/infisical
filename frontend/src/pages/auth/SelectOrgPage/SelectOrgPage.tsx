@@ -12,6 +12,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useServerConfig } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -82,6 +83,7 @@ export const SelectOrgPage = () => {
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
   const selectOrg = useSelectOrganization();
   const { data: user, isPending: userLoading } = useGetUser();
+  const { config } = useServerConfig();
   const logout = useLogoutUser();
 
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
@@ -131,6 +133,23 @@ export const SelectOrgPage = () => {
     const term = searchTerm.toLowerCase();
     return selectedRootOrg.subOrganizations.filter((sub) => sub.name.toLowerCase().includes(term));
   }, [selectedRootOrg, searchTerm]);
+
+  // The org to enter without prompting: an explicit org_id (login flow, server-admin org access)
+  // or the instance default org, as long as the user is actually a member of it
+  const autoSelectOrgId = orgId || config.defaultAuthOrgId;
+  const autoSelectTarget = useMemo(() => {
+    if (!autoSelectOrgId || !orgs) return undefined;
+    const rootOrg = orgs.find((org) => org.id === autoSelectOrgId);
+    if (rootOrg) return { org: rootOrg };
+    const subOrgParent = orgs.find((org) =>
+      org.subOrganizations.some((sub) => sub.id === autoSelectOrgId)
+    );
+    return subOrgParent ? { org: subOrgParent, subOrgId: autoSelectOrgId } : undefined;
+  }, [orgs, autoSelectOrgId]);
+  // Breakglass logins and MFA continuations need the user to act on this page, so never auto-select there
+  const shouldAutoSelect = Boolean(autoSelectTarget) && !isBreakglassRoute && !mfaMethodFromSearch;
+  const [autoSelectDone, setAutoSelectDone] = useState(false);
+  const autoSelectAttempted = useRef(false);
 
   // For sub-orgs, inherit the root org's SSO settings but override the ID
   const handleSelectOrganization = async (org: TOrgWithSubOrgs, subOrgId?: string) => {
@@ -244,6 +263,16 @@ export const SelectOrgPage = () => {
       navigateUserToOrg({ navigate, organizationId: targetOrgId });
     }
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!shouldAutoSelect || !autoSelectTarget || autoSelectAttempted.current) return;
+    autoSelectAttempted.current = true;
+    handleSelectOrganization(autoSelectTarget.org, autoSelectTarget.subOrgId).finally(() =>
+      // on success this page unmounts; on failure the toast already fired, so fall back to the picker
+      setAutoSelectDone(true)
+    );
+  }, [shouldAutoSelect, autoSelectTarget]);
 
   // MFA pending from IdP redirect
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -369,7 +398,7 @@ export const SelectOrgPage = () => {
     );
   };
 
-  if (userLoading || !user) {
+  if (userLoading || !user || (shouldAutoSelect && !autoSelectDone)) {
     return (
       <div className="h-screen w-screen bg-bunker-800">
         <ContentLoader />
