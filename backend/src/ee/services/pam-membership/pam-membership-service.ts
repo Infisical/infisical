@@ -398,7 +398,6 @@ export const pamMembershipServiceFactory = ({
         );
         // eslint-disable-next-line no-await-in-loop
         const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
-        // See addProductMember above for why this endpoint needs its own cleanup call.
         // eslint-disable-next-line no-await-in-loop
         await projectAccessRequestDAL.delete({ projectId, requesterUserId: userId }, tx);
         results.push({
