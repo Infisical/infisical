@@ -404,6 +404,11 @@ const envSchema = z
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
 
+    // Forces outbound requests made through the SSRF-safe HTTP client to use
+    // direct egress (axios `proxy: false`), so the resolved-and-pinned target
+    // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
+
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
