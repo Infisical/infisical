@@ -55,8 +55,50 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
     onParsedSecrets(env);
   };
 
+  // Certificate and key files are imported verbatim: the filename becomes the
+  // secret key and the file contents become the value. Binary PFX files are
+  // base64-encoded, while PEM and CRT files are stored as plain text.
+  const parseCertificateFile = (file: File, extension: string) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      if (!event?.target?.result) {
+        createNotification({
+          type: "error",
+          text: "Invalid file contents."
+        });
+        return;
+      }
+
+      const result = event.target.result as string;
+      const value =
+        extension === "pfx"
+          ? // readAsDataURL yields "data:<mime>;base64,<data>", so keep only the base64 payload
+            result.slice(result.indexOf(",") + 1)
+          : result;
+
+      handleParsedSecrets({ [file.name]: { value, comments: [] } });
+    };
+
+    try {
+      if (extension === "pfx") {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsText(file);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const parseFile = (file?: File) => {
     if (!file) {
+      return;
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension === "pfx" || extension === "pem" || extension === "crt") {
+      parseCertificateFile(file, extension);
       return;
     }
 
@@ -162,7 +204,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
                   type="file"
                   disabled={!isAllowed}
                   className="absolute top-0 left-0 z-10 h-full w-full cursor-pointer opacity-0"
-                  accept=".txt,.env,.yml,.yaml,.json,.csv"
+                  accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
                   onChange={handleFileUpload}
                 />
               )}
