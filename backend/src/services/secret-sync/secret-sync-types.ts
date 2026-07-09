@@ -570,12 +570,12 @@ export type TSecretMap = Record<
   }
 >;
 
-export type DestinationDuplicateCheckFn = (
-  existingConfig: Record<string, unknown>,
-  newConfig: Record<string, unknown>,
-  existingConnectionId: string | null,
-  newConnectionId: string | null
-) => boolean;
+export type DestinationDuplicateCheckFn = (opts: {
+  existingConfig: Record<string, unknown>;
+  newConfig: Record<string, unknown>;
+  existingConnectionId: string | null;
+  newConnectionId: string | null;
+}) => boolean;
 
 export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;

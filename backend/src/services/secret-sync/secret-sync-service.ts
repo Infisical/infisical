@@ -288,12 +288,12 @@ export const secretSyncServiceFactory = ({
         try {
           const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
           if (baseFieldsMatch) {
-            return DESTINATION_DUPLICATE_CHECK_MAP[destination](
-              sync.destinationConfig as Record<string, unknown>,
-              destinationConfig,
-              sync.connectionId,
-              connectionId ?? null
-            );
+            return DESTINATION_DUPLICATE_CHECK_MAP[destination]({
+              existingConfig: sync.destinationConfig as Record<string, unknown>,
+              newConfig: destinationConfig,
+              existingConnectionId: sync.connectionId,
+              newConnectionId: connectionId ?? null
+            });
           }
           return false;
         } catch {
@@ -506,7 +506,7 @@ export const secretSyncServiceFactory = ({
           {
             destination,
             destinationConfig: params.destinationConfig,
-            connectionId: connectionId ?? secretSync.connectionId,
+            connectionId: params.connectionId ?? connectionId,
             projectId: secretSync.projectId,
             excludeSyncId: secretSync.id
           },
