@@ -450,7 +450,9 @@
                   "documentation/platform/secrets-mgmt/overview",
                   {
                     "group": "Quickstarts",
-                    "pages": ["documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"]
+                    "pages": [
+                      "documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"
+                    ]
                   },
                   {
                     "group": "Concepts",
@@ -3922,6 +3924,15 @@
               "api-reference/endpoints/kmip-servers/generate-enrollment-token",
               "api-reference/endpoints/kmip-servers/revoke",
               "api-reference/endpoints/kmip-servers/login"
+            ]
+          },
+          {
+            "group": "Gateways",
+            "pages": [
+              "api-reference/endpoints/gateways/get",
+              "api-reference/endpoints/gateways/create",
+              "api-reference/endpoints/gateways/update",
+              "api-reference/endpoints/gateways/generate-enrollment-token"
             ]
           },
           {
