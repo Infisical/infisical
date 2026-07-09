@@ -37,7 +37,7 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // Subject attributes are the requester's own certificate fields and flow into a structured
 // distinguished name (no string concatenation), so there's no injection risk. We don't constrain
 // their format here (wildcards like *.example.com are valid); only bound the length.
-const subjectAttributeField = z.string().trim().max(256);
+const subjectAttributeField = z.string().trim().max(255);
 
 const extractCertificateData = (
   data: CertificateServiceResponse
