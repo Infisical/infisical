@@ -53,11 +53,15 @@ const createService = ({
 } = {}) => {
   const keyStore = {
     getItem: vi.fn().mockResolvedValue(null),
+    getItemPrimary: vi.fn(),
     incrementBy: vi.fn(),
     setItemWithExpiry: vi.fn(),
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     incrementSeededWithExpiry: vi.fn().mockResolvedValue(1)
   };
+  // getItemPrimary shares the getItem mock so tests that stub getItem by key also
+  // cover the primary-pinned version reads.
+  keyStore.getItemPrimary.mockImplementation((key: string, prefix?: string) => keyStore.getItem(key, prefix));
   const identityAccessTokenRevocationDAL = {
     findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
     insertRevocation: vi.fn()

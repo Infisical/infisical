@@ -62,6 +62,13 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       }
       return null;
     },
+    getItemPrimary: async (key) => {
+      const value = store[key];
+      if (typeof value === "string") {
+        return value;
+      }
+      return null;
+    },
     pgGetIntItem: async (key) => {
       const value = store[key];
       if (typeof value === "number") {

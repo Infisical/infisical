@@ -59,7 +59,7 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
       // identity's markers. Arms are disjoint and the caller tolerates duplicates, so no
       // dedup is needed. Reads the primary because this runs on a cache miss or
       // Redis fail-open, where a lagging replica could return a stale result.
-      const idArm = db(TableName.IdentityAccessTokenRevocation)
+      let query = db(TableName.IdentityAccessTokenRevocation)
         .select("id", "identityId", "revokedAt", "createdAt", "scope")
         .where("identityId", identityId)
         .where("expiresAt", ">", db.fn.now())
@@ -72,10 +72,10 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
           .where("expiresAt", ">", db.fn.now())
           .whereIn("scope", scopes);
 
-        void idArm.unionAll([scopeArm]);
+        query = query.unionAll([scopeArm]);
       }
 
-      return (await idArm) as TRevocationRow[];
+      return (await query) as TRevocationRow[];
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForToken" });
     }

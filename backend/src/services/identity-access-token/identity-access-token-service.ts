@@ -79,7 +79,12 @@ type TIdentityAccessTokenServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership" | "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    "getItem" | "incrementBy" | "setItemWithExpiry" | "setItemWithExpiryNX" | "incrementSeededWithExpiry"
+    | "getItem"
+    | "getItemPrimary"
+    | "incrementBy"
+    | "setItemWithExpiry"
+    | "setItemWithExpiryNX"
+    | "incrementSeededWithExpiry"
   >;
 };
 
@@ -104,8 +109,7 @@ export const identityAccessTokenServiceFactory = ({
   // remembers the version it was written under, so one bump instantly makes them
   // all stale. Run it after the revocation record is saved and outside any
   // transaction, so a request reading in parallel can't cache an allow under the
-  // old version. Best effort: a lost bump lets a revoked token pass for at most
-  // the cache lifetime.
+  // old version.
   const bumpRevocationVersion = async (identityId: string) => {
     try {
       await keyStore.incrementSeededWithExpiry(
@@ -123,7 +127,9 @@ export const identityAccessTokenServiceFactory = ({
   // which tells the caller not to store an "allowed" answer.
   const getOrSeedRevocationVersion = async (identityId: string): Promise<number | null> => {
     const versionKey = KeyStorePrefixes.IdentityRevocationVersion(identityId);
-    const existing = await keyStore.getItem(versionKey);
+    // Read the version from the primary, never a replica, so a revoke's bump is
+    // always observed here (see assertTokenIsNotRevoked).
+    const existing = await keyStore.getItemPrimary(versionKey);
     if (existing !== null) {
       return Number(existing);
     }
@@ -131,7 +137,7 @@ export const identityAccessTokenServiceFactory = ({
     // Only set it if still missing, so a concurrent revoke's bump wins; then read
     // back whatever value stuck.
     await keyStore.setItemWithExpiryNX(versionKey, KeyStoreTtls.IdentityRevocationVersionInSeconds, Date.now());
-    const seeded = await keyStore.getItem(versionKey);
+    const seeded = await keyStore.getItemPrimary(versionKey);
     return seeded === null ? null : Number(seeded);
   };
 
@@ -168,9 +174,12 @@ export const identityAccessTokenServiceFactory = ({
     let cachedVerdictRaw: string | null = null;
 
     try {
-      // Two getItems (not MGET) to stay Redis-Cluster-safe. The version read here
-      // is what an allow verdict is stamped with, captured before the fill.
-      const [versionRaw, verdictRaw] = await Promise.all([keyStore.getItem(versionKey), keyStore.getItem(verdictKey)]);
+      // Two separate reads (not MGET) to stay Redis-Cluster-safe. The version is
+      // read from the primary, never a replica.
+      const [versionRaw, verdictRaw] = await Promise.all([
+        keyStore.getItemPrimary(versionKey),
+        keyStore.getItem(verdictKey)
+      ]);
       cachedVersion = versionRaw === null ? null : Number(versionRaw);
       cachedVerdictRaw = verdictRaw;
     } catch (error) {
