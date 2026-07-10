@@ -57,6 +57,8 @@ export const ensureStepUpMfa = async (
     return;
   }
 
+  await server.services.mfaSession.enforceStepUpMfaLockout(userId);
+
   const user = await server.services.user.getMe(userId);
 
   const mfaMethod = await server.services.user.getStepUpMfaMethod(userId, orgId);

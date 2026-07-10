@@ -211,6 +211,13 @@ export const mfaSessionServiceFactory = ({
     await keyStore.deleteItem(KeyStorePrefixes.MfaSession(mfaSessionId));
   };
 
+  // Gate step-up challenge creation on the same Redis-backed lockout that verify
+  // enforces, so a locked-out user is rejected before a new session (and the client
+  // popup) is minted rather than only after entering another code.
+  const enforceStepUpMfaLockout = async (userId: string) => {
+    await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
+  };
+
   return {
     createMfaSession,
     verifyMfaSession,
@@ -218,6 +225,7 @@ export const mfaSessionServiceFactory = ({
     sendMfaCode,
     getMfaSession,
     isMfaSessionActive,
-    deleteMfaSession
+    deleteMfaSession,
+    enforceStepUpMfaLockout
   };
 };
