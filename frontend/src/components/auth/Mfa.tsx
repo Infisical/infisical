@@ -141,35 +141,54 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   };
 
+  // Runs only after MFA verification has already succeeded: the MFA token is consumed
+  // and a real session token is issued. Enabling MFA + minting recovery codes is a
+  // distinct follow-up step and must NOT share the verification's error handling — if
+  // it fails, the user's code was still accepted, so bouncing them back to the code
+  // entry (where resubmitting a consumed code can never work) or decrementing the retry
+  // counter would trap them. On failure we surface a dedicated message and let them
+  // proceed; recovery codes can be generated later from account security settings.
+  const finalizeAfterMfaVerification = async (
+    sessionToken: string,
+    mfaMethod: MfaMethod,
+    isRecoveryCodeFlow: boolean
+  ) => {
+    SecurityClient.setMfaToken("");
+    SecurityClient.setToken(sessionToken);
+
+    if (!isRecoveryCodeFlow && !wasMfaEnabledRef.current) {
+      try {
+        const { recoveryCodes } = await activateMfa({ selectedMfaMethod: mfaMethod });
+        setNewRecoveryCodes(recoveryCodes);
+        return;
+      } catch {
+        createNotification({
+          text: "Your identity was verified, but two-factor setup couldn't be completed. You can set up recovery codes later from your account security settings.",
+          type: "error"
+        });
+      }
+    }
+
+    await completeLogin();
+  };
+
   const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!mfaCode.trim() || !isCodeComplete) return;
 
     setIsLoading(true);
+
+    let sessionToken: string;
     try {
-      let result;
-
-      if (showRecoveryCodeInput) {
-        result = await verifyRecoveryCode(mfaCode.trim());
-      } else {
-        result = await verifyMfaToken({
-          email,
-          mfaCode: mfaCode.trim(),
-          mfaMethod: method
-        });
-      }
-
-      SecurityClient.setMfaToken("");
-      SecurityClient.setToken(result.token);
-
-      if (!showRecoveryCodeInput && !wasMfaEnabledRef.current) {
-        const { recoveryCodes } = await activateMfa({ selectedMfaMethod: method });
-        setNewRecoveryCodes(recoveryCodes);
-        return;
-      }
-
-      await completeLogin();
+      const result = showRecoveryCodeInput
+        ? await verifyRecoveryCode(mfaCode.trim())
+        : await verifyMfaToken({
+            email,
+            mfaCode: mfaCode.trim(),
+            mfaMethod: method
+          });
+      sessionToken = result.token;
     } catch {
       if (typeof triesLeft === "number") {
         const newTriesLeft = triesLeft - 1;
@@ -179,7 +198,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             text: "User is temporary locked due to multiple failed login attempts. Try again later. You can also reset your password now to proceed.",
             type: "error"
           });
-          setIsLoading(false);
           SecurityClient.setMfaToken("");
           SecurityClient.setToken("");
           SecurityClient.setSignupToken("");
@@ -190,6 +208,12 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       } else {
         setTriesLeft(MAX_MFA_ATTEMPTS - 1);
       }
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await finalizeAfterMfaVerification(sessionToken, method, showRecoveryCodeInput);
     } finally {
       setIsLoading(false);
     }
@@ -210,6 +234,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     setIsLoading(true);
     const mfaToken = getMfaTempToken();
 
+    let sessionToken: string;
     try {
       SecurityClient.setMfaToken("");
 
@@ -222,26 +247,21 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       // Verify with server
       const result = await verifyWebAuthnAuthentication({ authenticationResponse });
 
-      // Use the sessionToken to verify MFA
-      if (result.sessionToken) {
-        SecurityClient.setMfaToken(mfaToken);
-        const mfaResult = await verifyMfaToken({
-          email,
-          mfaCode: result.sessionToken,
-          mfaMethod: MfaMethod.WEBAUTHN
-        });
-
-        SecurityClient.setMfaToken("");
-        SecurityClient.setToken(mfaResult.token);
-
-        if (!wasMfaEnabledRef.current) {
-          const { recoveryCodes } = await activateMfa({ selectedMfaMethod: MfaMethod.WEBAUTHN });
-          setNewRecoveryCodes(recoveryCodes);
-          return;
-        }
-
-        await completeLogin();
+      // Nothing to verify against without a session token; bail out without counting
+      // this as a failed attempt.
+      if (!result.sessionToken) {
+        setIsLoading(false);
+        return;
       }
+
+      // Use the sessionToken to verify MFA
+      SecurityClient.setMfaToken(mfaToken);
+      const mfaResult = await verifyMfaToken({
+        email,
+        mfaCode: result.sessionToken,
+        mfaMethod: MfaMethod.WEBAUTHN
+      });
+      sessionToken = mfaResult.token;
     } catch (error: any) {
       console.error("WebAuthn verification failed:", error);
 
@@ -277,6 +297,12 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       } else {
         setTriesLeft(MAX_MFA_ATTEMPTS - 1);
       }
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await finalizeAfterMfaVerification(sessionToken, MfaMethod.WEBAUTHN, false);
     } finally {
       setIsLoading(false);
     }
