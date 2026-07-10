@@ -190,6 +190,24 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
     The session blocks until `Ctrl+C` or expiry. On shutdown, your `gcloud` configuration is restored.
   </Accordion>
 
+  <Accordion title="Azure CLI">
+    Starts an isolated, authenticated `az` shell for the session (using a temporary `AZURE_CONFIG_DIR`, so your own `az` login is untouched). Requires the [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) to be installed. All traffic is proxied through the Infisical Gateway, which injects the brokered token before forwarding to `management.azure.com`.
+
+    ```bash
+    # Example
+    infisical pam access azure/prod-reader
+    ```
+
+    Run `az` as normal inside the session shell:
+
+    ```bash
+    az account show
+    az group list
+    ```
+
+    Type `exit` to end the session (or press `Ctrl+C`, or wait for expiry). The isolated session state is wiped on shutdown.
+  </Accordion>
+
   <Accordion title="Windows / RDP">
     Starts a local RDP proxy. Connect your RDP client to `127.0.0.1` on the assigned port.
 
