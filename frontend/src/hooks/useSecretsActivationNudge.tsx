@@ -14,7 +14,7 @@ import { usePopUp } from "./usePopUp";
 
 // Small delay before opening the modal so it doesn't pop the instant a secret is created, which
 // reads as abrupt. Tunable.
-const ACTIVATION_NUDGE_DELAY_MS = 1000;
+const ACTIVATION_NUDGE_DELAY_MS = 1500;
 
 // Growth nudge for the secret overview page. `checkActivation` is called when the user creates a
 // secret, but it runs the request at most once per session: the result is cached (gcTime Infinity)

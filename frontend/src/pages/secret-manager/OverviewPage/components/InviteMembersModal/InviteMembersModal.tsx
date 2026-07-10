@@ -163,8 +163,8 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
         <DialogHeader>
           <DialogTitle>Invite your team</DialogTitle>
           <DialogDescription>
-            Everyone has secrets, even your colleagues. Bring your team in to review, rotate, and
-            manage them together.
+            Infisical is better together. Invite your team to review, rotate, and manage secrets in
+            one place.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onInvite)} className="flex flex-col gap-4">

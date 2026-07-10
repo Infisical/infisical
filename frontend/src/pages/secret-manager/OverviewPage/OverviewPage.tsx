@@ -702,13 +702,6 @@ const OverviewPageContent = () => {
     checkActivation: checkSecretsActivation
   } = useSecretsActivationNudge();
 
-  const hasSecrets = !isPlaceholderData && Boolean(totalSecretCount);
-  useEffect(() => {
-    if (hasSecrets) {
-      checkSecretsActivation();
-    }
-  }, [hasSecrets, checkSecretsActivation]);
-
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
