@@ -47,7 +47,7 @@ export const useSecretsActivationNudge = () => {
       if (!isRootOrganization || !canInviteMembers || !currentOrg?.id) return;
 
       const queryKey = userActivationKeys.secretsStatus(currentOrg.id, user.id);
-      console.log("queryKey", queryKey);
+
       // Already checked this session (cached): don't call again and don't re-open the modal.
       if (queryClient.getQueryData(queryKey) !== undefined) return;
 
