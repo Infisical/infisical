@@ -55,13 +55,13 @@ export const hostPatternSchema = z
 
 const CredentialInputSchema = z
   .object({
-    secretKey: z.string().trim().min(1),
+    secretKey: z.string().trim().min(1).max(255),
     role: z.nativeEnum(ProxiedServiceCredentialRole),
-    headerName: z.string().trim().min(1).optional(),
-    headerPrefix: z.string().trim().optional(),
+    headerName: z.string().trim().min(1).max(255).optional(),
+    headerPrefix: z.string().trim().max(255).optional(),
     headerPurpose: z.nativeEnum(ProxiedServiceHeaderPurpose).optional(),
-    placeholderKey: z.string().trim().min(1).optional(),
-    placeholderValue: z.string().trim().min(1).optional(),
+    placeholderKey: z.string().trim().min(1).max(255).optional(),
+    placeholderValue: z.string().trim().min(1).max(255).optional(),
     substitutionSurfaces: z.array(z.nativeEnum(ProxiedServiceSubstitutionSurface)).nonempty().optional()
   })
   .superRefine((cred, ctx) => {
