@@ -3,6 +3,7 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { consumeMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession";
 
 const MFA_POLL_INTERVAL = 2000;
@@ -101,9 +102,12 @@ export const useMfaStepUp = () => {
 
           if (popupRef.current?.closed) {
             clearInterval(pollIntervalRef.current);
+            const lockoutMessage = consumeMfaLockoutError(mfaSessionId);
             createNotification({
               type: "error",
-              text: "MFA verification was not completed. Please verify again to continue."
+              text:
+                lockoutMessage ??
+                "MFA verification was not completed. Please verify again to continue."
             });
             setIsBusy(false);
           }

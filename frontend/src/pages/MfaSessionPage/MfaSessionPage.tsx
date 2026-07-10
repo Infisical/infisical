@@ -6,6 +6,7 @@ import { useParams } from "@tanstack/react-router";
 import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
+import { isMfaLockoutError, stashMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import {
   MfaSessionStatus,
@@ -120,6 +121,12 @@ export const MfaSessionPage = () => {
         window.close();
       }, 1000);
     } catch (err: any) {
+      if (isMfaLockoutError(err)) {
+        stashMfaLockoutError(mfaSessionId, err.response.data.message);
+        window.close();
+        return;
+      }
+
       setError(err?.response?.data?.message || "Invalid MFA code. Please try again.");
       setMfaCode("");
       setCodeInputKey((key) => key + 1);
@@ -163,6 +170,12 @@ export const MfaSessionPage = () => {
         }, 1000);
       }
     } catch (err: any) {
+      if (isMfaLockoutError(err)) {
+        stashMfaLockoutError(mfaSessionId, err.response.data.message);
+        window.close();
+        return;
+      }
+
       console.error("WebAuthn verification failed:", err);
 
       let errorMessage = "Failed to verify passkey";

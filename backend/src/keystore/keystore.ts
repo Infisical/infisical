@@ -89,6 +89,8 @@ export const KeyStorePrefixes = {
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
+  UserStepUpMfaAttempts: (userId: string) => `user-step-up-mfa-attempts:${userId}` as const,
+  UserStepUpMfaLockout: (userId: string) => `user-step-up-mfa-lockout:${userId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
@@ -183,6 +185,8 @@ export const KeyStoreTtls = {
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
+  StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
+  StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
   TelemetryAggregatedEventInSeconds: 600, // 10 minutes
   SecretEtagInSeconds: 900, // 15 minutes

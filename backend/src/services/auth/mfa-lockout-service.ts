@@ -1,6 +1,6 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -12,11 +12,16 @@ import { enforceUserLockStatus } from "./auth-fns";
 const PROGRESSIVE_DELAY_INTERVAL = 5;
 const PROGRESSIVE_DELAYS_IN_MINS = [5, 30, 60];
 
+const STEP_UP_MFA_MAX_ATTEMPTS = 5;
+
 type TMfaLockoutServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "updateById" | "transaction">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl" | "incrementByWithExpiry" | "deleteItem"
+  >;
 };
 
 export type TMfaLockoutServiceFactory = ReturnType<typeof mfaLockoutServiceFactory>;
@@ -150,9 +155,54 @@ export const mfaLockoutServiceFactory = ({
     });
   };
 
+  // Rejects the request when the user is currently within a temporary step-up MFA
+  // lockout window. Backed purely by Redis (a lock key with a TTL) so it self-clears
+  // when the window expires - there is no permanent lock here, unlike the login flow.
+  const enforceStepUpMfaLockStatus = async (userId: string) => {
+    const remainingSeconds = await keyStore.ttl(KeyStorePrefixes.UserStepUpMfaLockout(userId));
+    if (remainingSeconds > 0) {
+      const timeDisplay =
+        remainingSeconds > 60
+          ? `${Math.ceil(remainingSeconds / 60)} minutes`
+          : `${Math.ceil(remainingSeconds)} seconds`;
+
+      throw new ForbiddenRequestError({
+        name: "UserLocked",
+        message: `Too many failed MFA attempts. Try again after ${timeDisplay}.`
+      });
+    }
+  };
+
+  // Increments the Redis-tracked step-up failure counter within a rolling window and,
+  // once the threshold is hit, applies a temporary lockout and resets the counter so a
+  // fresh window starts after the lockout expires.
+  const handleFailedStepUpMfaAttempt = async (userId: string) => {
+    const attemptsKey = KeyStorePrefixes.UserStepUpMfaAttempts(userId);
+    const attempts = await keyStore.incrementByWithExpiry(attemptsKey, 1, KeyStoreTtls.StepUpMfaAttemptWindowInSeconds);
+
+    if (attempts >= STEP_UP_MFA_MAX_ATTEMPTS) {
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.UserStepUpMfaLockout(userId),
+        KeyStoreTtls.StepUpMfaLockoutInSeconds,
+        "1"
+      );
+      await keyStore.deleteItem(attemptsKey);
+    }
+  };
+
+  // Clears the step-up failure counter and any temporary lockout after a successful
+  // verification.
+  const resetStepUpMfaLockStatus = async (userId: string) => {
+    await keyStore.deleteItem(KeyStorePrefixes.UserStepUpMfaAttempts(userId));
+    await keyStore.deleteItem(KeyStorePrefixes.UserStepUpMfaLockout(userId));
+  };
+
   return {
     enforceMfaLockStatus,
     handleFailedMfaAttempt,
-    resetMfaLockStatus
+    resetMfaLockStatus,
+    enforceStepUpMfaLockStatus,
+    handleFailedStepUpMfaAttempt,
+    resetStepUpMfaLockStatus
   };
 };
