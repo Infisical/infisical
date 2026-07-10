@@ -343,9 +343,28 @@ export const secretSyncServiceFactory = ({
       const duplicates = duplicateCheckResults.filter(Boolean);
 
       const hasDuplicate = duplicates.length > 0;
+
+      let duplicateProjectId: string | undefined;
+      if (hasDuplicate) {
+        const duplicateProject = duplicates[0]!.projectId;
+        try {
+          await permissionService.getProjectPermission({
+            actor: actor.type,
+            actorId: actor.id,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId,
+            actionProjectType: ActionProjectType.SecretManager,
+            projectId: duplicateProject
+          });
+          duplicateProjectId = duplicateProject;
+        } catch {
+          // actor lacks access to the duplicate's project -- do not reveal it
+        }
+      }
+
       return {
         hasDuplicate,
-        duplicateProjectId: hasDuplicate ? duplicates[0]!.projectId : undefined
+        duplicateProjectId
       };
     } catch (error) {
       return { hasDuplicate: false, duplicateProjectId: undefined };
@@ -421,7 +440,9 @@ export const secretSyncServiceFactory = ({
       if (duplicateCheck.hasDuplicate) {
         throw new BadRequestError({
           message: `A secret sync with this destination already exists${
-            duplicateCheck.duplicateProjectId ? ` in project ${duplicateCheck.duplicateProjectId}` : ""
+            duplicateCheck.duplicateProjectId
+              ? ` in project ${duplicateCheck.duplicateProjectId}`
+              : " in another project in your organization"
           }.`
         });
       }
