@@ -61,7 +61,9 @@ const createService = ({
   };
   // getItemPrimary shares the getItem mock so tests that stub getItem by key also
   // cover the primary-pinned version reads.
-  keyStore.getItemPrimary.mockImplementation((key: string, prefix?: string) => keyStore.getItem(key, prefix));
+  keyStore.getItemPrimary.mockImplementation(
+    (key: string, prefix?: string) => keyStore.getItem(key, prefix) as Promise<string | null>
+  );
   const identityAccessTokenRevocationDAL = {
     findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
     insertRevocation: vi.fn()
