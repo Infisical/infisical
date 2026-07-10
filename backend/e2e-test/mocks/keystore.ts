@@ -79,6 +79,17 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       store[key] = String(next);
       return next;
     },
+    incrementSeededWithExpiry: async (key, seed) => {
+      const existing = store[key];
+      if (existing === undefined) {
+        const seeded = 1 + seed;
+        store[key] = String(seeded);
+        return seeded;
+      }
+      const next = (typeof existing === "string" ? parseInt(existing, 10) : 0) + 1;
+      store[key] = String(next);
+      return next;
+    },
     pgGetIntItem: async (key) => {
       const value = store[key];
       if (typeof value === "number") {

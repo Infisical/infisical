@@ -13,6 +13,8 @@ const MAX_AGE = 7_776_000;
 const AUTH_SECRET = "test-auth-secret";
 const NOW_SECONDS = 1_700_000_000;
 const ENFORCED_AT = new Date("2026-05-04T00:00:00.000Z");
+// Mirror IDENTITY_REVOCATION_MARKER_SKEW_SECONDS from identity-access-token-fns.
+const MARKER_SKEW_SECONDS = 300;
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({
@@ -25,6 +27,7 @@ vi.mock("@app/lib/config/env", () => ({
 vi.mock("@app/lib/logger", () => ({
   logger: {
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn()
   }
 }));
@@ -51,7 +54,9 @@ const createService = ({
   const keyStore = {
     getItem: vi.fn().mockResolvedValue(null),
     incrementBy: vi.fn(),
-    setItemWithExpiry: vi.fn()
+    setItemWithExpiry: vi.fn(),
+    setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
+    incrementSeededWithExpiry: vi.fn().mockResolvedValue(1)
   };
   const identityAccessTokenRevocationDAL = {
     findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
@@ -210,10 +215,11 @@ describe("identityAccessTokenServiceFactory", () => {
 
     await service.revokeAccessToken(accessToken);
 
+    // maxTTL=0/TTL=0: irreducible ~90d marker (now + ceiling), plus the skew buffer.
     expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
       id: "token-id",
       identityId: "identity-id",
-      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+      expiresAt: new Date((NOW_SECONDS + MAX_AGE + MARKER_SKEW_SECONDS) * 1000)
     });
   });
 
@@ -238,11 +244,12 @@ describe("identityAccessTokenServiceFactory", () => {
 
     await service.revokeAccessToken(legacyToken);
 
-    // Legacy row has accessTokenMaxTTL: 7200, createdAt: NOW_SECONDS
+    // Legacy row has accessTokenMaxTTL: 7200, createdAt: NOW_SECONDS. The marker
+    // is clamped to creationEpoch+maxTTL (the legacy upper bound) plus the skew.
     expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
       id: "legacy-token-id",
       identityId: "identity-id",
-      expiresAt: new Date((NOW_SECONDS + 7200) * 1000)
+      expiresAt: new Date((NOW_SECONDS + 7200 + MARKER_SKEW_SECONDS) * 1000)
     });
   });
 
@@ -650,5 +657,151 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
       "membership is inactive"
     );
+  });
+
+  test("tightens the per-token marker to the JWT exp plus one issuance TTL and skew", async () => {
+    // TTL=2h, maxTTL=30d: marker should self-drain ~2h after exp, not in 30d.
+    const twoHours = 7200;
+    const thirtyDays = 2_592_000;
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: twoHours,
+      accessTokenTTL: twoHours,
+      accessTokenMaxTTL: thirtyDays,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, identityAccessTokenRevocationDAL } = createService();
+
+    await service.revokeAccessToken(accessToken);
+
+    // exp = NOW + 2h; cap = min(2h, ceiling) = 2h; clamped by creationEpoch+maxTTL
+    // (NOW + 30d) → exp + 2h wins; plus skew.
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
+      id: "token-id",
+      identityId: "identity-id",
+      expiresAt: new Date((NOW_SECONDS + twoHours + twoHours + MARKER_SKEW_SECONDS) * 1000)
+    });
+  });
+
+  test("bumps the identity revocation version after inserting the marker on revoke", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+
+    await service.revokeAccessToken(accessToken);
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledTimes(1);
+    expect(keyStore.incrementSeededWithExpiry).toHaveBeenCalledWith(
+      "identity-revocation-version:identity-id",
+      expect.any(Number),
+      expect.any(Number)
+    );
+  });
+
+  test("bumps the identity revocation version on identity-wide revoke", async () => {
+    const { service, keyStore } = createService();
+
+    await service.revokeAllTokensForIdentity("identity-id");
+
+    expect(keyStore.incrementSeededWithExpiry).toHaveBeenCalledWith(
+      "identity-revocation-version:identity-id",
+      expect.any(Number),
+      expect.any(Number)
+    );
+  });
+
+  test("serves a cached allow verdict without hitting the revocation DAL", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "5";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ v: 5 });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).not.toHaveBeenCalled();
+  });
+
+  test("serves a cached deny verdict without hitting the revocation DAL", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "5";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ deny: "token" });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "token has been revoked"
+    );
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).not.toHaveBeenCalled();
+  });
+
+  test("re-queries the primary when the cached allow version is stale", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    // Live version advanced past the version the cached allow was stamped with.
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "6";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ v: 5 });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalledTimes(1);
+    // Re-stamp the allow with the current live version.
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      expect.stringContaining("identity-revocation-verdict:identity-id:"),
+      expect.any(Number),
+      JSON.stringify({ v: 6 })
+    );
+  });
+
+  test("fails open to a direct primary query when the verdict cache read errors", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService({
+      activeRevocations: [{ id: "token-id", identityId: "identity-id", createdAt: new Date(NOW_SECONDS * 1000) }]
+    });
+    // Only the revocation cache reads fail; the uses-remaining read still resolves
+    // so we isolate the revocation-check fail-open behaviour.
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-")) {
+        throw new Error("redis down");
+      }
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "token has been revoked"
+    );
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalled();
   });
 });

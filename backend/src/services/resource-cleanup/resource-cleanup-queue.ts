@@ -97,7 +97,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await scepTransactionDAL.pruneExpiredTransactions();
-        await identityAccessTokenRevocationDAL.removeExpiredRevocations();
         await auditLogDAL.pruneAuditLog();
       }
     });
@@ -128,6 +127,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
+        const deletedRevocations = await identityAccessTokenRevocationDAL.removeExpiredRevocations();
+        logger.info(
+          `cron[${CronJobName.FrequentResourceCleanup}]: removed ${deletedRevocations} expired identity access token revocations`
+        );
         const newlyExpired = await approvalRequestDAL.markExpiredRequests();
         if (newlyExpired > 0) {
           await certificateRequestDAL.markExpiredApprovalRequests();

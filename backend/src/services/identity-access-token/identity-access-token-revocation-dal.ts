@@ -53,22 +53,29 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
     scopes: string[];
   }): Promise<TRevocationRow[]> => {
     try {
-      return (
-        (await db
-          .replicaNode()(TableName.IdentityAccessTokenRevocation)
+      // Equality-only UNION ALL arms so each serves from its own index (id arm
+      // from the PK, scope arm from the partial (identityId, scope) index)
+      // instead of scanning (identityId, expiresAt) across a high-volume
+      // identity's markers. Arms are disjoint and the caller tolerates duplicates, so no
+      // dedup is needed. Reads the primary because this runs on a cache miss or
+      // Redis fail-open, where a lagging replica could return a stale result.
+      const idArm = db(TableName.IdentityAccessTokenRevocation)
+        .select("id", "identityId", "revokedAt", "createdAt", "scope")
+        .where("identityId", identityId)
+        .where("expiresAt", ">", db.fn.now())
+        .whereIn("id", [tokenId, identityId]);
+
+      if (scopes.length > 0) {
+        const scopeArm = db(TableName.IdentityAccessTokenRevocation)
           .select("id", "identityId", "revokedAt", "createdAt", "scope")
-          .where("expiresAt", ">", db.fn.now())
           .where("identityId", identityId)
-          // Both halves of the OR must be equality predicates so the planner can
-          // serve `id IN (...)` from the PK and the `scope IN (...)` filter stays
-          // selective. `scope IS NOT NULL` would force a non-sargable scan.
-          .andWhere((qb) => {
-            void qb.whereIn("id", [tokenId, identityId]);
-            if (scopes.length > 0) {
-              void qb.orWhereIn("scope", scopes);
-            }
-          })) as TRevocationRow[]
-      );
+          .where("expiresAt", ">", db.fn.now())
+          .whereIn("scope", scopes);
+
+        void idArm.unionAll([scopeArm]);
+      }
+
+      return (await idArm) as TRevocationRow[];
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForToken" });
     }
@@ -79,8 +86,9 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
     let deletedRevocationIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
+    let totalDeletedCount = 0;
 
-    logger.info(`daily-resource-cleanup: remove expired identity access token revocations started`);
+    logger.info(`resource-cleanup: remove expired identity access token revocations started`);
     do {
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -103,6 +111,7 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
         });
 
         numberOfRetryOnFailure = 0;
+        totalDeletedCount += deletedRevocationIds.length;
       } catch (error) {
         numberOfRetryOnFailure += 1;
         deletedRevocationIds = [];
@@ -118,12 +127,15 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
 
     if (numberOfRetryOnFailure >= MAX_RETRY_ON_FAILURE) {
       logger.error(
-        `daily-resource-cleanup: remove expired identity access token revocations completed with persistent errors after ${MAX_RETRY_ON_FAILURE} retries. Some revocations might not have been pruned.`
+        `resource-cleanup: remove expired identity access token revocations completed with persistent errors after ${MAX_RETRY_ON_FAILURE} retries. Deleted ${totalDeletedCount} revocations; some might not have been pruned.`
       );
-      return;
+      return totalDeletedCount;
     }
 
-    logger.info(`daily-resource-cleanup: remove expired identity access token revocations completed`);
+    logger.info(
+      `resource-cleanup: remove expired identity access token revocations completed. Deleted ${totalDeletedCount} revocations.`
+    );
+    return totalDeletedCount;
   };
 
   return {

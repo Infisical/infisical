@@ -69,6 +69,9 @@ export const KeyStorePrefixes = {
     `identity-access-token-status:${identityAccessTokenId}`,
   IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
     `identity-token-uses-remaining:${identityId}:${jti}` as const,
+  IdentityRevocationVersion: (identityId: string) => `identity-revocation-version:${identityId}` as const,
+  IdentityRevocationVerdict: (identityId: string, fingerprint: string) =>
+    `identity-revocation-verdict:${identityId}:${fingerprint}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
@@ -156,6 +159,9 @@ export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
+  IdentityRevocationVerdictBaseInSeconds: 600, // 10 minutes
+  IdentityRevocationVerdictJitterInSeconds: 120, // +/- 2 minutes
+  IdentityRevocationVersionInSeconds: 604800, // 7 days
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes
@@ -230,6 +236,7 @@ export type TKeyStoreFactory = {
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
+  incrementSeededWithExpiry: (key: string, seed: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
   listPush: (key: string, value: string) => Promise<number>;
@@ -412,6 +419,24 @@ export const keyStoreFactory = (
     return result as number;
   };
 
+  // Timestamp-seeded INCR. When the key is missing (INCR returns 1) it rebases
+  // the counter by `seed` (a caller-supplied Date.now()), so a resurrected key
+  // restarts above any value it held before and a stale cached allow stamped
+  // with an old version can never match again.
+  const INCREMENT_SEEDED_WITH_EXPIRY = `
+    local v = redis.call('INCR', KEYS[1])
+    if v == 1 then
+      v = redis.call('INCRBY', KEYS[1], ARGV[1])
+    end
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+    return v
+  `;
+
+  const incrementSeededWithExpiry = async (key: string, seed: number, expiryInSeconds: number): Promise<number> => {
+    const result = await primaryRedis.eval(INCREMENT_SEEDED_WITH_EXPIRY, 1, key, String(seed), String(expiryInSeconds));
+    return Number(result);
+  };
+
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
 
   const ttl = async (key: string) => primaryRedis.ttl(key);
@@ -544,6 +569,7 @@ export const keyStoreFactory = (
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
     incrementByWithExpiry,
+    incrementSeededWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },
