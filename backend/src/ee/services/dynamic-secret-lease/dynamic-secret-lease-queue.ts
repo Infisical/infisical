@@ -1,5 +1,6 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { recordDynamicSecretOrphanedLeaseMetric } from "@app/lib/telemetry/metrics";
 import { applyJitter } from "@app/lib/delay";
 import { DisableRotationErrors, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -141,6 +142,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     data: { leaseId: string; dynamicSecretId: string; isRetry?: boolean } | { dynamicSecretCfgId: string },
     retryCount?: number
   ): Promise<void> => {
+    let providerType: string | undefined;
     try {
       if (jobName === QueueJobs.DynamicSecretRevocation) {
         const { leaseId } = data as { leaseId: string };
@@ -163,6 +165,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         });
 
         const dynamicSecretCfg = dynamicSecretLease.dynamicSecret;
+        providerType = dynamicSecretCfg.type;
         const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
         const decryptedStoredInput = JSON.parse(
           secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
@@ -183,6 +186,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           logger.info(`Failed to find dynamic secret with ${dynamicSecretCfgId}`);
           return;
         }
+        providerType = dynamicSecretCfg.type;
         if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting) {
           logger.info(`Dynamic secret ${dynamicSecretCfgId} is not in deleting status`);
           return;
@@ -233,6 +237,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           status: DynamicSecretStatus.FailedDeletion,
           statusDetails: (error as Error)?.message?.slice(0, 255)
         });
+        if (providerType) {
+          recordDynamicSecretOrphanedLeaseMetric({ provider: providerType });
+        }
       }
 
       if (jobName === QueueJobs.DynamicSecretRevocation) {
@@ -245,6 +252,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           status: DynamicSecretStatus.FailedDeletion,
           statusDetails: `${(error as Error)?.message?.slice(0, 255)} - Retrying automatically`
         });
+        if (providerType) {
+          recordDynamicSecretOrphanedLeaseMetric({ provider: providerType });
+        }
 
         // only add to retry queue if this is not a retry, and if the error is not a DisableRotationErrors error
         if (!isRetry && !(error instanceof DisableRotationErrors)) {

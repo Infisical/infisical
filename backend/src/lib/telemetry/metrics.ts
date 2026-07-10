@@ -556,6 +556,41 @@ export const recordSecretSyncOutcomeMetric = (params: {
   });
 };
 
+// -- Secret rotation outcome (InfisicalCore meter) --------------------------------------------------
+export const secretRotationOutcomeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_rotation.outcome.count",
+  {
+    description:
+      "Secret rotation attempts by type and outcome. Alert on failure ratio > 50% per type with >= 5 total rotations.",
+    unit: "{attempt}"
+  }
+);
+
+export const recordSecretRotationOutcomeMetric = (params: { type: string; outcome: "success" | "failure" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretRotationOutcomeCounter.add(1, {
+    type: params.type,
+    outcome: params.outcome
+  });
+};
+
+// -- Dynamic secret orphaned lease (InfisicalCore meter) ---------------------------------------------
+export const dynamicSecretOrphanedLeaseCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.orphaned_lease.count",
+  {
+    description:
+      "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
+    unit: "{failure}"
+  }
+);
+
+export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string }) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretOrphanedLeaseCounter.add(1, {
+    provider: params.provider
+  });
+};
+
 // -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------
 // Registered once at boot from main.ts with the primary Knex instance. Runs AFTER setupTelemetry() has
 // installed the real MeterProvider, so we resolve the real meter directly here (observable gauges can't
@@ -599,59 +634,5 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     result.observe(pool.numUsed?.() ?? 0, { "db.pool.state": "used" });
     result.observe(pool.numFree?.() ?? 0, { "db.pool.state": "free" });
     result.observe(pool.numPendingAcquires?.() ?? 0, { "db.pool.state": "pending" });
-  });
-
-  // Secret rotation status: GROUP BY type, rotationStatus. Backs "A rotation type is broken" alert.
-  const rotationStatusGauge = meter.createObservableGauge("infisical.secret_rotation.status", {
-    description:
-      "Current secret rotation counts by type and status. Alert on failure ratio > 50% per type with >= 5 total rotations.",
-    unit: "{rotation}"
-  });
-
-  rotationStatusGauge.addCallback(async (result) => {
-    if (!isTelemetryEnabled()) return;
-    try {
-      const rows: { type: string; rotationStatus: string; count: string }[] = await db("secret_rotations_v2")
-        .select("type", "rotationStatus")
-        .count("* as count")
-        .groupBy("type", "rotationStatus");
-
-      for (const row of rows) {
-        result.observe(Number(row.count), {
-          type: row.type,
-          outcome: row.rotationStatus
-        });
-      }
-    } catch {
-      // DB unavailable during startup or shutdown; skip this export tick.
-    }
-  });
-
-  // Orphaned dynamic secret credentials: leases past expiry still marked "Failed to delete".
-  const orphanedGauge = meter.createObservableGauge("infisical.dynamic_secret.orphaned", {
-    description:
-      "Dynamic secret leases past expiry with status 'Failed to delete', grouped by provider. Alert on any value > 0 sustained 60m.",
-    unit: "{credential}"
-  });
-
-  orphanedGauge.addCallback(async (result) => {
-    if (!isTelemetryEnabled()) return;
-    try {
-      const rows: { type: string; count: string }[] = await db("dynamic_secret_leases")
-        .join("dynamic_secrets", "dynamic_secret_leases.dynamicSecretId", "dynamic_secrets.id")
-        .where("dynamic_secret_leases.status", "Failed to delete")
-        .where("dynamic_secret_leases.expireAt", "<", db.fn.now())
-        .select("dynamic_secrets.type")
-        .count("* as count")
-        .groupBy("dynamic_secrets.type");
-
-      for (const row of rows) {
-        result.observe(Number(row.count), {
-          provider: row.type
-        });
-      }
-    } catch {
-      // DB unavailable during startup or shutdown; skip this export tick.
-    }
   });
 };
