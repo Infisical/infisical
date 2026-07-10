@@ -25,7 +25,8 @@ import {
   isPqcAlgorithm,
   isPqcCryptoKey
 } from "@app/lib/crypto/pqc";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -489,15 +490,28 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      const ca = await certificateAuthorityDAL.create(
-        {
-          projectId,
-          name: resolvedCaName,
-          status: notAfter && type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
-          enableDirectIssuance: false
-        },
-        tx
-      );
+      const ca = await certificateAuthorityDAL
+        .create(
+          {
+            projectId,
+            name: resolvedCaName,
+            status: notAfter && type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+            enableDirectIssuance: false
+          },
+          tx
+        )
+        .catch((error) => {
+          // unique_violation: same CA name in the same project
+          if (
+            error instanceof DatabaseError &&
+            (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+          ) {
+            throw new BadRequestError({
+              message: `A certificate authority named "${resolvedCaName}" already exists.`
+            });
+          }
+          throw error;
+        });
 
       const internalCa = await internalCertificateAuthorityDAL.create(
         {
