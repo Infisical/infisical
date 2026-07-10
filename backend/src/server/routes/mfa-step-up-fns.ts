@@ -8,7 +8,7 @@ import { MfaMethod } from "@app/services/auth/auth-type";
 //
 // Viewing recovery codes, rotating recovery codes, and disabling MFA are all
 // MFA-management actions of comparable risk, so they intentionally share a single
-// resource id: one fresh challenge covers all of them for the session TTL (5 min)
+// resource id: one fresh challenge covers all of them for the session TTL (10 min)
 // rather than re-prompting the user for each action in quick succession.
 //
 // Enabling MFA is kept on its own resource id (never folded into MfaManagement):
@@ -27,7 +27,7 @@ export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStep
  * action, reusing the Redis-backed step-up MFA session primitive (mirrors the PAM
  * account-access flow).
  *
- * A verified session is reusable for the remainder of its TTL (5 min) and is bound
+ * A verified session is reusable for the remainder of its TTL (10 min) and is bound
  * to `resourceId`, so it cannot be replayed against a different action.
  *
  * - With a valid, verified session for this user + resource: returns immediately.

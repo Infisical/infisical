@@ -158,6 +158,10 @@ export const mfaSessionServiceFactory = ({
 
     await mfaLockoutService.resetStepUpMfaLockStatus(userId);
 
+    if (mfaMethod === MfaMethod.EMAIL) {
+      await keyStore.deleteItem(KeyStorePrefixes.MfaCodeResendCooldown(userId));
+    }
+
     mfaSession.status = MfaSessionStatus.ACTIVE;
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
 

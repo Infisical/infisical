@@ -160,7 +160,7 @@ export const KeyStoreTtls = {
   AccessTokenStatusUpdateInSeconds: 120,
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
-  MfaSessionInSeconds: 300, // 5 minutes
+  MfaSessionInSeconds: 600, // 10 minutes
   MfaCodeResendCooldownInSeconds: 60, // 1 minute
 
   WebAuthnChallengeInSeconds: 300, // 5 minutes
