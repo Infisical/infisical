@@ -255,6 +255,10 @@ COPY --from=backend-runner /app /backend
 COPY --from=frontend-runner /app ./backend/frontend-build
 COPY --from=go-builder /go-sidecar /backend/go-sidecar
 
+# Install Chromium for PAM web-page session recording.
+# --with-deps works here because the base is node:22-trixie-slim (Debian).
+RUN cd /backend && npx playwright install --with-deps chromium
+
 # Make export-assets script executable for CDN asset extraction
 RUN chmod +x /backend/scripts/export-assets.sh
 

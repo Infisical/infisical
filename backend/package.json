@@ -282,6 +282,7 @@
     "pino": "^8.16.2",
     "pkcs11js": "^2.1.6",
     "pkijs": "^3.2.4",
+    "playwright": "^1.61.1",
     "posthog-node": "^5.28.1",
     "probot": "^13.3.8",
     "randexp": "^0.5.3",
