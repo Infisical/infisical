@@ -1165,6 +1165,10 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
     }
 
+    if (policyType === ApprovalPolicyType.CertCodeSigning && request.requesterId === actor.id) {
+      throw new ForbiddenRequestError({ message: "You cannot approve your own signing request" });
+    }
+
     const hasApproved = currentStep.approvals.some((a) => a.approverUserId === actor.id);
     if (hasApproved) {
       throw new BadRequestError({ message: "You have already approved this request" });
