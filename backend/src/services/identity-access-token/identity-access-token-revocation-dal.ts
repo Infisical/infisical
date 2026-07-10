@@ -74,12 +74,7 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Deletes expired revocation markers in bounded batches so a single run never holds a long-lived
-  // lock / large WAL burst against this high-volume table. Mirrors the batched-prune convention used
-  // by the other DailyResourceCleanup jobs (e.g. auditLogDAL.pruneAuditLog, userNotificationDAL.pruneNotifications,
-  // keyValueStoreDAL.pruneExpiredKeys): loop deleting up to REVOCATION_PRUNE_BATCH_SIZE rows at a time
-  // via an id subquery with LIMIT, retrying transient failures a bounded number of times, with a short
-  // pause between batches to let the DB "breathe".
+  // Batched: an unbounded DELETE on this high-volume table holds long locks and bursts WAL.
   const removeExpiredRevocations = async () => {
     let deletedRevocationIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
@@ -103,12 +98,11 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
             .del()
             .returning("id");
 
-          // `IdentityAccessTokenRevocation` isn't registered in the global knex table-type map,
-          // so `results` resolves to `any[]`; cast explicitly like `findActiveRevocationsForToken` above.
+          // table isn't in the knex table-type map, so the query resolves to any[]
           return results as { id: string }[];
         });
 
-        numberOfRetryOnFailure = 0; // reset
+        numberOfRetryOnFailure = 0;
       } catch (error) {
         numberOfRetryOnFailure += 1;
         deletedRevocationIds = [];
