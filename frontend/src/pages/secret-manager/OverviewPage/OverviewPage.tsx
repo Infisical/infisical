@@ -122,6 +122,7 @@ import {
   usePagination,
   usePopUp,
   useResetPageHelper,
+  useSecretsActivationNudge,
   useToggle
 } from "@app/hooks";
 import {
@@ -216,6 +217,7 @@ import {
 } from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { InviteMembersModal } from "./components/InviteMembersModal";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -690,6 +692,15 @@ const OverviewPageContent = () => {
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
+
+  // Growth nudge: when the user creates a secret, ask the backend whether to surface the
+  // "Invite your team" modal. The check runs at most once per session, opens the modal only if
+  // the backend says so, and is a no-op on failure.
+  const {
+    popUp: invitePopUp,
+    handlePopUpToggle: handleInvitePopUpToggle,
+    checkActivation: checkSecretsActivation
+  } = useSecretsActivationNudge();
 
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
@@ -1656,6 +1667,9 @@ const OverviewPageContent = () => {
         type: "success",
         text: "Successfully created secret"
       });
+
+      // The user just created a secret: check whether to surface the activation nudge.
+      checkSecretsActivation();
     }
   };
 
@@ -2108,8 +2122,23 @@ const OverviewPageContent = () => {
           : "Changes saved successfully",
         type: requiresApproval ? "info" : "success"
       });
+
+      // If the commit actually created secrets (not just an approval request), check whether to
+      // surface the activation nudge.
+      const createdSecret = changes.secrets.some((s) => s.type === PendingAction.Create);
+      if (createdSecret && !requiresApproval) {
+        checkSecretsActivation();
+      }
     },
-    [singleVisibleEnv, projectId, secretPath, isProtectedBranch, queryClient, createCommit]
+    [
+      singleVisibleEnv,
+      projectId,
+      secretPath,
+      isProtectedBranch,
+      queryClient,
+      createCommit,
+      checkSecretsActivation
+    ]
   );
 
   // Batch mode: toggle
@@ -3405,6 +3434,7 @@ const OverviewPageContent = () => {
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
+            onSecretCreated={checkSecretsActivation}
             onBatchSecretCreate={(params) => {
               addPendingChange(
                 {
@@ -3862,6 +3892,9 @@ const OverviewPageContent = () => {
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
           secretPath={pathPolicies[0].secretPath}
         />
+      )}
+      {invitePopUp.inviteMembers.isOpen && (
+        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
       )}
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm

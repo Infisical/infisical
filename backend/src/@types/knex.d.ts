@@ -687,6 +687,9 @@ import {
   TUserGroupMembershipInsert,
   TUserGroupMembershipUpdate,
   TUsers,
+  TUserSecretActivation,
+  TUserSecretActivationInsert,
+  TUserSecretActivationUpdate,
   TUsersInsert,
   TUsersUpdate,
   TVaultExternalMigrationConfigs,
@@ -842,6 +845,11 @@ declare module "knex" {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.UserSecretActivation]: KnexOriginal.CompositeTableType<
+      TUserSecretActivation,
+      TUserSecretActivationInsert,
+      TUserSecretActivationUpdate
+    >;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
     [TableName.SshHostGroup]: KnexOriginal.CompositeTableType<
       TSshHostGroups,
