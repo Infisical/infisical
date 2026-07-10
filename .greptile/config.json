@@ -1,0 +1,24 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax", "style"],
+  "ignorePatterns": "**/*.generated.*\n**/routeTree.gen.ts\nnode_modules/**\ndist/**",
+  "summarySection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": false
+  },
+  "rules": [
+    {
+      "id": "use-safe-request-for-user-urls",
+      "rule": "When making HTTP requests to user-supplied URLs (webhooks, app connections, syncs, rotations, etc.), use safeRequest from backend/src/lib/validator/safe-request.ts instead of blockLocalAndPrivateIpAddresses. blockLocalAndPrivateIpAddresses validates the host but is vulnerable to DNS rebinding: DNS can resolve to an internal IP between the validation check and the actual connect. safeRequest closes that window by validating and pinning the connection to the validated IP, and is a drop-in replacement for axios usage. Flag new code that calls blockLocalAndPrivateIpAddresses or passes a user-controlled URL to axios/fetch directly without safeRequest.",
+      "severity": "high",
+      "scope": ["backend/src/**"]
+    },
+    {
+      "id": "no-design-system-style-overrides",
+      "rule": "New UI must not override or deviate from the default styling of v3 design-system components (frontend/src/components/v3). Follow DESIGN.md. Flag: legacy v2 color tokens (e.g. mineshaft-*, bunker-*) instead of semantic tokens like bg-org or text-danger; casing changes such as uppercase text; className overrides of component defaults like height or border; and hex colors not defined in frontend/src/index.css. Inline styling must be a deliberate exception, not a default. If the same inline style is repeated across call sites, suggest a new component variant or a component update instead. Do not use v2 components for new code when a v3 equivalent exists (PageHeader is the known exception).",
+      "severity": "medium",
+      "scope": ["frontend/src/**"]
+    }
+  ]
+}
