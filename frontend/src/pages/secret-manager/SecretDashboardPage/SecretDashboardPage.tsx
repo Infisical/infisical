@@ -32,7 +32,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
@@ -118,6 +119,7 @@ const Page = () => {
   });
 
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
   const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -328,7 +330,7 @@ const Page = () => {
     includeSecretRotations:
       canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     includeHoneyTokens: true,
-    includeProxiedServices: true,
+    includeProxiedServices: Boolean(subscription?.secretsBrokering),
     tags: filter.tags
   });
 

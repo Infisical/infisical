@@ -1,5 +1,6 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import { InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -211,9 +212,18 @@ export const ProxiedServiceForm = ({
         type: "success"
       });
       onComplete();
-    } catch {
+    } catch (err) {
+      // surface the backend reason (e.g. "Referenced secret(s) not found", permission errors)
+      const raw = (err as AxiosError<{ message?: string | { message?: string }[] }>)?.response?.data
+        ?.message;
+      const detail = Array.isArray(raw)
+        ? raw
+            .map((issue) => issue?.message)
+            .filter(Boolean)
+            .join(", ")
+        : raw;
       createNotification({
-        text: `Failed to ${isEdit ? "update" : "create"} proxied service`,
+        text: `Failed to ${isEdit ? "update" : "create"} proxied service${detail ? `: ${detail}` : ""}`,
         type: "error"
       });
     }

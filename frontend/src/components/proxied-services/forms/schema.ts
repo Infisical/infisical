@@ -7,6 +7,54 @@ import {
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+// mirrors the backend host-pattern grammar (proxied-service-schemas.ts) so bad patterns fail inline
+const hostLabelsRe =
+  /^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i;
+
+const hostPatternField = z
+  .string()
+  .trim()
+  .min(1, "Host pattern is required")
+  .max(255, "Host pattern is too long (max 255 characters)")
+  .superRefine((raw, ctx) => {
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .forEach((seg) => {
+        if (seg === "") {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Host pattern has an empty entry" });
+          return;
+        }
+        if (seg.includes("://")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `"${seg}" must not include a scheme (e.g. https://)`
+          });
+          return;
+        }
+        let hostPort = seg;
+        const slashIdx = hostPort.indexOf("/");
+        if (slashIdx !== -1) hostPort = hostPort.slice(0, slashIdx);
+        let host = hostPort;
+        const colonIdx = hostPort.lastIndexOf(":");
+        if (colonIdx !== -1) {
+          const portStr = hostPort.slice(colonIdx + 1);
+          host = hostPort.slice(0, colonIdx);
+          const port = Number(portStr);
+          if (!/^\d+$/.test(portStr) || port < 1 || port > 65535) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" has an invalid port` });
+            return;
+          }
+        }
+        if (!hostLabelsRe.test(host)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `"${seg}" is not a valid host pattern`
+          });
+        }
+      });
+  });
+
 // Field-level schemas are permissive; required-ness is enforced conditionally in the
 // top-level superRefine so that fields belonging to the inactive header mode (which are not
 // rendered) don't block submission.
@@ -45,7 +93,7 @@ export const proxiedServiceFormSchema = z
       .min(1, "Name is required")
       .max(64)
       .regex(slugRegex, "Lowercase letters, numbers, and hyphens only"),
-    hostPattern: z.string().trim().min(1, "Host pattern is required"),
+    hostPattern: hostPatternField,
     isEnabled: z.boolean().default(true),
     headerMode: z.nativeEnum(HeaderRewritingMode).default(HeaderRewritingMode.Headers),
     headers: z.array(headerCredentialSchema).default([]),

@@ -10,14 +10,16 @@ import {
   OrgRolesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
-  ProxiedServiceCredentialsSchema,
-  ProxiedServicesSchema,
   SecretApprovalPoliciesSchema,
   SecretSharingSchema,
   SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  SanitizedProxiedServiceBaseSchema,
+  SanitizedProxiedServiceCredentialSchema
+} from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
@@ -291,15 +293,8 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   })
 });
 
-export const SanitizedProxiedServiceSchema = ProxiedServicesSchema.pick({
-  id: true,
-  name: true,
-  hostPattern: true,
-  isEnabled: true,
-  folderId: true,
-  createdAt: true,
-  updatedAt: true
-}).extend({
+// dashboard aggregate shape: shared base + credential picks, plus environment/folder for the UI
+export const SanitizedProxiedServiceSchema = SanitizedProxiedServiceBaseSchema.extend({
   environment: z.object({
     id: z.string(),
     name: z.string(),
@@ -308,18 +303,7 @@ export const SanitizedProxiedServiceSchema = ProxiedServicesSchema.pick({
   folder: z.object({
     path: z.string()
   }),
-  credentials: ProxiedServiceCredentialsSchema.pick({
-    id: true,
-    serviceId: true,
-    secretKey: true,
-    role: true,
-    headerName: true,
-    headerPrefix: true,
-    headerPurpose: true,
-    placeholderKey: true,
-    placeholderValue: true,
-    substitutionSurfaces: true
-  }).array()
+  credentials: SanitizedProxiedServiceCredentialSchema.array()
 });
 
 export const SanitizedProjectSchema = ProjectsSchema.pick({

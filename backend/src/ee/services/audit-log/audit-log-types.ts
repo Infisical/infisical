@@ -819,6 +819,9 @@ export enum EventType {
   CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
   UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
   DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  CREATE_PROXIED_SERVICE = "create-proxied-service",
+  UPDATE_PROXIED_SERVICE = "update-proxied-service",
+  DELETE_PROXIED_SERVICE = "delete-proxied-service",
   GET_DYNAMIC_SECRET = "get-dynamic-secret",
   LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
 
@@ -6907,6 +6910,42 @@ interface DeleteDynamicSecretEvent {
   };
 }
 
+interface CreateProxiedServiceEvent {
+  type: EventType.CREATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    // secret key names only; never placeholder/secret values
+    secretKeys: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateProxiedServiceEvent {
+  type: EventType.UPDATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    updatedFields: string[];
+    secretKeys: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProxiedServiceEvent {
+  type: EventType.DELETE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
 interface GetDynamicSecretEvent {
   type: EventType.GET_DYNAMIC_SECRET;
   metadata: {
@@ -7957,6 +7996,9 @@ export type Event =
   | McpServerSyncToolsEvent
   | McpActivityLogListEvent
   | CreateDynamicSecretEvent
+  | CreateProxiedServiceEvent
+  | UpdateProxiedServiceEvent
+  | DeleteProxiedServiceEvent
   | UpdateDynamicSecretEvent
   | DeleteDynamicSecretEvent
   | GetDynamicSecretEvent

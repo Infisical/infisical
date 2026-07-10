@@ -351,7 +351,14 @@ export const proxiedServiceServiceFactory = ({
           : [];
       }
 
-      return { ...updated, credentials: updatedCredentials };
+      // scope fields are stripped from the API response but let the router emit an audit log
+      return {
+        ...updated,
+        credentials: updatedCredentials,
+        projectId: service.projectId,
+        environment: service.environmentSlug,
+        secretPath: resolvedSecretPath
+      };
     });
   };
 
@@ -381,13 +388,18 @@ export const proxiedServiceServiceFactory = ({
 
     // credentials cascade on serviceId FK
     await proxiedServiceDAL.deleteById(serviceId);
-    return service;
+    return { ...service, secretPath: resolvedSecretPath };
   };
 
   const getDashboardProxiedServiceCount = async (
     { projectId, environments, secretPath, search }: TProxiedServiceDashboardCountDTO,
     actor: OrgServiceActor
   ) => {
+    // soft license gate: the dashboard aggregate runs alongside secrets/folders, so we return an
+    // empty result rather than throwing (a throw would break the whole overview for unlicensed orgs)
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretsBrokering) return 0;
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -431,6 +443,10 @@ export const proxiedServiceServiceFactory = ({
     }: TProxiedServiceDashboardListDTO,
     actor: OrgServiceActor
   ) => {
+    // soft license gate (see getDashboardProxiedServiceCount)
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretsBrokering) return [];
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
