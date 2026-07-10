@@ -23,7 +23,7 @@ type TMfaSessionServiceFactoryDep = {
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
-    "enforceStepUpMfaLockStatus" | "handleFailedStepUpMfaAttempt" | "resetStepUpMfaLockStatus"
+    "enforceStepUpMfaLockStatus" | "reserveStepUpMfaAttempt" | "resetStepUpMfaLockStatus"
   >;
 };
 
@@ -125,6 +125,8 @@ export const mfaSessionServiceFactory = ({
 
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
 
+    await mfaLockoutService.reserveStepUpMfaAttempt(userId);
+
     try {
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
@@ -150,7 +152,6 @@ export const mfaSessionServiceFactory = ({
         });
       }
     } catch (error) {
-      await mfaLockoutService.handleFailedStepUpMfaAttempt(userId);
       throw new BadRequestError({
         message: "Invalid MFA code"
       });

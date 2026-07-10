@@ -155,38 +155,45 @@ export const mfaLockoutServiceFactory = ({
     });
   };
 
+  const throwStepUpMfaLocked = (remainingSeconds: number): never => {
+    const timeDisplay =
+      remainingSeconds > 60 ? `${Math.ceil(remainingSeconds / 60)} minutes` : `${Math.ceil(remainingSeconds)} seconds`;
+
+    throw new ForbiddenRequestError({
+      name: "UserLocked",
+      message: `Too many failed MFA attempts. Try again after ${timeDisplay}.`
+    });
+  };
+
   // Rejects the request when the user is currently within a temporary step-up MFA
   // lockout window. Backed purely by Redis (a lock key with a TTL) so it self-clears
   // when the window expires - there is no permanent lock here, unlike the login flow.
   const enforceStepUpMfaLockStatus = async (userId: string) => {
     const remainingSeconds = await keyStore.ttl(KeyStorePrefixes.UserStepUpMfaLockout(userId));
     if (remainingSeconds > 0) {
-      const timeDisplay =
-        remainingSeconds > 60
-          ? `${Math.ceil(remainingSeconds / 60)} minutes`
-          : `${Math.ceil(remainingSeconds)} seconds`;
-
-      throw new ForbiddenRequestError({
-        name: "UserLocked",
-        message: `Too many failed MFA attempts. Try again after ${timeDisplay}.`
-      });
+      throwStepUpMfaLocked(remainingSeconds);
     }
   };
 
-  // Increments the Redis-tracked step-up failure counter within a rolling window and,
-  // once the threshold is hit, applies a temporary lockout and resets the counter so a
-  // fresh window starts after the lockout expires.
-  const handleFailedStepUpMfaAttempt = async (userId: string) => {
+  // Atomically claims one step-up MFA attempt slot BEFORE the code is validated, so a
+  // burst of concurrent guesses on a stolen session can't all slip past the check and
+  // exceed the attempt cap (each guess incremented the counter only after validating,
+  // so parallel requests raced the lockout). The Redis INCR is atomic, so concurrent
+  // callers get distinct sequence numbers: only the first STEP_UP_MFA_MAX_ATTEMPTS ever
+  // reach validation. Once the cap is exceeded we engage the temporary lockout and
+  // reject; the counter self-clears via its rolling window (or on success/lockout).
+  const reserveStepUpMfaAttempt = async (userId: string) => {
     const attemptsKey = KeyStorePrefixes.UserStepUpMfaAttempts(userId);
     const attempts = await keyStore.incrementByWithExpiry(attemptsKey, 1, KeyStoreTtls.StepUpMfaAttemptWindowInSeconds);
 
-    if (attempts >= STEP_UP_MFA_MAX_ATTEMPTS) {
+    if (attempts > STEP_UP_MFA_MAX_ATTEMPTS) {
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.UserStepUpMfaLockout(userId),
         KeyStoreTtls.StepUpMfaLockoutInSeconds,
         "1"
       );
       await keyStore.deleteItem(attemptsKey);
+      throwStepUpMfaLocked(KeyStoreTtls.StepUpMfaLockoutInSeconds);
     }
   };
 
@@ -202,7 +209,7 @@ export const mfaLockoutServiceFactory = ({
     handleFailedMfaAttempt,
     resetMfaLockStatus,
     enforceStepUpMfaLockStatus,
-    handleFailedStepUpMfaAttempt,
+    reserveStepUpMfaAttempt,
     resetStepUpMfaLockStatus
   };
 };
