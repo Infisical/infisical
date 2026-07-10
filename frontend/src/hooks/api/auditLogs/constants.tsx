@@ -403,6 +403,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_DYNAMIC_SECRET]: "Create Dynamic Secret",
   [EventType.UPDATE_DYNAMIC_SECRET]: "Update Dynamic Secret",
   [EventType.DELETE_DYNAMIC_SECRET]: "Delete Dynamic Secret",
+  [EventType.CREATE_PROXIED_SERVICE]: "Create Proxied Service",
+  [EventType.UPDATE_PROXIED_SERVICE]: "Update Proxied Service",
+  [EventType.DELETE_PROXIED_SERVICE]: "Delete Proxied Service",
   [EventType.GET_DYNAMIC_SECRET]: "Get Dynamic Secret",
   [EventType.LIST_DYNAMIC_SECRETS]: "List Dynamic Secrets",
 
