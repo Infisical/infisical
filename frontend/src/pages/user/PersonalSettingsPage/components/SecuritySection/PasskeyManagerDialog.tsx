@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { FingerprintIcon, PlusIcon, TrashIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import {
   AlertDialog,
@@ -20,11 +19,9 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import {
-  useDeleteWebAuthnCredential,
-  useGetWebAuthnCredentials,
-  useRegisterPasskey
-} from "@app/hooks/api/webauthn";
+import { useGetWebAuthnCredentials, useRegisterPasskey } from "@app/hooks/api/webauthn";
+
+import { useRemovePasskey } from "./useRemovePasskey";
 
 type Props = {
   isOpen: boolean;
@@ -34,7 +31,7 @@ type Props = {
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
   const { data: credentials = [], isPending } = useGetWebAuthnCredentials();
   const { registerPasskey, isRegistering } = useRegisterPasskey();
-  const { mutateAsync: deleteCredential, isPending: isDeleting } = useDeleteWebAuthnCredential();
+  const { removePasskey, isBusy: isRemoving } = useRemovePasskey();
 
   const [name, setName] = useState("");
   const [credentialToRemove, setCredentialToRemove] = useState<{ id: string; name: string } | null>(
@@ -47,18 +44,12 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
     }
   };
 
-  const handleDelete = async () => {
+  // Removing weakens a login second factor, so it goes through the step-up MFA
+  // challenge; the confirm dialog stays open until the challenge completes and the
+  // removal succeeds.
+  const handleDelete = () => {
     if (!credentialToRemove) return;
-    try {
-      await deleteCredential({ id: credentialToRemove.id });
-      setCredentialToRemove(null);
-      createNotification({ text: "Passkey removed", type: "success" });
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to remove passkey",
-        type: "error"
-      });
-    }
+    removePasskey(credentialToRemove.id, () => setCredentialToRemove(null));
   };
 
   return (
@@ -146,7 +137,7 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isDeleting} onClick={handleDelete}>
+            <AlertDialogAction variant="danger" isPending={isRemoving} onClick={handleDelete}>
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

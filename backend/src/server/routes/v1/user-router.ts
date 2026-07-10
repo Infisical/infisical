@@ -227,10 +227,20 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "deleteUserTotpConfig"
+      operationId: "deleteUserTotpConfig",
+      querystring: z.object({
+        mfaSessionId: z.string().trim().optional()
+      })
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      await ensureStepUpMfa(server, {
+        userId: req.permission.id,
+        orgId: req.permission.orgId,
+        resourceId: MfaStepUpResource.MfaManagement,
+        mfaSessionId: req.query.mfaSessionId,
+        message: "MFA verification is required to remove your authenticator app"
+      });
       return server.services.totp.deleteUserTotpConfig({
         userId: req.permission.id
       });
@@ -561,6 +571,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         id: z.string()
       }),
+      querystring: z.object({
+        mfaSessionId: z.string().trim().optional()
+      }),
       response: {
         200: z.object({
           success: z.boolean()
@@ -569,6 +582,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      await ensureStepUpMfa(server, {
+        userId: req.permission.id,
+        orgId: req.permission.orgId,
+        resourceId: MfaStepUpResource.MfaManagement,
+        mfaSessionId: req.query.mfaSessionId,
+        message: "MFA verification is required to remove a passkey"
+      });
       await server.services.webAuthn.deleteWebAuthnCredential({
         userId: req.permission.id,
         id: req.params.id

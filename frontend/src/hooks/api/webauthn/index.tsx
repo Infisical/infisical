@@ -1,5 +1,4 @@
 export {
-  useDeleteWebAuthnCredential,
   useGenerateAuthenticationOptions,
   useGenerateRegistrationOptions,
   useUpdateWebAuthnCredential,

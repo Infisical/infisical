@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useActivateMfa, useGetOrganizations, useGetUser, useSetMfaMethod } from "@app/hooks/api";
+import { useActivateMfa, useGetOrganizations, useGetUser } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
@@ -35,13 +35,14 @@ import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 
 import { MfaMethodsCard } from "./MfaMethodsCard";
 import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
+import { useChangePreferredMfa } from "./useChangePreferredMfa";
 import { useDisableMfa } from "./useDisableMfa";
 
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
-  const { mutateAsync: setMfaMethod } = useSetMfaMethod();
+  const { changePreferredMfa } = useChangePreferredMfa();
   const { mutateAsync: activateMfa, isPending: isEnabling } = useActivateMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
@@ -108,17 +109,10 @@ export const MFASection = () => {
     }
   };
 
-  const handlePreferredMethodChange = async (method: MfaMethod) => {
-    try {
-      await setMfaMethod({ selectedMfaMethod: method });
-      createNotification({ text: "Updated preferred 2FA method", type: "success" });
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to update preferred method",
-        type: "error"
-      });
-    }
-  };
+  // Changing the preferred method is sensitive, so it goes through the step-up MFA
+  // challenge; the dropdown reflects the new value once getUser is invalidated on
+  // success.
+  const handlePreferredMethodChange = (method: MfaMethod) => changePreferredMfa(method);
 
   // Disabling is a sensitive action, so it requires a fresh MFA challenge (same
   // step-up flow as viewing recovery codes) before it goes through.

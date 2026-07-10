@@ -457,23 +457,6 @@ export const useActivateMfa = () => {
   });
 };
 
-// Set the preferred challenge method among already-configured factors.
-export const useSetMfaMethod = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ selectedMfaMethod }: { selectedMfaMethod: MfaMethod }) => {
-      const { data } = await apiRequest.patch<{ user: unknown }>("/api/v2/users/me/mfa", {
-        selectedMfaMethod
-      });
-
-      return { user: data.user };
-    },
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
-    }
-  });
-};
-
 export const fetchMyOrganizationProjects = async (orgId: string) => {
   const {
     data: { workspaces }

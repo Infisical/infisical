@@ -45,7 +45,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "updateUserMfaMethod",
       body: z.object({
-        selectedMfaMethod: z.nativeEnum(MfaMethod)
+        selectedMfaMethod: z.nativeEnum(MfaMethod),
+        mfaSessionId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -55,6 +56,14 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      await ensureStepUpMfa(server, {
+        userId: req.permission.id,
+        orgId: req.permission.orgId,
+        resourceId: MfaStepUpResource.MfaManagement,
+        mfaSessionId: req.body.mfaSessionId,
+        message: "MFA verification is required to change your preferred two-factor method"
+      });
+
       const user = await server.services.user.setSelectedMfaMethod({
         userId: req.permission.id,
         selectedMfaMethod: req.body.selectedMfaMethod

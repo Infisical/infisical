@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LucideIcon } from "lucide-react";
 
 import { MFA_METHOD_ICONS, MFA_METHOD_LABELS } from "@app/components/mfa/setup";
-import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,11 +18,12 @@ import {
 import { userKeys } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { useDeleteUserTotpConfiguration, useGetUserTotpConfiguration } from "@app/hooks/api/users";
+import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 
 import { MethodSetupDialog } from "./MethodSetupDialog";
 import { PasskeyManagerDialog } from "./PasskeyManagerDialog";
+import { useRemoveTotp } from "./useRemoveTotp";
 
 type MethodRowProps = {
   icon: LucideIcon;
@@ -54,7 +54,7 @@ export const MfaMethodsCard = () => {
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
   const { data: serverDetails } = useFetchServerStatus();
-  const { mutateAsync: deleteTotp, isPending: isDeletingTotp } = useDeleteUserTotpConfiguration();
+  const { removeTotp, isBusy: isRemovingTotp } = useRemoveTotp();
 
   const isEmailMfaAvailable = Boolean(serverDetails?.emailConfigured);
 
@@ -65,18 +65,10 @@ export const MfaMethodsCard = () => {
   const isTotpConfigured = Boolean(totpConfiguration?.isVerified);
   const passkeyCount = webAuthnCredentials.length;
 
-  const handleRemoveTotp = async () => {
-    try {
-      await deleteTotp();
-      setIsRemoveTotpOpen(false);
-      createNotification({ text: "Authenticator app removed", type: "success" });
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to remove authenticator app",
-        type: "error"
-      });
-    }
-  };
+  // Removing weakens a login second factor, so it goes through the step-up MFA
+  // challenge; the dialog stays open until the challenge completes and the removal
+  // succeeds.
+  const handleRemoveTotp = () => removeTotp(() => setIsRemoveTotpOpen(false));
 
   return (
     <div className="p-6">
@@ -163,7 +155,7 @@ export const MfaMethodsCard = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeletingTotp}
+              isPending={isRemovingTotp}
               onClick={handleRemoveTotp}
             >
               Remove

@@ -1,11 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { userKeys } from "@app/hooks/api/users/query-keys";
 
 import { webAuthnKeys } from "./queries";
 import {
-  TDeleteWebAuthnCredentialDTO,
   TGenerateAuthenticationOptionsResponse,
   TGenerateRegistrationOptionsResponse,
   TUpdateWebAuthnCredentialDTO,
@@ -62,23 +60,6 @@ export const useVerifyAuthentication = () =>
       return data;
     }
   });
-
-export const useDeleteWebAuthnCredential = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id }: TDeleteWebAuthnCredentialDTO) => {
-      const { data } = await apiRequest.delete<{ success: boolean }>(
-        `/api/v1/user/me/webauthn/${id}`
-      );
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials });
-      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
-    }
-  });
-};
 
 export const useUpdateWebAuthnCredential = () => {
   const queryClient = useQueryClient();

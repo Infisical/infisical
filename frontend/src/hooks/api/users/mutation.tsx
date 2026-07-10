@@ -65,22 +65,6 @@ export const useUpdateUserProjectFavorites = () => {
   });
 };
 
-export const useDeleteUserTotpConfiguration = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      await apiRequest.delete("/api/v1/user/me/totp");
-
-      return {};
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
-      queryClient.removeQueries({ queryKey: userKeys.totpRegistration });
-      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
-    }
-  });
-};
-
 export const useResendOrgMemberInvitation = () => {
   return useMutation({
     mutationFn: async (dto: { membershipId: string }) => {

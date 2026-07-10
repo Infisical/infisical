@@ -1,6 +1,5 @@
 export {
   useAddUserToWsNonE2EE,
-  useDeleteUserTotpConfiguration,
   useRemoveMyDuplicateAccounts,
   useRequestEmailChangeOTP,
   useRevokeMySessionById,
@@ -30,7 +29,6 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
-  useSetMfaMethod,
   useUpdateOrgMembership,
   useUpdateUserAuthMethods
 } from "./queries";
