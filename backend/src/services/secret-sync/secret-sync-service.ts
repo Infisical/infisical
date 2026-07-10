@@ -557,7 +557,7 @@ export const secretSyncServiceFactory = ({
 
     let { folderId } = secretSync;
 
-    if (params.destinationConfig || params.connectionId) {
+    if (params.destinationConfig || params.connectionId || params.syncOptions) {
       // getProjectPermission above throws NotFoundError if the project doesn't exist and
       // guarantees actor.orgId === project.orgId — no separate project lookup needed.
       const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
