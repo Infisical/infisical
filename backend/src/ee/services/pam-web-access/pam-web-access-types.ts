@@ -52,6 +52,16 @@ export type TSessionContext = {
   onCleanup: () => void;
   earlyMessages: TEarlyBufferedMsg[];
   releaseEarlyBuffer: () => void;
+  recording?: {
+    sessionKey: Buffer;
+    projectId: string;
+    recordChunk: (args: {
+      chunkIndex: number;
+      startElapsedMs: number;
+      endElapsedMs: number;
+      plaintext: Buffer;
+    }) => Promise<void>;
+  };
 };
 
 export type TSessionHandlerResult = {

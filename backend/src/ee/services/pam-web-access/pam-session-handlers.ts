@@ -5,6 +5,7 @@ import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 import { handlePostgresSession } from "./postgres/pam-postgres-session-handler";
 import { handleRdpSession } from "./rdp/pam-rdp-session-handler";
 import { handleSSHSession } from "./ssh/pam-ssh-session-handler";
+import { handleWebPageSession } from "./webpage/pam-webpage-session-handler";
 
 export type TWebAccessHandler = (
   ctx: TSessionContext,
@@ -37,5 +38,9 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.WindowsAd]: {
     gatewayAccountType: PamAccountType.Windows,
     handler: handleRdpSession
+  },
+  [PamAccountType.WebPage]: {
+    gatewayAccountType: PamAccountType.WebPage,
+    handler: handleWebPageSession
   }
 };

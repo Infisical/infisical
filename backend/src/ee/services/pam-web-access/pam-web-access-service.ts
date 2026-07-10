@@ -34,6 +34,8 @@ import {
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { TPamSessionChunkServiceFactory } from "../pam-session-recording/pam-recording-chunk-service";
+import { generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
@@ -58,8 +60,9 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions"
+    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions" | "updateById"
   >;
+  pamRecordingChunkService: Pick<TPamSessionChunkServiceFactory, "recordChunkInternal">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -99,6 +102,7 @@ export const pamWebAccessServiceFactory = ({
   auditLogService,
   tokenService,
   pamSessionDAL,
+  pamRecordingChunkService,
   gatewayV2Service,
   gatewayPoolService,
   kmsService,
@@ -547,6 +551,32 @@ export const pamWebAccessServiceFactory = ({
         earlyMessages,
         releaseEarlyBuffer
       };
+
+      // A web session is freshly created with a null encryptedSessionKey, so for the webpage type we
+      // always mint recording secrets here (the gateway path mints them lazily inside
+      // getSessionCredentials, which this type never calls) and persist the wrapped key + upload token
+      // hash. The plaintext session key is kept in memory to encrypt recording chunks written direct.
+      if (account.accountType === PamAccountType.WebPage) {
+        const secrets = await generateSessionRecordingSecrets({ projectId, sessionId: session.id, kmsService });
+        await pamSessionDAL.updateById(session.id, {
+          encryptedSessionKey: secrets.encryptedSessionKey,
+          gatewayUploadTokenHash: secrets.uploadTokenHash
+        });
+        const recordingSessionId = session.id;
+        ctx.recording = {
+          sessionKey: secrets.sessionKey,
+          projectId,
+          recordChunk: (args) =>
+            pamRecordingChunkService
+              .recordChunkInternal({
+                ...args,
+                sessionId: recordingSessionId,
+                projectId,
+                sessionKey: secrets.sessionKey
+              })
+              .then(() => undefined)
+        };
+      }
 
       try {
         handlerResult = await handlerEntry.handler(ctx, {
