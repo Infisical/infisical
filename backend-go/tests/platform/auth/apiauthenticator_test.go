@@ -1004,7 +1004,7 @@ func TestValidateIdentityAccessToken_NonAcceptedStatus(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = stack.DB().Primary().Exec(context.Background(),
-			`UPDATE memberships SET status = NULL WHERE "actorIdentityId" = @identityID`,
+			`UPDATE memberships SET status = NULL WHERE "actorIdentityId" = @identityID AND scope = 'organization'`,
 			pgx.NamedArgs{"identityID": uuid.MustParse(identity.ID)})
 	})
 
