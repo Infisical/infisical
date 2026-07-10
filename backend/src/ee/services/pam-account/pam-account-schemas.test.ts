@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { PamAccountType } from "../pam/pam-enums";
 import {
+  accountTypeHasNoCredentials,
   accountTypeRequiresRecording,
   buildPamAccountTypeMetadata,
   extractGatewayTarget,
@@ -272,5 +273,12 @@ describe("webpage account type", () => {
       credentialConfigured: true
     });
     expect(issues).toEqual([]);
+  });
+});
+
+describe("accountTypeHasNoCredentials", () => {
+  test("accountTypeHasNoCredentials is true for webpage, false for postgres", () => {
+    expect(accountTypeHasNoCredentials(PamAccountType.WebPage)).toBe(true);
+    expect(accountTypeHasNoCredentials(PamAccountType.Postgres)).toBe(false);
   });
 });

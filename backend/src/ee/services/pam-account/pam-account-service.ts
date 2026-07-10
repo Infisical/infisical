@@ -42,6 +42,7 @@ import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-t
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  accountTypeHasNoCredentials,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
@@ -337,7 +338,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         templateId,
         encryptedConnectionDetails,
         encryptedCredentials,
-        credentialConfigured: isCredentialConfigured(accountType, validatedCredentials),
+        credentialConfigured: accountTypeHasNoCredentials(accountType) ? true : isCredentialConfigured(accountType, validatedCredentials),
         gatewayId,
         gatewayPoolId,
         recordingConnectionId,

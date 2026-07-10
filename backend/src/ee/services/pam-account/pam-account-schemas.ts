@@ -1001,6 +1001,12 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     applicablePolicies: getApplicablePolicies(type)
   }));
 
+export const accountTypeHasNoCredentials = (accountType: PamAccountType): boolean => {
+  const schema = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType]?.credentials;
+  const parsed = schema?.safeParse({});
+  return Boolean(parsed?.success) && Object.keys((parsed as { data: object }).data).length === 0;
+};
+
 export const isCredentialConfigured = (accountType: PamAccountType, credentials: Record<string, unknown>): boolean => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
   if (!config) return false;
