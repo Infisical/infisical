@@ -41,6 +41,11 @@ export const WebReplayView = ({ events, isStreaming = false }: Props) => {
   const totalMsRef = useRef(totalMs);
   totalMsRef.current = totalMs;
 
+  // Read inside the RAF tick via a ref so a live session ending (isStreaming
+  // flipping true->false during playback) is seen, not the stale render value.
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
+
   const writeProgress = (ms: number) => {
     clockMsRef.current = ms;
     const total = totalMsRef.current;
@@ -65,6 +70,7 @@ export const WebReplayView = ({ events, isStreaming = false }: Props) => {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
+      playerRef.current?.destroy();
       playerRef.current = null;
     };
   }, []);
@@ -95,7 +101,7 @@ export const WebReplayView = ({ events, isStreaming = false }: Props) => {
       writeProgress(ms);
       player.drawAt(ms).catch(() => {});
 
-      if (ms >= player.totalMs && player.totalMs > 0 && !isStreaming) {
+      if (ms >= player.totalMs && player.totalMs > 0 && !isStreamingRef.current) {
         rafRef.current = null;
         wallStartRef.current = null;
         setIsPlaying(false);

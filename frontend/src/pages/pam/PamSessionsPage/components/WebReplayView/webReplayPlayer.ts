@@ -5,8 +5,16 @@ export class WebReplayPlayer {
 
   private ctx: CanvasRenderingContext2D;
 
+  private cancelled = false;
+
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
+  }
+
+  // Marks the player disposed so an in-flight async draw won't touch a detached
+  // canvas after the component unmounts (rapid open/close of the replay sheet).
+  destroy() {
+    this.cancelled = true;
   }
 
   setFrames(frames: TWebFrameEvent[]) {
@@ -40,6 +48,8 @@ export class WebReplayPlayer {
       img.onerror = rej;
       img.src = `data:image/jpeg;base64,${target.jpegBase64}`;
     });
+    // The decode above is async; bail if the player was disposed meanwhile.
+    if (this.cancelled) return;
     this.ctx.canvas.width = target.w;
     this.ctx.canvas.height = target.h;
     this.ctx.drawImage(img, 0, 0);
