@@ -188,12 +188,12 @@ describe("User Activation Router", () => {
 
   test("returning after 7 days → returnedAfterSevenDaysAt is set", async () => {
     const db = getDb();
-    const org = await createOrgWithAdmin(db, daysAgo(10));
+    const org = await createOrgWithAdmin(db, daysAgo(14));
     await db(TableName.UserSecretActivation).insert({
       userId: seedData1.id,
       orgId: org.id,
-      firstSecretCreatedAt: daysAgo(8),
-      returnedAfterThreeDaysAt: daysAgo(5)
+      firstSecretCreatedAt: daysAgo(11),
+      returnedAfterThreeDaysAt: daysAgo(8) // 8d >= 7d since the three-day nudge → SEVEN_DAYS fires
     });
 
     const res = await callActivation(org.id);
