@@ -41,7 +41,10 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import {
+  hasSecretPersonalOverridePermission,
+  hasSecretReadValueOrDescribePermission
+} from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEyeSlash,
@@ -249,6 +252,11 @@ export const SecretItem = memo(
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
+    const canManageOverride = hasSecretPersonalOverridePermission(
+      permission,
+      ProjectPermissionSecretActions.Create,
+      { environment, secretPath, secretName, secretTags: selectedTagSlugs }
+    );
 
     const autoSaveChanges = useCallback(
       async (data: TFormSchema) => {
@@ -733,42 +741,30 @@ export const SecretItem = memo(
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName,
-                      secretTags: selectedTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <IconButton
-                        ariaLabel="override-value"
-                        isDisabled={!isAllowed || isManagedSecret}
-                        variant="plain"
-                        size="sm"
-                        onClick={handleOverrideClick}
-                        className={twMerge(
-                          "w-0 overflow-hidden p-0 group-hover:w-5",
-                          isOverridden && "w-5 text-primary"
-                        )}
-                      >
-                        <Tooltip
-                          content={
-                            isManagedSecret
-                              ? `Unavailable for ${isHoneyTokenSecret ? "honey token" : "rotated"} secrets`
-                              : `${isOverridden ? "Remove" : "Add"} Override`
-                          }
-                        >
-                          <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Override}
-                            className="h-3.5 w-3.5"
-                          />
-                        </Tooltip>
-                      </IconButton>
+                  <IconButton
+                    ariaLabel="override-value"
+                    isDisabled={!canManageOverride || isManagedSecret}
+                    variant="plain"
+                    size="sm"
+                    onClick={handleOverrideClick}
+                    className={twMerge(
+                      "w-0 overflow-hidden p-0 group-hover:w-5",
+                      isOverridden && "w-5 text-primary"
                     )}
-                  </ProjectPermissionCan>
+                  >
+                    <Tooltip
+                      content={
+                        isManagedSecret
+                          ? `Unavailable for ${isHoneyTokenSecret ? "honey token" : "rotated"} secrets`
+                          : `${isOverridden ? "Remove" : "Add"} Override`
+                      }
+                    >
+                      <FontAwesomeSymbol
+                        symbolName={FontAwesomeSpriteName.Override}
+                        className="h-3.5 w-3.5"
+                      />
+                    </Tooltip>
+                  </IconButton>
                   <Popover>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}

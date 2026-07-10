@@ -13,6 +13,7 @@ import {
 import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretPersonalOverridePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -348,15 +349,24 @@ export const secretV2BridgeServiceFactory = ({
 
     const { secretName, type, ...inputSecretData } = inputSecret;
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Create,
-      subject(ProjectPermissionSub.Secrets, {
+    if (type === SecretType.Personal) {
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Create, {
         environment,
         secretPath,
         secretName,
         secretTags: tags?.map((el) => el.slug)
-      })
-    );
+      });
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.Create,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName,
+          secretTags: tags?.map((el) => el.slug)
+        })
+      );
+    }
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -544,6 +554,7 @@ export const secretV2BridgeServiceFactory = ({
     let secret;
     let secretId: string;
     if (inputSecret.type === SecretType.Personal) {
+      // Ther personal override rule was not added here to avoid regression with existing personal overrides
       const personalSecretToModify = await secretDAL.findOne({
         key: inputSecret.secretName,
         type: SecretType.Personal,
