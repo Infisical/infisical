@@ -8,6 +8,7 @@ import {
   PamApproverType,
   PamDiscoverySchedule,
   PamDiscoveryType,
+  PamNotificationEvent,
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
@@ -624,10 +625,21 @@ export type TPamAccessRequest = {
   grantStatus?: string | null;
 };
 
+export type TPamNotificationConfig = {
+  workflowIntegrationId: string;
+  channels: { id: string; name: string }[];
+  events: PamNotificationEvent[];
+};
+
 export type TPamApprovalConfig = {
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
+  notificationConfigs: (TPamNotificationConfig & {
+    id: string;
+    integration: string;
+    integrationSlug: string;
+  })[];
 };
 
 export type TPamAccessGrant = {
@@ -665,4 +677,5 @@ export type TSetPamApprovalConfigDTO = {
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
+  notificationConfigs?: TPamNotificationConfig[];
 };

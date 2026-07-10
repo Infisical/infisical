@@ -66,6 +66,7 @@ import {
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials
 } from "./aws-iam/aws-iam-federation";
+import { getAzureAccessTokens } from "./azure/azure-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -307,6 +308,15 @@ export const pamSessionServiceFactory = ({
 
       credentials.token = tokenResponse.token;
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (account.accountType === PamAccountType.AzureCli) {
+      credentials.tokens = await getAzureAccessTokens({
+        tenantId: connectionDetails.tenantId as string,
+        clientId: credentials.clientId as string,
+        clientSecret: credentials.clientSecret as string
+      });
+      delete credentials.clientSecret;
     }
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
@@ -560,13 +570,14 @@ export const pamSessionServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-      const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
+      const roleArn = rawConnectionDetails.roleArn as string;
 
       const stsCredentials = await generateAwsIamSessionCredentials({
-        connectionDetails: { roleArn: rawConnectionDetails.roleArn as string },
-        targetRoleArn: rawCredentials.targetRoleArn as string,
+        roleArn,
+        // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
+        // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
+        externalId: actor.actorOrgId,
         roleSessionName: actorEmail.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64),
-        projectId,
         sessionDuration: stsDurationSeconds
       });
 
@@ -586,10 +597,10 @@ export const pamSessionServiceFactory = ({
         metadata.secretAccessKey = stsCredentials.secretAccessKey;
         metadata.sessionToken = stsCredentials.sessionToken;
         metadata.expiresAt = expiresAt.toISOString();
-        metadata.targetRoleArn = rawCredentials.targetRoleArn as string;
+        metadata.roleArn = roleArn;
         metadata.federatedUsername = actorEmail;
 
-        const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
+        const awsAccountId = extractAwsAccountIdFromArn(roleArn);
         if (awsAccountId) {
           metadata.awsAccountId = awsAccountId;
         }
@@ -691,6 +702,12 @@ export const pamSessionServiceFactory = ({
     if (account.accountType === PamAccountType.GcpServiceAccount) {
       metadata.serviceAccountEmail = rawConnectionDetails.serviceAccountEmail as string;
       metadata.authMethod = rawCredentials.authMethod as string;
+    } else if (account.accountType === PamAccountType.AzureCli) {
+      metadata.tenantId = rawConnectionDetails.tenantId as string;
+      metadata.clientId = rawCredentials.clientId as string;
+      if (rawConnectionDetails.subscriptionId) {
+        metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
+      }
     } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {

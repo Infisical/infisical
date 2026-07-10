@@ -61,6 +61,7 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ProjectSshConfig = "project_ssh_configs",
@@ -239,6 +240,7 @@ export enum TableName {
   // PAM
   PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
+  PamFolderNotificationConfig = "pam_folder_notification_configs",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",

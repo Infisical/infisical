@@ -9,6 +9,7 @@ export enum PamAccountType {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
+  AzureCli = "azure-cli",
   Windows = "windows",
   WindowsAd = "windows-ad"
 }
@@ -136,4 +137,11 @@ export enum PamAccessGrantStatus {
 export enum PamApproverType {
   User = "user",
   Group = "group"
+}
+
+// Mirrors PamNotificationEvent in backend/src/ee/services/pam/pam-enums.ts
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied"
 }

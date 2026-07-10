@@ -16,6 +16,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/` | Recording chunk storage, retrieval, secrets, and storage providers (`aws-s3/`, `postgres/`) |
 | `pam-membership/` | Product + resource membership management |
 | `pam-project/` | PAM project bootstrap and resolver (formerly `pam-instance/`) |
+| `pam-access-request/` | Folder approval configuration and access request lifecycle (built on the generic `approval-policy` engine), plus folder-level chat notification configs (`pam-folder-notification-config-dal.ts`, pure filtering helpers in `pam-access-request-fns.ts`) |
 | `pam-web-access/` | WebSocket session handlers (Postgres, SSH, RDP), ticket-based auth |
 
 Routes live in `backend/src/ee/routes/v1/pam-routers/`.
@@ -89,7 +90,7 @@ There is exactly one PAM project (`ProjectType.PAM`) per org, holding all folder
 - **`pamProjectResolverFactory` (`pam-project-resolver.ts`)** -- `resolve(orgId)` returns the project id, creating it on first use. It is wrapped in `withCache` (Redis, `KeyStorePrefixes.PamDefaultProject`, `PamDefaultProjectInSeconds` TTL); on a miss it calls `findDefaultProjectId` (newest `type=pam` project via `projectDAL.find`, already excludes soft-deleted) and falls back to `ensureDefaultProject`.
 - **`ensureDefaultProject`** serializes concurrent first-use bootstraps for an org with `SELECT pg_advisory_xact_lock(hashtext('pam-bootstrap:' || orgId))` inside a transaction, then **re-checks** `findDefaultProjectId(orgId, tx)` on the primary before creating. There is no DB unique constraint to lean on because old zombie PAM projects also have `type=pam`, so an org can legitimately have several rows; the lock + in-lock re-check is what prevents duplicates and picks the consolidated one. The lock auto-releases at transaction end.
 - **Admin seeding:** the bootstrap seeds the org's current admins (users, identities, and groups with a non-temporary org `admin` role) as PAM **project** admins. This is required because the PAM permission model has **no org-admin fallback** (`getProjectPermission` needs project-scoped membership) -- without seeding, no one could administer the freshly-created project.
-- **`bootstrapPamProject` (`pam-project-bootstrap.ts`)** creates the project, the `DEFAULT_ACCOUNT_TEMPLATES` (11 of them), and the admin memberships. It takes `adminUserIds` / `adminIdentityIds` / `adminGroupIds`; the migration and sub-org creation call it directly, the resolver derives those lists from current org admins.
+- **`bootstrapPamProject` (`pam-project-bootstrap.ts`)** creates the project, the `DEFAULT_ACCOUNT_TEMPLATES` (one per account type), and the admin memberships. It takes `adminUserIds` / `adminIdentityIds` / `adminGroupIds`; the migration and sub-org creation call it directly, the resolver derives those lists from current org admins.
 - **Request wiring:** the `injectPamProjectId` preValidation hook (on all `/api/v1/pam/*` routes) calls `resolve(actorOrgId)` and sets `req.internalPamProjectId`, so by the time any PAM handler runs the project exists. `GET /api/v1/pam/project` just returns that id -- the frontend hits it to trigger the lazy create for an org whose `getOrgById.pamProjectId` came back null, then seeds the id into its org cache.
 - **`getOrgById` derivation:** `pamProjectId` in the org DTO is derived from the newest `type=pam` project (nullable), it is **not** a stored column and is not resolved/bootstrapped there (keeps the read a pure query).
 
@@ -136,6 +137,19 @@ Most types need only backend changes -- the frontend auto-renders from metadata.
 
 No changes to the account form components, router schemas, or field renderers are needed. The per-type route bodies use `config.connectionDetails`/`config.credentials` directly, the detail response (`SanitizedAccountDetailSchema`) is a discriminated union auto-derived from `ACCOUNT_TYPE_CONFIGS` (each variant pulls `connectionDetails` and `sanitizedCredentials` from the config), and the frontend forms render from `GET /pam/accounts/types`.
 
+### Cloud account types
+
+There are two brokering models for cloud types.
+
+**Gateway-less (`AwsIam`)**: sets `requiresGateway: false` and branches early in `pam-session-service.access()` (before the gateway path) to mint short-lived STS credentials and return them in the session `metadata` map. The temporary credentials reach the client, but the root credentials never leave the backend. `extractGatewayTarget` `throw`s for it. Supports a browser flow (STS federation console URL) and is added to the web-access set explicitly in `pam-account-router.ts` (alongside `SESSION_HANDLERS` keys) so `supportsWebAccess` is true, with a dedicated frontend `AwsIamAccessContent` page. CLI side: `packages/pam/local/aws-iam-access.go` writes an isolated credentials profile.
+
+**Gateway-injection (`GcpServiceAccount`, `AzureCli`)**: the preferred model. It is a normal gateway type (`requiresGateway` defaults to true) and reuses the full gateway path in `access()`. The gateway MITMs the cloud REST endpoint and injects a backend-minted **short-lived token** into every request, so **no credential of any kind reaches the client** and every request is captured to the session log. Conventions:
+
+- `extractGatewayTarget` returns the cloud API host (`googleapis.com:443` for GCP, `management.azure.com:443` for Azure) so the session cert routes to it.
+- The short-lived token is minted in `getSessionCredentials` (not `access()`), set as `credentials.token`, and the long-lived secret is deleted from the blob before it is returned to the gateway. GCP uses impersonation / a static-key JWT; Azure uses the client-credentials grant in `pam-session/azure/azure-federation.ts`. `HandlePAMProxy` caps `credentialExpiryTime` at ~1h for both since the tokens are short-lived.
+- CLI/gateway side lives in the CLI repo. Gateway handler `packages/pam/handlers/<provider>/proxy.go` (a TLS-terminating HTTP proxy using a client-supplied ephemeral CA) overwrites the `Authorization` header with `credentials.Token` and logs each request/response via `SessionLogger.LogHttpEvent`. Client handler `packages/pam/local/<provider>-proxy.go` runs the local proxy tunnel and points the vendor CLI at it. `gcloud` is configured via `gcloud config` + a static-token-file placeholder; `az` (which has no static-token knob) is instead wired via `HTTPS_PROXY` + `REQUESTS_CA_BUNDLE` + an isolated `AZURE_CONFIG_DIR`, and the gateway additionally intercepts the Entra ID token endpoint to hand `az` a placeholder token so it believes login succeeded. Register the type in `pam-proxy.go` (`GetSupportedResourceTypes`, the `HandlePAMProxy` switch) and `session/uploader.go` (resource-type constant, filename regex, HTTP-events upload branch).
+- Neither GCP nor Azure has a browser flow, so both stay out of the web-access set (`supportsWebAccess` false → `LaunchSessionSheet` shows the `infisical pam access` command). Neither has a `PamAccountAccessPage` entry (the browser web-access route is never linked for them); the launch sheet is the only surface.
+
 ## Policies
 
 Policies are the governance controls applied to a template (require MFA, require reason, max session duration). They are registry-driven, defined once in `PAM_POLICY_DEFINITIONS` in `pam/pam-policies.ts`, keyed by `PamPolicyType`. Each entry is `{ label, description, appliesTo, schema }` where `appliesTo` is an account-type list or `"all"`, and `schema` is the Zod schema for that policy's value (a primitive or object).
@@ -165,6 +179,14 @@ Session log masking (`sessionLogMaskingPatterns`) is a **setting**, not a policy
 3. Enforcement: read it where it's enforced. A server-enforced policy extends `resolveAccessControls` and is applied in `pam-session`/`pam-web-access`. A gateway-enforced policy is read via `resolvePolicy` in `getSessionCredentials`, split/transformed as needed, and included in the `policyRules` response (see command blocking for the pattern). Both the service return and the router response schema must be updated atomically -- Fastify's Zod serializer strips unknown keys.
 
 No migration, no router or response-schema change (beyond `policyRules` for gateway-enforced policies), and no DB default.
+
+## Approval Chat Notifications (Slack)
+
+Gated by the `pamSlackNotifications` license plan flag (off by default, enabled per org from the license server): saves of `notificationConfigs` are rejected and sends are skipped when the plan lacks it, and the frontend hides the Notifications card via `subscription.pamSlackNotifications`.
+
+Folder-level, not project-level: each folder's Approvals tab can attach org `workflow_integrations` (Slack only for now) with channels and subscribed events, stored in `pam_folder_notification_configs` (`channels` and `events` are jsonb; channel objects are `{ id, name }` so the UI renders names without needing the org-gated Slack channel-list API). This intentionally does NOT use `project_slack_configs` or `triggerWorkflowIntegrationNotification`, which resolve config by projectId (the single PAM project would make the config org-wide).
+
+Flow: `createRequest` and `reviewRequest` in `pam-access-request-service.ts` call `triggerFolderSlackNotifications`, which filters configs via the pure `getSlackSendTargets` (`pam-access-request-fns.ts`) and sends through the shared `sendSlackNotification` (`services/slack/slack-fns.ts`). Events are `PamNotificationEvent` in `pam/pam-enums.ts` (mirrored in the frontend enums file). New `TriggerFeature.PAM_*` variants carry the payloads; their Slack templates live in `buildSlackPayload`. All sends are fire-and-forget (never fail the request flow). Config writes ride the existing PUT approval-configuration endpoint (undefined `notificationConfigs` leaves configs unchanged; empty array deletes all). Additional chat platforms can be added later by branching on `integration` in the trigger helper, the table needs no change.
 
 ## Credential Rotation
 

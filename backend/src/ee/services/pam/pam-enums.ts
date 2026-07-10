@@ -9,6 +9,7 @@ export enum PamAccountType {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
+  AzureCli = "azure-cli",
   Windows = "windows",
   WindowsAd = "windows-ad"
 }
@@ -52,4 +53,11 @@ export enum PamMemberKind {
   User = "user",
   Group = "group",
   Identity = "identity"
+}
+
+// Events a folder's chat notification config can subscribe to
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied"
 }

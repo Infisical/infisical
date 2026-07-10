@@ -294,15 +294,17 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="text-base">Credentials</CardTitle>
-          <CardDescription>Authentication used to connect to this account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CredentialsForm control={control} />
-        </CardContent>
-      </Card>
+      {(metadata?.credentialFields.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Credentials</CardTitle>
+            <CardDescription>Authentication used to connect to this account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CredentialsForm control={control} />
+          </CardContent>
+        </Card>
+      )}
 
       <div aria-hidden className="h-8 shrink-0" />
       {isDirty && <SheetSaveBar isPending={updateAccount.isPending} onDiscard={() => reset()} />}
