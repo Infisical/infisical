@@ -172,6 +172,28 @@ export const userServiceFactory = ({
     return { user: updatedUser, recoveryCodes };
   };
 
+  // MFA cannot be turned off while any organization the user belongs to enforces it,
+  // since doing so would lock them out of that org on the next login. This is the
+  // authoritative backend rule (the UI only greys out the button as a hint) and is
+  // enforced both up front in the disable route — so the user isn't put through a
+  // step-up challenge only to be rejected — and again here in deactivateMfa as the
+  // single source of truth that actually gates the state change.
+  const assertMfaDisableAllowed = async (userId: string) => {
+    const userOrgMemberships = await membershipUserDAL.find({
+      actorUserId: userId,
+      scope: AccessScope.Organization
+    });
+    if (!userOrgMemberships.length) return;
+
+    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
+    const organizations = await orgDAL.find({ $in: { id: orgIds } });
+    if (organizations.some((org) => org.enforceMfa)) {
+      throw new ForbiddenRequestError({
+        message: "Two-factor authentication is required by your organization and cannot be disabled"
+      });
+    }
+  };
+
   // Disables MFA. Enrolled factors are preserved so re-enabling does not require
   // re-enrollment, but the recovery-code pool is wiped so codes never outlive the
   // enabled state; a fresh pool is issued on the next enable.
@@ -179,21 +201,7 @@ export const userServiceFactory = ({
     const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Failed to disable MFA" });
 
-    // MFA cannot be turned off while any organization the user belongs to enforces
-    // it, since doing so would lock them out of that org on the next login.
-    const userOrgMemberships = await membershipUserDAL.find({
-      actorUserId: userId,
-      scope: AccessScope.Organization
-    });
-    if (userOrgMemberships.length) {
-      const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
-      const organizations = await orgDAL.find({ $in: { id: orgIds } });
-      if (organizations.some((org) => org.enforceMfa)) {
-        throw new ForbiddenRequestError({
-          message: "Two-factor authentication is required by your organization and cannot be disabled"
-        });
-      }
-    }
+    await assertMfaDisableAllowed(userId);
 
     const updatedUser = await userDAL.transaction(async (tx) => {
       const updated = await userDAL.updateById(userId, { isMfaEnabled: false }, tx);
@@ -655,6 +663,7 @@ export const userServiceFactory = ({
     sendEmailVerificationCode,
     activateMfa,
     deactivateMfa,
+    assertMfaDisableAllowed,
     setSelectedMfaMethod,
     updateUserName,
     updateAuthMethods,

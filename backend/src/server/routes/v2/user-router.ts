@@ -2,6 +2,7 @@ import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { z } from "zod";
 
 import { AuthTokenSessionsSchema } from "@app/db/schemas";
+import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
@@ -142,18 +143,17 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   // client can surface them.
   //
   // Recovery codes bypass any org-required MFA method at login, so they must never
-  // be mintable by a session that has not itself completed that method. This route
-  // requires an org-scoped token (requireOrg:true): a token for an MFA-enforcing org
-  // can only exist after that org's MFA challenge was completed (see
-  // selectOrganization), so reaching this handler already proves the org-required
-  // method. The transient post-password no-org token used during login/onboarding
-  // is rejected here and cannot obtain recovery codes.
+  // be mintable by a session that has not itself proven a second factor. An org-scoped
+  // token alone is NOT sufficient: it may belong to an org that does not enforce MFA
+  // (isMfaVerified=false), which would let a password-only attacker mint account-wide
+  // recovery codes through the weaker org and replay them against a stronger org's
+  // enforced challenge. So:
+  //   - isMfaVerified token (login MFA already completed): enable directly.
+  //   - otherwise: require a fresh step-up challenge against the method being enabled
+  //     (proving possession of that factor) before issuing codes.
   //
-  // This is enable-only: the org-scoped token proves the org method was completed at
-  // login but NOT a fresh step-up challenge, so re-running it on an already-enabled
-  // account would mint fresh recovery codes without the step-up gate the recovery-code
-  // endpoints enforce. The service rejects already-enabled accounts; rotating codes on
-  // an enabled account goes through the step-up-gated POST /me/mfa/recovery-codes route.
+  // The service rejects already-enabled accounts; rotating codes on an enabled account
+  // goes through the step-up-gated POST /me/mfa/recovery-codes route.
   server.route({
     method: "POST",
     url: "/me/mfa/activate",
@@ -163,7 +163,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "activateUserMfa",
       body: z.object({
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        mfaSessionId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -174,9 +175,28 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "Invalid auth mode" });
+      }
+
+      const me = await server.services.user.getMe(req.permission.id);
+      const selectedMfaMethod =
+        req.body.selectedMfaMethod ?? (me.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+
+      if (!req.auth.isMfaVerified) {
+        await ensureStepUpMfa(server, {
+          userId: req.permission.id,
+          orgId: req.permission.orgId,
+          resourceId: MfaStepUpResource.MfaActivation,
+          mfaMethod: selectedMfaMethod,
+          mfaSessionId: req.body.mfaSessionId,
+          message: "MFA verification is required to enable two-factor authentication"
+        });
+      }
+
       const { user, recoveryCodes } = await server.services.user.activateMfa({
         userId: req.permission.id,
-        selectedMfaMethod: req.body.selectedMfaMethod
+        selectedMfaMethod
       });
 
       return { user, recoveryCodes };
@@ -207,6 +227,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      // Enforce the org-enforcement rule before the step-up challenge so a user in an
+      // MFA-enforcing org gets a clean rejection instead of being made to complete an
+      // MFA challenge only to be denied. deactivateMfa re-checks it authoritatively.
+      await server.services.user.assertMfaDisableAllowed(req.permission.id);
+
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,

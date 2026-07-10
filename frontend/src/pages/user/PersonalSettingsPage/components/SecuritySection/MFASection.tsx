@@ -2,7 +2,6 @@ import { useState } from "react";
 import { CircleAlertIcon, PowerIcon, ShieldCheckIcon } from "lucide-react";
 
 import { MFA_METHOD_ICONS, MFA_METHOD_LABELS, RecoveryCodesView } from "@app/components/mfa/setup";
-import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
 import {
   AlertDialog,
@@ -26,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useActivateMfa, useGetOrganizations, useGetUser } from "@app/hooks/api";
+import { useGetOrganizations, useGetUser } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { useGetUserTotpConfiguration } from "@app/hooks/api/users";
@@ -37,13 +36,14 @@ import { MfaMethodsCard } from "./MfaMethodsCard";
 import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
 import { useChangePreferredMfa } from "./useChangePreferredMfa";
 import { useDisableMfa } from "./useDisableMfa";
+import { useEnableMfa } from "./useEnableMfa";
 
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
   const { data: user, isPending } = useGetUser();
   const { changePreferredMfa } = useChangePreferredMfa();
-  const { mutateAsync: activateMfa, isPending: isEnabling } = useActivateMfa();
+  const { isBusy: isEnabling, enableMfa } = useEnableMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
@@ -96,17 +96,10 @@ export const MFASection = () => {
 
   const hasRecoveryCodes = user.isMfaEnabled;
 
-  const handleEnable = async () => {
-    try {
-      const { recoveryCodes } = await activateMfa({ selectedMfaMethod: selectedMethod });
-      setIsEnableOpen(false);
-      setNewRecoveryCodes(recoveryCodes);
-    } catch (error: any) {
-      createNotification({
-        text: error?.response?.data?.message || "Failed to enable two-factor authentication",
-        type: "error"
-      });
-    }
+  const handleEnable = () => {
+    if (!selectedMethod) return;
+    setIsEnableOpen(false);
+    enableMfa(selectedMethod, (recoveryCodes) => setNewRecoveryCodes(recoveryCodes));
   };
 
   // Changing the preferred method is sensitive, so it goes through the step-up MFA

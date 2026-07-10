@@ -10,8 +10,14 @@ import { MfaMethod } from "@app/services/auth/auth-type";
 // MFA-management actions of comparable risk, so they intentionally share a single
 // resource id: one fresh challenge covers all of them for the session TTL (5 min)
 // rather than re-prompting the user for each action in quick succession.
+//
+// Enabling MFA is kept on its own resource id (never folded into MfaManagement):
+// it is challenged against the method the user is *enabling* (which may be weaker
+// than an org's enforced method), so a session verified for enablement must not be
+// replayable against MfaManagement actions that are gated on the enforced method.
 export const MfaStepUpResource = {
-  MfaManagement: "mfa-management"
+  MfaManagement: "mfa-management",
+  MfaActivation: "mfa-activation"
 } as const;
 
 export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStepUpResource];
@@ -29,6 +35,11 @@ export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStep
  *   mints a fresh pending session (emailing the code when the required method is
  *   email) and throws `SESSION_MFA_REQUIRED` carrying the new session id + method
  *   so the client can drive the challenge and retry.
+ *
+ * By default the challenged method is the one the current org context requires (the
+ * enforced method, or the user's preference otherwise). Pass `mfaMethod` to override
+ * this when the action dictates the method independently of org enforcement — e.g.
+ * enabling MFA challenges the factor being enabled, not a stronger org-enforced one.
  */
 export const ensureStepUpMfa = async (
   server: FastifyZodProvider,
@@ -37,13 +48,15 @@ export const ensureStepUpMfa = async (
     orgId,
     resourceId,
     mfaSessionId,
-    message
+    message,
+    mfaMethod: mfaMethodOverride
   }: {
     userId: string;
     orgId: string;
     resourceId: TMfaStepUpResource;
     mfaSessionId?: string;
     message: string;
+    mfaMethod?: MfaMethod;
   }
 ) => {
   if (
@@ -61,7 +74,7 @@ export const ensureStepUpMfa = async (
 
   const user = await server.services.user.getMe(userId);
 
-  const mfaMethod = await server.services.user.getStepUpMfaMethod(userId, orgId);
+  const mfaMethod = mfaMethodOverride ?? (await server.services.user.getStepUpMfaMethod(userId, orgId));
 
   const newMfaSessionId = await server.services.mfaSession.createMfaSession(userId, resourceId, mfaMethod);
 
