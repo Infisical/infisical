@@ -30,6 +30,13 @@ const parseCertificateFile = (
 ) => {
   const reader = new FileReader();
 
+  reader.onerror = () => {
+    createNotification({
+      type: "error",
+      text: "Failed to read file."
+    });
+  };
+
   reader.onload = (event) => {
     if (!event?.target?.result) {
       createNotification({
@@ -46,7 +53,16 @@ const parseCertificateFile = (
           result.slice(result.indexOf(",") + 1)
         : result;
 
-    onParsedSecrets({ [file.name]: { value, comments: [], isFileSecret: true } });
+    const skipMultilineEncoding = extension === "pem" || extension === "crt";
+
+    onParsedSecrets({
+      [file.name]: {
+        value,
+        comments: [],
+        isFileSecret: true,
+        skipMultilineEncoding
+      }
+    });
   };
 
   try {
