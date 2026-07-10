@@ -5,6 +5,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { useUser } from "@app/context";
 import {
   Button,
   Dialog,
@@ -87,6 +88,8 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
   const preApprove = usePreApproveSigning();
   const [submitting, setSubmitting] = useState(false);
 
+  const { user } = useUser();
+
   const maxSignings = policy?.constraints?.maxSignings ?? null;
   const maxWindowDuration = policy?.constraints?.maxWindowDuration ?? null;
 
@@ -94,6 +97,8 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
     const opts: MemberOption[] = [];
     (users.data?.members ?? []).forEach((m: TEffectiveSignerMember) => {
       if (!m.actorUserId) return;
+      // you cannot pre-approve signing for yourself, so don't offer yourself as a grantee
+      if (m.actorUserId === user?.id) return;
       if (m.role === SignerMemberRole.Auditor) return;
       opts.push({
         value: `user:${m.actorUserId}`,
@@ -111,7 +116,7 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
       });
     });
     return opts;
-  }, [users.data, identities.data]);
+  }, [users.data, identities.data, user?.id]);
 
   const buildDefaults = (): FormData => {
     const now = Date.now();
