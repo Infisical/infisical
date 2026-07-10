@@ -80,7 +80,7 @@ Once revoked, the token is rejected on subsequent authenticated requests and can
 <Note>
   To keep authentication fast under high request volume, Infisical caches the result of each revocation check in Redis for a short period. Under normal operation a revocation takes effect immediately, because revoking a token also invalidates any cached decision for that identity.
 
-  In the rare event that this cache invalidation cannot be written (for example, a transient Redis disruption during the revoke), the database record still reflects the revocation, but a previously cached "allow" result for that exact token may continue to be honored until it expires on its own. This window is bounded to roughly 12 minutes, after which the decision is re-evaluated against the database and the revoked token is rejected.
+  In the rare case where this cache invalidation cannot be performed (for example, a transient Redis disruption during the revoke), the database still records the revocation, but Infisical may continue to accept that exact token until its cached result expires, which takes at most 12 minutes. After that, the check is re-evaluated against the database and the token is rejected.
 
   If you need a revocation to take effect with no propagation delay even under those conditions, rotate the underlying credential (delete the Universal Auth client secret) or delete the identity, both of which invalidate the affected tokens regardless of cache state.
 </Note>
