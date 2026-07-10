@@ -1,4 +1,6 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -211,11 +213,44 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Cloud66]: ["stackName"]
 };
 
-const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
+const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  const existingKeySchema = (existingSync.syncOptions?.keySchema as string) ?? "";
+  const newKeySchema = (newSync.syncOptions?.keySchema as string) ?? "";
+
+  // Mismatched keySchemas can still conflict (e.g. sync A with keySchema "INFISICAL_{{secretKey}}" and secret HOST
+  // vs sync B without keySchema and secret INFISICAL_HOST will write to the same destination key).
+  const hasKeySchemaConflict = !existingKeySchema || !newKeySchema || existingKeySchema === newKeySchema;
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return hasKeySchemaConflict;
+  }
+
+  if (!existingSync.connectionId) return false;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  const existingAwsConn = existingConn as TAwsConnection;
+  const newAwsConn = newConn as TAwsConnection;
+
+  const [existingAccountId, newAccountId] = await Promise.all([
+    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials)),
+    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
+  ]);
+
+  if (!existingAccountId || !newAccountId) return false;
+
+  return existingAccountId === newAccountId && hasKeySchemaConflict;
+};
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
-  [SecretSync.AWSParameterStore]: defaultDuplicateCheck,
-  [SecretSync.AWSSecretsManager]: defaultDuplicateCheck,
+  [SecretSync.AWSParameterStore]: awsDuplicateCheck,
+  [SecretSync.AWSSecretsManager]: awsDuplicateCheck,
   [SecretSync.GitHub]: defaultDuplicateCheck,
   [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
   [SecretSync.AzureKeyVault]: defaultDuplicateCheck,
@@ -235,7 +270,10 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Render]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
   [SecretSync.TriggerDev]: defaultDuplicateCheck,
-  [SecretSync.GitLab]: (existingConfig, newConfig) => {
+  [SecretSync.GitLab]: async ({ existingSync, newSync }) => {
+    const existingConfig = existingSync.destinationConfig;
+    const newConfig = newSync.destinationConfig;
+
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
 

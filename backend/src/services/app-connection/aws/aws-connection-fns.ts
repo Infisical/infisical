@@ -227,3 +227,25 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
 
   return appConnection.credentials;
 };
+
+export const getAwsAccountId = async (appConnection: TAwsConnectionConfig): Promise<string | null> => {
+  try {
+    const awsConfig = await getAwsConnectionConfig(appConnection);
+
+    const stsEndpoint =
+      appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
+    const stsRegion = getStsSigningRegion(stsEndpoint);
+
+    const sts = new STSClient({
+      region: stsRegion.region ?? awsConfig.region,
+      credentials: awsConfig.credentials,
+      ...(stsEndpoint && stsRegion.isValidEndpoint ? { endpoint: stsEndpoint } : {})
+    });
+
+    const response = await sts.send(new GetCallerIdentityCommand({}));
+    return response.Account ?? null;
+  } catch (error) {
+    logger.error(error, "Failed to retrieve AWS account ID via STS");
+    return null;
+  }
+};
