@@ -1,7 +1,10 @@
-import { KeyIcon } from "lucide-react";
+import { KeyIcon, LockIcon } from "lucide-react";
 
-import { FilterableSelect } from "@app/components/v3";
+import { FilterableSelect, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 type Props = {
   projectId: string;
@@ -14,15 +17,30 @@ type Props = {
   placeholder?: string;
 };
 
-type SecretOption = { label: string; value: string };
+// isReadable drives whether the option can be picked: attaching a secret to a proxied service
+// requires ReadValue on the backend, so a secret the caller can only describe is shown disabled.
+type SecretOption = { label: string; value: string; isReadable: boolean };
 
 // Hoisted out of the component so it isn't recreated each render (react/no-unstable-nested-components).
-const formatSecretOption = (option: SecretOption) => (
-  <div className="flex items-center gap-2">
-    <KeyIcon className="size-4 shrink-0 text-bunker-300" />
-    <span className="truncate">{option.label}</span>
-  </div>
-);
+const formatSecretOption = (option: SecretOption) =>
+  option.isReadable ? (
+    <div className="flex items-center gap-2">
+      <KeyIcon className="size-4 shrink-0 text-bunker-300" />
+      <span className="truncate">{option.label}</span>
+    </div>
+  ) : (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-2">
+          <LockIcon className="size-4 shrink-0 text-bunker-300" />
+          <span className="truncate">{option.label}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        You need read access to this secret&apos;s value to use it in a proxied service.
+      </TooltipContent>
+    </Tooltip>
+  );
 
 // Picks a secret key from the current folder. Uses the searchable FilterableSelect so long secret
 // lists stay usable. A stale reference (secret renamed/deleted) still renders its raw key.
@@ -36,6 +54,7 @@ export const SecretSelect = ({
   isError,
   placeholder = "Select a secret"
 }: Props) => {
+  const { permission } = useProjectPermission();
   const { data: secrets = [], isPending } = useGetProjectSecrets({
     projectId,
     environment,
@@ -45,10 +64,23 @@ export const SecretSelect = ({
 
   const options: SecretOption[] = secrets.map((secret) => ({
     label: secret.key,
-    value: secret.key
+    value: secret.key,
+    // the list endpoint only requires describe, so re-check ReadValue client-side (backend enforces it too)
+    isReadable: hasSecretReadValueOrDescribePermission(
+      permission,
+      ProjectPermissionSecretActions.ReadValue,
+      {
+        environment,
+        secretPath,
+        secretName: secret.key,
+        secretTags: secret.tags?.map((tag) => tag.slug) ?? []
+      }
+    )
   }));
+  // a stale/selected key not in the fetched list stays visible and selectable so the reference persists
   const selected =
-    options.find((option) => option.value === value) ?? (value ? { label: value, value } : null);
+    options.find((option) => option.value === value) ??
+    (value ? { label: value, value, isReadable: true } : null);
 
   return (
     <FilterableSelect
@@ -58,6 +90,7 @@ export const SecretSelect = ({
       value={selected}
       options={options}
       placeholder={placeholder}
+      isOptionDisabled={(option) => !(option as SecretOption).isReadable}
       onChange={(newValue) => onChange((newValue as SecretOption | null)?.value ?? "")}
       getOptionLabel={(option) => option.label}
       getOptionValue={(option) => option.value}
