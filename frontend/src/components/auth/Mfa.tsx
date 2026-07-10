@@ -24,6 +24,8 @@ import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/
 
 import { RecoveryCodesStep } from "../mfa/setup";
 
+const MAX_MFA_ATTEMPTS = 5;
+
 // The style for the verification code input
 const codeInputProps = {
   inputStyle: {
@@ -186,7 +188,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           return;
         }
       } else {
-        setTriesLeft(2);
+        setTriesLeft(MAX_MFA_ATTEMPTS - 1);
       }
     } finally {
       setIsLoading(false);
@@ -273,7 +275,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           return;
         }
       } else {
-        setTriesLeft(2);
+        setTriesLeft(MAX_MFA_ATTEMPTS - 1);
       }
     } finally {
       setIsLoading(false);
