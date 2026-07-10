@@ -72,6 +72,9 @@ export const useWebPageSession = ({
   const drawFrame = useCallback((buf: ArrayBuffer) => {
     const canvas = canvasRef.current;
     if (!canvas || buf.byteLength < FRAME_HEADER_BYTES) return;
+    // Snapshot the connection generation: decode is async, so a frame from a
+    // torn-down/reconnected socket must not draw onto the new session's canvas.
+    const gen = generationRef.current;
     const view = new DataView(buf);
     const ts = view.getUint32(0, true);
     const w = view.getUint16(4, true);
@@ -80,8 +83,9 @@ export const useWebPageSession = ({
     const blob = new Blob([jpegBytes], { type: "image/jpeg" });
     createImageBitmap(blob)
       .then((bitmap) => {
-        // Drop a frame that decoded out of order behind an already-drawn newer one.
-        if (ts < lastFrameTsRef.current || !canvasRef.current) {
+        // Drop a frame from a stale generation or one that decoded out of order
+        // behind an already-drawn newer frame.
+        if (gen !== generationRef.current || ts < lastFrameTsRef.current || !canvasRef.current) {
           bitmap.close();
           return;
         }
