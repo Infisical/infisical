@@ -220,8 +220,12 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   const existingKeySchema = (existingSync.syncOptions?.keySchema as string) ?? "";
   const newKeySchema = (newSync.syncOptions?.keySchema as string) ?? "";
 
+  // Mismatched keySchemas can still conflict (e.g. sync A with keySchema "INFISICAL_{{secretKey}}" and secret HOST
+  // vs sync B without keySchema and secret INFISICAL_HOST will write to the same destination key).
+  const hasKeySchemaConflict = !existingKeySchema || !newKeySchema || existingKeySchema === newKeySchema;
+
   if (existingSync.connectionId === newSync.connectionId) {
-    return existingKeySchema === newKeySchema;
+    return hasKeySchemaConflict;
   }
 
   if (!existingSync.connectionId) return false;
@@ -241,7 +245,7 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
 
   if (!existingAccountId || !newAccountId) return false;
 
-  return existingAccountId === newAccountId && existingKeySchema === newKeySchema;
+  return existingAccountId === newAccountId && hasKeySchemaConflict;
 };
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {

@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { logger } from "@app/lib/logger";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
@@ -358,7 +359,9 @@ export const secretSyncServiceFactory = ({
           });
           duplicateProjectId = duplicateProject;
         } catch {
-          // actor lacks access to the duplicate's project -- do not reveal it
+          logger.warn(
+            `Duplicate secret sync destination detected but actor has no access to conflicting project [actorId=${actor.id}] [duplicateProjectId=${duplicateProject}]`
+          );
         }
       }
 
