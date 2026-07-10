@@ -19,6 +19,7 @@ export const secretSyncKeys = {
     destination: SecretSync,
     destinationConfig: unknown,
     connectionId?: string,
+    syncOptions?: unknown,
     excludeSyncId?: string
   ) =>
     [
@@ -27,6 +28,7 @@ export const secretSyncKeys = {
       "duplicate-check",
       destinationConfig,
       connectionId,
+      syncOptions,
       excludeSyncId
     ] as const
 };
@@ -109,6 +111,7 @@ export const useCheckDuplicateDestination = (
   projectId: string,
   excludeSyncId?: string,
   connectionId?: string,
+  syncOptions?: unknown,
   options?: Omit<
     UseQueryOptions<
       { hasDuplicate: boolean; duplicateProjectId?: string },
@@ -124,6 +127,7 @@ export const useCheckDuplicateDestination = (
       destination,
       destinationConfig,
       connectionId,
+      syncOptions,
       excludeSyncId
     ),
     queryFn: async () => {
@@ -133,6 +137,7 @@ export const useCheckDuplicateDestination = (
       }>(`/api/v1/secret-syncs/${destination}/check-destination`, {
         destinationConfig,
         connectionId,
+        syncOptions,
         excludeSyncId,
         projectId
       });

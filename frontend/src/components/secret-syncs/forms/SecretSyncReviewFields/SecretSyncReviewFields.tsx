@@ -100,6 +100,7 @@ export const SecretSyncReviewFields = () => {
     destination,
     projectId: currentProject?.id || "",
     connectionId: connection?.id,
+    syncOptions: watch("syncOptions"),
     enabled: true,
     destinationConfig: watch("destinationConfig")
   });

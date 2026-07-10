@@ -257,7 +257,14 @@ export const secretSyncServiceFactory = ({
   };
 
   const checkDuplicateDestination = async (
-    { destination, destinationConfig, connectionId, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    {
+      destination,
+      destinationConfig,
+      connectionId,
+      syncOptions,
+      excludeSyncId,
+      projectId
+    }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
     const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
@@ -282,18 +289,27 @@ export const secretSyncServiceFactory = ({
     try {
       const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
 
-      const decryptConnection = async (connId: string): Promise<TAppConnection> => {
-        const conn = await appConnectionDAL.findById(connId);
-        if (!conn || conn.orgId !== actor.orgId) {
-          throw new NotFoundError({ message: `App connection with ID "${connId}" not found` });
-        }
-        const credentials = await decryptAppConnectionCredentials({
-          orgId: conn.orgId,
-          encryptedCredentials: conn.encryptedCredentials,
-          kmsService,
-          projectId: conn.projectId
-        });
-        return { ...conn, credentials } as TAppConnection;
+      const connectionCache = new Map<string, Promise<TAppConnection>>();
+      const decryptConnection = (connId: string): Promise<TAppConnection> => {
+        const cached = connectionCache.get(connId);
+        if (cached) return cached;
+
+        const promise = (async () => {
+          const conn = await appConnectionDAL.findById(connId);
+          if (!conn || conn.orgId !== actor.orgId) {
+            throw new NotFoundError({ message: `App connection with ID "${connId}" not found` });
+          }
+          const credentials = await decryptAppConnectionCredentials({
+            orgId: conn.orgId,
+            encryptedCredentials: conn.encryptedCredentials,
+            kmsService,
+            projectId: conn.projectId
+          });
+          return { ...conn, credentials } as TAppConnection;
+        })();
+
+        connectionCache.set(connId, promise);
+        return promise;
       };
 
       const candidates = existingSyncs.filter((sync) => {
@@ -305,10 +321,16 @@ export const secretSyncServiceFactory = ({
         candidates.map(async (sync) => {
           try {
             const isDuplicate = await DESTINATION_DUPLICATE_CHECK_MAP[destination]({
-              existingConfig: sync.destinationConfig as Record<string, unknown>,
-              newConfig: destinationConfig,
-              existingConnectionId: sync.connectionId,
-              newConnectionId: connectionId ?? null,
+              existingSync: {
+                connectionId: sync.connectionId,
+                syncOptions: (sync.syncOptions as Record<string, unknown>) ?? null,
+                destinationConfig: sync.destinationConfig as Record<string, unknown>
+              },
+              newSync: {
+                connectionId: connectionId ?? null,
+                syncOptions: syncOptions ?? null,
+                destinationConfig
+              },
               decryptConnection
             });
             return isDuplicate ? sync : null;
@@ -391,6 +413,7 @@ export const secretSyncServiceFactory = ({
           destination: params.destination,
           destinationConfig: params.destinationConfig,
           connectionId: params.connectionId,
+          syncOptions: params.syncOptions as Record<string, unknown> | undefined,
           projectId
         },
         actor
@@ -526,6 +549,9 @@ export const secretSyncServiceFactory = ({
             destination,
             destinationConfig: params.destinationConfig ?? (secretSync.destinationConfig as Record<string, unknown>),
             connectionId: params.connectionId ?? connectionId,
+            syncOptions:
+              (params.syncOptions as Record<string, unknown> | undefined) ??
+              (secretSync.syncOptions as Record<string, unknown> | null),
             projectId: secretSync.projectId,
             excludeSyncId: secretSync.id
           },

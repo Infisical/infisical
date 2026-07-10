@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { extractAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
+import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
@@ -214,26 +214,34 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
-const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({
-  existingConnectionId,
-  newConnectionId,
-  decryptConnection
-}) => {
-  if (!newConnectionId) return true;
-  if (existingConnectionId === newConnectionId) return true;
-  if (!existingConnectionId) return false;
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  const existingKeySchema = (existingSync.syncOptions?.keySchema as string) ?? "";
+  const newKeySchema = (newSync.syncOptions?.keySchema as string) ?? "";
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return existingKeySchema === newKeySchema;
+  }
+
+  if (!existingSync.connectionId) return false;
 
   const [existingConn, newConn] = await Promise.all([
-    decryptConnection(existingConnectionId),
-    decryptConnection(newConnectionId)
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
   ]);
 
-  const existingAccountId = extractAwsAccountId(existingConn as TAwsConnection);
-  const newAccountId = extractAwsAccountId(newConn as TAwsConnection);
+  const existingAwsConn = existingConn as TAwsConnection;
+  const newAwsConn = newConn as TAwsConnection;
+
+  const [existingAccountId, newAccountId] = await Promise.all([
+    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials)),
+    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
+  ]);
 
   if (!existingAccountId || !newAccountId) return false;
 
-  return existingAccountId === newAccountId;
+  return existingAccountId === newAccountId && existingKeySchema === newKeySchema;
 };
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
@@ -258,7 +266,10 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Render]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
   [SecretSync.TriggerDev]: defaultDuplicateCheck,
-  [SecretSync.GitLab]: async ({ existingConfig, newConfig }) => {
+  [SecretSync.GitLab]: async ({ existingSync, newSync }) => {
+    const existingConfig = existingSync.destinationConfig;
+    const newConfig = newSync.destinationConfig;
+
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
 

@@ -7,6 +7,7 @@ type UseDuplicateDestinationCheckProps = {
   projectId: string;
   excludeSyncId?: string;
   connectionId?: string;
+  syncOptions?: unknown;
   enabled?: boolean;
   destinationConfig?: unknown;
 };
@@ -16,6 +17,7 @@ export const useDuplicateDestinationCheck = ({
   projectId,
   excludeSyncId,
   connectionId,
+  syncOptions,
   enabled = true,
   destinationConfig
 }: UseDuplicateDestinationCheckProps) => {
@@ -42,6 +44,7 @@ export const useDuplicateDestinationCheck = ({
     projectId,
     excludeSyncId,
     connectionId,
+    syncOptions,
     {
       enabled: shouldCheck,
       staleTime: 0,

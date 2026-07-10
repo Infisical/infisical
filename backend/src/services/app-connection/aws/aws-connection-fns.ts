@@ -228,63 +228,24 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
   return appConnection.credentials;
 };
 
-const extractAccountIdFromArn = (roleArn: string): string | null => {
-  const match = roleArn.match(/^arn:aws[^:]*:iam::(\d{12}):/);
-  return match ? match[1] : null;
-};
+export const getAwsAccountId = async (appConnection: TAwsConnectionConfig): Promise<string | null> => {
+  try {
+    const awsConfig = await getAwsConnectionConfig(appConnection);
 
-// eslint-disable-next-line no-bitwise
-const extractAccountIdFromAccessKey = (accessKeyId: string): string | null => {
-  if (accessKeyId.length < 16) return null;
+    const stsEndpoint =
+      appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
+    const stsRegion = getStsSigningRegion(stsEndpoint);
 
-  const trimmed = accessKeyId.slice(4);
-  const base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    const sts = new STSClient({
+      region: stsRegion.region ?? awsConfig.region,
+      credentials: awsConfig.credentials,
+      ...(stsEndpoint && stsRegion.isValidEndpoint ? { endpoint: stsEndpoint } : {})
+    });
 
-  const bits: number[] = [];
-  for (const char of trimmed) {
-    const val = base32Chars.indexOf(char.toUpperCase());
-    if (val === -1) return null;
-    for (let i = 4; i >= 0; i -= 1) {
-      // eslint-disable-next-line no-bitwise
-      bits.push((val >> i) & 1);
-    }
+    const response = await sts.send(new GetCallerIdentityCommand({}));
+    return response.Account ?? null;
+  } catch (error) {
+    logger.error(error, "Failed to retrieve AWS account ID via STS");
+    return null;
   }
-
-  const bytes: number[] = [];
-  for (let i = 0; i < 6 * 8 && i < bits.length; i += 8) {
-    let byte = 0;
-    for (let j = 0; j < 8 && i + j < bits.length; j += 1) {
-      // eslint-disable-next-line no-bitwise
-      byte = (byte << 1) | bits[i + j];
-    }
-    bytes.push(byte);
-  }
-
-  if (bytes.length < 6) return null;
-
-  let num = 0n;
-  for (const byte of bytes) {
-    // eslint-disable-next-line no-bitwise
-    num = (num << 8n) | BigInt(byte);
-  }
-  const mask = 0x7fffffffff80n;
-  // eslint-disable-next-line no-bitwise
-  const accountId = ((num & mask) >> 7n).toString();
-
-  return accountId.padStart(12, "0");
-};
-
-export const extractAwsAccountId = (connection: {
-  method: string;
-  credentials: { roleArn?: string; accessKeyId?: string };
-}): string | null => {
-  if (connection.method === AwsConnectionMethod.AssumeRole && connection.credentials.roleArn) {
-    return extractAccountIdFromArn(connection.credentials.roleArn);
-  }
-
-  if (connection.method === AwsConnectionMethod.AccessKey && connection.credentials.accessKeyId) {
-    return extractAccountIdFromAccessKey(connection.credentials.accessKeyId);
-  }
-
-  return null;
 };

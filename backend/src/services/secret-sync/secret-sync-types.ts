@@ -475,6 +475,7 @@ export type TCheckDuplicateDestinationDTO = {
   destination: SecretSync;
   destinationConfig: Record<string, unknown>;
   connectionId?: string | null;
+  syncOptions?: Record<string, unknown> | null;
   excludeSyncId?: string;
   projectId: string;
 };
@@ -571,11 +572,15 @@ export type TSecretMap = Record<
   }
 >;
 
+export type DuplicateCheckSyncFields = {
+  connectionId: string | null;
+  syncOptions: Record<string, unknown> | null;
+  destinationConfig: Record<string, unknown>;
+};
+
 export type DestinationDuplicateCheckFn = (opts: {
-  existingConfig: Record<string, unknown>;
-  newConfig: Record<string, unknown>;
-  existingConnectionId: string | null;
-  newConnectionId: string | null;
+  existingSync: DuplicateCheckSyncFields;
+  newSync: DuplicateCheckSyncFields;
   decryptConnection: (connectionId: string) => Promise<TAppConnection>;
 }) => Promise<boolean>;
 
