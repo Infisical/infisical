@@ -32,11 +32,11 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission,
-  useSubscription
+  useProjectPermission
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -119,7 +119,6 @@ const Page = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { subscription } = useSubscription();
   const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
   const tableRef = useRef<HTMLTableElement>(null);
@@ -240,6 +239,11 @@ const Page = () => {
     subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
   );
 
+  const canReadProxiedServices = permission.can(
+    ProjectPermissionProxiedServiceActions.Read,
+    subject(ProjectPermissionSub.ProxiedServices, { environment, secretPath })
+  );
+
   const canDoReadRollback = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -330,7 +334,7 @@ const Page = () => {
     includeSecretRotations:
       canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     includeHoneyTokens: true,
-    includeProxiedServices: Boolean(subscription?.secretsBrokering),
+    includeProxiedServices: canReadProxiedServices,
     tags: filter.tags
   });
 
@@ -1081,7 +1085,7 @@ const Page = () => {
                   canNavigate={isFetched}
                 />
               )}
-              {Boolean(proxiedServices?.length) && (
+              {canReadProxiedServices && Boolean(proxiedServices?.length) && (
                 <ProxiedServiceListView proxiedServices={proxiedServices} />
               )}
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (

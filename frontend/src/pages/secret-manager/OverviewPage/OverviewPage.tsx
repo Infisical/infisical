@@ -671,9 +671,9 @@ const OverviewPageContent = () => {
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
-      includeProxiedServices:
-        Boolean(subscription?.secretsBrokering) &&
-        (isFilteredByResources ? (filter[RowType.ProxiedService] ?? true) : true),
+      includeProxiedServices: isFilteredByResources
+        ? (filter[RowType.ProxiedService] ?? true)
+        : true,
       search: searchFilter,
       tags: tagFilter,
       limit,
