@@ -4,6 +4,7 @@ import { PamAccountType } from "../pam/pam-enums";
 import {
   accountTypeRequiresRecording,
   buildPamAccountTypeMetadata,
+  extractGatewayTarget,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
@@ -250,8 +251,6 @@ describe("getAccountAccessibilityIssues", () => {
     ).toEqual([PamAccountAccessibilityIssue.NoRecordingConfig]);
   });
 });
-
-import { extractGatewayTarget } from "./pam-account-schemas";
 
 describe("webpage account type", () => {
   test("extractGatewayTarget returns host/port for webpage", async () => {
