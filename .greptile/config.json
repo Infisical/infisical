@@ -10,7 +10,7 @@
   "rules": [
     {
       "id": "use-safe-request-for-user-urls",
-      "rule": "When making HTTP requests to user-supplied URLs (webhooks, app connections, syncs, rotations, etc.), use safeRequest from backend/src/lib/validator/safe-request.ts instead of blockLocalAndPrivateIpAddresses. blockLocalAndPrivateIpAddresses validates the host but is vulnerable to DNS rebinding: DNS can resolve to an internal IP between the validation check and the actual connect. safeRequest closes that window by validating and pinning the connection to the validated IP, and is a drop-in replacement for axios usage. Flag new code that calls blockLocalAndPrivateIpAddresses or passes a user-controlled URL to axios/fetch directly without safeRequest.",
+      "rule": "When making HTTP requests to user-supplied URLs (webhooks, app connections, syncs, rotations, etc.), use safeRequest from backend/src/lib/validator/safe-request.ts instead of blockLocalAndPrivateIpAddresses. blockLocalAndPrivateIpAddresses validates the host but is vulnerable to DNS rebinding: DNS can resolve to an internal IP between the validation check and the actual connect. safeRequest closes that window by validating and pinning the connection to the validated IP, and is a drop-in replacement for axios usage. Flag new code that calls blockLocalAndPrivateIpAddresses, validateSsrfUrl, ssrfSafeGet, or ssrfSafePost (wrappers with the same validate-then-connect flaw), or passes a user-controlled URL to axios/fetch directly without safeRequest.",
       "severity": "high",
       "scope": ["backend/src/**"]
     },
