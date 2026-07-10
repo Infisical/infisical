@@ -130,9 +130,13 @@ export const SecretItem = memo(
 
     const [isFieldFocused, setIsFieldFocused] = useToggle();
 
+    // A personal override is always readable by its owner, so its fetch/display must not depend on the
+    // shared value's `secretValueHidden` (which is true when the user lacks read access to the shared secret).
+    const hasPersonalOverride = Boolean(originalSecret.idOverride);
     const canFetchSecretValue =
-      !originalSecret.secretValueHidden &&
-      !originalSecret.isEmpty &&
+      (hasPersonalOverride
+        ? !originalSecret.isOverrideEmpty
+        : !originalSecret.secretValueHidden && !originalSecret.isEmpty) &&
       pendingAction !== PendingAction.Create;
 
     const fetchSecretValueParams = {
@@ -140,7 +144,7 @@ export const SecretItem = memo(
       secretPath,
       secretKey: originalSecret.originalKey || originalSecret.key,
       projectId: currentProject.id,
-      isOverride: Boolean(originalSecret.idOverride)
+      isOverride: hasPersonalOverride
     };
 
     const {
@@ -200,10 +204,8 @@ export const SecretItem = memo(
     const getOverrideDefaultValue = () => {
       if (isLoadingSecretValue) return undefined;
 
-      if (secret.secretValueHidden && !isPending) {
-        return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
-      }
-
+      // The personal override belongs to the current user and is always readable by them, so it is not
+      // gated on the shared value's `secretValueHidden`.
       if (isErrorFetchingSecretValue) return undefined;
 
       return secret.valueOverride || "";
