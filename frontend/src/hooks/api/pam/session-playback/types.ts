@@ -27,6 +27,14 @@ export type TBrokenChunkMarker = {
   message: string;
 };
 
+export type TWebFrameEvent = {
+  type: "web_frame";
+  elapsedMs: number;
+  jpegBase64: string;
+  w: number;
+  h: number;
+};
+
 export const isBrokenChunkMarker = (event: unknown): event is TBrokenChunkMarker =>
   typeof event === "object" &&
   event !== null &&
