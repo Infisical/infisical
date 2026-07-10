@@ -10,7 +10,8 @@ export enum PamAccountType {
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
   Windows = "windows",
-  WindowsAd = "windows-ad"
+  WindowsAd = "windows-ad",
+  WebPage = "webpage"
 }
 
 export enum PamResourceRole {

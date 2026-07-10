@@ -540,6 +540,23 @@ export const ACCOUNT_TYPE_CONFIGS = {
           "The ARN of the IAM role Infisical assumes when accessing this account. Its trust policy must allow Infisical using your Infisical Organization ID as the External ID.\n\nOrganization ID: {{organizationId}}"
       }
     }
+  },
+
+  [PamAccountType.WebPage]: {
+    name: "Web Page",
+    icon: "WebPage.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      useHttps: z.boolean(),
+      startPath: z.string().trim().default("/")
+    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
+    ui: {
+      port: { defaultValue: 80 },
+      useHttps: { label: "Use HTTPS" }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -653,6 +670,10 @@ export const extractGatewayTarget = async (
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
       throw new Error("AWS IAM accounts do not use gateway routing");
+    case PamAccountType.WebPage: {
+      const details = ACCOUNT_TYPE_CONFIGS[PamAccountType.WebPage].connectionDetails.parse(rawConnectionDetails);
+      return { host: details.host, port: details.port };
+    }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }

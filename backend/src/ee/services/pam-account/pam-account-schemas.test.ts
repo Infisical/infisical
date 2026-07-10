@@ -250,3 +250,28 @@ describe("getAccountAccessibilityIssues", () => {
     ).toEqual([PamAccountAccessibilityIssue.NoRecordingConfig]);
   });
 });
+
+import { extractGatewayTarget } from "./pam-account-schemas";
+
+describe("webpage account type", () => {
+  test("extractGatewayTarget returns host/port for webpage", async () => {
+    const target = await extractGatewayTarget(PamAccountType.WebPage, {
+      host: "intranet.local",
+      port: 8080,
+      useHttps: false,
+      startPath: "/"
+    });
+    expect(target).toEqual({ host: "intranet.local", port: 8080 });
+  });
+
+  test("webpage has no NoRecordingConfig issue and no NoCredential when configured", () => {
+    const issues = getAccountAccessibilityIssues({
+      accountType: PamAccountType.WebPage,
+      gatewayId: "gw-1",
+      templateRecordingConnectionId: null,
+      templateSettings: {},
+      credentialConfigured: true
+    });
+    expect(issues).toEqual([]);
+  });
+});
