@@ -27,6 +27,7 @@ type TAgentProxyCaServiceFactoryDep = {
 };
 
 const ROOT_CA_ALGORITHM = CertKeyAlgorithm.ECDSA_P256;
+// 7 days; the agent proxy re-signs a fresh intermediate before this elapses
 const INTERMEDIATE_CA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // Long-lived root so the trust anchor stays stable (agents pin it and do not refresh in V1).
 // The private key never leaves Infisical and only signs short-lived intermediates.
