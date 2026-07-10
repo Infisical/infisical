@@ -22,6 +22,7 @@ import {
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
+import { encryptChunk } from "./pam-recording-chunk-encryptor";
 import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
 import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
@@ -380,5 +381,52 @@ export const pamSessionChunkServiceFactory = ({
     return { ciphertext: chunk.encryptedEventsBlob };
   };
 
-  return { requestPresignedPut, recordChunk, getSessionPlayback, getChunkCiphertext };
+  const recordChunkInternal = async ({
+    sessionId,
+    projectId,
+    chunkIndex,
+    startElapsedMs,
+    endElapsedMs,
+    plaintext,
+    sessionKey
+  }: {
+    sessionId: string;
+    projectId: string;
+    chunkIndex: number;
+    startElapsedMs: number;
+    endElapsedMs: number;
+    plaintext: Buffer;
+    sessionKey: Buffer;
+  }) => {
+    const storageBackend = PamRecordingStorageBackend.Postgres;
+    const { body, iv, ciphertextSha256 } = encryptChunk({
+      plaintext,
+      sessionKey,
+      projectId,
+      sessionId,
+      chunkIndex,
+      storageBackend
+    });
+    if (body.length > PAM_RECORDING_MAX_CHUNK_BYTES) {
+      throw new BadRequestError({ message: `Chunk too large [bytes=${body.length}]` });
+    }
+    await pamSessionEventChunkDAL.insertIgnoreDuplicate({
+      sessionId,
+      chunkIndex,
+      startElapsedMs,
+      endElapsedMs,
+      storageBackend,
+      encryptedEventsBlob: body,
+      externalChunkObjectKey: null,
+      chunkSizeBytes: null,
+      externalKeyframeObjectKey: null,
+      keyframeSizeBytes: null,
+      ciphertextSha256,
+      ciphertextBytes: body.length,
+      iv
+    });
+    return { ok: true as const };
+  };
+
+  return { requestPresignedPut, recordChunk, recordChunkInternal, getSessionPlayback, getChunkCiphertext };
 };
