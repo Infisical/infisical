@@ -1090,6 +1090,28 @@ export const internalCertificateAuthorityServiceFactory = ({
   };
 
   /**
+   * Return list of past and current CA certificates for a CA. CA certificates are public trust
+   * material (no private keys)
+   */
+  const getCaCertsPublic = async ({ caId }: { caId: string }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+
+    const caCertChains = await getCaCertChains({
+      caId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      ca: expandInternalCa(ca),
+      caCerts: caCertChains
+    };
+  };
+
+  /**
    * Return current certificate and certificate chain for CA
    */
   const getCaCert = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertDTO) => {
@@ -1111,6 +1133,33 @@ export const internalCertificateAuthorityServiceFactory = ({
       ProjectPermissionCertificateAuthorityActions.Read,
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
+
+    const { caCert, caCertChain, serialNumber } = await getCaCertChain({
+      caCertId: ca.internalCa.activeCaCertId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate: caCert,
+      certificateChain: caCertChain,
+      serialNumber,
+      certId: ca.internalCa.activeCaCertId,
+      ca: expandInternalCa(ca)
+    };
+  };
+
+  /**
+   * Return current certificate and certificate chain for CA.
+   * CA certificates are public trust material (no private keys).
+   */
+  const getCaCertPublic = async ({ caId }: { caId: string }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!ca.internalCa.activeCaCertId)
+      throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
     const { caCert, caCertChain, serialNumber } = await getCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
@@ -1186,6 +1235,63 @@ export const internalCertificateAuthorityServiceFactory = ({
       ProjectPermissionCertificateAuthorityActions.Read,
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
+
+    const caCert = await certificateAuthorityCertDAL.findOne({
+      caId,
+      id: certId
+    });
+
+    if (!caCert) {
+      throw new NotFoundError({ message: `Certificate with ID '${certId}' not found for CA with ID '${caId}'` });
+    }
+
+    const {
+      caCert: certificate,
+      caCertChain: certificateChain,
+      serialNumber
+    } = await getCaCertChain({
+      caCertId: certId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    let notBefore: Date | undefined;
+    let notAfter: Date | undefined;
+    let maxPathLength: number | undefined;
+    try {
+      const certObj = new x509.X509Certificate(certificate);
+      notBefore = certObj.notBefore;
+      notAfter = certObj.notAfter;
+      const basicConstraintsExt = certObj.getExtension(x509.BasicConstraintsExtension);
+      if (basicConstraintsExt && basicConstraintsExt.ca) {
+        maxPathLength = basicConstraintsExt.pathLength ?? -1;
+      }
+    } catch {
+      // ignore parse errors and return undefined values
+    }
+
+    return {
+      certificate,
+      certificateChain,
+      serialNumber,
+      certId,
+      notBefore,
+      notAfter,
+      maxPathLength,
+      parentCaId: ca.internalCa.parentCaId ?? undefined,
+      ca: expandInternalCa(ca)
+    };
+  };
+
+  /**
+   * Return a specific CA certificate and chain by ID.
+   * CA certificates are public trust material (no private keys).
+   */
+  const getCaCertByIdPublic = async ({ caId, certId }: { caId: string; certId: string }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const caCert = await certificateAuthorityCertDAL.findOne({
       caId,
@@ -2768,9 +2874,12 @@ export const internalCertificateAuthorityServiceFactory = ({
     getCaCsr,
     renewCaCert,
     getCaCerts,
+    getCaCertsPublic,
     getCaCert,
+    getCaCertPublic,
     getCaCertById,
     getCaCertByIdWithAuth,
+    getCaCertByIdPublic,
     signIntermediate,
     importCertToCa,
     generateIntermediateCaCertificate,
