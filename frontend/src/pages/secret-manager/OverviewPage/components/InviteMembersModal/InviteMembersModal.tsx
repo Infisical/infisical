@@ -163,8 +163,8 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
         <DialogHeader>
           <DialogTitle>Invite your team</DialogTitle>
           <DialogDescription>
-            Infisical is better together. Invite your team to review, rotate, and manage secrets in
-            one place.
+            Infisical is better with your team. Bring your team in to review, rotate, and manage
+            secrets together.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onInvite)} className="flex flex-col gap-4">
@@ -176,7 +176,8 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <FieldLabel htmlFor="invite-members-emails">Emails</FieldLabel>
                 <TextArea
                   id="invite-members-emails"
-                  className="h-24"
+                  rows={1}
+                  className="min-h-8"
                   isError={Boolean(error)}
                   placeholder="email@example.com, email2@example.com..."
                   {...field}
