@@ -62,6 +62,11 @@ import {
   THpIloRotationOption
 } from "./hp-ilo-rotation";
 import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentialsResponse,
+  TLiteLLMApiKeyRotationOption
+} from "./litellm-api-key-rotation";
+import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationGeneratedCredentialsResponse,
   TMongoDBCredentialsRotationOption
@@ -132,6 +137,7 @@ export type TSecretRotationV2 = (
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
   | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
@@ -157,6 +163,7 @@ export type TSecretRotationV2Option =
   | TDbtServiceTokenRotationOption
   | TWindowsLocalAccountRotationOption
   | TOpenRouterApiKeyRotationOption
+  | TLiteLLMApiKeyRotationOption
   | TOpenAIServiceAccountRotationOption
   | THpIloRotationOption
   | TSupabaseApiKeyRotationOption
@@ -186,6 +193,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TDbtServiceTokenRotationGeneratedCredentialsResponse
   | TWindowsLocalAccountRotationGeneratedCredentialsResponse
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse
+  | TLiteLLMApiKeyRotationGeneratedCredentialsResponse
   | TOpenAIServiceAccountRotationGeneratedCredentialsResponse
   | THpIloRotationGeneratedCredentialsResponse
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
@@ -263,6 +271,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationOption;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
+  [SecretRotation.LiteLLMApiKey]: TLiteLLMApiKeyRotationOption;
   [SecretRotation.OpenAIServiceAccount]: TOpenAIServiceAccountRotationOption;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationOption;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
@@ -289,6 +298,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationGeneratedCredentialsResponse;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.LiteLLMApiKey]: TLiteLLMApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.OpenAIServiceAccount]: TOpenAIServiceAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationGeneratedCredentialsResponse;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;

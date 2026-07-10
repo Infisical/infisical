@@ -72,6 +72,7 @@ import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/god
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
+import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
@@ -483,6 +484,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "AI",
     description: "Manage Anthropic API access."
   },
+  [AppConnection.LiteLLM]: {
+    name: "LiteLLM",
+    image: "LiteLLM.png",
+    category: "AI",
+    description: "Manage LiteLLM API access."
+  },
   [AppConnection.Fireworks]: {
     name: "Fireworks",
     image: "Fireworks.png",
@@ -682,6 +689,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case OpenRouterConnectionMethod.ApiKey:
     case OpenAIConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case LiteLLMConnectionMethod.ApiKey:
     case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:

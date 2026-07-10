@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { AlertTriangleIcon, Ban } from "lucide-react";
+import { AlertTriangleIcon, Ban, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,6 +27,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   TextArea
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
@@ -34,6 +35,8 @@ import { useProject } from "@app/context";
 import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
+  isRotatablePamAccountType,
+  PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
@@ -66,23 +69,71 @@ const settingsSchema = z
     s3KeyPrefix: z.string().optional(),
     policies: z.record(z.unknown()),
     settings: z.object({
-      sessionLogMaskingPatterns: z.string().optional()
+      sessionLogMaskingPatterns: z.string().optional(),
+      rotationEnabled: z.boolean().optional(),
+      rotationIntervalSeconds: z.number().nullable().optional(),
+      pwLength: z.coerce.number().optional(),
+      pwUppercase: z.coerce.number().optional(),
+      pwLowercase: z.coerce.number().optional(),
+      pwDigits: z.coerce.number().optional(),
+      pwSymbols: z.coerce.number().optional(),
+      pwAllowedSymbols: z.string().optional()
     })
   })
   .superRefine((data, ctx) => {
-    if (data.recordingStorageBackend !== "aws-s3") return;
-    if (!data.recordingConnectionId) {
+    if (data.recordingStorageBackend === "aws-s3") {
+      if (!data.recordingConnectionId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["recordingConnectionId"],
+          message: "Select an AWS connection"
+        });
+      }
+      if (!data.s3Bucket?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["s3Bucket"],
+          message: "Bucket is required"
+        });
+      }
+    }
+
+    const length = data.settings.pwLength ?? 32;
+    const mins = {
+      uppercase: data.settings.pwUppercase ?? 0,
+      lowercase: data.settings.pwLowercase ?? 0,
+      digits: data.settings.pwDigits ?? 0,
+      symbols: data.settings.pwSymbols ?? 0
+    };
+    if (length < 1 || length > 250) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["recordingConnectionId"],
-        message: "Select an AWS connection"
+        path: ["settings", "pwLength"],
+        message: "Length must be between 1 and 250"
       });
     }
-    if (!data.s3Bucket?.trim()) {
+    (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
+      const value = data.settings[key];
+      if (value !== undefined && value < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", key],
+          message: "Cannot be negative"
+        });
+      }
+    });
+    const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
+    if (totalRequired === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["s3Bucket"],
-        message: "Bucket is required"
+        path: ["settings", "pwLength"],
+        message: "Require at least one character type"
+      });
+    } else if (totalRequired > length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["settings", "pwLength"],
+        message: "Length must be at least the sum of the minimums"
       });
     }
   });
@@ -235,7 +286,17 @@ const SettingsTab = ({
       s3Region: "",
       s3KeyPrefix: "",
       policies: {},
-      settings: { sessionLogMaskingPatterns: "" }
+      settings: {
+        sessionLogMaskingPatterns: "",
+        rotationEnabled: false,
+        rotationIntervalSeconds: 86400,
+        pwLength: 32,
+        pwUppercase: 1,
+        pwLowercase: 1,
+        pwDigits: 1,
+        pwSymbols: 1,
+        pwAllowedSymbols: "-_.~!*"
+      }
     }
   });
 
@@ -259,7 +320,34 @@ const SettingsTab = ({
         s3KeyPrefix: s3Config.keyPrefix ?? "",
         policies: (template.policies as Record<string, unknown>) ?? {},
         settings: {
-          sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? ""
+          sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? "",
+          ...(() => {
+            const rotation = (settings.rotation ?? {}) as {
+              enabled?: boolean;
+              intervalSeconds?: number | null;
+            };
+            const pw = (settings.passwordRequirements ?? {}) as {
+              length?: number;
+              required?: {
+                uppercase?: number;
+                lowercase?: number;
+                digits?: number;
+                symbols?: number;
+              };
+              allowedSymbols?: string;
+            };
+            return {
+              rotationEnabled: rotation.enabled ?? false,
+              rotationIntervalSeconds:
+                rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
+              pwLength: pw.length ?? 32,
+              pwUppercase: pw.required?.uppercase ?? 1,
+              pwLowercase: pw.required?.lowercase ?? 1,
+              pwDigits: pw.required?.digits ?? 1,
+              pwSymbols: pw.required?.symbols ?? 1,
+              pwAllowedSymbols: pw.allowedSymbols ?? "-_.~!*"
+            };
+          })()
         }
       });
     }
@@ -281,9 +369,11 @@ const SettingsTab = ({
   const gatewayPoolId = watch("gatewayPoolId");
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
+  const rotationEnabled = watch("settings.rotationEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
+  const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
     (p) => POLICY_EDITORS[p.key]
   );
@@ -311,6 +401,29 @@ const SettingsTab = ({
       delete settings.sessionLogMaskingPatterns;
     }
 
+    if (isRotatableTemplateType) {
+      const isRotationOn = Boolean(data.settings.rotationEnabled);
+      settings.rotation = {
+        enabled: isRotationOn,
+        intervalSeconds: isRotationOn ? (data.settings.rotationIntervalSeconds ?? 86400) : null
+      };
+      settings.passwordRequirements = {
+        length: data.settings.pwLength ?? 32,
+        required: {
+          uppercase: data.settings.pwUppercase ?? 0,
+          lowercase: data.settings.pwLowercase ?? 0,
+          digits: data.settings.pwDigits ?? 0,
+          symbols: data.settings.pwSymbols ?? 0
+        },
+        ...(data.settings.pwAllowedSymbols
+          ? { allowedSymbols: data.settings.pwAllowedSymbols }
+          : {})
+      };
+    } else {
+      delete settings.rotation;
+      delete settings.passwordRequirements;
+    }
+
     updateTemplate.mutate(
       {
         templateId,
@@ -336,6 +449,12 @@ const SettingsTab = ({
                 });
                 return;
               }
+              // Surface the specific validation issue rather than the opaque generic toast.
+              createNotification({
+                type: "error",
+                text: responseData.message[0]?.message ?? "Failed to update template"
+              });
+              return;
             }
             const msg = (error.response?.data as { message?: string })?.message;
             createNotification({
@@ -407,6 +526,166 @@ const SettingsTab = ({
           })}
         </CardContent>
       </Card>
+
+      {isRotatableTemplateType && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Credential settings</CardTitle>
+            <CardDescription>
+              How credentials for accounts using this template are rotated, and the format of the
+              generated passwords.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {/* Requirements are a policy independent of rotation: they apply to onboarded credentials and to the
+                passwords generated during rotation, so they show whether or not automatic rotation is on. */}
+            <div>
+              <p className="text-sm font-medium text-foreground">Requirements</p>
+              <p className="text-xs text-muted">
+                Every credential must meet these rules, both when an account is onboarded and when a
+                password is generated during rotation.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  { name: "settings.pwLength", label: "Min length" },
+                  { name: "settings.pwUppercase", label: "Min uppercase" },
+                  { name: "settings.pwLowercase", label: "Min lowercase" },
+                  { name: "settings.pwDigits", label: "Min numbers" },
+                  { name: "settings.pwSymbols", label: "Min symbols" }
+                ] as const
+              ).map(({ name, label }) => (
+                <Controller
+                  key={name}
+                  control={control}
+                  name={name}
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>{label}</FieldLabel>
+                      <Input
+                        type="number"
+                        value={field.value ?? 0}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        onWheel={(e) => e.currentTarget.blur()}
+                      />
+                      {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
+                    </Field>
+                  )}
+                />
+              ))}
+            </div>
+            <Controller
+              control={control}
+              name="settings.pwAllowedSymbols"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Allowed symbols</FieldLabel>
+                  <Input value={field.value ?? ""} onChange={field.onChange} placeholder="-_.~!*" />
+                  <FieldDescription>
+                    Symbols a credential may use. Quotes, backticks, backslashes, semicolons, and
+                    question marks are not allowed.
+                  </FieldDescription>
+                </Field>
+              )}
+            />
+            <div className="flex flex-col gap-4 border-t border-border pt-4">
+              <Controller
+                control={control}
+                name="settings.rotationEnabled"
+                render={({ field }) => (
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Automatically rotate credentials
+                      </p>
+                      <p className="text-xs text-muted">
+                        Infisical rotates credentials on a fixed schedule. When off, credentials
+                        rotate only when triggered manually.
+                      </p>
+                    </div>
+                    <Switch
+                      variant="pam"
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </div>
+                )}
+              />
+              {rotationEnabled &&
+                template.rotationImpact &&
+                (template.rotationImpact.needsRotationAccount > 0 ? (
+                  <Alert variant="warning">
+                    <AlertTriangleIcon />
+                    <AlertTitle>
+                      {template.rotationImpact.needsRotationAccount}{" "}
+                      {template.rotationImpact.needsRotationAccount === 1 ? "account" : "accounts"}{" "}
+                      won&apos;t rotate yet
+                    </AlertTitle>
+                    <AlertDescription>
+                      Set a rotation account on{" "}
+                      {template.rotationImpact.needsRotationAccount === 1 ? "it" : "them"} to enable
+                      rotation.
+                      {template.rotationImpact.willRotate > 0 &&
+                        ` ${template.rotationImpact.willRotate} ${
+                          template.rotationImpact.willRotate === 1 ? "account is" : "accounts are"
+                        } ready to rotate.`}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  // Nothing misconfigured: only surface while editing; the warning above always shows (actionable gap).
+                  isDirty && (
+                    <Alert variant="info">
+                      <InfoIcon />
+                      <AlertTitle>
+                        {template.rotationImpact.willRotate === 0
+                          ? "No accounts to rotate yet"
+                          : `${template.rotationImpact.willRotate} ${
+                              template.rotationImpact.willRotate === 1 ? "account" : "accounts"
+                            } will rotate`}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {template.rotationImpact.willRotate === 0
+                          ? "Accounts using this template will rotate once they have a rotation account."
+                          : "Every account using this template has a rotation account."}
+                      </AlertDescription>
+                    </Alert>
+                  )
+                ))}
+              {rotationEnabled && (
+                <Controller
+                  control={control}
+                  name="settings.rotationIntervalSeconds"
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel>Rotate every</FieldLabel>
+                      <Select
+                        value={String(field.value ?? 86400)}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
+                            <SelectItem key={option.seconds} value={String(option.seconds)}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        How often credentials are rotated automatically for accounts using this
+                        template.
+                      </FieldDescription>
+                    </Field>
+                  )}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {showGatewaySettings && (
         <Card>

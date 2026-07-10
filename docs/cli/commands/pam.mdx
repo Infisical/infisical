@@ -1,6 +1,6 @@
 ---
 title: "infisical pam"
-description: "Access databases, SSH servers, Kubernetes clusters, AWS IAM roles, and Windows servers through Infisical's Privileged Access Management"
+description: "Securely access your infrastructure through Infisical's Privileged Access Management"
 ---
 
 ```bash
@@ -9,7 +9,7 @@ infisical pam access <path> [flags]
 
 ## Description
 
-The `infisical pam` command provides privileged access management capabilities for securely accessing databases, SSH servers, Kubernetes clusters, AWS IAM roles, and Windows/RDP servers through Infisical's Gateway.
+The `infisical pam` command provides brokered, credential-less access to your PAM-managed resources — databases, servers, and cloud accounts — through Infisical's Gateway.
 
 All PAM commands require the user to be logged in via `infisical login`.
 
@@ -22,7 +22,7 @@ infisical pam
 
 ## infisical pam access
 
-Access PAM-managed resources through Infisical's Gateway. This unified command handles all resource types — databases, SSH servers, Kubernetes clusters, AWS IAM roles, and Windows/RDP servers. The account type is determined by the template assigned to the account.
+Access your PAM-managed resources. This unified command handles every account type — the CLI adapts its behavior to whichever type the account's template defines (see [Account Types and Behavior](#account-types-and-behavior) below).
 
 ```bash
 infisical pam access <path> [flags]
@@ -89,101 +89,121 @@ infisical pam access <path> [flags]
 
 Based on the account's template, the CLI starts the appropriate local proxy or credential helper.
 
-### Databases (PostgreSQL, MySQL, SQL Server, MongoDB)
+<AccordionGroup>
+  <Accordion title="Databases (PostgreSQL, MySQL, SQL Server, MongoDB)">
+    Starts a local database proxy on `127.0.0.1`. Connect using standard database clients — no password required as authentication is handled by the proxy.
 
-Starts a local database proxy on `127.0.0.1`. Connect using standard database clients — no password required as authentication is handled by the proxy.
+    ```bash
+    # Example
+    infisical pam access production/postgres-main --duration 2h
+    ```
 
-```bash
-# Example
-infisical pam access production/postgres-main --duration 2h
-```
+    The output includes connection details and CLI examples:
 
-The output includes connection details and CLI examples:
+    | Database Type | Connection String Format |
+    |--------------|-------------------------|
+    | PostgreSQL | `postgres://<username>@127.0.0.1:<port>/<database>` |
+    | MySQL | `mysql://<username>@127.0.0.1:<port>/<database>` |
+    | SQL Server | `sqlserver://<username>@127.0.0.1:<port>?database=<database>` |
+    | MongoDB | `mongodb://127.0.0.1:<port>/<database>` |
+  </Accordion>
 
-| Database Type | Connection String Format |
-|--------------|-------------------------|
-| PostgreSQL | `postgres://<username>@127.0.0.1:<port>/<database>` |
-| MySQL | `mysql://<username>@127.0.0.1:<port>/<database>` |
-| SQL Server | `sqlserver://<username>@127.0.0.1:<port>?database=<database>` |
-| MongoDB | `mongodb://127.0.0.1:<port>/<database>` |
+  <Accordion title="SSH">
+    Starts a local SSH proxy. Use standard SSH/SCP/SFTP/rsync commands to connect.
 
-### SSH
+    ```bash
+    # Start the proxy
+    infisical pam access servers/prod-bastion
+    ```
 
-Starts a local SSH proxy. Use standard SSH/SCP/SFTP/rsync commands to connect.
+    Then connect using your SSH client:
 
-```bash
-# Start the proxy
-infisical pam access servers/prod-bastion
-```
+    ```bash
+    # SSH
+    ssh -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null user@127.0.0.1
 
-Then connect using your SSH client:
+    # SCP file transfer
+    scp -P <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null file.txt user@127.0.0.1:/path/
 
-```bash
-# SSH
-ssh -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null user@127.0.0.1
+    # rsync
+    rsync -e "ssh -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" local-dir/ user@127.0.0.1:/remote/path/
+    ```
+  </Accordion>
 
-# SCP file transfer
-scp -P <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null file.txt user@127.0.0.1:/path/
+  <Accordion title="Kubernetes">
+    Starts a local Kubernetes proxy and automatically configures kubectl context.
 
-# rsync
-rsync -e "ssh -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" local-dir/ user@127.0.0.1:/remote/path/
-```
+    ```bash
+    # Example
+    infisical pam access clusters/prod-cluster --duration 4h
+    ```
 
-### Kubernetes
+    kubectl is automatically configured with a context named `infisical-k8s-pam/folder/account-name`. Use kubectl normally:
 
-Starts a local Kubernetes proxy and automatically configures kubectl context.
+    ```bash
+    kubectl get pods
+    kubectl get namespaces
+    ```
 
-```bash
-# Example
-infisical pam access clusters/prod-cluster --duration 4h
-```
+    The original kubeconfig context is restored when the session ends.
+  </Accordion>
 
-kubectl is automatically configured with a context named `infisical-k8s-pam/folder/account-name`. Use kubectl normally:
+  <Accordion title="AWS IAM">
+    Writes temporary STS credentials to your AWS credentials file (`~/.aws/credentials` or wherever `AWS_SHARED_CREDENTIALS_FILE` points).
 
-```bash
-kubectl get pods
-kubectl get namespaces
-```
+    ```bash
+    # Example
+    infisical pam access aws/production-role
+    ```
 
-The original kubeconfig context is restored when the session ends.
+    The credentials are written as a named profile: `infisical-pam/folder/account-name`
 
-### AWS IAM
+    Use with the AWS CLI:
 
-Writes temporary STS credentials to your AWS credentials file (`~/.aws/credentials` or wherever `AWS_SHARED_CREDENTIALS_FILE` points).
+    ```bash
+    # Use --profile flag
+    aws s3 ls --profile "infisical-pam/aws/production-role"
 
-```bash
-# Example
-infisical pam access aws/production-role
-```
+    # Or export the profile
+    export AWS_PROFILE="infisical-pam/aws/production-role"
+    aws s3 ls
+    ```
 
-The credentials are written as a named profile: `infisical-pam/folder/account-name`
+    The session blocks until `Ctrl+C` or credential expiry. When the session ends, the profile is removed from the credentials file.
+  </Accordion>
 
-Use with the AWS CLI:
+  <Accordion title="GCP Service Account">
+    Starts a local proxy on `127.0.0.1` and automatically configures `gcloud` to route through it (via the `proxy/*`, `auth/access_token_file`, and `core/custom_ca_certs_file` config properties). Requires the [`gcloud` CLI](https://cloud.google.com/sdk/docs/install) to be installed. All traffic is proxied through the Infisical Gateway, which injects the brokered credentials before forwarding to `googleapis.com`.
 
-```bash
-# Use --profile flag
-aws s3 ls --profile "infisical-pam/aws/production-role"
+    ```bash
+    # Example
+    infisical pam access gcp/prod-deployer
+    ```
 
-# Or export the profile
-export AWS_PROFILE="infisical-pam/aws/production-role"
-aws s3 ls
-```
+    Run `gcloud` and other Google Cloud tooling as normal — no per-command configuration needed:
 
-The session blocks until `Ctrl+C` or credential expiry. When the session ends, the profile is removed from the credentials file.
+    ```bash
+    gcloud compute instances list
+    gcloud storage ls
+    ```
 
-### Windows / RDP
+    The session blocks until `Ctrl+C` or expiry. On shutdown, your `gcloud` configuration is restored.
+  </Accordion>
 
-Starts a local RDP proxy. Connect your RDP client to `127.0.0.1` on the assigned port.
+  <Accordion title="Windows / RDP">
+    Starts a local RDP proxy. Connect your RDP client to `127.0.0.1` on the assigned port.
 
-```bash
-# Single-server Windows account
-infisical pam access windows/admin-server
+    ```bash
+    # Single-server Windows account
+    infisical pam access windows/admin-server
 
-# Windows AD with multiple targets
-infisical pam access windows/domain-admin --target dc01.corp.local
-```
+    # Windows AD with multiple targets
+    infisical pam access windows/domain-admin --target dc01.corp.local
+    ```
 
-Connect using your preferred RDP client (e.g., Microsoft Remote Desktop, xfreerdp, Remmina).
+    Connect using your preferred RDP client (e.g., Microsoft Remote Desktop, xfreerdp, Remmina).
+  </Accordion>
+</AccordionGroup>
 
 ## MFA Support
 

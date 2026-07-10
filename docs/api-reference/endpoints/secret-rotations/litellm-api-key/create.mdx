@@ -1,0 +1,86 @@
+---
+title: "Create"
+openapi: "POST /api/v2/secret-rotations/litellm-api-key"
+---
+
+<Note>
+    Check out the configuration docs for [LiteLLM API Key Rotations](/documentation/platform/secret-rotation/litellm-api-key) to learn how to obtain the required parameters.
+</Note>
+
+Creates a LiteLLM API Key secret rotation. Infisical will create and rotate API keys via your [LiteLLM connection](/integrations/app-connections/litellm) and write them to the specified secret path.
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique name for the rotation (max 100 characters). |
+| `projectId` | string (UUID) | Yes | The project ID. |
+| `connectionId` | string (UUID) | Yes | ID of the LiteLLM app connection (management-capable API key). |
+| `environment` | string | Yes | Environment slug (e.g. `dev`, `prod`). |
+| `secretPath` | string | Yes | Path where the generated API key secret will be stored. |
+| `isAutoRotationEnabled` | boolean | Yes | Whether to rotate automatically on the schedule. |
+| `rotationInterval` | number | Yes | Days between rotations (e.g. `30`). |
+| `rotateAtUtc` | object | Yes | Time of day (UTC) to run rotation: `{ "hours", "minutes" }`. |
+| `parameters.name` | string | Yes | Name for the generated key in LiteLLM (max 100 characters). Infisical appends a timestamp to keep each key unique. |
+| `parameters.userId` | string | No | LiteLLM user ID to associate the generated key with. |
+| `parameters.teamId` | string | No | LiteLLM team ID to associate the generated key with. |
+| `parameters.models` | string[] | No | Model names the key is allowed to access. An empty list allows all models. |
+| `parameters.additionalOptions` | string (JSON) | No | A JSON object of additional `/key/generate` options (e.g. `max_budget`, `tpm_limit`, `rpm_limit`, `metadata`). |
+| `secretsMapping.apiKey` | string | Yes | Secret key name to store the generated API key (e.g. `LITELLM_API_KEY`). |
+| `description` | string | No | Optional description. |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://us.infisical.com/api/v2/secret-rotations/litellm-api-key \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-litellm-rotation",
+    "projectId": "<project-id>",
+    "description": "LiteLLM API key rotation",
+    "connectionId": "<litellm-connection-id>",
+    "environment": "dev",
+    "secretPath": "/",
+    "isAutoRotationEnabled": true,
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "parameters": {
+      "name": "my-app-key",
+      "userId": "<litellm-user-id>",
+      "teamId": "<litellm-team-id>",
+      "models": ["gpt-4o"],
+      "additionalOptions": "{\"max_budget\": 100}"
+    },
+    "secretsMapping": {
+      "apiKey": "LITELLM_API_KEY"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "secretRotation": {
+    "id": "<rotation-id>",
+    "name": "my-litellm-rotation",
+    "description": "LiteLLM API key rotation",
+    "secretsMapping": { "apiKey": "LITELLM_API_KEY" },
+    "isAutoRotationEnabled": true,
+    "activeIndex": 0,
+    "connectionId": "<litellm-connection-id>",
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "type": "litellm-api-key",
+    "parameters": {
+      "name": "my-app-key",
+      "userId": "<litellm-user-id>",
+      "teamId": "<litellm-team-id>",
+      "models": ["gpt-4o"],
+      "additionalOptions": "{\"max_budget\": 100}"
+    }
+  }
+}
+```

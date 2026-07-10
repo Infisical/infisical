@@ -11,6 +11,7 @@ import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-r
 import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
+import { LiteLLMApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
 import { MongoDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
@@ -47,6 +48,7 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
+  LiteLLMApiKeyRotationListItemSchema,
   OpenAIServiceAccountRotationListItemSchema,
   HpIloRotationListItemSchema,
   SupabaseApiKeyRotationListItemSchema,

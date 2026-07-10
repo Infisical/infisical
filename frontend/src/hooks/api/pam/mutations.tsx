@@ -15,12 +15,17 @@ import {
   TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
+  TCreatePamDiscoverySourceDTO,
   TCreatePamFolderDTO,
   TDeletePamAccountDTO,
   TDeletePamAccountTemplateDTO,
+  TDeletePamDiscoverySourceDTO,
   TDeletePamFolderDTO,
+  TImportPamDiscoveredAccountResult,
+  TImportPamDiscoveredAccountsDTO,
   TPamAccessResponse,
   TPamAccountTemplate,
+  TPamDiscoverySource,
   TPamFolder,
   TPamSession,
   TRemoveAccountGroupMemberDTO,
@@ -32,7 +37,9 @@ import {
   TRemovePamProductIdentityMemberDTO,
   TReviewPamAccessRequestDTO,
   TRevokePamAccessRequestDTO,
+  TRotatePamAccountDTO,
   TSetPamApprovalConfigDTO,
+  TTriggerPamDiscoveryScanDTO,
   TUpdateAccountGroupMemberRoleDTO,
   TUpdateAccountIdentityMemberRoleDTO,
   TUpdateAccountMemberRoleDTO,
@@ -40,7 +47,9 @@ import {
   TUpdateFolderIdentityMemberRoleDTO,
   TUpdateFolderMemberRoleDTO,
   TUpdatePamAccountDTO,
+  TUpdatePamAccountRotationDTO,
   TUpdatePamAccountTemplateDTO,
+  TUpdatePamDiscoverySourceDTO,
   TUpdatePamFolderDTO,
   TUpdatePamProductIdentityMemberDTO
 } from "./types";
@@ -599,6 +608,87 @@ export const useRemoveFolderIdentityMember = () => {
   });
 };
 
+// Discovery
+export const useCreatePamDiscoverySource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, ...body }: TCreatePamDiscoverySourceDTO) => {
+      const { data } = await apiRequest.post<{ source: TPamDiscoverySource }>(
+        `/api/v1/pam/discovery-sources/${discoveryType}`,
+        body
+      );
+      return data.source;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useUpdatePamDiscoverySource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, sourceId, ...body }: TUpdatePamDiscoverySourceDTO) => {
+      const { data } = await apiRequest.patch<{ source: TPamDiscoverySource }>(
+        `/api/v1/pam/discovery-sources/${discoveryType}/${sourceId}`,
+        body
+      );
+      return data.source;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useDeletePamDiscoverySource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, sourceId }: TDeletePamDiscoverySourceDTO) => {
+      await apiRequest.delete(`/api/v1/pam/discovery-sources/${discoveryType}/${sourceId}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useTriggerPamDiscoveryScan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, sourceId }: TTriggerPamDiscoveryScanDTO) => {
+      await apiRequest.post(`/api/v1/pam/discovery-sources/${discoveryType}/${sourceId}/scan`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useImportPamDiscoveredAccounts = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sourceId, ...body }: TImportPamDiscoveredAccountsDTO) => {
+      const { data } = await apiRequest.post<{ results: TImportPamDiscoveredAccountResult[] }>(
+        `/api/v1/pam/discovery-sources/${sourceId}/discovered/import`,
+        body
+      );
+      return data.results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.discovery() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
+    }
+  });
+};
+
+export const useUpdatePamAccountRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, ...params }: TUpdatePamAccountRotationDTO) => {
+      const { data } = await apiRequest.patch(`/api/v1/pam/accounts/${accountId}/rotation`, params);
+      return data;
+    },
+    onSuccess: (_, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+    }
+  });
+};
+
 // Access Requests / Approvals
 
 export const useCreatePamAccessRequest = () => {
@@ -611,6 +701,20 @@ export const useCreatePamAccessRequest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
       queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+    }
+  });
+};
+
+export const useRotatePamAccount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: TRotatePamAccountDTO) => {
+      const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountId}/rotation/rotate`);
+      return data;
+    },
+    onSettled: (_, __, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
     }
   });
 };

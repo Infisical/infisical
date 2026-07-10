@@ -10,6 +10,7 @@ import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotat
 import { registerFireworksApiKeyRotationRouter } from "./fireworks-api-key-rotation-router";
 import { registerHpIloRotationRouter } from "./hp-ilo-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
+import { registerLiteLLMApiKeyRotationRouter } from "./litellm-api-key-rotation-router";
 import { registerMongoDBCredentialsRotationRouter } from "./mongodb-credentials-rotation-router";
 import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rotation-router";
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
@@ -46,6 +47,7 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DbtServiceToken]: registerDbtServiceTokenRotationRouter,
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter,
+  [SecretRotation.LiteLLMApiKey]: registerLiteLLMApiKeyRotationRouter,
   [SecretRotation.OpenAIServiceAccount]: registerOpenAIServiceAccountRotationRouter,
   [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter,
   [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter,

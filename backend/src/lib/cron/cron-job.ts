@@ -22,6 +22,7 @@ export const CronJobName = {
   PkiSyncCleanup: "pki-sync-cleanup",
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
+  PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",
   DailySecretSyncRetry: "daily-secret-sync-retry",
   SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
@@ -37,7 +38,8 @@ export const CronJobName = {
   SignerIssuancePolling: "signer-issuance-polling",
   AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
-  LicenseUsageFlush: "license-usage-flush"
+  LicenseUsageFlush: "license-usage-flush",
+  PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

@@ -744,6 +744,13 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
+  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
+  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
+  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
+  PAM_DISCOVERED_ACCOUNT_IMPORT = "pam-discovered-account-import",
+  PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
+  PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_ACCESS_REQUEST_CREATE = "pam-access-request-create",
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
@@ -6140,6 +6147,65 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamDiscoverySourceCreateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
+  metadata: { sourceId: string; discoveryType: string; name: string };
+}
+
+interface PamDiscoverySourceUpdateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
+  metadata: { sourceId: string; discoveryType: string };
+}
+
+interface PamDiscoverySourceDeleteEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
+  metadata: { sourceId: string; discoveryType: string };
+}
+
+interface PamDiscoveryScanEvent {
+  type: EventType.PAM_DISCOVERY_SCAN;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    runId?: string;
+    status?: string;
+    triggeredBy?: string;
+    discoveredCount?: number;
+    newCount?: number;
+    errorMessage?: string;
+  };
+}
+
+interface PamDiscoveredAccountImportEvent {
+  type: EventType.PAM_DISCOVERED_ACCOUNT_IMPORT;
+  metadata: {
+    sourceId: string;
+    folderId: string;
+    importedCount: number;
+    importedAccounts: { discoveredAccountId: string; accountId?: string; name?: string }[];
+  };
+}
+
+interface PamAccountRotateCredentialsEvent {
+  type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
+  metadata: {
+    accountId: string;
+    accountType: string;
+    rotationStatus: string;
+    manual: boolean;
+    rotationAccountId?: string | null;
+    message?: string;
+  };
+}
+
+interface PamAccountSetRotationAccountEvent {
+  type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
+  metadata: {
+    accountId: string;
+    rotationAccountId: string | null;
+  };
+}
+
 interface PamAccessRequestCreateEvent {
   type: EventType.PAM_ACCESS_REQUEST_CREATE;
   metadata: {
@@ -7816,6 +7882,13 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamDiscoverySourceCreateEvent
+  | PamDiscoverySourceUpdateEvent
+  | PamDiscoverySourceDeleteEvent
+  | PamDiscoveryScanEvent
+  | PamDiscoveredAccountImportEvent
+  | PamAccountRotateCredentialsEvent
+  | PamAccountSetRotationAccountEvent
   | PamAccessRequestCreateEvent
   | PamAccessRequestReviewEvent
   | PamAccessGrantRevokeEvent

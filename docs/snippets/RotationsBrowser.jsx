@@ -197,6 +197,14 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "LiteLLM API Key",
+      slug: "litellm-api-key",
+      path: "/documentation/platform/secret-rotation/litellm-api-key",
+      description: "Learn how to automatically rotate LiteLLM API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "OpenAI API Key",
       slug: "openai-api-key",
       path: "/documentation/platform/secret-rotation/openai-service-account",

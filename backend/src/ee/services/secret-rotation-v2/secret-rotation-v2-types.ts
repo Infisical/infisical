@@ -80,6 +80,13 @@ import {
   TLdapPasswordRotationWithConnection
 } from "./ldap-password";
 import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentials,
+  TLiteLLMApiKeyRotationInput,
+  TLiteLLMApiKeyRotationListItem,
+  TLiteLLMApiKeyRotationWithConnection
+} from "./litellm-api-key";
+import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationInput,
   TMongoDBCredentialsRotationListItem,
@@ -185,6 +192,7 @@ export type TSecretRotationV2 =
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
   | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
@@ -210,6 +218,7 @@ export type TSecretRotationV2WithConnection =
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
+  | TLiteLLMApiKeyRotationWithConnection
   | TOpenAIServiceAccountRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
@@ -231,6 +240,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
+  | TLiteLLMApiKeyRotationGeneratedCredentials
   | TOpenAIServiceAccountRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
@@ -256,6 +266,7 @@ export type TSecretRotationV2Input =
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
+  | TLiteLLMApiKeyRotationInput
   | TOpenAIServiceAccountRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
@@ -281,6 +292,7 @@ export type TSecretRotationV2ListItem =
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
+  | TLiteLLMApiKeyRotationListItem
   | TOpenAIServiceAccountRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem

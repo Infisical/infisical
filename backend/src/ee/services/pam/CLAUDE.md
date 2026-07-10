@@ -166,6 +166,18 @@ Session log masking (`sessionLogMaskingPatterns`) is a **setting**, not a policy
 
 No migration, no router or response-schema change (beyond `policyRules` for gateway-enforced policies), and no DB default.
 
+## Credential Rotation
+
+Scheduled + on-demand rotation of a SQL account's password. Scoped to Postgres, MySQL, MSSQL. Lives in `pam-account-rotation/`.
+
+- **Config on the template** (`settings.rotation = { enabled, intervalSeconds }` + `settings.passwordRequirements`, reusing `secret-rotation-v2`'s `PasswordRequirementsSchema` and `generatePassword`). Accounts inherit it; only the `rotationAccountId` is per-account. `validateTemplateRotationConfig` rejects rotation config on non-SQL types and rejects `' " \ ` `` ` `` `; ?` in `allowedSymbols` (the ALTER statement interpolates the password and runs via knex `.raw`).
+- **`rotationAccountId` (on `pam_accounts`)**: null = not configured (not scheduled); own id = self-rotation; another account = delegated. `ON DELETE RESTRICT` (deleting an account referenced as a rotation account is blocked). Server-specific, so it never moves to the template.
+- **Handler registry** `PAM_ROTATION_FACTORY_MAP` (`pam-rotation-handlers.ts`): all three SQL types share `sqlRotationHandler` (`applyPasswordChange` + `testCredential`). Adding a SQL dialect = add it to `ROTATABLE_ACCOUNT_TYPES` and `PAM_ROTATION_APP_MAP` (both in `pam-rotation-fns.ts`); both are full `Record`s over the rotatable types, so a missing entry is a compile error. All per-dialect SQL facts (client, ALTER statement, verify query, SSL/connection config) live once in `app-connection/shared/sql` keyed by `AppConnection` (`SQL_CONNECTION_CLIENT_MAP`, `SQL_CONNECTION_ALTER_LOGIN_STATEMENT`, `getSqlConnectionVerifyQuery`, `getConnectionConfig`) and the handler reads them via `PAM_ROTATION_APP_MAP`, so a new dialect already handled there (e.g. Oracle with `SELECT 1 FROM DUAL`) needs no rotation-side change beyond the two maps. SQL is brokered through the gateway via `withPamSqlClient` (mirrors `executeWithPotentialGateway`; the direct-connect path runs the same `verifyHostInputValidity` SSRF guard).
+- **Readiness + schedule** are pure fns in `pam-rotation-fns.ts` (`getRotationReadiness`, `computeNextRotationAt`). The account-level "will rotate" predicate is `ACCOUNT_WILL_ROTATE_SQL` / `ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL` (same file), shared by both set-based SQL paths (`reconcileRotationScheduleForTemplate`, `getTemplateRotationStats`); `getRotationReadiness` is the row-at-a-time TS mirror. `nextRotationAt` is set/cleared by `reconcileRotationScheduleForTemplate` (bulk, on template update), `reconcileRotationScheduleForAccount` (on account create/update, set rotation account), and on a failed rotation by `recordRotationFailure` (capped retry). Never schedule elsewhere.
+- **Execution** (`pam-account-rotation-service.ts` `performRotation`): per-account Redis lock (`KeyStorePrefixes.PamAccountRotationLock`), then stage `encryptedPendingCredentials` → apply → verify → promote, with a recovery probe (candidate-then-current, both through the gateway) that never discards a possibly-live credential. Every failure path (including guards that throw before staging) funnels through one `recordRotationFailure` in `performRotation`'s catch, which records the redacted message and advances `nextRotationAt` by `min(interval, ROTATION_FAILURE_RETRY_CAP_SECONDS)` so a failure never hot-loops the cron and a transient outage retries well before a long interval elapses.
+- **Scheduling**: cron `PamCredentialRotationQueueRotations` → dispatcher queue `PamCredentialRotation` → per-account worker `PamCredentialRotationRotate` (concurrency + limiter). New queue names deliberately avoid the stale `pam-account-rotation`.
+- **Audit**: manual rotation audits in the route (`PAM_ACCOUNT_ROTATE_CREDENTIALS`, user actor); scheduled rotation audits in the queue worker (platform actor). Both carry `accountId` (required for PAM audit scoping).
+
 ## Session Lifecycle
 
 - Sessions reference accounts via nullable `accountId` (SET NULL on delete) so session history survives account deletion
@@ -181,6 +193,28 @@ No migration, no router or response-schema change (beyond `policyRules` for gate
 - All methods accept optional `tx` for transaction threading
 - List queries that respect permissions use the accessible-resource pattern: join to the resource table and filter with `WHERE (folderId IN (...) OR accountId IN (...))`
 - Gateway joins (for `gatewayName`/`gatewayIdentityId`) are repeated per-method since the select/join context differs
+
+## Search
+
+Searchable lists filter on **both tiers** — server for correctness/scale, client for instant feedback:
+
+- **Server**: the DAL filters with ormify's `$search` operator (case-insensitive ILIKE that wraps and sanitizes the term). Pass `{ $search: { name: term } }` — do NOT pre-wrap with `%…%`.
+- **Frontend**: pass a **debounced** value (`useDebounce`) to the query so the server narrows results, and also filter the returned list **client-side on the immediate value** for instant feedback. Wrap every searchable field (names) in `<HighlightText text={value} highlight={search} />`.
+
+`PamSessionsPage` and `PamDiscoveryPage` are the reference implementations.
+
+## Discovery
+
+Discovery lives in `backend/src/ee/services/pam-discovery/`. A **source** references an existing PAM **credential account** (+ gateway) and, on scan, stages **discovered accounts** for import into a folder.
+
+- **Registry**: `DISCOVERY_TYPE_CONFIGS` (`pam-discovery-schemas.ts`) mirrors `ACCOUNT_TYPE_CONFIGS`. Adding a source type = one entry (`name`, `icon`, `credentialAccountType`, `configuration` zod schema) + a factory in `PAM_DISCOVERY_FACTORY_MAP`.
+- **Provider contract** (`TPamDiscoveryFactory`): returns `{ validateConnection, scan }`. `scan()` returns `TDiscoveredAccount[]` (`accountType`, `name`, `fingerprint`, `details`); the **service** owns encryption, staging, and fingerprint dedupe. Providers never touch the DB.
+- **Config vs credential split**: connection settings that identify the target (domain, DC, LDAP) come from the **credential account**; discovery-only settings live in the per-type `configuration` blob (e.g. `active-directory-discovery-schemas.ts`).
+- **A single source can stage multiple account types.** AD stages `windows-ad` (domain, via LDAP) and, when `scanLocalAccounts` is enabled, `windows` (local) accounts. Import maps each staged account to a template of the matching type.
+
+### Active Directory local accounts
+
+Gated by `scanLocalAccounts` in the AD config (default on, matching `main`). When on, `scan()` also: enumerates domain servers over LDAP (`(&(objectClass=computer)(operatingSystem=*Server*))`) → resolves each hostname to an IP via **DNS-over-TCP through the DC** (`dns-over-dc.ts`, port 53) so the gateway can reach it → WinRM `Get-LocalUser` per server (`winrm-client`) → stages each as a `windows` account pointed at that server's host + the AD account's `rdpPort`. A single unreachable server is logged and skipped, never aborting the scan. Domain/resource/dependency objects from `main`'s discovery were intentionally dropped in the revamp — discovery only produces accounts.
 
 ## Deferred Cleanup
 
@@ -199,12 +233,14 @@ Old tables, columns, and code kept temporarily so data can be recovered if the m
 - `pam_account_dependencies`
 - `pam_resource_favorites`
 - `pam_project_recording_configs`
-- `pam_discovery_sources`, `pam_discovery_source_runs`, `pam_discovery_source_resources`, `pam_discovery_source_accounts`, `pam_discovery_source_dependencies` (when discovery is reimplemented)
+- The old discovery tables (`pam_discovery_source_resources`, `pam_discovery_source_accounts`, `pam_discovery_source_dependencies`) are already dropped by the reimplemented discovery migration, which recreates `pam_discovery_sources`/`pam_discovery_source_runs` and adds `pam_discovered_accounts` — nothing to defer here.
 - `pam_session_event_batches` (legacy logging, replaced by chunks)
 
 ### Columns to drop from `pam_accounts`
 
-`resourceId`, `domainId`, `policyId`, `lastRotatedAt`, `rotationStatus`, `encryptedLastRotationMessage`, `requireMfa`, `internalMetadata`, `discoveryFingerprint`
+`resourceId`, `domainId`, `policyId`, `requireMfa`, `internalMetadata`, `discoveryFingerprint`
+
+> `lastRotatedAt`, `rotationStatus`, and `encryptedLastRotationMessage` are **no longer dropped**: the credential-rotation feature (`pam-account-rotation/`) reuses them for the latest rotation state and error.
 
 ### Columns to drop from `pam_sessions`
 

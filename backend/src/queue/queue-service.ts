@@ -95,12 +95,15 @@ export enum QueueName {
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
+  PamCredentialRotation = "pam-credential-rotation",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
   UserNotification = "user-notification",
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
+  PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
@@ -150,6 +153,8 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
+  PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
@@ -167,6 +172,7 @@ export enum QueueJobs {
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamSessionExpiration = "pam-session-expiration",
+  PamDiscoverySourceScan = "pam-discovery-source-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -383,6 +389,14 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecretRotationV2RotateSecrets;
     payload: TSecretRotationRotateSecretsJobPayload;
   };
+  [QueueName.PamCredentialRotation]: {
+    name: QueueJobs.PamCredentialRotationQueueRotations;
+    payload: undefined;
+  };
+  [QueueName.PamCredentialRotationRotate]: {
+    name: QueueJobs.PamCredentialRotationRotate;
+    payload: { accountId: string };
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
@@ -450,6 +464,10 @@ export type TQueueJobTypes = {
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
+  };
+  [QueueName.PamDiscoveryScan]: {
+    name: QueueJobs.PamDiscoverySourceScan;
+    payload: { sourceId: string; triggeredBy: string };
   };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
@@ -673,7 +691,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "pki-sync-cleanup",
       "pam-account-rotation",
       "pam-session-ai-summary",
-      "pam-discovery-scan",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value

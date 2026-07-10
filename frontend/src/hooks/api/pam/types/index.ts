@@ -6,12 +6,96 @@ import {
   PamAccountType,
   PamAccountView,
   PamApproverType,
+  PamDiscoverySchedule,
+  PamDiscoveryType,
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
+
+export type TPamDiscoveryTypeOption = {
+  type: PamDiscoveryType;
+  name: string;
+  icon: string;
+  credentialAccountType: PamAccountType;
+};
+
+export type TPamDiscoverySource = {
+  id: string;
+  projectId: string;
+  name: string;
+  discoveryType: PamDiscoveryType;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  credentialAccountId: string;
+  discoveryConfiguration: Record<string, unknown>;
+  schedule: PamDiscoverySchedule;
+  lastRunAt?: string | null;
+  lastRunStatus?: string | null;
+  lastRunError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TPamDiscoveryRun = {
+  id: string;
+  discoverySourceId: string;
+  status: string;
+  triggeredBy: string;
+  discoveredCount: number;
+  newCount: number;
+  errorMessage?: string | null;
+  machineErrors?: { machine: string; error: string }[] | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+};
+
+export type TPamDiscoveredAccount = {
+  id: string;
+  accountType: PamAccountType;
+  name: string;
+  fingerprint: string;
+  createdAt: string;
+};
+
+export type TCreatePamDiscoverySourceDTO = {
+  discoveryType: PamDiscoveryType;
+  name: string;
+  credentialAccountId: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  schedule: PamDiscoverySchedule;
+  configuration?: Record<string, unknown>;
+};
+
+export type TUpdatePamDiscoverySourceDTO = {
+  sourceId: string;
+  discoveryType: PamDiscoveryType;
+  name?: string;
+  credentialAccountId?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  schedule?: PamDiscoverySchedule;
+  configuration?: Record<string, unknown>;
+};
+
+export type TDeletePamDiscoverySourceDTO = { sourceId: string; discoveryType: PamDiscoveryType };
+export type TTriggerPamDiscoveryScanDTO = { sourceId: string; discoveryType: PamDiscoveryType };
+export type TImportPamDiscoveredAccountsDTO = {
+  sourceId: string;
+  folderId: string;
+  accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+};
+
+export type TImportPamDiscoveredAccountResult = {
+  discoveredAccountId: string;
+  status: string;
+  accountId?: string;
+  message?: string;
+};
 
 export type PamFolderPermissionSet = [
   PamResourcePermissionActions,
@@ -287,7 +371,10 @@ export type TDeletePamAccountDTO = {
 
 export type TPamAccountTemplateWithCount = TPamAccountTemplate & { accountCount: number };
 
-export type TPamAccountTemplateDetail = TPamAccountTemplate & { accountCount: number };
+export type TPamAccountTemplateDetail = TPamAccountTemplate & {
+  accountCount: number;
+  rotationImpact: { willRotate: number; needsRotationAccount: number };
+};
 
 export type TListPamAccountTemplatesDTO = {
   search?: string;
@@ -464,6 +551,41 @@ export type TUpdatePamProductIdentityMemberDTO = {
 export type TRemovePamProductIdentityMemberDTO = {
   identityId: string;
   projectId: string;
+};
+
+// Credential rotation
+
+export type TPamPasswordRequirements = {
+  length: number;
+  required: { lowercase: number; uppercase: number; digits: number; symbols: number };
+  allowedSymbols?: string;
+};
+
+export type TPamAccountRotation = {
+  enabled: boolean;
+  intervalSeconds: number | null;
+  passwordRequirements: TPamPasswordRequirements | null;
+  rotationAccountId: string | null;
+  rotationAccountName: string | null;
+  lastRotatedAt: string | null;
+  rotationStatus: string | null;
+  lastRotationError: string | null;
+  isReady: boolean;
+};
+
+export type TPamRotationCandidateGroup = {
+  folderId: string | null;
+  folderName: string | null;
+  accounts: { id: string; name: string; host: string }[];
+};
+
+export type TUpdatePamAccountRotationDTO = {
+  accountId: string;
+  rotationAccountId: string | null;
+};
+
+export type TRotatePamAccountDTO = {
+  accountId: string;
 };
 
 // Access Requests / Approvals

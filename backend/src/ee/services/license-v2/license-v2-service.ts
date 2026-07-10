@@ -13,6 +13,7 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
+import { TMeteredFeature } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isV2SelfHostedLicenseKey } from "../license/license-fns";
@@ -45,6 +46,9 @@ type TLicenseV2ServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  // Feature-keyed live-count fns (the same source the usage meter uses), so per-unit dimensions can
+  // show real utilization instead of the zero the license server reports for non-metered dimensions.
+  meteredFeatures: TMeteredFeature[];
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
@@ -303,7 +307,8 @@ export const licenseV2ServiceFactory = ({
   orgDAL,
   identityOrgMembershipDAL,
   permissionService,
-  licenseClient
+  licenseClient,
+  meteredFeatures
 }: TLicenseV2ServiceFactoryDep) => {
   // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
   // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
@@ -336,9 +341,61 @@ export const licenseV2ServiceFactory = ({
     );
   };
 
+  const counterByFeatureKey = new Map(meteredFeatures.map((metered) => [metered.feature.key, metered.count]));
+
+  // Live per-org usage for the subscription's non-metered dimensions, keyed by feature key. Seeded
+  // values (e.g. the shared member+identity pool, computed once for the Usage card) win, so a
+  // dimension that also has its own count elsewhere on the page reads the same number. The rest are
+  // counted once each, in parallel, via the same counters the usage meter uses. A count failure is
+  // logged and dropped so the overview still renders.
+  const resolveLiveUsage = async (
+    orgId: string,
+    subscription: TSubscriptionResponse | null,
+    seed: Map<string, number>
+  ): Promise<Map<string, number>> => {
+    const usage = new Map<string, number>(seed);
+    if (!subscription) {
+      return usage;
+    }
+
+    const featureKeys = new Set<string>();
+    subscription.items.forEach((item) => {
+      item.dimensions.forEach((dimension) => {
+        if (
+          !dimension.metered &&
+          dimension.featureKey &&
+          !usage.has(dimension.featureKey) &&
+          counterByFeatureKey.has(dimension.featureKey)
+        ) {
+          featureKeys.add(dimension.featureKey);
+        }
+      });
+    });
+
+    await Promise.all(
+      [...featureKeys].map(async (featureKey) => {
+        const count = counterByFeatureKey.get(featureKey);
+        if (count === undefined) {
+          return;
+        }
+        try {
+          usage.set(featureKey, await count(orgId));
+        } catch (error) {
+          logger.error(error, `billing-v2: failed to count live usage [orgId=${orgId}, feature=${featureKey}]`);
+        }
+      })
+    );
+
+    return usage;
+  };
+
   // Fold the subscription items and the entitlement features sourced from a product into a single
   // per-product entitlement map, keyed by the server's product ids.
-  const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
+  const buildEntitlements = async (
+    org: TEntitlementOrg,
+    subscription: TSubscriptionResponse | null,
+    liveUsageSeed: Map<string, number>
+  ) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
     const labelByDimension = new Map<string, string>();
@@ -362,6 +419,11 @@ export const licenseV2ServiceFactory = ({
       }
     }
 
+    // The license server only tracks usage for metered dimensions, so per-unit ones come back with
+    // used=0. Overlay live counts, matched on the stable feature key (dimension keys drift). Metered
+    // dimensions keep the server's period peak, which is the billed figure.
+    const liveUsageByFeatureKey = await resolveLiveUsage(org.id, subscription, liveUsageSeed);
+
     if (subscription) {
       subscription.items.forEach((item) => {
         // Resolve the pinned per-dimension contract into a display-ready list: label/noun from the
@@ -373,13 +435,18 @@ export const licenseV2ServiceFactory = ({
           const metered = dimension.metered ?? false;
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
+          let used = dimension.used ?? 0;
+          const liveUsed = dimension.featureKey ? liveUsageByFeatureKey.get(dimension.featureKey) : undefined;
+          if (!metered && liveUsed !== undefined) {
+            used = liveUsed;
+          }
           return {
             key: dimension.key,
             label: labelByDimension.get(catalogKey) ?? dimension.key,
             noun: nounByDimension.get(catalogKey) ?? dimension.unit ?? dimension.key,
             unit: dimension.unit ?? nounByDimension.get(catalogKey) ?? dimension.key,
             metered,
-            used: dimension.used ?? 0,
+            used,
             limit: dimension.limit ?? null,
             ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
             ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {})
@@ -575,9 +642,12 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
+    // The identity dimension caps against the same shared member+identity pool the Usage card shows,
+    // so seed its usage from that one figure instead of a separate count that could diverge from it.
     const entitlements = await buildEntitlements(
       { id: orgId, name: organization.name, slug: organization.slug },
-      subscription
+      subscription,
+      new Map([[IDENTITY_LIMIT_FEATURE_KEY, members + identities]])
     );
     // Org-wide projected metered usage (dollars): the summary adds this to recurringAmount for the
     // next-month total, so every product's estimate is summed once here.

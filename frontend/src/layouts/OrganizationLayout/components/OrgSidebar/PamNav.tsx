@@ -3,6 +3,7 @@ import {
   FileText,
   FolderOpen,
   KeyRound,
+  Radar,
   Shield,
   ShieldCheck,
   Video
@@ -34,7 +35,8 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
       : []),
     ...(isProductAdmin
       ? [{ label: "Account Templates", icon: ClipboardList, pathSuffix: "templates" }]
-      : [])
+      : []),
+    ...(isProductAdmin ? [{ label: "Discovery", icon: Radar, pathSuffix: "discovery" }] : [])
   ];
 
   const monitorItems: NavItem[] = [
