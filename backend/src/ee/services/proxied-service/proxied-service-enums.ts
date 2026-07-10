@@ -1,5 +1,6 @@
 export enum ProxiedServiceCredentialRole {
   HeaderRewrite = "header-rewrite",
+  // referenced via z.nativeEnum, not by name; do not delete
   CredentialSubstitution = "credential-substitution"
 }
 
