@@ -27,12 +27,8 @@ type TAgentProxyCaServiceFactoryDep = {
 };
 
 const ROOT_CA_ALGORITHM = CertKeyAlgorithm.ECDSA_P256;
-// 7 days; the agent proxy re-signs a fresh intermediate before this elapses
 const INTERMEDIATE_CA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// Long-lived root so the trust anchor stays stable (agents pin it and do not refresh in V1).
-// The private key never leaves Infisical and only signs short-lived intermediates.
 const ROOT_CA_VALIDITY_YEARS = 10;
-// Backdate notBefore so a fresh cert is not rejected by an agent whose clock trails the server's.
 const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export const agentProxyCaServiceFactory = ({
@@ -50,7 +46,6 @@ export const agentProxyCaServiceFactory = ({
     }
   };
 
-  // Validates the actor still belongs to the org. Any org member may call the CA endpoints (no dedicated subject).
   const $assertOrgMembership = async (actor: OrgServiceActor) => {
     await permissionService.getOrgPermission({
       actor: actor.type,
@@ -62,7 +57,6 @@ export const agentProxyCaServiceFactory = ({
     });
   };
 
-  // Lazily generates (once per org) and returns the org's root CA, decrypted for use.
   const $getOrgRootCa = async (orgId: string) => {
     const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -74,7 +68,6 @@ export const agentProxyCaServiceFactory = ({
       if (existing) return existing;
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAgentProxyConfigInit(orgId)]);
-      // re-check after acquiring the lock in case another instance created it
       const afterLock = await orgAgentProxyConfigDAL.findOne({ orgId }, tx);
       if (afterLock) return afterLock;
 
@@ -130,7 +123,6 @@ export const agentProxyCaServiceFactory = ({
     return { config, rootCaCert, rootCaPrivateKeyBuffer };
   };
 
-  // Returns the org's public root CA certificate (auto-creating it on first access).
   const getRootCa = async (actor: OrgServiceActor) => {
     await $checkLicense(actor.orgId);
     await $assertOrgMembership(actor);
@@ -138,7 +130,7 @@ export const agentProxyCaServiceFactory = ({
     const { config, rootCaCert } = await $getOrgRootCa(actor.orgId);
     return {
       certificate: rootCaCert.toString("pem"),
-      // the column is a plain string in the generated schema but only ever stores ROOT_CA_ALGORITHM
+      // column is a plain string in the generated schema but only ever stores ROOT_CA_ALGORITHM
       keyAlgorithm: config.rootCaKeyAlgorithm as CertKeyAlgorithm,
       issuedAt: config.rootCaIssuedAt,
       expiration: config.rootCaExpiration,
@@ -146,14 +138,12 @@ export const agentProxyCaServiceFactory = ({
     };
   };
 
-  // Signs a caller-provided public key as a short-lived intermediate CA chained to the org root CA.
   const signIntermediate = async (actor: OrgServiceActor, publicKeyPem: string) => {
     await $checkLicense(actor.orgId);
     await $assertOrgMembership(actor);
 
     const { rootCaCert, rootCaPrivateKeyBuffer } = await $getOrgRootCa(actor.orgId);
 
-    // Refuse to sign against an expired root: the resulting chain could never validate.
     if (new Date() >= rootCaCert.notAfter) {
       throw new BadRequestError({
         message: "The organization's agent proxy root CA has expired and can no longer sign intermediate certificates."
@@ -192,7 +182,7 @@ export const agentProxyCaServiceFactory = ({
     const serialNumber = createSerialNumber();
     const issuedAt = new Date();
     const notBefore = new Date(issuedAt.getTime() - CLOCK_SKEW_MS);
-    // Clamp so an intermediate can never outlive the root it chains to.
+    // clamp so an intermediate can never outlive the root it chains to
     const requestedExpiration = new Date(issuedAt.getTime() + INTERMEDIATE_CA_TTL_MS);
     const expiration = requestedExpiration < rootCaCert.notAfter ? requestedExpiration : rootCaCert.notAfter;
 

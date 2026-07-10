@@ -9,14 +9,10 @@ import {
   ProxiedServiceSubstitutionSurface
 } from "./proxied-service-enums";
 
-// One host label: alphanumerics and internal hyphens, optionally a single leading "*." wildcard.
-// RE2 (per codebase convention) for linear-time matching on user input.
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
 
-// Validates the comma-separated hostPattern grammar so malformed values fail at creation
-// instead of silently never matching at proxy time. The matching grammar itself lives in the
-// agent-proxy CLI (packages/agentproxy/match.go); keep the two in sync.
+// matching grammar lives in the agent-proxy CLI (packages/agentproxy/match.go); keep the two in sync
 export const hostPatternSchema = z
   .string()
   .trim()
@@ -35,7 +31,7 @@ export const hostPatternSchema = z
       }
       let hostPort = seg;
       const slashIdx = hostPort.indexOf("/");
-      if (slashIdx !== -1) hostPort = hostPort.slice(0, slashIdx); // path portion is free-form
+      if (slashIdx !== -1) hostPort = hostPort.slice(0, slashIdx);
       let host = hostPort;
       const colonIdx = hostPort.lastIndexOf(":");
       if (colonIdx !== -1) {
@@ -66,7 +62,6 @@ const CredentialInputSchema = z
   })
   .superRefine((cred, ctx) => {
     if (cred.role === ProxiedServiceCredentialRole.HeaderRewrite) {
-      // either a named header (optionally with a prefix) or a basic-auth purpose, not both
       if (cred.headerPurpose) {
         if (cred.headerName || cred.headerPrefix) {
           ctx.addIssue({
@@ -81,7 +76,6 @@ const CredentialInputSchema = z
         });
       }
     } else if (!cred.placeholderKey || !cred.placeholderValue || !cred.substitutionSurfaces) {
-      // credential substitution
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Credential substitution requires placeholderKey, placeholderValue, and substitutionSurfaces"
@@ -89,8 +83,6 @@ const CredentialInputSchema = z
     }
   });
 
-// Cross-credential rules that cannot be checked one row at a time: basic-auth pairing,
-// unique header names / placeholders, and header-rewrite modes that cannot coexist.
 export const CredentialsArraySchema = CredentialInputSchema.array()
   .min(1, "At least one credential is required")
   .superRefine((credentials, ctx) => {
@@ -153,7 +145,6 @@ export const CredentialsArraySchema = CredentialInputSchema.array()
         message: "Basic auth requires both a username and a password credential"
       });
     }
-    // Basic auth already owns the Authorization header, so it cannot coexist with named header rewrites.
     if (usernameCount + passwordCount > 0 && headerNameCounts.size > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -162,7 +153,6 @@ export const CredentialsArraySchema = CredentialInputSchema.array()
     }
   });
 
-// Sanitized response shapes, shared by the CRUD router and the dashboard aggregate schema.
 export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentialsSchema.pick({
   id: true,
   serviceId: true,

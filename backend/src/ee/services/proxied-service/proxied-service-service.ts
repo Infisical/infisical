@@ -73,9 +73,6 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
-  // Validates that every referenced secret exists in the folder. Assumes the caller already holds
-  // ReadValue on the folder path (checked separately). Stale references are allowed to persist afterwards
-  // (secret rename/delete), but must resolve at creation/update time to catch typos early.
   const $validateSecretReferences = async (folderId: string, credentials: TProxiedServiceCredentialInput[]) => {
     const uniqueKeys = [...new Set(credentials.map((c) => c.secretKey))];
     if (!uniqueKeys.length) return;
@@ -93,9 +90,7 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
-  // Asserts ReadValue on each referenced secret individually (by name), not just on the folder path.
-  // A per-key check means a deny/inverted rule on a specific secret can't be bypassed by folder-wide
-  // ReadValue, so a caller can't wire a secret they were explicitly denied into a service they control.
+  // per-key ReadValue check: a deny rule on a specific secret can't be bypassed by folder-wide ReadValue
   const $assertCanReadReferencedSecrets = (
     permission: MongoAbility<ProjectPermissionSet>,
     environment: string,
@@ -112,7 +107,6 @@ export const proxiedServiceServiceFactory = ({
     });
   };
 
-  // Resolves the canonical secret path for a service's folder so scoped (glob) permission checks are accurate.
   const $resolveSecretPath = async (projectId: string, folderId: string) => {
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folderWithPath) {
@@ -140,7 +134,6 @@ export const proxiedServiceServiceFactory = ({
       ProjectPermissionProxiedServiceActions.Create,
       subject(ProjectPermissionSub.ProxiedServices, { environment, secretPath: canonicalPath })
     );
-    // caller must be able to read each referenced secret they are wiring up (per-key, see helper)
     $assertCanReadReferencedSecrets(permission, environment, canonicalPath, credentials);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -183,7 +176,6 @@ export const proxiedServiceServiceFactory = ({
       projectId
     });
 
-    // every service in this list shares one folder, so evaluate access once
     const scopedSubject = subject(ProjectPermissionSub.ProxiedServices, {
       environment,
       secretPath: canonicalPath
@@ -322,8 +314,6 @@ export const proxiedServiceServiceFactory = ({
     }
 
     if (credentials) {
-      // same per-key guard as create: Edit-only actors must not reference secrets they cannot read
-      // and exfiltrate them via the proxy
       $assertCanReadReferencedSecrets(permission, service.environmentSlug, resolvedSecretPath, credentials);
       await $validateSecretReferences(service.folderId, credentials);
     }
@@ -353,7 +343,6 @@ export const proxiedServiceServiceFactory = ({
         updatedCredentials = await proxiedServiceCredentialDAL.findByServiceIds([serviceId], tx);
       }
 
-      // scope fields are stripped from the API response but let the router emit an audit log
       return {
         ...updated,
         credentials: updatedCredentials,
@@ -388,10 +377,8 @@ export const proxiedServiceServiceFactory = ({
       })
     );
 
-    // credentials cascade on serviceId FK
     await proxiedServiceDAL.deleteById(serviceId);
     const { environmentSlug, ...rest } = service;
-    // scope fields are stripped from the API response but let the router emit an audit log (same shape as updateById)
     return { ...rest, environment: environmentSlug, secretPath: resolvedSecretPath };
   };
 
@@ -399,8 +386,6 @@ export const proxiedServiceServiceFactory = ({
     { projectId, environments, secretPath, search }: TProxiedServiceDashboardCountDTO,
     actor: OrgServiceActor
   ) => {
-    // soft license gate: the dashboard aggregate runs alongside secrets/folders, so we return an
-    // empty result rather than throwing (a throw would break the whole overview for unlicensed orgs)
     const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.secretsBrokering) return 0;
 
@@ -438,7 +423,6 @@ export const proxiedServiceServiceFactory = ({
     { projectId, environments, secretPath, search, orderDirection, limit, offset }: TProxiedServiceDashboardListDTO,
     actor: OrgServiceActor
   ) => {
-    // soft license gate (see getDashboardProxiedServiceCount)
     const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.secretsBrokering) return [];
 
@@ -466,9 +450,6 @@ export const proxiedServiceServiceFactory = ({
     );
     if (!allowedFolders.length) return [];
 
-    // Ranked/searched/paged in the DAL: limit & offset count UNIQUE NAMES across environments (see
-    // findDashboardByFolderIds), so pagination stays consistent with countByFolderIds and the router's
-    // unique-name limit accounting -- a service present in multiple envs is never split across pages.
     const services = await proxiedServiceDAL.findDashboardByFolderIds({
       folderIds: allowedFolders.map((f) => f.id),
       search,
@@ -484,8 +465,6 @@ export const proxiedServiceServiceFactory = ({
       return acc;
     }, {});
 
-    // DAL's folder.path carries the folder's own name, not its full path; stamp the canonical
-    // secret path so the frontend uses a correct secretPath for its scoped permission checks and pickers.
     return services.map((svc) => ({
       ...svc,
       folder: { ...svc.folder, path: canonicalSecretPath },

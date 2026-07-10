@@ -79,7 +79,6 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     }
   });
 
-  // Distinguishes slug vs id by the presence of scope query params (projectId + environment).
   server.route({
     method: "GET",
     url: "/:serviceIdOrName",
@@ -104,7 +103,6 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         );
         return { service };
       }
-      // No scope params: this must be a lookup by ID. Reject a bare name so it never hits the uuid column.
       if (!isUuidV4(serviceIdOrName)) {
         throw new BadRequestError({
           message: "projectId and environment query params are required when fetching a proxied service by name"

@@ -17,11 +17,9 @@ type Props = {
   placeholder?: string;
 };
 
-// isReadable drives whether the option can be picked: attaching a secret to a proxied service
-// requires ReadValue on the backend, so a secret the caller can only describe is shown disabled.
+// Attaching a secret requires ReadValue on the backend; describe-only secrets show disabled.
 type SecretOption = { label: string; value: string; isReadable: boolean };
 
-// Hoisted out of the component so it isn't recreated each render (react/no-unstable-nested-components).
 const formatSecretOption = (option: SecretOption) =>
   option.isReadable ? (
     <div className="flex items-center gap-2">
@@ -42,8 +40,6 @@ const formatSecretOption = (option: SecretOption) =>
     </Tooltip>
   );
 
-// Picks a secret key from the current folder. Uses the searchable FilterableSelect so long secret
-// lists stay usable. A stale reference (secret renamed/deleted) still renders its raw key.
 export const SecretSelect = ({
   projectId,
   environment,
@@ -65,7 +61,6 @@ export const SecretSelect = ({
   const options: SecretOption[] = secrets.map((secret) => ({
     label: secret.key,
     value: secret.key,
-    // the list endpoint only requires describe, so re-check ReadValue client-side (backend enforces it too)
     isReadable: hasSecretReadValueOrDescribePermission(
       permission,
       ProjectPermissionSecretActions.ReadValue,

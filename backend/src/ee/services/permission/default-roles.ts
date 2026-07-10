@@ -813,8 +813,6 @@ const buildCryptographicOperatorPermissionRules = () => {
   return rules;
 };
 
-// Grants Proxy on all proxied services (all environments, all paths). No secret read access.
-// Intended for the agent machine identity.
 const buildAgentPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
@@ -823,8 +821,6 @@ const buildAgentPermissionRules = () => {
   return rules;
 };
 
-// Grants read access to all secret values (all environments, all paths). No proxied service permissions.
-// Intended for the agent proxy machine identity, which fetches real credentials for header rewriting/substitution.
 const buildAgentProxyPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 

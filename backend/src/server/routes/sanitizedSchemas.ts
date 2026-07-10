@@ -293,7 +293,6 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   })
 });
 
-// dashboard aggregate shape: shared base + credential picks, plus environment/folder for the UI
 export const SanitizedProxiedServiceSchema = SanitizedProxiedServiceBaseSchema.extend({
   environment: z.object({
     id: z.string(),

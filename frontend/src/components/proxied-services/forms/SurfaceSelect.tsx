@@ -25,8 +25,6 @@ type Props = {
   isDisabled?: boolean;
 };
 
-// Multi-select for substitution surfaces: selected values show as removable chips in the trigger,
-// the dropdown lists all surfaces as checkbox items.
 export const SurfaceSelect = ({ value, onChange, isDisabled }: Props) => {
   const toggle = (surface: ProxiedServiceSubstitutionSurface) => {
     onChange(value.includes(surface) ? value.filter((s) => s !== surface) : [...value, surface]);

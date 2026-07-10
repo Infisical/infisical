@@ -60,7 +60,6 @@ const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm =>
       hostPattern: "",
       isEnabled: true,
       headerMode: HeaderRewritingMode.Headers,
-      // pre-fill a bearer header on create (mockup behavior)
       headers: [{ secretKey: "", headerName: "Authorization", headerPrefix: "Bearer" }],
       substitutions: []
     };
@@ -212,7 +211,6 @@ export const ProxiedServiceForm = ({
       });
       onComplete();
     } catch (err) {
-      // surface the backend reason (e.g. "Referenced secret(s) not found", permission errors)
       const raw = (err as AxiosError<{ message?: string | { message?: string }[] }>)?.response?.data
         ?.message;
       const detail = Array.isArray(raw)
@@ -281,7 +279,6 @@ export const ProxiedServiceForm = ({
           </FieldContent>
         </Field>
 
-        {/* Header Rewriting */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
@@ -431,7 +428,6 @@ export const ProxiedServiceForm = ({
           )}
         </div>
 
-        {/* Credential Substitution */}
         <div className="flex flex-col gap-3">
           <div>
             <div className="flex items-center gap-1.5">

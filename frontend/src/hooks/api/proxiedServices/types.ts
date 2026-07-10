@@ -17,7 +17,6 @@ export type TProxiedServiceCredential = {
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
 };
 
-// Shape returned by the DELETE endpoint (base schema, no credentials).
 export type TProxiedServiceBase = {
   id: string;
   name: string;
@@ -32,7 +31,6 @@ export type TProxiedService = TProxiedServiceBase & {
   credentials: TProxiedServiceCredential[];
 };
 
-// Shape returned by the dashboard aggregate endpoint (includes environment + folder path).
 export type TDashboardProxiedService = TProxiedService & {
   environment: {
     id: string;

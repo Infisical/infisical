@@ -33,7 +33,6 @@ export type TProxiedServiceScoped = {
   updatedAt: Date;
 };
 
-// Shared shape for a scoped-with-env row selected off the ProxiedService + Environment + Folder join.
 const scopedSelectColumns = (db: TDbClient) => [
   db.ref("id").withSchema(TableName.ProxiedService),
   db.ref("name").withSchema(TableName.ProxiedService),
@@ -78,8 +77,7 @@ const mapRowToScope = (row: TScopedRow): TProxiedServiceWithScope => ({
     name: row.envName,
     slug: row.envSlug
   },
-  // NOTE: this is the folder's own name, not its full path. Callers that surface this to clients
-  // (e.g. the dashboard aggregate) must override it with the canonical secret path.
+  // folder's own name, not its full path; callers surfacing this must override with the canonical secret path
   folder: {
     path: row.folderName
   }
@@ -88,7 +86,6 @@ const mapRowToScope = (row: TScopedRow): TProxiedServiceWithScope => ({
 export const proxiedServiceDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ProxiedService);
 
-  // proxied_services has no projectId column; it is derived via folder -> environment -> project.
   const findByFolderIds = async (folderIds: string[], tx?: Knex): Promise<TProxiedServiceWithScope[]> => {
     if (!folderIds.length) return [];
     const rows = await (tx || db.replicaNode())(TableName.ProxiedService)
@@ -101,10 +98,6 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
     return rows.map(mapRowToScope);
   };
 
-  // Multi-env dashboard listing: folder IDs span environments, so the same service name can appear
-  // once per environment. We DENSE_RANK by name and window on the rank (mirrors dynamic secrets) so
-  // limit/offset count UNIQUE NAMES and every env-row of a paged-in name stays together -- matching
-  // countByFolderIds (countDistinct name) and the router's unique-name limit accounting.
   const findDashboardByFolderIds = async (
     {
       folderIds,
@@ -126,7 +119,6 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
     const query = (tx || db.replicaNode())(TableName.ProxiedService)
       .whereIn(`${TableName.ProxiedService}.folderId`, folderIds)
       .where((bd) => {
-        // same ilike predicate as countByFolderIds so count and list never diverge
         if (search) {
           void bd.whereILike(`${TableName.ProxiedService}.name`, `%${sanitizeSqlLikeString(search)}%`);
         }
@@ -174,7 +166,6 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
-  // Loads a service by id together with its derived project id and environment slug for scoped permission checks.
   const findByIdWithScope = async (serviceId: string, tx?: Knex): Promise<TProxiedServiceScoped | null> => {
     const row = await (tx || db.replicaNode())(TableName.ProxiedService)
       .where(`${TableName.ProxiedService}.id`, serviceId)

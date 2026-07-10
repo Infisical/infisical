@@ -52,9 +52,7 @@ const hostPatternField = z
       });
   });
 
-// Field-level schemas are permissive; required-ness is enforced conditionally in the
-// top-level superRefine so that fields belonging to the inactive header mode (which are not
-// rendered) don't block submission.
+// Required-ness is enforced conditionally in the top-level superRefine so fields of the inactive header mode don't block submission.
 const headerCredentialSchema = z.object({
   secretKey: z.string().trim(),
   headerName: z.string().trim(),
@@ -99,7 +97,6 @@ export const proxiedServiceFormSchema = z
   })
   .superRefine((form, ctx) => {
     if (form.headerMode === HeaderRewritingMode.Headers) {
-      // only validate the rows the user actually sees in Headers mode
       const seenHeaderNames = new Map<string, number>();
       form.headers.forEach((row, i) => {
         if (!row.secretKey) {
@@ -127,7 +124,6 @@ export const proxiedServiceFormSchema = z
           seenHeaderNames.set(key, i);
         }
       });
-      // the backend rejects a service with no credentials at all
       if (!form.headers.length && !form.substitutions.length) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -152,7 +148,6 @@ export const proxiedServiceFormSchema = z
       }
     }
 
-    // placeholder env var names must be unique: each maps to one env var the agent sees
     const seenPlaceholderKeys = new Map<string, number>();
     form.substitutions.forEach((row, i) => {
       const key = row.placeholderKey.trim();

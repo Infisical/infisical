@@ -36,7 +36,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
 
-      // project is derived via folder -> environment -> project chain; no projectId column
       t.unique(["folderId", "name"]);
 
       t.timestamps(true, true, true);
@@ -53,20 +52,16 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("serviceId").references("id").inTable(TableName.ProxiedService).onDelete("CASCADE");
       t.index("serviceId");
 
-      // Reference to a secret by key name only. Location is implicitly the parent
-      // service's folder in V1, so no folder/env/path columns are stored here.
       t.string("secretKey").notNullable();
-      t.string("role").notNullable(); // "header-rewrite" | "credential-substitution"
+      t.string("role").notNullable();
 
-      // Header rewriting fields (nullable)
       t.string("headerName");
       t.string("headerPrefix");
-      t.string("headerPurpose"); // basic auth: "username" | "password"
+      t.string("headerPurpose");
 
-      // Credential substitution fields (nullable)
       t.string("placeholderKey");
       t.string("placeholderValue");
-      t.specificType("substitutionSurfaces", "text[]"); // subset of header|path|query|body
+      t.specificType("substitutionSurfaces", "text[]");
 
       t.timestamps(true, true, true);
     });
