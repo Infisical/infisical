@@ -43,7 +43,6 @@ export const ProxiedServiceListView = ({ proxiedServices }: Props) => {
           if (!isOpen) setDeleteTarget(undefined);
         }}
         proxiedService={deleteTarget}
-        projectId={projectId}
       />
     </>
   );

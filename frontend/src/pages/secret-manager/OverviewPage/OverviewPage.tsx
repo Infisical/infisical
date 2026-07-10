@@ -3692,7 +3692,6 @@ const OverviewPageContent = () => {
         isOpen={popUp.deleteProxiedService.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteProxiedService", isOpen)}
         proxiedService={popUp.deleteProxiedService.data as TDashboardProxiedService}
-        projectId={projectId}
       />
       <EditSecretRotationV2Modal
         isOpen={popUp.editSecretRotation.isOpen}

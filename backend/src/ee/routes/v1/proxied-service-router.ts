@@ -8,6 +8,7 @@ import {
   SanitizedProxiedServiceBaseSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -104,7 +105,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         return { service };
       }
       // No scope params: this must be a lookup by ID. Reject a bare name so it never hits the uuid column.
-      if (!z.string().uuid().safeParse(serviceIdOrName).success) {
+      if (!isUuidV4(serviceIdOrName)) {
         throw new BadRequestError({
           message: "projectId and environment query params are required when fetching a proxied service by name"
         });
@@ -180,7 +181,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
           metadata: {
             proxiedServiceId: service.id,
             name: service.name,
-            environment: service.environmentSlug,
+            environment: service.environment,
             secretPath: service.secretPath
           }
         }

@@ -190,7 +190,6 @@ export const ProxiedServiceForm = ({
       if (isEdit && proxiedService) {
         await updateProxiedService.mutateAsync({
           serviceId: proxiedService.id,
-          projectId,
           name: form.name,
           hostPattern: form.hostPattern,
           isEnabled: form.isEnabled,
@@ -237,8 +236,15 @@ export const ProxiedServiceForm = ({
           name="isEnabled"
           render={({ field }) => (
             <Field orientation="horizontal">
-              <FieldLabel className="cursor-pointer">Enabled</FieldLabel>
-              <Switch variant="project" checked={field.value} onCheckedChange={field.onChange} />
+              <FieldLabel htmlFor="proxied-service-enabled" className="cursor-pointer">
+                Enabled
+              </FieldLabel>
+              <Switch
+                id="proxied-service-enabled"
+                variant="project"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
             </Field>
           )}
         />

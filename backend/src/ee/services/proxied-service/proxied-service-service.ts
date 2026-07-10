@@ -10,7 +10,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor } from "@app/lib/types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
@@ -340,7 +340,7 @@ export const proxiedServiceServiceFactory = ({
         ? await proxiedServiceDAL.updateById(serviceId, serviceUpdate, tx)
         : await proxiedServiceDAL.findById(serviceId, tx);
 
-      let updatedCredentials = await proxiedServiceCredentialDAL.findByServiceIds([serviceId], tx);
+      let updatedCredentials;
       if (credentials) {
         await proxiedServiceCredentialDAL.deleteByServiceId(serviceId, tx);
         updatedCredentials = credentials.length
@@ -349,6 +349,8 @@ export const proxiedServiceServiceFactory = ({
               tx
             )
           : [];
+      } else {
+        updatedCredentials = await proxiedServiceCredentialDAL.findByServiceIds([serviceId], tx);
       }
 
       // scope fields are stripped from the API response but let the router emit an audit log
@@ -388,7 +390,9 @@ export const proxiedServiceServiceFactory = ({
 
     // credentials cascade on serviceId FK
     await proxiedServiceDAL.deleteById(serviceId);
-    return { ...service, secretPath: resolvedSecretPath };
+    const { environmentSlug, ...rest } = service;
+    // scope fields are stripped from the API response but let the router emit an audit log (same shape as updateById)
+    return { ...rest, environment: environmentSlug, secretPath: resolvedSecretPath };
   };
 
   const getDashboardProxiedServiceCount = async (
@@ -431,16 +435,7 @@ export const proxiedServiceServiceFactory = ({
   };
 
   const getDashboardProxiedServices = async (
-    {
-      projectId,
-      environments,
-      secretPath,
-      search,
-      orderBy,
-      orderDirection,
-      limit,
-      offset
-    }: TProxiedServiceDashboardListDTO,
+    { projectId, environments, secretPath, search, orderDirection, limit, offset }: TProxiedServiceDashboardListDTO,
     actor: OrgServiceActor
   ) => {
     // soft license gate (see getDashboardProxiedServiceCount)
@@ -471,22 +466,16 @@ export const proxiedServiceServiceFactory = ({
     );
     if (!allowedFolders.length) return [];
 
-    let services = await proxiedServiceDAL.findByFolderIds(allowedFolders.map((f) => f.id));
-
-    if (search) {
-      services = services.filter((svc) => svc.name.toLowerCase().includes(search.toLowerCase()));
-    }
-
-    if (orderBy === "name") {
-      services.sort((a, b) => {
-        const cmp = a.name.localeCompare(b.name);
-        return orderDirection === OrderByDirection.DESC ? -cmp : cmp;
-      });
-    }
-
-    if (offset !== undefined && limit !== undefined) {
-      services = services.slice(offset, offset + limit);
-    }
+    // Ranked/searched/paged in the DAL: limit & offset count UNIQUE NAMES across environments (see
+    // findDashboardByFolderIds), so pagination stays consistent with countByFolderIds and the router's
+    // unique-name limit accounting -- a service present in multiple envs is never split across pages.
+    const services = await proxiedServiceDAL.findDashboardByFolderIds({
+      folderIds: allowedFolders.map((f) => f.id),
+      search,
+      limit,
+      offset,
+      orderDirection
+    });
 
     const credentials = await proxiedServiceCredentialDAL.findByServiceIds(services.map((s) => s.id));
     const credentialsByService = credentials.reduce<Record<string, typeof credentials>>((acc, cred) => {

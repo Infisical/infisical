@@ -8,6 +8,7 @@ import {
   TCreateProxiedServiceDTO,
   TDeleteProxiedServiceDTO,
   TProxiedService,
+  TProxiedServiceBase,
   TUpdateProxiedServiceDTO
 } from "./types";
 
@@ -35,8 +36,7 @@ export const useUpdateProxiedService = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TProxiedService, object, TUpdateProxiedServiceDTO>({
-    // projectId is only used for cache scoping, not sent in the request body
-    mutationFn: async ({ serviceId, projectId: _projectId, ...body }) => {
+    mutationFn: async ({ serviceId, ...body }) => {
       const { data } = await apiRequest.patch<{ service: TProxiedService }>(
         `/api/v1/proxied-services/${serviceId}`,
         body
@@ -50,9 +50,9 @@ export const useUpdateProxiedService = () => {
 export const useDeleteProxiedService = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TProxiedService, object, TDeleteProxiedServiceDTO>({
+  return useMutation<TProxiedServiceBase, object, TDeleteProxiedServiceDTO>({
     mutationFn: async ({ serviceId }) => {
-      const { data } = await apiRequest.delete<{ service: TProxiedService }>(
+      const { data } = await apiRequest.delete<{ service: TProxiedServiceBase }>(
         `/api/v1/proxied-services/${serviceId}`
       );
       return data.service;

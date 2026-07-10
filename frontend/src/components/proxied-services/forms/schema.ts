@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import {
-  ProxiedServiceHeaderPurpose,
-  ProxiedServiceSubstitutionSurface
-} from "@app/hooks/api/proxiedServices/enums";
+import { ProxiedServiceSubstitutionSurface } from "@app/hooks/api/proxiedServices/enums";
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -58,18 +55,18 @@ const hostPatternField = z
 // Field-level schemas are permissive; required-ness is enforced conditionally in the
 // top-level superRefine so that fields belonging to the inactive header mode (which are not
 // rendered) don't block submission.
-export const headerCredentialSchema = z.object({
+const headerCredentialSchema = z.object({
   secretKey: z.string().trim(),
   headerName: z.string().trim(),
   headerPrefix: z.string().trim().optional()
 });
 
-export const basicAuthSchema = z.object({
+const basicAuthSchema = z.object({
   usernameSecretKey: z.string().trim(),
   passwordSecretKey: z.string().trim()
 });
 
-export const substitutionSchema = z.object({
+const substitutionSchema = z.object({
   placeholderKey: z
     .string()
     .trim()
@@ -172,5 +169,3 @@ export const proxiedServiceFormSchema = z
   });
 
 export type TProxiedServiceForm = z.infer<typeof proxiedServiceFormSchema>;
-
-export { ProxiedServiceHeaderPurpose };

@@ -5,7 +5,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   keyAlgorithmToAlgCfg
@@ -137,7 +137,8 @@ export const agentProxyCaServiceFactory = ({
     const { config, rootCaCert } = await $getOrgRootCa(actor.orgId);
     return {
       certificate: rootCaCert.toString("pem"),
-      keyAlgorithm: config.rootCaKeyAlgorithm,
+      // the column is a plain string in the generated schema but only ever stores ROOT_CA_ALGORITHM
+      keyAlgorithm: config.rootCaKeyAlgorithm as CertKeyAlgorithm,
       issuedAt: config.rootCaIssuedAt,
       expiration: config.rootCaExpiration,
       serialNumber: config.rootCaSerialNumber
@@ -171,7 +172,7 @@ export const agentProxyCaServiceFactory = ({
         []
       );
     } catch {
-      throw new BadRequestError({ message: "Invalid intermediate CA public key" });
+      throw new BadRequestError({ message: "Invalid public key: must be an ECDSA P-256 public key in PEM format" });
     }
 
     const rootCaSkObj = crypto.nativeCrypto.createPrivateKey({
@@ -204,11 +205,8 @@ export const agentProxyCaServiceFactory = ({
       publicKey: intermediatePublicKey,
       signingAlgorithm: alg,
       extensions: [
-        new x509.KeyUsagesExtension(
-          // eslint-disable-next-line no-bitwise
-          x509.KeyUsageFlags[CertKeyUsage.KEY_CERT_SIGN] | x509.KeyUsageFlags[CertKeyUsage.CRL_SIGN],
-          true
-        ),
+        // eslint-disable-next-line no-bitwise
+        new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
         new x509.BasicConstraintsExtension(true, 0, true),
         await x509.AuthorityKeyIdentifierExtension.create(rootCaCert, false),
         await x509.SubjectKeyIdentifierExtension.create(intermediatePublicKey)

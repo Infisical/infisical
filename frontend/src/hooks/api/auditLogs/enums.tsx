@@ -395,11 +395,14 @@ export enum EventType {
   CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
   UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
   DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  GET_DYNAMIC_SECRET = "get-dynamic-secret",
+  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Proxied Services
   CREATE_PROXIED_SERVICE = "create-proxied-service",
   UPDATE_PROXIED_SERVICE = "update-proxied-service",
   DELETE_PROXIED_SERVICE = "delete-proxied-service",
-  GET_DYNAMIC_SECRET = "get-dynamic-secret",
-  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+  SIGN_AGENT_PROXY_INTERMEDIATE_CA = "sign-agent-proxy-intermediate-ca",
 
   // Dynamic Secret Leases
   CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",

@@ -17,7 +17,8 @@ export type TProxiedServiceCredential = {
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
 };
 
-export type TProxiedService = {
+// Shape returned by the DELETE endpoint (base schema, no credentials).
+export type TProxiedServiceBase = {
   id: string;
   name: string;
   hostPattern: string;
@@ -25,7 +26,9 @@ export type TProxiedService = {
   folderId: string;
   createdAt: string;
   updatedAt: string;
-  canProxy?: boolean;
+};
+
+export type TProxiedService = TProxiedServiceBase & {
   credentials: TProxiedServiceCredential[];
 };
 
@@ -64,7 +67,6 @@ export type TCreateProxiedServiceDTO = {
 
 export type TUpdateProxiedServiceDTO = {
   serviceId: string;
-  projectId: string;
   name?: string;
   hostPattern?: string;
   isEnabled?: boolean;
@@ -73,11 +75,4 @@ export type TUpdateProxiedServiceDTO = {
 
 export type TDeleteProxiedServiceDTO = {
   serviceId: string;
-  projectId: string;
-};
-
-export type TListProxiedServicesDTO = {
-  projectId: string;
-  environment: string;
-  secretPath: string;
 };

@@ -47,7 +47,11 @@ export const ProxiedServiceItem = ({ proxiedService, onEdit, onDelete }: Props) 
         <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center gap-x-2.5">
             <span>{name}</span>
-            <Badge variant="neutral">{hostPattern}</Badge>
+            <Badge variant="neutral" className="max-w-[240px] overflow-hidden">
+              <span className="block max-w-[240px] truncate" title={hostPattern}>
+                {hostPattern}
+              </span>
+            </Badge>
             {!isEnabled && <Badge variant="neutral">Disabled</Badge>}
           </div>
         </div>

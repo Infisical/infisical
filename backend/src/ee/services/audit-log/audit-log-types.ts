@@ -819,11 +819,14 @@ export enum EventType {
   CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
   UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
   DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  GET_DYNAMIC_SECRET = "get-dynamic-secret",
+  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Proxied Services
   CREATE_PROXIED_SERVICE = "create-proxied-service",
   UPDATE_PROXIED_SERVICE = "update-proxied-service",
   DELETE_PROXIED_SERVICE = "delete-proxied-service",
-  GET_DYNAMIC_SECRET = "get-dynamic-secret",
-  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+  SIGN_AGENT_PROXY_INTERMEDIATE_CA = "sign-agent-proxy-intermediate-ca",
 
   // Dynamic Secret Leases
   CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
@@ -6910,6 +6913,28 @@ interface DeleteDynamicSecretEvent {
   };
 }
 
+interface GetDynamicSecretEvent {
+  type: EventType.GET_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretsEvent {
+  type: EventType.LIST_DYNAMIC_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
 interface CreateProxiedServiceEvent {
   type: EventType.CREATE_PROXIED_SERVICE;
   metadata: {
@@ -6946,25 +6971,11 @@ interface DeleteProxiedServiceEvent {
   };
 }
 
-interface GetDynamicSecretEvent {
-  type: EventType.GET_DYNAMIC_SECRET;
+interface SignAgentProxyIntermediateCaEvent {
+  type: EventType.SIGN_AGENT_PROXY_INTERMEDIATE_CA;
   metadata: {
-    dynamicSecretName: string;
-    dynamicSecretId: string;
-    dynamicSecretType: string;
-
-    environment: string;
-    secretPath: string;
-    projectId: string;
-  };
-}
-
-interface ListDynamicSecretsEvent {
-  type: EventType.LIST_DYNAMIC_SECRETS;
-  metadata: {
-    environment: string;
-    secretPath: string;
-    projectId: string;
+    serialNumber: string;
+    expiration: string;
   };
 }
 
@@ -7996,13 +8007,14 @@ export type Event =
   | McpServerSyncToolsEvent
   | McpActivityLogListEvent
   | CreateDynamicSecretEvent
-  | CreateProxiedServiceEvent
-  | UpdateProxiedServiceEvent
-  | DeleteProxiedServiceEvent
   | UpdateDynamicSecretEvent
   | DeleteDynamicSecretEvent
   | GetDynamicSecretEvent
   | ListDynamicSecretsEvent
+  | CreateProxiedServiceEvent
+  | UpdateProxiedServiceEvent
+  | DeleteProxiedServiceEvent
+  | SignAgentProxyIntermediateCaEvent
   | ListDynamicSecretLeasesEvent
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent

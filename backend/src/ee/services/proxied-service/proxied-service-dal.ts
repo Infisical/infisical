@@ -2,7 +2,9 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
 export type TProxiedServiceDALFactory = ReturnType<typeof proxiedServiceDALFactory>;
 
@@ -31,6 +33,58 @@ export type TProxiedServiceScoped = {
   updatedAt: Date;
 };
 
+// Shared shape for a scoped-with-env row selected off the ProxiedService + Environment + Folder join.
+const scopedSelectColumns = (db: TDbClient) => [
+  db.ref("id").withSchema(TableName.ProxiedService),
+  db.ref("name").withSchema(TableName.ProxiedService),
+  db.ref("hostPattern").withSchema(TableName.ProxiedService),
+  db.ref("isEnabled").withSchema(TableName.ProxiedService),
+  db.ref("folderId").withSchema(TableName.ProxiedService),
+  db.ref("createdAt").withSchema(TableName.ProxiedService),
+  db.ref("updatedAt").withSchema(TableName.ProxiedService),
+  db.ref("projectId").withSchema(TableName.Environment).as("projectId"),
+  db.ref("id").withSchema(TableName.Environment).as("envId"),
+  db.ref("name").withSchema(TableName.Environment).as("envName"),
+  db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+  db.ref("name").withSchema(TableName.SecretFolder).as("folderName")
+];
+
+type TScopedRow = {
+  id: string;
+  name: string;
+  hostPattern: string;
+  isEnabled: boolean;
+  folderId: string;
+  projectId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  envId: string;
+  envName: string;
+  envSlug: string;
+  folderName: string;
+};
+
+const mapRowToScope = (row: TScopedRow): TProxiedServiceWithScope => ({
+  id: row.id,
+  name: row.name,
+  hostPattern: row.hostPattern,
+  isEnabled: row.isEnabled,
+  folderId: row.folderId,
+  projectId: row.projectId,
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+  environment: {
+    id: row.envId,
+    name: row.envName,
+    slug: row.envSlug
+  },
+  // NOTE: this is the folder's own name, not its full path. Callers that surface this to clients
+  // (e.g. the dashboard aggregate) must override it with the canonical secret path.
+  folder: {
+    path: row.folderName
+  }
+});
+
 export const proxiedServiceDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ProxiedService);
 
@@ -42,43 +96,65 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
       .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.ProxiedService}.folderId`)
       .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
-      .select(
-        db.ref("id").withSchema(TableName.ProxiedService),
-        db.ref("name").withSchema(TableName.ProxiedService),
-        db.ref("hostPattern").withSchema(TableName.ProxiedService),
-        db.ref("isEnabled").withSchema(TableName.ProxiedService),
-        db.ref("folderId").withSchema(TableName.ProxiedService),
-        db.ref("createdAt").withSchema(TableName.ProxiedService),
-        db.ref("updatedAt").withSchema(TableName.ProxiedService)
-      )
-      .select(
-        db.ref("projectId").withSchema(TableName.Environment).as("projectId"),
-        db.ref("id").withSchema(TableName.Environment).as("envId"),
-        db.ref("name").withSchema(TableName.Environment).as("envName"),
-        db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-        db.ref("name").withSchema(TableName.SecretFolder).as("folderName")
-      );
+      .select(scopedSelectColumns(db));
 
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      hostPattern: row.hostPattern,
-      isEnabled: row.isEnabled,
-      folderId: row.folderId,
-      projectId: row.projectId,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      environment: {
-        id: row.envId,
-        name: row.envName,
-        slug: row.envSlug
-      },
-      // NOTE: this is the folder's own name, not its full path. Callers that surface this to clients
-      // (e.g. the dashboard aggregate) must override it with the canonical secret path.
-      folder: {
-        path: row.folderName
-      }
-    }));
+    return rows.map(mapRowToScope);
+  };
+
+  // Multi-env dashboard listing: folder IDs span environments, so the same service name can appear
+  // once per environment. We DENSE_RANK by name and window on the rank (mirrors dynamic secrets) so
+  // limit/offset count UNIQUE NAMES and every env-row of a paged-in name stays together -- matching
+  // countByFolderIds (countDistinct name) and the router's unique-name limit accounting.
+  const findDashboardByFolderIds = async (
+    {
+      folderIds,
+      search,
+      limit,
+      offset = 0,
+      orderDirection = OrderByDirection.ASC
+    }: {
+      folderIds: string[];
+      search?: string;
+      limit?: number;
+      offset?: number;
+      orderDirection?: OrderByDirection;
+    },
+    tx?: Knex
+  ): Promise<TProxiedServiceWithScope[]> => {
+    if (!folderIds.length) return [];
+
+    const query = (tx || db.replicaNode())(TableName.ProxiedService)
+      .whereIn(`${TableName.ProxiedService}.folderId`, folderIds)
+      .where((bd) => {
+        // same ilike predicate as countByFolderIds so count and list never diverge
+        if (search) {
+          void bd.whereILike(`${TableName.ProxiedService}.name`, `%${sanitizeSqlLikeString(search)}%`);
+        }
+      })
+      .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.ProxiedService}.folderId`)
+      .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .select(
+        ...scopedSelectColumns(db),
+        // orderDirection is a constrained enum (asc|desc), safe to interpolate
+        db.raw(`DENSE_RANK() OVER (ORDER BY ${TableName.ProxiedService}."name" ${orderDirection}) as rank`)
+      )
+      .orderBy(`${TableName.ProxiedService}.name`, orderDirection);
+
+    let rows: TScopedRow[];
+    if (limit) {
+      const rankOffset = offset + 1;
+      rows = await (tx || db.replicaNode())
+        .with("w", query)
+        .select("*")
+        .from<TScopedRow>("w")
+        .where("w.rank", ">=", rankOffset)
+        .andWhere("w.rank", "<", rankOffset + limit);
+    } else {
+      rows = await query;
+    }
+
+    return rows.map(mapRowToScope);
   };
 
   const countByFolderIds = async (folderIds: string[], search?: string, tx?: Knex) => {
@@ -89,7 +165,7 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
     );
 
     if (search) {
-      void query.where(`${TableName.ProxiedService}.name`, "ilike", `%${search}%`);
+      void query.whereILike(`${TableName.ProxiedService}.name`, `%${sanitizeSqlLikeString(search)}%`);
     }
 
     const [result] = await query.countDistinct<{ count: string | number }>({
@@ -137,6 +213,7 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findByFolderIds,
+    findDashboardByFolderIds,
     countByFolderIds,
     findByIdWithScope
   };

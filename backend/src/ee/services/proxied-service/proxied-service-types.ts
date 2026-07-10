@@ -61,6 +61,7 @@ export type TProxiedServiceDashboardListDTO = {
   environments: string[];
   secretPath: string;
   search?: string;
+  // accepted for parity with the dashboard router's query param; the DAL always orders by name
   orderBy?: "name";
   orderDirection?: OrderByDirection;
   limit?: number;
