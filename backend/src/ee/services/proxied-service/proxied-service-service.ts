@@ -73,7 +73,16 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
-  const $validateSecretReferences = async (folderId: string, credentials: TProxiedServiceCredentialInput[]) => {
+  // Validates every referenced secret exists and that the caller holds ReadValue on it. The check is
+  // per-key and tag-aware so a deny rule scoped by secret name or tag can't be bypassed to wire in a
+  // secret the caller can't read (the proxy would otherwise broker its value on their behalf).
+  const $assertReferencedSecretsReadable = async (
+    permission: MongoAbility<ProjectPermissionSet>,
+    environment: string,
+    secretPath: string,
+    folderId: string,
+    credentials: TProxiedServiceCredentialInput[]
+  ) => {
     const uniqueKeys = [...new Set(credentials.map((c) => c.secretKey))];
     if (!uniqueKeys.length) return;
 
@@ -81,30 +90,23 @@ export const proxiedServiceServiceFactory = ({
       folderId,
       uniqueKeys.map((key) => ({ key, type: SecretType.Shared }))
     );
-    const foundKeys = new Set(found.map((s) => s.key));
-    const missing = uniqueKeys.filter((key) => !foundKeys.has(key));
+    const tagsByKey = new Map(found.map((s) => [s.key, s.tags?.map((t) => t.slug) ?? []]));
+
+    uniqueKeys.forEach((secretName) => {
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath,
+        secretName,
+        secretTags: tagsByKey.get(secretName) ?? []
+      });
+    });
+
+    const missing = uniqueKeys.filter((key) => !tagsByKey.has(key));
     if (missing.length) {
       throw new BadRequestError({
         message: `Referenced secret(s) not found in folder: ${missing.join(", ")}`
       });
     }
-  };
-
-  // per-key ReadValue check: a deny rule on a specific secret can't be bypassed by folder-wide ReadValue
-  const $assertCanReadReferencedSecrets = (
-    permission: MongoAbility<ProjectPermissionSet>,
-    environment: string,
-    secretPath: string,
-    credentials: TProxiedServiceCredentialInput[]
-  ) => {
-    const uniqueKeys = [...new Set(credentials.map((c) => c.secretKey))];
-    uniqueKeys.forEach((secretName) => {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment,
-        secretPath,
-        secretName
-      });
-    });
   };
 
   const $resolveSecretPath = async (projectId: string, folderId: string) => {
@@ -134,7 +136,6 @@ export const proxiedServiceServiceFactory = ({
       ProjectPermissionProxiedServiceActions.Create,
       subject(ProjectPermissionSub.ProxiedServices, { environment, secretPath: canonicalPath })
     );
-    $assertCanReadReferencedSecrets(permission, environment, canonicalPath, credentials);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
@@ -143,12 +144,12 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
+    await $assertReferencedSecretsReadable(permission, environment, canonicalPath, folder.id, credentials);
+
     const existing = await proxiedServiceDAL.findOne({ folderId: folder.id, name });
     if (existing) {
       throw new BadRequestError({ message: `A proxied service named "${name}" already exists in this folder` });
     }
-
-    await $validateSecretReferences(folder.id, credentials);
 
     return proxiedServiceDAL.transaction(async (tx) => {
       const service = await proxiedServiceDAL.create(
@@ -314,8 +315,13 @@ export const proxiedServiceServiceFactory = ({
     }
 
     if (credentials) {
-      $assertCanReadReferencedSecrets(permission, service.environmentSlug, resolvedSecretPath, credentials);
-      await $validateSecretReferences(service.folderId, credentials);
+      await $assertReferencedSecretsReadable(
+        permission,
+        service.environmentSlug,
+        resolvedSecretPath,
+        service.folderId,
+        credentials
+      );
     }
 
     const serviceUpdate = {
