@@ -241,7 +241,6 @@ export const auditLogDALFactory = (db: TDbClient) => {
           const findExpiredLogSubQuery = trx(TableName.AuditLog)
             .where("expiresAt", "<", today)
             .where("createdAt", "<", today) // to use audit log partition
-            .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
             .select("id")
             .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
 
