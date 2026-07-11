@@ -262,14 +262,19 @@ export const ProxiedServiceForm = ({
                 <InfoIcon />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
-                The hosts this service applies to. Match an exact host, a wildcard (*.stripe.com),
-                or a port/path (api.stripe.com:443/v1/*). Comma-separate multiple patterns.
+                <p>
+                  The hosts whose traffic this service brokers. Separate multiple with commas, for
+                  example:
+                </p>
+                <p className="mt-1.5 font-mono">
+                  api.stripe.com, *.github.com/v1/*, internal.corp.com:8443
+                </p>
               </TooltipContent>
             </Tooltip>
           </FieldLabel>
           <FieldContent>
             <Input
-              placeholder="api.stripe.com"
+              placeholder="api.stripe.com, *.github.com/v1/*"
               isError={Boolean(errors.hostPattern)}
               {...register("hostPattern")}
             />
@@ -460,7 +465,18 @@ export const ProxiedServiceForm = ({
               <div key={row.id} className="flex flex-col gap-3 rounded-md border border-border p-3">
                 <div className="flex items-start gap-3">
                   <Field className="flex-1">
-                    <FieldLabel className="text-xs">Environment Variable</FieldLabel>
+                    <FieldLabel className="text-xs">
+                      Environment Variable
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          Infisical sets this environment variable on the agent for you, holding the
+                          placeholder value.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
                     <FieldContent>
                       <Input
                         placeholder="ENV_VAR_NAME"
@@ -471,15 +487,25 @@ export const ProxiedServiceForm = ({
                     </FieldContent>
                   </Field>
                   <Field className="flex-1">
-                    <FieldLabel className="text-xs">Placeholder Value</FieldLabel>
+                    <FieldLabel className="text-xs">
+                      Placeholder Value
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          The fake value the agent sends in place of the real secret. The proxy
+                          swaps it for the real credential on the wire.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
                     <FieldContent>
-                      <Controller
-                        control={control}
-                        name={`substitutions.${i}.placeholderValue`}
-                        render={({ field }) => (
-                          <Input readOnly value={field.value} />
-                        )}
+                      <Input
+                        placeholder="placeholder_value"
+                        isError={Boolean(errors.substitutions?.[i]?.placeholderValue)}
+                        {...register(`substitutions.${i}.placeholderValue`)}
                       />
+                      <FieldError errors={[errors.substitutions?.[i]?.placeholderValue]} />
                     </FieldContent>
                   </Field>
                   <IconButton
