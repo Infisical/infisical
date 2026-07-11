@@ -312,10 +312,7 @@ export const ProxiedServiceForm = ({
                     <Field className="w-28">
                       {i === 0 && <FieldLabel className="text-xs">Prefix</FieldLabel>}
                       <FieldContent>
-                        <Input
-                          placeholder="Bearer"
-                          {...register(`headers.${i}.headerPrefix`)}
-                        />
+                        <Input placeholder="Bearer" {...register(`headers.${i}.headerPrefix`)} />
                       </FieldContent>
                     </Field>
                     <Field className="flex-1">
@@ -444,14 +441,14 @@ export const ProxiedServiceForm = ({
                   <InfoIcon className="size-3.5 text-muted" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  The placeholder is delivered as an environment variable your application reads.
-                  Your application sends that placeholder value in its request, and the proxy swaps
-                  it for the real secret on the wire.
+                  The placeholder is delivered as an environment variable the agent reads. The agent
+                  sends that placeholder value in its request, and the proxy swaps it for the real
+                  secret on the wire.
                 </TooltipContent>
               </Tooltip>
             </div>
             <p className="mt-1 text-xs text-muted">
-              Swap a placeholder in the request for the real credential, on the wire.
+              Swap a placeholder in the request for the real secret, on the wire.
             </p>
           </div>
 
@@ -494,8 +491,8 @@ export const ProxiedServiceForm = ({
                           <InfoIcon />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
-                          The fake value the agent sends in place of the real secret. The proxy
-                          swaps it for the real credential on the wire.
+                          The value the agent sends instead of the real secret; the proxy swaps it
+                          on the wire.
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
