@@ -55,7 +55,8 @@ export const SecretSelect = ({
     projectId,
     environment,
     secretPath,
-    viewSecretValue: false
+    viewSecretValue: false,
+    options: { staleTime: 0 }
   });
 
   const options: SecretOption[] = secrets.map((secret) => ({
