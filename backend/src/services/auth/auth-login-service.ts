@@ -730,7 +730,7 @@ export const authLoginServiceFactory = ({
     // MFA-management step-up isn't re-prompted right after login - including recovery-code
     // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
     // by the new session's tokenVersionId so no other session inherits it.
-    await mfaLockoutService.recordRecentMfaAuth(token.tokenVersionId);
+    await mfaLockoutService.recordRecentMfaAuth(user.id, token.tokenVersionId);
 
     if (isRecoveryCode && userEnc.email) {
       await smtpService

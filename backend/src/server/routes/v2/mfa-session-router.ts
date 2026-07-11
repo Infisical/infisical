@@ -69,9 +69,14 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "MFA session status requires a user session" });
+      }
+
       const result = await server.services.mfaSession.getMfaSessionStatus({
         mfaSessionId: req.params.mfaSessionId,
-        userId: req.permission.id
+        userId: req.permission.id,
+        tokenVersionId: req.auth.tokenVersionId
       });
 
       return result;

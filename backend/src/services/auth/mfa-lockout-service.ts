@@ -199,19 +199,20 @@ export const mfaLockoutServiceFactory = ({
   // within this window an MFA-management step-up on that same session is redundant. This
   // is what lets a user who lost their only configured factor, and logged in via a
   // recovery code, still reach their MFA settings to disable it or switch the preferred
-  // method. Keyed by tokenVersionId (the session), NOT the user, so proving MFA in one
-  // session never authorizes another (older/stolen) session. Self-clears on TTL; if the
-  // window lapses, another login on that session re-opens it.
-  const recordRecentMfaAuth = async (tokenVersionId: string) => {
+  // method. Keyed by userId + tokenVersionId (the session), NOT the user alone, so proving
+  // MFA in one session never authorizes another (older/stolen) session; the userId prefix
+  // namespaces the session id to its owner. Self-clears on TTL; if the window lapses,
+  // another login on that session re-opens it.
+  const recordRecentMfaAuth = async (userId: string, tokenVersionId: string) => {
     await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.RecentMfaAuth(tokenVersionId),
-      KeyStoreTtls.MfaSessionInSeconds,
+      KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId),
+      KeyStoreTtls.RecentMfaAuthInSeconds,
       "1"
     );
   };
 
-  const hasRecentMfaAuth = async (tokenVersionId: string): Promise<boolean> => {
-    return Boolean(await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(tokenVersionId)));
+  const hasRecentMfaAuth = async (userId: string, tokenVersionId: string): Promise<boolean> => {
+    return Boolean(await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId)));
   };
 
   return {

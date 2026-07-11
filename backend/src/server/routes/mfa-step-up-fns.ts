@@ -23,7 +23,7 @@ export const getStepUpSessionId = (req: FastifyRequest): string => {
  * action, reusing the Redis-backed step-up MFA session primitive (mirrors the PAM
  * account-access flow).
  *
- * A verified session is reusable for the remainder of its TTL (10 min) and is bound
+ * A verified session is reusable for the remainder of its TTL (5 min) and is bound
  * to `resourceId`, so it cannot be replayed against a different action.
  *
  * - With a valid, verified session for this user + resource: returns immediately.
@@ -62,7 +62,8 @@ export const ensureStepUpMfa = async (
     (await server.services.mfaSession.isMfaSessionActive({
       mfaSessionId,
       userId,
-      resourceId
+      resourceId,
+      tokenVersionId
     }))
   ) {
     return;
@@ -70,7 +71,7 @@ export const ensureStepUpMfa = async (
 
   if (
     resourceId === MfaStepUpResource.MfaManagement &&
-    (await server.services.mfaSession.hasRecentMfaAuth(tokenVersionId))
+    (await server.services.mfaSession.hasRecentMfaAuth(userId, tokenVersionId))
   ) {
     return;
   }
@@ -81,7 +82,12 @@ export const ensureStepUpMfa = async (
 
   const mfaMethod = mfaMethodOverride ?? (await server.services.user.getStepUpMfaMethod(userId, orgId));
 
-  const newMfaSessionId = await server.services.mfaSession.createMfaSession(userId, resourceId, mfaMethod);
+  const newMfaSessionId = await server.services.mfaSession.createMfaSession(
+    userId,
+    resourceId,
+    mfaMethod,
+    tokenVersionId
+  );
 
   if (mfaMethod === MfaMethod.EMAIL && user.email) {
     await server.services.mfaSession.sendMfaCode(userId, user.email);

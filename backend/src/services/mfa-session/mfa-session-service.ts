@@ -60,14 +60,27 @@ export const mfaSessionServiceFactory = ({
   // low-value PAM account) can never be replayed against another (e.g. recovery
   // codes). verifyMfaSession only flips PENDING -> ACTIVE; the resource binding
   // is enforced here at the point of use.
-  const isMfaSessionActive = async ({ mfaSessionId, userId, resourceId }: TIsMfaSessionActiveDTO): Promise<boolean> => {
+  const isMfaSessionActive = async ({
+    mfaSessionId,
+    userId,
+    resourceId,
+    tokenVersionId
+  }: TIsMfaSessionActiveDTO): Promise<boolean> => {
     const mfaSession = await getMfaSession(mfaSessionId);
-    return Boolean(
-      mfaSession &&
-        mfaSession.userId === userId &&
-        mfaSession.resourceId === resourceId &&
-        mfaSession.status === MfaSessionStatus.ACTIVE
-    );
+    if (
+      !mfaSession ||
+      mfaSession.userId !== userId ||
+      mfaSession.resourceId !== resourceId ||
+      mfaSession.status !== MfaSessionStatus.ACTIVE
+    ) {
+      return false;
+    }
+
+    if (resourceId === MfaStepUpResource.MfaManagement && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+      return false;
+    }
+
+    return true;
   };
 
   // Helper function to update MFA session in Redis
@@ -134,6 +147,15 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
+    if (
+      mfaSession.resourceId === MfaStepUpResource.MfaManagement &&
+      mfaSession.initiatingTokenVersionId !== tokenVersionId
+    ) {
+      throw new ForbiddenRequestError({
+        message: "MFA session does not belong to current session"
+      });
+    }
+
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
 
     await mfaLockoutService.reserveStepUpMfaAttempt(userId);
@@ -178,7 +200,7 @@ export const mfaSessionServiceFactory = ({
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
 
     if (mfaSession.resourceId === MfaStepUpResource.MfaManagement) {
-      await mfaLockoutService.recordRecentMfaAuth(tokenVersionId);
+      await mfaLockoutService.recordRecentMfaAuth(userId, tokenVersionId);
     }
 
     return {
@@ -187,7 +209,7 @@ export const mfaSessionServiceFactory = ({
     };
   };
 
-  const getMfaSessionStatus = async ({ mfaSessionId, userId }: TGetMfaSessionStatusDTO) => {
+  const getMfaSessionStatus = async ({ mfaSessionId, userId, tokenVersionId }: TGetMfaSessionStatusDTO) => {
     const mfaSession = await getMfaSession(mfaSessionId);
 
     if (!mfaSession) {
@@ -202,20 +224,35 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
+    if (
+      mfaSession.resourceId === MfaStepUpResource.MfaManagement &&
+      mfaSession.initiatingTokenVersionId !== tokenVersionId
+    ) {
+      throw new ForbiddenRequestError({
+        message: "MFA session does not belong to current session"
+      });
+    }
+
     return {
       status: mfaSession.status,
       mfaMethod: mfaSession.mfaMethod
     };
   };
 
-  const createMfaSession = async (userId: string, resourceId: string, mfaMethod: MfaMethod): Promise<string> => {
+  const createMfaSession = async (
+    userId: string,
+    resourceId: string,
+    mfaMethod: MfaMethod,
+    initiatingTokenVersionId?: string
+  ): Promise<string> => {
     const mfaSessionId = crypto.randomBytes(32).toString("hex");
     const mfaSession: TMfaSession = {
       sessionId: mfaSessionId,
       userId,
       resourceId,
       status: MfaSessionStatus.PENDING,
-      mfaMethod
+      mfaMethod,
+      initiatingTokenVersionId
     };
 
     await keyStore.setItemWithExpiry(
@@ -241,8 +278,8 @@ export const mfaSessionServiceFactory = ({
   // True when THIS session (tokenVersionId) completed a full MFA login or management
   // step-up recently, so an MFA-management step-up can be skipped within the grace
   // window (see recordRecentMfaAuth). Session-scoped, never user-scoped.
-  const hasRecentMfaAuth = async (tokenVersionId: string): Promise<boolean> => {
-    return mfaLockoutService.hasRecentMfaAuth(tokenVersionId);
+  const hasRecentMfaAuth = async (userId: string, tokenVersionId: string): Promise<boolean> => {
+    return mfaLockoutService.hasRecentMfaAuth(userId, tokenVersionId);
   };
 
   return {
