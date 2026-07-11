@@ -19,7 +19,7 @@ export const CreateProxiedServiceModal = ({
 }: Props) => {
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-2xl">
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-3xl">
         <SheetHeader className="border-b">
           <SheetTitle>Create Proxied Service</SheetTitle>
           <SheetDescription>

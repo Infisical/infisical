@@ -459,66 +459,57 @@ export const ProxiedServiceForm = ({
               </p>
             )}
             {substitutionFields.fields.map((row, i) => (
-              <div key={row.id} className="flex flex-col gap-3 rounded-md border border-border p-3">
-                <div className="flex items-start gap-3">
-                  <Field className="flex-1">
-                    <FieldLabel className="text-xs">
-                      Environment Variable
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          Infisical sets this environment variable on the agent for you, holding the
-                          placeholder value.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
-                    <FieldContent>
-                      <Input
-                        placeholder="ENV_VAR_NAME"
-                        isError={Boolean(errors.substitutions?.[i]?.placeholderKey)}
-                        {...register(`substitutions.${i}.placeholderKey`)}
-                      />
-                      <FieldError errors={[errors.substitutions?.[i]?.placeholderKey]} />
-                    </FieldContent>
-                  </Field>
-                  <Field className="flex-1">
-                    <FieldLabel className="text-xs">
-                      Placeholder Value
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          The value the agent sends instead of the real secret; the proxy swaps it
-                          on the wire.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
-                    <FieldContent>
-                      <Input
-                        placeholder="placeholder_value"
-                        isError={Boolean(errors.substitutions?.[i]?.placeholderValue)}
-                        {...register(`substitutions.${i}.placeholderValue`)}
-                      />
-                      <FieldError errors={[errors.substitutions?.[i]?.placeholderValue]} />
-                    </FieldContent>
-                  </Field>
+              <div
+                key={row.id}
+                className="flex flex-col gap-3 rounded-md border border-border p-4 text-sm"
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+                  <span className="shrink-0 text-muted">Set</span>
+                  <Input
+                    className="w-44 font-mono"
+                    placeholder="ENV_VAR_NAME"
+                    isError={Boolean(errors.substitutions?.[i]?.placeholderKey)}
+                    {...register(`substitutions.${i}.placeholderKey`)}
+                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      Infisical sets this environment variable on the agent for you, holding the
+                      placeholder value.
+                    </TooltipContent>
+                  </Tooltip>
+                  <span className="shrink-0 text-muted">to the placeholder</span>
+                  <Input
+                    className="min-w-0 flex-1 font-mono"
+                    placeholder="placeholder_value"
+                    isError={Boolean(errors.substitutions?.[i]?.placeholderValue)}
+                    {...register(`substitutions.${i}.placeholderValue`)}
+                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      The value the agent sends instead of the real secret; the proxy swaps it on
+                      the wire.
+                    </TooltipContent>
+                  </Tooltip>
                   <IconButton
                     variant="ghost"
                     size="xs"
                     type="button"
                     aria-label="Remove substitution"
-                    className="mt-6.5 transition-transform hover:text-danger"
+                    className="shrink-0 transition-transform hover:text-danger"
                     onClick={() => substitutionFields.remove(i)}
                   >
                     <TrashIcon className="size-4" />
                   </IconButton>
                 </div>
-                <Field>
-                  <FieldLabel className="text-xs">Replace In</FieldLabel>
-                  <FieldContent>
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-muted">and replace it in</span>
+                  <div className="flex-1">
                     <Controller
                       control={control}
                       name={`substitutions.${i}.surfaces`}
@@ -526,12 +517,11 @@ export const ProxiedServiceForm = ({
                         <SurfaceSelect value={field.value} onChange={field.onChange} />
                       )}
                     />
-                    <FieldError errors={[errors.substitutions?.[i]?.surfaces]} />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel className="text-xs">Secret</FieldLabel>
-                  <FieldContent>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-muted">with value of</span>
+                  <div className="flex-1">
                     <Controller
                       control={control}
                       name={`substitutions.${i}.secretKey`}
@@ -546,9 +536,16 @@ export const ProxiedServiceForm = ({
                         />
                       )}
                     />
-                    <FieldError errors={[errors.substitutions?.[i]?.secretKey]} />
-                  </FieldContent>
-                </Field>
+                  </div>
+                </div>
+                <FieldError
+                  errors={[
+                    errors.substitutions?.[i]?.placeholderKey,
+                    errors.substitutions?.[i]?.placeholderValue,
+                    errors.substitutions?.[i]?.surfaces,
+                    errors.substitutions?.[i]?.secretKey
+                  ]}
+                />
               </div>
             ))}
           </div>
