@@ -15,7 +15,7 @@ description: "Learn how to configure a Supabase Sync for Infisical."
     - **Where the failure surfaces:** The sync's `syncStatus` becomes `failed`, `lastSyncMessage` records the Supabase error, and auto-sync retries on its normal schedule. The error names the first secret key in the failing batch, not every affected key.
     - **Deletion mode interaction:** With **Disable Secret Deletion** off, Infisical writes new secrets first and then deletes destination secrets no longer present in the source. Because the delete phase runs after the create phase, deleting a secret cannot free up capacity in the same sync run — if the destination is at 100 and you want the sync to free the slot itself, either lower the source below 100 first or clear the unwanted secret manually in Supabase.
 
-    Reserved Supabase-managed keys (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`) are always skipped by the sync and count against the 100-cap on the Supabase side.
+    Supabase reserves four managed keys — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`. They always count against the 100-cap on the Supabase side. The sync only excludes them from **deletes** (so it will never remove one), but it does **not** filter them out of writes — if a secret in your Infisical source path shares one of these names, the sync will attempt to overwrite it on Supabase. Rename any such secrets in Infisical before enabling the sync to avoid the collision.
 </Warning>
 
 <Tabs>
