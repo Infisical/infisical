@@ -15,10 +15,10 @@ export const IntegrationDocsCard = ({ name, category, description, href, image, 
     href={href}
     target="_blank"
     rel="noopener noreferrer"
-    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/15 hover:bg-container-hover"
   >
     <div className="flex items-start justify-between gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-foreground/5 shadow-inner">
         {image ? (
           <img
             src={`/images/integrations/${image}.png`}
