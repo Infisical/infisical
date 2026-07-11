@@ -31,14 +31,13 @@ const WindowsDestinationPathSchema = z
   .trim()
   .min(1, "Destination path is required")
   .max(4096, "Destination path is too long")
-  .refine((p) => /^([a-zA-Z]:\\|\\\\)/.test(p), {
-    message:
-      "Destination path must be an absolute Windows path (for example C:\\certs or \\\\server\\share)"
+  .refine((p) => /^[a-zA-Z]:\\/.test(p), {
+    message: "Destination path must be an absolute Windows drive path (for example C:\\certs)"
   })
   .refine((p) => !/(^|[\\/])\.\.([\\/]|$)/.test(p), {
     message: "Destination path must not contain '..'"
   })
-  .refine((p) => !/[\\/]{2,}/.test(p.startsWith("\\\\") ? p.slice(2) : p), {
+  .refine((p) => !/[\\/]{2,}/.test(p), {
     message: "Destination path must not contain consecutive path separators"
   });
 

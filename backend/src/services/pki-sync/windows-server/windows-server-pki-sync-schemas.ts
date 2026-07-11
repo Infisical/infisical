@@ -10,8 +10,10 @@ import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { WINDOWS_SERVER_NAMING } from "./windows-server-pki-sync-constants";
 
-// Accepts a drive-letter path (C:\...) or a UNC path (\\server\share\...).
-const WINDOWS_ABSOLUTE_PATH = new RE2("^([a-zA-Z]:\\\\|\\\\\\\\)");
+// Accepts only a local drive-letter path (C:\...). UNC paths (\\server\share) are rejected: a
+// UNC destination would make the target host authenticate to, and write private key material to, an
+// arbitrary SMB server, so remote shares must go through a separately authorized connection instead.
+const WINDOWS_ABSOLUTE_PATH = new RE2("^[a-zA-Z]:\\\\");
 // Rejects a ".." path segment. Windows treats both "\" and "/" as separators, so both must be
 // checked or "C:\certs/../.." would slip past a backslash-only test.
 const WINDOWS_PATH_TRAVERSAL = new RE2("(^|[\\\\/])\\.\\.([\\\\/]|$)");
@@ -20,7 +22,7 @@ const WINDOWS_PATH_TRAVERSAL = new RE2("(^|[\\\\/])\\.\\.([\\\\/]|$)");
 // code points PowerShell also treats as string delimiters, so it cannot break out of the literal.
 const WINDOWS_PATH_ALLOWED_CHARS = new RE2("^[A-Za-z0-9 ._\\-\\\\/:]+$");
 // Runs of 2+ separators (e.g. C:\\certs). Windows can normalize these to a different location, so a
-// delivery would silently land elsewhere; a single leading UNC prefix (\\server) is stripped first.
+// delivery would silently land elsewhere.
 const WINDOWS_DOUBLE_SEPARATOR = new RE2("[\\\\/]{2,}");
 
 export const WindowsServerPkiSyncConfigSchema = z.object({
@@ -30,13 +32,13 @@ export const WindowsServerPkiSyncConfigSchema = z.object({
     .min(1, "Destination path is required")
     .max(4096, "Destination path is too long")
     .refine((p) => WINDOWS_ABSOLUTE_PATH.test(p), {
-      message: "Destination path must be an absolute Windows path (for example C:\\certs or \\\\server\\share)"
+      message: "Destination path must be an absolute Windows drive path (for example C:\\certs)"
     })
     .refine((p) => WINDOWS_PATH_ALLOWED_CHARS.test(p), {
       message: "Destination path may only contain letters, digits, spaces, and the characters . _ - \\ / :"
     })
     .refine((p) => !WINDOWS_PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" })
-    .refine((p) => !WINDOWS_DOUBLE_SEPARATOR.test(p.startsWith("\\\\") ? p.slice(2) : p), {
+    .refine((p) => !WINDOWS_DOUBLE_SEPARATOR.test(p), {
       message: "Destination path must not contain consecutive path separators"
     })
 });

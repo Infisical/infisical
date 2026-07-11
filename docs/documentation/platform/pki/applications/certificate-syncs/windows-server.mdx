@@ -17,7 +17,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 - The connection user must be able to write to the destination directory
 
 <Note>
-  Windows delivery runs on the Gateway because it uses WinRM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with.
+  Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. WinRM connections use HTTPS, so the host must have a WinRM HTTPS listener configured.
 </Note>
 
 ## Create a Windows Server Sync
@@ -30,7 +30,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 
         3. Configure the **Destination**:
             - **Windows (WinRM) Connection**: The WinRM Connection used to reach the server.
-            - **Destination Directory**: The absolute Windows path where certificate files are written, either a drive path like `C:\certs` or a UNC share like `\\server\share\certs`. It is created if it does not exist. The path cannot contain `..` segments or consecutive separators.
+            - **Destination Directory**: The absolute Windows drive path where certificate files are written, for example `C:\certs`. It is created if it does not exist. The path cannot contain `..` segments or consecutive separators.
 
         4. Configure the **Sync Options**:
             - **Export Format**: Choose **PKCS#12** to write a single password-protected `.pfx` bundle, or **PEM** to write separate certificate, chain, and key files.
@@ -103,7 +103,7 @@ When certificate removal is enabled and a certificate is removed from the sync, 
 
 ## Using Synced Certificates with IIS Centralized Certificate Store
 
-IIS can serve a synced PKCS#12 certificate directly from a shared folder through the Centralized Certificate Store (CCS). To wire this up, set the sync to deliver into the CCS folder and make the two sides agree:
+IIS can serve a synced PKCS#12 certificate directly from a local folder through the Centralized Certificate Store (CCS). To wire this up, set the sync to deliver into the CCS folder and make the two sides agree:
 
 <Note>
   - **Export format**: PKCS#12. CCS reads `.pfx` files only.
@@ -117,7 +117,7 @@ These are IIS requirements, configured once on the Windows host (the CCS feature
 ## FAQ
 
 <Accordion title="Which transport does the sync use?">
-  By default the connection uses the standard WinRM HTTP listener on port 5985 with NTLM message encryption. HTTPS on port 5986 is also supported for hosts that require it.
+  The connection uses WinRM over HTTPS (typically port 5986), so the host must have a WinRM HTTPS listener configured. For a self-signed listener certificate, paste that certificate as the CA certificate on the connection so it can be verified; skip verification only when pinning is not possible.
 </Accordion>
 
 <Accordion title="Can I import certificates from a Windows server back into Infisical?">

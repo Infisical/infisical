@@ -16,6 +16,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -51,7 +52,7 @@ const formSchema = z
         port: z.coerce.number().int().min(1).max(65535),
         username: z.string().trim().min(1, "Username required"),
         password: z.string().min(1, "Password required"),
-        useHttps: z.boolean(),
+        caCertificate: z.string().optional(),
         insecure: z.boolean()
       })
     })
@@ -80,10 +81,10 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
       gatewayPoolId: null,
       credentials: {
         host: "",
-        port: 5985,
+        port: 5986,
         username: "",
         password: "",
-        useHttps: false,
+        caCertificate: "",
         insecure: false
       }
     }
@@ -93,7 +94,10 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const useHttps = watch("credentials.useHttps");
+  const insecure = watch("credentials.insecure");
+  const caCertificate = watch("credentials.caCertificate");
+  // eslint-disable-next-line no-nested-ternary
+  const tlsMode = insecure ? "skip" : caCertificate ? "ca" : "verify";
 
   return (
     <FormProvider {...form}>
@@ -243,62 +247,51 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
             )}
           />
         </div>
-        <Controller
-          name="credentials.useHttps"
-          control={control}
-          render={({ field: { value }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel>Transport</FieldLabel>
-              <Select
-                value={value ? "https" : "http"}
-                onValueChange={(val) => {
-                  const https = val === "https";
-                  setValue("credentials.useHttps", https, { shouldDirty: true });
-                  setValue("credentials.port", https ? 5986 : 5985, { shouldDirty: true });
-                  if (!https) {
-                    setValue("credentials.insecure", false, { shouldDirty: true });
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full" isError={Boolean(error)}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  <SelectItem value="http">
-                    HTTP with NTLM message encryption (port 5985)
-                  </SelectItem>
-                  <SelectItem value="https">HTTPS (port 5986)</SelectItem>
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                HTTP uses NTLM message encryption and needs no server certificate. HTTPS requires a
-                WinRM HTTPS listener on the host.
-              </FieldDescription>
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
-        {useHttps && (
+        <Field className="mb-4">
+          <FieldLabel>TLS Certificate Verification</FieldLabel>
+          <Select
+            value={tlsMode}
+            onValueChange={(val) => {
+              if (val === "skip") {
+                setValue("credentials.insecure", true, { shouldDirty: true });
+                setValue("credentials.caCertificate", "", { shouldDirty: true });
+              } else if (val === "ca") {
+                setValue("credentials.insecure", false, { shouldDirty: true });
+              } else {
+                setValue("credentials.insecure", false, { shouldDirty: true });
+                setValue("credentials.caCertificate", "", { shouldDirty: true });
+              }
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="verify">Verify with system trust store</SelectItem>
+              <SelectItem value="ca">Verify with a CA certificate</SelectItem>
+              <SelectItem value="skip">Skip verification (self-signed listener)</SelectItem>
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            WinRM connections use HTTPS. For a self-signed listener, pin its CA certificate to keep
+            server authentication. Skip verification only as a last resort: it gives confidentiality
+            but does not authenticate the server.
+          </FieldDescription>
+        </Field>
+        {tlsMode === "ca" && (
           <Controller
-            name="credentials.insecure"
+            name="credentials.caCertificate"
             control={control}
-            render={({ field: { value }, fieldState: { error } }) => (
+            render={({ field, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>TLS Certificate Verification</FieldLabel>
-                <Select
-                  value={value ? "skip" : "verify"}
-                  onValueChange={(val) =>
-                    setValue("credentials.insecure", val === "skip", { shouldDirty: true })
-                  }
-                >
-                  <SelectTrigger className="w-full" isError={Boolean(error)}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value="verify">Verify certificate</SelectItem>
-                    <SelectItem value="skip">Skip verification (self-signed listener)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FieldLabel htmlFor="caCertificate">CA Certificate (PEM)</FieldLabel>
+                <TextArea
+                  id="caCertificate"
+                  {...field}
+                  placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
+                  rows={5}
+                  isError={Boolean(error?.message)}
+                />
                 <FieldError errors={[error]} />
               </Field>
             )}

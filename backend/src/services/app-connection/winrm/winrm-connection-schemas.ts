@@ -17,13 +17,7 @@ export const WinRMUsernamePasswordCredentialsSchema = z.object({
     .min(1, "Host required")
     .max(255)
     .describe("The Windows host's DNS name (FQDN) or IP address."),
-  port: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(65535)
-    .default(5985)
-    .describe("The WinRM port. 5985 for NTLM-encrypted HTTP, 5986 for HTTPS."),
+  port: z.coerce.number().int().min(1).max(65535).default(5986).describe("The WinRM HTTPS port (typically 5986)."),
   username: z
     .string()
     .trim()
@@ -31,11 +25,20 @@ export const WinRMUsernamePasswordCredentialsSchema = z.object({
     .max(255)
     .describe("Windows login: DOMAIN\\user or user@domain."),
   password: z.string().min(1, "Password required").max(255).describe("The account password."),
-  useHttps: z.boolean().default(false).describe("Use HTTPS (port 5986) instead of NTLM-encrypted HTTP (port 5985)."),
+  caCertificate: z
+    .string()
+    .trim()
+    .max(8192)
+    .optional()
+    .describe(
+      "PEM CA certificate used to verify a self-signed WinRM HTTPS listener. When set, TLS verification is enforced against it and 'insecure' is ignored."
+    ),
   insecure: z
     .boolean()
     .default(false)
-    .describe("Skip TLS certificate verification when HTTPS is used (for self-signed WinRM listeners).")
+    .describe(
+      "Skip TLS certificate verification. Gives confidentiality but not server authentication; prefer pinning a CA certificate for self-signed listeners."
+    )
 });
 
 const BaseWinRMConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.WinRM) });
@@ -53,7 +56,7 @@ export const SanitizedWinRMConnectionSchema = z.discriminatedUnion("method", [
       host: true,
       port: true,
       username: true,
-      useHttps: true,
+      caCertificate: true,
       insecure: true
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.WinRM]} (Username and Password)` }))

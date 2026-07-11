@@ -12,7 +12,7 @@ export type TWinRMConnection = TRootAppConnection & { app: AppConnection.WinRM }
     port?: number;
     username: string;
     password: string;
-    useHttps?: boolean;
+    caCertificate?: string;
     insecure?: boolean;
   };
 };

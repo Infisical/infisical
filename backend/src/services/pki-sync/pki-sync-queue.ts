@@ -801,7 +801,6 @@ export const pkiSyncQueueFactory = ({
         }
       );
 
-
       isSuccess = true;
     } catch (err) {
       logger.error(

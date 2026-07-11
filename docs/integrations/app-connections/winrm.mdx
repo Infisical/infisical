@@ -3,7 +3,7 @@ title: "Windows (WinRM) Connection"
 description: "Learn how to configure a Windows (WinRM) Connection for Infisical."
 ---
 
-Infisical supports connecting to Windows hosts over WinRM to deliver certificates. Because WinRM message encryption runs in the Gateway, this connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network.
+Infisical supports connecting to Windows hosts over WinRM to deliver certificates. The connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network, which reaches the host and runs the WinRM session on Infisical's behalf. WinRM connections use HTTPS.
 
 ## Setup
 
@@ -14,12 +14,12 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
         You will need the following for the target Windows host:
 
         - **Host**: The DNS name (FQDN) or IP address of the Windows host.
-        - **Port**: The WinRM port. `5985` for HTTP with NTLM message encryption, `5986` for HTTPS.
+        - **Port**: The WinRM HTTPS port (typically `5986`).
         - **Username**: A Windows login, either `DOMAIN\user` or `user@domain.com`.
         - **Password**: The account password.
 
         <Note>
-          The account must be able to open a WinRM session and write to the destination directory used by the certificate sync.
+          The host must have a WinRM HTTPS listener configured, and the account must be able to open a WinRM session and write to the destination directory used by the certificate sync.
         </Note>
       </Step>
       <Step title="Navigate to App Connections">
@@ -33,10 +33,9 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
 
         - **Gateway**: The Gateway that can reach the Windows host. This is required.
         - **Host**: The DNS name or IP address of the Windows host.
-        - **Port**: The WinRM port.
+        - **Port**: The WinRM HTTPS port (typically `5986`).
         - **Username** and **Password**: The Windows account credentials.
-        - **Transport**: Choose HTTP with NTLM message encryption on port 5985, or HTTPS on port 5986.
-        - **TLS Certificate Verification**: For HTTPS, choose whether to verify the listener certificate. Skip verification only for a self-signed listener.
+        - **TLS Certificate Verification**: Verify with the system trust store, verify against a **CA certificate** you paste in (recommended for a self-signed listener, since it keeps server authentication), or skip verification. Skipping gives confidentiality but does not authenticate the server, so an on-path attacker is not prevented.
 
         Click **Connect to Windows (WinRM)** to validate and save your connection.
       </Step>
@@ -63,10 +62,9 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
           "gatewayId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
           "credentials": {
               "host": "win01.corp.example.com",
-              "port": 5985,
+              "port": 5986,
               "username": "DOMAIN\\svc-infisical",
               "password": "[PASSWORD]",
-              "useHttps": false,
               "insecure": false
           }
       }'
@@ -77,11 +75,11 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
 ## Transport
 
 <Note>
-  The default transport is the standard WinRM HTTP listener on port 5985 with NTLM message encryption. This keeps the certificate and key confidential without a server certificate on the host, which is the zero-configuration posture most Windows hosts ship with. HTTPS on port 5986 is supported for hosts that require it.
+  WinRM connections use HTTPS (typically port `5986`), so the host must have a WinRM HTTPS listener configured. If the listener presents a self-signed certificate, paste that certificate as the CA certificate so it can be verified. Only skip verification when pinning a certificate is not possible; skipping protects confidentiality but not against an active on-path attacker.
 </Note>
 
 ## FAQ
 
 <Accordion title="Why does this connection require a Gateway?">
-  WinRM message encryption must be performed by a component inside your network. The Gateway performs it, which lets a certificate travel confidentially over the default listener without a server certificate on every host.
+  The Windows host is inside your network and is not reachable from Infisical directly. The Gateway sits inside your network, reaches the host, and runs the WinRM session on Infisical's behalf.
 </Accordion>
