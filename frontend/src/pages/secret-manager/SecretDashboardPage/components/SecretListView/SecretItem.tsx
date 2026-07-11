@@ -254,11 +254,17 @@ export const SecretItem = memo(
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
-    const canManageOverride = hasSecretPersonalOverridePermission(
+    // Adding a personal override creates a personal secret, which the backend gates on the
+    // Create/PersonalOverride permission — so mirror that check for the "add" case.
+    const canAddOverride = hasSecretPersonalOverridePermission(
       permission,
       ProjectPermissionSecretActions.Create,
       { environment, secretPath, secretName, secretTags: selectedTagSlugs }
     );
+    // Removing an existing override deletes the user's own personal secret, which the backend allows
+    // for any owner without a permission check. So only gate the add case; allow removal whenever the
+    // row is already overridden.
+    const canManageOverride = isOverridden || canAddOverride;
 
     const autoSaveChanges = useCallback(
       async (data: TFormSchema) => {

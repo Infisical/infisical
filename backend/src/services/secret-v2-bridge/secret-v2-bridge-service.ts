@@ -354,7 +354,7 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         secretPath,
         secretName,
-        secretTags: tags?.map((el) => el.slug)
+        secretTags: doesSecretExist?.tags?.map((el) => el.slug)
       });
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
