@@ -5,7 +5,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { useUser } from "@app/context";
 import {
   Button,
   Dialog,
@@ -24,6 +23,7 @@ import {
   Input,
   TextArea
 } from "@app/components/v3";
+import { useUser } from "@app/context";
 import {
   SignerMemberRole,
   TEffectiveSignerMember,
