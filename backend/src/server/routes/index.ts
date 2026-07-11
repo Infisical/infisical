@@ -2920,6 +2920,10 @@ export const registerRoutes = async (
     proxiedServiceCredentialDAL,
     folderDAL,
     secretV2BridgeDAL,
+    secretImportDAL,
+    orgDAL,
+    projectFolderGrantDAL,
+    kmsService,
     permissionService,
     licenseService
   });
