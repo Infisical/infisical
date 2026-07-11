@@ -313,7 +313,6 @@ export const ProxiedServiceForm = ({
                       {i === 0 && <FieldLabel className="text-xs">Name</FieldLabel>}
                       <FieldContent>
                         <Input
-                          className="h-8"
                           placeholder="Authorization"
                           isError={Boolean(errors.headers?.[i]?.headerName)}
                           {...register(`headers.${i}.headerName`)}
@@ -325,7 +324,6 @@ export const ProxiedServiceForm = ({
                       {i === 0 && <FieldLabel className="text-xs">Prefix</FieldLabel>}
                       <FieldContent>
                         <Input
-                          className="h-8"
                           placeholder="Bearer"
                           {...register(`headers.${i}.headerPrefix`)}
                         />
@@ -461,7 +459,6 @@ export const ProxiedServiceForm = ({
                     <FieldLabel className="text-xs">Environment Variable</FieldLabel>
                     <FieldContent>
                       <Input
-                        className="h-8"
                         placeholder="ENV_VAR_NAME"
                         isError={Boolean(errors.substitutions?.[i]?.placeholderKey)}
                         {...register(`substitutions.${i}.placeholderKey`)}
@@ -476,7 +473,7 @@ export const ProxiedServiceForm = ({
                         control={control}
                         name={`substitutions.${i}.placeholderValue`}
                         render={({ field }) => (
-                          <Input className="h-8" readOnly value={field.value} />
+                          <Input readOnly value={field.value} />
                         )}
                       />
                     </FieldContent>
