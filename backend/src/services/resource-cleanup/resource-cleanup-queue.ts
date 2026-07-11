@@ -80,7 +80,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     const heavyCleanupTimeoutMs = devMode ? 5 * 60_000 : 45 * 60_000;
     const lightCleanupTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
     const dailyNotificationTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
-    const frequentCleanupTimeoutMs = devMode ? 5 * 60_000 : 10 * 60_000;
 
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
@@ -159,11 +158,16 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 
     cronJob.register({
       name: CronJobName.FrequentResourceCleanup,
-      pattern: devMode ? "*/5 * * * *" : "0 * * * *",
+      // NOTE: temporarily reverted from hourly ("0 * * * *") back to daily as a stopgap —
+      // hourly runs were causing sustained EU RDS CPU spikes and timing out before completing.
+      // See PLATFOR-525 for the underlying batching/pacing fix that will allow a faster cadence again.
+      pattern: devMode ? "*/5 * * * *" : "30 4 * * *",
       runHashTtlS: 1 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
-      handlerTimeoutMs: frequentCleanupTimeoutMs,
-      leaseDurationMs: frequentCleanupTimeoutMs,
+      // Bumped to heavyCleanupTimeoutMs (from a dedicated 10-minute timeout) since this cron now
+      // accumulates up to a full day's backlog per run instead of an hour's.
+      handlerTimeoutMs: heavyCleanupTimeoutMs,
+      leaseDurationMs: heavyCleanupTimeoutMs,
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
