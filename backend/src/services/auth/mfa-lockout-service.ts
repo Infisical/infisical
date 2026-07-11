@@ -7,15 +7,13 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { enforceUserLockStatus } from "./auth-fns";
-
 const PROGRESSIVE_DELAY_INTERVAL = 5;
 const PROGRESSIVE_DELAYS_IN_MINS = [5, 30, 60];
 
 const STEP_UP_MFA_MAX_ATTEMPTS = 5;
 
 type TMfaLockoutServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "findById" | "updateById" | "transaction">;
+  userDAL: Pick<TUserDALFactory, "updateById" | "transaction">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   keyStore: Pick<
@@ -32,15 +30,6 @@ export const mfaLockoutServiceFactory = ({
   smtpService,
   keyStore
 }: TMfaLockoutServiceFactoryDep) => {
-  // Rejects the request when the user is currently locked (permanently or
-  // temporarily) from MFA verification. Fetches the user itself so callers that
-  // don't already hold the row can guard cheaply.
-  const enforceMfaLockStatus = async (userId: string) => {
-    const user = await userDAL.findById(userId);
-    if (!user) return;
-    enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-  };
-
   // Increments the shared consecutive-failed-MFA counter and, on hitting a
   // progressive-delay interval, applies an escalating temporary lock; once the
   // delays are exhausted the account is permanently locked. Returns the updated
@@ -205,7 +194,6 @@ export const mfaLockoutServiceFactory = ({
   };
 
   return {
-    enforceMfaLockStatus,
     handleFailedMfaAttempt,
     resetMfaLockStatus,
     enforceStepUpMfaLockStatus,
