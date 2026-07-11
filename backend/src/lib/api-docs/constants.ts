@@ -54,6 +54,7 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
@@ -1603,6 +1604,56 @@ export const DYNAMIC_SECRET_LEASES = {
     }
   }
 } as const;
+
+export const PROXIED_SERVICES = {
+  CREATE: {
+    projectId: "The ID of the project to create the proxied service in.",
+    environment: "The slug of the environment to create the proxied service in.",
+    secretPath: "The secret path (folder) to create the proxied service in.",
+    name: "The name of the proxied service.",
+    hostPattern:
+      "One or more comma-separated host patterns the service applies to, e.g. 'api.stripe.com, *.stripe.com'. Each pattern is host[:port][/path]; a '*.' wildcard matches exactly one label.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials: "The credentials the agent proxy applies to requests matching the host pattern."
+  },
+  LIST: {
+    projectId: "The ID of the project to list proxied services from.",
+    environment: "The slug of the environment to list proxied services from.",
+    secretPath: "The secret path (folder) to list proxied services from."
+  },
+  GET: {
+    serviceIdOrName:
+      "The ID of the proxied service, or its name when the projectId and environment query params are provided.",
+    projectId: "The ID of the project the proxied service is in. Required when fetching by name.",
+    environment: "The slug of the environment the proxied service is in. Required when fetching by name.",
+    secretPath: "The secret path (folder) the proxied service is in."
+  },
+  UPDATE: {
+    serviceId: "The ID of the proxied service to update.",
+    name: "The new name of the proxied service.",
+    hostPattern: "The new comma-separated host patterns.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials:
+      "The new credentials. When provided, the entire credentials collection is replaced; when omitted, existing credentials are left unchanged."
+  },
+  DELETE: {
+    serviceId: "The ID of the proxied service to delete."
+  },
+  CREDENTIAL: {
+    secretKey: "The key name of the referenced secret. The secret must live in the same folder as the service.",
+    role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",
+    headerName: "For header rewriting: the header to set, e.g. 'Authorization' or 'x-api-key'.",
+    headerPrefix: "For header rewriting: an optional prefix joined to the secret value with a space, e.g. 'Bearer'.",
+    headerPurpose:
+      "For HTTP basic auth: 'username' or 'password'. The agent proxy combines the pair into a single 'Authorization: Basic' header. Cannot be combined with headerName or headerPrefix.",
+    placeholderKey: "For credential substitution: the environment variable name the agent receives.",
+    placeholderValue:
+      "For credential substitution: the placeholder value the agent proxy swaps for the real secret value on the wire.",
+    substitutionSurfaces:
+      "For credential substitution: which request surfaces are scanned for the placeholder. Allowed values: 'header', 'path', 'query', 'body'."
+  }
+} as const;
+
 export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."

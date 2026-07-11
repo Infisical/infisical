@@ -7,18 +7,13 @@ import {
   ProxiedServiceWithCredentialsSchema,
   SanitizedProxiedServiceBaseSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
+import { ApiDocsTags, PROXIED_SERVICES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-const ScopeQuerySchema = z.object({
-  projectId: z.string().trim().min(1),
-  environment: z.string().trim().min(1),
-  secretPath: z.string().trim().default("/")
-});
 
 export const registerProxiedServiceRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -27,14 +22,17 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProxiedServices],
+      description: "Create a proxied service",
       body: z.object({
-        projectId: z.string().trim().min(1),
-        environment: z.string().trim().min(1),
-        secretPath: z.string().trim().default("/"),
-        name: slugSchema({ field: "name" }),
-        hostPattern: hostPatternSchema,
-        isEnabled: z.boolean().optional(),
-        credentials: CredentialsArraySchema
+        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.CREATE.projectId),
+        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.CREATE.environment),
+        secretPath: z.string().trim().default("/").describe(PROXIED_SERVICES.CREATE.secretPath),
+        name: slugSchema({ field: "name" }).describe(PROXIED_SERVICES.CREATE.name),
+        hostPattern: hostPatternSchema.describe(PROXIED_SERVICES.CREATE.hostPattern),
+        isEnabled: z.boolean().optional().describe(PROXIED_SERVICES.CREATE.isEnabled),
+        credentials: CredentialsArraySchema.describe(PROXIED_SERVICES.CREATE.credentials)
       }),
       response: {
         200: z.object({ service: ProxiedServiceWithCredentialsSchema })
@@ -67,7 +65,15 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      querystring: ScopeQuerySchema,
+      hide: false,
+      tags: [ApiDocsTags.ProxiedServices],
+      description:
+        "List proxied services in a folder. Returns the services the caller can read or proxy through; the canProxy field indicates whether the caller can route traffic through each service.",
+      querystring: z.object({
+        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.LIST.projectId),
+        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.LIST.environment),
+        secretPath: z.string().trim().default("/").describe(PROXIED_SERVICES.LIST.secretPath)
+      }),
       response: {
         200: z.object({
           services: ProxiedServiceWithCredentialsSchema.extend({ canProxy: z.boolean() }).array()
@@ -85,8 +91,18 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      params: z.object({ serviceIdOrName: z.string().trim().min(1) }),
-      querystring: ScopeQuerySchema.partial(),
+      hide: false,
+      tags: [ApiDocsTags.ProxiedServices],
+      description:
+        "Get a proxied service by ID, or by name when the projectId and environment query params are provided",
+      params: z.object({
+        serviceIdOrName: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.serviceIdOrName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.projectId).optional(),
+        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.environment).optional(),
+        secretPath: z.string().trim().describe(PROXIED_SERVICES.GET.secretPath).optional()
+      }),
       response: {
         200: z.object({
           service: ProxiedServiceWithCredentialsSchema.extend({ canProxy: z.boolean() })
@@ -119,12 +135,15 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      params: z.object({ serviceId: z.string().uuid() }),
+      hide: false,
+      tags: [ApiDocsTags.ProxiedServices],
+      description: "Update a proxied service",
+      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.UPDATE.serviceId) }),
       body: z.object({
-        name: slugSchema({ field: "name" }).optional(),
-        hostPattern: hostPatternSchema.optional(),
-        isEnabled: z.boolean().optional(),
-        credentials: CredentialsArraySchema.optional()
+        name: slugSchema({ field: "name" }).optional().describe(PROXIED_SERVICES.UPDATE.name),
+        hostPattern: hostPatternSchema.optional().describe(PROXIED_SERVICES.UPDATE.hostPattern),
+        isEnabled: z.boolean().optional().describe(PROXIED_SERVICES.UPDATE.isEnabled),
+        credentials: CredentialsArraySchema.optional().describe(PROXIED_SERVICES.UPDATE.credentials)
       }),
       response: {
         200: z.object({ service: ProxiedServiceWithCredentialsSchema })
@@ -161,7 +180,10 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      params: z.object({ serviceId: z.string().uuid() }),
+      hide: false,
+      tags: [ApiDocsTags.ProxiedServices],
+      description: "Delete a proxied service",
+      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.DELETE.serviceId) }),
       response: {
         200: z.object({ service: SanitizedProxiedServiceBaseSchema })
       }

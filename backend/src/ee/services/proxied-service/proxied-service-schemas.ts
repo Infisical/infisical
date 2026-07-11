@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { ProxiedServiceCredentialsSchema, ProxiedServicesSchema } from "@app/db/schemas";
+import { PROXIED_SERVICES } from "@app/lib/api-docs";
 
 import {
   ProxiedServiceCredentialRole,
@@ -51,14 +52,27 @@ export const hostPatternSchema = z
 
 const CredentialInputSchema = z
   .object({
-    secretKey: z.string().trim().min(1).max(255),
-    role: z.nativeEnum(ProxiedServiceCredentialRole),
-    headerName: z.string().trim().min(1).max(255).optional(),
-    headerPrefix: z.string().trim().max(255).optional(),
-    headerPurpose: z.nativeEnum(ProxiedServiceHeaderPurpose).optional(),
-    placeholderKey: z.string().trim().min(1).max(255).optional(),
-    placeholderValue: z.string().trim().min(1).max(255).optional(),
-    substitutionSurfaces: z.array(z.nativeEnum(ProxiedServiceSubstitutionSurface)).nonempty().optional()
+    secretKey: z.string().trim().min(1).max(255).describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
+    role: z.nativeEnum(ProxiedServiceCredentialRole).describe(PROXIED_SERVICES.CREDENTIAL.role),
+    headerName: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerName),
+    headerPrefix: z.string().trim().max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerPrefix),
+    headerPurpose: z
+      .nativeEnum(ProxiedServiceHeaderPurpose)
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.headerPurpose),
+    placeholderKey: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.placeholderKey),
+    placeholderValue: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.placeholderValue),
+    substitutionSurfaces: z
+      .array(z.nativeEnum(ProxiedServiceSubstitutionSurface))
+      .nonempty()
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.substitutionSurfaces)
   })
   .superRefine((cred, ctx) => {
     if (cred.role === ProxiedServiceCredentialRole.HeaderRewrite) {
