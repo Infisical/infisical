@@ -5,6 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { WinRMConnectionMethod } from "./winrm-connection-enums";
@@ -66,6 +67,8 @@ export const executeWinRMGatewayOperation = async <T>(
       message: "Windows (WinRM) connections require a gateway to reach the host."
     });
   }
+
+  await blockLocalAndPrivateIpAddresses(`winrm://${args.credentials.host}:${args.credentials.port}`, true);
 
   const connectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,

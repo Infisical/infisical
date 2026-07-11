@@ -49,7 +49,7 @@ export const exportCertificateForSync = ({
       privateKey: privateKey ?? "",
       password: password ?? "",
       alias
-    }).then((pfx) => [{ suffix: ".pfx", content: pfx }]);
+    }).then((pfx) => [{ suffix: ".pfx", content: pfx, isPrivateKey: true }]);
   }
 
   const files: TExportedCertificateFile[] = [{ suffix: ".pem", content: Buffer.from(certificate, "utf8") }];

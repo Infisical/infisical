@@ -801,11 +801,6 @@ export const pkiSyncQueueFactory = ({
         }
       );
 
-      // Untrack the removed certs only after their files are gone, so a failed removal keeps the
-      // tracking row (and its paths) for a retry rather than orphaning the files.
-      if (certificateIdsToRemove?.length) {
-        await certificateSyncDAL.removeCertificates(syncId, certificateIdsToRemove);
-      }
 
       isSuccess = true;
     } catch (err) {

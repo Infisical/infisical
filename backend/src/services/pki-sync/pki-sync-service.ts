@@ -22,6 +22,7 @@ import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enum
 import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
 import { certificateNameSchemaAllowsMultipleCertificates } from "./pki-sync-certificate-name-fns";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
+import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { enterprisePkiSyncCheck, getPkiSyncProviderCapabilities, listPkiSyncOptions } from "./pki-sync-fns";
@@ -428,6 +429,14 @@ export const pkiSyncServiceFactory = ({
     } else if (syncOptions) {
       const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
       assertSchemaAllowsCertificateCount(effectiveSyncOptions, existingCount);
+    }
+
+    if (
+      effectiveSyncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+      !credentials?.exportPassword &&
+      !pkiSync.encryptedCredentials
+    ) {
+      throw new BadRequestError({ message: "A password is required when the export format is PKCS#12" });
     }
 
     const encryptedCredentials = credentials?.exportPassword
