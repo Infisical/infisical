@@ -193,11 +193,28 @@ export const mfaLockoutServiceFactory = ({
     await keyStore.deleteItem(KeyStorePrefixes.UserStepUpMfaLockout(userId));
   };
 
+  // Records that the user just completed a full MFA login. A completed login proves a
+  // second factor at least as strong as any step-up challenge (it satisfies the org's
+  // required method, or is a recovery code that bypasses it), so within this window an
+  // MFA-management step-up is redundant. This is what lets a user who lost their only
+  // configured factor, and logged in via a recovery code, still reach their MFA
+  // settings to disable it or switch the preferred method. It self-clears on TTL; if
+  // the window lapses, another login re-opens it.
+  const recordRecentMfaAuth = async (userId: string) => {
+    await keyStore.setItemWithExpiry(KeyStorePrefixes.RecentMfaAuth(userId), KeyStoreTtls.MfaSessionInSeconds, "1");
+  };
+
+  const hasRecentMfaAuth = async (userId: string): Promise<boolean> => {
+    return Boolean(await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(userId)));
+  };
+
   return {
     handleFailedMfaAttempt,
     resetMfaLockStatus,
     enforceStepUpMfaLockStatus,
     reserveStepUpMfaAttempt,
-    resetStepUpMfaLockStatus
+    resetStepUpMfaLockStatus,
+    recordRecentMfaAuth,
+    hasRecentMfaAuth
   };
 };

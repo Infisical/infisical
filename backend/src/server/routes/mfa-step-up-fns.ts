@@ -1,26 +1,9 @@
 import { BadRequestError } from "@app/lib/errors";
 import { MfaMethod } from "@app/services/auth/auth-type";
+import { MfaStepUpResource, TMfaStepUpResource } from "@app/services/mfa-session/mfa-session-types";
 
-// Sensitive account actions that expose or weaken a login second factor require a
-// fresh MFA challenge, not just a valid session token. The session binds to a
-// resource id so a session minted for one flow can't be replayed against an
-// unrelated one (e.g. a PAM account-access session can't be used here).
-//
-// Viewing recovery codes, rotating recovery codes, and disabling MFA are all
-// MFA-management actions of comparable risk, so they intentionally share a single
-// resource id: one fresh challenge covers all of them for the session TTL (10 min)
-// rather than re-prompting the user for each action in quick succession.
-//
-// Enabling MFA is kept on its own resource id (never folded into MfaManagement):
-// it is challenged against the method the user is *enabling* (which may be weaker
-// than an org's enforced method), so a session verified for enablement must not be
-// replayable against MfaManagement actions that are gated on the enforced method.
-export const MfaStepUpResource = {
-  MfaManagement: "mfa-management",
-  MfaActivation: "mfa-activation"
-} as const;
-
-export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStepUpResource];
+export { MfaStepUpResource };
+export type { TMfaStepUpResource };
 
 /**
  * Enforces that the caller has completed a fresh MFA challenge before a sensitive
@@ -67,6 +50,10 @@ export const ensureStepUpMfa = async (
       resourceId
     }))
   ) {
+    return;
+  }
+
+  if (resourceId === MfaStepUpResource.MfaManagement && (await server.services.mfaSession.hasRecentMfaAuth(userId))) {
     return;
   }
 

@@ -95,6 +95,7 @@ export const KeyStorePrefixes = {
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
   UserStepUpMfaAttempts: (userId: string) => `user-step-up-mfa-attempts:${userId}` as const,
   UserStepUpMfaLockout: (userId: string) => `user-step-up-mfa-lockout:${userId}` as const,
+  RecentMfaAuth: (userId: string) => `recent-mfa-auth:${userId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
@@ -167,7 +168,7 @@ export const KeyStoreTtls = {
   IdentityRevocationVersionInSeconds: 604800, // 7 days
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
-  MfaSessionInSeconds: 600, // 10 minutes
+  MfaSessionInSeconds: 300, // 5 minutes
   MfaCodeResendCooldownInSeconds: 60, // 1 minute
 
   WebAuthnChallengeInSeconds: 300, // 5 minutes

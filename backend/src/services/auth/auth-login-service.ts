@@ -84,7 +84,10 @@ type TAuthLoginServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  mfaLockoutService: Pick<TMfaLockoutServiceFactory, "handleFailedMfaAttempt" | "resetMfaLockStatus">;
+  mfaLockoutService: Pick<
+    TMfaLockoutServiceFactory,
+    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth"
+  >;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -712,6 +715,8 @@ export const authLoginServiceFactory = ({
     if (!userEnc) throw new Error("Failed to authenticate user");
 
     await mfaLockoutService.resetMfaLockStatus(userId);
+
+    await mfaLockoutService.recordRecentMfaAuth(userId);
 
     const token = await generateUserTokens({
       userId: user.id,

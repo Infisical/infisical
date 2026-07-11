@@ -9,42 +9,6 @@ import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaS
 const MFA_POLL_INTERVAL = 2000;
 const MFA_TIMEOUT = 5 * 60 * 1000;
 
-// The most recently verified step-up MFA session id, shared across every
-// useMfaStepUp instance. The MFA-management actions (view/rotate recovery codes,
-// disable MFA) live in sibling components with their own hook instances but the
-// backend accepts one step-up session for all of them, so remembering the id lets a
-// challenge completed for one action satisfy the next until it expires. It never
-// drives rendering, and a stale id (e.g. after logout, or a reload past the backend
-// TTL) is harmless: the backend rejects it and a fresh challenge transparently re-runs.
-//
-// Persisted in sessionStorage (not just module scope) so a full page reload doesn't
-// throw away a session the backend still considers active — otherwise every reload
-// forced a brand-new challenge even though the 10-minute window had not elapsed. It is
-// tab-scoped and cleared when the tab closes.
-const STEP_UP_SESSION_STORAGE_KEY = "mfaStepUpSessionId";
-
-const sharedStepUpSession = {
-  get id(): string | null {
-    try {
-      return sessionStorage.getItem(STEP_UP_SESSION_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  },
-  set id(value: string | null) {
-    try {
-      if (value) {
-        sessionStorage.setItem(STEP_UP_SESSION_STORAGE_KEY, value);
-      } else {
-        sessionStorage.removeItem(STEP_UP_SESSION_STORAGE_KEY);
-      }
-    } catch {
-      // Storage can be unavailable (private mode, blocked cookies); degrade to always
-      // re-challenging rather than crashing.
-    }
-  }
-};
-
 // An action guarded by step-up MFA. It receives the verified session id (once
 // available) so it can replay itself against the backend. When the backend
 // requires a fresh challenge it responds with SESSION_MFA_REQUIRED, and the same
@@ -65,9 +29,12 @@ type RunOptions<T> = {
  * shared /mfa-session popup, poll its status, and replay the action with the
  * verified session id.
  *
- * A verified session id is remembered and reused for subsequent actions until the
- * backend rejects it (expired), at which point the popup challenge transparently
- * re-runs. Callers own their own result/UI state; this hook owns the challenge.
+ * Reuse across subsequent actions is handled entirely by the backend: completing a
+ * management challenge (like a full login) opens a short recent-MFA-auth grace window,
+ * so the next action's first attempt (sent with no session id) succeeds without a
+ * fresh challenge until the window elapses. This hook therefore keeps no client-side
+ * session cache; it only tracks the in-flight challenge. Callers own their result/UI
+ * state; this hook owns the challenge.
  */
 export const useMfaStepUp = () => {
   const [isBusy, setIsBusy] = useState(false);
@@ -114,7 +81,6 @@ export const useMfaStepUp = () => {
 
             try {
               const result = await action(mfaSessionId);
-              sharedStepUpSession.id = mfaSessionId;
               opts.onSuccess(result);
             } catch {
               createNotification({
@@ -154,12 +120,11 @@ export const useMfaStepUp = () => {
     async <T>(action: StepUpAction<T>, opts: RunOptions<T>) => {
       setIsBusy(true);
       try {
-        const result = await action(sharedStepUpSession.id ?? undefined);
+        const result = await action();
         opts.onSuccess(result);
         setIsBusy(false);
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.data?.error === "SESSION_MFA_REQUIRED") {
-          sharedStepUpSession.id = null;
           const mfaSessionId = err.response.data.details?.mfaSessionId as string | undefined;
 
           if (!mfaSessionId) {

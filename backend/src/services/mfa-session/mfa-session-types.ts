@@ -5,6 +5,13 @@ export enum MfaSessionStatus {
   ACTIVE = "ACTIVE"
 }
 
+export const MfaStepUpResource = {
+  MfaManagement: "mfa-management",
+  MfaActivation: "mfa-activation"
+} as const;
+
+export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStepUpResource];
+
 export type TMfaSession = {
   sessionId: string;
   userId: string;

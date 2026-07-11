@@ -10,6 +10,7 @@ import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 
 import {
   MfaSessionStatus,
+  MfaStepUpResource,
   TGetMfaSessionStatusDTO,
   TIsMfaSessionActiveDTO,
   TMfaSession,
@@ -23,7 +24,11 @@ type TMfaSessionServiceFactoryDep = {
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
-    "enforceStepUpMfaLockStatus" | "reserveStepUpMfaAttempt" | "resetStepUpMfaLockStatus"
+    | "enforceStepUpMfaLockStatus"
+    | "reserveStepUpMfaAttempt"
+    | "resetStepUpMfaLockStatus"
+    | "hasRecentMfaAuth"
+    | "recordRecentMfaAuth"
   >;
 };
 
@@ -166,6 +171,10 @@ export const mfaSessionServiceFactory = ({
     mfaSession.status = MfaSessionStatus.ACTIVE;
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
 
+    if (mfaSession.resourceId === MfaStepUpResource.MfaManagement) {
+      await mfaLockoutService.recordRecentMfaAuth(userId);
+    }
+
     return {
       success: true,
       message: "MFA verification successful"
@@ -223,6 +232,12 @@ export const mfaSessionServiceFactory = ({
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
   };
 
+  // True when the user completed a full MFA login recently, so an MFA-management
+  // step-up can be skipped within the grace window (see recordRecentMfaAuth).
+  const hasRecentMfaAuth = async (userId: string): Promise<boolean> => {
+    return mfaLockoutService.hasRecentMfaAuth(userId);
+  };
+
   return {
     createMfaSession,
     verifyMfaSession,
@@ -231,6 +246,7 @@ export const mfaSessionServiceFactory = ({
     getMfaSession,
     isMfaSessionActive,
     deleteMfaSession,
-    enforceStepUpMfaLockout
+    enforceStepUpMfaLockout,
+    hasRecentMfaAuth
   };
 };
