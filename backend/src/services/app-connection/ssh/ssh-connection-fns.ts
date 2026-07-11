@@ -161,7 +161,7 @@ export const getSshConnectionClient = async (
 
 export const executeWithPotentialGateway = async <T>(
   config: TSshConnectionConfig,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined,
   operation: (targetHost: string, targetPort: number) => Promise<T>,
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ): Promise<T> => {
@@ -178,6 +178,10 @@ export const executeWithPotentialGateway = async <T>(
       : directGatewayId;
 
   if (gatewayId) {
+    if (!gatewayV2Service) {
+      throw new BadRequestError({ message: "Gateway-backed connections require gatewayV2Service at the call site" });
+    }
+
     await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -207,6 +211,28 @@ export const executeWithPotentialGateway = async <T>(
   await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, false);
   return operation(credentials.host, credentials.port);
 };
+
+export const withSshConnection = async <T>(
+  config: TSshConnectionConfig,
+  gatewayServices: {
+    gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+    gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  },
+  operation: (client: Client) => Promise<T>
+): Promise<T> =>
+  executeWithPotentialGateway(
+    config,
+    gatewayServices.gatewayV2Service,
+    async (targetHost, targetPort) => {
+      const client = await getSshConnectionClient(config, targetHost, targetPort);
+      try {
+        return await operation(client);
+      } finally {
+        client.destroy();
+      }
+    },
+    gatewayServices.gatewayPoolService
+  );
 
 export const validateSshConnectionCredentials = async (
   config: TSshConnectionConfig,

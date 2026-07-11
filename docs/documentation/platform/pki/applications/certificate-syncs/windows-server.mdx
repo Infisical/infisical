@@ -1,0 +1,139 @@
+---
+title: "Windows Server"
+sidebarTitle: "Windows Server"
+description: "Deploy certificates to Windows servers over WinRM."
+---
+
+Deploy certificates from Infisical to a directory on a Windows server over WinRM. Files are written atomically so a reader never sees a partially written certificate or key.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificates to sync, then configure the Windows Server destination.
+</Info>
+
+## Prerequisites
+
+- A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
+- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway.
+- The connection user must be able to write to the destination directory
+
+<Note>
+  Windows delivery runs on the Gateway because it uses WinRM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with.
+</Note>
+
+## Create a Windows Server Sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+        2. Select the **Windows Server** option.
+
+        3. Configure the **Destination**:
+            - **Windows (WinRM) Connection**: The WinRM Connection used to reach the server.
+            - **Destination Directory**: The absolute Windows path where certificate files are written, either a drive path like `C:\certs` or a UNC share like `\\server\share\certs`. It is created if it does not exist. The path cannot contain `..` segments or consecutive separators.
+
+        4. Configure the **Sync Options**:
+            - **Export Format**: Choose **PKCS#12** to write a single password-protected `.pfx` bundle, or **PEM** to write separate certificate, chain, and key files.
+            - **PKCS#12 Password**: Required when the export format is PKCS#12. It protects the delivered bundle.
+            - **Include Private Key**: For PEM, controls whether the private key is written alongside the certificate. The sync fails for a certificate whose key is not available, for example one issued from an external CSR.
+            - **Include Root CA in Certificate Chain**: Include the root CA in the delivered chain. Leave it off when the consuming service only needs the intermediates.
+            - **Enable Removal of Certificates**: Delete the delivered files from the server when a certificate is removed from the sync, revoked, or expired.
+            - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
+
+        5. Configure the **Details**:
+            - **Name**: The name of your sync.
+            - **Description**: Optional description.
+
+        6. Select which certificates should be synced.
+
+        7. Review and click **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create a **Windows Server Certificate Sync**, make an API request to the [Create Windows Server PKI Sync](/api-reference/endpoints/pki/syncs/windows-server/create) endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/windows-server \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-windows-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "isAutoSyncEnabled": true,
+            "certificateIds": ["550e8400-e29b-41d4-a716-446655440000"],
+            "credentials": {
+                "exportPassword": "a-strong-password"
+            },
+            "syncOptions": {
+                "exportFormat": "pkcs12",
+                "canRemoveCertificates": true,
+                "certificateNameSchema": "{{commonName}}"
+            },
+            "destinationConfig": {
+                "destinationPath": "C:\\certs"
+            }
+        }'
+        ```
+    </Tab>
+</Tabs>
+
+## Export Formats
+
+<Note>
+  The file extension is decided by the export format, not by the name schema. The name schema only provides the base name.
+  - **PKCS#12**: `<name>.pfx`, a single password-protected bundle containing the certificate, chain, and key.
+  - **PEM**: `<name>.pem` (certificate), `<name>.chain.pem` (chain), and `<name>.key` (private key, when included).
+</Note>
+
+## How It Works
+
+When syncing certificates, Infisical asks the Gateway to open a WinRM session to the server and, for each certificate:
+
+1. Packages the certificate in the chosen export format.
+2. Writes each file to a temporary name in the destination directory.
+3. Renames the temporary file over the final name so the delivered file is always complete.
+
+## Removing Certificates
+
+When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
+
+## Using Synced Certificates with IIS Centralized Certificate Store
+
+IIS can serve a synced PKCS#12 certificate directly from a shared folder through the Centralized Certificate Store (CCS). To wire this up, set the sync to deliver into the CCS folder and make the two sides agree:
+
+<Note>
+  - **Export format**: PKCS#12. CCS reads `.pfx` files only.
+  - **Destination Directory**: the folder IIS CCS is configured to read.
+  - **Certificate Name Schema**: use `{{commonName}}` so each file is named `<hostname>.pfx`. CCS matches the incoming request hostname to the file name.
+  - **PKCS#12 Password**: must match the private key password configured on the IIS Centralized Certificate Store. IIS uses that one password to open every `.pfx` in the folder.
+</Note>
+
+These are IIS requirements, configured once on the Windows host (the CCS feature, its store folder, and the store account). Infisical only delivers the `.pfx`. IIS is responsible for loading and serving it.
+
+## FAQ
+
+<Accordion title="Which transport does the sync use?">
+  By default the connection uses the standard WinRM HTTP listener on port 5985 with NTLM message encryption. HTTPS on port 5986 is also supported for hosts that require it.
+</Accordion>
+
+<Accordion title="Can I import certificates from a Windows server back into Infisical?">
+  No. The Windows Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+</Accordion>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Linux Server" icon="linux" href="/documentation/platform/pki/applications/certificate-syncs/linux-server">
+    Deploy certificates to Linux servers over SSH.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

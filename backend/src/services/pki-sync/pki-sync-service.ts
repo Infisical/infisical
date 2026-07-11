@@ -13,12 +13,15 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
+import { certificateNameSchemaAllowsMultipleCertificates } from "./pki-sync-certificate-name-fns";
+import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { enterprisePkiSyncCheck, getPkiSyncProviderCapabilities, listPkiSyncOptions } from "./pki-sync-fns";
@@ -75,6 +78,7 @@ type TPkiSyncServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   pkiSyncQueue: Pick<
     TPkiSyncQueueFactory,
     "queuePkiSyncSyncCertificatesById" | "queuePkiSyncImportCertificatesById" | "queuePkiSyncRemoveCertificatesById"
@@ -91,6 +95,7 @@ export const pkiSyncServiceFactory = ({
   appConnectionService,
   permissionService,
   licenseService,
+  kmsService,
   pkiSyncQueue
 }: TPkiSyncServiceFactoryDep) => {
   const $resourceFallback = async (
@@ -190,6 +195,20 @@ export const pkiSyncServiceFactory = ({
       });
     }
   };
+
+  const assertSchemaAllowsCertificateCount = (
+    syncOptions: Record<string, unknown> | undefined,
+    resultingCertificateCount: number
+  ) => {
+    const schema = syncOptions?.certificateNameSchema as string | undefined;
+    if (resultingCertificateCount > 1 && !certificateNameSchemaAllowsMultipleCertificates(schema)) {
+      throw new BadRequestError({
+        message:
+          "This sync's certificate name schema has no placeholder, so it can be linked to only one certificate. Add a placeholder such as {{commonName}} or {{certificateId}} to sync multiple certificates."
+      });
+    }
+  };
+
   const createPkiSync = async (
     {
       name,
@@ -202,7 +221,8 @@ export const pkiSyncServiceFactory = ({
       connectionId,
       projectId,
       applicationId,
-      certificateIds = []
+      certificateIds = [],
+      credentials
     }: Omit<TCreatePkiSyncDTO, "auditLogInfo">,
     actor: OrgServiceActor
   ): Promise<TPkiSync> => {
@@ -247,7 +267,12 @@ export const pkiSyncServiceFactory = ({
 
     if (certificateIds.length > 0) {
       await validateCertificatesForSync(certificateIds, projectId, applicationId);
+      assertSchemaAllowsCertificateCount(resolvedSyncOptions, certificateIds.length);
     }
+
+    const encryptedCredentials = credentials?.exportPassword
+      ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
+      : undefined;
 
     try {
       const pkiSync = await pkiSyncDAL.create({
@@ -257,6 +282,7 @@ export const pkiSyncServiceFactory = ({
         isAutoSyncEnabled,
         destinationConfig,
         syncOptions: resolvedSyncOptions,
+        encryptedCredentials,
         subscriberId,
         connectionId,
         projectId,
@@ -297,7 +323,8 @@ export const pkiSyncServiceFactory = ({
       syncOptions,
       subscriberId,
       connectionId,
-      certificateIds
+      certificateIds,
+      credentials
     }: Omit<TUpdatePkiSyncDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
   ): Promise<TPkiSync> => {
@@ -383,9 +410,12 @@ export const pkiSyncServiceFactory = ({
       };
     }
 
+    const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
+
     if (certificateIds !== undefined) {
       if (certificateIds.length > 0) {
         await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
+        assertSchemaAllowsCertificateCount(effectiveSyncOptions, certificateIds.length);
       }
 
       await certificateSyncDAL.removeAllCertificatesFromSync(id);
@@ -395,7 +425,14 @@ export const pkiSyncServiceFactory = ({
           certificateIds.map((certId) => ({ certificateId: certId }))
         );
       }
+    } else if (syncOptions) {
+      const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
+      assertSchemaAllowsCertificateCount(effectiveSyncOptions, existingCount);
     }
+
+    const encryptedCredentials = credentials?.exportPassword
+      ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
+      : undefined;
 
     const updatedPkiSync = await pkiSyncDAL.updateById(id, {
       name,
@@ -404,7 +441,8 @@ export const pkiSyncServiceFactory = ({
       destinationConfig,
       syncOptions: resolvedSyncOptions,
       subscriberId,
-      connectionId
+      connectionId,
+      ...(encryptedCredentials ? { encryptedCredentials } : {})
     });
 
     return updatedPkiSync as TPkiSync;
@@ -694,6 +732,12 @@ export const pkiSyncServiceFactory = ({
 
     await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
 
+    const existingCount = (await certificateSyncDAL.findByPkiSyncId(pkiSyncId)).length;
+    assertSchemaAllowsCertificateCount(
+      pkiSync.syncOptions as Record<string, unknown> | undefined,
+      existingCount + certificateIds.length
+    );
+
     const addedCertificates = await certificateSyncDAL.addCertificates(
       pkiSyncId,
       certificateIds.map((id) => ({ certificateId: id }))
@@ -737,10 +781,16 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    const removedCount = await certificateSyncDAL.removeCertificates(pkiSyncId, certificateIds);
-
-    if (pkiSync.isAutoSyncEnabled) {
-      await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    const syncOptions = pkiSync.syncOptions as { canRemoveCertificates?: boolean } | undefined;
+    let removedCount: number;
+    if (syncOptions?.canRemoveCertificates) {
+      await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: pkiSyncId, certificateIds });
+      removedCount = certificateIds.length;
+    } else {
+      removedCount = await certificateSyncDAL.removeCertificates(pkiSyncId, certificateIds);
+      if (pkiSync.isAutoSyncEnabled) {
+        await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+      }
     }
 
     return {

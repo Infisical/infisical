@@ -182,6 +182,7 @@
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
+                      "integrations/app-connections/winrm",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -923,7 +924,9 @@
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
-                          "documentation/platform/pki/applications/certificate-syncs/netscaler"
+                          "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/linux-server",
+                          "documentation/platform/pki/applications/certificate-syncs/windows-server"
                         ]
                       }
                     ]
@@ -2221,6 +2224,18 @@
                       "api-reference/endpoints/app-connections/smb/create",
                       "api-reference/endpoints/app-connections/smb/update",
                       "api-reference/endpoints/app-connections/smb/delete"
+                    ]
+                  },
+                  {
+                    "group": "Windows (WinRM)",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/winrm/list",
+                      "api-reference/endpoints/app-connections/winrm/available",
+                      "api-reference/endpoints/app-connections/winrm/get-by-id",
+                      "api-reference/endpoints/app-connections/winrm/get-by-name",
+                      "api-reference/endpoints/app-connections/winrm/create",
+                      "api-reference/endpoints/app-connections/winrm/update",
+                      "api-reference/endpoints/app-connections/winrm/delete"
                     ]
                   },
                   {
@@ -3605,6 +3620,30 @@
                           "api-reference/endpoints/pki/syncs/netscaler/delete",
                           "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
                           "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Linux Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/linux-server/list",
+                          "api-reference/endpoints/pki/syncs/linux-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/linux-server/create",
+                          "api-reference/endpoints/pki/syncs/linux-server/update",
+                          "api-reference/endpoints/pki/syncs/linux-server/delete",
+                          "api-reference/endpoints/pki/syncs/linux-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/linux-server/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Windows Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/windows-server/list",
+                          "api-reference/endpoints/pki/syncs/windows-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/windows-server/create",
+                          "api-reference/endpoints/pki/syncs/windows-server/update",
+                          "api-reference/endpoints/pki/syncs/windows-server/delete",
+                          "api-reference/endpoints/pki/syncs/windows-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/windows-server/remove-certificates"
                         ]
                       }
                     ]

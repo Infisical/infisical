@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
@@ -9,7 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSync, TPkiSync, useCreatePkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
+import {
+  PkiSync,
+  PkiSyncExportFormat,
+  TPkiSync,
+  useCreatePkiSync,
+  usePkiSyncOption
+} from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
@@ -23,38 +29,46 @@ type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
   destination: PkiSync;
   onCancel: () => void;
-  initialData?: any;
+  initialData?: Partial<TPkiSyncForm>;
   applicationId?: string;
 };
 
 const getFormTabs = (
   destination: PkiSync
-): { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[] => {
+): { name: string; key: string; fields: FieldPath<TPkiSyncForm>[] }[] => {
   const baseTabs = [
     {
       name: "Destination",
       key: "destination",
-      fields: ["connection", "destinationConfig"] as (keyof TPkiSyncForm)[]
+      fields: ["connection", "destinationConfig"] as FieldPath<TPkiSyncForm>[]
     },
-    { name: "Sync Options", key: "options", fields: ["syncOptions"] as (keyof TPkiSyncForm)[] }
+    {
+      name: "Sync Options",
+      key: "options",
+      fields: ["syncOptions", "credentials"] as FieldPath<TPkiSyncForm>[]
+    }
   ];
 
   if (destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) {
     baseTabs.push({
       name: "Mappings",
       key: "mappings",
-      fields: ["syncOptions"] as (keyof TPkiSyncForm)[]
+      fields: ["syncOptions"] as FieldPath<TPkiSyncForm>[]
     });
   }
 
   baseTabs.push(
-    { name: "Details", key: "details", fields: ["name", "description"] as (keyof TPkiSyncForm)[] },
+    {
+      name: "Details",
+      key: "details",
+      fields: ["name", "description"] as FieldPath<TPkiSyncForm>[]
+    },
     {
       name: "Certificates",
       key: "certificates",
-      fields: ["certificateIds"] as (keyof TPkiSyncForm)[]
+      fields: ["certificateIds"] as FieldPath<TPkiSyncForm>[]
     },
-    { name: "Review", key: "review", fields: [] as (keyof TPkiSyncForm)[] }
+    { name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] }
   );
 
   return baseTabs;
@@ -89,6 +103,13 @@ export const CreatePkiSyncForm = ({
         canRemoveCertificates: false,
         preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema,
+        ...((destination === PkiSync.LinuxServer || destination === PkiSync.WindowsServer) && {
+          exportFormat:
+            destination === PkiSync.WindowsServer
+              ? PkiSyncExportFormat.Pkcs12
+              : PkiSyncExportFormat.Pem,
+          includePrivateKey: true
+        }),
         ...((destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && {
           fieldMappings: {
             certificate: "certificate",

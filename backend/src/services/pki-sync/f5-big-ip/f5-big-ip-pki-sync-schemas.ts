@@ -63,10 +63,6 @@ export const F5BigIpPkiSyncOptionsSchema = z.object({
     .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
-          return false;
-        }
-
         const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = F5_BIG_IP_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
@@ -77,7 +73,7 @@ export const F5BigIpPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for F5 BIG-IP. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
+          "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for F5 BIG-IP. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
       }
     )
 });

@@ -2,8 +2,8 @@ import { Controller, useFormContext } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Input, Switch, Tooltip } from "@app/components/v2";
-import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
+import { FormControl, Input, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
+import { PkiSync, PkiSyncExportFormat, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
 
@@ -415,6 +415,82 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         />
       )}
 
+      {(currentDestination === PkiSync.LinuxServer ||
+        currentDestination === PkiSync.WindowsServer) && (
+        <>
+          <Controller
+            control={control}
+            name="syncOptions.exportFormat"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error)}
+                errorText={error?.message}
+                label="Export Format"
+                tooltipText="PEM writes separate certificate, chain, and key files. PKCS#12 writes a single password-protected .pfx bundle."
+              >
+                <Select
+                  value={value ?? PkiSyncExportFormat.Pem}
+                  onValueChange={(v) => onChange(v as PkiSyncExportFormat)}
+                  className="w-full border border-mineshaft-500"
+                  position="popper"
+                >
+                  <SelectItem value={PkiSyncExportFormat.Pem}>PEM</SelectItem>
+                  <SelectItem value={PkiSyncExportFormat.Pkcs12}>PKCS#12 (.pfx)</SelectItem>
+                </Select>
+              </FormControl>
+            )}
+          />
+          {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pkcs12 && (
+            <Controller
+              control={control}
+              name="credentials.exportPassword"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="PKCS#12 Password"
+                  tooltipText="Protects the .pfx bundle. When editing, leave blank to keep the current password."
+                >
+                  <Input
+                    type="password"
+                    value={value ?? ""}
+                    onChange={onChange}
+                    placeholder="Enter a password"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
+          {watch("syncOptions.exportFormat") !== PkiSyncExportFormat.Pkcs12 && (
+            <Controller
+              control={control}
+              name="syncOptions.includePrivateKey"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl isError={Boolean(error)} errorText={error?.message}>
+                  <Switch
+                    className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                    id="include-private-key"
+                    thumbClassName="bg-mineshaft-800"
+                    onCheckedChange={onChange}
+                    isChecked={value ?? true}
+                  >
+                    <p>
+                      Include Private Key{" "}
+                      <Tooltip
+                        className="max-w-md"
+                        content="When on, the certificate's private key is written alongside the certificate as a .key file. The sync fails for a certificate whose key is not available (for example, one issued from an external CSR)."
+                      >
+                        <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                      </Tooltip>
+                    </p>
+                  </Switch>
+                </FormControl>
+              )}
+            />
+          )}
+        </>
+      )}
+
       <Controller
         control={control}
         name="syncOptions.certificateNameSchema"
@@ -455,13 +531,24 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                       belongs to
                     </li>
                   </ul>
-                  <span className="mt-1 text-xs text-bunker-300">
-                    The schema must include <code>{"{{certificateId}}"}</code> or{" "}
-                    <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique name.
-                    The template itself can only contain letters, numbers, and the separators
-                    allowed by the destination. When placeholders resolve, any characters the
-                    destination doesn&apos;t support are replaced with hyphens.
-                  </span>
+                  {currentDestination === PkiSync.LinuxServer ||
+                  currentDestination === PkiSync.WindowsServer ? (
+                    <span className="mt-1 text-xs text-bunker-300">
+                      A placeholder is optional here. Include one (for example{" "}
+                      <code>{"{{commonName}}"}</code>) so each certificate resolves to a distinct
+                      file name. A schema with no placeholder resolves to a fixed name and can be
+                      linked to only one certificate. When placeholders resolve, any characters the
+                      destination doesn&apos;t support are replaced with hyphens.
+                    </span>
+                  ) : (
+                    <span className="mt-1 text-xs text-bunker-300">
+                      The schema must include <code>{"{{certificateId}}"}</code> or{" "}
+                      <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique
+                      name. The template itself can only contain letters, numbers, and the
+                      separators allowed by the destination. When placeholders resolve, any
+                      characters the destination doesn&apos;t support are replaced with hyphens.
+                    </span>
+                  )}
                 </div>
                 {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
                   <div className="flex flex-col">
