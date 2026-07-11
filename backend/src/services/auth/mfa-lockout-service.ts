@@ -193,19 +193,25 @@ export const mfaLockoutServiceFactory = ({
     await keyStore.deleteItem(KeyStorePrefixes.UserStepUpMfaLockout(userId));
   };
 
-  // Records that the user just completed a full MFA login. A completed login proves a
-  // second factor at least as strong as any step-up challenge (it satisfies the org's
-  // required method, or is a recovery code that bypasses it), so within this window an
-  // MFA-management step-up is redundant. This is what lets a user who lost their only
-  // configured factor, and logged in via a recovery code, still reach their MFA
-  // settings to disable it or switch the preferred method. It self-clears on TTL; if
-  // the window lapses, another login re-opens it.
-  const recordRecentMfaAuth = async (userId: string) => {
-    await keyStore.setItemWithExpiry(KeyStorePrefixes.RecentMfaAuth(userId), KeyStoreTtls.MfaSessionInSeconds, "1");
+  // Records that a specific login SESSION just completed a full MFA login. A completed
+  // login proves a second factor at least as strong as any step-up challenge (it
+  // satisfies the org's required method, or is a recovery code that bypasses it), so
+  // within this window an MFA-management step-up on that same session is redundant. This
+  // is what lets a user who lost their only configured factor, and logged in via a
+  // recovery code, still reach their MFA settings to disable it or switch the preferred
+  // method. Keyed by tokenVersionId (the session), NOT the user, so proving MFA in one
+  // session never authorizes another (older/stolen) session. Self-clears on TTL; if the
+  // window lapses, another login on that session re-opens it.
+  const recordRecentMfaAuth = async (tokenVersionId: string) => {
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.RecentMfaAuth(tokenVersionId),
+      KeyStoreTtls.MfaSessionInSeconds,
+      "1"
+    );
   };
 
-  const hasRecentMfaAuth = async (userId: string): Promise<boolean> => {
-    return Boolean(await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(userId)));
+  const hasRecentMfaAuth = async (tokenVersionId: string): Promise<boolean> => {
+    return Boolean(await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(tokenVersionId)));
   };
 
   return {

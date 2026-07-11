@@ -106,7 +106,13 @@ export const mfaSessionServiceFactory = ({
     });
   };
 
-  const verifyMfaSession = async ({ mfaSessionId, userId, mfaToken, mfaMethod }: TVerifyMfaSessionDTO) => {
+  const verifyMfaSession = async ({
+    mfaSessionId,
+    userId,
+    tokenVersionId,
+    mfaToken,
+    mfaMethod
+  }: TVerifyMfaSessionDTO) => {
     const mfaSession = await getMfaSession(mfaSessionId);
 
     if (!mfaSession) {
@@ -172,7 +178,7 @@ export const mfaSessionServiceFactory = ({
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
 
     if (mfaSession.resourceId === MfaStepUpResource.MfaManagement) {
-      await mfaLockoutService.recordRecentMfaAuth(userId);
+      await mfaLockoutService.recordRecentMfaAuth(tokenVersionId);
     }
 
     return {
@@ -232,10 +238,11 @@ export const mfaSessionServiceFactory = ({
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
   };
 
-  // True when the user completed a full MFA login recently, so an MFA-management
-  // step-up can be skipped within the grace window (see recordRecentMfaAuth).
-  const hasRecentMfaAuth = async (userId: string): Promise<boolean> => {
-    return mfaLockoutService.hasRecentMfaAuth(userId);
+  // True when THIS session (tokenVersionId) completed a full MFA login or management
+  // step-up recently, so an MFA-management step-up can be skipped within the grace
+  // window (see recordRecentMfaAuth). Session-scoped, never user-scoped.
+  const hasRecentMfaAuth = async (tokenVersionId: string): Promise<boolean> => {
+    return mfaLockoutService.hasRecentMfaAuth(tokenVersionId);
   };
 
   return {

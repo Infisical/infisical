@@ -29,6 +29,7 @@ export type TCreateMfaSessionDTO = {
 export type TVerifyMfaSessionDTO = {
   mfaSessionId: string;
   userId: string;
+  tokenVersionId: string;
   mfaToken: string;
   mfaMethod: MfaMethod;
 };

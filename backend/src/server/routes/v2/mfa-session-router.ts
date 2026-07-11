@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
@@ -31,9 +32,14 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "MFA session verification requires a user session" });
+      }
+
       const result = await server.services.mfaSession.verifyMfaSession({
         mfaSessionId: req.params.mfaSessionId,
         userId: req.permission.id,
+        tokenVersionId: req.auth.tokenVersionId,
         mfaToken: req.body.mfaToken,
         mfaMethod: req.body.mfaMethod
       });

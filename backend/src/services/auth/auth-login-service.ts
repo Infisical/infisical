@@ -297,7 +297,7 @@ export const authLoginServiceFactory = ({
       { expiresIn: refreshTokenExpiresIn }
     );
 
-    return { access: accessToken, refresh: refreshToken };
+    return { access: accessToken, refresh: refreshToken, tokenVersionId: tokenSession.id };
   };
 
   const processProviderCallback = async ({
@@ -716,8 +716,6 @@ export const authLoginServiceFactory = ({
 
     await mfaLockoutService.resetMfaLockStatus(userId);
 
-    await mfaLockoutService.recordRecentMfaAuth(userId);
-
     const token = await generateUserTokens({
       userId: user.id,
       ip,
@@ -727,6 +725,12 @@ export const authLoginServiceFactory = ({
       isMfaVerified: true,
       mfaMethod
     });
+
+    // Open the grace window for THIS session only (the one that just proved MFA), so
+    // MFA-management step-up isn't re-prompted right after login - including recovery-code
+    // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
+    // by the new session's tokenVersionId so no other session inherits it.
+    await mfaLockoutService.recordRecentMfaAuth(token.tokenVersionId);
 
     if (isRecoveryCode && userEnc.email) {
       await smtpService

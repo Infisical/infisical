@@ -1,9 +1,22 @@
-import { BadRequestError } from "@app/lib/errors";
-import { MfaMethod } from "@app/services/auth/auth-type";
+import { FastifyRequest } from "fastify";
+
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { MfaStepUpResource, TMfaStepUpResource } from "@app/services/mfa-session/mfa-session-types";
 
 export { MfaStepUpResource };
 export type { TMfaStepUpResource };
+
+// The step-up grace is scoped to the CURRENT login session (tokenVersionId), never the
+// user, so proving MFA in one session can't authorize another. All step-up-gated routes
+// are JWT-only, so the request always carries a session id; this narrows req.auth to
+// read it (and rejects any non-user auth mode defensively).
+export const getStepUpSessionId = (req: FastifyRequest): string => {
+  if (req.auth.authMode !== AuthMode.JWT) {
+    throw new UnauthorizedError({ message: "This action requires a user session" });
+  }
+  return req.auth.tokenVersionId;
+};
 
 /**
  * Enforces that the caller has completed a fresh MFA challenge before a sensitive
@@ -29,6 +42,7 @@ export const ensureStepUpMfa = async (
   {
     userId,
     orgId,
+    tokenVersionId,
     resourceId,
     mfaSessionId,
     message,
@@ -36,6 +50,7 @@ export const ensureStepUpMfa = async (
   }: {
     userId: string;
     orgId: string;
+    tokenVersionId: string;
     resourceId: TMfaStepUpResource;
     mfaSessionId?: string;
     message: string;
@@ -53,7 +68,10 @@ export const ensureStepUpMfa = async (
     return;
   }
 
-  if (resourceId === MfaStepUpResource.MfaManagement && (await server.services.mfaSession.hasRecentMfaAuth(userId))) {
+  if (
+    resourceId === MfaStepUpResource.MfaManagement &&
+    (await server.services.mfaSession.hasRecentMfaAuth(tokenVersionId))
+  ) {
     return;
   }
 

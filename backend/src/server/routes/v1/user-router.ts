@@ -8,7 +8,7 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { ensureStepUpMfa, MfaStepUpResource } from "../mfa-step-up-fns";
+import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
 
 const SantizedUserSchema = UsersSchema.omit({
   hashedPassword: true
@@ -237,6 +237,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
         message: "MFA verification is required to remove your authenticator app"
@@ -321,6 +322,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
         message: "MFA verification is required to access recovery codes"
@@ -356,6 +358,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
         message: "MFA verification is required to access recovery codes"
@@ -585,6 +588,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
         message: "MFA verification is required to remove a passkey"

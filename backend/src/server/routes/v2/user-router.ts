@@ -8,7 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
-import { ensureStepUpMfa, MfaStepUpResource } from "../mfa-step-up-fns";
+import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
@@ -60,6 +60,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body.mfaSessionId,
         message: "MFA verification is required to change your preferred two-factor method"
@@ -187,6 +188,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         await ensureStepUpMfa(server, {
           userId: req.permission.id,
           orgId: req.permission.orgId,
+          tokenVersionId: getStepUpSessionId(req),
           resourceId: MfaStepUpResource.MfaActivation,
           mfaMethod: selectedMfaMethod,
           mfaSessionId: req.body.mfaSessionId,
@@ -235,6 +237,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
         message: "MFA verification is required to disable two-factor authentication"
