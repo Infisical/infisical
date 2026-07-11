@@ -1679,6 +1679,9 @@ export const secretApprovalRequestServiceFactory = ({
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    if (!user || !env) {
+      return secretApprovalRequest;
+    }
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
@@ -1688,6 +1691,9 @@ export const secretApprovalRequestServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
+    if (!project) {
+      return secretApprovalRequest;
+    }
     await triggerWorkflowIntegrationNotification({
       input: {
         projectId,
@@ -2115,6 +2121,9 @@ export const secretApprovalRequestServiceFactory = ({
 
     const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
+    if (!user || !env) {
+      return secretApprovalRequest;
+    }
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
     const approvalPath = `${projectPath}/approval`;
