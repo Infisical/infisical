@@ -578,8 +578,7 @@ export const recordSecretRotationOutcomeMetric = (params: { type: string; outcom
 export const dynamicSecretOrphanedLeaseCounter = infisicalCoreMeter.createCounter(
   "infisical.dynamic_secret.orphaned_lease.count",
   {
-    description:
-      "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
+    description: "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
     unit: "{failure}"
   }
 );
