@@ -124,7 +124,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   - Real values for regular secrets the agent has **Read Value** on in the scoped folder, including secrets imported into it (similar to `infisical run`). This is opt-in; the built-in Agent role grants no read access, and brokered credentials never appear in the agent's environment.
   - `INFISICAL_TOKEN` set to the agent's access token, so the agent can run Infisical CLI commands itself.
 
-  The machine identity credentials (client ID, client secret, and any access token) are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
+  The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
 
 ```bash
 $ infisical secrets agent-proxy connect --proxy=<host>:<port> --env=<env-slug> -- [agent start command]

@@ -3,7 +3,7 @@ title: "Proxied Services"
 description: "Define how the agent proxy applies credentials to traffic bound for an external service."
 ---
 
-A proxied service tells the agent proxy how to handle traffic to a specific external service. It lives in a folder alongside your secrets, references those secrets by key name, and defines which hosts it applies to and how each credential is placed into the outbound request.
+A proxied service tells the agent proxy how to handle traffic to a specific external service. It lives in a folder alongside your secrets, references those secrets by key name, and defines which hosts it applies to and how each secret is placed into the outbound request.
 
 You manage proxied services in the secrets dashboard: open a folder, click the dropdown arrow next to **Add Secret**, and select **Add Proxied Service**. They appear in the folder view next to your secrets.
 
@@ -21,7 +21,7 @@ You manage proxied services in the secrets dashboard: open a folder, click the d
   Toggle a service off without deleting it. A disabled service is skipped entirely: its placeholder environment variables are not set, no credentials are applied, and traffic to its hosts falls back to the [unmatched host policy](/documentation/platform/agent-proxy/security#unmatched-hosts).
 </ParamField>
 
-A service then defines one or more credentials in two sections, **Header Rewriting** and **Credential Substitution**. Both are independent; use either or both.
+A service then applies one or more secrets in two ways, **Header Rewriting** and **Credential Substitution**. Both are independent; use either or both.
 
 ## Host Patterns
 
@@ -64,7 +64,7 @@ Header rewriting adds or replaces an HTTP header on the outbound request. The ag
 | Basic auth | Two secrets, one as **Username** and one as **Password** | `Authorization: Basic base64(username:password)` |
 | Custom | Any header name and optional prefix | `<name>: <prefix> <secret>` |
 
-A service can rewrite multiple distinct headers (for example, an API key header plus a tenant header), but each header name can only be set by one credential. To build one header value out of several secrets, or to use a secret that lives in another folder or environment, create a secret in the service's folder whose value uses [secret references](/documentation/platform/secret-reference) (for example `${prod.shared.API_KEY}`), and point the credential at it. References are resolved to their final value before the proxy applies the credential.
+A service can rewrite multiple distinct headers (for example, an API key header plus a tenant header), but each header name can only be set by one secret. To build one header value out of several secrets, or use a secret kept elsewhere, see [reusing secrets from other folders and environments](#reusing-secrets-from-other-folders-and-environments).
 
 ## Credential Substitution
 
@@ -78,7 +78,7 @@ With credential substitution, the agent is handed a dummy placeholder value and 
 </ParamField>
 
 <ParamField path="Placeholder Value" type="string" required>
-  The dummy value that appears on the wire. A distinctive random string is generated for you, but you can override it, for example when the agent's HTTP client validates the credential's format. Keep it distinctive so the swap never matches unrelated request content.
+  The dummy value that appears on the wire. A distinctive random string is generated for you, but you can override it, for example when the agent's HTTP client validates the credential's format.
 </ParamField>
 
 <ParamField path="Replace In" type="string[]" required>
@@ -99,19 +99,30 @@ A few behaviors worth knowing:
   If a placeholder environment variable has the same name as a regular secret the agent can read, the real secret value wins and the CLI logs a warning. Rename one of the two to avoid the ambiguity.
 </Note>
 
-## Secret References
+## Using Secrets
 
-Credentials reference secrets **by key name, from the same folder as the service**. This keeps the relationship self-healing:
+A proxied service uses secrets **by key name, from its own folder**. This keeps the relationship self-healing:
 
-- At creation time, Infisical validates that each referenced secret exists and that you can read its value. Typos fail immediately instead of silently at proxy time.
-- The key is looked up in the folder first, then through the folder's [secret imports](/documentation/platform/secret-reference). A folder-local secret always wins over an imported one with the same key. For imported secrets, read permission is checked where the secret actually lives, so an import cannot widen anyone's access.
-- To compose one value out of several secrets, or pull one in without an import, create a secret in this folder whose value uses [secret references](/documentation/platform/secret-reference). References are resolved before the proxy applies the value.
-- If a referenced secret is later renamed or deleted, the reference goes stale: the agent proxy logs a warning and skips that credential (requests still go through, just without it). Recreating a secret with the same key restores the credential automatically.
+- At creation time, Infisical validates that each secret exists and that you can read its value, so typos are caught the moment you save.
+- If a secret is later renamed or deleted, the proxied service skips it (the agent proxy logs a warning and the request still goes through, just without that value). Recreating the secret with the same key restores it automatically.
 - Deleting the folder deletes the proxied services in it.
 
 <Note>
-  Creating or updating a proxied service requires **Read Value** permission on each secret it references. This prevents someone with edit access to proxied services from wiring in a secret they are not allowed to read and exfiltrating it through the proxy.
+  Creating or updating a proxied service requires **Read Value** permission on each secret it uses. This prevents someone with edit access to proxied services from wiring in a secret they are not allowed to read and exfiltrating it through the proxy.
 </Note>
+
+### Reusing secrets from other folders and environments
+
+You cannot point a proxied service at another folder directly, but you can bring an outside value into its folder so the service can use it. There are two ways, both using features that already exist in Infisical:
+
+| Approach | What you do | Example |
+| --- | --- | --- |
+| **Imported secret** | [Import](/documentation/platform/secret-reference) another folder into the service's folder, then use the imported key by name | Import `/shared-creds`, then use its `SHARED_API_KEY` from the service's folder |
+| **Composed with references** | Create a secret whose value is one or more [secret references](/documentation/platform/secret-reference), then use that secret. Lets you combine several secrets, including ones from different environments | A secret set to `${dev.gateway.KEY}.${staging.gateway.KEY}.${prod.gateway.KEY}` resolves to the three values joined together |
+
+A folder-local secret always wins over an imported one with the same key. Read permission on an imported secret is checked where it actually lives, so an import cannot widen anyone's access.
+
+Either way, the value is fully resolved before the proxy applies it.
 
 ## Example: API Request
 

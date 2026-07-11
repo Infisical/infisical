@@ -7,9 +7,19 @@ This page covers what is happening under the hood of the agent proxy: how every 
 
 ## Isolation Model
 
-The proxy has no built-in scope: no project, environment, or services are configured on it. It discovers everything per agent. When an agent connects, the proxy uses the agent's token to look up which proxied services that agent may use in the agent's folder scope, then fetches the real secret values with its own machine identity. This means one proxy instance can serve many agents across projects and environments while keeping them isolated: an agent can never receive credentials it was not granted **Proxy** access to, even on a shared proxy.
+The proxy is pinned to one organization, the one its own machine identity belongs to, but nothing narrower: no project, environment, path, or services are configured on it. It discovers those per agent. When an agent connects, the proxy uses the agent's token to look up which proxied services that agent may use in the agent's folder scope, then fetches the real secret values with its own machine identity. This means one proxy instance can serve many agents across projects and environments in the org while keeping them isolated: an agent can never receive credentials it was not granted **Proxy** access to, even on a shared proxy.
 
-Deploy the proxy in the same private network as your agents to keep per-request latency low, but on a **separate machine**. Running it on a different host is what guarantees untrusted code cannot reach into the proxy's memory and read the real credentials it holds.
+## Network Placement
+
+The agent proxy is built for private-network deployment. A well-placed proxy looks like this:
+
+- **Inside your private network, off the public internet.** The proxy's listening port should only ever be reachable from within your network.
+- **Reachable only by your agent machines.** Restrict inbound access to the proxy port to the hosts that run agents, using your usual controls (security groups, firewall rules, network policies).
+- **On its own host.** Same network as the agents for low per-request latency, but a separate machine, which keeps the real credentials fully isolated from the agents.
+- **Alongside any plain-HTTP upstreams.** Internal services the proxy reaches over plain HTTP belong inside the same trusted network.
+- **Credentials where they are used.** Provision the proxy identity's client credentials only on the proxy host, and each agent identity's only on its agent machine.
+
+Outbound, the proxy only needs to reach your Infisical instance and the APIs your proxied services define.
 
 ## Agent Authentication
 
@@ -44,11 +54,9 @@ The root CA is generated automatically per organization and stored encrypted in 
 
 On the agent machine, the `connect` wrapper downloads the root CA to `~/.infisical/agent-proxy/mitm-ca.pem` and points the standard trust environment variables (`SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, `DENO_CERT`) at it. The proxy's connection to the real service is standard HTTPS with normal certificate verification, so real credentials always travel encrypted.
 
-Because the root CA is shared across your organization, treat trusting it as an org-level decision: any machine identity in the org can obtain an intermediate signed by it. What each agent can actually access is still governed by [agent authentication](#agent-authentication), never by the certificate chain.
-
-<Warning>
-  The initial `CONNECT` handshake between the agent and the proxy, including the agent's token, travels in plaintext (the tunneled request content itself is encrypted). Requests to plain-HTTP services travel entirely in plaintext, including any credentials the proxy attaches. Run the proxy, agents, and any plain-HTTP upstream services within a trusted private network.
-</Warning>
+<Note>
+  Place the proxy according to the [network placement](#network-placement) guidance above; it is built for private-network deployment.
+</Note>
 
 ## Permissions
 
@@ -58,7 +66,7 @@ Proxied services have their own project-level permission subject, so you can con
 | --- | --- | --- | --- | --- |
 | **Read** | View proxied services and their configuration | Yes | Yes | Yes |
 | **Create** | Create new proxied services | Yes | No | No |
-| **Edit** | Update host patterns, credentials, or enable/disable | Yes | No | No |
+| **Edit** | Update a service's host patterns, secrets, or enabled state | Yes | No | No |
 | **Delete** | Delete proxied services | Yes | No | No |
 | **Proxy** | Route traffic through the service and have credentials applied | Yes | No | No |
 
@@ -77,6 +85,26 @@ Two built-in project roles make setup quick. Both grant broad access across all 
   The Agent role intentionally has no secret read access. If an agent also needs real values in its environment, grant its identity **Read Value** on those specific secrets. Avoid granting folder-wide read access to an agent identity: that would also expose the brokered secrets and defeat the purpose of brokering them.
 </Note>
 
+### Custom Roles
+
+The built-in roles grant the right permissions but across all environments and paths. To scope tighter, build a [custom role](/documentation/platform/access-controls/role-based-access-controls) instead. This is the minimum each identity needs:
+
+| Identity | Minimum permissions | Notes |
+| --- | --- | --- |
+| **Agent** | `Proxy` on **Proxied Services**, scoped to the environments and paths where its services live | This alone lets it route traffic and have credentials applied. It does not need to read any secret. Add `Read Value` on **Secrets** only for values the agent uses directly (not brokered ones). |
+| **Agent Proxy** | `Read Value` and `Describe Secret` on **Secrets**, covering every secret the services reference | This is the identity that actually fetches the real values. Both actions are required: `Describe Secret` determines whether a secret is visible to the identity at all, and `Read Value` reveals its value. It needs no proxied-service permission. |
+
+The key thing to get right for the agent proxy: it needs **Read Value on every secret referenced by every service any of its agents use**, across the relevant environments and paths. If a referenced secret comes from a [secret import](/documentation/platform/agent-proxy/proxied-services#using-secrets), the read permission has to cover the secret's real location (the import source), not just the folder it is imported into. If a grant is missing, that credential is skipped.
+
+### How Many Machine Identities Do You Need?
+
+A [machine identity](/documentation/platform/identities/machine-identities) is how Infisical knows who is asking and what they are allowed to access. So the number you need is not a technical limit; it follows from how you want access divided:
+
+- **One for the agent proxy.** A single proxy identity serves any number of agents, and multiple proxy instances behind a load balancer share the same one.
+- **One per distinct agent scope.** Agents that should have exactly the same access can share an identity: a fleet of interchangeable workers doing the same job is one scope, so one identity is fine. Agents that reach different services, environments, or paths each get their own.
+
+Sharing one identity between agents that need *different* access also works, but it means granting that identity the union of everything any of them needs: each agent then carries access it does not use, a compromised agent exposes the whole union, revoking the identity cuts off every agent at once, and audit logs cannot tell the agents apart.
+
 ## Caching and Polling
 
 The proxy keeps everything it needs in memory, so steady-state requests involve no Infisical calls:
@@ -84,6 +112,7 @@ The proxy keeps everything it needs in memory, so steady-state requests involve 
 - **First request from an agent**: the proxy discovers all proxied services in the agent's scope and fetches the referenced secret values. This first request is slightly slower; every subsequent request from that agent, to any host, is served from cache.
 - **Refresh**: every 60 seconds (configurable via `--poll-interval`), the proxy re-fetches services, permissions, and secret values for active agents. Changes such as a rotated secret, an edited service, or a revoked permission take effect within one poll interval, with no agent restart.
 - **Eviction**: an agent idle for about 10 minutes has its cache dropped and polling stopped. Its next request simply triggers a fresh discovery.
+- **API load**: polling grows with the number of active agents. With a large fleet or a short `--poll-interval`, factor in your instance's API rate limits; a longer interval reduces load at the cost of slower propagation.
 
 ## Unmatched Hosts
 
@@ -103,13 +132,3 @@ Run multiple proxy instances with the same machine identity behind a TCP load ba
 - All instances chain to the same per-organization root CA, so agents trust any instance. Each instance signs its own intermediate.
 - Each instance keeps its own agent cache. If the load balancer moves an agent to a new instance, that instance does one fresh discovery and then serves from cache.
 - Each instance polls Infisical independently. After a secret rotation, instances may briefly apply different values until their next poll (up to one poll interval).
-
-## Troubleshooting
-
-| Symptom | Meaning |
-| --- | --- |
-| `403` on a request | The proxy runs with `--unmatched-host=block` and the host matched no proxied service in the agent's scope (disabled services do not match either). |
-| `407 Proxy Authentication Required` | The request reached the proxy without agent credentials. Launch the agent through `infisical secrets agent-proxy connect` rather than pointing `HTTPS_PROXY` at the proxy manually. |
-| `502` on a request | The proxy could not reach the upstream service, or could not resolve the agent's permissions (for example, an expired agent token). |
-| Certificate errors in the agent | The agent's HTTP client is not picking up the CA trust variables. Most standard clients (curl, Node.js, Python requests) do; check how your client is configured to trust custom CAs. |
-| `proxied service ... references missing secret` in proxy logs | A referenced secret was renamed or deleted after the service was created. The credential is skipped until the reference is fixed or the secret is recreated with the same key. |

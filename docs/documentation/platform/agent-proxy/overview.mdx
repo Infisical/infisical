@@ -32,7 +32,7 @@ flowchart LR
 
 1. **Keep your secrets in Infisical**, exactly as you do today. Next to them, define [proxied services](/documentation/platform/agent-proxy/proxied-services): small configs that say, for example, "requests to `api.stripe.com` get `STRIPE_API_KEY` as a Bearer token".
 2. **Run the agent proxy** with one command: `infisical secrets agent-proxy start`.
-3. **Launch your agent through the wrapper**: `infisical secrets agent-proxy connect -- claude`. The wrapper points the agent's traffic at the proxy and starts it. The agent has no real credentials anywhere in its environment, and no idea any of this is happening.
+3. **Launch your agent through the wrapper**: `infisical secrets agent-proxy connect -- claude`. The wrapper points the agent's traffic at the proxy and starts it. The agent holds none of the brokered credentials, and has no idea any of this is happening.
 
 Now the agent calls `api.stripe.com`. The proxy adds the real `STRIPE_API_KEY` and forwards the request. Stripe sees a normal authenticated call.
 
@@ -51,7 +51,7 @@ Standalone credential proxies manage their own keys, users, and permissions in i
     Require a review before a brokered credential changes, exactly like a code change.
   </Card>
   <Card title="Audit Logs" icon="scroll" href="/documentation/platform/audit-logs">
-    Every create, update, and delete of a proxied service is logged with who did it and which secrets it references.
+    A complete trail of everything around your proxied services, from configuration changes to activity.
   </Card>
   <Card title="Access Controls" icon="user-lock" href="/documentation/platform/access-controls/role-based-access-controls">
     Scope each agent identity to exactly the environments, paths, and services it should reach.
