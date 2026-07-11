@@ -252,9 +252,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           status: DynamicSecretStatus.FailedDeletion,
           statusDetails: `${(error as Error)?.message?.slice(0, 255)} - Retrying automatically`
         });
-        if (providerType) {
-          recordDynamicSecretOrphanedLeaseMetric({ provider: providerType });
-        }
 
         // only add to retry queue if this is not a retry, and if the error is not a DisableRotationErrors error
         if (!isRetry && !(error instanceof DisableRotationErrors)) {
@@ -270,6 +267,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
             // we dont have to stop the retry job, because if we hit this point, its the last attempt and BullMQ will stop it after this point
             await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
+
+            if (providerType) {
+              recordDynamicSecretOrphanedLeaseMetric({ provider: providerType });
+            }
 
             await $queueDynamicSecretLeaseRevocationFailedEmail(leaseId, dynamicSecretId);
           }
