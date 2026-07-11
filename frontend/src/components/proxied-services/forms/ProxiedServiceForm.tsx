@@ -16,9 +16,6 @@ import {
   Input,
   SheetFooter,
   Switch,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -166,6 +163,7 @@ export const ProxiedServiceForm = ({
     handleSubmit,
     watch,
     register,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<TProxiedServiceForm>({
     resolver: zodResolver(proxiedServiceFormSchema),
@@ -280,23 +278,9 @@ export const ProxiedServiceForm = ({
         </Field>
 
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Header Rewriting</p>
-              <p className="mt-1 text-xs text-muted">Sets these headers on every request.</p>
-            </div>
-            <Controller
-              control={control}
-              name="headerMode"
-              render={({ field }) => (
-                <Tabs value={field.value} onValueChange={field.onChange}>
-                  <TabsList>
-                    <TabsTrigger value={HeaderRewritingMode.Headers}>Headers</TabsTrigger>
-                    <TabsTrigger value={HeaderRewritingMode.BasicAuth}>Basic Auth</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-            />
+          <div>
+            <p className="text-sm font-medium">Header Rewriting</p>
+            <p className="mt-1 text-xs text-muted">Sets these headers on every request.</p>
           </div>
 
           {headerMode === HeaderRewritingMode.Headers ? (
@@ -365,7 +349,7 @@ export const ProxiedServiceForm = ({
                   </div>
                 ))}
               </div>
-              <div>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="xs"
@@ -377,52 +361,72 @@ export const ProxiedServiceForm = ({
                   <PlusIcon className="mr-1 size-4" />
                   Add Header
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setValue("headerMode", HeaderRewritingMode.BasicAuth)}
+                >
+                  Switch to Basic Auth
+                </Button>
               </div>
               {headersRootError && <FieldError>{headersRootError}</FieldError>}
             </>
           ) : (
-            <div className="flex gap-3">
-              <Field className="flex-1">
-                <FieldLabel>Username</FieldLabel>
-                <FieldContent>
-                  <Controller
-                    control={control}
-                    name="basicAuth.usernameSecretKey"
-                    render={({ field }) => (
-                      <SecretSelect
-                        projectId={projectId}
-                        environment={environment}
-                        secretPath={secretPath}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isError={Boolean(errors.basicAuth?.usernameSecretKey)}
-                      />
-                    )}
-                  />
-                  <FieldError errors={[errors.basicAuth?.usernameSecretKey]} />
-                </FieldContent>
-              </Field>
-              <Field className="flex-1">
-                <FieldLabel>Password</FieldLabel>
-                <FieldContent>
-                  <Controller
-                    control={control}
-                    name="basicAuth.passwordSecretKey"
-                    render={({ field }) => (
-                      <SecretSelect
-                        projectId={projectId}
-                        environment={environment}
-                        secretPath={secretPath}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isError={Boolean(errors.basicAuth?.passwordSecretKey)}
-                      />
-                    )}
-                  />
-                  <FieldError errors={[errors.basicAuth?.passwordSecretKey]} />
-                </FieldContent>
-              </Field>
-            </div>
+            <>
+              <div className="flex gap-3">
+                <Field className="flex-1">
+                  <FieldLabel>Username</FieldLabel>
+                  <FieldContent>
+                    <Controller
+                      control={control}
+                      name="basicAuth.usernameSecretKey"
+                      render={({ field }) => (
+                        <SecretSelect
+                          projectId={projectId}
+                          environment={environment}
+                          secretPath={secretPath}
+                          value={field.value}
+                          onChange={field.onChange}
+                          isError={Boolean(errors.basicAuth?.usernameSecretKey)}
+                        />
+                      )}
+                    />
+                    <FieldError errors={[errors.basicAuth?.usernameSecretKey]} />
+                  </FieldContent>
+                </Field>
+                <Field className="flex-1">
+                  <FieldLabel>Password</FieldLabel>
+                  <FieldContent>
+                    <Controller
+                      control={control}
+                      name="basicAuth.passwordSecretKey"
+                      render={({ field }) => (
+                        <SecretSelect
+                          projectId={projectId}
+                          environment={environment}
+                          secretPath={secretPath}
+                          value={field.value}
+                          onChange={field.onChange}
+                          isError={Boolean(errors.basicAuth?.passwordSecretKey)}
+                        />
+                      )}
+                    />
+                    <FieldError errors={[errors.basicAuth?.passwordSecretKey]} />
+                  </FieldContent>
+                </Field>
+              </div>
+              <div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setValue("headerMode", HeaderRewritingMode.Headers)}
+                >
+                  Switch to Custom Headers
+                </Button>
+              </div>
+            </>
           )}
         </div>
 
