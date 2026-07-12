@@ -1,34 +1,46 @@
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
+  Label,
   SecretInput,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { useScopeVariant } from "@app/hooks";
 import {
   NutanixPrismCentralConnectionMethod,
   TNutanixPrismCentralConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -101,7 +113,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [selectedTab, setSelectedTab] = useState("configuration");
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -117,13 +129,8 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    setValue,
-    watch,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control, setValue, watch } = form;
+  const scopeVariant = useScopeVariant();
 
   const method = watch("method");
   const gatewayId = watch("gatewayId");
@@ -137,249 +144,236 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
           I={OrgGatewayPermissionActions.AttachGateways}
           a={OrgPermissionSubjects.Gateway}
         >
-          {(isAllowed) => (
-            <FormControl label="Gateway">
-              <Tooltip
-                isDisabled={isAllowed}
-                content="Restricted access. You don't have permission to attach gateways to resources."
-              >
-                <div>
-                  <GatewayPicker
-                    isDisabled={!isAllowed}
-                    value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                    onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                      setValue("gatewayId", newGwId, { shouldDirty: true });
-                      setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                    }}
-                  />
-                </div>
-              </Tooltip>
-            </FormControl>
-          )}
+          {(isAllowed) => {
+            const picker = (
+              <GatewayPicker
+                isDisabled={!isAllowed}
+                value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                  setValue("gatewayId", newGwId, { shouldDirty: true });
+                  setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                }}
+              />
+            );
+
+            return (
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                {isAllowed ? (
+                  picker
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="block w-full cursor-not-allowed">{picker}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </Field>
+            );
+          }}
         </OrgPermissionCan>
         <Controller
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The authentication method to use when connecting to ${APP_CONNECTION_MAP[AppConnection.NutanixPrismCentral].name}. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(NutanixPrismCentralConnectionMethod).map((m) => (
-                  <SelectItem value={m} key={m}>
-                    {getAppConnectionMethodDetails(m).name}
-                  </SelectItem>
-                ))}
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.NutanixPrismCentral].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger id="method" className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(NutanixPrismCentralConnectionMethod).map((m) => {
+                    return (
+                      <SelectItem value={m} key={m}>
+                        {getAppConnectionMethodDetails(m).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="mb-3 flex w-full gap-4 border-b border-mineshaft-600">
-            <Tab
-              className={({ selected }) =>
-                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                  selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                    : "text-bunker-300"
-                }`
-              }
-            >
-              Configuration
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
-                  selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                    : "text-bunker-300"
-                }`
-              }
-            >
-              SSL
-            </Tab>
-          </Tab.List>
-          <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-            <Tab.Panel>
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-4">
+          <TabsList variant={scopeVariant}>
+            <TabsTrigger value="configuration">Configuration</TabsTrigger>
+            <TabsTrigger value="ssl">SSL</TabsTrigger>
+          </TabsList>
+          <TabsContent value="configuration">
+            <div className="grid grid-cols-[1fr_auto] gap-2">
               <Controller
                 name="credentials.hostname"
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Hostname"
-                    tooltipText="The FQDN or IP address of your Nutanix Prism Central instance."
-                  >
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="hostname">Hostname</FieldLabel>
                     <Input
+                      id="hostname"
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
                       placeholder="e.g. prism.example.com"
+                      isError={Boolean(error?.message)}
                     />
-                  </FormControl>
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
               />
               <Controller
                 name="credentials.port"
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Port"
-                    isOptional
-                    tooltipText="The HTTPS port for Prism Central. Default is 9440."
-                  >
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="port">
+                      Port <span className="text-muted">(optional)</span>
+                    </FieldLabel>
                     <Input
+                      id="port"
                       type="number"
                       value={value ?? ""}
                       onChange={(e) =>
                         onChange(e.target.value ? Number(e.target.value) : undefined)
                       }
                       placeholder="9440"
+                      className="w-24"
+                      isError={Boolean(error?.message)}
                     />
-                  </FormControl>
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
               />
-              {method === NutanixPrismCentralConnectionMethod.ApiKey && (
+            </div>
+            {method === NutanixPrismCentralConnectionMethod.ApiKey && (
+              <Controller
+                name="credentials.apiKey"
+                control={control}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="api-key">
+                      API Key
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          A Nutanix API key with permission to manage SSL certificates.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <SecretInput
+                      id="api-key"
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+            )}
+            {method === NutanixPrismCentralConnectionMethod.BasicAuth && (
+              <div className="grid grid-cols-2 gap-2">
                 <Controller
-                  name="credentials.apiKey"
+                  name="credentials.username"
                   control={control}
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="API Key"
-                      tooltipText="A Nutanix API key with permission to manage SSL certificates."
-                    >
+                    <Field className="mb-4">
+                      <FieldLabel htmlFor="username">Username</FieldLabel>
+                      <Input
+                        id="username"
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder="admin"
+                        isError={Boolean(error?.message)}
+                      />
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="credentials.password"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field className="mb-4">
+                      <FieldLabel htmlFor="password">Password</FieldLabel>
                       <SecretInput
-                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                        id="password"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                       />
-                    </FormControl>
+                      <FieldError errors={[error]} />
+                    </Field>
                   )}
                 />
-              )}
-              {method === NutanixPrismCentralConnectionMethod.BasicAuth && (
-                <div className="grid grid-cols-2 gap-2">
-                  <Controller
-                    name="credentials.username"
-                    control={control}
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        errorText={error?.message}
-                        isError={Boolean(error?.message)}
-                        label="Username"
-                      >
-                        <Input
-                          value={value}
-                          onChange={(e) => onChange(e.target.value)}
-                          placeholder="admin"
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    name="credentials.password"
-                    control={control}
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        errorText={error?.message}
-                        isError={Boolean(error?.message)}
-                        label="Password"
-                      >
-                        <SecretInput
-                          containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                          value={value}
-                          onChange={(e) => onChange(e.target.value)}
-                        />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-              )}
-            </Tab.Panel>
-            <Tab.Panel>
-              <Controller
-                name="credentials.sslCertificate"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="ssl">
+            <Controller
+              name="credentials.sslCertificate"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="ssl-certificate">
+                    SSL Certificate <span className="text-muted">(optional)</span>
+                  </FieldLabel>
+                  <TextArea
+                    id="ssl-certificate"
+                    className="h-[3.6rem] resize-none!"
+                    {...field}
+                    placeholder="-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----"
                     isError={Boolean(error?.message)}
-                    label="SSL Certificate"
-                    isOptional
-                  >
-                    <TextArea
-                      className="h-[3.6rem] resize-none!"
-                      {...field}
-                      placeholder="-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                name="credentials.sslRejectUnauthorized"
-                control={control}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="credentials.sslRejectUnauthorized"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field>
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <Label htmlFor="ssl-reject-unauthorized">Reject Unauthorized</Label>
+                      <FieldDescription>
+                        If enabled, Infisical will only connect if Prism Central presents a valid,
+                        trusted SSL certificate. Disable this for self-signed certificates or
+                        provide a CA certificate above.
+                      </FieldDescription>
+                    </FieldContent>
                     <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                       id="ssl-reject-unauthorized"
-                      thumbClassName="bg-mineshaft-800"
-                      isChecked={value}
+                      variant={scopeVariant}
+                      checked={value}
                       onCheckedChange={onChange}
-                    >
-                      <p className="w-38">
-                        Reject Unauthorized
-                        <Tooltip
-                          className="max-w-md"
-                          content={
-                            <p>
-                              If enabled, Infisical will only connect if Prism Central presents a
-                              valid, trusted SSL certificate. Disable for self-signed certificates
-                              or provide a CA certificate above.
-                            </p>
-                          }
-                        >
-                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                        </Tooltip>
-                      </p>
-                    </Switch>
-                  </FormControl>
-                )}
-              />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Nutanix Prism Central"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+                    />
+                  </Field>
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </TabsContent>
+        </Tabs>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Nutanix Prism Central"}
+        />
       </form>
     </FormProvider>
   );
