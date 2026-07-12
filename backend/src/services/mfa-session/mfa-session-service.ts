@@ -76,7 +76,7 @@ export const mfaSessionServiceFactory = ({
       return false;
     }
 
-    if (resourceId === MfaStepUpResource.MfaManagement && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
       return false;
     }
 
@@ -147,10 +147,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (
-      mfaSession.resourceId === MfaStepUpResource.MfaManagement &&
-      mfaSession.initiatingTokenVersionId !== tokenVersionId
-    ) {
+    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });
@@ -224,10 +221,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (
-      mfaSession.resourceId === MfaStepUpResource.MfaManagement &&
-      mfaSession.initiatingTokenVersionId !== tokenVersionId
-    ) {
+    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });

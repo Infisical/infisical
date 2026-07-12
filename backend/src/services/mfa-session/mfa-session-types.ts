@@ -18,11 +18,6 @@ export type TMfaSession = {
   resourceId: string; // Generic - can be accountId, documentId, etc.
   status: MfaSessionStatus;
   mfaMethod: MfaMethod;
-  // The login session (tokenVersionId) that INITIATED this step-up. Only set for
-  // MFA-management step-ups; it binds verification, status polling, and consumption
-  // to the initiating session so a challenge initiated by one session cannot be
-  // completed by another (e.g. tricking a victim into finishing a stolen session's
-  // challenge). Undefined for PAM sessions, which are account-scoped and unaffected.
   initiatingTokenVersionId?: string;
 };
 
