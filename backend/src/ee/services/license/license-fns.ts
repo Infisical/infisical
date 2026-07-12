@@ -19,6 +19,12 @@ export const isOfflineLicenseKey = (licenseKey: string): boolean => {
   }
 };
 
+// Self-hosted License Server v2 keys carry this prefix; legacy online keys look like "QVHK-HIGYH".
+export const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
+
+export const isV2SelfHostedLicenseKey = (licenseKey: string): boolean =>
+  licenseKey.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX);
+
 export const getLicenseKeyConfig = (
   config?: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE">
 ): TLicenseKeyConfig => {
@@ -31,6 +37,10 @@ export const getLicenseKeyConfig = (
   const licenseKey = cfg.LICENSE_KEY;
 
   if (licenseKey) {
+    if (isV2SelfHostedLicenseKey(licenseKey)) {
+      return { isValid: true, licenseKey, type: LicenseType.OnlineV2 };
+    }
+
     if (isOfflineLicenseKey(licenseKey)) {
       return { isValid: true, licenseKey, type: LicenseType.Offline };
     }

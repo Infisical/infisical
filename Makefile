@@ -7,9 +7,6 @@ push:
 up-dev:
 	docker compose -f docker-compose.dev.yml up --build
 
-up-dev-ldap:
-	docker compose -f docker-compose.dev.yml --profile ldap up --build
-
 up-dev-metrics:
 	docker compose -f docker-compose.dev.yml --profile metrics up --build
 
@@ -31,8 +28,14 @@ reviewable-api:
 
 reviewable: reviewable-ui reviewable-api
 
-up-dev-sso:
-	docker compose -f docker-compose.dev.yml --profile sso up --build
+up-dev-oidc:
+	docker compose -f docker-compose.dev.yml --profile oidc up --build
+
+up-dev-ldap:
+	docker compose -f docker-compose.dev.yml --profile ldap up --build
+
+up-dev-saml:
+	docker compose -f docker-compose.dev.yml --profile saml up --build
 
 up-dev-pingfed:
 	docker compose -f docker-compose.dev.yml --profile pingfed up --build
@@ -46,13 +49,38 @@ seed-dev-ad:
 	  samba-tool user delete jdoe 2>/dev/null || true; \
 	  samba-tool user delete asmith 2>/dev/null || true; \
 	  samba-tool group delete infisical-users 2>/dev/null || true; \
-	  samba-tool user create jdoe "Passw0rd!" --given-name=John --surname=Doe --mail-address=jdoe@infisical.com; \
-	  samba-tool user create asmith "Passw0rd!" --given-name=Alice --surname=Smith --mail-address=asmith@infisical.com; \
+	  samba-tool user create jdoe "password123!" --given-name=John --surname=Doe --mail-address=jdoe@infisical.com; \
+	  samba-tool user create asmith "password123!" --given-name=Alice --surname=Smith --mail-address=asmith@infisical.com; \
 	  samba-tool user rename jdoe --upn=jdoe@infisical.com; \
 	  samba-tool user rename asmith --upn=asmith@infisical.com; \
 	  samba-tool group add infisical-users; \
 	  samba-tool group addmembers infisical-users jdoe,asmith \
 	'
+
+seed-dev-ldap:
+	# Seeds OpenLDAP entries (idempotent) and the Infisical side for LDAP SSO testing: an
+	# ldap@infisical.com admin, a verified domain, and an active LDAP config. With ORG_ID=<uuid>
+	# it configures that org; otherwise it bootstraps a dedicated `ldap` org. Needs the stack up
+	# (`make up-dev-ldap`).
+	@docker compose -f docker-compose.dev.yml exec -T openldap \
+	  ldapadd -c -x -D "cn=admin,dc=ldap,dc=com" -w admin < docker/openldap/bootstrap.ldif; \
+	  status=$$?; \
+	  if [ $$status -ne 0 ] && [ $$status -ne 68 ]; then exit $$status; fi; \
+	  if [ $$status -eq 68 ]; then echo "LDAP entries already exist, continuing."; fi
+	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-ldap.ts $(ORG_ID)
+
+seed-dev-oidc:
+	# Sets up the Infisical side for OIDC SSO testing: an oidc@infisical.com admin, a verified
+	# domain, and an active OIDC config. With ORG_ID=<uuid> it configures that existing org;
+	# otherwise it bootstraps a dedicated `oidc` org. Needs the stack up (`make up-dev-oidc`).
+	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-oidc.ts $(ORG_ID)
+
+seed-dev-saml:
+	# Sets up SAML SSO + real SCIM provisioning against the local Authentik IdP. Bootstraps a
+	# dedicated `saml` org (admin@saml.com, verified saml.com domain, active SAML config, SCIM token),
+	# configures Authentik (SAML + SCIM providers, app, john/alice@saml.com), and provisions those
+	# users into Infisical via SCIM. Needs the stack up (`make up-dev-saml`).
+	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-saml.ts
 
 
 # Golang commands

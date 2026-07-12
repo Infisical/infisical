@@ -1,9 +1,14 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
+import {
+  getAzureConnectionAccessToken,
+  requestWithAzureKeyVaultGateway
+} from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -14,14 +19,27 @@ import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azu
 type TAzureKeyVaultSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
+
+// the effective gateway is resolved up front, so callers thread a connection that only carries a gatewayId
+type TGatewayConnection = { gatewayId?: string | null; gatewayPoolId?: string | null };
 
 const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
 
-export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultSyncFactoryDeps) => {
+export const azureKeyVaultSyncFactory = ({
+  kmsService,
+  appConnectionDAL,
+  gatewayService,
+  gatewayV2Service,
+  gatewayPoolService
+}: TAzureKeyVaultSyncFactoryDeps) => {
   const $getAzureKeyVaultSecrets = async (
     accessToken: string,
     vaultBaseUrl: string,
+    gatewayConnection: TGatewayConnection,
     { disableCertificateImport = false }: { disableCertificateImport?: boolean } = {}
   ) => {
     const paginateAzureKeyVaultSecrets = async () => {
@@ -30,11 +48,18 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
       let currentUrl = `${vaultBaseUrl}/secrets?api-version=7.3`;
 
       while (currentUrl) {
-        const res = await request.get<{ value: GetAzureKeyVaultSecret; nextLink: string }>(currentUrl, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+        const res = await requestWithAzureKeyVaultGateway<{ value: GetAzureKeyVaultSecret; nextLink: string }>(
+          gatewayConnection,
+          gatewayService,
+          gatewayV2Service,
+          {
+            method: "GET",
+            url: currentUrl,
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
           }
-        });
+        );
 
         result = result.concat(res.data.value);
         currentUrl = res.data.nextLink;
@@ -70,9 +95,13 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
             lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
           }
 
-          const azureKeyVaultSecret = await request.get<GetAzureKeyVaultSecret>(
-            `${getAzureKeyVaultSecret.id}?api-version=7.3`,
+          const azureKeyVaultSecret = await requestWithAzureKeyVaultGateway<GetAzureKeyVaultSecret>(
+            gatewayConnection,
+            gatewayService,
+            gatewayV2Service,
             {
+              method: "GET",
+              url: `${getAzureKeyVaultSecret.id}?api-version=7.3`,
               headers: {
                 Authorization: `Bearer ${accessToken}`
               }
@@ -100,11 +129,20 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
   };
 
   const syncSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, secretMap: TSecretMap) => {
-    const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
+    const { connection } = secretSync;
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    const gatewayConnection: TGatewayConnection = { gatewayId: effectiveGatewayId, gatewayPoolId: null };
+
+    const { accessToken } = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
       secretSync.destinationConfig.vaultBaseUrl,
+      gatewayConnection,
       { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 
@@ -148,17 +186,16 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
       while (!isSecretSet && maxTries > 0) {
         // try to set secret
         try {
-          await request.put(
-            `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
-            {
+          await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+            method: "PUT",
+            url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
+            data: {
               value
             },
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`
-              }
+            headers: {
+              Authorization: `Bearer ${accessToken}`
             }
-          );
+          });
 
           isSecretSet = true;
         } catch (err) {
@@ -166,15 +203,14 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
           if (err instanceof AxiosError) {
             // eslint-disable-next-line
             if (err.response?.data?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
-              await request.post(
-                `${secretSync.destinationConfig.vaultBaseUrl}/deletedsecrets/${key}/recover?api-version=7.3`,
-                {},
-                {
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`
-                  }
+              await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+                method: "POST",
+                url: `${secretSync.destinationConfig.vaultBaseUrl}/deletedsecrets/${key}/recover?api-version=7.3`,
+                data: {},
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
                 }
-              );
+              });
 
               await new Promise((resolve) => {
                 setTimeout(resolve, 10_000);
@@ -212,7 +248,9 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
         matchesSchema(secret, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
         !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {
-      await request.delete(`${secretSync.destinationConfig.vaultBaseUrl}/secrets/${deleteSecretKey}?api-version=7.3`, {
+      await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+        method: "DELETE",
+        url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${deleteSecretKey}?api-version=7.3`,
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
@@ -221,11 +259,20 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
   };
 
   const removeSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, secretMap: TSecretMap) => {
-    const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
+    const { connection } = secretSync;
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    const gatewayConnection: TGatewayConnection = { gatewayId: effectiveGatewayId, gatewayPoolId: null };
+
+    const { accessToken } = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
       secretSync.destinationConfig.vaultBaseUrl,
+      gatewayConnection,
       { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 
@@ -234,7 +281,9 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
       if (underscoredKey in secretMap) {
         if (!disabledAzureKeyVaultSecretKeys.includes(underscoredKey)) {
-          await request.delete(`${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`, {
+          await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+            method: "DELETE",
+            url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
             headers: {
               Authorization: `Bearer ${accessToken}`
             }
@@ -245,11 +294,20 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
   };
 
   const getSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials) => {
-    const { accessToken } = await getAzureConnectionAccessToken(secretSync.connection.id, appConnectionDAL, kmsService);
+    const { connection } = secretSync;
+
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    const gatewayConnection: TGatewayConnection = { gatewayId: effectiveGatewayId, gatewayPoolId: null };
+
+    const { accessToken } = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
       secretSync.destinationConfig.vaultBaseUrl,
+      gatewayConnection,
       { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 

@@ -9,6 +9,7 @@ export enum AppConnection {
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
+  ADCS = "adcs",
   AzureDNS = "azure-dns",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
@@ -28,6 +29,7 @@ export enum AppConnection {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
+  TriggerDev = "trigger-dev",
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
@@ -49,6 +51,7 @@ export enum AppConnection {
   Dbt = "dbt",
   SMB = "smb",
   OpenRouter = "open-router",
+  OpenAI = "openai",
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
@@ -67,6 +70,13 @@ export enum AppConnection {
   Datadog = "datadog",
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
+  Convex = "convex",
+  Rundeck = "rundeck",
+  HasuraCloud = "hasura-cloud",
+  Qovery = "qovery",
+  Cloud66 = "cloud-66",
+  LiteLLM = "litellm",
+  Fireworks = "fireworks",
   NutanixPrismCentral = "nutanix-prism-central"
 }
 

@@ -666,6 +666,8 @@ export const samlConfigServiceFactory = ({
             tx
           );
           isNewUser = true;
+        } else if (!newUser.firstName && firstName) {
+          newUser = await userDAL.updateById(newUser.id, { firstName, ...(lastName ? { lastName } : {}) }, tx);
         }
 
         userAlias = await userAliasDAL.create(
@@ -772,7 +774,7 @@ export const samlConfigServiceFactory = ({
       }));
     }
 
-    if (user.email && !userAlias.isEmailVerified) {
+    if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,

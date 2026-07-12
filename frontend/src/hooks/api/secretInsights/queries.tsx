@@ -7,12 +7,18 @@ import {
   TGetAuthMethodDistributionResponse,
   TGetCalendarInsightsDTO,
   TGetCalendarInsightsResponse,
+  TGetInsightsCountsDTO,
+  TGetInsightsCountsResponse,
   TGetInsightsSummaryDTO,
   TGetInsightsSummaryResponse,
   // TGetSecretAccessLocationsDTO,
   // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
-  TGetSecretAccessVolumeResponse
+  TGetSecretAccessVolumeResponse,
+  TGetSecretBlindIndexStatusDTO,
+  TGetSecretBlindIndexStatusResponse,
+  TGetSecretsDuplicationDTO,
+  TGetSecretsDuplicationResponse
 } from "./types";
 
 export const secretInsightsKeys = {
@@ -26,7 +32,13 @@ export const secretInsightsKeys = {
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
     [...secretInsightsKeys.all(), "auth-method-distribution", params] as const,
   summary: (params: TGetInsightsSummaryDTO) =>
-    [...secretInsightsKeys.all(), "summary", params] as const
+    [...secretInsightsKeys.all(), "summary", params] as const,
+  counts: (params: TGetInsightsCountsDTO) =>
+    [...secretInsightsKeys.all(), "counts", params] as const,
+  secretsDuplication: (params: TGetSecretsDuplicationDTO) =>
+    [...secretInsightsKeys.all(), "secrets-duplication", params] as const,
+  blindIndexStatus: (params: TGetSecretBlindIndexStatusDTO) =>
+    [...secretInsightsKeys.all(), "blind-index-status", params] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -157,6 +169,84 @@ export const useGetInsightsSummary = (
       return data;
     },
     staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetInsightsCounts = (
+  params: TGetInsightsCountsDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetInsightsCountsResponse,
+      unknown,
+      TGetInsightsCountsResponse,
+      ReturnType<typeof secretInsightsKeys.counts>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.counts(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetInsightsCountsResponse>(
+        "/api/v1/insights/secrets/counts",
+        { params }
+      );
+      return data;
+    },
+    staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetSecretsDuplication = (
+  params: TGetSecretsDuplicationDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetSecretsDuplicationResponse,
+      unknown,
+      TGetSecretsDuplicationResponse,
+      ReturnType<typeof secretInsightsKeys.secretsDuplication>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.secretsDuplication(params),
+    queryFn: async () => {
+      const res = await apiRequest.get<TGetSecretsDuplicationResponse>(
+        "/api/v1/insights/secrets/secrets-duplication",
+        { params }
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
+    staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetSecretBlindIndexStatus = (
+  params: TGetSecretBlindIndexStatusDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetSecretBlindIndexStatusResponse,
+      unknown,
+      TGetSecretBlindIndexStatusResponse,
+      ReturnType<typeof secretInsightsKeys.blindIndexStatus>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.blindIndexStatus(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetSecretBlindIndexStatusResponse>(
+        `/api/v1/projects/${params.projectId}/secret-blind-index/status`
+      );
+      return data;
+    },
+    staleTime: 0,
     ...options
   });
 };

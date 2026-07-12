@@ -1,17 +1,24 @@
 ---
 title: "DigiCert (CertCentral Services API)"
-description: "Issue OV/EV certificates from DigiCert using the CertCentral Services API with manual DNS validation."
+description: "Issue TLS or Code Signing certificates from DigiCert using the CertCentral Services API."
 ---
 
 ## Concept
 
-Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentral](https://www.digicert.com/) using the [CertCentral Services API](https://dev.digicert.com/en/certcentral-apis/services-api.html).
+Infisical can issue certificates directly from [DigiCert CertCentral](https://www.digicert.com/) using the [CertCentral Services API](https://dev.digicert.com/en/certcentral-apis/services-api.html). A single DigiCert CA in Infisical is configured for one purpose:
+
+- **SSL/TLS** — issues OV and EV TLS server certificates under an SSL product entitlement on your account (for example `ssl_plus`).
+- **Code Signing** — issues OV (`code_signing`) and EV (`code_signing_ev`) code-signing certificates against a CSR. The signing key must live on an HSM.
 
 ## Prerequisites
 
 - A [DigiCert App Connection](/integrations/app-connections/digicert) with a validated CertCentral API key.
-- A CertCentral **Organization** that has been pre-validated by DigiCert
-- Entitlement to either the OV or EV SSL product on your CertCentral account.
+- A CertCentral **Organization**. For code signing, DigiCert validates the organization the first time it is used for a code-signing order, which can take up to 3 business days.
+- Entitlement to the product you intend to use (`ssl_plus`, `code_signing`, `code_signing_ev`, ...) on your CertCentral account.
+
+<Note>
+  Configuring a DigiCert CA requires a CertCentral account with administrator-level access (or a role with permission to manage organizations, products, and API keys). The API key used for the App Connection inherits the permissions of the CertCentral user that created it.
+</Note>
 
 ## Create a DigiCert Certificate Authority
 
@@ -22,18 +29,20 @@ Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentr
         Follow the [DigiCert App Connection guide](/integrations/app-connections/digicert) to store your CertCentral API key in Infisical.
       </Step>
       <Step title="Create the External CA">
-        In **Certificate Manager**, go to **Settings → Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **DigiCert CertCentral** as the type, and fill out the form:
+        In **Certificate Manager**, go to **Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **DigiCert CertCentral** as the type, and fill out the form:
 
         - **App Connection** — the DigiCert connection you created
         - **Organization** — the CertCentral organization that should appear on issued certificates
+        - **Purpose** — `SSL / TLS` or `Code Signing`. The product list filters accordingly.
         - **Product** — the CertCentral entitlement this CA will issue under
+        - **Verified Contact** (Code Signing only) — full contact info for the person DigiCert emails to approve first-time code-signing orders for this organization. All five fields required: **First Name**, **Last Name**, **Email**, **Job Title**, **Telephone** (E.164, e.g. `+15551234567`). DigiCert requires `job_title` and `telephone` on every verified contact for CS orders; referencing an existing CertCentral user by id alone is not enough. Once the organization has an active CS validation on file, DigiCert ignores this field.
       </Step>
     </Steps>
   </Tab>
   <Tab title="API">
     To create a DigiCert Certificate Authority, make an API request to the [Create DigiCert CA](/api-reference/endpoints/certificate-authorities/digicert/create) API endpoint.
 
-    ```bash Create a DigiCert CA
+    ```bash Create a DigiCert CA (SSL)
     curl --request POST \
       --url https://app.infisical.com/api/v1/pki/ca/digicert \
       --header 'Content-Type: application/json' \
@@ -43,12 +52,44 @@ Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentr
         "configuration": {
           "appConnectionId": "<digicert-app-connection-id>",
           "organizationId": 112236,
-          "productNameId": "ssl_plus"
+          "productNameId": "ssl_plus",
+          "purpose": "ssl"
+        }
+      }'
+    ```
+
+    ```bash Create a DigiCert CA (Code Signing)
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/pki/ca/digicert \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "digicert-cs",
+        "status": "active",
+        "configuration": {
+          "appConnectionId": "<digicert-app-connection-id>",
+          "organizationId": 112236,
+          "productNameId": "code_signing",
+          "purpose": "code_signing",
+          "verifiedContact": {
+            "firstName": "John",
+            "lastName": "Doe",
+            "email": "john.doe@example.com",
+            "jobTitle": "Security Engineer",
+            "telephone": "+15551234567"
+          }
         }
       }'
     ```
   </Tab>
 </Tabs>
+
+## Using a DigiCert Code Signing CA
+
+A CA configured for code signing is used from the **Code Signing** product, not the TLS issuance flow. For creating signers, reusing orders, HSM requirements, reissue, renewal, and deletion behavior, see the dedicated guide:
+
+<Card title="Code Signing with DigiCert" icon="signature" href="/documentation/platform/pki/guides/code-signing/digicert-code-signing">
+  Issue code-signing certificates from this CA with an HSM-backed key.
+</Card>
 
 ## DigiCert Validation Workflow
 

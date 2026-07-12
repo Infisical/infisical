@@ -116,7 +116,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4 py-4">
       <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
@@ -126,7 +126,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
       <AuthPageHeader>
-        <Button asChild>
+        <Button asChild variant="project">
           <Link to="/login">Log In</Link>
         </Button>
       </AuthPageHeader>

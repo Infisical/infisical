@@ -1,0 +1,57 @@
+---
+title: "Convex Connection"
+description: "Learn how to configure a Convex Connection for Infisical."
+---
+
+Infisical supports the use of [personal access tokens](https://docs.convex.dev/dashboard/personal-access-tokens) to connect with your Convex account.
+
+## Create a Personal Access Token in Convex
+
+<Steps>
+    <Step title="Navigate to Profile Settings">
+        Log in to the [Convex Dashboard](https://dashboard.convex.dev), click your profile avatar in the top right, and select **Profile Settings**.
+
+        ![Profile Settings](/images/app-connections/convex/01-profile-settings.png)
+    </Step>
+    <Step title="Create a Personal Access Token">
+        Scroll down to the **Personal Access Tokens** section and click the **+ Create Token** button.
+
+        ![Create Token](/images/app-connections/convex/02-create-token.png)
+    </Step>
+    <Step title="Configure the Token">
+        Enter a **Token Name** (e.g. `infisical`) and select an **Expiration** period, then click **Create**.
+
+        <Warning>
+            If the personal access token expires, any secret rotations relying on this connection will fail. We recommend setting a long expiration or selecting **No expiration** to avoid disruptions.
+        </Warning>
+
+        ![Fill and Create Token](/images/app-connections/convex/03-fill-and-create-token.png)
+    </Step>
+    <Step title="Copy the Token">
+        Copy the generated token and store it securely. You will not be able to see it again. You will need it to configure the Convex connection in Infisical.
+
+        ![Copy Token](/images/app-connections/convex/04-copy-token.png)
+    </Step>
+</Steps>
+
+## Setup Convex Connection in Infisical
+
+<Steps>
+    <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab in your organization and click **+ Add Connection**.
+
+        ![Select Convex Connection](/images/app-connections/convex/05-select-convex.png)
+    </Step>
+    <Step title="Create the Connection">
+        Select the **Convex** option, fill in the connection **Name**, select the **Personal Access Token** method, paste the **Access Token** you copied earlier, and click **Connect to Convex**.
+
+        Optionally, you can provide an **Instance URL** if you are self-hosting Convex. If left empty, `https://api.convex.dev` is used by default.
+
+        ![Create Convex Connection](/images/app-connections/convex/06-create-app-connection.png)
+    </Step>
+    <Step title="Connection Created">
+        Your **Convex Connection** is now available for use.
+
+        ![Convex Connection Created](/images/app-connections/convex/07-created-app-connection.png)
+    </Step>
+</Steps>

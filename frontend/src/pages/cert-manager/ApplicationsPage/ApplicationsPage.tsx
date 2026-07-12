@@ -23,6 +23,7 @@ import {
   EmptyTitle,
   IconButton,
   PageLoader,
+  Pagination,
   ResourceIcon,
   Table,
   TableBody,
@@ -35,18 +36,41 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { TPkiApplication, useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { ConfigureProfilesModal } from "./components/ConfigureProfilesModal";
 import { PkiApplicationModal } from "./components/PkiApplicationModal";
 
+const APPLICATIONS_TABLE = "pkiApplicationsTable";
+
 export const ApplicationsPage = () => {
   const { projectId, orgId } = useParams({ strict: false });
   const navigate = useNavigate();
-  const { data: applications, isPending } = useListPkiApplications();
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, 20)
+  );
+  const offset = (page - 1) * perPage;
+  const { data, isPending } = useListPkiApplications({ limit: perPage, offset });
+  const applications = data?.applications;
+  const totalCount = data?.total ?? 0;
+
+  useResetPageHelper({ totalCount, offset, setPage });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, newPerPage);
+  };
+
   const { hasProjectRole } = useProjectPermission();
   const canCreateApplication = hasProjectRole("admin");
   const canConfigureProfiles = canCreateApplication;
@@ -183,7 +207,18 @@ export const ApplicationsPage = () => {
                   </CardAction>
                 ) : null}
               </CardHeader>
-              <CardContent>{renderApplications()}</CardContent>
+              <CardContent>
+                {renderApplications()}
+                {totalCount > 0 ? (
+                  <Pagination
+                    count={totalCount}
+                    page={page}
+                    perPage={perPage}
+                    onChangePage={setPage}
+                    onChangePerPage={handlePerPageChange}
+                  />
+                ) : null}
+              </CardContent>
             </Card>
           </div>
         </div>

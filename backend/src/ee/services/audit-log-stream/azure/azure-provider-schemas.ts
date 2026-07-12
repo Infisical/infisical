@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { LogProvider } from "../audit-log-stream-enums";
+import { LogProvider, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const AzureProviderCredentialsSchema = z.object({
@@ -48,5 +48,6 @@ export const CreateAzureProviderLogStreamSchema = z.object({
 });
 
 export const UpdateAzureProviderLogStreamSchema = z.object({
-  credentials: AzureProviderCredentialsSchema
+  credentials: AzureProviderCredentialsSchema,
+  streamMode: z.nativeEnum(StreamMode).optional()
 });

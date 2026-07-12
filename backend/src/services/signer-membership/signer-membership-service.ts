@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { Knex } from "knex";
 
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -11,7 +10,6 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -36,20 +34,10 @@ import {
 
 type TSignerMembershipServiceFactoryDep = {
   signerDAL: Pick<TSignerDALFactory, "findById" | "find">;
-  membershipDAL: Pick<
-    TMembershipDALFactory,
-    | "create"
-    | "findById"
-    | "find"
-    | "delete"
-    | "deleteById"
-    | "transaction"
-    | "findResourceMembershipsForActor"
-    | "findResourceMembershipsForGroup"
-  >;
+  membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
-  userDAL: Pick<TUserDALFactory, "find" | "findByEmailsOrUsernames">;
+  userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -754,132 +742,12 @@ export const signerMembershipServiceFactory = ({
     return { memberships, skipped, unresolved };
   };
 
-  const listSignersForActor = async ({
-    projectId,
-    actorKind,
-    actorId
-  }: {
-    projectId: string;
-    actorKind: SignerMemberKind;
-    actorId: string;
-  }): Promise<Array<{ id: string; name: string }>> => {
-    const memberships =
-      actorKind === SignerMemberKind.Group
-        ? await membershipDAL.findResourceMembershipsForGroup({
-            projectId,
-            resourceType: ResourceType.Signer,
-            groupId: actorId
-          })
-        : await membershipDAL.findResourceMembershipsForActor({
-            projectId,
-            resourceType: ResourceType.Signer,
-            actorType: actorKind === SignerMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
-            actorId
-          });
-
-    if (!memberships.length) return [];
-
-    const signerIds = Array.from(
-      new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
-    );
-    if (!signerIds.length) return [];
-
-    const signers = await signerDAL.find({ $in: { id: signerIds } });
-    return signers.map((s) => ({ id: s.id, name: s.name }));
-  };
-
-  const removeActorFromSignerMemberships = async (
-    {
-      projectId,
-      actorKind,
-      actorId
-    }: {
-      projectId: string;
-      actorKind: SignerMemberKind;
-      actorId: string;
-    },
-    externalTx?: Knex
-  ): Promise<{
-    signers: Array<{ id: string; name: string }>;
-    approvalPolicies: Array<{ id: string; name: string }>;
-  }> => {
-    const memberships =
-      actorKind === SignerMemberKind.Group
-        ? await membershipDAL.findResourceMembershipsForGroup({
-            projectId,
-            resourceType: ResourceType.Signer,
-            groupId: actorId
-          })
-        : await membershipDAL.findResourceMembershipsForActor({
-            projectId,
-            resourceType: ResourceType.Signer,
-            actorType: actorKind === SignerMemberKind.User ? ActorType.USER : ActorType.IDENTITY,
-            actorId
-          });
-
-    const directMemberships =
-      actorKind === SignerMemberKind.Group
-        ? memberships
-        : memberships.filter((m) =>
-            actorKind === SignerMemberKind.User ? m.actorUserId === actorId : m.actorIdentityId === actorId
-          );
-
-    const signerIds = Array.from(
-      new Set(directMemberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
-    );
-    const signers = signerIds.length ? await signerDAL.find({ $in: { id: signerIds } }) : [];
-    const signersTouched = signers.map((s) => ({ id: s.id, name: s.name }));
-
-    let approvalPoliciesTouched: Array<{ id: string; name: string }> = [];
-
-    const performCleanup = async (tx: Knex) => {
-      if (actorKind !== SignerMemberKind.Identity && signerIds.length > 0) {
-        for (const signerId of signerIds) {
-          // eslint-disable-next-line no-await-in-loop
-          const affected = await approvalPolicyDAL.deleteStepApproversBySubject(
-            {
-              projectId,
-              scopeType: ApprovalPolicyScope.Signer,
-              scopeId: signerId,
-              userId: actorKind === SignerMemberKind.User ? actorId : undefined,
-              groupId: actorKind === SignerMemberKind.Group ? actorId : undefined
-            },
-            tx
-          );
-          approvalPoliciesTouched = approvalPoliciesTouched.concat(affected);
-        }
-        const seen = new Set<string>();
-        approvalPoliciesTouched = approvalPoliciesTouched.filter((p) => {
-          if (seen.has(p.id)) return false;
-          seen.add(p.id);
-          return true;
-        });
-      }
-
-      if (directMemberships.length > 0) {
-        const membershipIds = directMemberships.map((m) => m.id);
-        await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
-        await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
-      }
-    };
-
-    if (externalTx) {
-      await performCleanup(externalTx);
-    } else {
-      await membershipDAL.transaction(performCleanup);
-    }
-
-    return { signers: signersTouched, approvalPolicies: approvalPoliciesTouched };
-  };
-
   return {
     addMember,
     addUserMembers,
     listMembers,
     listEffectiveMembers,
     updateMemberRole,
-    removeMember,
-    listSignersForActor,
-    removeActorFromSignerMemberships
+    removeMember
   };
 };

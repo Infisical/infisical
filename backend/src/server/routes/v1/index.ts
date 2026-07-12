@@ -1,4 +1,5 @@
 import { BadRequestError } from "@app/lib/errors";
+import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
@@ -38,8 +39,10 @@ import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import
 import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGitHubAppRouter } from "./github-app-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
+import { registerCertManagerHsmConnectorRouter } from "./hsm-connector-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
@@ -62,6 +65,7 @@ import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
+import { registerOAuthRouter } from "./oauth-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
@@ -73,6 +77,7 @@ import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
+import { registerProjectFolderGrantRouter } from "./project-folder-grant-router";
 import { registerProjectGroupMembershipsRouter } from "./project-group-memberships-router";
 import { registerProjectIdentityRouter } from "./project-identity-router";
 import { registerProjectKeyRouter } from "./project-key-router";
@@ -117,6 +122,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerAccountRecoveryRouter, { prefix: "/account-recovery" });
+  await server.register(registerOAuthRouter, { prefix: "/oauth" });
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
@@ -135,6 +141,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerDeprecatedSecretImportRouter, { prefix: "/secret-imports" });
+  await server.register(registerProjectFolderGrantRouter, { prefix: "/project-folder-grants" });
   await server.register(registerDeprecatedSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(
@@ -145,6 +152,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/workflow-integrations" }
   );
+
+  await server.register(registerGitHubAppRouter, { prefix: "/github-apps" });
 
   await server.register(
     async (projectRouter) => {
@@ -184,10 +193,12 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (pkiRouter) => {
       await pkiRouter.register(injectCertManagerProjectId);
 
+      await pkiRouter.register(registerCertManagerHsmConnectorRouter, { prefix: "/hsm-connectors" });
+
       await pkiRouter.register(
         async (caRouter) => {
           for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
-            await caRouter.register(router, { prefix: `/${caType}` });
+            await router(withRoutePrefix(caRouter, `/${caType}`));
           }
 
           await caRouter.register(registerGeneralCertificateAuthorityRouter);
@@ -238,12 +249,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await pkiSyncRouter.register(
-              async (destinationRouter) => {
-                await router(destinationRouter as unknown as FastifyZodProvider);
-              },
-              { prefix: `/${destination}` }
-            );
+            await router(withRoutePrefix(pkiSyncRouter, `/${destination}`));
           }
         },
         { prefix: "/syncs" }
@@ -261,7 +267,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(
         async (caRouter) => {
           for await (const [caType, router] of Object.entries(DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
-            await caRouter.register(router, { prefix: `/${caType}` });
+            await router(withRoutePrefix(caRouter, `/${caType}`));
           }
         },
         {
@@ -283,12 +289,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider, false);
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await pkiSyncRouter.register(
-              async (destinationRouter) => {
-                await router(destinationRouter as unknown as FastifyZodProvider, false);
-              },
-              { prefix: `/${destination}` }
-            );
+            await router(withRoutePrefix(pkiSyncRouter, `/${destination}`), false);
           }
         },
         { prefix: "/syncs" }
@@ -322,8 +323,11 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await appConnectionRouter.register(registerAppConnectionRouter);
 
       // register service specific endpoints (app-connections/aws, app-connections/github, etc.)
+      // routes are registered on the shared context with the destination baked into the URL —
+      // a register({ prefix }) per destination would create hundreds of encapsulated contexts
+      // and overflow the call stack during Fastify's onReady boot walk
       for await (const [app, router] of Object.entries(APP_CONNECTION_REGISTER_ROUTER_MAP)) {
-        await appConnectionRouter.register(router, { prefix: `/${app}` });
+        await router(withRoutePrefix(appConnectionRouter, `/${app}`));
       }
     },
     { prefix: "/app-connections" }
@@ -335,8 +339,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await secretSyncRouter.register(registerSecretSyncRouter);
 
       // register service specific secret sync endpoints (secret-syncs/aws-parameter-store, secret-syncs/github, etc.)
+      // see app-connections above: routes share one context with the destination baked into the URL
       for await (const [destination, router] of Object.entries(SECRET_SYNC_REGISTER_ROUTER_MAP)) {
-        await secretSyncRouter.register(router, { prefix: `/${destination}` });
+        await router(withRoutePrefix(secretSyncRouter, `/${destination}`));
       }
     },
     { prefix: "/secret-syncs" }
@@ -346,7 +351,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (reminderRouter) => {
       // register service specific reminder endpoints (reminders/secret)
       for await (const [reminderType, router] of Object.entries(SECRET_REMINDER_REGISTER_ROUTER_MAP)) {
-        await reminderRouter.register(router, { prefix: `/${reminderType}` });
+        await router(withRoutePrefix(reminderRouter, `/${reminderType}`));
       }
     },
     { prefix: "/reminders" }
@@ -357,7 +362,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints
       for await (const [type, router] of Object.entries(APPROVAL_POLICY_REGISTER_ROUTER_MAP)) {
-        await approvalPolicyRouter.register(router, { prefix: `/${type}` });
+        await router(withRoutePrefix(approvalPolicyRouter, `/${type}`));
       }
     },
     { prefix: "/approval-policies" }

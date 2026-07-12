@@ -29,7 +29,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
-import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
 import {
   CaCertDetailsSection,
   CaCertificatesSection,
@@ -37,6 +36,7 @@ import {
   CaDetailsSection,
   CaDistributionPointsSection,
   CaGenerateRootCertModal,
+  CaIssuerUrlSection,
   CaRenewalModal,
   CaSigningConfigSection
 } from "./components";
@@ -73,7 +73,6 @@ const Page = () => {
   const { mutateAsync: deleteCa } = useDeleteCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "ca",
     "deleteCa",
     "installCaCert",
     "renewCa",
@@ -95,12 +94,11 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
       params: {
         orgId: currentOrg.id,
         projectId
-      },
-      search: { selectedTab: "certificate-authorities" }
+      }
     });
   };
 
@@ -135,12 +133,11 @@ const Page = () => {
                   </Link>
                 ) : (
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
                     params={{
                       orgId: currentOrg.id,
                       projectId
                     }}
-                    search={{ selectedTab: "certificate-authorities" }}
                     className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
                   >
                     <FontAwesomeIcon icon={faChevronLeft} />
@@ -191,6 +188,7 @@ const Page = () => {
                       caName={data.name}
                       handlePopUpOpen={handlePopUpOpen}
                     />
+                    <CaIssuerUrlSection caId={data.id} />
                     <CaCrlsSection caId={data.id} />
                     <CaDistributionPointsSection caId={data.id} />
                   </div>
@@ -204,7 +202,6 @@ const Page = () => {
           }
         </ProjectPermissionCan>
       )}
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

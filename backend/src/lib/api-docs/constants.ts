@@ -71,6 +71,7 @@ export enum ApiDocsTags {
   CertManagerInstance = "Certificate Manager Instance",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
+  HsmConnectors = "HSM Connectors",
   PkiDiscovery = "PKI Discovery",
   PkiInstallations = "PKI Installations",
   PkiSigners = "PKI Signers",
@@ -91,7 +92,15 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  GatewaysV3 = "Gateways"
+  GatewaysV3 = "Gateways",
+  PamAccounts = "PAM Accounts",
+  PamFolders = "PAM Folders",
+  PamAccountTemplates = "PAM Account Templates",
+  PamSessions = "PAM Sessions",
+  PamMemberships = "PAM Memberships",
+  PamRoles = "PAM Roles",
+  PamDiscovery = "PAM Discovery",
+  KmipServers = "KMIP Servers"
 }
 
 export const GROUPS = {
@@ -416,6 +425,8 @@ export const TLS_CERT_AUTH = {
     identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    allowedSubjectAltNames:
+      "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -426,6 +437,8 @@ export const TLS_CERT_AUTH = {
     identityId: "The ID of the machine identity to update the auth method for.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    allowedSubjectAltNames:
+      "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
@@ -1099,6 +1112,10 @@ export const PROJECT_USERS = {
     membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
   },
+  GET_USER_MEMBERSHIP_BY_USER_ID: {
+    projectId: "The ID of the project to get the membership from.",
+    userId: "The ID of the user to get the project membership of."
+  },
   UPDATE_USER_MEMBERSHIP: {
     projectId: "The ID of the project to update the membership for.",
     membershipId: "The ID of the membership to update.",
@@ -1229,6 +1246,10 @@ export const ENVIRONMENTS = {
   GET: {
     projectId: "The ID of the project the environment belongs to.",
     id: "The ID of the environment to fetch."
+  },
+  GET_BY_SLUG: {
+    projectId: "The ID of the project the environment belongs to.",
+    slug: "The slug of the environment to fetch."
   }
 } as const;
 
@@ -1408,6 +1429,7 @@ export const SECRET_IMPORTS = {
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
+      projectId: "The ID of the project to import from.",
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
     }
@@ -2184,6 +2206,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_ADCS: {
     caId: "The ID of the CA to install the certificate for via Azure AD CS."
   },
+  INSTALL_CERT_ADCS_NATIVE: {
+    caId: "The ID of the CA to install the certificate for via ADCS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -2207,7 +2232,7 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
-    id: "The ID of the certificate to revoke.",
+    id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
@@ -2443,6 +2468,9 @@ export const PROJECT_ROLE = {
     projectId: "The ID of the project.",
     roleSlug: "The slug of the role to get details."
   },
+  GET_ROLE_BY_ID: {
+    roleId: "The ID of the role to get."
+  },
   LIST: {
     projectSlug: "The slug of the project to list the roles of.",
     projectId: "The ID of the project."
@@ -2481,13 +2509,18 @@ export const KMS = {
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
     encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
-    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key."
+    type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
+    isExportable:
+      "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key."
+  },
+  ROTATE_KEY: {
+    keyId: "The ID of the key to be rotated."
   },
   DELETE_KEY: {
     keyId: "The ID of the key to be deleted."
@@ -2637,6 +2670,12 @@ export const CertificateAuthorities = {
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      keySource:
+        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
+      hsmConnectorId:
+        "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
+      hsmKeyLabel:
+        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a per-CA label built from the CA name and a random 5-character suffix (ca-<name>-<slug>).",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
@@ -2663,6 +2702,7 @@ export const AppConnections = {
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       projectId: `The ID of the project to create the ${appName} Connection in.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
@@ -2677,6 +2717,7 @@ export const AppConnections = {
       description: `The updated description of the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
+      stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
       rotation: `The updated credential rotation configuration for the ${appName} Connection.`
@@ -2791,6 +2832,10 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    TRIGGER_DEV: {
+      apiKey: "The Personal Access Token (tr_pat_...) used to authenticate with Trigger.dev.",
+      instanceUrl: "The URL of the Trigger.dev instance to connect to. Defaults to https://api.trigger.dev."
+    },
     DEVIN: {
       apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
     },
@@ -2853,6 +2898,13 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    RUNDECK: {
+      instanceUrl: "The Rundeck instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Rundeck."
+    },
+    QOVERY: {
+      accessToken: "The project access token used to authenticate with Qovery."
+    },
     DATADOG: {
       url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
       apiKey: "The Datadog API key used to authenticate.",
@@ -2884,8 +2936,29 @@ export const AppConnections = {
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     },
+    OPENAI: {
+      apiKey: "The OpenAI Admin API key used to manage project service accounts."
+    },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    LITELLM: {
+      apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
+      instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    FIREWORKS: {
+      apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
+      accountId: "The Fireworks account ID used to identify the Fireworks account."
+    },
+    CLOUD66: {
+      accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
+    },
+    CONVEX: {
+      accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
+      instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
+    },
+    HASURA_CLOUD: {
+      accessToken: "The Hasura Cloud access token used to authenticate with the Hasura Cloud GraphQL API."
     },
     OVH: {
       privateKey:
@@ -2996,6 +3069,10 @@ export const SecretSyncs = {
     FLYIO: {
       autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     },
+    TRIGGER_DEV: {
+      markAsSecret:
+        "Whether synced variables should be marked as secret (redacted) environment variables in Trigger.dev."
+    },
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
@@ -3088,6 +3165,17 @@ export const SecretSyncs = {
       sensitive:
         "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
     },
+    QOVERY: {
+      organizationId: "The ID of the Qovery organization to sync secrets to.",
+      organizationName: "The name of the Qovery organization to sync secrets to.",
+      projectId: "The ID of the Qovery project to sync secrets to.",
+      projectName: "The name of the Qovery project to sync secrets to.",
+      environmentId:
+        "The ID of the Qovery environment to sync secrets to. When omitted, secrets are synced at the project level.",
+      environmentName: "The name of the Qovery environment to sync secrets to.",
+      variableType:
+        "Whether to sync values as Qovery environment secrets or environment variables. Environment variables expose their value; secrets do not."
+    },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
       orgName: "The name of the Laravel Forge org to sync secrets to.",
@@ -3141,6 +3229,10 @@ export const SecretSyncs = {
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
     },
+    TRIGGER_DEV: {
+      projectRef: "The reference of the Trigger.dev project to sync secrets to.",
+      environment: "The Trigger.dev environment to sync secrets to."
+    },
     DEVIN: {
       orgId: "The Devin organization ID to sync secrets to."
     },
@@ -3176,6 +3268,10 @@ export const SecretSyncs = {
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
     },
+    HASURA_CLOUD: {
+      projectId: "The ID of the Hasura Cloud project to sync secrets to.",
+      projectName: "The name of the Hasura Cloud project to sync secrets to."
+    },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."
     },
@@ -3198,6 +3294,10 @@ export const SecretSyncs = {
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
       dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+    },
+    CLOUD66: {
+      stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
+      stackName: "The name of the Cloud 66 stack to sync secrets to."
     },
     NORTHFLANK: {
       projectId: "The ID of the Northflank project to sync secrets to.",
@@ -3379,6 +3479,18 @@ export const SecretRotations = {
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     },
+    LITELLM_API_KEY: {
+      name: "The name for the generated LiteLLM API key. Infisical appends a timestamp to keep each rotated key unique and record its creation time.",
+      userId: "The ID of the LiteLLM user to associate the generated key with.",
+      teamId: "The ID of the LiteLLM team to associate the generated key with.",
+      models: "The list of model names the generated key is allowed to access. An empty list allows all models.",
+      additionalOptions:
+        "A JSON object of additional LiteLLM /key/generate options (e.g. max_budget, tpm_limit, metadata). Reserved fields (key_alias, auto_rotate, rotation_interval, duration, send_invite_email, key_type, user_id, team_id, models) are managed by Infisical or set via dedicated fields and cannot be set here."
+    },
+    OPENAI_SERVICE_ACCOUNT: {
+      projectId: "The ID of the OpenAI project to create service accounts in.",
+      name: "The name for the generated OpenAI service account."
+    },
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
@@ -3389,6 +3501,12 @@ export const SecretRotations = {
     },
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
+    },
+    CONVEX_ACCESS_KEY: {
+      namePrefix: "A prefix to use when naming the generated Convex access key."
+    },
+    FIREWORKS_API_KEY: {
+      serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3450,6 +3568,12 @@ export const SecretRotations = {
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     },
+    LITELLM_API_KEY: {
+      apiKey: "The name of the secret that the rotated LiteLLM API key will be mapped to."
+    },
+    OPENAI_SERVICE_ACCOUNT: {
+      apiKey: "The name of the secret that the rotated OpenAI service account API key will be mapped to."
+    },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
     },
@@ -3460,6 +3584,12 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    CONVEX_ACCESS_KEY: {
+      accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
+    },
+    FIREWORKS_API_KEY: {
+      apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
     }
   }
 };

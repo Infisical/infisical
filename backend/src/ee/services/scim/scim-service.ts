@@ -29,6 +29,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordScimOperationMetric, ScimOperation } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -127,6 +128,7 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -150,6 +152,7 @@ export const scimServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
+  approvalPolicyDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService
@@ -297,7 +300,13 @@ export const scimServiceFactory = ({
     filter,
     orgId
   }) => {
-    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+
+    if (!org)
+      throw new ScimRequestError({
+        detail: "Organization not found",
+        status: 404
+      });
 
     if (!org.scimEnabled)
       throw new ScimRequestError({
@@ -310,7 +319,7 @@ export const scimServiceFactory = ({
       ...(limit && { limit })
     };
 
-    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, findOpts);
+    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, org.orgAuthMethod, findOpts);
 
     const scimUsers = users.map(
       ({ id, externalId, username, firstName, lastName, email, isActive, createdAt, updatedAt }) =>
@@ -343,29 +352,30 @@ export const scimServiceFactory = ({
   };
 
   const getScimUser: TScimServiceFactory["getScimUser"] = async ({ orgMembershipId, orgId }) => {
-    const [membership] = await orgDAL
-      .findMembership({
-        [`${TableName.Membership}.id` as "id"]: orgMembershipId,
-        [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-        [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-      })
-      .catch(() => {
-        throw new ScimRequestError({
-          detail: "User not found",
-          status: 404
-        });
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+
+    if (!org)
+      throw new ScimRequestError({
+        detail: "Organization not found",
+        status: 404
       });
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
+      });
+
+    // Use findMembershipWithScimFilter with the membershipId parameter
+    // This ensures we use the same alias-type and latest-alias selection as listScimUsers
+    const [membership] = await orgDAL.findMembershipWithScimFilter(orgId, undefined, org.orgAuthMethod, {
+      membershipId: orgMembershipId
+    });
 
     if (!membership)
       throw new ScimRequestError({
         detail: "User not found",
         status: 404
-      });
-
-    if (!membership.scimEnabled)
-      throw new ScimRequestError({
-        detail: "SCIM is disabled for the organization",
-        status: 403
       });
 
     await scimEventsDAL.create({
@@ -864,7 +874,8 @@ export const scimServiceFactory = ({
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL
+      additionalPrivilegeDAL,
+      approvalPolicyDAL
     });
 
     await scimEventsDAL.create({
@@ -983,11 +994,13 @@ export const scimServiceFactory = ({
     // no mapping, user will have default org membership
     if (!externalGroupMapping) return;
 
-    // only get org memberships that are new (invites)
+    // only get org memberships that are new (invites), scoped to the group's organization
+    // (consistent with the other membership lookups in this service)
     const newOrgMemberships = await membershipUserDAL.find(
       {
         status: "invited",
         scope: AccessScope.Organization,
+        scopeOrgId: group.orgId,
         $in: {
           id: members.map((member) => member.value)
         }

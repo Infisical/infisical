@@ -32,8 +32,8 @@ export const ROUTE_PATHS = Object.freeze({
       )
     },
     SecretSharing: setRoute(
-      "/organizations/$orgId/secret-sharing",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing/"
+      "/organizations/$orgId/projects/secret-management/secret-sharing",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/"
     ),
     ProjectsPage: setRoute(
       "/organizations/$orgId/projects",
@@ -63,10 +63,26 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/roles/$roleId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId"
     ),
+    IntegrationsPage: setRoute(
+      "/organizations/$orgId/integrations",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
+    ),
+    AuditLogsPage: setRoute(
+      "/organizations/$orgId/audit-logs",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/audit-logs"
+    ),
+    SsoPage: setRoute(
+      "/organizations/$orgId/sso",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso"
+    ),
     AppConnections: {
       OauthCallbackPage: setRoute(
         "/organizations/$orgId/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback"
+      ),
+      GitHubManifestCallbackPage: setRoute(
+        "/organizations/$orgId/app-connections/github/manifest/callback",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback"
       )
     },
     NetworkingPage: setRoute(
@@ -80,6 +96,10 @@ export const ROUTE_PATHS = Object.freeze({
     RelayDetailsByIDPage: setRoute(
       "/organizations/$orgId/networking/relays/$relayId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId"
+    ),
+    KmipServerDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId"
     )
   },
   SecretManager: {
@@ -319,13 +339,25 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
     ),
+    CertificateProfilesPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-profiles/"
+    ),
     CertificateProfileDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-profiles/$profileId"
     ),
+    CertificatePoliciesPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/"
+    ),
     CertificatePolicyDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/$policyId"
+    ),
+    HsmConnectorDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/hsm-connectors/$connectorId"
     ),
     SubscribersPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
@@ -389,46 +421,25 @@ export const ROUTE_PATHS = Object.freeze({
     )
   },
   Pam: {
-    ResourcesPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/"
-    ),
-    SettingsPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/settings",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/settings"
-    ),
-    SessionsPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/sessions",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/"
-    ),
-    ApprovalRequestDetailPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId"
-    ),
-    PamSessionByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
-    ),
-    PamResourceByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId"
-    ),
-    PamAccountByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
+    AccessPage: setRoute(
+      "/organizations/$orgId/pam/access",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/"
     ),
     PamAccountAccessPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
-      "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access"
+      "/organizations/$orgId/pam/accounts/$accountType/$accountId/access",
+      "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
     ),
-
+    AccountsPage: setRoute(
+      "/organizations/$orgId/pam/accounts",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+    ),
+    TemplatesPage: setRoute(
+      "/organizations/$orgId/pam/templates",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates"
+    ),
     DiscoveryPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/discovery",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/"
-    ),
-    PamDiscoveryByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/$discoveryType/$discoverySourceId"
+      "/organizations/$orgId/pam/discovery",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/discovery"
     )
   },
   Public: {

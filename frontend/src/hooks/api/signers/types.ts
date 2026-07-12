@@ -1,6 +1,18 @@
+import { CaType } from "@app/hooks/api/ca/enums";
+
 export type TGetUserSignerPermissionDTO = {
   signerId: string;
 };
+
+export type TSignerExternalConfiguration =
+  | {
+      caType: CaType.DIGICERT;
+      reissueFromExternalOrderId?: string;
+    }
+  | {
+      caType: CaType.ADCS;
+      template?: string;
+    };
 
 export enum SignerStatus {
   Pending = "pending",
@@ -18,6 +30,18 @@ export enum SignerKeyAlgorithm {
   ECDSA_P384 = "EC_secp384r1",
   ECDSA_P521 = "EC_secp521r1"
 }
+
+export enum CertKeySource {
+  Infisical = "infisical",
+  Hsm = "hsm"
+}
+
+export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [
+  SignerKeyAlgorithm.RSA_2048,
+  SignerKeyAlgorithm.RSA_4096,
+  SignerKeyAlgorithm.ECDSA_P256,
+  SignerKeyAlgorithm.ECDSA_P384
+];
 
 export const signerKeyAlgorithmLabels: Record<SignerKeyAlgorithm, string> = {
   [SignerKeyAlgorithm.RSA_2048]: "RSA-2048",
@@ -54,12 +78,14 @@ export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
 };
 
 export enum SigningOperationStatus {
+  Pending = "pending",
   Success = "success",
   Failed = "failed",
   Denied = "denied"
 }
 
 export const signingOperationStatusLabels: Record<SigningOperationStatus, string> = {
+  [SigningOperationStatus.Pending]: "Pending",
   [SigningOperationStatus.Success]: "Success",
   [SigningOperationStatus.Failed]: "Failed",
   [SigningOperationStatus.Denied]: "Denied"
@@ -78,14 +104,22 @@ export type TSigner = {
   certificateTtlDays?: number | null;
   certificateRenewBeforeDays?: number | null;
   keyAlgorithm?: SignerKeyAlgorithm | string | null;
+  externalCaConfig?: { caType: CaType.ADCS; template?: string } | null;
   lastSignedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   certificateCommonName?: string | null;
   certificateSerialNumber?: string | null;
   certificateNotAfter?: string | null;
+  certificateKeySource?: CertKeySource | string | null;
+  certificateHsmConnectorId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
+  externalOrder?: {
+    provider: string;
+    orderId: number;
+    status?: string | null;
+  } | null;
 };
 
 export enum SigningActorType {
@@ -230,6 +264,11 @@ export type TCreateSignerApprovalPolicyInput = {
   constraints?: { maxSignings?: number | null; maxWindowDuration?: string | null };
 };
 
+export type TSignerCertificateInput = {
+  keySource?: CertKeySource;
+  hsmConnectorId?: string;
+};
+
 export type TCreateSignerDTO = {
   projectId: string;
   name: string;
@@ -243,6 +282,8 @@ export type TCreateSignerDTO = {
   approvalPolicyId?: string;
   members?: TCreateSignerMemberInput[];
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
+  certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfiguration;
 };
 
 export type TUpdateSignerDTO = {
@@ -261,6 +302,12 @@ export type TReissueSignerCertificateDTO = {
   caId: string;
   commonName?: string;
   certificateTtlDays?: number;
+  keyAlgorithm?: SignerKeyAlgorithm;
+  certificate?: {
+    keySource: CertKeySource;
+    hsmConnectorId?: string;
+  };
+  externalConfiguration?: TSignerExternalConfiguration;
 };
 
 export type TEnableSignerDTO = { signerId: string };

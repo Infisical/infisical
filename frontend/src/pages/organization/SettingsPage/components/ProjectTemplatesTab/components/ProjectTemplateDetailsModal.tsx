@@ -8,13 +8,12 @@ import {
   Button,
   FormControl,
   Input,
-  Lottie,
   Modal,
   ModalClose,
   ModalContent,
   TextArea
 } from "@app/components/v2";
-import { getProjectLottieIcon } from "@app/helpers/project";
+import { getProjectLucideIcon } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   TProjectTemplate,
@@ -45,10 +44,6 @@ type FormProps = {
 
 const PROJECT_TYPE_MENU_ITEMS = [
   {
-    label: "Secrets Management",
-    value: ProjectType.SecretManager
-  },
-  {
     label: "KMS",
     value: ProjectType.KMS
   },
@@ -57,7 +52,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretScanning
   },
   {
-    label: "PAM",
+    label: "Privileged Access Manager",
     value: ProjectType.PAM
   }
 ];
@@ -76,7 +71,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
     defaultValues: {
       name: projectTemplate?.name,
       description: projectTemplate?.description,
-      type: projectTemplate?.type ?? ProjectType.SecretManager
+      type: projectTemplate?.type ?? ProjectType.KMS
     }
   });
 
@@ -114,7 +109,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
         <Controller
           control={control}
           name="type"
-          defaultValue={ProjectType.SecretManager}
+          defaultValue={ProjectType.KMS}
           render={({ field, fieldState: { error } }) => (
             <FormControl
               label="Project Type"
@@ -123,26 +118,30 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
               className="flex-1"
             >
               <div className="mt-2 grid grid-cols-3 gap-3">
-                {PROJECT_TYPE_MENU_ITEMS.map((el) => (
-                  <div
-                    key={el.value}
-                    className={twMerge(
-                      "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
-                      field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
-                    )}
-                    onClick={() => field.onChange(el.value)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        field.onChange(el.value);
-                      }
-                    }}
-                  >
-                    <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
-                    <div className="text-center text-xs">{el.label}</div>
-                  </div>
-                ))}
+                {PROJECT_TYPE_MENU_ITEMS.map((el) => {
+                  const ProjectIcon = getProjectLucideIcon(el.value);
+                  return (
+                    <div
+                      key={el.value}
+                      className={twMerge(
+                        "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
+                        field.value === el.value &&
+                          "border-primary-400 bg-mineshaft-600 opacity-100"
+                      )}
+                      onClick={() => field.onChange(el.value)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          field.onChange(el.value);
+                        }
+                      }}
+                    >
+                      <ProjectIcon className="h-8 w-8" />
+                      <div className="text-center text-xs">{el.label}</div>
+                    </div>
+                  );
+                })}
               </div>
             </FormControl>
           )}

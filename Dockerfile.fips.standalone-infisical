@@ -50,11 +50,19 @@ RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
 
 COPY --from=frontend-builder --chown=non-root-user:nodejs /app/dist ./
 
-USER non-root-user
+USER 1001
 
 ##
 ## BACKEND
 ##
+
+# Go sidecar build (parallel stage)
+FROM golang:1.26-trixie AS go-builder
+WORKDIR /app
+COPY backend-go/go.mod backend-go/go.sum ./
+RUN go mod download
+COPY backend-go/ .
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /go-sidecar ./cmd/infisical/main.go
 
 # Oracle Instant Client (parallel stage — downloads while other stages build)
 FROM debian:trixie-slim AS oracle
@@ -181,7 +189,7 @@ RUN apt-get update && apt-get install -y \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u3 \
     libc-bin=2.41-12+deb13u3 \
-    libssl3t64=3.5.6-1~deb13u1 \
+    libssl3t64=3.5.6-1~deb13u2 \
     dpkg=1.22.22 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
@@ -249,8 +257,8 @@ ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 WORKDIR /
 
 COPY --from=backend-runner /app /backend
-
 COPY --from=frontend-runner /app ./backend/frontend-build
+COPY --from=go-builder /go-sidecar /backend/go-sidecar
 
 # Make export-assets script executable for CDN asset extraction
 RUN chmod +x /backend/scripts/export-assets.sh
@@ -289,6 +297,7 @@ RUN grep -v 'import "./lib/telemetry/instrumentation.mjs";' dist/main.mjs > dist
 RUN ln -sf /usr/local/lib64/ossl-modules /usr/local/lib/ossl-modules || \
     ln -sf /usr/local/lib/ossl-modules /usr/local/lib64/ossl-modules
 
-USER non-root-user
+# Use numeric UID so Kubernetes can verify the image runs as non-root.
+USER 1001
 
 CMD ["./standalone-entrypoint.sh"]

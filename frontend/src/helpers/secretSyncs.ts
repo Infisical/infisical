@@ -180,6 +180,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "DATA",
     description: "Project secrets for Supabase."
   },
+  [SecretSync.Rundeck]: {
+    name: "Rundeck",
+    image: "Rundeck.svg",
+    category: "CI/CD",
+    description: "Job and project secrets for Rundeck Key Storage."
+  },
   [SecretSync.DigitalOceanAppPlatform]: {
     name: "Digital Ocean App Platform",
     image: "Digital Ocean.png",
@@ -270,6 +276,30 @@ export const SECRET_SYNC_MAP: Record<
     image: "Snowflake.png",
     category: "DATA",
     description: "Secret objects in a Snowflake account."
+  },
+  [SecretSync.TriggerDev]: {
+    name: "Trigger.dev",
+    image: "TriggerDev.png",
+    category: "HOSTING",
+    description: "Environment variables for Trigger.dev projects."
+  },
+  [SecretSync.HasuraCloud]: {
+    name: "Hasura Cloud",
+    image: "Hasura.svg",
+    category: "PLATFORM",
+    description: "Environment variables for Hasura Cloud tenants."
+  },
+  [SecretSync.Qovery]: {
+    name: "Qovery",
+    image: "Qovery.png",
+    category: "HOSTING",
+    description: "Environment secrets and variables for Qovery projects."
+  },
+  [SecretSync.Cloud66]: {
+    name: "Cloud 66",
+    image: "Cloud 66.png",
+    category: "HOSTING",
+    description: "Environment variables for Cloud 66 stacks."
   }
 };
 
@@ -305,6 +335,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
+  [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -322,7 +353,11 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Devin]: AppConnection.Devin,
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI,
-  [SecretSync.Snowflake]: AppConnection.Snowflake
+  [SecretSync.Snowflake]: AppConnection.Snowflake,
+  [SecretSync.TriggerDev]: AppConnection.TriggerDev,
+  [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
+  [SecretSync.Qovery]: AppConnection.Qovery,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

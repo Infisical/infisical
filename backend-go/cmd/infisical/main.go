@@ -28,7 +28,7 @@ func main() {
 	// Setup structured JSON logger with context enrichment (e.g. request ID).
 	logger := slog.New(logutil.NewContextHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: config.GetConfiguredSlogLevel(),
-	})))
+	}))).With(slog.String("from", "go-sidecar"))
 	slog.SetDefault(logger)
 
 	// Load configuration.

@@ -1,8 +1,8 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
@@ -17,14 +17,15 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
+          return false;
+        }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -34,7 +35,7 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
@@ -50,7 +51,7 @@ export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema,
-  syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema.optional().default({}),
+  syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

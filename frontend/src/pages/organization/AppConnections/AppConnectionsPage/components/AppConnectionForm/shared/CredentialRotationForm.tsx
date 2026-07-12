@@ -1,10 +1,24 @@
 import { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { format, setHours, setMinutes } from "date-fns";
+import { Info } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { FormControl, Input, Switch } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  Label,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
+import { useScopeVariant } from "@app/hooks";
 
 type Props = {
   children?: ReactNode;
@@ -12,6 +26,7 @@ type Props = {
 
 export const CredentialRotationForm = ({ children }: Props) => {
   const { control, watch } = useFormContext();
+  const scopeVariant = useScopeVariant();
 
   const isAutoRotationEnabled = watch("isAutoRotationEnabled");
   return (
@@ -21,25 +36,25 @@ export const CredentialRotationForm = ({ children }: Props) => {
           name="isAutoRotationEnabled"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              helperText={
-                value
-                  ? "App connection credentials will automatically be rotated when the rotation interval specified above as elapsed."
-                  : "App connection credentials will not be rotated automatically."
-              }
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-            >
-              <Switch
-                className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                id="platform-managed"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value}
-                onCheckedChange={onChange}
-              >
-                <p>Automatic Credential Rotation</p>
-              </Switch>
-            </FormControl>
+            <Field>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="auto-rotation-enabled">Automatic Credential Rotation</Label>
+                  <FieldDescription>
+                    {value
+                      ? "App connection credentials will automatically be rotated when the rotation interval specified above as elapsed."
+                      : "App connection credentials will not be rotated automatically."}
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  id="auto-rotation-enabled"
+                  variant={scopeVariant}
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
+              </Field>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
       </div>
@@ -47,24 +62,31 @@ export const CredentialRotationForm = ({ children }: Props) => {
       {isAutoRotationEnabled && (
         <>
           {children}
-          <div className="flex w-full items-center gap-2">
+          <div className="flex w-full items-start gap-2">
             <Controller
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  className="flex-1"
-                  tooltipText="How often Infisical will rotate the credentials of this connection."
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Rotation Interval (In Days)"
-                >
+                <Field className="flex-1">
+                  <FieldLabel>
+                    Rotation Interval (In Days)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        How often Infisical will rotate the credentials of this connection.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <Input
                     value={value}
                     type="number"
                     onChange={(e) => onChange(parseInt(e.target.value, 10))}
                     min={1}
                     placeholder="30"
+                    isError={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
               control={control}
               name="rotation.rotationInterval"
@@ -72,13 +94,19 @@ export const CredentialRotationForm = ({ children }: Props) => {
             <Controller
               render={({ field: { value, onChange }, fieldState: { error } }) => {
                 return (
-                  <FormControl
-                    className="flex-1"
-                    tooltipText="The time of day at which Infisical will rotate the credentials of this connection."
-                    label="Rotate At (Local Time)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
+                  <Field className="flex-1">
+                    <FieldLabel>
+                      Rotate At (Local Time)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          The time of day at which Infisical will rotate the credentials of this
+                          connection.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
                     <Input
                       type="time"
                       value={format(getRotateAtLocal(value), "HH:mm")}
@@ -93,9 +121,11 @@ export const CredentialRotationForm = ({ children }: Props) => {
                           });
                         }
                       }}
-                      className="bg-mineshaft-700 text-white scheme-dark"
+                      className="scheme-dark"
+                      isError={Boolean(error)}
                     />
-                  </FormControl>
+                    <FieldError errors={[error]} />
+                  </Field>
                 );
               }}
               control={control}

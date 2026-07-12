@@ -13,6 +13,7 @@ import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
 import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
+import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -23,6 +24,7 @@ import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
 import { TGitLabSync } from "./gitlab-sync";
+import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
@@ -33,13 +35,16 @@ import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOnaSync } from "./ona-sync";
 import { TOvhSync } from "./ovh-sync";
+import { TQoverySync } from "./qovery-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
+import { TRundeckSync } from "./rundeck-sync";
 import { TSnowflakeSync } from "./snowflake-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TTravisCISync } from "./travis-ci-sync";
+import { TTriggerDevSync } from "./trigger-dev-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
@@ -82,6 +87,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync
@@ -96,7 +102,11 @@ export type TSecretSync =
   | TDevinSync
   | TOnaSync
   | TTravisCISync
-  | TSnowflakeSync;
+  | TSnowflakeSync
+  | TTriggerDevSync
+  | THasuraCloudSync
+  | TQoverySync
+  | TCloud66Sync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

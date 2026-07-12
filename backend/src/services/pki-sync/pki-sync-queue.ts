@@ -4,7 +4,6 @@ import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
-import handlebars from "handlebars";
 
 import { TCertificates } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -34,8 +33,9 @@ import { getCaCertChain } from "../certificate-authority/certificate-authority-f
 import { extractRootCaFromChain, removeRootCaFromChain } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
+import { compileCertificateNameSchema } from "./pki-sync-certificate-name-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import { PkiSyncStatus } from "./pki-sync-enums";
+import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns } from "./pki-sync-fns";
 import {
@@ -289,15 +289,17 @@ export const pkiSyncQueueFactory = ({
             const certificateNameSchema = syncOptions?.certificateNameSchema;
 
             if (certificateNameSchema) {
-              const environment = "global";
-              const templateData = {
-                certificateId: certificate.id.replace(/-/g, ""),
-                profileId: cert.profileId?.replace(/-/g, "") || certificate.id.replace(/-/g, ""),
-                commonName: cert.commonName || "",
-                friendlyName: cert.friendlyName || "",
-                environment
-              };
-              certificateName = handlebars.compile(certificateNameSchema)(templateData);
+              certificateName = compileCertificateNameSchema(
+                certificateNameSchema,
+                {
+                  certificateId: certificate.id,
+                  profileId: cert.profileId,
+                  applicationId: pkiSync.applicationId,
+                  applicationName: pkiSync.applicationName,
+                  commonName: cert.commonName
+                },
+                pkiSync.destination as PkiSync
+              );
             } else {
               const stableId = cert.profileId
                 ? `${cert.profileId.replace(/-/g, "")}-${(cert.commonName || "").replace(/[^a-zA-Z0-9]/g, "")}`
@@ -328,7 +330,9 @@ export const pkiSyncQueueFactory = ({
               certificateChain: processedCertificateChain,
               caCertificate,
               alternativeNames,
-              certificateId: certificate.id
+              certificateId: certificate.id,
+              profileId: cert.profileId,
+              commonName: cert.commonName
             };
 
             certificateMetadata.set(certificateName, {
@@ -435,6 +439,8 @@ export const pkiSyncQueueFactory = ({
         throw new Error(`App connection not found: ${connectionId}`);
       }
 
+      const project = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials: appConnection.encryptedCredentials,
@@ -446,7 +452,8 @@ export const pkiSyncQueueFactory = ({
         ...pkiSync,
         connection: {
           ...pkiSync.connection,
-          credentials
+          credentials,
+          projectType: project?.type
         }
       } as TPkiSyncWithCredentials;
 
@@ -739,6 +746,8 @@ export const pkiSyncQueueFactory = ({
         throw new Error(`App connection not found: ${connectionId}`);
       }
 
+      const removeProject = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials: appConnection.encryptedCredentials,
@@ -753,7 +762,8 @@ export const pkiSyncQueueFactory = ({
           ...pkiSync,
           connection: {
             ...pkiSync.connection,
-            credentials
+            credentials,
+            projectType: removeProject?.type
           }
         } as TPkiSyncWithCredentials,
         Object.keys(certificateMap),

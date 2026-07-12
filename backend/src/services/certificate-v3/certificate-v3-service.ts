@@ -319,6 +319,7 @@ const validateRenewalEligibility = (
   const isConnectedExternalCa =
     caType === CaType.ACME ||
     caType === CaType.AZURE_AD_CS ||
+    caType === CaType.ADCS ||
     caType === CaType.AWS_PCA ||
     caType === CaType.AWS_ACM_PUBLIC_CA ||
     caType === CaType.DIGICERT ||
@@ -1585,6 +1586,10 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: effectiveBasicConstraints?.pathLength }
       : effectiveBasicConstraints;
 
+    if (resolvedBasicConstraints) {
+      mappedCertificateRequest.basicConstraints = resolvedBasicConstraints;
+    }
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest
@@ -1593,6 +1598,18 @@ export const certificateV3ServiceFactory = ({
     if (!validationResult.isValid) {
       throw new BadRequestError({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+      });
+    }
+
+    validateAlgorithmCompatibility(ca, policy);
+
+    const policyIsCAState: CertPolicyState =
+      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
       });
     }
 
@@ -1722,20 +1739,8 @@ export const certificateV3ServiceFactory = ({
       };
     }
 
-    validateAlgorithmCompatibility(ca, policy);
-
     const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
-
-    const policyIsCAState: CertPolicyState =
-      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
 
     // Transform policy basicConstraints to the format expected by the CA service
     const caBasicConstraints = shouldIssueAsCA
@@ -1892,7 +1897,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     profileId,
     certificateOrder,
     metadata,
@@ -2161,6 +2166,7 @@ export const certificateV3ServiceFactory = ({
     if (
       caType === CaType.ACME ||
       caType === CaType.AZURE_AD_CS ||
+      caType === CaType.ADCS ||
       caType === CaType.AWS_PCA ||
       caType === CaType.DIGICERT ||
       caType === CaType.AWS_ACM_PUBLIC_CA ||
@@ -2572,6 +2578,7 @@ export const certificateV3ServiceFactory = ({
         } else if (
           caType === CaType.ACME ||
           caType === CaType.AZURE_AD_CS ||
+          caType === CaType.ADCS ||
           caType === CaType.AWS_PCA ||
           caType === CaType.DIGICERT ||
           caType === CaType.AWS_ACM_PUBLIC_CA ||
@@ -3157,7 +3164,7 @@ export const certificateV3ServiceFactory = ({
   return {
     issueCertificateFromProfile,
     signCertificateFromProfile,
-    orderCertificateFromProfile,
+    orderCertificate,
     renewCertificate,
     updateRenewalConfig,
     disableRenewalConfig,

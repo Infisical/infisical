@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  CertKeySource,
+  HSM_SUPPORTED_KEY_ALGORITHMS,
+  SignerKeyAlgorithm
+} from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
 
 export const basicsSchema = z.object({
@@ -29,7 +34,14 @@ export const certificateSchema = z
       )
       .default(null),
     commonName: z.string().trim().min(1, "Common Name is required").max(256).optional(),
-    certificateTtlDays: z.coerce.number().int().min(1).max(3650).optional()
+    certificateTtlDays: z.coerce.number().int().min(1).max(3650).optional(),
+    keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
+    keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
+    hsmConnectorId: z.string().uuid().optional().nullable(),
+    // DigiCert code signing only: reissue into this existing order instead of placing a new one.
+    reissueFromExternalOrderId: z.string().nullable().optional().default(null),
+    // AD CS only: the certificate template this signer requests when issuing.
+    adcsTemplate: z.string().trim().optional().default("")
   })
   .refine(
     (data) =>
@@ -39,6 +51,20 @@ export const certificateSchema = z
     {
       message: "Renew before must be less than the certificate validity (days).",
       path: ["certificateRenewBeforeDays"]
+    }
+  )
+  .refine((data) => data.keySource !== CertKeySource.Hsm || Boolean(data.hsmConnectorId), {
+    message: "Pick an HSM Connector.",
+    path: ["hsmConnectorId"]
+  })
+  .refine(
+    (data) =>
+      data.keySource !== CertKeySource.Hsm ||
+      HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm),
+    {
+      message:
+        "This algorithm is not supported by HSM-backed keys. Pick RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384.",
+      path: ["keyAlgorithm"]
     }
   );
 export type CertificateForm = z.infer<typeof certificateSchema>;

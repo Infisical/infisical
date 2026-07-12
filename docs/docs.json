@@ -68,6 +68,7 @@
                   "documentation/platform/identities/machine-identities"
                 ]
               },
+              "documentation/platform/oauth-applications",
               {
                 "group": "Access Control",
                 "pages": [
@@ -108,9 +109,9 @@
                       "integrations/app-connections/1password",
                       "integrations/app-connections/anthropic",
                       "integrations/app-connections/auth0",
+                      "integrations/app-connections/adcs",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
-                      "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-dns",
@@ -121,7 +122,9 @@
                       "integrations/app-connections/checkly",
                       "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
+                      "integrations/app-connections/cloud-66",
                       "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/convex",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/datadog",
                       "integrations/app-connections/dbt",
@@ -131,6 +134,7 @@
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/f5-big-ip",
+                      "integrations/app-connections/fireworks",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
@@ -138,11 +142,13 @@
                       "integrations/app-connections/gitlab",
                       "integrations/app-connections/godaddy",
                       "integrations/app-connections/hashicorp-vault",
+                      "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
                       "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
+                      "integrations/app-connections/litellm",
                       "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mongodb",
@@ -155,19 +161,23 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
+                      "integrations/app-connections/openai",
                       "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/ovh",
                       "integrations/app-connections/postgres",
+                      "integrations/app-connections/qovery",
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",
+                      "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/travis-ci",
+                      "integrations/app-connections/trigger-dev",
                       "integrations/app-connections/venafi",
                       "integrations/app-connections/venafi-tpp",
                       "integrations/app-connections/vercel",
@@ -440,6 +450,10 @@
                 "pages": [
                   "documentation/platform/secrets-mgmt/overview",
                   {
+                    "group": "Quickstarts",
+                    "pages": ["documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"]
+                  },
+                  {
                     "group": "Concepts",
                     "pages": [
                       "documentation/platform/secrets-mgmt/concepts/secrets-mgmt",
@@ -453,13 +467,11 @@
                   {
                     "group": "Guides",
                     "pages": [
-                      "documentation/guides/introduction",
                       "documentation/guides/local-development",
                       "documentation/guides/node",
                       "documentation/guides/python",
                       "documentation/guides/nextjs-vercel",
-                      "documentation/guides/kubernetes-operator",
-                      "documentation/guides/microsoft-power-apps"
+                      "documentation/guides/kubernetes-operator"
                     ]
                   }
                 ]
@@ -469,73 +481,114 @@
                 "pages": [
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
+                  "documentation/platform/secret-reference",
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
-                  "documentation/platform/secret-reference",
-                  "documentation/platform/insights",
+                  "documentation/platform/secret-validation-rules",
                   "documentation/platform/pr-workflows",
                   "documentation/platform/access-controls/access-requests",
+                  "documentation/platform/webhooks",
+                  "documentation/platform/insights",
                   {
                     "group": "Secret Rotation",
                     "pages": [
-                      "integrations/secret-rotations",
                       "documentation/platform/secret-rotation/overview",
-                      "documentation/platform/secret-rotation/auth0-client-secret",
-                      "documentation/platform/secret-rotation/aws-iam-user-secret",
-                      "documentation/platform/secret-rotation/azure-client-secret",
-                      "documentation/platform/secret-rotation/databricks-service-principal-secret",
-                      "documentation/platform/secret-rotation/datadog-application-key-secret",
-                      "documentation/platform/secret-rotation/dbt-service-token",
-                      "documentation/platform/secret-rotation/ldap-password",
-                      "documentation/platform/secret-rotation/mongodb-credentials",
-                      "documentation/platform/secret-rotation/mssql-credentials",
-                      "documentation/platform/secret-rotation/mysql-credentials",
-                      "documentation/platform/secret-rotation/hp-ilo-local-account",
-                      "documentation/platform/secret-rotation/okta-client-secret",
-                      "documentation/platform/secret-rotation/openrouter-api-key",
-                      "documentation/platform/secret-rotation/oracledb-credentials",
-                      "documentation/platform/secret-rotation/postgres-credentials",
-                      "documentation/platform/secret-rotation/redis-credentials",
-                      "documentation/platform/secret-rotation/salesforce-oauth-credentials",
-                      "documentation/platform/secret-rotation/supabase-api-key",
-                      "documentation/platform/secret-rotation/unix-linux-local-account",
-                      "documentation/platform/secret-rotation/windows-local-account"
+                      "integrations/secret-rotations",
+                      {
+                        "group": "Databases",
+                        "pages": [
+                          "documentation/platform/secret-rotation/mongodb-credentials",
+                          "documentation/platform/secret-rotation/mssql-credentials",
+                          "documentation/platform/secret-rotation/mysql-credentials",
+                          "documentation/platform/secret-rotation/oracledb-credentials",
+                          "documentation/platform/secret-rotation/postgres-credentials",
+                          "documentation/platform/secret-rotation/redis-credentials"
+                        ]
+                      },
+                      {
+                        "group": "Cloud & Identity",
+                        "pages": [
+                          "documentation/platform/secret-rotation/auth0-client-secret",
+                          "documentation/platform/secret-rotation/aws-iam-user-secret",
+                          "documentation/platform/secret-rotation/azure-client-secret",
+                          "documentation/platform/secret-rotation/ldap-password",
+                          "documentation/platform/secret-rotation/okta-client-secret"
+                        ]
+                      },
+                      {
+                        "group": "SaaS & Platforms",
+                        "pages": [
+                          "documentation/platform/secret-rotation/convex-access-key",
+                          "documentation/platform/secret-rotation/databricks-service-principal-secret",
+                          "documentation/platform/secret-rotation/datadog-application-key-secret",
+                          "documentation/platform/secret-rotation/dbt-service-token",
+                          "documentation/platform/secret-rotation/fireworks-api-key",
+                          "documentation/platform/secret-rotation/litellm-api-key",
+                          "documentation/platform/secret-rotation/openai-service-account",
+                          "documentation/platform/secret-rotation/openrouter-api-key",
+                          "documentation/platform/secret-rotation/salesforce-oauth-credentials",
+                          "documentation/platform/secret-rotation/supabase-api-key"
+                        ]
+                      },
+                      {
+                        "group": "OS & Hardware",
+                        "pages": [
+                          "documentation/platform/secret-rotation/hp-ilo-local-account",
+                          "documentation/platform/secret-rotation/unix-linux-local-account",
+                          "documentation/platform/secret-rotation/windows-local-account"
+                        ]
+                      }
                     ]
                   },
                   {
                     "group": "Dynamic Secrets",
                     "pages": [
-                      "integrations/dynamic-secrets",
                       "documentation/platform/dynamic-secrets/overview",
-                      "documentation/platform/dynamic-secrets/aws-elasticache",
-                      "documentation/platform/dynamic-secrets/aws-iam",
-                      "documentation/platform/dynamic-secrets/aws-memorydb",
-                      "documentation/platform/dynamic-secrets/azure-entra-id",
-                      "documentation/platform/dynamic-secrets/azure-sql-database",
-                      "documentation/platform/dynamic-secrets/cassandra",
-                      "documentation/platform/dynamic-secrets/clickhouse",
-                      "documentation/platform/dynamic-secrets/couchbase",
-                      "documentation/platform/dynamic-secrets/elastic-search",
-                      "documentation/platform/dynamic-secrets/gcp-iam",
-                      "documentation/platform/dynamic-secrets/github",
-                      "documentation/platform/dynamic-secrets/ibm-api-connect",
-                      "documentation/platform/dynamic-secrets/ldap",
-                      "documentation/platform/dynamic-secrets/milvus",
-                      "documentation/platform/dynamic-secrets/mongo-atlas",
-                      "documentation/platform/dynamic-secrets/mongo-db",
-                      "documentation/platform/dynamic-secrets/mssql",
-                      "documentation/platform/dynamic-secrets/mysql",
-                      "documentation/platform/dynamic-secrets/oracle",
-                      "documentation/platform/dynamic-secrets/postgresql",
-                      "documentation/platform/dynamic-secrets/rabbit-mq",
-                      "documentation/platform/dynamic-secrets/redis",
-                      "documentation/platform/dynamic-secrets/sap-ase",
-                      "documentation/platform/dynamic-secrets/sap-hana",
-                      "documentation/platform/dynamic-secrets/snowflake",
-                      "documentation/platform/dynamic-secrets/ssh",
-                      "documentation/platform/dynamic-secrets/totp",
-                      "documentation/platform/dynamic-secrets/kubernetes",
-                      "documentation/platform/dynamic-secrets/vertica"
+                      "integrations/dynamic-secrets",
+                      {
+                        "group": "Databases",
+                        "pages": [
+                          "documentation/platform/dynamic-secrets/aws-elasticache",
+                          "documentation/platform/dynamic-secrets/aws-memorydb",
+                          "documentation/platform/dynamic-secrets/azure-sql-database",
+                          "documentation/platform/dynamic-secrets/cassandra",
+                          "documentation/platform/dynamic-secrets/clickhouse",
+                          "documentation/platform/dynamic-secrets/couchbase",
+                          "documentation/platform/dynamic-secrets/elastic-search",
+                          "documentation/platform/dynamic-secrets/milvus",
+                          "documentation/platform/dynamic-secrets/mongo-atlas",
+                          "documentation/platform/dynamic-secrets/mongo-db",
+                          "documentation/platform/dynamic-secrets/mssql",
+                          "documentation/platform/dynamic-secrets/mysql",
+                          "documentation/platform/dynamic-secrets/oracle",
+                          "documentation/platform/dynamic-secrets/postgresql",
+                          "documentation/platform/dynamic-secrets/redis",
+                          "documentation/platform/dynamic-secrets/sap-ase",
+                          "documentation/platform/dynamic-secrets/sap-hana",
+                          "documentation/platform/dynamic-secrets/snowflake",
+                          "documentation/platform/dynamic-secrets/vertica"
+                        ]
+                      },
+                      {
+                        "group": "Cloud & Identity",
+                        "pages": [
+                          "documentation/platform/dynamic-secrets/aws-iam",
+                          "documentation/platform/dynamic-secrets/azure-entra-id",
+                          "documentation/platform/dynamic-secrets/gcp-iam",
+                          "documentation/platform/dynamic-secrets/github",
+                          "documentation/platform/dynamic-secrets/kubernetes",
+                          "documentation/platform/dynamic-secrets/ldap"
+                        ]
+                      },
+                      {
+                        "group": "Other",
+                        "pages": [
+                          "documentation/platform/dynamic-secrets/ibm-api-connect",
+                          "documentation/platform/dynamic-secrets/rabbit-mq",
+                          "documentation/platform/dynamic-secrets/ssh",
+                          "documentation/platform/dynamic-secrets/totp"
+                        ]
+                      }
                     ]
                   },
                   {
@@ -550,168 +603,201 @@
                         ]
                       }
                     ]
-                  },
-                  "documentation/platform/webhooks",
-                  "documentation/platform/secret-validation-rules"
+                  }
                 ]
               },
               {
-                "group": "Infrastructure Integrations",
+                "group": "Integrations",
                 "pages": [
-                  "integrations/platforms/ansible",
-                  "integrations/platforms/apache-airflow",
                   {
-                    "group": "AWS",
-                    "pages": ["integrations/platforms/aws/lambda"]
+                    "group": "Kubernetes",
+                    "pages": [
+                      {
+                        "group": "Kubernetes Operator",
+                        "pages": [
+                          "integrations/platforms/kubernetes/overview",
+                          {
+                            "group": "V2",
+                            "tag": "RECOMMENDED",
+                            "pages": [
+                              "integrations/platforms/kubernetes/infisical-connection-crd",
+                              "integrations/platforms/kubernetes/infisical-auth-crd",
+                              "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                            ]
+                          },
+                          {
+                            "group": "V1",
+                            "pages": [
+                              "integrations/platforms/kubernetes/infisical-secret-crd",
+                              "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                              "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                            ]
+                          }
+                        ]
+                      },
+                      "integrations/platforms/kubernetes-injector",
+                      "integrations/platforms/kubernetes-csi"
+                    ]
                   },
                   {
-                    "group": "Kubernetes Operator",
+                    "group": "Infrastructure",
                     "pages": [
-                      "integrations/platforms/kubernetes/overview",
+                      "integrations/platforms/ansible",
+                      "integrations/platforms/apache-airflow",
                       {
-                        "group": "V2",
-                        "tag": "RECOMMENDED",
+                        "group": "AWS",
+                        "pages": ["integrations/platforms/aws/lambda"]
+                      },
+                      "integrations/platforms/infisical-proxy",
+                      {
+                        "group": "Agent",
                         "pages": [
-                          "integrations/platforms/kubernetes/infisical-connection-crd",
-                          "integrations/platforms/kubernetes/infisical-auth-crd",
-                          "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                          "integrations/platforms/infisical-agent",
+                          "integrations/platforms/ecs-with-agent"
                         ]
                       },
                       {
-                        "group": "V1",
+                        "group": "Docker",
                         "pages": [
-                          "integrations/platforms/kubernetes/infisical-secret-crd",
-                          "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                          "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                          "integrations/platforms/docker-intro",
+                          "integrations/platforms/docker",
+                          "integrations/platforms/docker-pass-envs",
+                          "integrations/platforms/docker-compose"
+                        ]
+                      },
+                      "integrations/frameworks/packer",
+                      "integrations/frameworks/pulumi",
+                      "integrations/frameworks/terraform"
+                    ]
+                  },
+                  {
+                    "group": "Secret Syncs",
+                    "pages": [
+                      "integrations/secret-syncs/overview",
+                      "integrations/secret-syncs",
+                      {
+                        "group": "Cloud Providers",
+                        "pages": [
+                          "integrations/secret-syncs/aws-parameter-store",
+                          "integrations/secret-syncs/aws-secrets-manager",
+                          "integrations/secret-syncs/azure-app-configuration",
+                          "integrations/secret-syncs/azure-entra-id-scim",
+                          "integrations/secret-syncs/azure-key-vault",
+                          "integrations/secret-syncs/gcp-secret-manager",
+                          "integrations/secret-syncs/oci-vault",
+                          "integrations/secret-syncs/ovh"
+                        ]
+                      },
+                      {
+                        "group": "Git & CI/CD Platforms",
+                        "pages": [
+                          "integrations/secret-syncs/azure-devops",
+                          "integrations/secret-syncs/bitbucket",
+                          "integrations/secret-syncs/circleci",
+                          "integrations/secret-syncs/github",
+                          "integrations/secret-syncs/gitlab",
+                          "integrations/secret-syncs/octopus-deploy",
+                          "integrations/secret-syncs/rundeck",
+                          "integrations/secret-syncs/teamcity",
+                          "integrations/secret-syncs/terraform-cloud",
+                          "integrations/secret-syncs/travis-ci"
+                        ]
+                      },
+                      {
+                        "group": "PaaS & Hosting",
+                        "pages": [
+                          "integrations/secret-syncs/cloud-66",
+                          "integrations/secret-syncs/cloudflare-pages",
+                          "integrations/secret-syncs/cloudflare-workers",
+                          "integrations/secret-syncs/digital-ocean-app-platform",
+                          "integrations/secret-syncs/flyio",
+                          "integrations/secret-syncs/heroku",
+                          "integrations/secret-syncs/laravel-forge",
+                          "integrations/secret-syncs/netlify",
+                          "integrations/secret-syncs/northflank",
+                          "integrations/secret-syncs/qovery",
+                          "integrations/secret-syncs/railway",
+                          "integrations/secret-syncs/render",
+                          "integrations/secret-syncs/vercel"
+                        ]
+                      },
+                      {
+                        "group": "Secret Managers",
+                        "pages": [
+                          "integrations/secret-syncs/1password",
+                          "integrations/secret-syncs/external-infisical",
+                          "integrations/secret-syncs/hashicorp-vault"
+                        ]
+                      },
+                      {
+                        "group": "Other SaaS",
+                        "pages": [
+                          "integrations/secret-syncs/camunda",
+                          "integrations/secret-syncs/checkly",
+                          "integrations/secret-syncs/chef",
+                          "integrations/secret-syncs/databricks",
+                          "integrations/secret-syncs/devin",
+                          "integrations/secret-syncs/hasura-cloud",
+                          "integrations/secret-syncs/humanitec",
+                          "integrations/secret-syncs/ona",
+                          "integrations/secret-syncs/snowflake",
+                          "integrations/secret-syncs/supabase",
+                          "integrations/secret-syncs/trigger-dev",
+                          "integrations/secret-syncs/windmill",
+                          "integrations/secret-syncs/zabbix"
                         ]
                       }
                     ]
                   },
-                  "integrations/platforms/kubernetes-injector",
-                  "integrations/platforms/kubernetes-csi",
-                  "integrations/platforms/infisical-proxy",
                   {
-                    "group": "Agent",
+                    "group": "CI/CD",
                     "pages": [
-                      "integrations/platforms/infisical-agent",
-                      "integrations/platforms/ecs-with-agent"
+                      "integrations/cicd/aws-amplify",
+                      "integrations/cicd/bitbucket",
+                      "integrations/cicd/githubactions",
+                      "integrations/cicd/gitlab",
+                      "integrations/cicd/jenkins"
                     ]
                   },
                   {
-                    "group": "Docker",
+                    "group": "Frameworks & Build Tools",
                     "pages": [
-                      "integrations/platforms/docker-intro",
-                      "integrations/platforms/docker",
-                      "integrations/platforms/docker-pass-envs",
-                      "integrations/platforms/docker-compose"
+                      "integrations/framework-integrations",
+                      "integrations/frameworks/spring-boot-maven",
+                      "integrations/build-tools/gradle",
+                      "integrations/frameworks/react",
+                      "integrations/frameworks/vue",
+                      "integrations/frameworks/express",
+                      {
+                        "group": "View more",
+                        "pages": [
+                          "integrations/frameworks/nextjs",
+                          "integrations/frameworks/nestjs",
+                          "integrations/frameworks/sveltekit",
+                          "integrations/frameworks/nuxt",
+                          "integrations/frameworks/gatsby",
+                          "integrations/frameworks/remix",
+                          "integrations/frameworks/vite",
+                          "integrations/frameworks/fiber",
+                          "integrations/frameworks/django",
+                          "integrations/frameworks/flask",
+                          "integrations/frameworks/laravel",
+                          "integrations/frameworks/rails",
+                          "integrations/frameworks/dotnet",
+                          "integrations/platforms/pm2",
+                          "integrations/frameworks/ab-initio"
+                        ]
+                      }
                     ]
                   },
-                  "integrations/frameworks/packer",
-                  "integrations/frameworks/pulumi",
-                  "integrations/frameworks/terraform"
-                ]
-              },
-              {
-                "group": "Secret Syncs",
-                "pages": [
-                  "integrations/secret-syncs",
-                  "integrations/secret-syncs/overview",
                   {
-                    "group": "Syncs",
+                    "group": "Other",
                     "pages": [
-                      "integrations/secret-syncs/1password",
-                      "integrations/secret-syncs/aws-parameter-store",
-                      "integrations/secret-syncs/aws-secrets-manager",
-                      "integrations/secret-syncs/azure-app-configuration",
-                      "integrations/secret-syncs/azure-devops",
-                      "integrations/secret-syncs/azure-entra-id-scim",
-                      "integrations/secret-syncs/azure-key-vault",
-                      "integrations/secret-syncs/bitbucket",
-                      "integrations/secret-syncs/camunda",
-                      "integrations/secret-syncs/checkly",
-                      "integrations/secret-syncs/chef",
-                      "integrations/secret-syncs/circleci",
-                      "integrations/secret-syncs/cloudflare-pages",
-                      "integrations/secret-syncs/cloudflare-workers",
-                      "integrations/secret-syncs/databricks",
-                      "integrations/secret-syncs/devin",
-                      "integrations/secret-syncs/digital-ocean-app-platform",
-                      "integrations/secret-syncs/flyio",
-                      "integrations/secret-syncs/gcp-secret-manager",
-                      "integrations/secret-syncs/github",
-                      "integrations/secret-syncs/gitlab",
-                      "integrations/secret-syncs/hashicorp-vault",
-                      "integrations/secret-syncs/heroku",
-                      "integrations/secret-syncs/humanitec",
-                      "integrations/secret-syncs/external-infisical",
-                      "integrations/secret-syncs/laravel-forge",
-                      "integrations/secret-syncs/netlify",
-                      "integrations/secret-syncs/northflank",
-                      "integrations/secret-syncs/ona",
-                      "integrations/secret-syncs/oci-vault",
-                      "integrations/secret-syncs/octopus-deploy",
-                      "integrations/secret-syncs/ovh",
-                      "integrations/secret-syncs/railway",
-                      "integrations/secret-syncs/render",
-                      "integrations/secret-syncs/snowflake",
-                      "integrations/secret-syncs/supabase",
-                      "integrations/secret-syncs/teamcity",
-                      "integrations/secret-syncs/terraform-cloud",
-                      "integrations/secret-syncs/travis-ci",
-                      "integrations/secret-syncs/vercel",
-                      "integrations/secret-syncs/windmill",
-                      "integrations/secret-syncs/zabbix"
+                      "integrations/external/backstage",
+                      "integrations/external/microsoft-power-apps"
                     ]
                   }
                 ]
-              },
-              {
-                "group": "CI/CD Integrations",
-                "pages": [
-                  "integrations/cicd/aws-amplify",
-                  "integrations/cicd/bitbucket",
-                  "integrations/cicd/githubactions",
-                  "integrations/cicd/gitlab",
-                  "integrations/cicd/jenkins"
-                ]
-              },
-              {
-                "group": "Framework Integrations",
-                "pages": [
-                  "integrations/framework-integrations",
-                  "integrations/frameworks/spring-boot-maven",
-                  "integrations/frameworks/react",
-                  "integrations/frameworks/vue",
-                  "integrations/frameworks/express",
-                  {
-                    "group": "View more",
-                    "pages": [
-                      "integrations/frameworks/nextjs",
-                      "integrations/frameworks/nestjs",
-                      "integrations/frameworks/sveltekit",
-                      "integrations/frameworks/nuxt",
-                      "integrations/frameworks/gatsby",
-                      "integrations/frameworks/remix",
-                      "integrations/frameworks/vite",
-                      "integrations/frameworks/fiber",
-                      "integrations/frameworks/django",
-                      "integrations/frameworks/flask",
-                      "integrations/frameworks/laravel",
-                      "integrations/frameworks/rails",
-                      "integrations/frameworks/dotnet",
-                      "integrations/platforms/pm2",
-                      "integrations/frameworks/ab-initio"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Build Tool Integrations",
-                "pages": ["integrations/build-tools/gradle"]
-              },
-              {
-                "group": "Others",
-                "pages": ["integrations/external/backstage"]
               }
             ]
           },
@@ -772,7 +858,8 @@
                         "group": "Applications",
                         "pages": [
                           "documentation/platform/pki/guides/applications/infisical-agent",
-                          "documentation/platform/pki/guides/applications/k8s-cert-manager",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-acme",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-issuer",
                           "documentation/platform/pki/guides/applications/nginx-certbot",
                           "documentation/platform/pki/guides/applications/apache-certbot",
                           "documentation/platform/pki/guides/applications/tomcat-certbot",
@@ -785,6 +872,7 @@
                       {
                         "group": "Code Signing",
                         "pages": [
+                          "documentation/platform/pki/guides/code-signing/digicert-code-signing",
                           "documentation/platform/pki/guides/code-signing/jarsigner",
                           "documentation/platform/pki/guides/code-signing/apksigner",
                           "documentation/platform/pki/guides/code-signing/osslsigncode",
@@ -848,7 +936,8 @@
                       "documentation/platform/pki/code-signing/overview",
                       "documentation/platform/pki/code-signing/signers",
                       "documentation/platform/pki/code-signing/approvals",
-                      "documentation/platform/pki/code-signing/pkcs11-module"
+                      "documentation/platform/pki/code-signing/pkcs11-module",
+                      "documentation/platform/pki/code-signing/windows-ksp"
                     ]
                   },
                   {
@@ -880,7 +969,7 @@
                           "documentation/platform/pki/ca/digicert-direct",
                           "documentation/platform/pki/ca/godaddy",
                           "documentation/platform/pki/ca/sectigo",
-                          "documentation/platform/pki/ca/azure-adcs",
+                          "documentation/platform/pki/ca/adcs",
                           "documentation/platform/pki/ca/aws-pca",
                           "documentation/platform/pki/ca/aws-acm-public-ca",
                           "documentation/platform/pki/ca/venafi",
@@ -890,11 +979,18 @@
                     ]
                   },
                   {
-                    "group": "Certificate Settings",
+                    "group": "Settings",
                     "pages": [
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
-                      "documentation/platform/pki/settings/certificate-cleanup"
+                      "documentation/platform/pki/settings/certificate-cleanup",
+                      {
+                        "group": "HSM",
+                        "pages": [
+                          "documentation/platform/pki/settings/hsm-connectors",
+                          "documentation/platform/pki/settings/hsm-connectors-fortanix-dsm"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -917,41 +1013,77 @@
                   "documentation/platform/kms/overview",
                   "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip",
+                  {
+                    "group": "KMIP Integration",
+                    "pages": [
+                      "documentation/platform/kms/kmip",
+                      "documentation/platform/kms/kmip-dell-poweredge"
+                    ]
+                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
             ]
           },
           {
-            "item": "Infisical PAM",
+            "item": "Privileged Access Manager",
             "groups": [
               {
-                "group": "Infisical PAM",
+                "group": "Privileged Access Manager",
                 "pages": [
                   "documentation/platform/pam/overview",
                   {
-                    "group": "Getting Started",
+                    "group": "Quickstarts",
                     "pages": [
-                      "documentation/platform/pam/getting-started/setup",
-                      {
-                        "group": "Resources",
-                        "pages": [
-                          "documentation/platform/pam/getting-started/resources",
-                          "documentation/platform/pam/getting-started/resources/active-directory",
-                          "documentation/platform/pam/getting-started/resources/aws-iam",
-                          "documentation/platform/pam/getting-started/resources/kubernetes",
-                          "documentation/platform/pam/getting-started/resources/mongodb",
-                          "documentation/platform/pam/getting-started/resources/mssql",
-                          "documentation/platform/pam/getting-started/resources/mysql",
-                          "documentation/platform/pam/getting-started/resources/oracle",
-                          "documentation/platform/pam/getting-started/resources/postgresql",
-                          "documentation/platform/pam/getting-started/resources/redis",
-                          "documentation/platform/pam/getting-started/resources/ssh",
-                          "documentation/platform/pam/getting-started/resources/windows-server"
-                        ]
-                      },
-                      "documentation/platform/pam/getting-started/accounts"
+                      "documentation/platform/pam/quick-starts/launch-first-session"
+                    ]
+                  },
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/pam/concepts/pam-components",
+                      "documentation/platform/pam/concepts/session-lifecycle",
+                      "documentation/platform/pam/concepts/access-control"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pam/guides/team-access",
+                      "documentation/platform/pam/guides/ssh-certificate-auth"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
+                  {
+                    "group": "Accounts",
+                    "pages": [
+                      "documentation/platform/pam/accounts/overview",
+                      "documentation/platform/pam/accounts/postgresql",
+                      "documentation/platform/pam/accounts/mysql",
+                      "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/ssh",
+                      "documentation/platform/pam/accounts/kubernetes",
+                      "documentation/platform/pam/accounts/aws-iam",
+                      "documentation/platform/pam/accounts/gcp-service-account",
+                      "documentation/platform/pam/accounts/windows",
+                      "documentation/platform/pam/accounts/windows-ad"
+                    ]
+                  },
+                  "documentation/platform/pam/access-requests/overview",
+                  {
+                    "group": "Credential Rotation",
+                    "pages": [
+                      "documentation/platform/pam/product-reference/credential-rotation/overview",
+                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
                     ]
                   },
                   {
@@ -961,30 +1093,16 @@
                       "documentation/platform/pam/discovery/active-directory"
                     ]
                   },
-                  "documentation/platform/pam/architecture"
-                ]
-              },
-              {
-                "group": "Product Reference",
-                "pages": [
-                  "documentation/platform/pam/product-reference/access-policies",
-                  "documentation/platform/pam/product-reference/account-policies",
-                  "documentation/platform/pam/product-reference/auditing",
-                  "documentation/platform/pam/product-reference/session-recording",
-                  "documentation/platform/pam/product-reference/external-storage",
-                  "documentation/platform/pam/product-reference/ai-session-insights",
-                  "documentation/platform/pam/product-reference/credential-rotation",
-                  "documentation/platform/pam/product-reference/view-credentials",
                   {
-                    "group": "Web Access",
+                    "group": "Sessions",
                     "pages": [
-                      "documentation/platform/pam/product-reference/web-access/overview",
-                      "documentation/platform/pam/product-reference/web-access/postgresql",
-                      "documentation/platform/pam/product-reference/web-access/redis",
-                      "documentation/platform/pam/product-reference/web-access/ssh",
-                      "documentation/platform/pam/product-reference/web-access/windows-rdp"
+                      "documentation/platform/pam/sessions/overview",
+                      "documentation/platform/pam/sessions/session-recording",
+                      "documentation/platform/pam/sessions/external-storage"
                     ]
-                  }
+                  },
+                  "documentation/platform/pam/auditing",
+                  "documentation/platform/pam/architecture"
                 ]
               }
             ]
@@ -1012,7 +1130,6 @@
                   "cli/commands/run",
                   "cli/commands/secrets",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/ssh",
                   "cli/commands/pam",
                   "cli/commands/gateway",
                   "cli/commands/kmip",
@@ -1036,7 +1153,8 @@
               },
               "cli/scanning-overview",
               "cli/project-config",
-              "cli/faq"
+              "cli/faq",
+              "cli/cloudsmith-migration"
             ]
           }
         ]
@@ -1193,6 +1311,7 @@
                   "api-reference/endpoints/project-users/remove-member-from-project",
                   "api-reference/endpoints/project-users/memberships",
                   "api-reference/endpoints/project-users/get-by-username",
+                  "api-reference/endpoints/project-users/get-by-user-id",
                   "api-reference/endpoints/project-users/update-membership",
                   {
                     "group": "Legacy",
@@ -1273,6 +1392,7 @@
                   "api-reference/endpoints/project-roles/update",
                   "api-reference/endpoints/project-roles/delete",
                   "api-reference/endpoints/project-roles/get-by-slug",
+                  "api-reference/endpoints/project-roles/get-by-id",
                   "api-reference/endpoints/project-roles/list",
                   {
                     "group": "Legacy",
@@ -1494,6 +1614,18 @@
                     ]
                   },
                   {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/cloud-66/list",
+                      "api-reference/endpoints/app-connections/cloud-66/available",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-id",
+                      "api-reference/endpoints/app-connections/cloud-66/get-by-name",
+                      "api-reference/endpoints/app-connections/cloud-66/create",
+                      "api-reference/endpoints/app-connections/cloud-66/update",
+                      "api-reference/endpoints/app-connections/cloud-66/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -1590,6 +1722,18 @@
                     ]
                   },
                   {
+                    "group": "Fireworks",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/fireworks/list",
+                      "api-reference/endpoints/app-connections/fireworks/available",
+                      "api-reference/endpoints/app-connections/fireworks/get-by-id",
+                      "api-reference/endpoints/app-connections/fireworks/get-by-name",
+                      "api-reference/endpoints/app-connections/fireworks/create",
+                      "api-reference/endpoints/app-connections/fireworks/update",
+                      "api-reference/endpoints/app-connections/fireworks/delete"
+                    ]
+                  },
+                  {
                     "group": "Fly.io",
                     "pages": [
                       "api-reference/endpoints/app-connections/flyio/list",
@@ -1599,6 +1743,18 @@
                       "api-reference/endpoints/app-connections/flyio/create",
                       "api-reference/endpoints/app-connections/flyio/update",
                       "api-reference/endpoints/app-connections/flyio/delete"
+                    ]
+                  },
+                  {
+                    "group": "Trigger.dev",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/trigger-dev/list",
+                      "api-reference/endpoints/app-connections/trigger-dev/available",
+                      "api-reference/endpoints/app-connections/trigger-dev/get-by-id",
+                      "api-reference/endpoints/app-connections/trigger-dev/get-by-name",
+                      "api-reference/endpoints/app-connections/trigger-dev/create",
+                      "api-reference/endpoints/app-connections/trigger-dev/update",
+                      "api-reference/endpoints/app-connections/trigger-dev/delete"
                     ]
                   },
                   {
@@ -1662,6 +1818,18 @@
                     ]
                   },
                   {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/hasura-cloud/list",
+                      "api-reference/endpoints/app-connections/hasura-cloud/available",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/app-connections/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/app-connections/hasura-cloud/create",
+                      "api-reference/endpoints/app-connections/hasura-cloud/update",
+                      "api-reference/endpoints/app-connections/hasura-cloud/delete"
+                    ]
+                  },
+                  {
                     "group": "Heroku",
                     "pages": [
                       "api-reference/endpoints/app-connections/heroku/list",
@@ -1719,6 +1887,18 @@
                       "api-reference/endpoints/app-connections/ldap/create",
                       "api-reference/endpoints/app-connections/ldap/update",
                       "api-reference/endpoints/app-connections/ldap/delete"
+                    ]
+                  },
+                  {
+                    "group": "LiteLLM",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/litellm/list",
+                      "api-reference/endpoints/app-connections/litellm/available",
+                      "api-reference/endpoints/app-connections/litellm/get-by-id",
+                      "api-reference/endpoints/app-connections/litellm/get-by-name",
+                      "api-reference/endpoints/app-connections/litellm/create",
+                      "api-reference/endpoints/app-connections/litellm/update",
+                      "api-reference/endpoints/app-connections/litellm/delete"
                     ]
                   },
                   {
@@ -1842,6 +2022,18 @@
                     ]
                   },
                   {
+                    "group": "OpenAI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/openai/list",
+                      "api-reference/endpoints/app-connections/openai/available",
+                      "api-reference/endpoints/app-connections/openai/get-by-id",
+                      "api-reference/endpoints/app-connections/openai/get-by-name",
+                      "api-reference/endpoints/app-connections/openai/create",
+                      "api-reference/endpoints/app-connections/openai/update",
+                      "api-reference/endpoints/app-connections/openai/delete"
+                    ]
+                  },
+                  {
                     "group": "OpenRouter",
                     "pages": [
                       "api-reference/endpoints/app-connections/openrouter/list",
@@ -1878,6 +2070,18 @@
                     ]
                   },
                   {
+                    "group": "Qovery",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/qovery/list",
+                      "api-reference/endpoints/app-connections/qovery/available",
+                      "api-reference/endpoints/app-connections/qovery/get-by-id",
+                      "api-reference/endpoints/app-connections/qovery/get-by-name",
+                      "api-reference/endpoints/app-connections/qovery/create",
+                      "api-reference/endpoints/app-connections/qovery/update",
+                      "api-reference/endpoints/app-connections/qovery/delete"
+                    ]
+                  },
+                  {
                     "group": "Railway",
                     "pages": [
                       "api-reference/endpoints/app-connections/railway/list",
@@ -1911,6 +2115,18 @@
                       "api-reference/endpoints/app-connections/render/create",
                       "api-reference/endpoints/app-connections/render/update",
                       "api-reference/endpoints/app-connections/render/delete"
+                    ]
+                  },
+                  {
+                    "group": "Rundeck",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/rundeck/list",
+                      "api-reference/endpoints/app-connections/rundeck/available",
+                      "api-reference/endpoints/app-connections/rundeck/get-by-id",
+                      "api-reference/endpoints/app-connections/rundeck/get-by-name",
+                      "api-reference/endpoints/app-connections/rundeck/create",
+                      "api-reference/endpoints/app-connections/rundeck/update",
+                      "api-reference/endpoints/app-connections/rundeck/delete"
                     ]
                   },
                   {
@@ -2186,6 +2402,7 @@
                 "group": "Environments",
                 "pages": [
                   "api-reference/endpoints/environments/create",
+                  "api-reference/endpoints/environments/get",
                   "api-reference/endpoints/environments/update",
                   "api-reference/endpoints/environments/delete",
                   "api-reference/endpoints/environments/restore",
@@ -2380,6 +2597,19 @@
                     ]
                   },
                   {
+                    "group": "Fireworks API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/create",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/delete",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/list",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/fireworks-api-key/update"
+                    ]
+                  },
+                  {
                     "group": "LDAP Password",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/ldap-password/create",
@@ -2442,6 +2672,19 @@
                       "api-reference/endpoints/secret-rotations/okta-client-secret/list",
                       "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/okta-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "OpenAI Service Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/openai-service-account/create",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/delete",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/list",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/openai-service-account/update"
                     ]
                   },
                   {
@@ -2724,6 +2967,20 @@
                     ]
                   },
                   {
+                    "group": "Cloud 66",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloud-66/list",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloud-66/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloud-66/create",
+                      "api-reference/endpoints/secret-syncs/cloud-66/update",
+                      "api-reference/endpoints/secret-syncs/cloud-66/delete",
+                      "api-reference/endpoints/secret-syncs/cloud-66/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/import-secrets",
+                      "api-reference/endpoints/secret-syncs/cloud-66/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare Pages",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
@@ -2802,6 +3059,19 @@
                     ]
                   },
                   {
+                    "group": "Trigger.dev",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/trigger-dev/list",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/get-by-id",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/get-by-name",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/create",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/update",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/delete",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/trigger-dev/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "GCP Secret Manager",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
@@ -2853,6 +3123,20 @@
                       "api-reference/endpoints/secret-syncs/hashicorp-vault/sync-secrets",
                       "api-reference/endpoints/secret-syncs/hashicorp-vault/import-secrets",
                       "api-reference/endpoints/secret-syncs/hashicorp-vault/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Hasura Cloud",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/list",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-id",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/get-by-name",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/create",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/update",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/delete",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/import-secrets",
+                      "api-reference/endpoints/secret-syncs/hasura-cloud/remove-secrets"
                     ]
                   },
                   {
@@ -2964,6 +3248,19 @@
                     ]
                   },
                   {
+                    "group": "Qovery",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/qovery/list",
+                      "api-reference/endpoints/secret-syncs/qovery/get-by-id",
+                      "api-reference/endpoints/secret-syncs/qovery/get-by-name",
+                      "api-reference/endpoints/secret-syncs/qovery/create",
+                      "api-reference/endpoints/secret-syncs/qovery/update",
+                      "api-reference/endpoints/secret-syncs/qovery/delete",
+                      "api-reference/endpoints/secret-syncs/qovery/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/qovery/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Railway",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/railway/list",
@@ -2989,6 +3286,19 @@
                       "api-reference/endpoints/secret-syncs/render/sync-secrets",
                       "api-reference/endpoints/secret-syncs/render/import-secrets",
                       "api-reference/endpoints/secret-syncs/render/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Rundeck",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/rundeck/list",
+                      "api-reference/endpoints/secret-syncs/rundeck/get-by-id",
+                      "api-reference/endpoints/secret-syncs/rundeck/get-by-name",
+                      "api-reference/endpoints/secret-syncs/rundeck/create",
+                      "api-reference/endpoints/secret-syncs/rundeck/update",
+                      "api-reference/endpoints/secret-syncs/rundeck/delete",
+                      "api-reference/endpoints/secret-syncs/rundeck/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/rundeck/remove-secrets"
                     ]
                   },
                   {
@@ -3097,6 +3407,26 @@
                 "group": "Applications",
                 "pages": [
                   {
+                    "group": "Configuration",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/configuration/create",
+                      "api-reference/endpoints/pki/applications/configuration/list",
+                      "api-reference/endpoints/pki/applications/configuration/get-by-id",
+                      "api-reference/endpoints/pki/applications/configuration/get-by-name",
+                      "api-reference/endpoints/pki/applications/configuration/permissions",
+                      "api-reference/endpoints/pki/applications/configuration/update",
+                      "api-reference/endpoints/pki/applications/configuration/delete"
+                    ]
+                  },
+                  {
+                    "group": "Profiles",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/profiles/list",
+                      "api-reference/endpoints/pki/applications/profiles/attach",
+                      "api-reference/endpoints/pki/applications/profiles/detach"
+                    ]
+                  },
+                  {
                     "group": "Certificates",
                     "pages": [
                       "api-reference/endpoints/certificates/search",
@@ -3113,6 +3443,68 @@
                       "api-reference/endpoints/certificates/bundle",
                       "api-reference/endpoints/certificates/private-key",
                       "api-reference/endpoints/certificates/import-certificate"
+                    ]
+                  },
+                  {
+                    "group": "Members",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/members/list-users",
+                      "api-reference/endpoints/pki/applications/members/add-users",
+                      "api-reference/endpoints/pki/applications/members/update-user-role",
+                      "api-reference/endpoints/pki/applications/members/remove-user",
+                      "api-reference/endpoints/pki/applications/members/list-groups",
+                      "api-reference/endpoints/pki/applications/members/add-group",
+                      "api-reference/endpoints/pki/applications/members/update-group-role",
+                      "api-reference/endpoints/pki/applications/members/remove-group",
+                      "api-reference/endpoints/pki/applications/members/list-identities",
+                      "api-reference/endpoints/pki/applications/members/add-identity",
+                      "api-reference/endpoints/pki/applications/members/update-identity-role",
+                      "api-reference/endpoints/pki/applications/members/remove-identity"
+                    ]
+                  },
+                  {
+                    "group": "Application Alerts",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/alerts/list",
+                      "api-reference/endpoints/pki/applications/alerts/create",
+                      "api-reference/endpoints/pki/applications/alerts/update",
+                      "api-reference/endpoints/pki/applications/alerts/delete"
+                    ]
+                  },
+                  {
+                    "group": "Enrollment Methods",
+                    "pages": [
+                      "api-reference/endpoints/pki/applications/enrollment/get-state",
+                      {
+                        "group": "API",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-api",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-api"
+                        ]
+                      },
+                      {
+                        "group": "ACME",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-acme",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-acme",
+                          "api-reference/endpoints/pki/applications/enrollment/reveal-acme-eab",
+                          "api-reference/endpoints/pki/applications/enrollment/rotate-acme-eab"
+                        ]
+                      },
+                      {
+                        "group": "EST",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-est",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-est"
+                        ]
+                      },
+                      {
+                        "group": "SCEP",
+                        "pages": [
+                          "api-reference/endpoints/pki/applications/enrollment/set-scep",
+                          "api-reference/endpoints/pki/applications/enrollment/clear-scep"
+                        ]
+                      }
                     ]
                   },
                   {
@@ -3394,7 +3786,7 @@
                 ]
               },
               {
-                "group": "Certificate Settings",
+                "group": "Settings",
                 "pages": [
                   {
                     "group": "Certificate Policies",
@@ -3520,6 +3912,7 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
+                  "api-reference/endpoints/kms/keys/rotate",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
                   "api-reference/endpoints/kms/keys/private-key",
@@ -3541,6 +3934,19 @@
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }
+            ]
+          },
+          {
+            "group": "KMIP Servers",
+            "pages": [
+              "api-reference/endpoints/kmip-servers/list",
+              "api-reference/endpoints/kmip-servers/get",
+              "api-reference/endpoints/kmip-servers/create",
+              "api-reference/endpoints/kmip-servers/update",
+              "api-reference/endpoints/kmip-servers/delete",
+              "api-reference/endpoints/kmip-servers/generate-enrollment-token",
+              "api-reference/endpoints/kmip-servers/revoke",
+              "api-reference/endpoints/kmip-servers/login"
             ]
           },
           {
@@ -3814,6 +4220,30 @@
   },
   "redirects": [
     {
+      "source": "/documentation/guides/introduction",
+      "destination": "/documentation/platform/secrets-mgmt/overview"
+    },
+    {
+      "source": "/documentation/platform/secret-rotation/mysql",
+      "destination": "/documentation/platform/secret-rotation/mysql-credentials"
+    },
+    {
+      "source": "/documentation/platform/secret-rotation/sendgrid",
+      "destination": "/documentation/platform/secret-rotation/overview"
+    },
+    {
+      "source": "/documentation/guides/microsoft-power-apps",
+      "destination": "/integrations/external/microsoft-power-apps"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation",
+      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",
+      "destination": "/documentation/platform/pki/guides/applications/k8s-cert-manager-acme"
+    },
+    {
       "source": "/sdks/languages/csharp",
       "destination": "/sdks/languages/dotnet"
     },
@@ -3835,15 +4265,15 @@
     },
     {
       "source": "/documentation/platform/pki/certificates",
-      "destination": "/documentation/platform/pki/certificates/certificates"
+      "destination": "/documentation/platform/pki/applications/certificates"
     },
     {
       "source": "/documentation/platform/pki/est",
-      "destination": "/documentation/platform/pki/enrollment-methods/est"
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
     },
     {
       "source": "/documentation/platform/pki/alerting",
-      "destination": "/documentation/platform/pki/alerting/overview"
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",
@@ -4029,6 +4459,94 @@
       "source": "/changelog/:slug*",
       "destination": "/documentation/getting-started/overview",
       "permanent": true
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/overview",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/aws-secrets-manager",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/azure-key-vault",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/azure-key-vault"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/chef",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/chef"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate"
+    },
+    {
+      "source": "/documentation/platform/pki/certificate-syncs/netscaler",
+      "destination": "/documentation/platform/pki/applications/certificate-syncs/netscaler"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/overview",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/pagerduty-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/pagerduty-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/slack-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/slack-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting/webhook-alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/webhook-alerts"
+    },
+    {
+      "source": "/documentation/platform/pki/approvals",
+      "destination": "/documentation/platform/pki/applications/approvals"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/certificates",
+      "destination": "/documentation/platform/pki/applications/certificates"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/policies",
+      "destination": "/documentation/platform/pki/settings/policies"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates/profiles",
+      "destination": "/documentation/platform/pki/settings/profiles"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/overview",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/api",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/api"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/est",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/acme",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/acme"
+    },
+    {
+      "source": "/documentation/platform/pki/enrollment-methods/scep",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/scep"
     }
   ]
 }

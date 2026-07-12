@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const PamDiscoverySourcesSchema = z.object({
@@ -15,14 +13,13 @@ export const PamDiscoverySourcesSchema = z.object({
   name: z.string(),
   discoveryType: z.string(),
   gatewayId: z.string().uuid().nullable().optional(),
-  encryptedDiscoveryCredentials: zodBuffer,
+  gatewayPoolId: z.string().uuid().nullable().optional(),
+  credentialAccountId: z.string().uuid(),
   discoveryConfiguration: z.unknown(),
   schedule: z.string().default("manual"),
   lastRunAt: z.date().nullable().optional(),
-  status: z.string().default("active"),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TPamDiscoverySources = z.infer<typeof PamDiscoverySourcesSchema>;

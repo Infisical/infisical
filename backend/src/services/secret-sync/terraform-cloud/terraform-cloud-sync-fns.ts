@@ -16,6 +16,8 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud-sync-types";
 
+const TERRAFORM_CLOUD_MAX_DESCRIPTION_LENGTH = 512;
+
 const getTerraformCloudVariables = async (
   secretSync: TTerraformCloudSyncWithCredentials
 ): Promise<TerraformCloudVariable[]> => {
@@ -141,7 +143,7 @@ const createVariable = async (
           attributes: {
             key,
             value: secretMap[key].value,
-            description: secretMap[key].comment || "",
+            description: (secretMap[key].comment || "").substring(0, TERRAFORM_CLOUD_MAX_DESCRIPTION_LENGTH),
             category: secretSync.destinationConfig.category,
             sensitive: true
           }
@@ -191,7 +193,7 @@ const updateVariable = async (
           id: variable.id,
           attributes: {
             value: secretMap[variable.key].value,
-            description: secretMap[variable.key].comment || "",
+            description: (secretMap[variable.key].comment || "").substring(0, TERRAFORM_CLOUD_MAX_DESCRIPTION_LENGTH),
             category: secretSync.destinationConfig.category
           }
         }

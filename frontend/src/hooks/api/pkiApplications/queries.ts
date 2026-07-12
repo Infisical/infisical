@@ -7,10 +7,10 @@ import {
 } from "@app/helpers/resourcePermissions";
 
 import {
+  TListPkiApplicationsParams,
   TListPkiApplicationsResponse,
   TPkiApplication,
   TPkiApplicationEnrollmentState,
-  TPkiApplicationListItem,
   TPkiApplicationMember,
   TPkiApplicationPermissionSet,
   TPkiApplicationProfile
@@ -18,7 +18,8 @@ import {
 
 export const pkiApplicationKeys = {
   all: ["pki-applications"] as const,
-  list: (search?: string) => [...pkiApplicationKeys.all, "list", { search }] as const,
+  list: (params?: TListPkiApplicationsParams) =>
+    [...pkiApplicationKeys.all, "list", { ...params }] as const,
   byId: (applicationId: string) => [...pkiApplicationKeys.all, "by-id", { applicationId }] as const,
   byName: (name: string) => [...pkiApplicationKeys.all, "by-name", { name }] as const,
   profiles: (applicationId: string) =>
@@ -34,26 +35,30 @@ export const pkiApplicationKeys = {
 const BASE_URL = "/api/v1/cert-manager/applications";
 
 export const useListPkiApplications = (
-  search?: string,
+  params?: TListPkiApplicationsParams,
   options?: Omit<
     UseQueryOptions<
       TListPkiApplicationsResponse,
       unknown,
-      TPkiApplicationListItem[],
+      TListPkiApplicationsResponse,
       ReturnType<typeof pkiApplicationKeys.list>
     >,
     "queryKey" | "queryFn"
   >
 ) =>
   useQuery({
-    queryKey: pkiApplicationKeys.list(search),
+    queryKey: pkiApplicationKeys.list(params),
     queryFn: async () => {
+      const { applicationIds, ...rest } = params ?? {};
       const { data } = await apiRequest.get<TListPkiApplicationsResponse>(BASE_URL, {
-        params: { search }
+        params: {
+          ...rest,
+          ...(applicationIds?.length ? { applicationIds: applicationIds.join(",") } : {})
+        }
       });
       return data;
     },
-    select: (data) => data.applications,
+    placeholderData: (previousData) => previousData,
     ...options
   });
 

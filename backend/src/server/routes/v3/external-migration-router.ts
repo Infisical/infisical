@@ -415,20 +415,21 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          secretPaths: z.string().array()
+          secretPaths: z.string().array(),
+          skippedWildcardPaths: z.string().array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const secretPaths = await server.services.migration.getVaultSecretPaths({
+      const result = await server.services.migration.getVaultSecretPaths({
         actor: req.permission,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath,
         connectionId: req.query.connectionId
       });
 
-      return { secretPaths };
+      return result;
     }
   });
 

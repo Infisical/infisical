@@ -26,7 +26,10 @@ import { caSupportsCapability } from "@app/services/certificate-authority/certif
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { MaxActiveCerts } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -42,9 +45,11 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
+  CertificateThumbprintAlgorithm,
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  normalizeThumbprint,
   parseCertificateBody,
   revocationReasonToCrlCode,
   splitPemChain
@@ -76,6 +81,7 @@ type TCertificateServiceFactoryDep = {
     | "deleteById"
     | "update"
     | "find"
+    | "findByThumbprintInOrg"
     | "transaction"
     | "create"
     | "findById"
@@ -101,6 +107,8 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -125,7 +133,9 @@ export const certificateServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationDAL,
-  licenseService
+  licenseService,
+  usageMeteringService,
+  hsmConnectorService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -402,6 +412,8 @@ export const certificateServiceFactory = ({
       pkiSyncQueue
     });
 
+    usageMeteringService.emitForProject(cert.projectId, MaxActiveCerts.key);
+
     return {
       deletedCert
     };
@@ -415,13 +427,44 @@ export const certificateServiceFactory = ({
   const revokeCert = async ({
     id,
     serialNumber,
+    thumbprint,
     revocationReason,
     actorId,
     actorAuthMethod,
     actor,
     actorOrgId
   }: TRevokeCertDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
+    if (id) {
+      cert = await certificateDAL.findById(id);
+    } else if (serialNumber) {
+      cert = await certificateDAL.findOne({ serialNumber });
+    } else if (thumbprint) {
+      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
+      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
+
+      const matches = await certificateDAL.findByThumbprintInOrg({
+        orgId: actorOrgId,
+        column,
+        fingerprint,
+        limit: 2
+      });
+      if (matches.length > 1) {
+        throw new BadRequestError({
+          message:
+            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
+        });
+      }
+      [cert] = matches;
+    } else {
+      throw new BadRequestError({
+        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
+      });
+    }
+
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     if (!cert.caId) {
       throw new BadRequestError({
@@ -496,7 +539,8 @@ export const certificateServiceFactory = ({
       ca.externalCa?.type === CaType.AWS_PCA ||
       ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA ||
       ca.externalCa?.type === CaType.DIGICERT ||
-      ca.externalCa?.type === CaType.GODADDY
+      ca.externalCa?.type === CaType.GODADDY ||
+      ca.externalCa?.type === CaType.ADCS
     ) {
       await certificateAuthorityService.revokeCertificate({
         caId: ca.id,
@@ -517,6 +561,8 @@ export const certificateServiceFactory = ({
       }
     );
 
+    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
       certificateSyncDAL,
@@ -534,7 +580,8 @@ export const certificateServiceFactory = ({
         certificateAuthoritySecretDAL,
         projectDAL,
         certificateDAL,
-        kmsService
+        kmsService,
+        hsmConnectorService
       });
     }
 
@@ -571,6 +618,9 @@ export const certificateServiceFactory = ({
    */
   const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -908,6 +958,8 @@ export const certificateServiceFactory = ({
       }
     });
 
+    usageMeteringService.emitForProject(projectId, MaxActiveCerts.key);
+
     return {
       certificate: certificatePem,
       certificateChain: chainPem,
@@ -930,6 +982,9 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TGetCertBundleDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

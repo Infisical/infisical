@@ -44,6 +44,7 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
 
@@ -229,7 +230,9 @@ export enum ProjectPermissionAuditLogsActions {
 }
 
 export enum ProjectPermissionInsightsActions {
-  Read = "read"
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum ProjectPermissionAppConnectionActions {
@@ -239,6 +242,15 @@ export enum ProjectPermissionAppConnectionActions {
   Delete = "delete-app-connections",
   Connect = "connect-app-connections",
   RotateCredentials = "rotate-credentials"
+}
+
+export enum ProjectPermissionHsmConnectorActions {
+  Read = "read-hsm-connectors",
+  Create = "create-hsm-connectors",
+  Edit = "edit-hsm-connectors",
+  Delete = "delete-hsm-connectors",
+  Test = "test-hsm-connectors",
+  Attach = "attach-hsm-connectors"
 }
 
 export enum PermissionConditionOperators {
@@ -254,40 +266,6 @@ export enum PermissionConditionOperators {
 export enum ProjectPermissionCommitsActions {
   Read = "read",
   PerformRollback = "perform-rollback"
-}
-
-export enum ProjectPermissionPamAccountActions {
-  Access = "access",
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  TriggerRotation = "trigger-rotation",
-  ReadCredentials = "read-credentials"
-}
-
-export enum ProjectPermissionPamSessionActions {
-  Read = "read",
-  Terminate = "terminate"
-}
-
-export enum ProjectPermissionPamAccountPolicyActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete"
-}
-
-export enum ProjectPermissionPamInsightsActions {
-  Read = "read"
-}
-
-export enum ProjectPermissionPamDiscoveryActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  RunScan = "run-scan"
 }
 
 export enum ProjectPermissionMcpEndpointActions {
@@ -315,6 +293,12 @@ export enum ProjectPermissionApprovalRequestActions {
 export enum ProjectPermissionApprovalRequestGrantActions {
   Read = "read",
   Revoke = "revoke"
+}
+
+export enum ProjectPermissionProjectFolderGrantActions {
+  ReadGrant = "read-grant",
+  CreateGrant = "create-grant",
+  RevokeGrant = "revoke-grant"
 }
 
 export enum ProjectPermissionSecretApprovalRequestActions {
@@ -357,12 +341,12 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.PamAccounts
-  | ProjectPermissionSub.PamResources
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
-  | ProjectPermissionSub.Commits;
+  | ProjectPermissionSub.Commits
+  | ProjectPermissionSub.HoneyTokens
+  | ProjectPermissionSub.ProjectFolderGrant;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -451,20 +435,14 @@ export enum ProjectPermissionSub {
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
-  PamFolders = "pam-folders",
-  PamResources = "pam-resources",
-  PamDomains = "pam-domains",
-  PamAccounts = "pam-accounts",
-  PamSessions = "pam-sessions",
-  PamAccountPolicies = "pam-account-policies",
-  PamDiscovery = "pam-discovery",
-  PamInsights = "pam-insights",
+  HsmConnectors = "hsm-connectors",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
   HoneyTokens = "honey-tokens",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
+  ProjectFolderGrant = "project-folder-grant",
   Insights = "insights"
 }
 
@@ -495,6 +473,16 @@ export type DynamicSecretSubjectFields = {
 };
 
 export type SecretImportSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type ProjectFolderGrantSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -546,20 +534,6 @@ export type PkiTemplateSubjectFields = {
 
 export type CertificatePolicySubjectFields = {
   name: string;
-};
-
-export type PamAccountSubjectFields = {
-  resourceName?: string;
-  resourceType?: string;
-  domainName?: string;
-  domainType?: string;
-  accountName: string;
-  metadata?: { key: string; value: string }[];
-};
-
-export type PamResourceSubjectFields = {
-  name: string;
-  metadata?: { key: string; value: string }[];
 };
 
 export type McpEndpointSubjectFields = {
@@ -733,31 +707,18 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
-  | [
-      ProjectPermissionActions,
-      (
-        | ProjectPermissionSub.PamResources
-        | (ForcedSubject<ProjectPermissionSub.PamResources> & PamResourceSubjectFields)
-      )
-    ]
-  | [ProjectPermissionActions, ProjectPermissionSub.PamDomains]
-  | [
-      ProjectPermissionPamAccountActions,
-      (
-        | ProjectPermissionSub.PamAccounts
-        | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
-      )
-    ]
-  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
-  | [ProjectPermissionPamAccountPolicyActions, ProjectPermissionSub.PamAccountPolicies]
-  | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
-  | [ProjectPermissionPamInsightsActions, ProjectPermissionSub.PamInsights]
+  | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
+  | [
+      ProjectPermissionHoneyTokenActions,
+      (
+        | ProjectPermissionSub.HoneyTokens
+        | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+      )
+    ]
   | [
       ProjectPermissionMcpEndpointActions,
       (
@@ -766,6 +727,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
+  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
+  | [
+      ProjectPermissionProjectFolderGrantActions,
+      (
+        | ProjectPermissionSub.ProjectFolderGrant
+        | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
+      )
+    ];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

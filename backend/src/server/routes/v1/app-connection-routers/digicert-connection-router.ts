@@ -78,4 +78,78 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
       return server.services.appConnection.digicert.listProducts(connectionId, req.permission);
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/organizations/:organizationId/validation`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getDigiCertOrgValidation",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        organizationId: z.coerce.number().int().positive()
+      }),
+      querystring: z.object({
+        productNameId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          isValidated: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, organizationId } = req.params;
+      const { productNameId } = req.query;
+      return server.services.appConnection.digicert.getOrgValidation(
+        connectionId,
+        organizationId,
+        productNameId,
+        req.permission
+      );
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/organizations/:organizationId/orders`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listDigiCertOrders",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        organizationId: z.coerce.number().int().positive()
+      }),
+      querystring: z.object({
+        productNameId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z
+          .object({
+            orderId: z.number(),
+            commonName: z.string(),
+            organizationName: z.string(),
+            status: z.string(),
+            validTill: z.string().optional()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, organizationId } = req.params;
+      const { productNameId } = req.query;
+      return server.services.appConnection.digicert.listOrders(
+        connectionId,
+        organizationId,
+        productNameId,
+        req.permission
+      );
+    }
+  });
 };

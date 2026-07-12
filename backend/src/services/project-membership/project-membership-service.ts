@@ -2,14 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  ProjectMembershipRole,
-  ProjectVersion,
-  RESOURCE_SCOPE,
-  TableName
-} from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -27,11 +20,12 @@ import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approv
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
@@ -65,6 +59,10 @@ type TProjectMembershipServiceFactoryDep = {
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
+  >;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -86,7 +84,8 @@ export const projectMembershipServiceFactory = ({
   secretApprovalPolicyDAL,
   membershipUserDAL,
   userDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  applicationMembershipCleanupService
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -335,8 +334,6 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const project = await projectDAL.findById(projectId);
-
     await checkUserApproverPolicies(
       projectMembers.map((m) => m.user.id),
       projectId
@@ -347,15 +344,6 @@ export const projectMembershipServiceFactory = ({
     );
 
     const performDelete = async (tx: Knex) => {
-      await assertWillRetainAdmin({
-        scope: AccessScope.Project,
-        scopeOrgId: project.orgId,
-        scopeProjectId: projectId,
-        excludeMembershipIds: projectMembers.map(({ id }) => id),
-        dal: membershipUserDAL,
-        tx
-      });
-
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -377,13 +365,10 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      await membershipUserDAL.delete(
+      await applicationMembershipCleanupService.cleanupUsersApplicationMemberships(
         {
-          scope: RESOURCE_SCOPE,
-          scopeProjectId: projectId,
-          $in: {
-            actorUserId: projectMembers.map(({ user }) => user.id)
-          }
+          projectId,
+          userIds: projectMembers.map(({ user }) => user.id)
         },
         tx
       );
@@ -444,10 +429,6 @@ export const projectMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Project members not found for project with ID '${projectId}'` });
     }
 
-    if (projectMembers.length < 2) {
-      throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
-    }
-
     const actorMembership = projectMembers.find((member) => member.userId === actorId);
     if (!actorMembership) {
       throw new BadRequestError({ message: "You are not a member of this project" });
@@ -460,15 +441,6 @@ export const projectMembershipServiceFactory = ({
     );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
-      await assertWillRetainAdmin({
-        scope: AccessScope.Project,
-        scopeOrgId: project.orgId,
-        scopeProjectId: project.id,
-        excludeMembershipIds: [actorMembership.id],
-        dal: membershipUserDAL,
-        tx
-      });
-
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
@@ -496,11 +468,11 @@ export const projectMembershipServiceFactory = ({
         )
       )?.[0];
 
-      await membershipUserDAL.delete(
+      await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {
-          scope: RESOURCE_SCOPE,
-          scopeProjectId: project.id,
-          actorUserId: actorId
+          projectId: project.id,
+          actorKind: ApplicationMemberKind.User,
+          actorId
         },
         tx
       );

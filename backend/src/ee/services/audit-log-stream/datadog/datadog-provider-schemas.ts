@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { LogProvider } from "../audit-log-stream-enums";
+import { LogProvider, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const DatadogProviderCredentialsSchema = z.object({
@@ -34,5 +34,6 @@ export const CreateDatadogProviderLogStreamSchema = z.object({
 });
 
 export const UpdateDatadogProviderLogStreamSchema = z.object({
-  credentials: DatadogProviderCredentialsSchema
+  credentials: DatadogProviderCredentialsSchema,
+  streamMode: z.nativeEnum(StreamMode).optional()
 });

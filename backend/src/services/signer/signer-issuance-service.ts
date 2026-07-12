@@ -4,42 +4,94 @@ import * as x509 from "@peculiar/x509";
 import { TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CertSignatureAlgorithm
+} from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
+import { CodeSigningOrderStatus } from "../certificate-authority/digicert/digicert-certificate-authority-enums";
+import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
+import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TSignerDALFactory } from "./signer-dal";
-import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
+import { CertKeySource, HsmKeyAlgorithm, SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 import { formatSignerIssuanceErrorReason, isTerminalIssuanceError } from "./signer-issuance-errors";
-import { verifyCodeSigningEku } from "./signer-issuance-fns";
+import { hsmKeyAlgorithmToCertKeyAlgorithm, verifyCodeSigningEku } from "./signer-issuance-fns";
 import { TSignerIssuanceJobDALFactory } from "./signer-issuance-job-dal";
+import { SignerExternalCaConfigSchema } from "./signer-types";
 
 const POLL_INTERVAL_PATTERN = "*/15 * * * *"; // every 15 minutes
 const POLL_BATCH = 25;
 const RETRY_BACKOFF_MS = 15 * 60_000;
-const MAX_ISSUANCE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// DigiCert CS orders can sit pending for up to 3 business days while DigiCert validates the org and
+// waits for the verified-contact email click, so they get a longer window than synchronous CAs.
+const DEFAULT_ISSUANCE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const DIGICERT_ISSUANCE_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
+
+const maxIssuanceWindowMs = (caType: string): number =>
+  caType === CaType.DIGICERT ? DIGICERT_ISSUANCE_WINDOW_MS : DEFAULT_ISSUANCE_WINDOW_MS;
+
+const maxIssuanceAttempts = (caType: string): number => Math.ceil(maxIssuanceWindowMs(caType) / RETRY_BACKOFF_MS) + 10;
+
+const deriveDigicertSignatureParams = (
+  keyAlgorithm: string
+): { signatureHash: "sha256" | "sha384" | "sha512"; signatureAlgorithm: CertSignatureAlgorithm } => {
+  switch (keyAlgorithm) {
+    case CertKeyAlgorithm.ECDSA_P256:
+      return { signatureHash: "sha256", signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA256 };
+    case CertKeyAlgorithm.ECDSA_P384:
+      return { signatureHash: "sha384", signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA384 };
+    case CertKeyAlgorithm.ECDSA_P521:
+      return { signatureHash: "sha512", signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA512 };
+    default:
+      return { signatureHash: "sha256", signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256 };
+  }
+};
+
+const DIGICERT_INSUFFICIENT_SUBSCRIPTION = "insufficient_subscription";
+
+type TDigiCertExternalOrderRef = {
+  digicert?: {
+    orderId?: number;
+    certificateId?: number | null;
+    lastStatus?: string;
+    lastCheckedAt?: string;
+    lifecycle?: { mode: "renew" | "reissue"; previousOrderId: number };
+  };
+};
 
 export type TSignerIssuanceServiceFactory = ReturnType<typeof signerIssuanceServiceFactory>;
 
 type TSignerIssuanceServiceDeps = {
   signerIssuanceJobDAL: TSignerIssuanceJobDALFactory;
-  signerDAL: Pick<TSignerDALFactory, "updateById" | "transaction">;
+  signerDAL: Pick<TSignerDALFactory, "updateById" | "transaction" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
-  certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "azureAdCsFns" | "awsPcaFns">;
+  certificateIssuanceQueue: Pick<
+    TCertificateIssuanceQueueFactory,
+    "awsPcaFns" | "azureAdCsFns" | "adcsFns" | "digicertFns"
+  >;
   cronJob: TCronJobFactory;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "generateKeyPair" | "sign" | "assertAttachPermission">;
+  certificateDAL: Pick<TCertificateDALFactory, "updateById" | "findById">;
 };
 
 type TRequestIssuanceInput = {
@@ -49,6 +101,15 @@ type TRequestIssuanceInput = {
   commonName: string;
   certificateTtlDays: number;
   keyAlgorithm?: CertKeyAlgorithm;
+  hsm?: {
+    hsmConnectorId: string;
+    hsmKeyAlgorithm: HsmKeyAlgorithm;
+    hsmKeyLabel?: string;
+    hsmPublicKeySpki?: Buffer;
+    actor?: Pick<THsmConnectorServiceActor, "type" | "id" | "authMethod" | "orgId">;
+  };
+  // DigiCert code signing only; absent means a fresh order.
+  digicertLifecycle?: { mode: "renew" | "reissue"; previousOrderId: number };
 };
 
 export const signerIssuanceServiceFactory = ({
@@ -60,9 +121,11 @@ export const signerIssuanceServiceFactory = ({
   projectDAL,
   kmsService,
   certificateIssuanceQueue,
-  cronJob
+  cronJob,
+  hsmConnectorService,
+  certificateDAL
 }: TSignerIssuanceServiceDeps) => {
-  const { azureAdCsFns, awsPcaFns } = certificateIssuanceQueue;
+  const { awsPcaFns, azureAdCsFns, adcsFns, digicertFns } = certificateIssuanceQueue;
 
   const buildCsrForSigner = async (
     commonName: string,
@@ -120,7 +183,103 @@ export const signerIssuanceServiceFactory = ({
       });
     }
 
-    await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.");
+    if (caType === CaType.DIGICERT && !input.hsm) {
+      throw new BadRequestError({
+        message:
+          "DigiCert code signing requires an HSM-backed key. Industry rules require code signing private keys to be generated and stored on certified hardware. Choose an HSM key source for this signer."
+      });
+    }
+
+    if (caType === CaType.DIGICERT) {
+      const effectiveKeyAlgorithm = input.hsm
+        ? hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm)
+        : (input.keyAlgorithm ?? CertKeyAlgorithm.RSA_2048);
+      if (effectiveKeyAlgorithm.startsWith("RSA_") && Number(effectiveKeyAlgorithm.slice(4)) < 3072) {
+        throw new BadRequestError({
+          message:
+            "DigiCert code signing requires an RSA key of at least 3072 bits. Choose RSA-4096 or an ECDSA algorithm."
+        });
+      }
+    }
+
+    const digicertExternalOrderRef = input.digicertLifecycle
+      ? { digicert: { lifecycle: input.digicertLifecycle } }
+      : undefined;
+
+    if (input.hsm) {
+      if (input.hsm.actor) {
+        await hsmConnectorService.assertAttachPermission(input.hsm.actor, input.hsm.hsmConnectorId, input.projectId);
+      }
+      const reuseExistingKey = Boolean(input.hsm.hsmKeyLabel && input.hsm.hsmPublicKeySpki);
+      let keyLabel: string;
+      let publicKeySpkiDer: Buffer;
+      if (reuseExistingKey) {
+        keyLabel = input.hsm.hsmKeyLabel as string;
+        publicKeySpkiDer = Buffer.from(input.hsm.hsmPublicKeySpki as Buffer);
+      } else {
+        const keyLabelSuffix = `signer-${crypto.nativeCrypto.randomUUID()}`;
+        const generated = await hsmConnectorService.generateKeyPair({
+          connectorId: input.hsm.hsmConnectorId,
+          projectId: input.projectId,
+          keyLabel: keyLabelSuffix,
+          keyAlgorithm: input.hsm.hsmKeyAlgorithm
+        });
+        keyLabel = generated.keyLabel;
+        publicKeySpkiDer = generated.publicKeySpkiDer;
+      }
+      const built = await buildCsrWithExternalSigner({
+        publicKeySpkiDer,
+        keyAlgorithm: input.hsm.hsmKeyAlgorithm,
+        subjectCommonName: input.commonName,
+        signCallback: async (tbs, mech, isDigest) =>
+          hsmConnectorService.sign({
+            connectorId: input.hsm!.hsmConnectorId,
+            projectId: input.projectId,
+            keyLabel,
+            mechanism: mech,
+            data: tbs,
+            isDigest
+          })
+      });
+      const encryptedCsrHsm = await encryptForProject(input.projectId, Buffer.from(built.csrPem));
+      const hsmCertKeyAlgorithm = hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm);
+
+      const hsmJob = await signerIssuanceJobDAL.transaction(async (tx) => {
+        await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.", tx);
+        return signerIssuanceJobDAL.create(
+          {
+            signerId: input.signerId,
+            caId: input.caId,
+            caType,
+            status: SignerIssuanceJobStatus.Pending,
+            commonName: input.commonName,
+            certificateTtlDays: input.certificateTtlDays,
+            keyAlgorithm: hsmCertKeyAlgorithm,
+            encryptedCsr: encryptedCsrHsm,
+            encryptedPrivateKey: null,
+            keySource: CertKeySource.Hsm,
+            hsmConnectorId: input.hsm!.hsmConnectorId,
+            hsmKeyLabel: keyLabel,
+            hsmPublicKeySpki: publicKeySpkiDer,
+            externalOrderRef: digicertExternalOrderRef,
+            nextPollAt: new Date()
+          },
+          tx
+        );
+      });
+
+      void (async () => {
+        try {
+          await processJob(hsmJob.id);
+        } catch (err) {
+          logger.warn(
+            err,
+            `signer issuance: first-attempt HSM-backed job failed, cron will retry [jobId=${hsmJob.id}] [signerId=${input.signerId}]`
+          );
+        }
+      })();
+      return hsmJob;
+    }
 
     const keyAlgorithm: CertKeyAlgorithm = input.keyAlgorithm ?? CertKeyAlgorithm.RSA_2048;
     const { csrPem, privateKeyPem } = await buildCsrForSigner(input.commonName, keyAlgorithm);
@@ -128,17 +287,24 @@ export const signerIssuanceServiceFactory = ({
     const encryptedCsr = await encryptForProject(input.projectId, Buffer.from(csrPem));
     const encryptedPrivateKey = await encryptForProject(input.projectId, Buffer.from(privateKeyPem));
 
-    const job = await signerIssuanceJobDAL.create({
-      signerId: input.signerId,
-      caId: input.caId,
-      caType,
-      status: SignerIssuanceJobStatus.Pending,
-      commonName: input.commonName,
-      certificateTtlDays: input.certificateTtlDays,
-      keyAlgorithm,
-      encryptedCsr,
-      encryptedPrivateKey,
-      nextPollAt: new Date()
+    const job = await signerIssuanceJobDAL.transaction(async (tx) => {
+      await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.", tx);
+      return signerIssuanceJobDAL.create(
+        {
+          signerId: input.signerId,
+          caId: input.caId,
+          caType,
+          status: SignerIssuanceJobStatus.Pending,
+          commonName: input.commonName,
+          certificateTtlDays: input.certificateTtlDays,
+          keyAlgorithm,
+          encryptedCsr,
+          encryptedPrivateKey,
+          maxAttempts: maxIssuanceAttempts(caType),
+          nextPollAt: new Date()
+        },
+        tx
+      );
     });
 
     void (async () => {
@@ -165,11 +331,13 @@ export const signerIssuanceServiceFactory = ({
 
     const now = new Date();
 
+    const windowMs = maxIssuanceWindowMs(snapshot.caType);
     const ageMs = now.getTime() - new Date(snapshot.createdAt).getTime();
-    if (ageMs > MAX_ISSUANCE_WINDOW_MS) {
+    if (ageMs > windowMs) {
+      const hours = Math.round(windowMs / (60 * 60 * 1000));
       await markJobFailedIfStillPending(
         snapshot,
-        "Signer issuance was pending for more than 24 hours. The upstream Certificate Authority never finished issuing the certificate; abandoning."
+        `Signer issuance was pending for more than ${hours} hours. The upstream Certificate Authority never finished issuing the certificate; abandoning.`
       );
       return;
     }
@@ -206,13 +374,19 @@ export const signerIssuanceServiceFactory = ({
         case CaType.AZURE_AD_CS:
           await stepSyncWithCsr(job, CaType.AZURE_AD_CS);
           break;
+        case CaType.ADCS:
+          await stepSyncWithCsr(job, CaType.ADCS);
+          break;
         case CaType.AWS_PCA:
           await stepSyncWithCsr(job, CaType.AWS_PCA);
+          break;
+        case CaType.DIGICERT:
+          await stepSyncWithDigiCert(job);
           break;
         default:
           await markJobFailed(
             job,
-            `CA type '${job.caType}' is not supported for code signing. Choose Internal CA, AWS Private CA, or Azure AD CS.`
+            `CA type '${job.caType}' is not supported for code signing. Choose Internal CA, AWS Private CA, Azure AD CS, Active Directory Certificate Service, or DigiCert.`
           );
       }
     } catch (err) {
@@ -291,32 +465,65 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
 
-    await signerDAL.transaction(async (tx) => {
-      await signerDAL.updateById(
-        job.signerId,
-        {
-          certificateId,
-          status: SignerStatus.Active,
-          certificateFailureReason: null
-        },
-        tx
+    const isHsmJob = job.keySource === CertKeySource.Hsm && job.hsmConnectorId && job.hsmKeyLabel;
+    // The signer may carry a placeholder CN (reissuing into a DigiCert order whose subject DigiCert
+    // owns), so the issued cert is the source of truth for the common name.
+    const issuedCert = await certificateDAL.findById(certificateId);
+    try {
+      await signerDAL.transaction(async (tx) => {
+        if (isHsmJob) {
+          const certAlg = job.keyAlgorithm as CertKeyAlgorithm;
+          await certificateDAL.updateById(
+            certificateId,
+            {
+              keySource: CertKeySource.Hsm,
+              hsmConnectorId: job.hsmConnectorId,
+              hsmKeyLabel: job.hsmKeyLabel,
+              hsmPublicKeySpki: job.hsmPublicKeySpki ?? null,
+              keyAlgorithm: certAlg
+            },
+            tx
+          );
+        }
+        await signerDAL.updateById(
+          job.signerId,
+          {
+            certificateId,
+            status: SignerStatus.Active,
+            certificateFailureReason: null,
+            ...(issuedCert?.commonName ? { commonName: issuedCert.commonName } : {})
+          },
+          tx
+        );
+        await signerIssuanceJobDAL.updateById(
+          job.id,
+          {
+            status: SignerIssuanceJobStatus.Completed,
+            certificateId,
+            failureReason: null
+          },
+          tx
+        );
+      });
+    } catch (txErr) {
+      const reason = formatSignerIssuanceErrorReason(
+        txErr,
+        isHsmJob
+          ? "Failed to atomically record HSM coordinates and attach the certificate to the signer"
+          : "Failed to attach the issued certificate to the signer"
       );
-      await signerIssuanceJobDAL.updateById(
-        job.id,
-        {
-          status: SignerIssuanceJobStatus.Completed,
-          certificateId,
-          failureReason: null
-        },
-        tx
-      );
-    });
+      await markJobFailed(job, reason);
+      return;
+    }
     logger.info(
       `signer issuance: signer attached [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
     );
   };
 
-  const stepSyncWithCsr = async (job: TPkiSignerCertificateIssuanceJobs, kind: CaType.AZURE_AD_CS | CaType.AWS_PCA) => {
+  const stepSyncWithCsr = async (
+    job: TPkiSignerCertificateIssuanceJobs,
+    kind: CaType.AZURE_AD_CS | CaType.ADCS | CaType.AWS_PCA
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
     if (!ca) {
       await markJobFailed(job, "Certificate authority is no longer available.");
@@ -328,38 +535,69 @@ export const signerIssuanceServiceFactory = ({
     let certificateId: string;
 
     if (kind === CaType.AZURE_AD_CS) {
-      const azureResult = await azureAdCsFns.orderCertificateFromProfile({
+      if (job.keySource === CertKeySource.Hsm) {
+        throw new BadRequestError({
+          message:
+            "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, or switch the signer's key source to Infisical."
+        });
+      }
+      const azureResult = await azureAdCsFns.orderCertificate({
         caId: job.caId,
-        profileId: undefined as unknown as string,
         commonName: job.commonName,
         altNames: [],
         keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
         extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
         validity: { ttl: `${job.certificateTtlDays}d` },
-        signatureAlgorithm: undefined,
         keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
         isRenewal: false,
-        originalCertificateId: undefined,
-        csr,
         isCancelled: async () => false
-      } as Parameters<typeof azureAdCsFns.orderCertificateFromProfile>[0]);
+      });
       if (!azureResult?.certificateId) {
         throw new BadRequestError({ message: "Azure AD CS order returned without a certificate id." });
       }
       certificateId = azureResult.certificateId;
-    } else {
-      const awsResult = await awsPcaFns.orderCertificateFromProfile({
+    } else if (kind === CaType.ADCS) {
+      if (job.keySource === CertKeySource.Hsm) {
+        throw new BadRequestError({
+          message:
+            "HSM-backed signers are not supported with Active Directory Certificate Service yet. Use AWS Private CA, or switch the signer's key source to Infisical."
+        });
+      }
+      const signer = await signerDAL.findById(job.signerId);
+      const externalCaConfig = SignerExternalCaConfigSchema.safeParse(signer?.externalCaConfig);
+      const adcsTemplate =
+        externalCaConfig.success && externalCaConfig.data.caType === CaType.ADCS
+          ? externalCaConfig.data.template
+          : undefined;
+      const adcsResult = await adcsFns.orderCertificate({
         caId: job.caId,
-        profileId: undefined as unknown as string,
         commonName: job.commonName,
         altNames: [],
         keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
         extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
         validity: { ttl: `${job.certificateTtlDays}d` },
-        signatureAlgorithm: undefined,
+        keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
+        template: adcsTemplate,
+        csr,
+        isRenewal: false,
+        isCancelled: async () => false
+      });
+      if (!adcsResult?.certificateId) {
+        throw new BadRequestError({
+          message: "Active Directory Certificate Service order returned without a certificate id."
+        });
+      }
+      certificateId = adcsResult.certificateId;
+    } else {
+      const awsResult = await awsPcaFns.orderCertificate({
+        caId: job.caId,
+        commonName: job.commonName,
+        altNames: [],
+        keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
+        validity: { ttl: `${job.certificateTtlDays}d` },
         keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
         isRenewal: false,
-        originalCertificateId: undefined,
         csr,
         isCancelled: async () => false
       });
@@ -368,6 +606,157 @@ export const signerIssuanceServiceFactory = ({
       }
       certificateId = awsResult.certificateId;
     }
+
+    await persistCertificatePrivateKey(certificateId, projectId, job);
+    await attachIssuedCertToSigner(job, certificateId, projectId);
+  };
+
+  const stepSyncWithDigiCert = async (job: TPkiSignerCertificateIssuanceJobs) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
+    if (!ca) {
+      await markJobFailed(job, "Certificate authority is no longer available.");
+      return;
+    }
+    const { projectId } = ca;
+
+    const ref = (job.externalOrderRef ?? {}) as TDigiCertExternalOrderRef;
+    const existingOrderId = ref.digicert?.orderId;
+    const lifecycle = ref.digicert?.lifecycle;
+
+    const persistPlacedOrder = async (orderId: number, certificateId: number | null) => {
+      await signerIssuanceJobDAL.updateById(job.id, {
+        externalOrderRef: {
+          digicert: {
+            orderId,
+            certificateId,
+            lastStatus: CodeSigningOrderStatus.Pending,
+            lastCheckedAt: new Date().toISOString()
+          }
+        }
+      });
+      logger.info(
+        `signer issuance: DigiCert order placed [jobId=${job.id}] [signerId=${job.signerId}] [orderId=${orderId}]`
+      );
+    };
+
+    if (!existingOrderId) {
+      const csr = (await decryptForProject(projectId, Buffer.from(job.encryptedCsr as Buffer))).toString();
+      const comments = `Issued via Infisical signer ${job.signerId}`;
+      const { signatureHash } = deriveDigicertSignatureParams(job.keyAlgorithm);
+
+      if (lifecycle?.mode === "reissue") {
+        const placed = await digicertFns.reissueCodeSigningCertificate({
+          caId: job.caId,
+          previousOrderId: lifecycle.previousOrderId,
+          csr,
+          signatureHash,
+          comments
+        });
+        await persistPlacedOrder(placed.orderId, placed.certificateId);
+        return;
+      }
+
+      // The alternative_order_id is deterministic per job, so placement is idempotent: if a prior
+      // tick placed the order but crashed before persisting it, recover it instead of placing a
+      // second (billable) order.
+      const placementRef = `infisical-signer-job-${job.id}`;
+      const recovered = await digicertFns.findCodeSigningOrderByReference(job.caId, placementRef);
+      if (recovered) {
+        logger.info(
+          `signer issuance: recovered previously-placed DigiCert order [jobId=${job.id}] [orderId=${recovered.orderId}]`
+        );
+        await persistPlacedOrder(recovered.orderId, recovered.certificateId);
+        return;
+      }
+
+      let placed: { orderId: number; certificateId: number | null };
+      if (lifecycle?.mode === "renew") {
+        try {
+          placed = await digicertFns.orderCodeSigningCertificate({
+            caId: job.caId,
+            csr,
+            commonName: job.commonName,
+            signatureHash,
+            ttlDays: job.certificateTtlDays,
+            renewalOfOrderId: lifecycle.previousOrderId,
+            alternativeOrderId: placementRef,
+            comments
+          });
+        } catch (err) {
+          if (!(err as Error)?.message?.includes(DIGICERT_INSUFFICIENT_SUBSCRIPTION)) throw err;
+          logger.info(
+            `signer issuance: DigiCert renewal had no free subscription slot; reissuing into prior order [jobId=${job.id}] [orderId=${lifecycle.previousOrderId}]`
+          );
+          placed = await digicertFns.reissueCodeSigningCertificate({
+            caId: job.caId,
+            previousOrderId: lifecycle.previousOrderId,
+            csr,
+            signatureHash,
+            comments
+          });
+        }
+      } else {
+        placed = await digicertFns.orderCodeSigningCertificate({
+          caId: job.caId,
+          csr,
+          commonName: job.commonName,
+          signatureHash,
+          ttlDays: job.certificateTtlDays,
+          alternativeOrderId: placementRef,
+          comments
+        });
+      }
+      await persistPlacedOrder(placed.orderId, placed.certificateId);
+      return;
+    }
+
+    const info = await digicertFns.getCodeSigningOrderStatus(job.caId, existingOrderId);
+    await signerIssuanceJobDAL.updateById(job.id, {
+      externalOrderRef: {
+        digicert: {
+          orderId: existingOrderId,
+          certificateId: info.certificateId,
+          lastStatus: info.status,
+          lastCheckedAt: new Date().toISOString()
+        }
+      }
+    });
+
+    if (
+      info.status === CodeSigningOrderStatus.Rejected ||
+      info.status === CodeSigningOrderStatus.Canceled ||
+      info.status === CodeSigningOrderStatus.Expired ||
+      info.status === CodeSigningOrderStatus.Revoked
+    ) {
+      await markJobFailed(
+        job,
+        `DigiCert order ${info.status} (raw status: ${info.rawStatus}). Order id ${existingOrderId}.`
+      );
+      return;
+    }
+
+    if (info.status !== CodeSigningOrderStatus.Issued) {
+      logger.info(
+        `signer issuance: DigiCert order still pending [jobId=${job.id}] [signerId=${job.signerId}] [orderId=${existingOrderId}] [status=${info.status}]`
+      );
+      return;
+    }
+
+    if (!info.certificateId) {
+      logger.warn(
+        `signer issuance: DigiCert reports issued but no certificate id yet — will retry [jobId=${job.id}] [orderId=${existingOrderId}]`
+      );
+      return;
+    }
+
+    const { signatureAlgorithm } = deriveDigicertSignatureParams(job.keyAlgorithm);
+    const { certificateId } = await digicertFns.downloadCodeSigningCertificate({
+      caId: job.caId,
+      orderId: existingOrderId,
+      digicertCertificateId: info.certificateId,
+      keyAlgorithm: job.keyAlgorithm,
+      signatureAlgorithm
+    });
 
     await persistCertificatePrivateKey(certificateId, projectId, job);
     await attachIssuedCertToSigner(job, certificateId, projectId);
@@ -423,10 +812,35 @@ export const signerIssuanceServiceFactory = ({
     });
   };
 
+  // Recovers key config from the last job when retrying a signer that never produced a certificate.
+  const getLatestIssuanceKeyConfig = async (signerId: string) => {
+    const job = await signerIssuanceJobDAL.findLatestForSigner(signerId);
+    if (!job) return null;
+    const digicert = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
+    return {
+      keySource: job.keySource as CertKeySource,
+      keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
+      hsmConnectorId: job.hsmConnectorId ?? null,
+      hsmKeyLabel: job.hsmKeyLabel ?? null,
+      hsmPublicKeySpki: job.hsmPublicKeySpki ?? null,
+      externalOrder:
+        digicert?.orderId != null
+          ? { provider: CaType.DIGICERT, orderId: digicert.orderId, status: digicert.lastStatus ?? null }
+          : null
+    };
+  };
+
+  const runPendingJobNow = async (signerId: string): Promise<void> => {
+    const job = await signerIssuanceJobDAL.transaction((tx) => signerIssuanceJobDAL.findLatestForSigner(signerId, tx));
+    if (!job || job.status !== SignerIssuanceJobStatus.Pending) return;
+    await processJob(job.id);
+  };
+
   return {
     requestIssuance,
     processJob,
-    start,
-    _buildCsrForSigner: buildCsrForSigner
+    runPendingJobNow,
+    getLatestIssuanceKeyConfig,
+    start
   };
 };

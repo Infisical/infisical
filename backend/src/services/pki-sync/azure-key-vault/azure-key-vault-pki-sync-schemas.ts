@@ -1,32 +1,36 @@
-import RE2 from "re2";
 import { z } from "zod";
 
+import { isValidAzureKeyVaultUrl } from "@app/lib/validator";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { AZURE_KEY_VAULT_CERTIFICATE_NAMING } from "./azure-key-vault-pki-sync-constants";
 
 export const AzureKeyVaultPkiSyncConfigSchema = z.object({
-  vaultBaseUrl: z.string().url()
+  vaultBaseUrl: z.string().url("Invalid vault base URL format").refine(isValidAzureKeyVaultUrl, {
+    message: "Vault base URL must be a valid Azure Key Vault URL (https://<vault-name>.vault.azure.net)"
+  })
 });
 
-const AzureKeyVaultPkiSyncOptionsSchema = z.object({
+export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   enableVersioning: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
+          return false;
+        }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = AZURE_KEY_VAULT_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -36,7 +40,7 @@ const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
@@ -52,7 +56,7 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
-  syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AzureKeyVaultPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),

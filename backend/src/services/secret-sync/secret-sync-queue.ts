@@ -1,5 +1,5 @@
 import opentelemetry from "@opentelemetry/api";
-import { AxiosError } from "axios";
+import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
@@ -21,8 +21,10 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -70,6 +72,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -89,6 +92,7 @@ type TSecretSyncQueueFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   folderDAL: TSecretFolderDALFactory;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -130,6 +134,8 @@ type TSecretSyncQueueFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 type SecretSyncActionJob = Job<
@@ -153,6 +159,7 @@ export const secretSyncQueueFactory = ({
   cronJob,
   kmsService,
   appConnectionDAL,
+  gitHubAppDAL,
   keyStore,
   folderDAL,
   secretV2BridgeDAL,
@@ -180,7 +187,9 @@ export const secretSyncQueueFactory = ({
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
-  telemetryService
+  telemetryService,
+  projectFolderGrantDAL,
+  orgDAL
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -272,6 +281,7 @@ export const secretSyncQueueFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const actorOrgId = secretSync.connection.orgId;
 
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
@@ -281,7 +291,12 @@ export const secretSyncQueueFactory = ({
       secretDAL: secretV2BridgeDAL,
       folderDAL,
       projectId,
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
 
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId });
@@ -326,7 +341,12 @@ export const secretSyncQueueFactory = ({
         secretImportDAL,
         secretImports,
         hasSecretAccess: () => true,
-        viewSecretValue: true
+        viewSecretValue: true,
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -424,6 +444,7 @@ export const secretSyncQueueFactory = ({
 
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
+      gitHubAppDAL,
       kmsService,
       gatewayService,
       gatewayV2Service,
@@ -571,6 +592,7 @@ export const secretSyncQueueFactory = ({
 
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
         appConnectionDAL,
+        gitHubAppDAL,
         kmsService,
         gatewayService,
         gatewayV2Service,
@@ -581,8 +603,10 @@ export const secretSyncQueueFactory = ({
 
       isSynced = true;
     } catch (err) {
+      const axiosError = err instanceof SecretSyncError && isAxiosError(err.error) ? err.error : err;
+
       logger.error(
-        err,
+        isAxiosError(axiosError) ? axiosError.response?.data : err,
         `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
@@ -835,6 +859,7 @@ export const secretSyncQueueFactory = ({
         secretMap,
         {
           appConnectionDAL,
+          gitHubAppDAL,
           kmsService,
           gatewayService,
           gatewayV2Service,

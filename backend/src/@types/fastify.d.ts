@@ -11,6 +11,7 @@ import { TAiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mc
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
@@ -30,20 +31,21 @@ import { TInsightsServiceFactory } from "@app/ee/services/insights/insights-serv
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
+import { TKmipServerServiceFactory } from "@app/ee/services/kmip-server/kmip-server-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
-import { TPamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
+import { TPamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
+import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
-import { TPamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
-import { TPamInsightsServiceFactory } from "@app/ee/services/pam-insights/pam-insights-service";
-import { TPamProjectRecordingConfigServiceFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-service";
-import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
-import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
-import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session/pam-session-chunk-service";
+import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
+import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -105,8 +107,10 @@ import { TConvertorServiceFactory } from "@app/services/convertor/convertor-serv
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
+import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
@@ -127,12 +131,14 @@ import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua
 import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { TLicenseClientFactory } from "@app/services/license-client";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TOauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
@@ -149,6 +155,7 @@ import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-tem
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { TProjectFolderGrantServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-service";
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
@@ -182,6 +189,10 @@ declare module "@fastify/request-context" {
     reqId: string;
     ip?: string;
     userAgent?: string;
+    // Set only on delegated OAuth requests. Presence (even as an empty array) signals that
+    // permission abilities must be intersected with these scopes; absence means a first-party
+    // session with no scope narrowing.
+    oauthScopes?: string[];
     orgId?: string;
     orgName?: string;
     userAuthInfo?: {
@@ -263,6 +274,7 @@ declare module "fastify" {
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
     internalCertManagerProjectId: string;
+    internalPamProjectId: string;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -277,6 +289,7 @@ declare module "fastify" {
       accountRecovery: TAccountRecoveryServiceFactory;
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
+      oauthClient: TOauthClientServiceFactory;
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       oidc: TOidcConfigServiceFactory;
@@ -294,6 +307,7 @@ declare module "fastify" {
       secretTag: TSecretTagServiceFactory;
       secretValidationRule: TSecretValidationRuleServiceFactory;
       secretImport: TSecretImportServiceFactory;
+      projectFolderGrant: TProjectFolderGrantServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
       integration: TIntegrationServiceFactory;
@@ -341,6 +355,7 @@ declare module "fastify" {
       signerPolicy: TSignerPolicyServiceFactory;
       pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
       certManagerProjectResolver: TCertManagerProjectResolverFactory;
+      pamProjectResolver: TPamProjectResolverFactory;
       certManagerInstance: TCertManagerInstanceServiceFactory;
       certManagerExport: TCertManagerExportServiceFactory;
       sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
@@ -361,6 +376,8 @@ declare module "fastify" {
       pkiSigner: TSignerServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
+      licenseClient: TLicenseClientFactory;
+      licenseV2: TLicenseV2ServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
       secretBlindIndex: TSecretBlindIndexServiceFactory;
       telemetry: TTelemetryServiceFactory;
@@ -382,20 +399,23 @@ declare module "fastify" {
       totp: TTotpServiceFactory;
       webAuthn: TWebAuthnServiceFactory;
       appConnection: TAppConnectionServiceFactory;
+      hsmConnector: THsmConnectorServiceFactory;
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
+      kmipServer: TKmipServerServiceFactory;
       gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
       insights: TInsightsServiceFactory;
-      pamInsights: TPamInsightsServiceFactory;
+      auditReport: TAuditReportServiceFactory;
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;
       gatewayPool: TGatewayPoolServiceFactory;
       resourceAuthMethod: TResourceAuthMethodServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      gitHubApp: TGitHubAppServiceFactory;
       honeyTokenConfig: THoneyTokenConfigServiceFactory;
       honeyToken: THoneyTokenServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
@@ -412,17 +432,16 @@ declare module "fastify" {
       announcement: TAnnouncementServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       orgProductStats: TOrgProductStatsServiceFactory;
+      pamAccountTemplate: TPamAccountTemplateServiceFactory;
       pamFolder: TPamFolderServiceFactory;
-      pamResource: TPamResourceServiceFactory;
-      pamDomain: TPamDomainServiceFactory;
-      pamResourceRotationRules: TPamResourceRotationRulesServiceFactory;
       pamAccount: TPamAccountServiceFactory;
-      pamAccountPolicy: TPamAccountPolicyServiceFactory;
+      pamDiscovery: TPamDiscoverySourceServiceFactory;
+      pamAccountRotation: TPamAccountRotationServiceFactory;
+      pamMembership: TPamMembershipServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamSessionChunk: TPamSessionChunkServiceFactory;
-      pamProjectRecordingConfig: TPamProjectRecordingConfigServiceFactory;
+      pamAccessRequest: TPamAccessRequestServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;
-      pamDiscoverySource: TPamDiscoverySourceServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
       membershipUser: TMembershipUserServiceFactory;
       membershipIdentity: TMembershipIdentityServiceFactory;

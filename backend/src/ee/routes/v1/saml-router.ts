@@ -102,8 +102,19 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               // Setting wantAuthnResponseSigned to false allows both "Sign SAML assertion" and
               // "Sign SAML response and assertion" configurations to work.
               samlConfig.wantAuthnResponseSigned = false;
-              if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
-                samlConfig.audience = `spn:${ssoConfig.issuer}`;
+              // RelayState is attacker-controlled — wrap the JSON.parse so a malformed value
+              // doesn't crash the auth flow with a 500. Mirrors the defensive shape used
+              // for callbackPort parsing below (1KB cap + try/catch + log-and-fall-through).
+              const relayState =
+                typeof req?.body === "object" ? (req.body as { RelayState?: string })?.RelayState : undefined;
+              if (relayState && Buffer.byteLength(relayState) <= 1024) {
+                try {
+                  if ((JSON.parse(relayState) as { spInitiated?: boolean })?.spInitiated) {
+                    samlConfig.audience = `spn:${ssoConfig.issuer}`;
+                  }
+                } catch (err) {
+                  logger.error(err, "RelayState parsing failed in SAML config");
+                }
               }
             }
             if (

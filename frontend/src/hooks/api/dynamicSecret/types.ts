@@ -414,6 +414,7 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.GcpIam;
       inputs: {
         serviceAccountEmail: string;
+        tokenScopes: string[];
       };
     }
   | {

@@ -5,7 +5,7 @@ import { twMerge } from "tailwind-merge";
 import { useToggle } from "@app/hooks";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
-const REGEX = /(\${([a-zA-Z0-9-_. ]+)})/g;
+const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
 
 const syntaxHighlight = (
   content?: string | null,
@@ -36,6 +36,7 @@ const syntaxHighlight = (
       const part = el;
       const innerContent = el.slice(2, -1); // Remove ${ and }
       const parts = innerContent.split(".");
+      const isCrossProjectRef = parts[0]?.startsWith("@");
 
       return (
         <span className="ph-no-capture relative z-10 text-yellow" key={`secret-value-${i + 1}`}>
@@ -43,33 +44,34 @@ const syntaxHighlight = (
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
             const isHovered = hoveredPart === segmentKey;
-            const shouldShowHoverStyle = isHovered && isCmdOrCtrlPressed;
+            const isInteractive = isCmdOrCtrlPressed && !isCrossProjectRef;
+            const shouldShowHoverStyle = isHovered && isInteractive;
 
             return (
               <span key={segmentKey}>
                 <span
                   role="button"
-                  tabIndex={isCmdOrCtrlPressed ? 0 : -1}
+                  tabIndex={isInteractive ? 0 : -1}
                   className={`ph-no-capture text-yellow-200/80 ${
-                    isCmdOrCtrlPressed ? "pointer-events-auto" : "pointer-events-none"
+                    isInteractive ? "pointer-events-auto" : "pointer-events-none"
                   } ${shouldShowHoverStyle ? "cursor-pointer underline decoration-yellow-400" : ""}`}
                   onMouseEnter={() => onHoverPart?.(segmentKey)}
                   onMouseLeave={() => onHoverPart?.("")}
                   onMouseDown={(e) => {
-                    if (isCmdOrCtrlPressed) {
+                    if (isInteractive) {
                       e.preventDefault();
                       e.stopPropagation();
                     }
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isCmdOrCtrlPressed) {
+                    if (isInteractive) {
                       e.preventDefault();
                       onClickSegment?.(segment, parts);
                     }
                   }}
                   onKeyDown={(e) => {
-                    if (isCmdOrCtrlPressed && (e.key === "Enter" || e.key === " ")) {
+                    if (isInteractive && (e.key === "Enter" || e.key === " ")) {
                       e.preventDefault();
                       e.stopPropagation();
                       onClickSegment?.(segment, parts);
@@ -171,6 +173,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       };
     }, []);
 
+    const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
+    const shouldBindRealValue = isVisible || isSecretFocused;
+
     return (
       <div
         className={twMerge("no-scrollbar w-full overflow-auto rounded-md", containerClassName)}
@@ -182,7 +187,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               <span className={twMerge("whitespace-break-spaces", !value && "text-muted")}>
                 {syntaxHighlight(
                   value,
-                  isVisible || (isSecretFocused && !valueAlwaysHidden),
+                  shouldRevealValue,
                   isImport,
                   isLoadingValue,
                   isErrorLoadingValue,
@@ -225,7 +230,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onMouseLeave={() => {
               setHoveredPart(undefined);
             }}
-            value={value || ""}
+            value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />

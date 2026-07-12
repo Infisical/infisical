@@ -1,4 +1,5 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
+import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
@@ -27,29 +28,14 @@ import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-pro
 import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerInsightsRouter } from "./insights-router";
 import { registerKmipRouter } from "./kmip-router";
+import { registerKmipServerRouter } from "./kmip-server-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
+import { registerLicenseV2Router } from "./license-v2-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
-import { registerPamAccountPolicyRouter } from "./pam-account-policy-router";
-import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
-import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
-import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
-import { registerPamDiscoveryRouter } from "./pam-discovery-routers/pam-discovery-router";
-import {
-  PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP,
-  PAM_DOMAIN_REGISTER_ROUTER_MAP,
-  registerPamDomainRouter
-} from "./pam-domain-routers";
-import { registerPamFolderRouter } from "./pam-folder-router";
-import { registerPamInsightsRouter } from "./pam-insights-router";
-import { registerPamRecordingConfigRouter } from "./pam-recording-config-router";
-import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
-import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
-import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
-import { registerPamSessionChunkRouter } from "./pam-session-chunk-router";
-import { registerPamSessionRouter } from "./pam-session-router";
+import { registerPamRouters } from "./pam-routers";
 import { registerPITRouter } from "./pit-router";
 import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerPkiDiscoveryRouter } from "./pki-discovery-router";
@@ -79,6 +65,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerSubOrgRouter, { prefix: "/sub-organizations" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+  await server.register(registerLicenseV2Router, { prefix: "/organizations" });
   await server.register(registerEmailDomainRouter, { prefix: "/email-domains" });
 
   // depreciated in favour of infisical workspace
@@ -127,7 +114,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerHoneyTokenRouter, { prefix: "/honey-tokens" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
-  await server.register(registerPamInsightsRouter, { prefix: "/insights/pam" });
 
   await server.register(
     async (pkiRouter) => {
@@ -174,7 +160,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       // Provider-specific endpoints
       await Promise.all(
         Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          auditLogStreamRouter.register(router, { prefix: `/${provider}` })
+          router(withRoutePrefix(auditLogStreamRouter, `/${provider}`))
         )
       );
     },
@@ -196,7 +182,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       // Provider-specific endpoints
       await Promise.all(
         Object.entries(EXTERNAL_KMS_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          externalKmsRouter.register(router, { prefix: `/${provider}` })
+          router(withRoutePrefix(externalKmsRouter, `/${provider}`))
         )
       );
     },
@@ -210,86 +196,9 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (kmipRouter) => {
       await kmipRouter.register(registerKmipRouter);
       await kmipRouter.register(registerKmipSpecRouter, { prefix: "/spec" });
+      await kmipRouter.register(registerKmipServerRouter, { prefix: "/servers" });
     },
     { prefix: "/kmip" }
-  );
-
-  await server.register(
-    async (pamRouter) => {
-      await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
-      await pamRouter.register(
-        async (sessionRouter) => {
-          await sessionRouter.register(registerPamSessionRouter);
-          await sessionRouter.register(registerPamSessionChunkRouter);
-        },
-        { prefix: "/sessions" }
-      );
-      await pamRouter.register(registerPamRecordingConfigRouter);
-      await pamRouter.register(registerPamAccountPolicyRouter, { prefix: "/account-policies" });
-      await pamRouter.register(
-        async (pamDomainRouter) => {
-          await pamDomainRouter.register(registerPamDomainRouter);
-
-          // Domain-type-specific endpoints
-          await Promise.all(
-            Object.entries(PAM_DOMAIN_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              pamDomainRouter.register(router, { prefix: `/${provider}` })
-            )
-          );
-        },
-        { prefix: "/domains" }
-      );
-      await pamRouter.register(
-        async (pamDiscoveryRouter) => {
-          await pamDiscoveryRouter.register(registerPamDiscoveryRouter);
-
-          // Discovery-type-specific endpoints
-          await Promise.all(
-            Object.entries(PAM_DISCOVERY_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              pamDiscoveryRouter.register(router, { prefix: `/${provider}` })
-            )
-          );
-        },
-        { prefix: "/discovery-sources" }
-      );
-
-      await pamRouter.register(
-        async (pamAccountRouter) => {
-          await pamAccountRouter.register(registerPamAccountRouter);
-
-          // Resource-type-specific account endpoints
-          await Promise.all(
-            Object.entries(PAM_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              pamAccountRouter.register(router, { prefix: `/${provider}` })
-            )
-          );
-
-          // Domain-type-specific account endpoints
-          await Promise.all(
-            Object.entries(PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              pamAccountRouter.register(router, { prefix: `/${provider}` })
-            )
-          );
-        },
-        { prefix: "/accounts" }
-      );
-
-      await pamRouter.register(
-        async (pamResourceRouter) => {
-          await pamResourceRouter.register(registerPamResourceRouter);
-          await pamResourceRouter.register(registerPamResourceRotationRulesRouter);
-
-          // Provider-specific endpoints
-          await Promise.all(
-            Object.entries(PAM_RESOURCE_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-              pamResourceRouter.register(router, { prefix: `/${provider}` })
-            )
-          );
-        },
-        { prefix: "/resources" }
-      );
-    },
-    { prefix: "/pam" }
   );
 
   await server.register(
@@ -300,4 +209,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/ai" }
   );
+
+  await server.register(registerPamRouters, { prefix: "/pam" });
 };

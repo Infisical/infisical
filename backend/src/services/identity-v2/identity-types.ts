@@ -1,4 +1,4 @@
-import { AccessScope, AccessScopeData } from "@app/db/schemas";
+import { AccessScope, AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
@@ -16,6 +16,16 @@ export enum IdentityOrderBy {
   Role = "role"
 }
 
+export type TCreateIdentityV2RoleDTO =
+  | { role: string; isTemporary: false }
+  | {
+      role: string;
+      isTemporary: true;
+      temporaryMode: TemporaryPermissionMode;
+      temporaryRange: string;
+      temporaryAccessStartTime: string;
+    };
+
 export type TCreateIdentityV2DTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
@@ -23,6 +33,7 @@ export type TCreateIdentityV2DTO = {
     name: string;
     hasDeleteProtection: boolean;
     metadata?: { key: string; value: string }[];
+    roles?: TCreateIdentityV2RoleDTO[];
   };
 };
 

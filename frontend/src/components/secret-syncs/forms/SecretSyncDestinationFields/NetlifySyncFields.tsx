@@ -138,7 +138,9 @@ export const NetlifySyncFields = () => {
                 getOptionValue={(option) => option.value}
               />
               <FieldDescription>
-                If you do not select a context, the secrets will be synced to all contexts.
+                Avoid configuring multiple syncs with overlapping contexts for the same site.
+                &quot;All Contexts&quot; overlaps with every context. Overlapping syncs may delete
+                each other&apos;s secrets.
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>

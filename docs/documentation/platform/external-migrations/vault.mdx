@@ -15,7 +15,7 @@ Our in-platform migration tooling lets you set up a connection to your Vault ins
 - Vault policies (translated to [Infisical project roles](/documentation/platform/access-controls/role-based-access-controls))
 
 <Warning>
-  Importing from Vault requires the `Connect` action on `App Connections` and the `Create` action on the relevant subjects — for example, the `Create` action on the `Secrets` subject at the target environment and folder path for KV imports, or the equivalent permission for Machine Identities, Dynamic Secrets, and Roles.
+  Importing from Vault requires the `Connect` action on `App Connections` and the `Create` action on the relevant subjects. For example, the `Create` action on the `Secrets` subject at the target environment and folder path for KV imports, or the equivalent permission for Machine Identities, Dynamic Secrets, and Roles.
 </Warning>
 
 ## Set Up Your Vault Connection
@@ -96,18 +96,22 @@ Before importing anything, you need to establish a secure connection between Inf
 
     Save this policy in Vault with the name `infisical-in-platform-migration`.
 
+    <Note>
+      If you're running an open-source (OSS) version of Vault, you still need to define a rule for the namespace path. OSS Vault doesn't support custom namespaces, but it still has a single default namespace, `root`.
+    </Note>
+
   </Step>
 
   <Step title="Create a HashiCorp Vault App Connection in Infisical">
     In Infisical, create a new App Connection of type **HashiCorp Vault** in one of two places:
 
     - **Project > Integrations > App Connections** — the connection is only visible inside that project.
-    - **Organization Settings > App Connections** — the connection is visible across every project in the organization.
+    - **Integrations > App Connections** — the connection is visible across every project in the organization.
 
     Follow the [HashiCorp Vault App Connection documentation](/integrations/app-connections/hashicorp-vault) for detailed setup instructions. When configuring authentication (Token or AppRole), make sure the credential uses the `infisical-in-platform-migration` policy you created in the previous step.
 
     <Note>
-      You can create more than one connection if you need to migrate from several Vault instances. The Vault namespace is not part of the connection — you pick it inline each time you import a resource.
+      You can create more than one connection if you need to migrate from several Vault instances. The Vault namespace is not part of the connection; you pick it inline each time you import a resource.
     </Note>
 
   </Step>
@@ -128,6 +132,10 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
 <Info>
 **First time?** You'll need to [create a project](/documentation/platform/project) first. A project in Infisical typically represents a single application or microservice.
 </Info>
+
+<Warning>
+  If your Vault token is restricted and cannot list a mount from its root, Infisical discovers the available secret paths from the token's resultant ACL (`sys/internal/ui/resultant-acl`). Any path that contains a `+` wildcard (Vault's single-segment wildcard, e.g. `secret/+/db`) cannot be expanded and is **skipped**, i.e., those secrets will not be imported. To migrate them, grant the token access to the explicit KV paths instead of relying on `+`.
+</Warning>
 
 **To import secrets from Vault:**
 
@@ -209,7 +217,7 @@ The form will be automatically populated with the role's configuration including
 </Note>
 
 <Tip>
-  The same **Load from Vault** flow is also available on **Cassandra**, **LDAP**, and **SQL Database** dynamic secrets — pick the App Connection, Vault namespace, mount, and role to pre-fill the form.
+  The same **Load from Vault** flow is also available on **Cassandra**, **LDAP**, and **SQL Database** dynamic secrets. Pick the App Connection, Vault namespace, mount, and role to pre-fill the form.
 </Tip>
 
 Learn more about how Dynamic Secrets work in Infisical in the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
@@ -268,7 +276,7 @@ Infisical can translate your Vault HCL policies into [Infisical project roles](/
 
 ## One-time Bulk Import from Vault
 
-If you want to move an entire Vault organization into Infisical in a single shot — rather than importing resources piecemeal from inside each project — use the **Bulk Data Import** flow. It does not require an App Connection and is intended for initial migrations only. KV Secret Engine is the only supported resource type for bulk import; other resource types (Kubernetes auth, dynamic secrets, policies) must use the per-resource flows described above.
+If you want to move an entire Vault organization into Infisical in a single shot (rather than importing resources piecemeal from inside each project) use the **Bulk Data Import** flow. It does not require an App Connection and is intended for initial migrations only. KV Secret Engine is the only supported resource type for bulk import; other resource types (Kubernetes auth, dynamic secrets, policies) must use the per-resource flows described above.
 
 <Warning>
   Bulk Data Import is restricted to **organization admins**.
@@ -276,7 +284,7 @@ If you want to move an entire Vault organization into Infisical in a single shot
 
 **To run a bulk import:**
 
-1. Navigate to **Organization Settings > External Migrations**
+1. Navigate to **Integrations** and select the tab **External Migrations**
 2. Click **Import** and choose **HCP Vault**
 3. Fill in the import form:
    - **Gateway** (optional) — route the import through a [gateway](/documentation/platform/gateways/overview) if your Vault instance is private

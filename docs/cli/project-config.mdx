@@ -42,3 +42,28 @@ To achieve this, simply add the `gitBranchToEnvironmentMapping` property to your
 ### How it works
 After configuring this property, every time you use the CLI with the specified configuration file, it will automatically verify if there is a corresponding environment mapping for the current Github branch you are on.
 If it exists, the CLI will use that environment to retrieve secrets. You can override this behavior by explicitly using the `--env` flag while interacting with the CLI.
+
+## Set the Infisical instance domain
+If you connect to EU Cloud or a self-hosted instance, you can pin the instance URL to your project by adding a `domain` field. Every CLI command run from the project then targets that instance without needing the `--domain` flag or an environment variable.
+
+```json .infisical.json
+{
+  "workspaceId": "63ee5410a45f7a1ed39ba118",
+  "defaultEnvironment": "dev",
+  "domain": "https://eu.infisical.com"
+}
+```
+
+### How it works
+The CLI resolves the domain in the following order, from highest to lowest precedence:
+
+1. The `--domain` flag
+2. The `INFISICAL_DOMAIN` environment variable (the legacy `INFISICAL_API_URL` is still honored; when both are set, `INFISICAL_DOMAIN` wins)
+3. The `domain` field in `.infisical.json`
+4. The default (US Cloud, `https://app.infisical.com`)
+
+The value must start with `http://` or `https://`, otherwise it is ignored. Always prefer `https://`. An `http://` domain sends your secrets and credentials over the network in plaintext, so only use it for isolated, private-network setups.
+
+<Warning>
+  Because `.infisical.json` is usually committed to your repository, the CLI prints a warning naming the host whenever the domain is read from the file, since all requests and credentials are sent there. Only set `domain` to an instance you trust, and review it when cloning a project you do not control.
+</Warning>

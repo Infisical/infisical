@@ -227,11 +227,13 @@ services:
 
   openldap:
     # note: more advanced configuration is available
+    # Starts empty (base dc=ldap,dc=com + admin only). Seed test users/groups with
+    # `make seed-dev-ldap` once it is up. See sso.md.
     image: osixia/openldap:1.5.0
     restart: always
     environment:
-      LDAP_ORGANISATION: Acme
-      LDAP_DOMAIN: acme.com
+      LDAP_ORGANISATION: LDAP
+      LDAP_DOMAIN: ldap.com
       LDAP_ADMIN_PASSWORD: admin
     ports:
       - 389:389
@@ -242,7 +244,7 @@ services:
     profiles: [ldap]
 
   phpldapadmin:
-    # username: cn=admin,dc=acme,dc=com, pass is admin
+    # username: cn=admin,dc=ldap,dc=com, pass is admin
     image: osixia/phpldapadmin:latest
     restart: always
     environment:
@@ -255,15 +257,50 @@ services:
     profiles: [ldap]
 
   keycloak:
+    # Admin console: http://localhost:8088 (admin / admin).
+    # On boot it imports the pre-seeded `infisical` realm (client `infisical-dev`,
+    # users jdoe/asmith) from the mounted realm file. The container has no volume,
+    # so the realm is re-imported fresh on every start. See sso.md.
     image: quay.io/keycloak/keycloak:26.1.0
     restart: always
     environment:
       - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
-    command: start-dev
+      # Pin the browser-facing (frontend) URL so the OIDC issuer and authorization endpoint are
+      # always http://localhost:8088, while backchannel calls (discovery/token/jwks) use whatever
+      # URL the caller connected with. The backend therefore reaches Keycloak over the internal
+      # compose network (keycloak:8080) yet the browser is sent to localhost:8088, so no
+      # keycloak.local /etc/hosts entry is needed. See sso.md.
+      - KC_HOSTNAME=http://localhost:8088
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
+    command: start-dev --import-realm
     ports:
       - 8088:8080
-    profiles: [sso]
+    volumes:
+      - ./docker/keycloak/realm-infisical.json:/opt/keycloak/data/import/realm-infisical.json:ro
+    profiles: [oidc]
+
+  keycloak-config:
+    # Dev-only one-shot: Keycloak's built-in `master` realm (the admin console) defaults to
+    # sslRequired=external, which blocks http://localhost:8088 on Docker Desktop because the
+    # container sees published-port traffic as a non-local client IP ("HTTPS required" page).
+    # The realm import can't fix this (master already exists, so the bootstrap import skips it),
+    # so we flip it with kcadm once Keycloak is up. The imported `infisical` realm is already
+    # sslRequired=none, so the OIDC login flow itself is unaffected. See sso.md.
+    image: quay.io/keycloak/keycloak:26.1.0
+    depends_on:
+      - keycloak
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        until /opt/keycloak/bin/kcadm.sh config credentials \
+          --server http://keycloak:8080 --realm master --user admin --password admin >/dev/null 2>&1; do
+          echo "waiting for keycloak..."; sleep 3;
+        done
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE \
+          && echo "master realm sslRequired=NONE (dev only)"
+    profiles: [oidc]
 
   pingfederate:
     # Requires free Ping Identity DevOps credentials — register at
@@ -321,6 +358,66 @@ services:
       - samba_etc:/etc/samba/external
     profiles: [ad]
 
+  # Authentik: open-source IdP for SAML + real (non-mock) SCIM provisioning. Admin UI at
+  # http://localhost:9100 (akadmin / password123!), API token `authentik-dev-bootstrap-token`.
+  # Has its own Postgres and reuses the dev Redis (DB 1). Configure via blueprints or its API.
+  # See sso.md.
+  authentik-postgres:
+    image: postgres:16-alpine
+    container_name: infisical-dev-authentik-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik
+    volumes:
+      - authentik_postgres:/var/lib/postgresql/data
+    profiles: [saml]
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2026.2.2
+    container_name: infisical-dev-authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: insecure-dev-only-key-do-not-use-in-prod-0000000000
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_REDIS__DB: "1"
+      AUTHENTIK_BOOTSTRAP_PASSWORD: password123!
+      AUTHENTIK_BOOTSTRAP_TOKEN: authentik-dev-bootstrap-token
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@saml.com
+    ports:
+      - 9100:9000
+    depends_on:
+      - authentik-postgres
+      - redis
+    profiles: [saml]
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2026.2.2
+    container_name: infisical-dev-authentik-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: insecure-dev-only-key-do-not-use-in-prod-0000000000
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_REDIS__DB: "1"
+      AUTHENTIK_BOOTSTRAP_PASSWORD: password123!
+      AUTHENTIK_BOOTSTRAP_TOKEN: authentik-dev-bootstrap-token
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@saml.com
+    depends_on:
+      - authentik-postgres
+      - redis
+    profiles: [saml]
+
 volumes:
   postgres-data:
     driver: local
@@ -337,4 +434,6 @@ volumes:
   samba_etc:
   grafana_storage:
   softhsm_tokens:
+    driver: local
+  authentik_postgres:
     driver: local

@@ -2,41 +2,22 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-import { PamSessionStatus } from "./pam-session-enums";
+import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
 
 export type TPamSessionDALFactory = ReturnType<typeof pamSessionDALFactory>;
+
 export const pamSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSession);
 
-  // COALESCE(session.selectedResourceId, account.resourceId) for domain + local sessions.
-  const sessionResourceOn = db.raw(`COALESCE(??.??, ??.??) = ??.??`, [
-    TableName.PamSession,
-    "selectedResourceId",
-    TableName.PamAccount,
-    "resourceId",
-    TableName.PamResource,
-    "id"
-  ]);
-
   const findById = async (id: string, tx?: Knex) => {
     const session = await (tx || db.replicaNode())(TableName.PamSession)
-      .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
-      .leftJoin(TableName.PamResource, function joinResource() {
-        this.on(sessionResourceOn);
-      })
-      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
-        this.on(
-          `${TableName.GatewayV2}.id`,
-          "=",
-          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
-        );
-      })
+      .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
-      .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
       .where(`${TableName.PamSession}.id`, id)
       .first();
 
@@ -47,36 +28,12 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     const result = await (tx || db.replicaNode())(TableName.PamSession)
       .where("userId", userId)
       .where("projectId", projectId)
-      .where("accessMethod", "web")
+      .where("accessMethod", PamAccessMethod.Web)
       .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
       .count("id as count")
       .first();
 
     return Number((result as { count?: string | number })?.count ?? 0);
-  };
-
-  const countActiveByProjectId = async (projectId: string, tx?: Knex): Promise<number> => {
-    const result = await (tx || db.replicaNode())(TableName.PamSession)
-      .where("projectId", projectId)
-      .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
-      .count("id as count")
-      .first();
-
-    return Number((result as { count?: string | number })?.count ?? 0);
-  };
-
-  const expireSessionById = async (sessionId: string, tx?: Knex) => {
-    const now = new Date();
-
-    const updatedCount = await (tx || db)(TableName.PamSession)
-      .where("id", sessionId)
-      .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
-      .update({
-        status: PamSessionStatus.Ended,
-        endedAt: now
-      });
-
-    return updatedCount;
   };
 
   const endExpiredWebSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
@@ -84,32 +41,11 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     const updatedCount = await (tx || db)(TableName.PamSession)
       .where("userId", userId)
       .where("projectId", projectId)
-      .where("accessMethod", "web")
+      .where("accessMethod", PamAccessMethod.Web)
       .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
       .where("expiresAt", "<", now)
       .update({ status: PamSessionStatus.Ended, endedAt: now });
     return updatedCount;
-  };
-
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
-    const sessions = await (tx || db.replicaNode())(TableName.PamSession)
-      .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
-      .leftJoin(TableName.PamResource, function joinResource() {
-        this.on(sessionResourceOn);
-      })
-      .leftJoin(TableName.GatewayV2, function joinSessionGateway() {
-        this.on(
-          `${TableName.GatewayV2}.id`,
-          "=",
-          db.raw("COALESCE(??, ??)", [`${TableName.PamSession}.gatewayId`, `${TableName.PamResource}.gatewayId`])
-        );
-      })
-      .select(selectAllTableCols(TableName.PamSession))
-      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
-      .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
-      .where(`${TableName.PamSession}.projectId`, projectId);
-
-    return sessions;
   };
 
   const endSessionById = async (sessionId: string, tx?: Knex) => {
@@ -139,93 +75,101 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
-  const startSession = async (
-    sessionId: string,
-    patch: {
-      encryptedSessionKey: Buffer;
-      gatewayUploadTokenHash: Buffer;
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    const sessions = await (tx || db.replicaNode())(TableName.PamSession)
+      .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
+      .select(selectAllTableCols(TableName.PamSession))
+      .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
+      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .where(`${TableName.PamSession}.projectId`, projectId);
+
+    return sessions;
+  };
+
+  const findAccessibleByProjectId = async (
+    projectId: string,
+    {
+      viewSessionsFolderIds,
+      viewSessionsAccountIds,
+      offset,
+      limit,
+      search,
+      status
+    }: {
+      viewSessionsFolderIds: string[];
+      viewSessionsAccountIds: string[];
+      offset?: number;
+      limit?: number;
+      search?: string;
+      status?: string;
     },
     tx?: Knex
   ) => {
-    const [updated] = await (tx || db)(TableName.PamSession)
-      .where("id", sessionId)
-      .where("status", PamSessionStatus.Starting)
-      .update({
-        status: PamSessionStatus.Active,
-        startedAt: new Date(),
-        ...patch
-      })
-      .returning("*");
-    return updated;
-  };
+    // Visibility comes solely from ViewSessions scopes; no scopes means no sessions, and skipping
+    // this guard would leave the filter block empty and match every session in the project.
+    if (viewSessionsFolderIds.length === 0 && viewSessionsAccountIds.length === 0) {
+      return { sessions: [], totalCount: 0 };
+    }
 
-  const countDailyByProjectId = async (
-    projectId: string,
-    startDate: Date,
-    tx?: Knex
-  ): Promise<{ date: string; count: number }[]> => {
-    const rows = (await (tx || db.replicaNode())(TableName.PamSession)
-      .select(db.raw(`to_char(("createdAt" AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') as date`))
-      .count("id as count")
-      .where("projectId", projectId)
-      .where("createdAt", ">=", startDate)
-      .groupByRaw(`("createdAt" AT TIME ZONE 'UTC')::date`)
-      .orderByRaw(`("createdAt" AT TIME ZONE 'UTC')::date asc`)) as unknown as {
-      date: string;
-      count: string | number;
-    }[];
+    const baseQuery = (tx || db.replicaNode())(TableName.PamSession)
+      .leftJoin(TableName.PamAccount, `${TableName.PamAccount}.id`, `${TableName.PamSession}.accountId`)
+      .where(`${TableName.PamSession}.projectId`, projectId)
+      .where((top) => {
+        if (viewSessionsFolderIds.length > 0) {
+          void top.orWhereIn(`${TableName.PamAccount}.folderId`, viewSessionsFolderIds);
+        }
+        if (viewSessionsAccountIds.length > 0) {
+          void top.orWhereIn(`${TableName.PamSession}.accountId`, viewSessionsAccountIds);
+        }
+      });
 
-    return rows.map((row) => ({ date: String(row.date), count: Number(row.count) }));
-  };
+    if (search) {
+      const term = `%${sanitizeSqlLikeString(search)}%`;
+      void baseQuery.where((qb) => {
+        void qb
+          .orWhereILike(`${TableName.PamSession}.accountName`, term)
+          .orWhereILike(`${TableName.PamSession}.actorName`, term)
+          .orWhereILike(`${TableName.PamSession}.actorEmail`, term)
+          .orWhereILike(`${TableName.PamSession}.folderName`, term);
+      });
+    }
 
-  const findTopActorsByProjectId = async (
-    projectId: string,
-    startDate: Date,
-    limit: number,
-    tx?: Knex
-  ): Promise<
-    {
-      actorName: string;
-      actorEmail: string;
-      userId: string | null;
-      sessionCount: number;
-    }[]
-  > => {
-    const rows = (await (tx || db.replicaNode())(TableName.PamSession)
-      .select("actorName", "actorEmail", "userId")
-      .count("id as count")
-      .where("projectId", projectId)
-      .where("createdAt", ">=", startDate)
-      .groupBy("actorName", "actorEmail", "userId")
-      .orderBy("count", "desc")
-      .limit(limit)) as unknown as {
-      actorName: string;
-      actorEmail: string;
-      userId: string | null;
-      count: string | number;
-    }[];
+    if (status) {
+      void baseQuery.where(`${TableName.PamSession}.status`, status);
+    }
 
-    return rows.map((row) => ({
-      actorName: row.actorName,
-      actorEmail: row.actorEmail,
-      userId: row.userId,
-      sessionCount: Number(row.count)
-    }));
+    const countQuery = baseQuery
+      .clone()
+      .clearSelect()
+      .count(`${TableName.PamSession}.id as count`)
+      .first<{ count: string }>();
+
+    const dataQuery = baseQuery
+      .clone()
+      .leftJoin(TableName.GatewayV2, `${TableName.GatewayV2}.id`, `${TableName.PamSession}.gatewayId`)
+      .select(selectAllTableCols(TableName.PamSession))
+      .select(db.ref("folderId").withSchema(TableName.PamAccount).as("folderId"))
+      .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
+      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .orderBy(`${TableName.PamSession}.createdAt`, "desc");
+
+    if (limit) void dataQuery.limit(limit);
+    if (offset) void dataQuery.offset(offset);
+
+    const [countResult, sessions] = await Promise.all([countQuery, dataQuery]);
+
+    return { sessions, totalCount: Number(countResult?.count ?? 0) };
   };
 
   return {
     ...orm,
     findById,
-    findByProjectId,
-    expireSessionById,
-    endExpiredWebSessions,
     countActiveWebSessions,
-    countActiveByProjectId,
-    countDailyByProjectId,
-    findTopActorsByProjectId,
+    endExpiredWebSessions,
     endSessionById,
     terminateSessionById,
     activateSession,
-    startSession
+    findByProjectId,
+    findAccessibleByProjectId
   };
 };

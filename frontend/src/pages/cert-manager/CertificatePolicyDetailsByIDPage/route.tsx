@@ -23,12 +23,11 @@ export const Route = createFileRoute(
         {
           label: "Certificate Policies",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+            to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
             params: {
               orgId: params.orgId,
               projectId: params.projectId
-            },
-            search: { selectedTab: "certificate-policies" }
+            }
           })
         }
       ]

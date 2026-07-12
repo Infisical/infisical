@@ -9,6 +9,7 @@ import {
   ProjectVersion,
   SortDirection,
   TableName,
+  TMemberships,
   TProjects,
   TProjectsUpdate
 } from "@app/db/schemas";
@@ -366,6 +367,179 @@ export const projectDALFactory = (db: TDbClient) => {
       return rows.map((r) => r.scopeProjectId);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find actor accessible project ids" });
+    }
+  };
+
+  /**
+   * Returns all effective project memberships for an actor (user or identity) in a project: direct
+   * membership and any memberships via groups the actor belongs to. Single query.
+   */
+  const findEffectiveProjectMemberships = async (dto: {
+    actorType: ActorType;
+    actorId: string;
+    orgId: string;
+    projectId: string;
+    tx?: Knex;
+  }): Promise<TMemberships[]> => {
+    try {
+      if (dto.actorType !== ActorType.USER && dto.actorType !== ActorType.IDENTITY) {
+        return [];
+      }
+
+      const conn = dto.tx ?? db.replicaNode();
+      const isUser = dto.actorType === ActorType.USER;
+      const groupMembershipTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupMembershipActorColumn = isUser ? "userId" : "identityId";
+      const actorColumn = isUser ? "actorUserId" : "actorIdentityId";
+
+      const groupIdsSubquery = conn(TableName.Groups)
+        .join(groupMembershipTable, `${groupMembershipTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, dto.actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+      const rows = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(`${TableName.Membership}.scopeProjectId`, dto.projectId)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.${actorColumn}`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, groupIdsSubquery);
+        })
+        .select(selectAllTableCols(TableName.Membership));
+
+      return rows as TMemberships[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective project memberships" });
+    }
+  };
+
+  /**
+   * Returns the first effective project membership for an actor (user or identity): direct or via group.
+   * Use for access checks and to get a single membership id/role. For all memberships use findEffectiveProjectMemberships.
+   */
+  const findEffectiveProjectMembership = async (dto: {
+    actorType: ActorType;
+    actorId: string;
+    orgId: string;
+    projectId: string;
+    tx?: Knex;
+  }): Promise<TMemberships | null> => {
+    const list = await findEffectiveProjectMemberships(dto);
+    const directMembership = list.find((membership) =>
+      dto.actorType === ActorType.USER
+        ? membership.actorUserId === dto.actorId
+        : membership.actorIdentityId === dto.actorId
+    );
+
+    return directMembership ?? list[0] ?? null;
+  };
+
+  /**
+   * Resolves effective project membership for many users/groups in one lookup entrypoint.
+   * Users are considered members if they are directly added or inherit access via a project group membership.
+   */
+  const findEffectiveProjectSubjectsMembership = async ({
+    orgId,
+    projectId,
+    userIds,
+    groupIds,
+    tx
+  }: {
+    orgId: string;
+    projectId: string;
+    userIds: string[];
+    groupIds: string[];
+    tx?: Knex;
+  }) => {
+    try {
+      const uniqueUserIds = [...new Set(userIds)];
+      const uniqueGroupIds = [...new Set(groupIds)];
+      if (uniqueUserIds.length === 0 && uniqueGroupIds.length === 0) {
+        return {
+          effectiveUserIds: [] as string[],
+          effectiveGroupIds: [] as string[]
+        };
+      }
+
+      const rows = await (tx || db.replicaNode())(TableName.Membership)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
+          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).andOn(
+            `${TableName.UserGroupMembership}.isPending`,
+            "=",
+            (tx || db).raw("?", [false])
+          );
+        })
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .andWhere((qb) => {
+          let hasCondition = false;
+          if (uniqueUserIds.length > 0) {
+            hasCondition = true;
+            void qb.where((sqb) => {
+              void sqb
+                .whereIn(`${TableName.Membership}.actorUserId`, uniqueUserIds)
+                .orWhereIn(`${TableName.UserGroupMembership}.userId`, uniqueUserIds);
+            });
+          }
+          if (uniqueGroupIds.length > 0) {
+            if (hasCondition) {
+              void qb.orWhereIn(`${TableName.Membership}.actorGroupId`, uniqueGroupIds);
+            } else {
+              void qb.whereIn(`${TableName.Membership}.actorGroupId`, uniqueGroupIds);
+            }
+          }
+        })
+        .select<
+          {
+            directUserId: string | null;
+            groupUserId: string | null;
+            directGroupId: string | null;
+          }[]
+        >(
+          db.ref("actorUserId").withSchema(TableName.Membership).as("directUserId"),
+          db.ref("userId").withSchema(TableName.UserGroupMembership).as("groupUserId"),
+          db.ref("actorGroupId").withSchema(TableName.Membership).as("directGroupId")
+        );
+
+      const effectiveUserIds = new Set<string>();
+      const effectiveGroupIds = new Set<string>();
+      const requestedUserIds = new Set(uniqueUserIds);
+      const requestedGroupIds = new Set(uniqueGroupIds);
+
+      for (const row of rows) {
+        if (row.directUserId && requestedUserIds.has(row.directUserId)) {
+          effectiveUserIds.add(row.directUserId);
+        }
+        if (row.groupUserId && requestedUserIds.has(row.groupUserId)) {
+          effectiveUserIds.add(row.groupUserId);
+        }
+        if (row.directGroupId && requestedGroupIds.has(row.directGroupId)) {
+          effectiveGroupIds.add(row.directGroupId);
+        }
+      }
+
+      return {
+        effectiveUserIds: [...effectiveUserIds],
+        effectiveGroupIds: [...effectiveGroupIds]
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective project subjects membership" });
+    }
+  };
+  const findProjectTypesByIds = async (ids: string[], tx?: Knex): Promise<{ id: string; type: string }[]> => {
+    try {
+      if (ids.length === 0) return [];
+      const rows = await (tx || db.replicaNode())(TableName.Project).whereIn("id", ids).select("id", "type");
+      return rows as { id: string; type: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project types by ids" });
     }
   };
 
@@ -776,6 +950,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
+        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM])
         .andWhere((bd) => {
           if (orgId) {
             void bd.where({ orgId }).orWhereIn("orgId", subOrgProjects);
@@ -802,6 +977,10 @@ export const projectDALFactory = (db: TDbClient) => {
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
+    findEffectiveProjectMemberships,
+    findEffectiveProjectMembership,
+    findEffectiveProjectSubjectsMembership,
+    findProjectTypesByIds,
     findOrgProjectIds,
     setProjectUpgradeStatus,
     findProjectGhostUser,

@@ -19,19 +19,14 @@ import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
-  INTEGRATIONS_SUBMENU,
   MCP_SUBMENU,
-  PAM_APPROVALS_SUBMENU,
-  PAM_SETTINGS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
-  SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
 import { ProjectSubmenuView } from "./SubmenuViews";
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
-import { useApprovalSubmenu } from "./useApprovalSubmenu";
 
 const PROJECT_NAV_COMPONENT: Record<
   ProjectType,
@@ -59,8 +54,6 @@ export const ProjectNav = () => {
   );
   const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
-  const { submenu: smApprovalsSubmenu, pendingRequestsCount: smPendingCount } =
-    useApprovalSubmenu();
   const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
   let projectLabel: string;
   if (intermediateAvailable) projectLabel = "Projects";
@@ -76,7 +69,6 @@ export const ProjectNav = () => {
     Boolean(pathname.match(/\/groups\/|\/identities\/|\/members\/|\/roles\//));
   const isOnIntegrations = pathname.includes("/integrations");
   const isOnProjectSettings = /\/settings(\/|\?|$)/.test(pathname);
-  const isOnApproval = pathname.includes("/approval");
   const isOnMcpOverview = currentProject.type === ProjectType.AI && pathname.includes("/overview");
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   const isOnCertPolicies = isCertManager && pathname.includes("/policies");
@@ -86,25 +78,19 @@ export const ProjectNav = () => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests || hasSignerContext)
       return null;
     if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
-    if (isOnAccessControl) {
-      if (currentProject.type === ProjectType.SecretManager)
-        return SECRET_MANAGER_ACCESS_CONTROL_SUBMENU;
+    // PAM navigation is handled separately by PamNav.
+    if (currentProject.type === ProjectType.PAM) return null;
+    // Secret manager renders access control as in-page tabs (no secondary submenu).
+    if (isOnAccessControl && currentProject.type !== ProjectType.SecretManager)
       return PROJECT_ACCESS_CONTROL_SUBMENU;
-    }
-    if (isOnIntegrations && currentProject.type === ProjectType.SecretManager)
-      return INTEGRATIONS_SUBMENU;
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
-    if (isOnProjectSettings && currentProject.type === ProjectType.PAM) return PAM_SETTINGS_SUBMENU;
     if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
-    if (currentProject.type === ProjectType.PAM && pathname.includes("/approvals"))
-      return PAM_APPROVALS_SUBMENU;
-    if (isOnApproval && !isCertManager) return smApprovalsSubmenu;
     return null;
   };
 
@@ -114,22 +100,21 @@ export const ProjectNav = () => {
     setActiveSubmenu(getInitialProjectSubmenu());
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep the active submenu in sync when badge data changes
-  useEffect(() => {
-    setActiveSubmenu((current) => {
-      if (current && current.pathSuffix === smApprovalsSubmenu.pathSuffix) {
-        return smApprovalsSubmenu;
-      }
-      return current;
-    });
-  }, [smPendingCount]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
     const typePath = PROJECT_TYPE_PATH[currentProject.type];
+    const isPam = currentProject.type === ProjectType.PAM;
+    // Already on this submenu's page (e.g. after collapsing via the "< back" button):
+    // re-navigating to the same URL would push a duplicate history entry, so just re-expand.
+    const submenuPath = isPam
+      ? `/organizations/${currentOrg.id}/pam/${submenu.pathSuffix}`
+      : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
+    if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
     navigate({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: `/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any,
+      to: isPam
+        ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+        : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

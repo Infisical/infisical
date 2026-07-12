@@ -1,13 +1,9 @@
-import { ActivityIcon, BookCheck, FileText, Plug, Settings, Shield } from "lucide-react";
+import { ActivityIcon, Blocks, BookCheck, FileText, Settings, Shield } from "lucide-react";
 
-import { ProjectIcon } from "@app/components/v3";
+import { ProjectIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import {
-  INTEGRATIONS_SUBMENU,
-  SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
-  SM_SETTINGS_SUBMENU
-} from "./submenus";
+import { SM_SETTINGS_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 import { useApprovalSubmenu } from "./useApprovalSubmenu";
 
@@ -16,11 +12,11 @@ export const SecretManagerNav = ({
 }: {
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
-  const { submenu: approvalsSubmenu, pendingRequestsCount } = useApprovalSubmenu();
+  const { pendingRequestsCount } = useApprovalSubmenu();
 
-  const items: NavItem[] = [
+  const generalItems: NavItem[] = [
     {
-      label: "Overview",
+      label: "Secrets",
       icon: ProjectIcon,
       pathSuffix: "overview",
       activeMatch: /\/secrets\/|\/commits\//
@@ -29,30 +25,39 @@ export const SecretManagerNav = ({
       label: "Approvals",
       icon: BookCheck,
       pathSuffix: "approval",
-      badgeCount: pendingRequestsCount || undefined,
-      submenu: approvalsSubmenu
+      badgeCount: pendingRequestsCount || undefined
     },
     {
       label: "Integrations",
-      icon: Plug,
+      icon: Blocks,
       pathSuffix: "integrations",
-      submenu: INTEGRATIONS_SUBMENU
-    },
-    {
-      label: "Access Control",
-      icon: Shield,
-      pathSuffix: "access-management",
-      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      submenu: SECRET_MANAGER_ACCESS_CONTROL_SUBMENU
+      // Keep highlighted on integration detail pages and the standalone app-connections page
+      activeMatch: /\/app-connections|\/integrations\//
     },
     {
       label: "Insights",
       icon: ActivityIcon,
       pathSuffix: "insights"
+    }
+  ];
+
+  const administrationItems: NavItem[] = [
+    {
+      label: "Access Control",
+      icon: Shield,
+      pathSuffix: "access-management",
+      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings", submenu: SM_SETTINGS_SUBMENU }
   ];
 
-  return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
+  return (
+    <>
+      <ProjectNavList items={generalItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Administration">
+        <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+    </>
+  );
 };

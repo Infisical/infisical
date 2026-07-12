@@ -12,6 +12,7 @@ export const CronJobName = {
   HealthAlert: "health-alert",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
+  DailyResourceNotification: "daily-resource-notification",
   FrequentResourceCleanup: "frequent-resource-cleanup",
   CertificateCleanup: "certificate-cleanup",
   CertificateV3AutoRenewal: "certificate-v3-auto-renewal",
@@ -22,7 +23,6 @@ export const CronJobName = {
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
   PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",
-  PamAccountRotation: "pam-account-rotation",
   DailySecretSyncRetry: "daily-secret-sync-retry",
   SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
@@ -35,7 +35,11 @@ export const CronJobName = {
   GoDaddyOrderPolling: "godaddy-order-polling",
   CaCrlRotation: "ca-crl-rotation",
   SignerDailyAutoRenewal: "signer-daily-auto-renewal",
-  SignerIssuancePolling: "signer-issuance-polling"
+  SignerIssuancePolling: "signer-issuance-polling",
+  AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
+  AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
+  LicenseUsageFlush: "license-usage-flush",
+  PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

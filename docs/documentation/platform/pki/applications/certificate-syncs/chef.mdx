@@ -38,7 +38,7 @@ Store certificates in Chef data bags for distribution to nodes via Chef Infra. C
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
             - **Preserve Data Bag Item on Renewal**: Update the existing data bag item on renewal instead of creating a new one.
             - **Include Root CA**: Include the Root CA certificate in the chain.
-            - **Certificate Name Schema**: Customize item names using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize item names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Field Mappings**:

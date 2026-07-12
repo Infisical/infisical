@@ -1,9 +1,15 @@
-import { useTranslation } from "react-i18next";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Plus, Siren } from "lucide-react";
 
 import { OrgPermissionCan, PermissionDeniedBanner } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 
@@ -11,7 +17,6 @@ import { AddOrgIncidentContactModal } from "./AddOrgIncidentContactModal";
 import { OrgIncidentContactsTable } from "./OrgIncidentContactsTable";
 
 export const OrgIncidentContactsSection = () => {
-  const { t } = useTranslation();
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addContact"
   ] as const);
@@ -19,30 +24,41 @@ export const OrgIncidentContactsSection = () => {
 
   return (
     <>
-      <hr className="border-mineshaft-600" />
-      <div className="flex items-center justify-between pt-4">
-        <p className="text-md text-mineshaft-100">{t("section.incident.incident-contacts")}</p>
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.IncidentAccount}>
-          {(isAllowed) => (
-            <Button
-              colorSchema="secondary"
-              type="submit"
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("addContact")}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Siren className="size-4 text-accent" />
+            Incident Contacts
+          </CardTitle>
+          <CardDescription>
+            Contacts notified in the unlikely event of a severe incident.
+          </CardDescription>
+          <CardAction>
+            <OrgPermissionCan
+              I={OrgPermissionActions.Create}
+              a={OrgPermissionSubjects.IncidentAccount}
             >
-              Add contact
-            </Button>
+              {(isAllowed) => (
+                <Button
+                  variant="outline"
+                  isDisabled={!isAllowed}
+                  onClick={() => handlePopUpOpen("addContact")}
+                >
+                  <Plus />
+                  Add Contact
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount) ? (
+            <OrgIncidentContactsTable />
+          ) : (
+            <PermissionDeniedBanner />
           )}
-        </OrgPermissionCan>
-      </div>
-      <div className="py-4">
-        {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount) ? (
-          <OrgIncidentContactsTable />
-        ) : (
-          <PermissionDeniedBanner />
-        )}
-      </div>
+        </CardContent>
+      </Card>
       <AddOrgIncidentContactModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

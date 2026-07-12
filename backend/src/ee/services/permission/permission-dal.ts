@@ -227,10 +227,14 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
+          // Match the privilege against the request's actor literal, not against
+          // Membership.actor*Id. Group-derived memberships have actorUserId/actorIdentityId
+          // NULL, so the column-to-column predicate dropped privileges for any user
+          // whose only project access is via a group.
           if (actorType === ActorType.IDENTITY) {
-            qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`);
+            qb.on(`${TableName.AdditionalPrivilege}.actorIdentityId`, db.raw("?", [actorId]));
           } else {
-            qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`);
+            qb.on(`${TableName.AdditionalPrivilege}.actorUserId`, db.raw("?", [actorId]));
           }
 
           if (scopeData.scope === AccessScope.Organization) {
@@ -425,6 +429,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.scopeResourceType`, resourceType)
         .where(`${TableName.Membership}.scopeResourceId`, resourceId)
+        .where(`${TableName.Membership}.isActive`, true)
         .where((qb) => {
           if (actorType === ActorType.USER) {
             void qb
@@ -966,15 +971,14 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          const memberActorCol =
-            actorType === ActorType.IDENTITY
-              ? `${TableName.Membership}.actorIdentityId`
-              : `${TableName.Membership}.actorUserId`;
+          // Match by literal actor id, not Membership.actor*Id — see getPermission for the
+          // group-derived membership rationale. Read and fingerprint must stay aligned, or
+          // the cache will think nothing changed and serve stale abilities.
           const privActorCol =
             actorType === ActorType.IDENTITY
               ? `${TableName.AdditionalPrivilege}.actorIdentityId`
               : `${TableName.AdditionalPrivilege}.actorUserId`;
-          qb.on(memberActorCol, privActorCol).andOn(
+          qb.on(privActorCol, db.raw("?", [actorId])).andOn(
             `${TableName.Membership}.scopeProjectId`,
             `${TableName.AdditionalPrivilege}.projectId`
           );

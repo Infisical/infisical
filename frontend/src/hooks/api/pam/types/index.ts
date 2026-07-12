@@ -1,62 +1,193 @@
 import { OrderByDirection } from "../../generic/types";
 import {
+  PamAccessRequestDecision,
+  PamAccessStatus,
   PamAccountOrderBy,
+  PamAccountType,
   PamAccountView,
-  PamResourceOrderBy,
-  PamResourceType,
+  PamApproverType,
+  PamDiscoverySchedule,
+  PamDiscoveryType,
+  PamPolicyType,
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
-import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
-import { TSessionSummaryConfig } from "./base-resource";
-import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
-import { TMongoDBAccount, TMongoDBResource } from "./mongodb-resource";
-import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
-import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
-import { TOracleDBAccount, TOracleDBResource } from "./oracledb-resource";
-import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
-import { TRedisAccount, TRedisResource } from "./redis-resource";
-import { TSSHAccount, TSSHResource } from "./ssh-resource";
-import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
-export * from "./aws-iam-resource";
-export * from "./kubernetes-resource";
-export * from "./mongodb-resource";
-export * from "./mssql-resource";
-export * from "./mysql-resource";
-export * from "./oracledb-resource";
-export * from "./postgres-resource";
-export * from "./redis-resource";
-export * from "./ssh-resource";
-export * from "./windows-server-resource";
+export type TPamDiscoveryTypeOption = {
+  type: PamDiscoveryType;
+  name: string;
+  icon: string;
+  credentialAccountType: PamAccountType;
+};
 
-export type TPamResource =
-  | TPostgresResource
-  | TMySQLResource
-  | TMsSQLResource
-  | TRedisResource
-  | TMongoDBResource
-  | TSSHResource
-  | TAwsIamResource
-  | TKubernetesResource
-  | TWindowsResource
-  | TOracleDBResource;
+export type TPamDiscoverySource = {
+  id: string;
+  projectId: string;
+  name: string;
+  discoveryType: PamDiscoveryType;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  credentialAccountId: string;
+  discoveryConfiguration: Record<string, unknown>;
+  schedule: PamDiscoverySchedule;
+  lastRunAt?: string | null;
+  lastRunStatus?: string | null;
+  lastRunError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
-export type TPamAccount =
-  | TPostgresAccount
-  | TMySQLAccount
-  | TMsSQLAccount
-  | TRedisAccount
-  | TMongoDBAccount
-  | TSSHAccount
-  | TAwsIamAccount
-  | TKubernetesAccount
-  | TWindowsAccount
-  | TOracleDBAccount;
+export type TPamDiscoveryRun = {
+  id: string;
+  discoverySourceId: string;
+  status: string;
+  triggeredBy: string;
+  discoveredCount: number;
+  newCount: number;
+  errorMessage?: string | null;
+  machineErrors?: { machine: string; error: string }[] | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+};
+
+export type TPamDiscoveredAccount = {
+  id: string;
+  accountType: PamAccountType;
+  name: string;
+  fingerprint: string;
+  createdAt: string;
+};
+
+export type TCreatePamDiscoverySourceDTO = {
+  discoveryType: PamDiscoveryType;
+  name: string;
+  credentialAccountId: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  schedule: PamDiscoverySchedule;
+  configuration?: Record<string, unknown>;
+};
+
+export type TUpdatePamDiscoverySourceDTO = {
+  sourceId: string;
+  discoveryType: PamDiscoveryType;
+  name?: string;
+  credentialAccountId?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  schedule?: PamDiscoverySchedule;
+  configuration?: Record<string, unknown>;
+};
+
+export type TDeletePamDiscoverySourceDTO = { sourceId: string; discoveryType: PamDiscoveryType };
+export type TTriggerPamDiscoveryScanDTO = { sourceId: string; discoveryType: PamDiscoveryType };
+export type TImportPamDiscoveredAccountsDTO = {
+  sourceId: string;
+  folderId: string;
+  accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+};
+
+export type TImportPamDiscoveredAccountResult = {
+  discoveredAccountId: string;
+  status: string;
+  accountId?: string;
+  message?: string;
+};
+
+export type PamFolderPermissionSet = [
+  PamResourcePermissionActions,
+  PamResourcePermissionSub.PamResource
+];
+
+export enum PamFieldWidget {
+  Text = "text",
+  Number = "number",
+  Boolean = "boolean",
+  Select = "select",
+  Textarea = "textarea",
+  Password = "password"
+}
+
+export type TPamFieldDescriptor = {
+  key: string;
+  label: string;
+  widget: PamFieldWidget;
+  required: boolean;
+  secret: boolean;
+  options?: { label: string; value: string }[];
+  defaultValue?: string | number | boolean;
+  showWhen?: { field: string; equals: string | boolean };
+  tooltip?: string;
+};
+
+export type TPamPolicyDescriptor = {
+  key: PamPolicyType;
+  label: string;
+  description: string;
+};
+
+export type TPamAccountTypeMetadata = {
+  type: PamAccountType;
+  name: string;
+  icon: string;
+  supportsWebAccess: boolean;
+  requiresGateway: boolean;
+  connectionFields: TPamFieldDescriptor[];
+  credentialFields: TPamFieldDescriptor[];
+  applicablePolicies: TPamPolicyDescriptor[];
+};
+
+export type TPamAccessResponse = {
+  sessionId: string;
+  accountType: string;
+  metadata?: Record<string, string>;
+};
+
+// New model types
+
+export enum PamAccountAccessibilityIssue {
+  NoGateway = "no-gateway",
+  NoRecordingConfig = "no-recording-config",
+  NoCredential = "no-credential",
+  NoApprovalConfig = "no-approval-config"
+}
+
+export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
+  type === PamAccountType.Windows || type === PamAccountType.WindowsAd;
+
+export type TPamAccountSettingsOverrides = {
+  recordingS3Config?: { bucket: string; region: string; keyPrefix?: string };
+};
+
+export type TPamAccount = {
+  id: string;
+  name: string;
+  description: string | null;
+  folderId: string;
+  folderName: string | null;
+  templateId: string;
+  templateName: string;
+  templatePolicies: unknown;
+  templateSettings: unknown;
+  accountType: PamAccountType;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  recordingConnectionId: string | null;
+  settingsOverrides: TPamAccountSettingsOverrides | null;
+  connectionDetails: Record<string, unknown>;
+  // Non-secret credential fields only
+  credentials: Record<string, unknown>;
+  isAccessible: boolean;
+  accessibilityIssues: PamAccountAccessibilityIssue[];
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TPamFolder = {
   id: string;
-  projectId: string;
   parentId?: string | null;
   name: string;
   description?: string | null;
@@ -64,7 +195,22 @@ export type TPamFolder = {
   updatedAt: string;
 };
 
+export type TPamAccountTemplate = {
+  id: string;
+  name: string;
+  description?: string | null;
+  type: PamAccountType;
+  policies: unknown;
+  settings: unknown;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  recordingConnectionId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 // Session log types
+
 export type TPamCommandLog = {
   input: string;
   output: string;
@@ -74,9 +220,9 @@ export type TPamCommandLog = {
 export type TSessionEvent = {
   timestamp: string;
   eventType: "input" | "output" | "resize" | "error";
-  channelType?: SessionChannelType; // Optional for backwards compatibility with existing logs
-  data: string; // Base64 encoded binary data
-  elapsedTime: number; // Seconds since session start (for replay)
+  channelType?: SessionChannelType;
+  data: string;
+  elapsedTime: number;
 };
 
 export type THttpRequestEvent = {
@@ -109,12 +255,14 @@ export type TPamSessionAiInsights = {
 
 export type TPamSession = {
   id: string;
-  projectId: string;
   accountId?: string | null;
-  resourceId?: string | null;
-  resourceType: PamResourceType;
-  resourceName: string;
+  accountType: PamAccountType;
   accountName: string;
+  folderId?: string | null;
+  folderName?: string | null;
+  resourceName?: string | null;
+  selectedHost?: string | null;
+  accessMethod?: string | null;
   userId?: string | null;
   actorName: string;
   actorEmail: string;
@@ -134,47 +282,35 @@ export type TPamSession = {
   reason?: string | null;
 };
 
-// Resource DTOs
-export type TListPamResourcesDTO = {
-  projectId: string;
+export type TAccessiblePamAccount = {
+  id: string;
+  name: string;
+  description: string | null;
+  folderId: string | null;
+  templateId: string;
+  folderName: string | null;
+  templateName: string;
+  accountType: PamAccountType;
+  canLaunch: boolean;
+  requiresApproval?: boolean;
+  requireReason?: boolean;
+  accessStatus?: PamAccessStatus;
+  grantExpiresAt?: string | null;
+  disabledReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TListAccessiblePamAccountsDTO = {
   offset?: number;
   limit?: number;
-  orderBy?: PamResourceOrderBy;
-  orderDirection?: OrderByDirection;
   search?: string;
-  filterResourceTypes?: string;
-  metadataFilter?: Array<{ key: string; value?: string }>;
-};
-
-export type TCreatePamResourceDTO = Pick<
-  TPamResource,
-  "name" | "connectionDetails" | "resourceType" | "projectId"
-> & {
-  gatewayId?: string;
-  gatewayPoolId?: string;
-  domainId?: string | null;
-  metadata?: { key: string; value: string }[];
-};
-
-export type { TSessionSummaryConfig };
-
-export type TUpdatePamResourceDTO = Partial<Pick<TPamResource, "name" | "connectionDetails">> & {
-  resourceId: string;
-  resourceType: PamResourceType;
-  gatewayId?: string;
-  gatewayPoolId?: string;
-  domainId?: string | null;
-  metadata?: { key: string; value: string }[];
-  rotationAccountCredentials?: { username: string; password: string } | null;
-  sessionSummaryConfig?: TSessionSummaryConfig;
-};
-
-export type TDeletePamResourceDTO = {
-  resourceId: string;
-  resourceType: PamResourceType;
+  folderId?: string;
+  accountType?: string;
 };
 
 // Account DTOs
+
 export type TListPamAccountsDTO = {
   projectId: string;
   accountView?: PamAccountView;
@@ -183,42 +319,12 @@ export type TListPamAccountsDTO = {
   orderBy?: PamAccountOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
-  filterResourceIds?: string;
-  filterDomainIds?: string;
-  metadataFilter?: Array<{ key: string; value?: string }>;
 };
 
-export type TCreatePamAccountDTO = Pick<
-  TPamAccount,
-  "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId" | "requireMfa"
-> & {
-  parentType: string;
-  domainId?: string;
-  internalMetadata?: Record<string, unknown>;
-  metadata?: { key: string; value: string }[];
-  policyId?: string | null;
+export type TCreatePamFolderDTO = {
+  name: string;
+  description?: string;
 };
-
-export type TUpdatePamAccountDTO = Partial<
-  Pick<TPamAccount, "name" | "description" | "credentials" | "requireMfa">
-> & {
-  accountId: string;
-  parentType: string;
-  internalMetadata?: Record<string, unknown>;
-  metadata?: { key: string; value: string }[];
-  policyId?: string | null;
-};
-
-export type TDeletePamAccountDTO = {
-  accountId: string;
-  parentType: string;
-};
-
-// Folder DTOs
-export type TCreatePamFolderDTO = Pick<
-  TPamFolder,
-  "name" | "description" | "parentId" | "projectId"
->;
 
 export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description">> & {
   folderId: string;
@@ -228,115 +334,335 @@ export type TDeletePamFolderDTO = {
   folderId: string;
 };
 
-export type TPamAccountDependency = {
-  id: string;
-  accountId: string;
-  resourceId: string;
-  dependencyType: string;
-  name: string;
-  displayName?: string | null;
-  state?: string | null;
-  data: Record<string, unknown>;
-  source: string;
-  isRotationSyncEnabled: boolean;
-  syncStatus?: string | null;
-  lastSyncedAt?: string | null;
-  lastSyncMessage?: string | null;
-  resourceName?: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+export type TPamFolderWithCount = TPamFolder & { accountCount: number };
 
-export type TPamRotationRule = {
-  id: string;
-  resourceId: string;
-  name?: string | null;
-  namePattern: string;
-  enabled: boolean;
-  intervalSeconds?: number | null;
-  priority: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type TCreatePamRotationRuleDTO = {
-  resourceId: string;
-  name?: string;
-  namePattern: string;
-  enabled: boolean;
-  intervalSeconds?: number | null;
-};
-
-export type TUpdatePamRotationRuleDTO = {
-  resourceId: string;
-  ruleId: string;
-  name?: string | null;
-  namePattern?: string;
-  enabled?: boolean;
-  intervalSeconds?: number | null;
-};
-
-export type TDeletePamRotationRuleDTO = {
-  resourceId: string;
-  ruleId: string;
-};
-
-export type TReorderPamRotationRulesDTO = {
-  resourceId: string;
-  ruleIds: string[];
-};
-
-export type TPamResourceDependency = TPamAccountDependency & {
-  accountName: string | null;
-};
-
-export type TPamSessionLogsPage = {
-  logs: TPamSessionLog[];
-  hasMore: boolean;
-  batchCount: number;
-};
-
-// Account Policy types
-export enum PamAccountPolicyRuleType {
-  CommandBlocking = "command-blocking",
-  SessionLogMasking = "session-log-masking",
-  RequireReason = "require-reason"
-}
-
-export type TPamAccountPolicyRuleConfig = {
-  patterns?: string[];
-};
-
-export type TPamAccountPolicyRules = Partial<
-  Record<PamAccountPolicyRuleType, TPamAccountPolicyRuleConfig>
->;
-
-export type TPamAccountPolicy = {
-  id: string;
-  projectId: string;
-  name: string;
-  description?: string | null;
-  rules: TPamAccountPolicyRules;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type TCreatePamAccountPolicyDTO = {
-  projectId: string;
+export type TCreatePamAccountDTO = {
+  accountType: PamAccountType;
   name: string;
   description?: string;
-  rules: TPamAccountPolicyRules;
+  folderId: string;
+  templateId: string;
+  connectionDetails: Record<string, unknown>;
+  credentials: Record<string, unknown>;
+  gatewayId?: string;
+  gatewayPoolId?: string;
+  recordingConnectionId?: string;
 };
 
-export type TUpdatePamAccountPolicyDTO = {
-  policyId: string;
+export type TUpdatePamAccountDTO = {
+  accountId: string;
+  accountType: PamAccountType;
   name?: string;
   description?: string | null;
-  rules?: TPamAccountPolicyRules;
-  isActive?: boolean;
+  folderId?: string;
+  templateId?: string;
+  connectionDetails?: Record<string, unknown>;
+  credentials?: Record<string, unknown>;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  recordingConnectionId?: string | null;
+  settingsOverrides?: TPamAccountSettingsOverrides | null;
 };
 
-export type TDeletePamAccountPolicyDTO = {
+export type TDeletePamAccountDTO = {
+  accountId: string;
+  accountType: PamAccountType;
+};
+
+export type TPamAccountTemplateWithCount = TPamAccountTemplate & { accountCount: number };
+
+export type TPamAccountTemplateDetail = TPamAccountTemplate & {
+  accountCount: number;
+  rotationImpact: { willRotate: number; needsRotationAccount: number };
+};
+
+export type TListPamAccountTemplatesDTO = {
+  search?: string;
+  type?: PamAccountType;
+};
+
+export type TCreatePamAccountTemplateDTO = {
+  name: string;
+  description?: string;
+  type: PamAccountType;
+  policies?: Record<string, unknown>;
+  settings?: Record<string, unknown>;
+};
+
+export type TUpdatePamAccountTemplateDTO = {
+  templateId: string;
+  name?: string;
+  description?: string | null;
+  policies?: Record<string, unknown>;
+  settings?: Record<string, unknown>;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  recordingConnectionId?: string | null;
+};
+
+export type TDeletePamAccountTemplateDTO = {
+  templateId: string;
+};
+
+export type TPamMember = {
+  membershipId: string;
+  userId?: string | null;
+  identityId?: string | null;
+  groupId?: string | null;
+  role: string;
+  isActive: boolean;
+  expiresAt?: string | null;
+  createdAt: string;
+};
+
+export type TPamResourceRole = {
+  slug: string;
+  name: string;
+  isDefault?: boolean;
+  description?: string;
+};
+
+export type TPamMembersData = {
+  users: TPamMember[];
+  groups: TPamMember[];
+  identities: TPamMember[];
+};
+
+export type TAddAccountUserMemberDTO = {
+  accountId: string;
+  userId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateAccountMemberRoleDTO = {
+  accountId: string;
+  userId: string;
+  role: string;
+};
+
+export type TRemoveAccountMemberDTO = {
+  accountId: string;
+  userId: string;
+};
+
+export type TAddAccountGroupMemberDTO = {
+  accountId: string;
+  groupId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateAccountGroupMemberRoleDTO = {
+  accountId: string;
+  groupId: string;
+  role: string;
+};
+
+export type TRemoveAccountGroupMemberDTO = {
+  accountId: string;
+  groupId: string;
+};
+
+export type TAddFolderUserMemberDTO = {
+  folderId: string;
+  userId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateFolderMemberRoleDTO = {
+  folderId: string;
+  userId: string;
+  role: string;
+};
+
+export type TRemoveFolderMemberDTO = {
+  folderId: string;
+  userId: string;
+};
+
+export type TAddFolderGroupMemberDTO = {
+  folderId: string;
+  groupId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateFolderGroupMemberRoleDTO = {
+  folderId: string;
+  groupId: string;
+  role: string;
+};
+
+export type TRemoveFolderGroupMemberDTO = {
+  folderId: string;
+  groupId: string;
+};
+
+export type TAddAccountIdentityMemberDTO = {
+  accountId: string;
+  identityId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateAccountIdentityMemberRoleDTO = {
+  accountId: string;
+  identityId: string;
+  role: string;
+};
+
+export type TRemoveAccountIdentityMemberDTO = {
+  accountId: string;
+  identityId: string;
+};
+
+export type TAddFolderIdentityMemberDTO = {
+  folderId: string;
+  identityId: string;
+  role: string;
+  expiry?: string | null;
+};
+
+export type TUpdateFolderIdentityMemberRoleDTO = {
+  folderId: string;
+  identityId: string;
+  role: string;
+};
+
+export type TRemoveFolderIdentityMemberDTO = {
+  folderId: string;
+  identityId: string;
+};
+
+export type TAddPamProductIdentityMemberDTO = {
+  identityId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductIdentityMemberDTO = {
+  identityId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TRemovePamProductIdentityMemberDTO = {
+  identityId: string;
+  projectId: string;
+};
+
+// Credential rotation
+
+export type TPamPasswordRequirements = {
+  length: number;
+  required: { lowercase: number; uppercase: number; digits: number; symbols: number };
+  allowedSymbols?: string;
+};
+
+export type TPamAccountRotation = {
+  enabled: boolean;
+  intervalSeconds: number | null;
+  passwordRequirements: TPamPasswordRequirements | null;
+  rotationAccountId: string | null;
+  rotationAccountName: string | null;
+  lastRotatedAt: string | null;
+  rotationStatus: string | null;
+  lastRotationError: string | null;
+  isReady: boolean;
+};
+
+export type TPamRotationCandidateGroup = {
+  folderId: string | null;
+  folderName: string | null;
+  accounts: { id: string; name: string; host: string }[];
+};
+
+export type TUpdatePamAccountRotationDTO = {
+  accountId: string;
+  rotationAccountId: string | null;
+};
+
+export type TRotatePamAccountDTO = {
+  accountId: string;
+};
+
+// Access Requests / Approvals
+
+export type TPamAccessRequest = {
+  id: string;
+  projectId: string;
   policyId: string;
+  requesterId: string | null;
+  requesterName: string;
+  requesterEmail: string;
+  type: string;
+  status: string;
+  justification: string | null;
+  currentStep: number;
+  requestData: {
+    version: number;
+    requestData: {
+      accountId: string;
+      folderId: string;
+      reason?: string;
+      duration: string;
+    };
+  } | null;
+  expiresAt: string | null;
+  scopeType: string | null;
+  scopeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // joined fields (populated by backend list endpoints)
+  accountName?: string;
+  accountType?: PamAccountType;
+  folderName?: string;
+  host?: string;
+  grantExpiresAt?: string | null;
+  grantStatus?: string | null;
+};
+
+export type TPamApprovalConfig = {
+  steps: {
+    approvers: { type: PamApproverType; id: string }[];
+  }[];
+};
+
+export type TPamAccessGrant = {
+  id: string;
+  requestId: string;
+  granteeUserId: string | null;
+  status: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  attributes: {
+    accountId?: string;
+    folderId?: string;
+  } | null;
+  createdAt: string;
+};
+
+export type TCreatePamAccessRequestDTO = {
+  accountId: string;
+  reason?: string;
+  duration: string;
+};
+
+export type TReviewPamAccessRequestDTO = {
+  requestId: string;
+  status: PamAccessRequestDecision;
+  comment?: string;
+};
+
+export type TRevokePamAccessRequestDTO = {
+  requestId: string;
+};
+
+export type TSetPamApprovalConfigDTO = {
+  folderId: string;
+  steps: {
+    approvers: { type: PamApproverType; id: string }[];
+  }[];
 };

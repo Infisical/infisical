@@ -1,34 +1,39 @@
 import { useMemo } from "react";
 import {
-  faClipboardCheck,
-  faEdit,
-  faEllipsisV,
-  faTrash,
-  faUser,
-  faUserGroup
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+  BanIcon,
+  ClipboardCheckIcon,
+  EllipsisVerticalIcon,
+  InfoIcon,
+  PencilIcon,
+  Trash2Icon,
+  UserIcon,
+  UsersIcon
+} from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
+  Detail,
+  DetailLabel,
+  DetailValue,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GenericFieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   IconButton,
-  Td,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
-import { useToggle } from "@app/hooks";
 import { Approver } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
@@ -64,8 +69,6 @@ export const ApprovalPolicyRow = ({
   onEdit,
   onDelete
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle();
-
   const labels = useMemo(() => {
     const sortedSteps = policy.approvers?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0));
     const entityInSameSequence = sortedSteps?.reduce(
@@ -105,40 +108,144 @@ export const ApprovalPolicyRow = ({
 
   const { variant, Icon } = policyDetails[policy.policyType];
 
+  const environmentNames = policy.environments.map((env) => env.name).join(", ");
+
   return (
-    <>
-      <Tr
-        isHoverable
-        isSelectable
-        role="button"
-        tabIndex={0}
-        onKeyDown={(evt) => {
-          if (evt.key === "Enter") setIsExpanded.toggle();
-        }}
-        onClick={() => setIsExpanded.toggle()}
-      >
-        <Td>{policy.name || <span className="text-mineshaft-400">Unnamed Policy</span>}</Td>
-        <Td>{policy.environments.map((env) => env.name).join(", ")}</Td>
-        <Td>{policy.secretPath || "*"}</Td>
-        <Td>
-          <Badge variant={variant}>
-            <Icon />
-            <span>{policyDetails[policy.policyType].name}</span>
-          </Badge>
-        </Td>
-        <Td>
+    <TableRow>
+      <TableCell isTruncatable className="w-1/3" title={policy.name || "Unnamed Policy"}>
+        {policy.name || <span className="text-muted">Unnamed Policy</span>}
+      </TableCell>
+      <TableCell isTruncatable className="w-1/3" title={environmentNames}>
+        {environmentNames}
+      </TableCell>
+      <TableCell isTruncatable className="w-1/3" title={policy.secretPath || "*"}>
+        {policy.secretPath || "*"}
+      </TableCell>
+      <TableCell>
+        <Badge variant={variant}>
+          <Icon />
+          <span>{policyDetails[policy.policyType].name}</span>
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <HoverCard openDelay={100}>
+            <HoverCardTrigger asChild>
+              <IconButton aria-label="View approvers" variant="ghost-muted" size="xs">
+                <InfoIcon />
+              </IconButton>
+            </HoverCardTrigger>
+            <HoverCardContent
+              align="end"
+              className="max-h-96 thin-scrollbar w-80 overflow-y-auto p-4"
+            >
+              <div className="mb-3 text-sm font-medium text-foreground">Approvers</div>
+              {labels && labels.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {labels.map((el, index) => (
+                    <div
+                      key={`approval-list-${index + 1}`}
+                      className="flex flex-col gap-2.5 border-b border-border pb-4 last:border-0 last:pb-0"
+                    >
+                      {labels.length > 1 && (
+                        <Badge variant="neutral" className="w-fit">
+                          Step {index + 1}
+                        </Badge>
+                      )}
+                      <Detail>
+                        <DetailLabel className="flex items-center gap-1.5">
+                          <UserIcon className="size-3" />
+                          Users
+                        </DetailLabel>
+                        <DetailValue>
+                          {el.users.length ? (
+                            <div className="flex flex-row flex-wrap gap-x-1 gap-y-1">
+                              {el.users.map(({ member, approver }, idx) => {
+                                const isLast = idx === el.users.length - 1;
+
+                                if (!member) {
+                                  return (
+                                    <span key={approver.id} className="flex items-center gap-1">
+                                      <span className="flex items-center gap-1.5 opacity-40">
+                                        {approver.name || approver.id}
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge variant="neutral">
+                                              <BanIcon />
+                                              Removed
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            This user has been removed from the project.
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </span>
+                                      {!isLast && ","}
+                                    </span>
+                                  );
+                                }
+
+                                return member.user.isOrgMembershipActive ? (
+                                  <span key={member.id}>
+                                    {getMemberLabel(member)}
+                                    {!isLast && ","}
+                                  </span>
+                                ) : (
+                                  <span key={member.id} className="flex items-center gap-1">
+                                    <span className="flex items-center gap-1.5 opacity-40">
+                                      {getMemberLabel(member)}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Badge variant="neutral">
+                                            <BanIcon />
+                                            Inactive
+                                          </Badge>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          This user has been deactivated and no longer has an active
+                                          organization membership.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </span>
+                                    {!isLast && ","}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-muted">None</span>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                      <Detail>
+                        <DetailLabel className="flex items-center gap-1.5">
+                          <UsersIcon className="size-3" />
+                          Groups
+                        </DetailLabel>
+                        <DetailValue>
+                          {el.groupLabels || <span className="text-muted">None</span>}
+                        </DetailValue>
+                      </Detail>
+                      <Detail>
+                        <DetailLabel className="flex items-center gap-1.5">
+                          <ClipboardCheckIcon className="size-3" />
+                          Approvals Required
+                        </DetailLabel>
+                        <DetailValue>{el.approvals}</DetailValue>
+                      </Detail>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-muted">No approvers configured.</span>
+              )}
+            </HoverCardContent>
+          </HoverCard>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild className="cursor-pointer rounded-lg">
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Options"
-                  colorSchema="secondary"
-                  className="w-6"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
-              </DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label="Options" variant="ghost" size="xs">
+                <EllipsisVerticalIcon />
+              </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end" className="min-w-48 p-1">
               <ProjectPermissionCan
@@ -146,14 +253,8 @@ export const ApprovalPolicyRow = ({
                 a={ProjectPermissionSub.SecretApproval}
               >
                 {(isAllowed) => (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faEdit} />}
-                  >
+                  <DropdownMenuItem onClick={onEdit} isDisabled={!isAllowed}>
+                    <PencilIcon />
                     Edit Policy
                   </DropdownMenuItem>
                 )}
@@ -163,117 +264,16 @@ export const ApprovalPolicyRow = ({
                 a={ProjectPermissionSub.SecretApproval}
               >
                 {(isAllowed) => (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete();
-                    }}
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faTrash} />}
-                  >
+                  <DropdownMenuItem variant="danger" onClick={onDelete} isDisabled={!isAllowed}>
+                    <Trash2Icon />
                     Delete Policy
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
             </DropdownMenuContent>
           </DropdownMenu>
-        </Td>
-      </Tr>
-      <Tr>
-        <Td colSpan={6} className="border-none! p-0">
-          <div
-            className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ease-in-out ${
-              isExpanded ? "max-h-104 thin-scrollbar overflow-y-auto! opacity-100" : "max-h-0"
-            }`}
-          >
-            <div className="p-4">
-              <div className="border-b-2 border-mineshaft-500 pb-2">Approvers</div>
-              {labels?.map((el, index) => (
-                <div key={`approval-list-${index + 1}`} className="flex">
-                  {labels.length > 1 && (
-                    <div className="flex w-12 flex-col items-center gap-2 pr-4">
-                      <div
-                        className={twMerge("grow border-mineshaft-600", index !== 0 && "border-r")}
-                      />
-                      {labels.length > 1 && (
-                        <Badge variant="neutral">
-                          <span>{index + 1}</span>
-                        </Badge>
-                      )}
-                      <div
-                        className={twMerge(
-                          "grow border-mineshaft-600",
-                          index < labels.length - 1 && "border-r"
-                        )}
-                      />
-                    </div>
-                  )}
-                  <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
-                    <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
-                      {Boolean(el.users.length) && (
-                        <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map(({ member, approver }, idx) => {
-                            if (!member) {
-                              return (
-                                <div className="flex items-center" key={approver.id}>
-                                  <span className="flex items-center gap-2 opacity-40">
-                                    {approver.name || approver.id}
-                                    <span className="text-xs">
-                                      <Tooltip content="This user has been removed from the project.">
-                                        <div>
-                                          <Badge variant="neutral">
-                                            <BanIcon />
-                                            Removed
-                                          </Badge>
-                                        </div>
-                                      </Tooltip>
-                                    </span>
-                                  </span>
-                                  {idx < el.users.length - 1 && ","}
-                                </div>
-                              );
-                            }
-
-                            return member.user.isOrgMembershipActive ? (
-                              <div className="flex items-center" key={member.id}>
-                                <span>{getMemberLabel(member)}</span>
-                                {idx < el.users.length - 1 && ","}
-                              </div>
-                            ) : (
-                              <div className="flex items-center" key={member.id}>
-                                <span className="flex items-center gap-2 opacity-40">
-                                  {getMemberLabel(member)}
-                                  <span className="text-xs">
-                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                      <div>
-                                        <Badge variant="neutral">
-                                          <BanIcon />
-                                          Inactive
-                                        </Badge>
-                                      </div>
-                                    </Tooltip>
-                                  </span>
-                                </span>
-                                {idx < el.users.length - 1 && ","}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </GenericFieldLabel>
-                    <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
-                      {el.groupLabels}
-                    </GenericFieldLabel>
-                    <GenericFieldLabel icon={faClipboardCheck} label="Approvals Required">
-                      {el.approvals}
-                    </GenericFieldLabel>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Td>
-      </Tr>
-    </>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 };

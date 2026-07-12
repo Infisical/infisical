@@ -1,15 +1,38 @@
-import { AccessScope, ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  ProjectMembershipRole,
+  ProjectType,
+  TemporaryPermissionMode,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  isCustomProjectRole,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
+import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
@@ -43,7 +66,9 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityMetadataDAL: TIdentityMetadataDALFactory;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeAllTokensForIdentity">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
-  projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds">;
+  projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  roleDAL: Pick<TRoleDALFactory, "find">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -58,7 +83,9 @@ export const identityV2ServiceFactory = ({
   identityMetadataDAL,
   identityAccessTokenService,
   keyStore,
-  projectDAL
+  projectDAL,
+  orgDAL,
+  roleDAL
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
     permissionService
@@ -88,6 +115,121 @@ export const identityV2ServiceFactory = ({
       });
     }
 
+    let resolvedRoleDocs: Omit<TMembershipRolesInsert, "membershipId">[] | null = null;
+
+    if (scopeData.scope === AccessScope.Project && data.roles && data.roles.length > 0) {
+      const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+      if (hasNoPermanentRole) {
+        throw new BadRequestError({ message: "Identity must have at least one permanent role" });
+      }
+
+      const { permission: actorPermission } = await permissionService.getProjectPermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        actionProjectType: ActionProjectType.Any,
+        actorAuthMethod: dto.permission.authMethod,
+        projectId: scopeData.projectId,
+        actorOrgId: dto.permission.orgId
+      });
+
+      const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
+        projectDAL.findById(scopeData.projectId)
+      );
+      if (project?.type === ProjectType.CertificateManager) {
+        const invalidRoles = data.roles.filter(
+          (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+        );
+        if (invalidRoles.length > 0) {
+          throw new BadRequestError({ message: "Certificate Manager only supports Admin and Member roles." });
+        }
+      }
+
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+        requestMemoKeys.orgFindById(dto.permission.orgId),
+        () => orgDAL.findById(dto.permission.orgId)
+      );
+
+      const permissionRoles = await permissionService.getProjectPermissionByRoles(
+        data.roles.map((el) => el.role),
+        scopeData.projectId
+      );
+      for (const permissionRole of permissionRoles) {
+        if (permissionRole?.role?.slug !== ProjectMembershipRole.NoAccess) {
+          const permissionBoundary = validatePrivilegeChangeOperation(
+            shouldUseNewPrivilegeSystem,
+            [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+            ProjectPermissionSub.Identity,
+            actorPermission,
+            permissionRole.permission,
+            { assignableRole: permissionRole.role?.slug }
+          );
+          if (!permissionBoundary.isValid) {
+            throw new PermissionBoundaryError({
+              message: constructPermissionErrorMessage(
+                "Failed to create identity project membership",
+                shouldUseNewPrivilegeSystem,
+                ProjectPermissionIdentityActions.AssignRole,
+                ProjectPermissionSub.Identity
+              ),
+              details: { missingPermissions: permissionBoundary.missingPermissions }
+            });
+          }
+        }
+      }
+
+      const customInputRoles = data.roles.filter((el) => isCustomProjectRole(el.role));
+      const hasCustomRole = customInputRoles.length > 0;
+      if (hasCustomRole && !plan?.rbac) {
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+      }
+      const customRoles = hasCustomRole
+        ? await roleDAL.find({
+            projectId: scopeData.projectId,
+            $in: { slug: customInputRoles.map(({ role }) => role) }
+          })
+        : [];
+      if (customRoles.length !== customInputRoles.length) {
+        throw new NotFoundError({ message: "One or more custom roles not found" });
+      }
+      const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
+
+      resolvedRoleDocs = data.roles.map((membershipRole) => {
+        const isCustom = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
+        if (membershipRole.isTemporary) {
+          if (membershipRole.temporaryMode !== TemporaryPermissionMode.Relative) {
+            throw new BadRequestError({ message: "Only relative temporary permission mode is supported" });
+          }
+          const relativeTimeInMs = ms(membershipRole.temporaryRange);
+          return {
+            role: isCustom ? ProjectMembershipRole.Custom : membershipRole.role,
+            customRoleId: isCustom ? customRolesGroupBySlug[membershipRole.role][0].id : null,
+            isTemporary: true as const,
+            temporaryMode: membershipRole.temporaryMode,
+            temporaryRange: membershipRole.temporaryRange,
+            temporaryAccessStartTime: new Date(membershipRole.temporaryAccessStartTime),
+            temporaryAccessEndTime: new Date(
+              new Date(membershipRole.temporaryAccessStartTime).getTime() + relativeTimeInMs
+            )
+          };
+        }
+        return {
+          role: isCustom ? ProjectMembershipRole.Custom : membershipRole.role,
+          customRoleId: isCustom ? customRolesGroupBySlug[membershipRole.role][0].id : null
+        };
+      });
+    }
+
+    let projectMemberRole = ProjectMembershipRole.NoAccess as string;
+    if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
+      const project = await projectDAL.findById(scopeData.projectId);
+      if (project?.type === ProjectType.CertificateManager) {
+        projectMemberRole = ProjectMembershipRole.Member;
+      }
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create(
         {
@@ -107,7 +249,8 @@ export const identityV2ServiceFactory = ({
         tx
       );
 
-      const newMembershipIds = [orgMembership.id];
+      await membershipRoleDAL.insertMany([{ membershipId: orgMembership.id, role: OrgMembershipRole.NoAccess }], tx);
+
       if (scopeData.scope === AccessScope.Project) {
         const projectMembership = await membershipIdentityDAL.create(
           {
@@ -118,16 +261,11 @@ export const identityV2ServiceFactory = ({
           },
           tx
         );
-        newMembershipIds.push(projectMembership.id);
+        const roleEntries: TMembershipRolesInsert[] = resolvedRoleDocs
+          ? resolvedRoleDocs.map((doc) => ({ ...doc, membershipId: projectMembership.id }))
+          : [{ membershipId: projectMembership.id, role: projectMemberRole }];
+        await membershipRoleDAL.insertMany(roleEntries, tx);
       }
-
-      await membershipRoleDAL.insertMany(
-        newMembershipIds.map((membershipId) => ({
-          membershipId,
-          role: OrgMembershipRole.NoAccess
-        })),
-        tx
-      );
 
       let insertedMetadata: Array<{
         id: string;
@@ -391,6 +529,17 @@ export const identityV2ServiceFactory = ({
       return { identityMemberships: [], totalCount: 0 };
     }
 
+    const enrichWithLockouts = async <T extends { identity: { id: string } }>(rows: T[]) =>
+      Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          identity: {
+            ...row.identity,
+            activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(row.identity.id, keyStore)
+          }
+        }))
+      );
+
     if (conditionalProjectIds.size === 0) {
       const { totalCount, docs } = await identityMembershipV2DAL.searchIdentitiesV2({
         orgId: actorOrgId,
@@ -403,7 +552,7 @@ export const identityV2ServiceFactory = ({
         accessibleProjectIds
       });
 
-      return { identityMemberships: docs, totalCount };
+      return { identityMemberships: await enrichWithLockouts(docs), totalCount };
     }
 
     // Conditional Read rules on Identity exist for at least one accessible project. SQL pagination
@@ -422,7 +571,7 @@ export const identityV2ServiceFactory = ({
     const pageOffset = offset ?? 0;
     const pageLimit = limit ?? filtered.length;
     return {
-      identityMemberships: filtered.slice(pageOffset, pageOffset + pageLimit),
+      identityMemberships: await enrichWithLockouts(filtered.slice(pageOffset, pageOffset + pageLimit)),
       totalCount: filtered.length
     };
   };

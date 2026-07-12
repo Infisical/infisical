@@ -1,43 +1,74 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useMemo, useState } from "react";
-import {
-  faCheck,
-  faCheckCircle,
-  faChevronDown,
-  faLock,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch,
-  faUser
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
+  ChevronsUpDownIcon,
   ClipboardCheckIcon,
+  EllipsisIcon,
+  EyeIcon,
+  HourglassIcon,
   LucideIcon,
+  PlusIcon,
+  SearchIcon,
   ShieldBanIcon,
   TimerIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
+  Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
-  Input,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Label,
   Pagination,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Skeleton,
   Switch,
-  Tooltip
-} from "@app/components/v2";
-import { Badge, DocumentationLinkBadge } from "@app/components/v3";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -67,22 +98,93 @@ import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { RequestAccessModal } from "./components/RequestAccessModal";
 import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 
-const generateRequestText = (request: TAccessApprovalRequest) => {
-  const { isTemporary } = request;
+type FilterMenuProps = {
+  className?: string;
+  searchPlaceholder: string;
+  allLabel: string;
+  options: { value: string; label: string }[];
+  value?: string;
+  onChange: (value?: string) => void;
+};
+
+const FilterMenu = ({
+  className,
+  searchPlaceholder,
+  allLabel,
+  options,
+  value,
+  onChange
+}: FilterMenuProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+
+  const selectedOption = options.find((option) => option.value === value);
 
   return (
-    <div className="flex items-center justify-between text-sm">
-      <div>
-        Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
-        <code className="mx-1 rounded-sm bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
-          {request.policy.secretPath}
-        </code>{" "}
-        in{" "}
-        <code className="mx-1 rounded-sm bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
-          {request.environmentName}
-        </code>
-      </div>
-    </div>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={isOpen}
+          className={cn("justify-between", className)}
+        >
+          <span className="truncate">{selectedOption ? selectedOption.label : allLabel}</span>
+          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[220px] p-0">
+        <Command>
+          <CommandInput
+            value={inputValue}
+            onValueChange={setInputValue}
+            placeholder={searchPlaceholder}
+          />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            {!inputValue && (
+              <>
+                <CommandGroup>
+                  <CommandItem
+                    forceMount
+                    keywords={[]}
+                    onSelect={() => {
+                      onChange(undefined);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <CheckIcon className={cn("size-4", !value ? "opacity-100" : "opacity-0")} />
+                    {allLabel}
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.value}
+                  keywords={[option.label]}
+                  onSelect={() => {
+                    onChange(value === option.value ? undefined : option.value);
+                    setIsOpen(false);
+                  }}
+                >
+                  <CheckIcon
+                    className={cn(
+                      "size-4 shrink-0",
+                      value === option.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <span className="truncate">{option.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -118,6 +220,15 @@ export const AccessApprovalRequest = ({
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
     (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
     {}
+  );
+
+  const environmentNamesBySlug = useMemo(
+    () =>
+      (currentProject?.environments ?? []).reduce<Record<string, string>>(
+        (prev, curr) => ({ ...prev, [curr.slug]: curr.name }),
+        {}
+      ),
+    [currentProject?.environments]
   );
 
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
@@ -189,18 +300,29 @@ export const AccessApprovalRequest = ({
     return (
       accessRequests?.filter((request) => {
         const { environmentName, requestedByUser } = request;
+        const environmentDisplayName = environmentNamesBySlug[environmentName] ?? environmentName;
 
         const searchValue = search.trim().toLowerCase();
 
         return (
           environmentName?.toLowerCase().includes(searchValue) ||
+          environmentDisplayName?.toLowerCase().includes(searchValue) ||
           `${requestedByUser?.email ?? ""} ${requestedByUser?.firstName ?? ""} ${requestedByUser?.lastName ?? ""}`
             .toLowerCase()
             .includes(searchValue)
         );
       }) ?? []
     );
-  }, [requests, statusFilter, requestedByFilter, envFilter, search, isRequestExpired, showExpired]);
+  }, [
+    requests,
+    statusFilter,
+    requestedByFilter,
+    envFilter,
+    search,
+    isRequestExpired,
+    showExpired,
+    environmentNamesBySlug
+  ]);
 
   useResetPageHelper({
     totalCount: filteredRequests.length,
@@ -346,265 +468,327 @@ export const AccessApprovalRequest = ({
 
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Access Requests</p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/access-requests" />
-            </div>
-            <p className="text-sm text-bunker-300">
-              Request and review access to secrets in sensitive environments and folders
-            </p>
-          </div>
-          <Tooltip
-            content="To submit Access Requests, your project needs to create Access Request policies first."
-            isDisabled={policiesLoading || !!policies?.length}
-          >
-            <Button
-              onClick={() => {
-                if (subscription && !subscription?.secretApproval) {
-                  handlePopUpOpen("upgradePlan", {
-                    text: "Access requests feature can be unlocked if you upgrade to Infisical Pro plan."
-                  });
-                  return;
-                }
-                handlePopUpOpen("requestAccess");
-              }}
-              colorSchema="secondary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              isDisabled={policiesLoading || !policies?.length}
-            >
-              Request Access
-            </Button>
-          </Tooltip>
-        </div>
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search approval requests by requesting user or environment..."
-          className="flex-1"
-          containerClassName="mb-4"
-        />
-        <div className="flex items-center space-x-8 rounded-t-md border-x border-t border-mineshaft-600 bg-mineshaft-800 px-8 py-3 text-sm">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setStatusFilter("open")}
-            onKeyDown={(evt) => {
-              if (evt.key === "Enter") setStatusFilter("open");
-            }}
-            className={twMerge(
-              "cursor-pointer font-medium",
-              statusFilter !== "open" && "text-gray-500 duration-100 hover:text-gray-400"
-            )}
-          >
-            <FontAwesomeIcon icon={faLock} className="mr-2" />
-            {requestCount?.pendingCount ?? 0} Pending
-          </div>
-          <div
-            className={twMerge(
-              "cursor-pointer font-medium",
-              statusFilter !== "close" && "text-gray-500 duration-100 hover:text-gray-400"
-            )}
-            role="button"
-            tabIndex={0}
-            onClick={() => setStatusFilter("close")}
-            onKeyDown={(evt) => {
-              if (evt.key === "Enter") setStatusFilter("close");
-            }}
-          >
-            <FontAwesomeIcon icon={faCheck} className="mr-2" />
-            {requestCount?.finalizedCount ?? 0} Closed
-          </div>
-          <div className="flex grow justify-end space-x-8">
-            {statusFilter === "close" && (
-              <Switch
-                id="show-expired-toggle"
-                isChecked={showExpired}
-                onCheckedChange={setShowExpired}
-                containerClassName="cursor-pointer text-sm"
-                className="cursor-pointer"
-              >
-                Show Expired
-              </Switch>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Access Requests
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/access-requests" />
+          </CardTitle>
+          <CardDescription>
+            Request and review access to secrets in sensitive environments and folders
+          </CardDescription>
+          <CardAction>
+            {(() => {
+              const requestAccessButton = (
                 <Button
-                  variant="plain"
-                  colorSchema="secondary"
-                  className={envFilter ? "text-white" : "text-bunker-300"}
-                  rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
+                  onClick={() => {
+                    if (subscription && !subscription?.secretApproval) {
+                      handlePopUpOpen("upgradePlan", {
+                        text: "Access requests feature can be unlocked if you upgrade to Infisical Pro plan."
+                      });
+                      return;
+                    }
+                    handlePopUpOpen("requestAccess");
+                  }}
+                  variant="project"
+                  isDisabled={policiesLoading || !policies?.length}
                 >
-                  Environments
+                  <PlusIcon />
+                  Request Access
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={1}
-                className="max-h-80 thin-scrollbar overflow-y-auto"
-              >
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Select an Environment
-                </DropdownMenuLabel>
-                {currentProject?.environments.map(({ slug, name }) => (
-                  <DropdownMenuItem
-                    onClick={() => setEnvFilter((state) => (state === slug ? undefined : slug))}
-                    key={`request-filter-${slug}`}
-                    icon={envFilter === slug && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
+              );
+
+              if (!policiesLoading && !policies?.length) {
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
+                      <span tabIndex={0}>{requestAccessButton}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      To submit Access Requests, your project needs to create Access Request
+                      policies first.
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return requestAccessButton;
+            })()}
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col">
+          <div className="mb-4 flex flex-wrap items-center gap-2 2xl:flex-nowrap">
+            <Tabs
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as "open" | "close")}
+            >
+              <TabsList variant="filled">
+                <TabsTrigger value="open">
+                  <HourglassIcon className="mr-1.5 size-3.5" />
+                  {requestCount?.pendingCount ?? 0} Pending
+                </TabsTrigger>
+                <TabsTrigger value="close">
+                  <CheckIcon className="mr-1.5 size-3.5" />
+                  {requestCount?.finalizedCount ?? 0} Closed
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex flex-wrap items-center gap-2 2xl:mr-auto 2xl:flex-nowrap">
+              <InputGroup className="xl:w-[26rem]">
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by requesting user or environment..."
+                />
+              </InputGroup>
+              {statusFilter === "close" && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="show-expired-toggle"
+                    variant="project"
+                    size="sm"
+                    checked={showExpired}
+                    onCheckedChange={setShowExpired}
+                  />
+                  <Label
+                    htmlFor="show-expired-toggle"
+                    className="cursor-pointer text-sm font-normal"
                   >
-                    {name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {!!permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button
-                    variant="plain"
-                    colorSchema="secondary"
-                    className={requestedByFilter ? "text-white" : "text-bunker-300"}
-                    rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
-                  >
-                    Requested By
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={1}
-                  className="max-h-80 thin-scrollbar overflow-y-auto"
-                >
-                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                    Select Requesting User
-                  </DropdownMenuLabel>
-                  {members?.map(({ user: membershipUser, id }) => (
-                    <DropdownMenuItem
-                      onClick={() =>
-                        setRequestedByFilter((state) =>
-                          state === membershipUser.id ? undefined : membershipUser.id
-                        )
-                      }
-                      key={`request-filter-member-${id}`}
-                      icon={
-                        requestedByFilter === membershipUser.id && (
-                          <FontAwesomeIcon icon={faCheckCircle} />
-                        )
-                      }
-                      iconPos="right"
-                    >
-                      {membershipUser.username}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    Show Expired
+                  </Label>
+                </div>
+              )}
+            </div>
+            <FilterMenu
+              className="w-[200px]"
+              searchPlaceholder="Filter environments"
+              allLabel="All Environments"
+              value={envFilter}
+              onChange={setEnvFilter}
+              options={(currentProject?.environments ?? []).map((env) => ({
+                value: env.slug,
+                label: env.name
+              }))}
+            />
+            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+              <FilterMenu
+                className="w-[220px]"
+                searchPlaceholder="Filter users"
+                allLabel="All Users"
+                value={requestedByFilter}
+                onChange={setRequestedByFilter}
+                options={(members ?? []).map(({ user: membershipUser }) => ({
+                  value: membershipUser.id,
+                  label: membershipUser.username
+                }))}
+              />
             )}
           </div>
-        </div>
-        <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
-          {filteredRequests?.length === 0 && !isFiltered && (
-            <div className="py-12">
-              <EmptyState
-                title={`No ${statusFilter === "open" ? "Pending" : "Closed"} Access Requests`}
-              />
-            </div>
+          {!areRequestsPending && filteredRequests?.length === 0 && !isFiltered && (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
+                  No {statusFilter === "open" ? "Pending" : "Closed"} Access Requests
+                </EmptyTitle>
+                <EmptyDescription>
+                  {statusFilter === "open"
+                    ? "Access requests awaiting review will appear here."
+                    : "Approved, rejected, revoked, or expired access requests will appear here."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
           {Boolean(!filteredRequests?.length && isFiltered && !areRequestsPending) && (
-            <div className="py-12">
-              <EmptyState title="No Requests Match Filters" icon={faSearch} />
-            </div>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No Requests Match Filters</EmptyTitle>
+                <EmptyDescription>
+                  No access requests match your current search or filters.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
-          {!!filteredRequests?.length &&
-            filteredRequests?.slice(offset, perPage * page).map((request) => {
-              const details = generateRequestDetails(request);
+          {(areRequestsPending || !!filteredRequests?.length) && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Environment</TableHead>
+                  <TableHead>Secret Path</TableHead>
+                  <TableHead>Requested By</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-5" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {areRequestsPending &&
+                  Array.from({ length: 3 }).map((_, idx) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`access-request-skeleton-${idx}`}>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {filteredRequests?.slice(offset, perPage * page).map((request) => {
+                  const details = generateRequestDetails(request);
+                  const StatusIcon = details.displayData.icon;
+                  const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+                  const requester = memberUser || request.requestedByUser;
+                  const requesterName =
+                    [requester?.firstName, requester?.lastName].filter(Boolean).join(" ") ||
+                    requester?.email;
+                  const isExpiringSoon =
+                    request.expiresAt &&
+                    request.status === ApprovalStatus.PENDING &&
+                    !isRequestExpired(request);
+                  const environmentDisplayName =
+                    environmentNamesBySlug[request.environmentName] ?? request.environmentName;
 
-              const StatusIcon = details.displayData.icon;
-
-              return (
-                <div
-                  key={request.id}
-                  className="flex w-full cursor-pointer border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700 aria-disabled:opacity-80"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectRequest(request)}
-                  onKeyDown={(evt) => {
-                    if (evt.key === "Enter") {
-                      handleSelectRequest(request);
-                    }
-                  }}
-                >
-                  <div className="flex flex-1 items-center justify-between">
-                    <div className="flex w-full flex-col justify-between">
-                      <div className="mb-1 flex w-full items-center">
-                        <FontAwesomeIcon
-                          icon={faLock}
-                          size="xs"
-                          className="mr-1.5 text-mineshaft-300"
-                        />
-                        {generateRequestText(request)}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs leading-3 text-gray-500">
-                          {(() => {
-                            const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
-                            const requester = memberUser || request.requestedByUser;
-                            if (!requester) return null;
-                            return (
-                              <>
-                                Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
-                                ago by {requester.firstName} {requester.lastName} ({requester.email}
-                                ){" "}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-4">
-                      {request.requestedByUserId === user.id && (
-                        <div className="flex items-center gap-1.5 text-xs whitespace-nowrap text-bunker-300">
-                          <FontAwesomeIcon icon={faUser} size="sm" />
-                          <span>Requested By You</span>
-                        </div>
-                      )}
-                      {request.expiresAt &&
-                        request.status === ApprovalStatus.PENDING &&
-                        !isRequestExpired(request) && (
-                          <Tooltip
-                            content={`Expires ${format(request.expiresAt, "M/d/yyyy h:mm aa")}`}
-                          >
-                            <Badge
-                              variant={
-                                new Date(request.expiresAt).getTime() - Date.now() <
-                                24 * 60 * 60 * 1000
-                                  ? "danger"
-                                  : "warning"
-                              }
-                            >
-                              <TimerIcon />
-                              Expires in {formatDistance(new Date(request.expiresAt), new Date())}
-                            </Badge>
-                          </Tooltip>
-                        )}
-                      <div className="flex shrink-0 justify-end">
-                        <Tooltip content={details.displayData.tooltipContent}>
-                          <Badge variant={details.displayData.type}>
-                            {StatusIcon && <StatusIcon />}
-                            <span className="whitespace-nowrap">{details.displayData.label}</span>
+                  return (
+                    <TableRow
+                      key={request.id}
+                      tabIndex={0}
+                      onClick={() => handleSelectRequest(request)}
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") handleSelectRequest(request);
+                      }}
+                    >
+                      <TableCell>
+                        {request.isTemporary ? (
+                          <Badge variant="info">
+                            <TimerIcon />
+                            <span className="whitespace-nowrap">
+                              {request.temporaryRange
+                                ? ms(ms(request.temporaryRange), { long: true })
+                                : "Temporary"}
+                            </span>
                           </Badge>
+                        ) : (
+                          <Badge variant="neutral">Permanent</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell isTruncatable className="w-1/2">
+                        {environmentDisplayName}
+                      </TableCell>
+                      <TableCell isTruncatable className="w-1/2">
+                        <p className="truncate text-foreground">{request.policy.secretPath}</p>
+                      </TableCell>
+                      <TableCell>
+                        {requester ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-foreground">{requesterName}</span>
+                            {request.requestedByUserId === user.id && (
+                              <Badge variant="neutral">You</Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              {formatDistance(new Date(request.createdAt), new Date())} ago
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {format(new Date(request.createdAt), "M/d/yyyy h:mm aa")}
+                          </TooltipContent>
                         </Tooltip>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {details.displayData.tooltipContent ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant={details.displayData.type}>
+                                  {StatusIcon && <StatusIcon />}
+                                  <span className="whitespace-nowrap">
+                                    {details.displayData.label}
+                                  </span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{details.displayData.tooltipContent}</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Badge variant={details.displayData.type}>
+                              {StatusIcon && <StatusIcon />}
+                              <span className="whitespace-nowrap">{details.displayData.label}</span>
+                            </Badge>
+                          )}
+                          {isExpiringSoon && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant={
+                                    new Date(request.expiresAt!).getTime() - Date.now() <
+                                    24 * 60 * 60 * 1000
+                                      ? "danger"
+                                      : "warning"
+                                  }
+                                >
+                                  <TimerIcon />
+                                  {formatDistance(new Date(request.expiresAt!), new Date())}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Expires {format(request.expiresAt!, "M/d/yyyy h:mm aa")}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton variant="ghost" size="xs" aria-label="Request actions">
+                              <EllipsisIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleSelectRequest(request)}>
+                              <EyeIcon />
+                              View Request
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
           {Boolean(filteredRequests.length) && (
             <Pagination
-              className="border-none"
               count={filteredRequests.length}
               page={page}
               perPage={perPage}
@@ -612,8 +796,8 @@ export const AccessApprovalRequest = ({
               onChangePerPage={handlePerPageChange}
             />
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
       {!!policies && (
         <RequestAccessModal
           policies={policies}

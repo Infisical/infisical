@@ -56,10 +56,38 @@ export const mintRelayJwt = ({
   );
 };
 
-export type ResourceRef = { type: "gateway"; id: string } | { type: "relay"; id: string };
+export const mintKmipServerJwt = ({
+  kmipServerId,
+  orgId,
+  tokenVersion,
+  accessTokenTTL
+}: {
+  kmipServerId: string;
+  orgId: string;
+  tokenVersion: number;
+  accessTokenTTL: number;
+}) => {
+  const appCfg = getConfig();
+  return crypto.jwt().sign(
+    {
+      kmipServerId,
+      orgId,
+      authTokenType: AuthTokenType.KMIP_SERVER_ACCESS_TOKEN,
+      tokenVersion
+    },
+    appCfg.AUTH_SECRET,
+    accessTokenTTL === 0 ? undefined : { expiresIn: accessTokenTTL }
+  );
+};
+
+export type ResourceRef =
+  | { type: "gateway"; id: string }
+  | { type: "relay"; id: string }
+  | { type: "kmip"; id: string };
 
 export const RESOURCE_TYPE_GATEWAY = "gateway" as const;
 export const RESOURCE_TYPE_RELAY = "relay" as const;
+export const RESOURCE_TYPE_KMIP = "kmip" as const;
 
 export const assertGatewayResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_GATEWAY) {
@@ -71,6 +99,14 @@ export const assertGatewayResource = (resource: { type: string }, methodName: st
 
 export const assertRelayResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_RELAY) {
+    throw new BadRequestError({
+      message: `Resource type "${resource.type}" not supported for ${methodName} auth`
+    });
+  }
+};
+
+export const assertKmipServerResource = (resource: { type: string }, methodName: string) => {
+  if (resource.type !== RESOURCE_TYPE_KMIP) {
     throw new BadRequestError({
       message: `Resource type "${resource.type}" not supported for ${methodName} auth`
     });

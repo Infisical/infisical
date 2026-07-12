@@ -5,6 +5,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import {
   ActorIdentityAttributes,
@@ -614,7 +615,12 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
 ]);
 
 export const DynamicSecretGcpIamSchema = z.object({
-  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128)
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128),
+  tokenScopes: z
+    .array(z.string().trim().min(1))
+    .min(1, "At least one scope is required")
+    .default(["https://www.googleapis.com/auth/iam", "https://www.googleapis.com/auth/cloud-platform"])
+    .describe("OAuth scopes for the generated access token.")
 });
 
 export const DynamicSecretGithubSchema = z.object({
@@ -844,6 +850,19 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   })
 ]);
 
+// Extended metadata passed to a provider's create() call. When the project
+// has a matching secret validation rule, `passwordValidation` carries the
+// constraints that any generated password must satisfy; providers that
+// generate passwords (e.g. sql-database, milvus) honor it in place of the
+// user-configured passwordRequirements.
+export type TDynamicProviderCreateMetadata = {
+  projectId: string;
+  passwordValidation?: {
+    constraints: TConstraint[];
+    ruleNames: string[];
+  };
+};
+
 export type TDynamicProviderFns = {
   create: (arg: {
     inputs: unknown;
@@ -851,7 +870,7 @@ export type TDynamicProviderFns = {
     usernameTemplate?: string | null;
     identity: ActorIdentityAttributes;
     dynamicSecret: TDynamicSecrets;
-    metadata: { projectId: string };
+    metadata: TDynamicProviderCreateMetadata;
     config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;

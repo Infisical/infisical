@@ -99,7 +99,10 @@ export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedU
 ]);
 
 export const CreateAzureKeyVaultConnectionSchema = ValidateAzureKeyVaultConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, { supportsCredentialRotation: true })
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, {
+    supportsCredentialRotation: true,
+    supportsGateways: true
+  })
 );
 
 export const UpdateAzureKeyVaultConnectionSchema = z
@@ -113,7 +116,12 @@ export const UpdateAzureKeyVaultConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureKeyVault).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, { supportsCredentialRotation: true }));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, {
+      supportsCredentialRotation: true,
+      supportsGateways: true
+    })
+  );
 
 const BaseAzureKeyVaultConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.AzureKeyVault)

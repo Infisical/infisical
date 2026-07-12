@@ -35,6 +35,7 @@ import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
+import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -45,6 +46,7 @@ import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSync
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
+import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
@@ -56,13 +58,19 @@ import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
+import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { TravisCISyncReviewFields } from "./TravisCISyncReviewFields";
+import {
+  TriggerDevSyncOptionsReviewFields,
+  TriggerDevSyncReviewFields
+} from "./TriggerDevSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
@@ -175,11 +183,17 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Railway:
       DestinationFieldsComponent = <RailwaySyncReviewFields />;
       break;
+    case SecretSync.HasuraCloud:
+      DestinationFieldsComponent = <HasuraCloudSyncReviewFields />;
+      break;
     case SecretSync.Checkly:
       DestinationFieldsComponent = <ChecklySyncReviewFields />;
       break;
     case SecretSync.Supabase:
       DestinationFieldsComponent = <SupabaseSyncReviewFields />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationFieldsComponent = <RundeckSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
@@ -225,6 +239,16 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Snowflake:
       DestinationFieldsComponent = <SnowflakeSyncReviewFields />;
+      break;
+    case SecretSync.TriggerDev:
+      DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Qovery:
+      DestinationFieldsComponent = <QoverySyncReviewFields />;
+      break;
+    case SecretSync.Cloud66:
+      DestinationFieldsComponent = <Cloud66SyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

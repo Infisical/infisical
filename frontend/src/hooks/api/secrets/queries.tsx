@@ -107,7 +107,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       isHoneyTokenSecret: el.isHoneyTokenSecret,
       rotationId: el.rotationId,
       reminder: el.reminder,
-      isEmpty: el.isEmpty
+      isEmpty: el.isEmpty,
+      revokedProjectFolderGrant: el.revokedProjectFolderGrant
     };
 
     if (el.type === SecretType.Personal) {

@@ -62,6 +62,7 @@ export type DashboardProjectSecretsDetailsResponse = {
 
 export type ProjectSecretsImportedBy = {
   environment: { name: string; slug: string };
+  project?: { name: string; slug: string; id: string };
   folders: {
     name: string;
     secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
@@ -182,3 +183,29 @@ export type DashboardSecretValue =
       value: undefined;
       valueOverride: string;
     };
+
+export type FolderMoveBlockingType =
+  | "dynamic_secret"
+  | "secret_rotation"
+  | "honey_token"
+  | "secret_import"
+  | "secret_approval_policy";
+
+export type FolderMoveEligibilityResponse = {
+  canMove: boolean;
+  folderName: string;
+  blockingType?: FolderMoveBlockingType;
+  blockingPath?: string;
+  // present only when the eligibility check was given a destination
+  destinationBlocked?: boolean;
+  // the destination policy's path/name are disclosed only when the actor may read that path
+  destinationBlockingPath?: string;
+  destinationPolicyName?: string;
+};
+
+export type TFolderMoveDestinationCheck = {
+  folderId: string;
+  folderName: string;
+  destinationEnvironment: string;
+  destinationPath: string;
+};

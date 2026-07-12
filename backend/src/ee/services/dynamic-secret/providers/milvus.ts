@@ -11,13 +11,14 @@ import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretMilvusSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretMilvusSchema, TDynamicProviderCreateMetadata, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
 type TMilvusProviderInputs = z.infer<typeof DynamicSecretMilvusSchema>;
@@ -222,8 +223,9 @@ export const MilvusProvider = ({
     usernameTemplate?: string | null;
     identity: ActorIdentityAttributes;
     dynamicSecret: TDynamicSecrets;
+    metadata?: TDynamicProviderCreateMetadata;
   }) => {
-    const { inputs, usernameTemplate, identity, dynamicSecret } = data;
+    const { inputs, usernameTemplate, identity, dynamicSecret, metadata } = data;
     const providerInputs = await validateProviderInputs(inputs as object);
 
     const username = await generateUsername(
@@ -236,7 +238,9 @@ export const MilvusProvider = ({
       },
       sanitizeMilvusUsername
     );
-    const password = generatePassword();
+    const password = metadata?.passwordValidation?.constraints?.length
+      ? generatePasswordWithConstraints(metadata.passwordValidation.constraints)
+      : generatePassword();
     const roleName = deriveRoleName(username);
 
     const gatewayCallback = async (host: string, port: number) => {

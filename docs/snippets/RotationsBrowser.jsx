@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS", "AI & LLM"];
 
   const rotations = [
     {
@@ -39,6 +39,15 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/dbt-service-token",
       description: "Learn how to automatically rotate DBT service tokens.",
       category: "Data Analytics",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Convex Access Key",
+      slug: "convex-access-key",
+      path: "/documentation/platform/secret-rotation/convex-access-key",
+      description:
+        "Learn how to automatically rotate Convex access keys.",
+      category: "Cloud Providers",
       rotationType: "Dual-Phase",
     },
     {
@@ -152,6 +161,15 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Fireworks API Key",
+      slug: "fireworks-api-key",
+      path: "/documentation/platform/secret-rotation/fireworks-api-key",
+      description:
+        "Learn how to automatically rotate Fireworks AI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Supabase API Key",
       slug: "supabase-api-key",
       path: "/documentation/platform/secret-rotation/supabase-api-key",
@@ -177,7 +195,24 @@ export const RotationsBrowser = () => {
         "Learn how to automatically rotate Datadog application keys.",
       category: "Monitoring",
       rotationType: "Dual-Phase",
-    }
+    },
+    {
+      name: "LiteLLM API Key",
+      slug: "litellm-api-key",
+      path: "/documentation/platform/secret-rotation/litellm-api-key",
+      description: "Learn how to automatically rotate LiteLLM API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "OpenAI API Key",
+      slug: "openai-api-key",
+      path: "/documentation/platform/secret-rotation/openai-service-account",
+      description:
+        "Learn how to automatically rotate OpenAI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

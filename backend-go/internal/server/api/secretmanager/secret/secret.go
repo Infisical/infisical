@@ -163,7 +163,8 @@ func getSecretType(identity *auth.Identity, requestedType string) string {
 }
 
 // createGetSecretsAuditLog creates an audit log entry for listing secrets.
-func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) error {
+// TODO: Re-enable once Go backend is primary - currently disabled to avoid duplicate logs with Node.js
+func (h *Handler) CreateGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) error {
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
 		return errutil.NotFound("Identity not found in context").WithErr(err)

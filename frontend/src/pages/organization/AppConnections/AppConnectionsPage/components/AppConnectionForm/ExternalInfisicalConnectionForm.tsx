@@ -1,16 +1,23 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import {
   ExternalInfisicalConnectionMethod,
@@ -18,6 +25,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -68,11 +76,7 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
         }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -82,31 +86,36 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.ExternalInfisical].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(ExternalInfisicalConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.ExternalInfisical].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger id="method" className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(ExternalInfisicalConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -114,18 +123,28 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Instance URL"
-              tooltipText="The base URL of the external Infisical instance (e.g., https://app.infisical.com)"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="instance-url">
+                Instance URL
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The base URL of the external Infisical instance (e.g.,
+                    https://app.infisical.com)
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="instance-url"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="https://app.infisical.com"
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -133,18 +152,28 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Machine Identity Client ID"
-              tooltipText="The Client ID of the Machine Identity with Universal Auth configured on the external Infisical instance"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="machine-identity-client-id">
+                Machine Identity Client ID
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Client ID of the Machine Identity with Universal Auth configured on the
+                    external Infisical instance
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="machine-identity-client-id"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="Enter Machine Identity Client ID"
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -152,36 +181,22 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Machine Identity Client Secret"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="machine-identity-client-secret">
+                Machine Identity Client Secret
+              </FieldLabel>
               <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                id="machine-identity-client-secret"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Infisical"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Infisical"}
+        />
       </form>
     </FormProvider>
   );

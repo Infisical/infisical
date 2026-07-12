@@ -76,6 +76,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 
   const init = () => {
     const dailyCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 45 * 60_000;
+    const dailyNotificationTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 15 * 60_000;
     const frequentCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 10 * 60_000;
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
@@ -93,20 +94,27 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await secretVersionDAL.pruneExcessVersions();
         await secretVersionV2DAL.pruneExcessVersions();
         await secretFolderVersionDAL.pruneExcessVersions();
+        await userNotificationDAL.pruneNotifications();
+        await keyValueStoreDAL.pruneExpiredKeys();
+        await scepTransactionDAL.pruneExpiredTransactions();
+        await identityAccessTokenRevocationDAL.removeExpiredRevocations();
+        await auditLogDAL.pruneAuditLog();
+      }
+    });
+
+    cronJob.register({
+      name: CronJobName.DailyResourceNotification,
+      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: dailyNotificationTimeoutMs,
+      leaseDurationMs: dailyNotificationTimeoutMs,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.DailyResourceNotification}]: task started`);
         await serviceTokenService.notifyExpiringTokens();
         await scimService.notifyExpiringTokens();
         await orgService.notifyInvitedUsers();
         await auditLogService.checkPostgresAuditLogVolumeMigrationAlert();
-        await userNotificationDAL.pruneNotifications();
-        await keyValueStoreDAL.pruneExpiredKeys();
-        await scepTransactionDAL.pruneExpiredTransactions();
-        const newlyExpired = await approvalRequestDAL.markExpiredRequests();
-        if (newlyExpired > 0) {
-          await certificateRequestDAL.markExpiredApprovalRequests();
-        }
-        await approvalRequestGrantsDAL.markExpiredGrants();
-        await identityAccessTokenRevocationDAL.removeExpiredRevocations();
-        await auditLogDAL.pruneAuditLog();
       }
     });
 

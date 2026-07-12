@@ -1,51 +1,37 @@
 import { Knex } from "knex";
 
-import { AccessScope } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TMembershipUserDALFactory } from "./membership-user-dal";
 
-type TAssertWillRetainAdminArg = {
-  scope: AccessScope;
+type TAssertWillRetainOrgAdminArg = {
   scopeOrgId: string;
-  scopeProjectId?: string;
   excludeMembershipIds: string[];
   dal: Pick<TMembershipUserDALFactory, "countActiveAdmins">;
   tx: Knex;
 };
 
 // Must run inside the same transaction as the membership mutation. The advisory lock keyed on
-// (scope, scopeId) serializes admin mutations per org/project so concurrent demote-and-remove
+// (scope, scopeId) serializes admin mutations per org so concurrent demote-and-remove
 // operations can't both pass the count check and then both proceed.
-export const assertWillRetainAdmin = async ({
-  scope,
+export const assertWillRetainOrgAdmin = async ({
   scopeOrgId,
-  scopeProjectId,
   excludeMembershipIds,
   dal,
   tx
-}: TAssertWillRetainAdminArg) => {
-  if (scope === AccessScope.Project && !scopeProjectId) {
-    throw new InternalServerError({ message: "scopeProjectId required for project scope admin guard" });
-  }
+}: TAssertWillRetainOrgAdminArg) => {
+  await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("org", scopeOrgId)]);
 
-  const lockScope = scope === AccessScope.Project ? "project" : "org";
-  const lockId = scope === AccessScope.Project ? (scopeProjectId as string) : scopeOrgId;
-  await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard(lockScope, lockId)]);
-
-  const remainingAdmins = await dal.countActiveAdmins({
-    scope,
+  const remainingOrgAdmins = await dal.countActiveAdmins({
     scopeOrgId,
-    scopeProjectId,
     excludeMembershipIds,
     tx
   });
 
-  if (remainingAdmins < 1) {
-    const target = scope === AccessScope.Project ? "project" : "organization";
+  if (remainingOrgAdmins < 1) {
     throw new BadRequestError({
-      message: `This action would leave the ${target} with no admin. Promote another user to admin first.`
+      message: `This action would leave the organization with no admin. Promote another user to admin first.`
     });
   }
 };
