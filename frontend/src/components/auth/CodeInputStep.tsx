@@ -85,10 +85,18 @@ export default function CodeInputStep({
 
   const isCooldownActive = endTimeRef.current > Date.now();
 
-  const handleVerify = async () => {
-    const { token } = await verifyCode({ email, code });
+  const handleVerify = async (codeToVerify?: unknown) => {
+    const codeValue = typeof codeToVerify === "string" ? codeToVerify : code;
+    const { token } = await verifyCode({ email, code: codeValue });
     SecurityClient.setSignupToken(token);
     onComplete();
+  };
+
+  const handleCodeChange = (value: string) => {
+    setCode(value);
+    if (value.length === 6 && !isVerifying) {
+      handleVerify(value);
+    }
   };
 
   const handleResend = async () => {
@@ -128,7 +136,7 @@ export default function CodeInputStep({
               inputMode="tel"
               type="text"
               fields={6}
-              onChange={setCode}
+              onChange={handleCodeChange}
               {...codeInputStyle}
               className="code-input-v3 mt-6 mb-2"
             />
@@ -139,7 +147,7 @@ export default function CodeInputStep({
               inputMode="tel"
               type="text"
               fields={6}
-              onChange={setCode}
+              onChange={handleCodeChange}
               {...codeInputStylePhone}
               className="code-input-v3 mt-2 mb-2"
             />

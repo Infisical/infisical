@@ -118,21 +118,22 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
-  const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const verifyMfa = async (event?: React.FormEvent<HTMLFormElement>, codeToVerify?: unknown) => {
+    if (event) event.preventDefault();
 
-    if (!mfaCode.trim() || !isCodeComplete) return;
+    const finalCode = typeof codeToVerify === "string" ? codeToVerify : mfaCode;
+    if (!finalCode.trim() || finalCode.length !== getExpectedCodeLength()) return;
 
     setIsLoading(true);
     try {
       let result;
 
       if (method === MfaMethod.TOTP && showRecoveryCodeInput) {
-        result = await verifyRecoveryCode(mfaCode.trim());
+        result = await verifyRecoveryCode(finalCode.trim());
       } else {
         result = await verifyMfaToken({
           email,
-          mfaCode: mfaCode.trim(),
+          mfaCode: finalCode.trim(),
           mfaMethod: method
         });
       }
@@ -166,6 +167,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCodeChange = (value: string) => {
+    setMfaCode(value);
+    if (value.length === getExpectedCodeLength() && !isLoading) {
+      verifyMfa(undefined, value);
     }
   };
 
@@ -438,7 +446,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   inputMode="tel"
                   type="text"
                   fields={6}
-                  onChange={setMfaCode}
+                  onChange={handleCodeChange}
                   className="mt-6 mb-2"
                   {...codeInputProps}
                 />
@@ -452,7 +460,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   inputMode="tel"
                   type="text"
                   fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
+                  onChange={handleCodeChange}
                   className="mb-2"
                   {...codeInputProps}
                 />
@@ -467,7 +475,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   inputMode="tel"
                   type="text"
                   fields={6}
-                  onChange={setMfaCode}
+                  onChange={handleCodeChange}
                   className="mt-2 mb-2"
                   {...codeInputPropsPhone}
                 />
@@ -481,7 +489,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   inputMode="tel"
                   type="text"
                   fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
+                  onChange={handleCodeChange}
                   className="mb-2"
                   {...codeInputPropsPhone}
                 />
