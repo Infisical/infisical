@@ -189,8 +189,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.F5BigIp]: { name: "F5 BIG-IP", image: "F5 BIG-IP.png" },
   [AppConnection.NutanixPrismCentral]: {
     name: "Nutanix Prism Central",
-    image: "Nutanix.png",
-    size: 120
+    image: "Nutanix.png"
   }
 };
 
@@ -309,13 +308,12 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
+    case F5BigIpConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
     case NutanixPrismCentralConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
-    case F5BigIpConnectionMethod.BasicAuth:
-      return { name: "Basic Auth", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

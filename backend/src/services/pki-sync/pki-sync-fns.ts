@@ -339,7 +339,9 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.NutanixPrismCentral as PkiSync);
         const nutanixPkiSync = nutanixPrismCentralPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         return nutanixPkiSync.syncCertificates(pkiSync, certificateMap);
       }

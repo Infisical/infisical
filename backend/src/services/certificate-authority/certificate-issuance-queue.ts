@@ -43,11 +43,7 @@ import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-applica
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import {
-  addRenewedCertificateToSyncs,
-  triggerAutoSyncForCertificate,
-  triggerAutoSyncForSubscriber
-} from "../pki-sync/pki-sync-utils";
+import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { runWithAcmeCancellation } from "./acme/acme-cancellation";
@@ -1115,49 +1111,6 @@ export const certificateIssuanceQueueFactory = ({
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
-      }
-
-      // Trigger PKI sync auto-sync after a successful async renewal (e.g. ACME / external CA).
-      // The synchronous renewal path handles this in certificate-v3-service; here we cover the
-      // async path where the issuance queue completes the renewal after the original request returned.
-      if (isRenewal && originalCertificateId) {
-        try {
-          const originalCert = await certificateDAL.findById(originalCertificateId);
-          if (originalCert?.pkiSubscriberId) {
-            await triggerAutoSyncForSubscriber(originalCert.pkiSubscriberId, { pkiSyncDAL, pkiSyncQueue });
-          } else if (certificateSyncDAL) {
-            const req = certificateRequestId ? await certificateRequestDAL?.findById(certificateRequestId) : null;
-            const newCertId = req?.certificateId;
-
-            // Walk the renewedFromCertificateId chain to find the nearest ancestor tracked in certificate_syncs.
-            // This handles the case where a previous async renewal broke the chain (new cert was never added).
-            let trackedAncestorId: string | null = null;
-            let walkedCertId: string | null = originalCertificateId;
-            const visited = new Set<string>();
-            while (walkedCertId && !visited.has(walkedCertId)) {
-              visited.add(walkedCertId);
-              // eslint-disable-next-line no-await-in-loop
-              const ids = await certificateSyncDAL.findPkiSyncIdsByCertificateId(walkedCertId);
-              if (ids.length > 0) {
-                trackedAncestorId = walkedCertId;
-                break;
-              }
-              // eslint-disable-next-line no-await-in-loop
-              const walkedCert = await certificateDAL.findById(walkedCertId);
-              walkedCertId = walkedCert?.renewedFromCertificateId ?? null;
-            }
-
-            if (newCertId && trackedAncestorId) {
-              await addRenewedCertificateToSyncs(trackedAncestorId, newCertId, { certificateSyncDAL });
-              await triggerAutoSyncForCertificate(newCertId, { certificateSyncDAL, pkiSyncDAL, pkiSyncQueue });
-            }
-          }
-        } catch (syncErr) {
-          logger.warn(
-            syncErr,
-            `Failed to trigger PKI sync auto-sync after async renewal [certificateId=${certificateId}] [originalCertificateId=${originalCertificateId}]`
-          );
-        }
       }
     } catch (error: unknown) {
       if (error instanceof CertificateRequestCancelledError) {

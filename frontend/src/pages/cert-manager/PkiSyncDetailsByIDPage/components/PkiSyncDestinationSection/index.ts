@@ -5,3 +5,4 @@ export { AzureKeyVaultPkiSyncDestinationSection } from "./AzureKeyVaultPkiSyncDe
 export { ChefPkiSyncDestinationSection } from "./ChefPkiSyncDestinationSection";
 export { F5BigIpPkiSyncDestinationSection } from "./F5BigIpPkiSyncDestinationSection";
 export { NetScalerPkiSyncDestinationSection } from "./NetScalerPkiSyncDestinationSection";
+export { NutanixPrismCentralPkiSyncDestinationSection } from "./NutanixPrismCentralPkiSyncDestinationSection";

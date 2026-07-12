@@ -62,7 +62,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
       />
       <div className="grid h-118 grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map(({ destination, enterprise }) => {
-          const { image, name, size = 40 } = PKI_SYNC_MAP[destination];
+          const { image, name } = PKI_SYNC_MAP[destination];
           return (
             <button
               key={destination}
@@ -79,7 +79,8 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
             >
               <img
                 src={`/images/integrations/${image}`}
-                style={{ width: `${size}px`, height: "40px", objectFit: "contain" }}
+                height={40}
+                width={40}
                 className="mt-auto"
                 alt={`${name} logo`}
               />

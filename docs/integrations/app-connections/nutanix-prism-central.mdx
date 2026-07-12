@@ -3,7 +3,7 @@ title: "Nutanix Prism Central Connection"
 description: "Learn how to configure a Nutanix Prism Central Connection for Infisical."
 ---
 
-Infisical supports connecting to Nutanix Prism Central using either a Basic Auth credentials or an API Key to manage SSL certificates on your clusters.
+Infisical supports connecting to Nutanix Prism Central using either Basic Auth credentials or an API Key to manage SSL certificates on your clusters.
 
 ## Setup
 
@@ -22,6 +22,10 @@ Infisical supports connecting to Nutanix Prism Central using either a Basic Auth
         <Note>
           The account or API key must have permission to read cluster information and manage SSL certificates on the target cluster.
         </Note>
+
+        <Warning>
+          Nutanix Prism Central instances on private networks (e.g., `10.x.x.x`, `192.168.x.x`) are blocked by default. For self-hosted Infisical, set the `ALLOW_INTERNAL_IP_CONNECTIONS=true` environment variable, or use an [Infisical Gateway](/documentation/platform/gateways/overview) to reach your Prism Central instance.
+        </Warning>
       </Step>
       <Step title="Navigate to App Connections">
         In the Infisical dashboard, navigate to **Organization Settings** > **App Connections** and click **Add Connection**.
@@ -40,7 +44,13 @@ Infisical supports connecting to Nutanix Prism Central using either a Basic Auth
         - **Auth Method**: Select **API Key** or **Basic Auth**:
           - *API Key*: Enter your API key.
           - *Basic Auth*: Enter your **Username** and **Password**.
-        - **Reject Unauthorized SSL** (Optional): Disable this if your Prism Central instance uses a self-signed or untrusted TLS certificate.
+
+        Configure the **SSL** tab:
+
+        - **SSL Certificate** (Optional): A CA certificate in PEM format to verify the Prism Central instance's TLS certificate.
+        - **Reject Unauthorized**: When enabled, Infisical will only connect if Prism Central has a valid, trusted TLS certificate. Disable for self-signed certificates or provide a CA certificate.
+
+        Optionally select a **Gateway** to route the connection through an [Infisical Gateway](/documentation/platform/gateways/overview) when Prism Central is hosted in an air-gapped or private network.
 
         Click **Connect to Nutanix Prism Central** to validate and save the connection. Infisical will verify connectivity before saving.
       </Step>
@@ -66,7 +76,8 @@ Infisical supports connecting to Nutanix Prism Central using either a Basic Auth
           "hostname": "pc.acme.com",
           "port": 9440,
           "username": "admin",
-          "password": "<your-password>"
+          "password": "<your-password>",
+          "sslRejectUnauthorized": false
         }
       }'
     ```

@@ -6,7 +6,6 @@ export const PKI_SYNC_MAP: Record<
   {
     name: string;
     image: string;
-    size?: number;
   }
 > = {
   [PkiSync.AzureKeyVault]: {
@@ -43,8 +42,7 @@ export const PKI_SYNC_MAP: Record<
   },
   [PkiSync.NutanixPrismCentral]: {
     name: "Nutanix Prism Central",
-    image: "Nutanix.png",
-    size: 100
+    image: "Nutanix.png"
   }
 };
 

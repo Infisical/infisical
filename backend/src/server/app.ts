@@ -197,7 +197,6 @@ export const main = async ({
       dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
     });
 
-    server.addHook("onReady", async () => {});
     await server.ready();
     server.swagger();
     return server;

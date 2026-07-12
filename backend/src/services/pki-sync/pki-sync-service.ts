@@ -647,6 +647,14 @@ export const pkiSyncServiceFactory = ({
     const pkiSync = await pkiSyncDAL.findById(id);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
+    // Check if the PKI sync destination supports removing certificates
+    const syncOptions = listPkiSyncOptions().find((option) => option.destination === pkiSync.destination);
+    if (!syncOptions?.canRemoveCertificates) {
+      throw new BadRequestError({
+        message: `Certificate removal is not supported for ${pkiSync.destination} PKI sync destination`
+      });
+    }
+
     let removeSubscriber;
     if (pkiSync.subscriberId) {
       removeSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);

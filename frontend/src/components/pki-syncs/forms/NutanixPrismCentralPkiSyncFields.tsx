@@ -39,7 +39,7 @@ export const NutanixPrismCentralPkiSyncFields = () => {
           const clusterFetchErrorText =
             isClustersError && connectionId
               ? ((clustersError as AxiosError<{ message?: string }>)?.response?.data?.message ??
-                "Failed to fetch clusters — check connection settings")
+                "Failed to fetch clusters. Check connection settings.")
               : undefined;
 
           return (

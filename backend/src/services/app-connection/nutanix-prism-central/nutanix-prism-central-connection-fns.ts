@@ -1,9 +1,20 @@
+import { AxiosRequestConfig } from "axios";
+import crypto from "crypto";
+import https from "https";
+
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { NutanixPrismCentralConnectionMethod } from "./nutanix-prism-central-connection-enums";
 import { TNutanixPrismCentralConnectionConfig } from "./nutanix-prism-central-connection-types";
+
+export const NUTANIX_DEFAULT_PORT = 9440;
 
 export const getNutanixPrismCentralConnectionListItem = () => {
   return {
@@ -16,50 +27,142 @@ export const getNutanixPrismCentralConnectionListItem = () => {
   };
 };
 
-// Shared builder: configures an ApiClient with host, TLS, and auth settings.
-// Exported so the PKI sync module can reuse it without duplicating the auth wiring.
-export const buildNutanixApiClient = async (
+export const buildNutanixAuthHeaders = (
   credentials: TNutanixPrismCentralConnectionConfig["credentials"],
   method: NutanixPrismCentralConnectionMethod
-) => {
-  const { ApiClient } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
-
-  const { hostname, port, sslRejectUnauthorized } = credentials;
-
-  const apiClient = new ApiClient();
-  apiClient.host = hostname;
-  apiClient.port = String(port ?? 9440);
-  apiClient.scheme = "https";
-
-  // Use the SDK's per-client verifySsl setter (creates a scoped https.Agent) instead of
-  // the process-wide NODE_TLS_REJECT_UNAUTHORIZED env var which leaks across all connections.
-  apiClient.verifySsl = sslRejectUnauthorized !== false;
+): Record<string, string> => {
+  // NTNX-Request-Id must be unique per request (Nutanix uses it for idempotency),
+  // so callers must invoke this once per request, not once per operation.
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "NTNX-Request-Id": crypto.randomUUID()
+  };
 
   if (method === NutanixPrismCentralConnectionMethod.ApiKey) {
-    const { apiKey } = credentials as { apiKey: string; hostname: string; port?: number };
-    apiClient.setApiKey(apiKey);
+    const { apiKey } = credentials as { apiKey: string };
+    headers["X-ntnx-api-key"] = apiKey;
   } else {
-    const { username, password } = credentials as { username: string; password: string; hostname: string };
-    apiClient.username = username;
-    apiClient.password = password;
+    const { username, password } = credentials as { username: string; password: string };
+    headers.Authorization = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
   }
 
-  return apiClient;
+  return headers;
+};
+
+export type TNutanixResponse<R> = {
+  data: R;
+  headers: Record<string, string | undefined>;
+};
+
+export type TNutanixMakeRequest = <R>(requestCfg: AxiosRequestConfig) => Promise<TNutanixResponse<R>>;
+
+export const executeNutanixOperationWithGateway = async <T>(
+  config: {
+    gatewayId?: string | null;
+    credentials: TNutanixPrismCentralConnectionConfig["credentials"];
+    method: NutanixPrismCentralConnectionMethod;
+  },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined,
+  operation: (makeRequest: TNutanixMakeRequest) => Promise<T>
+): Promise<T> => {
+  const { gatewayId, credentials, method } = config;
+  const { hostname, port: credPort } = credentials;
+  const port = credPort ?? NUTANIX_DEFAULT_PORT;
+
+  if (gatewayId && gatewayV2Service) {
+    await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
+
+    const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost: hostname,
+      targetPort: port
+    });
+
+    if (!platformConnectionDetails) {
+      throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
+    }
+
+    return withGatewayV2Proxy(
+      async (proxyPort) => {
+        const httpsAgent = new https.Agent({
+          servername: hostname,
+          rejectUnauthorized: credentials.sslRejectUnauthorized,
+          ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+        });
+
+        const proxyBaseUrl = `https://localhost:${proxyPort}`;
+        const targetBaseUrl = `https://${hostname}:${port}`;
+
+        const makeRequest: TNutanixMakeRequest = async <R>(requestCfg: AxiosRequestConfig) => {
+          const resp = await request.request<R>({
+            ...requestCfg,
+            url: requestCfg.url?.replace(targetBaseUrl, proxyBaseUrl),
+            headers: {
+              ...buildNutanixAuthHeaders(credentials, method),
+              ...requestCfg.headers,
+              Host: hostname
+            },
+            httpsAgent,
+            maxRedirects: 0
+          });
+          return { data: resp.data, headers: resp.headers as Record<string, string | undefined> };
+        };
+
+        return operation(makeRequest);
+      },
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        relayHost: platformConnectionDetails.relayHost,
+        gateway: platformConnectionDetails.gateway,
+        relay: platformConnectionDetails.relay
+      }
+    );
+  }
+
+  const httpsAgent = await buildSsrfSafeAgent(`https://${hostname}:${port}`, {
+    ca: credentials.sslCertificate,
+    rejectUnauthorized: credentials.sslRejectUnauthorized,
+    servername: hostname
+  });
+
+  const makeRequest: TNutanixMakeRequest = async <R>(requestCfg: AxiosRequestConfig) => {
+    const resp = await request.request<R>({
+      ...requestCfg,
+      headers: {
+        ...buildNutanixAuthHeaders(credentials, method),
+        ...requestCfg.headers
+      },
+      httpsAgent,
+      maxRedirects: 0
+    });
+    return { data: resp.data, headers: resp.headers as Record<string, string | undefined> };
+  };
+
+  return operation(makeRequest);
 };
 
 export const validateNutanixPrismCentralConnectionCredentials = async (
-  config: TNutanixPrismCentralConnectionConfig
+  config: TNutanixPrismCentralConnectionConfig,
+  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials } = config;
-  const { hostname } = credentials;
-
-  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
+  const { hostname, port: credPort } = credentials;
+  const port = credPort ?? NUTANIX_DEFAULT_PORT;
+  const baseUrl = `https://${hostname}:${port}`;
 
   try {
-    const { ClustersApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
-    const apiClient = await buildNutanixApiClient(config.credentials, config.method);
-    const clustersApi = new ClustersApi(apiClient);
-    await clustersApi.listClusters({ $limit: 1 } as Parameters<typeof clustersApi.listClusters>[0]);
+    await executeNutanixOperationWithGateway(
+      { gatewayId: config.gatewayId, credentials, method: config.method },
+      gatewayV2Service,
+      async (makeRequest) => {
+        await makeRequest({
+          method: "GET",
+          url: `${baseUrl}/api/clustermgmt/v4.2/config/clusters`,
+          params: { $limit: 1 }
+        });
+      }
+    );
   } catch (error: unknown) {
     if (error instanceof BadRequestError) throw error;
     throw new BadRequestError({
@@ -70,30 +173,43 @@ export const validateNutanixPrismCentralConnectionCredentials = async (
   return config.credentials;
 };
 
+type TNutanixClusterResponse = {
+  data: Array<{
+    extId: string;
+    name: string;
+  }>;
+};
+
 export const listNutanixClusters = async (
-  config: TNutanixPrismCentralConnectionConfig
+  config: TNutanixPrismCentralConnectionConfig,
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<{ id: string; name: string }[]> => {
   const { credentials } = config;
-  const { hostname } = credentials;
-
-  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
+  const { hostname, port: credPort } = credentials;
+  const port = credPort ?? NUTANIX_DEFAULT_PORT;
+  const baseUrl = `https://${hostname}:${port}`;
 
   try {
-    const { ClustersApi } = await import("@nutanix-api/clustermgmt-js-client/dist/es");
-    const apiClient = await buildNutanixApiClient(config.credentials, config.method);
-    const clustersApi = new ClustersApi(apiClient);
-    const response = await clustersApi.listClusters({ $limit: 100 } as Parameters<typeof clustersApi.listClusters>[0]);
-    const apiResponse = (response as unknown as { data: { getData: () => unknown } }).data;
-    const data = apiResponse.getData();
+    return await executeNutanixOperationWithGateway(
+      { gatewayId: config.gatewayId, credentials, method: config.method },
+      gatewayV2Service,
+      async (makeRequest) => {
+        const { data: body } = await makeRequest<TNutanixClusterResponse>({
+          method: "GET",
+          url: `${baseUrl}/api/clustermgmt/v4.2/config/clusters`,
+          params: { $limit: 100 }
+        });
 
-    if (!Array.isArray(data)) return [];
+        if (!Array.isArray(body?.data)) return [];
 
-    return data
-      .map((cluster: { getExtId: () => string; getName: () => string }) => ({
-        id: cluster.getExtId(),
-        name: cluster.getName()
-      }))
-      .filter((c: { id: string; name: string }) => c.id && c.name);
+        return body.data
+          .map((cluster) => ({
+            id: cluster.extId,
+            name: cluster.name
+          }))
+          .filter((c) => c.id && c.name);
+      }
+    );
   } catch (error: unknown) {
     if (error instanceof BadRequestError) throw error;
     throw new BadRequestError({

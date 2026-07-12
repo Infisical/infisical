@@ -137,7 +137,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -155,7 +155,7 @@ type TOrderCertificateDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -573,20 +573,10 @@ export const orderCertificate = async (
     : { cipherTextBlob: undefined };
 
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
-    // When renewing via the issuance queue (e.g. manual UI renewal), subscriberId is not
-    // passed through orderCertificateFromProfile. Inherit it from the original cert so the
-    // new cert stays linked to the same PKI subscriber — required for subscriber-based PKI
-    // syncs to find and push the renewed cert.
-    let effectiveSubscriberId = subscriberId;
-    if (isRenewal && originalCertificateId && !subscriberId) {
-      const originalCert = await certificateDAL.findById(originalCertificateId, innerTx);
-      effectiveSubscriberId = originalCert?.pkiSubscriberId ?? undefined;
-    }
-
     const cert = await certificateDAL.create(
       {
         caId: ca.id,
-        pkiSubscriberId: effectiveSubscriberId,
+        pkiSubscriberId: subscriberId,
         profileId,
         status: CertStatus.ACTIVE,
         friendlyName: commonName,

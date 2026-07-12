@@ -17,11 +17,20 @@ const BaseHostSchema = z.object({
     .trim()
     .min(1, "Hostname is required")
     .max(512, "Hostname cannot exceed 512 characters")
-    .refine((val) => !val.includes("/") && !val.includes("@") && !val.includes("?"), {
-      message: "Hostname must not contain /, @, or ? characters"
-    }),
+    .refine(
+      (val) =>
+        !val.includes("/") && !val.includes("@") && !val.includes("?") && !val.includes(":") && !val.includes("#"),
+      {
+        message: "Hostname must not contain /, @, ?, :, or # characters"
+      }
+    ),
   port: z.number().int().min(1).max(65535).optional(),
-  sslRejectUnauthorized: z.boolean().optional()
+  sslRejectUnauthorized: z.boolean().optional(),
+  sslCertificate: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional()
 });
 
 export const NutanixPrismCentralApiKeyCredentialsSchema = BaseHostSchema.extend({
@@ -57,7 +66,8 @@ export const SanitizedNutanixPrismCentralConnectionSchema = z.discriminatedUnion
     credentials: NutanixPrismCentralApiKeyCredentialsSchema.pick({
       hostname: true,
       port: true,
-      sslRejectUnauthorized: true
+      sslRejectUnauthorized: true,
+      sslCertificate: true
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.NutanixPrismCentral]} (API Key)` })),
   BaseNutanixPrismCentralConnectionSchema.extend({
@@ -66,7 +76,8 @@ export const SanitizedNutanixPrismCentralConnectionSchema = z.discriminatedUnion
       hostname: true,
       port: true,
       username: true,
-      sslRejectUnauthorized: true
+      sslRejectUnauthorized: true,
+      sslCertificate: true
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.NutanixPrismCentral]} (Basic Auth)` }))
 ]);
@@ -91,7 +102,9 @@ export const ValidateNutanixPrismCentralConnectionCredentialsSchema = z.discrimi
 ]);
 
 export const CreateNutanixPrismCentralConnectionSchema = ValidateNutanixPrismCentralConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.NutanixPrismCentral)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.NutanixPrismCentral, {
+    supportsGateways: true
+  })
 );
 
 export const UpdateNutanixPrismCentralConnectionSchema = z
@@ -101,7 +114,11 @@ export const UpdateNutanixPrismCentralConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.NutanixPrismCentral).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.NutanixPrismCentral));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.NutanixPrismCentral, {
+      supportsGateways: true
+    })
+  );
 
 export const NutanixPrismCentralConnectionListItemSchema = z
   .object({

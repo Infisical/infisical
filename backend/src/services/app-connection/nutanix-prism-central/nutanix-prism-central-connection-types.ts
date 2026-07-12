@@ -20,7 +20,7 @@ export type TValidateNutanixPrismCentralConnectionCredentialsSchema =
 
 export type TNutanixPrismCentralConnectionConfig = DiscriminativePick<
   TNutanixPrismCentralConnectionInput,
-  "method" | "app" | "credentials"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

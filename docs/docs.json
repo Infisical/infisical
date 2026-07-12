@@ -1794,6 +1794,18 @@
                     ]
                   },
                   {
+                    "group": "Nutanix Prism Central",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/list",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/available",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/get-by-id",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/get-by-name",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/create",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/update",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/delete"
+                    ]
+                  },
+                  {
                     "group": "OCI",
                     "pages": [
                       "api-reference/endpoints/app-connections/oci/list",
@@ -3215,6 +3227,17 @@
                           "api-reference/endpoints/pki/syncs/netscaler/delete",
                           "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
                           "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Nutanix Prism Central",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/list",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/get-by-id",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/create",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/update",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/delete",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/sync-certificates"
                         ]
                       }
                     ]

@@ -58,7 +58,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         )}
       />
       */}
-      {currentDestination !== PkiSync.NutanixPrismCentral && (
+      {syncOption?.canRemoveCertificates && (
         <Controller
           control={control}
           name="syncOptions.canRemoveCertificates"

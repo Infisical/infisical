@@ -349,36 +349,39 @@ export const registerSyncPkiEndpoints = ({
     });
   }
 
-  server.route({
-    method: "POST",
-    url: "/:pkiSyncId/remove-certificates",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      ...(enableOperationId ? { operationId: `remove${destinationNameForOpId}PkiSyncCertificates` } : {}),
-      tags: [ApiDocsTags.PkiSyncs],
-      description: `Remove certificates from the specified ${destinationName} PKI Sync destination.`,
-      params: z.object({
-        pkiSyncId: z.string()
-      }),
-      response: {
-        200: z.object({ message: z.string() })
+  // Only register remove route if the destination supports it
+  if (syncOptions.canRemoveCertificates) {
+    server.route({
+      method: "POST",
+      url: "/:pkiSyncId/remove-certificates",
+      config: {
+        rateLimit: writeLimit
+      },
+      schema: {
+        hide: false,
+        ...(enableOperationId ? { operationId: `remove${destinationNameForOpId}PkiSyncCertificates` } : {}),
+        tags: [ApiDocsTags.PkiSyncs],
+        description: `Remove certificates from the specified ${destinationName} PKI Sync destination.`,
+        params: z.object({
+          pkiSyncId: z.string()
+        }),
+        response: {
+          200: z.object({ message: z.string() })
+        }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      handler: async (req) => {
+        const { pkiSyncId } = req.params;
+
+        const result = await server.services.pkiSync.triggerPkiSyncRemoveCertificatesById(
+          {
+            id: pkiSyncId
+          },
+          req.permission
+        );
+
+        return result;
       }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { pkiSyncId } = req.params;
-
-      const result = await server.services.pkiSync.triggerPkiSyncRemoveCertificatesById(
-        {
-          id: pkiSyncId
-        },
-        req.permission
-      );
-
-      return result;
-    }
-  });
+    });
+  }
 };

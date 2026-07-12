@@ -1244,6 +1244,10 @@ export const appConnectionServiceFactory = ({
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
     snowflake: snowflakeConnectionService(connectAppConnectionById),
-    nutanixPrismCentral: nutanixPrismCentralConnectionService(connectAppConnectionById)
+    nutanixPrismCentral: nutanixPrismCentralConnectionService(
+      connectAppConnectionById,
+      gatewayV2Service,
+      gatewayPoolService
+    )
   };
 };

@@ -185,19 +185,6 @@ export const pkiSyncQueueFactory = ({
       const certificateIds = await certificateSyncDAL.findCertificateIdsByPkiSyncId(pkiSyncId);
       if (certificateIds.length > 0) {
         const directCertificates = await certificateDAL.findActiveCertificatesByIds(certificateIds);
-
-        // If a directly-tracked cert has been renewed, follow the chain so the renewed cert
-        // is included in the map. Without this, the old cert is filtered out and the new
-        // cert is never seen (it was never explicitly added to certificate_syncs).
-        const renewedIds = directCertificates
-          .map((c) => c.renewedByCertificateId)
-          .filter((id): id is string => Boolean(id));
-
-        if (renewedIds.length > 0) {
-          const renewedCertificates = await certificateDAL.findActiveCertificatesByIds(renewedIds);
-          certificates.push(...renewedCertificates);
-        }
-
         certificates.push(...directCertificates);
       }
 

@@ -109,11 +109,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import {
-  addRenewedCertificateToSyncs,
-  triggerAutoSyncForCertificate,
-  triggerAutoSyncForSubscriber
-} from "../pki-sync/pki-sync-utils";
+import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import {
   copyMetadataFromCertificate,
@@ -2826,23 +2822,11 @@ export const certificateV3ServiceFactory = ({
       throw new BadRequestError({ message: "External CA renewals should be handled asynchronously" });
     }
 
-    if (renewalResult.originalCert.pkiSubscriberId) {
-      // Subscriber-based cert: the sync finds certs via pkiSubscriberId, so a single
-      // subscriber trigger is sufficient. Triggering by cert ID as well would cause
-      // duplicate concurrent jobs that race on the certificate_syncs insert.
-      await triggerAutoSyncForSubscriber(renewalResult.originalCert.pkiSubscriberId, {
-        pkiSyncDAL,
-        pkiSyncQueue
-      });
-    } else {
-      // Direct-tracking cert: addRenewedCertificateToSyncs already added the new cert to
-      // certificate_syncs, so trigger by the new cert ID.
-      await triggerAutoSyncForCertificate(renewalResult.newCert.id, {
-        certificateSyncDAL,
-        pkiSyncDAL,
-        pkiSyncQueue
-      });
-    }
+    await triggerAutoSyncForCertificate(renewalResult.newCert.id, {
+      certificateSyncDAL,
+      pkiSyncDAL,
+      pkiSyncQueue
+    });
 
     let finalCertificateChain = renewalResult.certificateChain;
     if (removeRootsFromChain) {
