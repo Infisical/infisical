@@ -43,10 +43,11 @@ const getNutanixCredentials = (pkiSync: TPkiSyncWithCredentials): TNutanixCreden
   return credentials;
 };
 
-const NUTANIX_SUPPORTED_ALGORITHMS = ["RSA_2048", "RSA_4096", "ECDSA_256", "ECDSA_521"] as const;
+// Values from the Nutanix clustermgmt v4 PrivateKeyAlgorithm enum
+const NUTANIX_SUPPORTED_ALGORITHMS = ["RSA_2048", "RSA_4096", "ECDSA_256", "ECDSA_384", "ECDSA_521"] as const;
 type NutanixKeyAlgorithm = (typeof NUTANIX_SUPPORTED_ALGORITHMS)[number];
 
-const inferPrivateKeyAlgorithm = (certPem: string): NutanixKeyAlgorithm => {
+export const inferPrivateKeyAlgorithm = (certPem: string): NutanixKeyAlgorithm => {
   let detected: string | undefined;
 
   try {
@@ -63,6 +64,7 @@ const inferPrivateKeyAlgorithm = (certPem: string): NutanixKeyAlgorithm => {
       const ecAlg = alg as { namedCurve?: string };
       const curve = ecAlg.namedCurve ?? "";
       if (curve.includes("256") || curve.includes("P-256")) detected = "ECDSA_256";
+      else if (curve.includes("384") || curve.includes("P-384")) detected = "ECDSA_384";
       else if (curve.includes("521") || curve.includes("P-521")) detected = "ECDSA_521";
       else detected = `ECDSA_${curve || "unknown"}`;
     } else {

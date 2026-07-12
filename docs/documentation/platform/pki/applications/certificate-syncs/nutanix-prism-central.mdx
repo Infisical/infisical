@@ -126,7 +126,7 @@ The Nutanix Prism Central Certificate Sync provides:
 
 - **Automatic Deployment**: Replace the SSL certificate on the target Nutanix cluster whenever the synced certificate changes in Infisical.
 - **Certificate Updates**: Push renewed certificates to the cluster automatically when auto-sync is enabled.
-- **Algorithm Detection**: Detect the private key algorithm (RSA 2048/4096 or ECDSA P-256/P-521) from the certificate automatically.
+- **Algorithm Detection**: Detect the private key algorithm (RSA 2048/4096 or ECDSA P-256/P-384/P-521) from the certificate automatically.
 
 <Note>
   Certificate removal is not supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
