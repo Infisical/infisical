@@ -595,7 +595,6 @@ export const EditDynamicSecretTailscaleForm = ({
                     </Switch>
                   )}
                 />
-
               </div>
             )}
           </div>
