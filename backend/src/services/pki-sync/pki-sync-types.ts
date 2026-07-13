@@ -93,6 +93,19 @@ export type TCertificateMap = Record<
   }
 >;
 
+export type TPkiSyncSyncResult = {
+  uploaded: number;
+  removed?: number;
+  failedRemovals?: number;
+  skipped: number;
+  details?: {
+    failedUploads?: Array<{ name: string; error: string }>;
+    failedRemovals?: Array<{ name: string; error: string }>;
+    skippedCertificates?: Array<{ name: string; reason: string }>;
+    validationErrors?: Array<{ name: string; error: string }>;
+  };
+};
+
 export type TCreatePkiSyncDTO = {
   name: string;
   description?: string;

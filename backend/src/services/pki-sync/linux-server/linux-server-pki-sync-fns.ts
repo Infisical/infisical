@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import RE2 from "re2";
-import { Client } from "ssh2";
+import { Client, SFTPWrapper } from "ssh2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -13,10 +13,11 @@ import { SshConnectionMethod } from "@app/services/app-connection/ssh/ssh-connec
 import { withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
 import { exportCertificateForSync, PkiSyncExportFormat } from "../pki-sync-export-fns";
-import { TCertificateMap, TPkiSyncWithCredentials } from "../pki-sync-types";
+import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
 
 type TLinuxServerPkiSyncFactoryDeps = {
@@ -60,30 +61,29 @@ const buildSshConfig = (pkiSync: TPkiSyncWithCredentials): TSshConnectionConfig 
 // can be reported as an actionable "directory does not exist" message rather than a raw SSH error.
 const NO_SUCH_FILE_ERROR = new RE2("no such file", "i");
 
+// Private-key material is written owner-read/write only; certificates and chains are world-readable.
+const PRIVATE_KEY_FILE_MODE = 0o600;
+const CERTIFICATE_FILE_MODE = 0o644;
+
 const openSftp = (client: Client) =>
-  new Promise<import("ssh2").SFTPWrapper>((resolve, reject) => {
+  new Promise<SFTPWrapper>((resolve, reject) => {
     client.sftp((err, sftp) => (err ? reject(err) : resolve(sftp)));
   });
 
-const writeFileAtomic = (
-  sftp: import("ssh2").SFTPWrapper,
-  filePath: string,
-  content: Buffer,
-  mode: number
-): Promise<void> => {
+const writeFileAtomic = (sftp: SFTPWrapper, filePath: string, content: Buffer, mode: number): Promise<void> => {
   // A per-write random suffix keeps concurrent syncs (e.g. a manual trigger overlapping an auto-sync)
   // from sharing one temp path and orphaning it: OpenSSH rename is not atomic-overwrite, so we
   // unlink-then-rename, and a shared temp name would let one job recreate the file another just moved.
   const tmpPath = `${filePath}.${crypto.randomBytes(6).toString("hex")}.infisical.tmp`;
   return new Promise<void>((resolve, reject) => {
-    const cleanupTmpThen = (finalize: () => void) => sftp.unlink(tmpPath, () => finalize());
+    const removeTempFileThen = (finalize: () => void) => sftp.unlink(tmpPath, () => finalize());
 
     sftp.writeFile(tmpPath, content, { mode }, (writeErr) => {
       if (writeErr) return reject(writeErr);
       // Remove any existing target first for portable rename semantics, then move the temp file in.
       return sftp.unlink(filePath, () => {
         sftp.rename(tmpPath, filePath, (renameErr) => {
-          if (renameErr) return cleanupTmpThen(() => reject(renameErr));
+          if (renameErr) return removeTempFileThen(() => reject(renameErr));
           return resolve();
         });
       });
@@ -91,7 +91,7 @@ const writeFileAtomic = (
   });
 };
 
-const unlinkIfExists = (sftp: import("ssh2").SFTPWrapper, filePath: string): Promise<void> =>
+const unlinkIfExists = (sftp: SFTPWrapper, filePath: string): Promise<void> =>
   new Promise<void>((resolve) => {
     sftp.unlink(filePath, () => resolve());
   });
@@ -102,7 +102,7 @@ const TEMP_FILE_MARKER = ".infisical.tmp";
 // this directory.
 const STALE_TEMP_AGE_SECONDS = 60;
 
-const sweepStaleTempFiles = (sftp: import("ssh2").SFTPWrapper, dir: string): Promise<void> =>
+const removeStaleTempFiles = (sftp: SFTPWrapper, dir: string): Promise<void> =>
   new Promise<void>((resolve) => {
     sftp.readdir(dir, (err, entries) => {
       if (err || !entries) return resolve();
@@ -120,6 +120,57 @@ const sweepStaleTempFiles = (sftp: import("ssh2").SFTPWrapper, dir: string): Pro
     });
   });
 
+// Deletes files for tracked certificates that are no longer in the active set (revoked, expired, or
+// unlinked from the sync) and drops their tracking rows. Paths just (re)written this run are skipped
+// so a renewal that reuses a file name does not delete its own freshly delivered file.
+const reconcileLinuxServerRemovals = async (args: {
+  sftp: SFTPWrapper;
+  pkiSync: TPkiSyncWithCredentials;
+  certificateMap: TCertificateMap;
+  deliveredPaths: Set<string>;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+}): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
+  const { sftp, pkiSync, certificateMap, deliveredPaths, certificateSyncDAL } = args;
+  const failedRemovals: Array<{ name: string; error: string }> = [];
+  let removed = 0;
+
+  const activeCertificateIds = new Set(
+    Object.values(certificateMap)
+      .map((certData) => certData.certificateId)
+      .filter((id): id is string => typeof id === "string")
+  );
+  const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+
+  for (const record of existingSyncRecords) {
+    if (!record.certificateId || activeCertificateIds.has(record.certificateId)) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    const metadataFiles = (record.syncMetadata as TSyncMetadata)?.files;
+    const files = metadataFiles?.length
+      ? metadataFiles
+      : [record.externalIdentifier].filter((p): p is string => Boolean(p));
+    const filesToDelete = files.filter((filePath) => !deliveredPaths.has(filePath));
+    try {
+      for (const filePath of filesToDelete) {
+        await unlinkIfExists(sftp, filePath);
+      }
+      await certificateSyncDAL.removeCertificates(pkiSync.id, [record.certificateId]);
+      if (filesToDelete.length > 0) removed += 1;
+      logger.info(
+        `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${filesToDelete.length} orphaned file(s) for certificate ${record.certificateId}`
+      );
+    } catch (err) {
+      failedRemovals.push({
+        name: record.externalIdentifier ?? record.certificateId,
+        error: (err as Error)?.message ?? "Unknown error"
+      });
+    }
+  }
+
+  return { removed, failedRemovals };
+};
+
 export const linuxServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
@@ -128,17 +179,7 @@ export const linuxServerPkiSyncFactory = ({
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap
-  ): Promise<{
-    uploaded: number;
-    removed?: number;
-    failedRemovals?: number;
-    skipped: number;
-    details?: {
-      failedUploads?: Array<{ name: string; error: string }>;
-      failedRemovals?: Array<{ name: string; error: string }>;
-      skippedCertificates?: Array<{ name: string; reason: string }>;
-    };
-  }> => {
+  ): Promise<TPkiSyncSyncResult> => {
     const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
     const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
     const format = options.exportFormat ?? PkiSyncExportFormat.Pem;
@@ -160,7 +201,7 @@ export const linuxServerPkiSyncFactory = ({
 
     await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
       const sftp = await openSftp(client);
-      await sweepStaleTempFiles(sftp, config.destinationPath);
+      await removeStaleTempFiles(sftp, config.destinationPath);
 
       for (const [baseName, certData] of Object.entries(certificateMap)) {
         const { cert, privateKey, certificateChain, certificateId } = certData;
@@ -199,7 +240,12 @@ export const linuxServerPkiSyncFactory = ({
           for (const file of files) {
             const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
             try {
-              await writeFileAtomic(sftp, filePath, file.content, file.isPrivateKey ? 0o600 : 0o644);
+              await writeFileAtomic(
+                sftp,
+                filePath,
+                file.content,
+                file.isPrivateKey ? PRIVATE_KEY_FILE_MODE : CERTIFICATE_FILE_MODE
+              );
             } catch (writeErr) {
               const msg = (writeErr as Error)?.message ?? "";
               if (NO_SUCH_FILE_ERROR.test(msg)) {
@@ -239,45 +285,17 @@ export const linuxServerPkiSyncFactory = ({
         }
       }
 
-      // Reconcile removals: delete files for certificates we previously delivered that are no longer
-      // in the active set (revoked, expired, or unlinked from the sync), then drop their tracking
-      // rows. certificateMap holds the full active set, so anything tracked but absent is orphaned.
+      // Delete files for certificates no longer active and drop their tracking rows.
       if (canRemoveCertificates) {
-        const activeCertificateIds = new Set(
-          Object.values(certificateMap)
-            .map((certData) => certData.certificateId)
-            .filter((id): id is string => typeof id === "string")
-        );
-        const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
-
-        for (const record of existingSyncRecords) {
-          if (!record.certificateId || activeCertificateIds.has(record.certificateId)) {
-            // eslint-disable-next-line no-continue
-            continue;
-          }
-          const files = (record.syncMetadata as { files?: string[] } | undefined)?.files?.length
-            ? (record.syncMetadata as { files: string[] }).files
-            : [record.externalIdentifier].filter((p): p is string => Boolean(p));
-          // Skip any path an active certificate just wrote: on renewal the new cert reuses the old
-          // one's file name, so deleting it would remove the freshly delivered file. The stale row is
-          // still dropped so the superseded certificate stops being tracked.
-          const filesToDelete = files.filter((filePath) => !deliveredPaths.has(filePath));
-          try {
-            for (const filePath of filesToDelete) {
-              await unlinkIfExists(sftp, filePath);
-            }
-            await certificateSyncDAL.removeCertificates(pkiSync.id, [record.certificateId]);
-            if (filesToDelete.length > 0) removed += 1;
-            logger.info(
-              `Linux Server PKI sync [syncId=${pkiSync.id}]: removed ${filesToDelete.length} orphaned file(s) for certificate ${record.certificateId}`
-            );
-          } catch (err) {
-            failedRemovals.push({
-              name: record.externalIdentifier ?? record.certificateId,
-              error: (err as Error)?.message ?? "Unknown error"
-            });
-          }
-        }
+        const reconciliation = await reconcileLinuxServerRemovals({
+          sftp,
+          pkiSync,
+          certificateMap,
+          deliveredPaths,
+          certificateSyncDAL
+        });
+        removed += reconciliation.removed;
+        failedRemovals.push(...reconciliation.failedRemovals);
       }
     });
 
@@ -316,7 +334,7 @@ export const linuxServerPkiSyncFactory = ({
         continue;
       }
       certificateIdsToUntrack.push(certificateId);
-      const files = (record.syncMetadata as { files?: string[] } | undefined)?.files;
+      const files = (record.syncMetadata as TSyncMetadata)?.files;
       if (files?.length) {
         files.forEach((f) => pathsToRemove.add(f));
       } else if (record.externalIdentifier) {

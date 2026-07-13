@@ -5,9 +5,10 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { executeWinRMGatewayOperation, TWinRMConnection, TWinRMCredentials } from "@app/services/app-connection/winrm";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { exportCertificateForSync, PkiSyncExportFormat } from "../pki-sync-export-fns";
-import { TCertificateMap, TPkiSyncWithCredentials } from "../pki-sync-types";
+import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TWindowsServerPkiSyncConfig } from "./windows-server-pki-sync-types";
 
 type TWindowsServerPkiSyncFactoryDeps = {
@@ -27,7 +28,7 @@ type TWindowsServerSyncOptions = {
 };
 
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
-const winPathJoin = (dir: string, name: string): string => `${dir.replace(TRAILING_BACKSLASH, "")}\\${name}`;
+const joinWindowsPath = (dir: string, name: string): string => `${dir.replace(TRAILING_BACKSLASH, "")}\\${name}`;
 
 const buildWinRMTarget = (pkiSync: TPkiSyncWithCredentials) => {
   const { connection } = pkiSync;
@@ -50,6 +51,61 @@ const buildWinRMTarget = (pkiSync: TPkiSyncWithCredentials) => {
   };
 };
 
+// Deletes files for tracked certificates that are no longer in the active set (revoked, expired, or
+// unlinked from the sync) and drops their tracking rows. Paths just (re)written this run are skipped
+// so a renewal that reuses a file name does not delete its own freshly delivered file.
+const reconcileWindowsServerRemovals = async (args: {
+  pkiSync: TPkiSyncWithCredentials;
+  certificateMap: TCertificateMap;
+  deliveredPaths: Set<string>;
+  target: ReturnType<typeof buildWinRMTarget>;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+  gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
+}): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
+  const { pkiSync, certificateMap, deliveredPaths, target, certificateSyncDAL, gatewayDeps } = args;
+  const failedRemovals: Array<{ name: string; error: string }> = [];
+  let removed = 0;
+
+  const activeCertificateIds = new Set(
+    Object.values(certificateMap)
+      .map((certData) => certData.certificateId)
+      .filter((id): id is string => typeof id === "string")
+  );
+  const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+  const orphans = existingSyncRecords.filter(
+    (record) => record.certificateId && !activeCertificateIds.has(record.certificateId)
+  );
+  if (orphans.length === 0) return { removed, failedRemovals };
+
+  const orphanPaths = orphans
+    .flatMap((record) => {
+      const files = (record.syncMetadata as TSyncMetadata)?.files;
+      return files?.length ? files : [record.externalIdentifier].filter((p): p is string => Boolean(p));
+    })
+    .filter((filePath) => !deliveredPaths.has(filePath));
+
+  try {
+    if (orphanPaths.length > 0) {
+      await executeWinRMGatewayOperation(
+        { ...target, endpoint: "/v1/remove", params: { paths: orphanPaths } },
+        gatewayDeps
+      );
+    }
+    await certificateSyncDAL.removeCertificates(
+      pkiSync.id,
+      orphans.map((record) => record.certificateId)
+    );
+    removed = orphanPaths.length > 0 ? orphans.length : 0;
+  } catch (err) {
+    failedRemovals.push({
+      name: `${orphans.length} certificate(s)`,
+      error: (err as Error)?.message ?? "Unknown error"
+    });
+  }
+
+  return { removed, failedRemovals };
+};
+
 export const windowsServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
@@ -60,17 +116,7 @@ export const windowsServerPkiSyncFactory = ({
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap
-  ): Promise<{
-    uploaded: number;
-    removed?: number;
-    failedRemovals?: number;
-    skipped: number;
-    details?: {
-      failedUploads?: Array<{ name: string; error: string }>;
-      failedRemovals?: Array<{ name: string; error: string }>;
-      skippedCertificates?: Array<{ name: string; reason: string }>;
-    };
-  }> => {
+  ): Promise<TPkiSyncSyncResult> => {
     const config = pkiSync.destinationConfig as TWindowsServerPkiSyncConfig;
     const options = (pkiSync.syncOptions ?? {}) as TWindowsServerSyncOptions;
     const format = options.exportFormat ?? PkiSyncExportFormat.Pkcs12;
@@ -125,7 +171,7 @@ export const windowsServerPkiSyncFactory = ({
         const paths: string[] = [];
         const files: Array<{ path: string; contentBase64: string }> = [];
         for (const file of exported) {
-          const fullPath = winPathJoin(config.destinationPath, `${baseName}${file.suffix}`);
+          const fullPath = joinWindowsPath(config.destinationPath, `${baseName}${file.suffix}`);
           files.push({ path: fullPath, contentBase64: file.content.toString("base64") });
           paths.push(fullPath);
           deliveredPaths.add(fullPath);
@@ -153,50 +199,18 @@ export const windowsServerPkiSyncFactory = ({
       }
     }
 
-    // Reconcile removals: delete files for certificates we previously delivered that are no longer
-    // in the active set (revoked, expired, or unlinked from the sync), then drop their tracking rows.
-    // certificateMap holds the full active set, so anything tracked but absent is orphaned.
+    // Delete files for certificates no longer active and drop their tracking rows.
     if (canRemoveCertificates) {
-      const activeCertificateIds = new Set(
-        Object.values(certificateMap)
-          .map((certData) => certData.certificateId)
-          .filter((id): id is string => typeof id === "string")
-      );
-      const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
-      const orphans = existingSyncRecords.filter(
-        (record) => record.certificateId && !activeCertificateIds.has(record.certificateId)
-      );
-
-      if (orphans.length > 0) {
-        // Skip any path an active certificate just wrote: on renewal the new cert reuses the old
-        // one's file name, so deleting it would remove the freshly delivered file. The stale rows are
-        // still dropped so superseded certificates stop being tracked.
-        const orphanPaths = orphans
-          .flatMap((record) => {
-            const files = (record.syncMetadata as { files?: string[] } | undefined)?.files;
-            return files?.length ? files : [record.externalIdentifier].filter((p): p is string => Boolean(p));
-          })
-          .filter((filePath) => !deliveredPaths.has(filePath));
-
-        try {
-          if (orphanPaths.length > 0) {
-            await executeWinRMGatewayOperation(
-              { ...target, endpoint: "/v1/remove", params: { paths: orphanPaths } },
-              gatewayDeps
-            );
-          }
-          await certificateSyncDAL.removeCertificates(
-            pkiSync.id,
-            orphans.map((record) => record.certificateId)
-          );
-          removed = orphanPaths.length > 0 ? orphans.length : 0;
-        } catch (err) {
-          failedRemovals.push({
-            name: `${orphans.length} certificate(s)`,
-            error: (err as Error)?.message ?? "Unknown error"
-          });
-        }
-      }
+      const reconciliation = await reconcileWindowsServerRemovals({
+        pkiSync,
+        certificateMap,
+        deliveredPaths,
+        target,
+        certificateSyncDAL,
+        gatewayDeps
+      });
+      removed += reconciliation.removed;
+      failedRemovals.push(...reconciliation.failedRemovals);
     }
 
     return {
@@ -233,7 +247,7 @@ export const windowsServerPkiSyncFactory = ({
         continue;
       }
       certificateIdsToUntrack.push(certificateId);
-      const recordFiles = (record.syncMetadata as { files?: string[] } | undefined)?.files;
+      const recordFiles = (record.syncMetadata as TSyncMetadata)?.files;
       if (recordFiles?.length) {
         recordFiles.forEach((f) => pathsToRemove.add(f));
       } else if (record.externalIdentifier) {

@@ -34,7 +34,7 @@ import {
   UUID_NAME_REGEX_FRAGMENT
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
-import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
+import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
 
@@ -188,18 +188,7 @@ export const PkiSyncFns = {
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
     }
-  ): Promise<{
-    uploaded: number;
-    removed?: number;
-    failedRemovals?: number;
-    skipped: number;
-    details?: {
-      failedUploads?: Array<{ name: string; error: string }>;
-      failedRemovals?: Array<{ name: string; error: string }>;
-      skippedCertificates?: Array<{ name: string; reason: string }>;
-      validationErrors?: Array<{ name: string; error: string }>;
-    };
-  }> => {
+  ): Promise<TPkiSyncSyncResult> => {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
         checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault as PkiSync);
