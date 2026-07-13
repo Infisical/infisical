@@ -2544,7 +2544,7 @@ export const certificateV3ServiceFactory = ({
             basicConstraints: shouldIssueAsCA
               ? { isCA: true, pathLength: policy?.basicConstraints?.maxPathLength }
               : undefined,
-            pathLength: originalCert.pathLength ?? undefined,
+            pathLength: originalCert.pathLength ?? policy?.basicConstraints?.maxPathLength ?? undefined,
             organization: originalCert.subjectOrganization || undefined,
             ou: originalCert.subjectOrganizationalUnit || undefined,
             country: originalCert.subjectCountry || undefined,
