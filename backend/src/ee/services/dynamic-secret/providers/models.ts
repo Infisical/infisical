@@ -847,7 +847,6 @@ export const DynamicSecretTailscaleSchema = z
         .default([])
         .describe("ACL tags to attach to devices (e.g. tag:ci). Required when authenticating with an OAuth token."),
       reusable: z.boolean().default(false).describe("Whether the auth key can register multiple devices."),
-      ephemeral: z.boolean().default(false).describe("Whether devices registered with the key are ephemeral."),
       preauthorized: z.boolean().default(false).describe("Whether devices registered with the key are pre-authorized.")
     }),
     z.object({
@@ -899,12 +898,7 @@ export const DynamicSecretTailscaleSchema = z
     })
   ])
   .superRefine((data, ctx) => {
-    // Mirrors the UI validation: Tailscale requires ACL tags on tailnet-owned auth keys created via OAuth.
-    if (
-      data.authType === TailscaleKeyAuthType.AuthKeys &&
-      data.auth.method === TailscaleAuthMethod.OAuth &&
-      data.tags.length === 0
-    ) {
+    if (data.authType === TailscaleKeyAuthType.AuthKeys && data.tags.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["tags"],

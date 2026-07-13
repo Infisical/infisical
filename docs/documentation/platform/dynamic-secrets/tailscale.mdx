@@ -144,7 +144,7 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
     </ParamField>
 
     <Note>
-    All credentials are created with `ephemeral` set to `false` because they are managed by Infisical. This ensures that only one system is responsible for revoking the credentials, avoiding concurrency issues.
+    Auth keys are always created as `ephemeral`. Revoking a lease deletes the corresponding credential in your tailnet, but Tailscale does not remove the devices that already registered with it. Marking the devices ephemeral ensures Tailscale automatically removes them from the tailnet shortly after they go offline, so devices provisioned through a lease are cleaned up without manual intervention.
     </Note>
   </Step>
   <Step title="Click `Submit`">

@@ -22,6 +22,7 @@ import {
   TDynamicSecretProvider
 } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 type TailscaleInputs = Extract<
   TDynamicSecretProvider,
@@ -92,7 +93,7 @@ const formSchema = z
         if (!val) return;
         validateTTL(val, ctx);
       }),
-    name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
+    name: slugSchema(),
     environment: z.object({ name: z.string(), slug: z.string() })
   })
   .superRefine((val, ctx) => {
@@ -167,7 +168,7 @@ const buildInputs = (
         audience: provider.audience || undefined
       };
     default:
-      return assertNever(provider.authType);
+      return assertNever(provider);
   }
 };
 
@@ -307,7 +308,7 @@ export const TailscaleInputForm = ({
                   >
                     <Select
                       value={value}
-                      onValueChange={(val) => onChange(val)}
+                      onValueChange={onChange}
                       className="w-full border border-mineshaft-500"
                       position="popper"
                       dropdownContainerClassName="max-w-none"
@@ -394,7 +395,7 @@ export const TailscaleInputForm = ({
                   >
                     <Select
                       value={value}
-                      onValueChange={(val) => onChange(val)}
+                      onValueChange={onChange}
                       className="w-full border border-mineshaft-500"
                       position="popper"
                       dropdownContainerClassName="max-w-none"

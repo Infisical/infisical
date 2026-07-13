@@ -129,6 +129,46 @@ const buildAuth = (auth: TForm["inputs"]["auth"]): TailscaleInputs["auth"] =>
         clientSecret: auth.clientSecret
       };
 
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled Tailscale auth type: ${String(value)}`);
+};
+
+const buildInputs = (inputs: TForm["inputs"], auth: TailscaleInputs["auth"]): TailscaleInputs => {
+  const base = {
+    auth,
+    tailnet: inputs.tailnet,
+    description: inputs.description || undefined,
+    tags: splitCsv(inputs.tags)
+  };
+
+  switch (inputs.authType) {
+    case TailscaleKeyAuthType.AuthKeys:
+      return {
+        ...base,
+        authType: inputs.authType,
+        reusable: inputs.reusable,
+        preauthorized: inputs.preauthorized
+      };
+    case TailscaleKeyAuthType.OAuthKeys:
+      return {
+        ...base,
+        authType: inputs.authType,
+        scopes: splitCsv(inputs.scopes)
+      };
+    case TailscaleKeyAuthType.FederatedKeys:
+      return {
+        ...base,
+        authType: inputs.authType,
+        scopes: splitCsv(inputs.scopes),
+        issuer: inputs.issuer,
+        subject: inputs.subject,
+        audience: inputs.audience || undefined
+      };
+    default:
+      return assertNever(inputs);
+  }
+};
+
 const hydrateInputs = (rawInputs: TailscaleInputs): TForm["inputs"] => {
   if (rawInputs.authType === TailscaleKeyAuthType.AuthKeys) {
     return {
@@ -204,40 +244,7 @@ export const EditDynamicSecretTailscaleForm = ({
     if (updateDynamicSecret.isPending) return;
 
     const auth = buildAuth(inputs.auth);
-
-    let builtInputs: TailscaleInputs;
-    if (inputs.authType === TailscaleKeyAuthType.AuthKeys) {
-      builtInputs = {
-        authType: TailscaleKeyAuthType.AuthKeys,
-        auth,
-        tailnet: inputs.tailnet,
-        description: inputs.description || undefined,
-        tags: splitCsv(inputs.tags),
-        reusable: inputs.reusable,
-        preauthorized: inputs.preauthorized
-      };
-    } else if (inputs.authType === TailscaleKeyAuthType.OAuthKeys) {
-      builtInputs = {
-        authType: TailscaleKeyAuthType.OAuthKeys,
-        auth,
-        tailnet: inputs.tailnet,
-        description: inputs.description || undefined,
-        tags: splitCsv(inputs.tags),
-        scopes: splitCsv(inputs.scopes)
-      };
-    } else {
-      builtInputs = {
-        authType: TailscaleKeyAuthType.FederatedKeys,
-        auth,
-        tailnet: inputs.tailnet,
-        description: inputs.description || undefined,
-        tags: splitCsv(inputs.tags),
-        scopes: splitCsv(inputs.scopes),
-        issuer: inputs.issuer,
-        subject: inputs.subject,
-        audience: inputs.audience || undefined
-      };
-    }
+    const builtInputs = buildInputs(inputs, auth);
 
     await updateDynamicSecret.mutateAsync({
       name: dynamicSecret.name,
@@ -322,7 +329,7 @@ export const EditDynamicSecretTailscaleForm = ({
                 >
                   <Select
                     value={value}
-                    onValueChange={(val) => onChange(val)}
+                    onValueChange={onChange}
                     className="w-full border border-mineshaft-500"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
@@ -346,6 +353,7 @@ export const EditDynamicSecretTailscaleForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                     isRequired
+                    helperText="Tailscale API access token with permission to create and revoke keys."
                   >
                     <SecretInput
                       {...field}
@@ -408,7 +416,7 @@ export const EditDynamicSecretTailscaleForm = ({
                 >
                   <Select
                     value={value}
-                    onValueChange={(val) => onChange(val)}
+                    onValueChange={onChange}
                     className="w-full border border-mineshaft-500"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
@@ -587,6 +595,7 @@ export const EditDynamicSecretTailscaleForm = ({
                     </Switch>
                   )}
                 />
+
               </div>
             )}
           </div>

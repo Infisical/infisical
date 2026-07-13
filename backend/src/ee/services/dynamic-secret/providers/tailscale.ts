@@ -103,7 +103,9 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
             devices: {
               create: {
                 reusable: providerInputs.reusable,
-                ephemeral: false,
+                // Force ephemeral so devices provisioned through a lease are removed from the
+                // tailnet automatically once offline. Revoking the key alone does not delete its devices.
+                ephemeral: true,
                 preauthorized: providerInputs.preauthorized,
                 tags: providerInputs.tags
               }
