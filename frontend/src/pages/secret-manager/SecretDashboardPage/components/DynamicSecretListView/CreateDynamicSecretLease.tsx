@@ -431,6 +431,37 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.Tailscale) {
+    const { AUTH_KEY, CLIENT_ID, CLIENT_SECRET } = data as {
+      AUTH_KEY?: string;
+      CLIENT_ID?: string;
+      CLIENT_SECRET?: string;
+    };
+
+    if (AUTH_KEY) {
+      return (
+        <div>
+          <OutputDisplay
+            label="Auth Key"
+            value={AUTH_KEY}
+            helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <OutputDisplay label="Client ID" value={CLIENT_ID ?? ""} />
+        <OutputDisplay
+          label="Client Secret"
+          value={CLIENT_SECRET ?? ""}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 

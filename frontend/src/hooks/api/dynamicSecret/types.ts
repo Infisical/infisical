@@ -44,7 +44,13 @@ export enum DynamicSecretProviders {
   Clickhouse = "clickhouse",
   Milvus = "milvus",
   Ssh = "ssh",
-  IbmApiConnect = "ibm-api-connect"
+  IbmApiConnect = "ibm-api-connect",
+  Tailscale = "tailscale"
+}
+
+export enum TailscaleKeyAuthType {
+  AuthKeys = "auth_keys",
+  OAuthKeys = "oauth_keys"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -523,6 +529,27 @@ export type TDynamicSecretProvider =
         gatewayId?: string;
         gatewayPoolId?: string;
       };
+    }
+  | {
+      type: DynamicSecretProviders.Tailscale;
+      inputs:
+        | {
+            authType: TailscaleKeyAuthType.AuthKeys;
+            apiKey: string;
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            reusable: boolean;
+            preauthorized: boolean;
+          }
+        | {
+            authType: TailscaleKeyAuthType.OAuthKeys;
+            apiKey: string;
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            scopes: string[];
+          };
     };
 
 export type TCreateDynamicSecretDTO = {
