@@ -12,6 +12,12 @@ import {
 
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
+const IPV6_SCHEMA = z.string().ip({ version: "v6" });
+
+const isValidPort = (portStr: string) => {
+  const port = Number(portStr);
+  return PORT_RE.test(portStr) && port >= 1 && port <= 65535;
+};
 
 // matching grammar lives in the agent-proxy CLI (packages/agentproxy/match.go); keep the two in sync
 export const hostPatternSchema = z
@@ -33,13 +39,30 @@ export const hostPatternSchema = z
       let hostPort = seg;
       const slashIdx = hostPort.indexOf("/");
       if (slashIdx !== -1) hostPort = hostPort.slice(0, slashIdx);
+
+      // bracketed IPv6 (e.g. [::1] or [2001:db8::1]:8443); brackets disambiguate the port colon
+      if (hostPort.startsWith("[")) {
+        const closingIdx = hostPort.indexOf("]");
+        if (closingIdx === -1) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" has an unclosed IPv6 bracket` });
+          return;
+        }
+        if (!IPV6_SCHEMA.safeParse(hostPort.slice(1, closingIdx)).success) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" is not a valid IPv6 address` });
+          return;
+        }
+        const afterBracket = hostPort.slice(closingIdx + 1);
+        if (afterBracket && (!afterBracket.startsWith(":") || !isValidPort(afterBracket.slice(1)))) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" has an invalid port` });
+        }
+        return;
+      }
+
       let host = hostPort;
       const colonIdx = hostPort.lastIndexOf(":");
       if (colonIdx !== -1) {
-        const portStr = hostPort.slice(colonIdx + 1);
         host = hostPort.slice(0, colonIdx);
-        const port = Number(portStr);
-        if (!PORT_RE.test(portStr) || port < 1 || port > 65535) {
+        if (!isValidPort(hostPort.slice(colonIdx + 1))) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: `"${seg}" has an invalid port` });
           return;
         }
