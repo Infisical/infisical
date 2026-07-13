@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -941,19 +940,7 @@ export const approvalPolicyServiceFactory = ({
     );
 
     if (requestWithSteps.steps.length > 0) {
-      const firstStep = requestWithSteps.steps[0];
-      if (tx?.isTransaction) {
-        // defer until the caller's transaction commits; a rollback means the request never existed
-        void (tx as Knex.Transaction).executionPromise.then(
-          () =>
-            $notifyApprovers(firstStep, requestWithSteps).catch((err) =>
-              logger.error(err, `Failed to notify approvers for approval request [requestId=${requestWithSteps.id}]`)
-            ),
-          () => undefined
-        );
-      } else {
-        await $notifyApprovers(firstStep, requestWithSteps);
-      }
+      await $notifyApprovers(requestWithSteps.steps[0], requestWithSteps);
     }
 
     return {
