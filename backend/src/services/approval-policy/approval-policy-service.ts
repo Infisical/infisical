@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -140,10 +141,13 @@ export const approvalPolicyServiceFactory = ({
       return;
     }
 
-    // fire-and-forget so SMTP latency doesn't extend caller-owned transactions
-    void (async () => {
+    const cfg = getConfig();
+    // skip email when SITE_URL is unset, the review link would dead-link
+    if (!cfg.SITE_URL) return;
+
+    try {
       const project = await projectDAL.findById(request.projectId);
-      const approvalUrl = `${getConfig().SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${request.type}`;
+      const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${request.type}`;
 
       await sendApprovalEmailsForStep(
         step,
@@ -151,14 +155,14 @@ export const approvalPolicyServiceFactory = ({
         {
           requestTypeLabel:
             request.type === ApprovalPolicyType.CertCodeSigning ? "code signing request" : "certificate request",
-          projectName: project.name,
+          projectName: project?.name ?? "Unknown project",
           approvalUrl
         },
         { userGroupMembershipDAL, userDAL, smtpService }
       );
-    })().catch((err) => {
+    } catch (err) {
       logger.error(err, `Failed to send approval request emails to approvers [requestId=${request.id}]`);
-    });
+    }
   };
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
@@ -937,7 +941,19 @@ export const approvalPolicyServiceFactory = ({
     );
 
     if (requestWithSteps.steps.length > 0) {
-      await $notifyApprovers(requestWithSteps.steps[0], requestWithSteps);
+      const firstStep = requestWithSteps.steps[0];
+      if (tx?.isTransaction) {
+        // defer until the caller's transaction commits; a rollback means the request never existed
+        void (tx as Knex.Transaction).executionPromise.then(
+          () =>
+            $notifyApprovers(firstStep, requestWithSteps).catch((err) =>
+              logger.error(err, `Failed to notify approvers for approval request [requestId=${requestWithSteps.id}]`)
+            ),
+          () => undefined
+        );
+      } else {
+        await $notifyApprovers(firstStep, requestWithSteps);
+      }
     }
 
     return {
