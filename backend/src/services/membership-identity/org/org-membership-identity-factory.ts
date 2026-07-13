@@ -60,6 +60,9 @@ export const newOrgMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.data.identityId}' not found` });
+    }
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can be invited" });
     }
