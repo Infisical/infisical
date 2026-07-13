@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
+import { useLocation } from "@tanstack/react-router";
 import { cva, type VariantProps } from "cva";
 import { ChevronDown, PanelLeftIcon } from "lucide-react";
 
@@ -82,6 +83,11 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const { pathname } = useLocation();
+
+  React.useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname]);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
