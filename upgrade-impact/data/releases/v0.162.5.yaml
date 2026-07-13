@@ -1,0 +1,21 @@
+version: v0.162.5
+releasedAt: 2026-07-13T13:13:46-07:00
+sourceTag: v0.162.5
+previousTag: v0.162.4
+impactLevel: none
+summary: No self-hosted upgrade action. Changes only adjust LDAP group CN
+  matching behavior without deployment, config, or schema impact.
+requiresDbMigration: false
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-13T20:59:54.499Z
+  sourceRange:
+    from: v0.162.4
+    to: v0.162.5
