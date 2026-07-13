@@ -475,7 +475,6 @@ export type TCheckDuplicateDestinationDTO = {
   destination: SecretSync;
   destinationConfig: Record<string, unknown>;
   connectionId?: string | null;
-  syncOptions?: Record<string, unknown> | null;
   excludeSyncId?: string;
   projectId: string;
 };

@@ -258,14 +258,7 @@ export const secretSyncServiceFactory = ({
   };
 
   const checkDuplicateDestination = async (
-    {
-      destination,
-      destinationConfig,
-      connectionId,
-      syncOptions,
-      excludeSyncId,
-      projectId
-    }: TCheckDuplicateDestinationDTO,
+    { destination, destinationConfig, connectionId, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
     const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
@@ -433,7 +426,6 @@ export const secretSyncServiceFactory = ({
           destination: params.destination,
           destinationConfig: params.destinationConfig,
           connectionId: params.connectionId,
-          syncOptions: params.syncOptions as Record<string, unknown> | undefined,
           projectId
         },
         actor
@@ -558,7 +550,7 @@ export const secretSyncServiceFactory = ({
 
     let { folderId } = secretSync;
 
-    if (params.destinationConfig || params.connectionId || params.syncOptions) {
+    if (params.destinationConfig || params.connectionId) {
       // getProjectPermission above throws NotFoundError if the project doesn't exist and
       // guarantees actor.orgId === project.orgId — no separate project lookup needed.
       const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
@@ -571,9 +563,6 @@ export const secretSyncServiceFactory = ({
             destination,
             destinationConfig: params.destinationConfig ?? (secretSync.destinationConfig as Record<string, unknown>),
             connectionId: params.connectionId ?? connectionId,
-            syncOptions:
-              (params.syncOptions as Record<string, unknown> | undefined) ??
-              (secretSync.syncOptions as Record<string, unknown> | null),
             projectId: secretSync.projectId,
             excludeSyncId: secretSync.id
           },
