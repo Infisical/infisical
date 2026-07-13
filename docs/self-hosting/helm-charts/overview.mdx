@@ -21,3 +21,310 @@ helm repo update
 | [PKI Issuer](/self-hosting/helm-charts/pki-issuer) | cert-manager external issuer for automated X.509 certificate issuance via Infisical PKI. | `infisical-pki-issuer` |
 | [CSI Provider](/self-hosting/helm-charts/csi-provider) | Mounts Infisical secrets directly into pods as files via the Secrets Store CSI Driver. | `infisical-csi-provider` |
 | [Agent Injector](/self-hosting/helm-charts/agent-injector) | Mutating webhook that automatically injects an Infisical Agent sidecar into pods. | `infisical-agent-injector` |
+
+## Production Hardening
+
+<Warning>
+  The PostgreSQL PVC contains all your encrypted secrets. Never delete this PVC unless you intend to lose all data. Always back up before any maintenance operations.
+</Warning>
+
+### Additional Configuration
+
+<AccordionGroup>
+  <Accordion title="SMTP/Email Configuration">
+    Infisical uses email for user invitations, password resets, and notifications. Add SMTP configuration to your secrets:
+
+    ```bash
+    kubectl create secret generic infisical-secrets \
+      --namespace infisical \
+      --from-literal=AUTH_SECRET="your-auth-secret" \
+      --from-literal=ENCRYPTION_KEY="your-encryption-key" \
+      --from-literal=SITE_URL="https://infisical.example.com" \
+      --from-literal=SMTP_HOST="smtp.example.com" \
+      --from-literal=SMTP_PORT="587" \
+      --from-literal=SMTP_USERNAME="your-smtp-username" \
+      --from-literal=SMTP_PASSWORD="your-smtp-password" \
+      --from-literal=SMTP_FROM_ADDRESS="infisical@example.com" \
+      --from-literal=SMTP_FROM_NAME="Infisical" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    ```
+
+    **Common SMTP providers:**
+
+    | Provider | Host | Port |
+    |----------|------|------|
+    | AWS SES | email-smtp.\{region\}.amazonaws.com | 587 |
+    | SendGrid | smtp.sendgrid.net | 587 |
+    | Gmail | smtp.gmail.com | 587 |
+
+    After updating secrets, restart the Infisical pods:
+
+    ```bash
+    kubectl rollout restart deployment/infisical -n infisical
+    ```
+  </Accordion>
+
+  <Accordion title="Custom Domain with TLS">
+    To configure a custom domain with HTTPS:
+
+    **1. Using cert-manager (recommended):**
+
+    First, install cert-manager if not already installed:
+
+    ```bash
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+    ```
+
+    Create a ClusterIssuer for Let's Encrypt:
+
+    ```yaml cluster-issuer.yaml
+    apiVersion: cert-manager.io/v1
+    kind: ClusterIssuer
+    metadata:
+      name: letsencrypt-prod
+    spec:
+      acme:
+        server: https://acme-v02.api.letsencrypt.org/directory
+        email: your-email@example.com
+        privateKeySecretRef:
+          name: letsencrypt-prod
+        solvers:
+          - http01:
+              ingress:
+                class: nginx
+    ```
+
+    ```bash
+    kubectl apply -f cluster-issuer.yaml
+    ```
+
+    Update your `values.yaml`:
+
+    ```yaml values.yaml
+    ingress:
+      enabled: true
+      hostName: "infisical.example.com"
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      tls:
+        - secretName: infisical-tls
+          hosts:
+            - infisical.example.com
+    ```
+
+    **2. Using existing TLS certificate:**
+
+    Create a TLS secret with your certificate:
+
+    ```bash
+    kubectl create secret tls infisical-tls \
+      --namespace infisical \
+      --cert=path/to/tls.crt \
+      --key=path/to/tls.key
+    ```
+
+    Update your `values.yaml`:
+
+    ```yaml values.yaml
+    ingress:
+      enabled: true
+      hostName: "infisical.example.com"
+      ingressClassName: nginx
+      tls:
+        - secretName: infisical-tls
+          hosts:
+            - infisical.example.com
+    ```
+
+    Apply the changes:
+
+    ```bash
+    helm upgrade infisical infisical-helm-charts/infisical-standalone \
+      --namespace infisical \
+      --values values.yaml
+    ```
+  </Accordion>
+
+  <Accordion title="Network Policies">
+    For enhanced security, implement network policies to restrict traffic between pods:
+
+    ```yaml network-policy.yaml
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: infisical-network-policy
+      namespace: infisical
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: infisical
+      policyTypes:
+        - Ingress
+        - Egress
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: ingress-nginx
+          ports:
+            - protocol: TCP
+              port: 8080
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: postgresql
+          ports:
+            - protocol: TCP
+              port: 5432
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: redis
+          ports:
+            - protocol: TCP
+              port: 6379
+        - to:
+            - namespaceSelector: {}
+              podSelector:
+                matchLabels:
+                  k8s-app: kube-dns
+          ports:
+            - protocol: UDP
+              port: 53
+        - to:
+            - ipBlock:
+                cidr: 0.0.0.0/0
+          ports:
+            - protocol: TCP
+              port: 443
+            - protocol: TCP
+              port: 587
+    ```
+
+    ```bash
+    kubectl apply -f network-policy.yaml
+    ```
+
+    <Note>
+      Network policies require a CNI plugin that supports them (e.g., Calico, Cilium, Weave Net). Verify your cluster supports network policies before applying.
+    </Note>
+  </Accordion>
+
+  <Accordion title="External Database and Redis">
+    For production, use external managed services instead of in-cluster databases.
+
+    **Disable in-cluster databases in values.yaml:**
+
+    ```yaml values.yaml
+    postgresql:
+      enabled: false
+
+    redis:
+      enabled: false
+    ```
+
+    **Add connection strings to your secrets:**
+
+    ```bash
+    kubectl create secret generic infisical-secrets \
+      --namespace infisical \
+      --from-literal=AUTH_SECRET="your-auth-secret" \
+      --from-literal=ENCRYPTION_KEY="your-encryption-key" \
+      --from-literal=DB_CONNECTION_URI="postgresql://user:password@your-rds-endpoint:5432/infisical?sslmode=require" \
+      --from-literal=REDIS_URL="rediss://:password@your-elasticache-endpoint:6379" \
+      --from-literal=SITE_URL="https://infisical.example.com" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    ```
+
+    **Recommended managed services:**
+
+    | Cloud | PostgreSQL | Redis |
+    |-------|------------|-------|
+    | AWS | RDS for PostgreSQL | ElastiCache |
+    | GCP | Cloud SQL | Memorystore |
+    | Azure | Azure Database for PostgreSQL | Azure Cache for Redis |
+  </Accordion>
+
+  <Accordion title="Prometheus Monitoring">
+    Infisical exposes Prometheus metrics when enabled.
+
+    **1. Add telemetry configuration to your secrets:**
+
+    Include these in your `infisical-secrets`:
+
+    ```bash
+    --from-literal=OTEL_TELEMETRY_COLLECTION_ENABLED="true" \
+    --from-literal=OTEL_EXPORT_TYPE="prometheus"
+    ```
+
+    **2. Create a ServiceMonitor (if using Prometheus Operator):**
+
+    ```yaml servicemonitor.yaml
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: infisical
+      namespace: infisical
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: infisical
+      endpoints:
+        - port: metrics
+          interval: 30s
+    ```
+
+    ```bash
+    kubectl apply -f servicemonitor.yaml
+    ```
+
+    See the [Monitoring Guide](/self-hosting/guides/monitoring-telemetry) for full setup instructions.
+  </Accordion>
+
+  <Accordion title="High Availability Configuration">
+    For production high availability:
+
+    **1. Multiple Infisical replicas:**
+
+    ```yaml values.yaml
+    infisical:
+      replicaCount: 3
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: infisical
+    ```
+
+    **2. Pod Disruption Budget:**
+
+    ```yaml pdb.yaml
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      name: infisical-pdb
+      namespace: infisical
+    spec:
+      minAvailable: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: infisical
+    ```
+
+    ```bash
+    kubectl apply -f pdb.yaml
+    ```
+
+    **3. External HA database:**
+
+    Use managed PostgreSQL with multi-AZ deployment (e.g., AWS RDS Multi-AZ, GCP Cloud SQL HA).
+
+    **4. External HA Redis:**
+
+    Use managed Redis with replication (e.g., AWS ElastiCache with cluster mode, GCP Memorystore).
+  </Accordion>
+</AccordionGroup>
