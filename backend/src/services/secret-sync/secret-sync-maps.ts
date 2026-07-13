@@ -236,9 +236,7 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
     getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
   ]);
 
-  // If we can't verify the account id of any of the syncs, for safety reasons, we should
-  // tag it as duplicates. Better fail here than cause sync conflicts later.
-  if (!existingAccountId || !newAccountId) return true;
+  if (!existingAccountId || !newAccountId) return false;
 
   return existingAccountId === newAccountId;
 };
