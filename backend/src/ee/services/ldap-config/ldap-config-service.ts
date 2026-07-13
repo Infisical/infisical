@@ -884,9 +884,19 @@ export const ldapConfigServiceFactory = ({
     const groupSearchFilter = `(cn=${ldapGroupCN})`;
     const groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
 
-    // cn equality in LDAP is case-insensitive (caseIgnoreMatch).
-    const matchedGroup = groups.find((g) => g.cn.toLowerCase() === ldapGroupCN.toLowerCase());
+    // cn equality in LDAP is case-insensitive (caseIgnoreMatch). Prefer an exact-case
+    // match; fall back to a case-variant only when it is unambiguous, since distinct
+    // groups in different containers can have CNs differing only by case.
+    const candidateGroups = groups.filter((g) => g.cn.toLowerCase() === ldapGroupCN.toLowerCase());
+    const distinctCns = new Set(candidateGroups.map((g) => g.cn));
+    const matchedGroup =
+      candidateGroups.find((g) => g.cn === ldapGroupCN) ?? (distinctCns.size === 1 ? candidateGroups[0] : undefined);
     if (!matchedGroup) {
+      if (distinctCns.size > 1) {
+        throw new BadRequestError({
+          message: `Multiple LDAP groups match CN '${ldapGroupCN}' case-insensitively: ${[...distinctCns].join(", ")}. Enter the exact CN of the intended group.`
+        });
+      }
       throw new NotFoundError({
         message: "Failed to find LDAP Group CN"
       });
