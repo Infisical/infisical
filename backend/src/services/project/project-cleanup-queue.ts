@@ -131,8 +131,8 @@ export const projectCleanupQueueFactory = ({
       }
 
       // 1) Chunk-delete the largest project-scoped table ahead of the final cascade. secret_versions_v2
-      // has no folderId/secretId FK (only a mostly-NULL envId cascade), so the project-delete cascade
-      // would otherwise orphan ~all of these rows. Deleting by folderId is FK-safe and bounds the
+      // has no folderId/secretId FK and no other FK back to the project tree, so the project-delete
+      // cascade would otherwise orphan all of these rows. Deleting by folderId is FK-safe and bounds the
       // final cascade's transaction size.
       const deletedVersions = await projectDAL.hardDeleteProjectSecretVersionsInBatches(
         projectId,
