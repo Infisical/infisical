@@ -4,12 +4,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   CredentialsArraySchema,
   hostPatternSchema,
+  ProxiedServiceWithCanProxySchema,
   ProxiedServiceWithCredentialsSchema,
   SanitizedProxiedServiceBaseSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { ApiDocsTags, PROXIED_SERVICES } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
-import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -76,7 +75,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          services: ProxiedServiceWithCredentialsSchema.extend({ canProxy: z.boolean() }).array()
+          services: ProxiedServiceWithCanProxySchema.array()
         })
       }
     },
@@ -87,44 +86,61 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "GET",
-    url: "/:serviceIdOrName",
+    url: "/:serviceId",
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
-      description:
-        "Get a proxied service by ID, or by name when the projectId and environment query params are provided",
+      description: "Get a proxied service by ID",
       params: z.object({
-        serviceIdOrName: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.serviceIdOrName)
-      }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.projectId).optional(),
-        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.environment).optional(),
-        secretPath: z.string().trim().describe(PROXIED_SERVICES.GET.secretPath).optional()
+        serviceId: z.string().uuid().describe(PROXIED_SERVICES.GET.serviceId)
       }),
       response: {
         200: z.object({
-          service: ProxiedServiceWithCredentialsSchema.extend({ canProxy: z.boolean() })
+          service: ProxiedServiceWithCanProxySchema
         })
       }
     },
     handler: async (req) => {
-      const { serviceIdOrName } = req.params;
-      const { projectId, environment, secretPath } = req.query;
-      if (projectId && environment) {
-        const service = await server.services.proxiedService.getByName(
-          { projectId, environment, secretPath: secretPath ?? "/", name: serviceIdOrName },
-          req.permission
-        );
-        return { service };
+      const service = await server.services.proxiedService.getById({ serviceId: req.params.serviceId }, req.permission);
+      return { service };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/slug/:name",
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProxiedServices],
+      description: "Get a proxied service by name",
+      params: z.object({
+        name: slugSchema({ field: "name" }).describe(PROXIED_SERVICES.GET.name)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.projectId),
+        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.environment),
+        secretPath: z.string().trim().default("/").describe(PROXIED_SERVICES.GET.secretPath)
+      }),
+      response: {
+        200: z.object({
+          service: ProxiedServiceWithCanProxySchema
+        })
       }
-      if (!isUuidV4(serviceIdOrName)) {
-        throw new BadRequestError({
-          message: "projectId and environment query params are required when fetching a proxied service by name"
-        });
-      }
-      const service = await server.services.proxiedService.getById({ serviceId: serviceIdOrName }, req.permission);
+    },
+    handler: async (req) => {
+      const service = await server.services.proxiedService.getByName(
+        {
+          projectId: req.query.projectId,
+          environment: req.query.environment,
+          secretPath: req.query.secretPath,
+          name: req.params.name
+        },
+        req.permission
+      );
       return { service };
     }
   });

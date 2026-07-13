@@ -1622,10 +1622,10 @@ export const PROXIED_SERVICES = {
     secretPath: "The secret path (folder) to list proxied services from."
   },
   GET: {
-    serviceIdOrName:
-      "The ID of the proxied service, or its name when the projectId and environment query params are provided.",
-    projectId: "The ID of the project the proxied service is in. Required when fetching by name.",
-    environment: "The slug of the environment the proxied service is in. Required when fetching by name.",
+    serviceId: "The ID of the proxied service.",
+    name: "The name of the proxied service.",
+    projectId: "The ID of the project the proxied service is in.",
+    environment: "The slug of the environment the proxied service is in.",
     secretPath: "The secret path (folder) the proxied service is in."
   },
   UPDATE: {

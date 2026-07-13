@@ -216,3 +216,7 @@ export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
 export const ProxiedServiceWithCredentialsSchema = SanitizedProxiedServiceBaseSchema.extend({
   credentials: SanitizedProxiedServiceCredentialSchema.array()
 });
+
+export const ProxiedServiceWithCanProxySchema = ProxiedServiceWithCredentialsSchema.extend({
+  canProxy: z.boolean()
+});

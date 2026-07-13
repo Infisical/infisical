@@ -2528,7 +2528,8 @@
                   "api-reference/endpoints/proxied-services/create",
                   "api-reference/endpoints/proxied-services/update",
                   "api-reference/endpoints/proxied-services/delete",
-                  "api-reference/endpoints/proxied-services/get",
+                  "api-reference/endpoints/proxied-services/get-by-id",
+                  "api-reference/endpoints/proxied-services/get-by-name",
                   "api-reference/endpoints/proxied-services/list"
                 ]
               },
