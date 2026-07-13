@@ -1162,13 +1162,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
         projectIds: z.string().trim().array().optional(),
-        name: z
-          .string()
-          .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
-          .optional()
+        // search term is matched with a parameterized, wildcard-escaped ILIKE in the DAL
+        // (sanitizeSqlLikeString), so it doesn't need an alphanumeric charset restriction —
+        // project names legitimately contain spaces and other characters.
+        name: z.string().trim().max(255).optional()
       }),
       response: {
         200: z.object({
