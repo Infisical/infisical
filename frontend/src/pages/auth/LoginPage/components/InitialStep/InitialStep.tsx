@@ -72,14 +72,16 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
   const {
     register,
     handleSubmit,
-    formState: { errors }
+    formState: { errors, isValid, submitCount }
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginFormSchema),
+    mode: "onChange",
     defaultValues: {
       email: "",
       password: ""
     }
   });
+  const showDangerState = submitCount > 0;
 
   const redirectToSaml = (orgSlug: string) => {
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
@@ -210,7 +212,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
       >
         <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
           <CardHeader className="mb-8 gap-2">
-            <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.7rem] font-medium text-transparent">
+            <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
               Log in to Infisical
             </CardTitle>
             <CardAction className="-mr-2">
@@ -237,7 +239,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
     >
       <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
         <CardHeader className="mb-4 gap-4">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Log in to Infisical
           </CardTitle>
           <CardAction className="-mr-2">
@@ -249,25 +251,24 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
             <>
               <div className="w-full">
                 <Input
-                  {...register("email")}
+                  {...register("email", { onChange: () => setLoginError(false) })}
                   type="email"
                   id="email"
-                  placeholder="Enter your email..."
+                  placeholder="you@company.com"
                   autoComplete="username"
                   className="h-10"
+                  isError={(showDangerState && Boolean(errors.email)) || loginError}
                 />
-                {errors.email && (
-                  <span className="mt-1 text-xs text-red-500">{errors.email.message}</span>
-                )}
               </div>
               <div className="mt-2 w-full">
                 <InputGroup className="h-10">
                   <InputGroupInput
-                    {...register("password")}
+                    {...register("password", { onChange: () => setLoginError(false) })}
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password..."
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     id="current-password"
+                    aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
                   />
                   <InputGroupAddon align="inline-end">
                     <IconButton
@@ -280,9 +281,6 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
                     </IconButton>
                   </InputGroupAddon>
                 </InputGroup>
-                {errors.password && (
-                  <span className="mt-1 text-xs text-red-500">{errors.password.message}</span>
-                )}
               </div>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
                 <div className="mt-4 flex justify-center [&>div]:!w-full">
@@ -300,7 +298,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
                   variant="project"
                   size="lg"
                   isFullWidth
-                  isDisabled={(shouldShowCaptcha && captchaToken === "") || isLoading}
+                  isDisabled={!isValid || (shouldShowCaptcha && captchaToken === "") || isLoading}
                   isPending={isLoading}
                 >
                   Continue with Email

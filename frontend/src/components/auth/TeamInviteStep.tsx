@@ -77,7 +77,7 @@ export default function TeamInviteStep(): JSX.Element {
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="font-alliance bg-linear-to-b from-white to-bunker-200 bg-clip-text text-2xl font-normal text-transparent">
             {t("signup.step5-invite-team")}
           </CardTitle>
         </CardHeader>

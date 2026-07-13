@@ -13,6 +13,7 @@ import { LicenseType } from "@app/ee/services/license/license-types";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
@@ -628,8 +629,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "adminSignUp",
       body: z.object({
         email: z.string().email().trim(),
-        password: z.string().trim(),
-        firstName: z.string().trim(),
+        password: PasswordPolicySchema,
+        firstName: z.string().trim().min(1),
         lastName: z.string().trim().optional()
       }),
       response: {

@@ -3,6 +3,14 @@
 
 @source not "../public";
 
+@font-face {
+  font-family: "Alliance No. 2";
+  src: url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -55,6 +63,7 @@
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
+  --font-alliance: "Alliance No. 2", sans-serif;
   --font-inter: "Inter", sans-serif;
   --max-width-8xl: 88rem; /* 1408px */
 
@@ -487,6 +496,88 @@
   @apply text-sm text-gray-500 opacity-50;
 }
 
+@keyframes vault-streak-orbit {
+  0%,
+  12% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.9;
+  }
+  42% {
+    opacity: 0.65;
+  }
+  50%,
+  100% {
+    opacity: 0;
+    stroke-dashoffset: -1885;
+  }
+}
+
+@keyframes vault-streak-line {
+  0%,
+  18% {
+    opacity: 0;
+    stroke-dashoffset: 110;
+  }
+  24% {
+    opacity: 0.95;
+  }
+  46% {
+    opacity: 0.65;
+  }
+  54%,
+  100% {
+    opacity: 0;
+    stroke-dashoffset: -110;
+  }
+}
+
+.vault-streak {
+  fill: none;
+  opacity: 0;
+  stroke: var(--color-warning);
+  stroke-dasharray: 84 1801;
+  stroke-linecap: round;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-warning) 65%, transparent));
+  animation: vault-streak-orbit 9s linear infinite;
+}
+
+.vault-streak-slow {
+  animation-delay: -1s;
+}
+
+.vault-streak-medium {
+  animation-delay: -4s;
+}
+
+.vault-streak-fast {
+  animation-delay: -7s;
+}
+
+.vault-streak-line {
+  opacity: 0;
+  stroke: var(--color-warning);
+  stroke-dasharray: 26 134;
+  stroke-linecap: round;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-warning) 65%, transparent));
+  animation: vault-streak-line 7s ease-in-out infinite;
+}
+
+.vault-streak-line-delayed {
+  animation-delay: -3.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-streak,
+  .vault-streak-line {
+    display: none;
+    animation: none;
+  }
+}
+
 /* Hide the default number input spin buttons */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -494,9 +585,21 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-/* v3-style focus ring for ReactCodeInput */
+/* v3-style focus treatment for ReactCodeInput */
+.code-input-v3 input {
+  outline: 1px solid transparent !important;
+  outline-offset: 4px;
+  transition:
+    border-color 150ms,
+    outline-color 150ms;
+}
+
+.code-input-v3 input:hover {
+  border-color: color-mix(in srgb, var(--color-foreground) 20%, transparent) !important;
+}
+
 .code-input-v3 input:focus {
-  outline: none;
-  border-color: var(--color-ring) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 50%, transparent);
+  border-color: var(--color-accent) !important;
+  outline-color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
+  box-shadow: none;
 }
