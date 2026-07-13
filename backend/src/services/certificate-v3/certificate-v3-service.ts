@@ -319,6 +319,7 @@ const validateRenewalEligibility = (
   const isConnectedExternalCa =
     caType === CaType.ACME ||
     caType === CaType.AZURE_AD_CS ||
+    caType === CaType.ADCS ||
     caType === CaType.AWS_PCA ||
     caType === CaType.AWS_ACM_PUBLIC_CA ||
     caType === CaType.DIGICERT ||
@@ -2165,6 +2166,7 @@ export const certificateV3ServiceFactory = ({
     if (
       caType === CaType.ACME ||
       caType === CaType.AZURE_AD_CS ||
+      caType === CaType.ADCS ||
       caType === CaType.AWS_PCA ||
       caType === CaType.DIGICERT ||
       caType === CaType.AWS_ACM_PUBLIC_CA ||
@@ -2576,6 +2578,7 @@ export const certificateV3ServiceFactory = ({
         } else if (
           caType === CaType.ACME ||
           caType === CaType.AZURE_AD_CS ||
+          caType === CaType.ADCS ||
           caType === CaType.AWS_PCA ||
           caType === CaType.DIGICERT ||
           caType === CaType.AWS_ACM_PUBLIC_CA ||

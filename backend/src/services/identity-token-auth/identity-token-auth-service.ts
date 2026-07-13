@@ -15,7 +15,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -29,6 +28,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { computeTokenAuthRevokeMarkerExpiry } from "../identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -900,19 +900,13 @@ export const identityTokenAuthServiceFactory = ({
       }
     );
 
-    const appCfg = getConfig();
-    // maxTTL > 0: the latest possible JWT exp is createdAt + maxTTL regardless of MAX_AGE.
-    // A JWT at createdAt + (maxTTL - MAX_AGE) gets a full MAX_AGE-bounded TTL, expiring at
-    // createdAt + maxTTL. Using min(maxTTL, MAX_AGE) clips the marker too early when maxTTL > MAX_AGE.
-    //
-    // maxTTL == 0: no budget cap, so a JWT renewed just before revocation can expire up to MAX_AGE
-    // after the revocation time (revokedAt), not after createdAt.
-    let expiresAt: Date;
-    if (identityAccessToken.accessTokenMaxTTL > 0) {
-      expiresAt = new Date(identityAccessToken.createdAt.getTime() + identityAccessToken.accessTokenMaxTTL * 1000);
-    } else {
-      expiresAt = new Date(Date.now() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000);
-    }
+    // No JWT here, so the helper anchors on now plus the row's issuance cap.
+    const expiresAt = computeTokenAuthRevokeMarkerExpiry({
+      accessTokenTTL: identityAccessToken.accessTokenTTL,
+      accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL,
+      accessTokenPeriod: identityAccessToken.accessTokenPeriod,
+      createdAtMs: identityAccessToken.createdAt.getTime()
+    });
     await identityAccessTokenService.markPerTokenRevocation({
       tokenId: identityAccessToken.id,
       identityId: identityAccessToken.identityId,

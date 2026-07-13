@@ -1,6 +1,7 @@
 export * from "./AccessApprovalRequestTemplate";
 export * from "./AccessApprovalRequestUpdatedTemplate";
 export * from "./AccessPamRequestBypassedTemplate";
+export * from "./AccessPamRequestTemplate";
 export * from "./AccountDeletionConfirmationTemplate";
 export * from "./AuditLogMigrationAlertTemplate";
 export * from "./AuditReportTemplate";
@@ -17,7 +18,7 @@ export * from "./IntegrationSyncFailedTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OAuthPasswordResetTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";
-export * from "./OrgAdminProjectGrantAccessTemplate";
+export * from "./OrgAdminProjectFolderGrantAccessTemplate";
 export * from "./OrganizationAssignmentTemplate";
 export * from "./OrganizationInvitationTemplate";
 export * from "./PasswordResetTemplate";

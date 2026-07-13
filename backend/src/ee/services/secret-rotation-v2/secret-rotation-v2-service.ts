@@ -18,6 +18,7 @@ import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotati
 import { convexAccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/convex-access-key/convex-access-key-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
 import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
+import { fireworksApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/fireworks-api-key/fireworks-api-key-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { salesforceOauthCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials/salesforce-oauth-credentials-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
@@ -104,9 +105,11 @@ import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-
 import { hpIloRotationFactory } from "./hp-ilo-rotation/hp-ilo-rotation-fns";
 import { HpIloRotationMethod } from "./hp-ilo-rotation/hp-ilo-rotation-schemas";
 import { THpIloRotation, THpIloRotationGeneratedCredentials } from "./hp-ilo-rotation/hp-ilo-rotation-types";
+import { litellmApiKeyRotationFactory } from "./litellm-api-key/litellm-api-key-rotation-fns";
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
+import { openAIServiceAccountRotationFactory } from "./openai-service-account/openai-service-account-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
@@ -198,13 +201,16 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.LiteLLMApiKey]: litellmApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.OpenAIServiceAccount]: openAIServiceAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SalesforceOauthCredentials]:
     salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DatadogApplicationKeySecret]:
     datadogApplicationKeySecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({

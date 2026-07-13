@@ -89,6 +89,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createGateway",
       tags: [ApiDocsTags.GatewaysV3],
       body: z.object({
@@ -146,6 +147,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/:gatewayId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getGateway",
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
@@ -169,6 +171,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/:gatewayId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateGateway",
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
@@ -250,6 +253,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/:gatewayId/token-auth/generate-enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "mintGatewayEnrollmentToken",
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),

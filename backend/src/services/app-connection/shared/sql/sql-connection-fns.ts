@@ -21,17 +21,24 @@ import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sq
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
-const SQL_CONNECTION_CLIENT_MAP = {
+export const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.Postgres]: "pg",
   [AppConnection.MsSql]: "mssql",
   [AppConnection.MySql]: "mysql2",
   [AppConnection.OracleDB]: "oracledb"
 };
 
-const getConnectionConfig = ({
+// Trivial "is this credential valid" query, per dialect (Oracle's SELECT needs a FROM clause).
+export const getSqlConnectionVerifyQuery = (app: keyof typeof SQL_CONNECTION_CLIENT_MAP) =>
+  app === AppConnection.OracleDB ? "SELECT 1 FROM DUAL" : "Select 1";
+
+export const getConnectionConfig = ({
   app,
   credentials: { host, sslCertificate, sslEnabled, sslRejectUnauthorized }
-}: Pick<TSqlConnection, "credentials" | "app">) => {
+}: {
+  app: TSqlConnection["app"];
+  credentials: Pick<TSqlConnection["credentials"], "host" | "sslCertificate" | "sslEnabled" | "sslRejectUnauthorized">;
+}) => {
   switch (app) {
     case AppConnection.Postgres: {
       return {
@@ -247,7 +254,7 @@ export const validateSqlConnectionCredentials = async (
 ) => {
   try {
     await executeWithPotentialGateway(config, gatewayService, gatewayV2Service, async (client) => {
-      await client.raw(config.app === AppConnection.OracleDB ? `SELECT 1 FROM DUAL` : `Select 1`);
+      await client.raw(getSqlConnectionVerifyQuery(config.app));
     });
     return config.credentials;
   } catch (error) {

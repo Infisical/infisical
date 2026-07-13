@@ -102,6 +102,7 @@ export type TUpdateOrgDTO = {
     maxSharedSecretLifetime: number;
     maxSharedSecretViewLimit: number | null;
     blockDuplicateSecretSyncDestinations: boolean;
+    allowCrossProjectSecretSharing: boolean;
     secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;

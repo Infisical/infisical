@@ -37,7 +37,10 @@ import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
-import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
+import {
+  CloudflareWorkersSyncOptionsReviewFields,
+  CloudflareWorkersSyncReviewFields
+} from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
@@ -46,6 +49,7 @@ import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSync
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
+import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
@@ -60,6 +64,7 @@ import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
 import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
@@ -97,6 +102,8 @@ export const SecretSyncReviewFields = () => {
   const { hasDuplicate, duplicateProjectId, isChecking } = useDuplicateDestinationCheck({
     destination,
     projectId: currentProject?.id || "",
+    connectionId: connection?.id,
+    syncOptions: watch("syncOptions"),
     enabled: true,
     destinationConfig: watch("destinationConfig")
   });
@@ -174,6 +181,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsReviewFields />;
       break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;
@@ -181,11 +189,17 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Railway:
       DestinationFieldsComponent = <RailwaySyncReviewFields />;
       break;
+    case SecretSync.HasuraCloud:
+      DestinationFieldsComponent = <HasuraCloudSyncReviewFields />;
+      break;
     case SecretSync.Checkly:
       DestinationFieldsComponent = <ChecklySyncReviewFields />;
       break;
     case SecretSync.Supabase:
       DestinationFieldsComponent = <SupabaseSyncReviewFields />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationFieldsComponent = <RundeckSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
@@ -282,14 +296,18 @@ export const SecretSyncReviewFields = () => {
                   ? "Another secret sync in your organization is already configured with the same destination. Your organization does not allow duplicate destination configurations."
                   : "Another secret sync in your organization is already configured with the same destination. This may lead to conflicts or unexpected behavior."}
               </p>
-              {duplicateProjectId && (
-                <p>
-                  Duplicate found in project ID:{" "}
-                  <code className="rounded-sm bg-foreground/10 px-1 py-0.5 font-mono">
-                    {duplicateProjectId}
-                  </code>
-                </p>
-              )}
+              <p>
+                {duplicateProjectId ? (
+                  <>
+                    Duplicate found in project ID:{" "}
+                    <code className="rounded-sm bg-foreground/10 px-1 py-0.5 font-mono">
+                      {duplicateProjectId}
+                    </code>
+                  </>
+                ) : (
+                  "Duplicate found in another project in your organization."
+                )}
+              </p>
             </AlertDescription>
           </Alert>
         )}

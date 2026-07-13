@@ -8,9 +8,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar
+  useSidebar,
+  useSidebarScope
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
@@ -31,7 +33,11 @@ export const ProjectSubmenuView = ({
   const { setOpenMobile } = useSidebar();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
-  const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  const sidebarScope = useSidebarScope();
+  const isPam = currentProject.type === ProjectType.PAM;
+  const basePath = isPam
+    ? `/organizations/${currentOrg.id}/pam`
+    : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const isOnExactPage = pathname.startsWith(`${basePath}/${submenu.pathSuffix}`);
   const currentTab = searchParams?.selectedTab;
   const anyItemMatchesDetail = submenu.items.some((s) => Boolean(s.activeMatch?.test(pathname)));
@@ -61,7 +67,7 @@ export const ProjectSubmenuView = ({
             <SidebarMenuItem key={sub.label}>
               <SidebarMenuButton
                 size="lg"
-                scope="project"
+                scope={sidebarScope}
                 asChild
                 isActive={isActive}
                 tooltip={sub.label}
@@ -69,7 +75,9 @@ export const ProjectSubmenuView = ({
                 <Link
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   to={
-                    `/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any
+                    isPam
+                      ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+                      : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any)
                   }
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}

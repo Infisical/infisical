@@ -52,10 +52,20 @@ import {
   TDbtServiceTokenRotationOption
 } from "./dbt-service-token-rotation";
 import {
+  TFireworksApiKeyRotation,
+  TFireworksApiKeyRotationGeneratedCredentialsResponse,
+  TFireworksApiKeyRotationOption
+} from "./fireworks-api-key-rotation";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentialsResponse,
   THpIloRotationOption
 } from "./hp-ilo-rotation";
+import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentialsResponse,
+  TLiteLLMApiKeyRotationOption
+} from "./litellm-api-key-rotation";
 import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationGeneratedCredentialsResponse,
@@ -75,6 +85,11 @@ import {
   TOpenRouterApiKeyRotationGeneratedCredentialsResponse,
   TOpenRouterApiKeyRotationOption
 } from "./open-router-api-key-rotation";
+import {
+  TOpenAIServiceAccountRotation,
+  TOpenAIServiceAccountRotationGeneratedCredentialsResponse,
+  TOpenAIServiceAccountRotationOption
+} from "./openai-service-account-rotation";
 import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationGeneratedCredentialsResponse
@@ -122,11 +137,14 @@ export type TSecretRotationV2 = (
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
+  | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
   | TConvexAccessKeyRotation
+  | TFireworksApiKeyRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -145,11 +163,14 @@ export type TSecretRotationV2Option =
   | TDbtServiceTokenRotationOption
   | TWindowsLocalAccountRotationOption
   | TOpenRouterApiKeyRotationOption
+  | TLiteLLMApiKeyRotationOption
+  | TOpenAIServiceAccountRotationOption
   | THpIloRotationOption
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
   | TDatadogApplicationKeySecretRotationOption
-  | TConvexAccessKeyRotationOption;
+  | TConvexAccessKeyRotationOption
+  | TFireworksApiKeyRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -172,11 +193,14 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TDbtServiceTokenRotationGeneratedCredentialsResponse
   | TWindowsLocalAccountRotationGeneratedCredentialsResponse
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse
+  | TLiteLLMApiKeyRotationGeneratedCredentialsResponse
+  | TOpenAIServiceAccountRotationGeneratedCredentialsResponse
   | THpIloRotationGeneratedCredentialsResponse
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
   | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse
-  | TConvexAccessKeyRotationGeneratedCredentialsResponse;
+  | TConvexAccessKeyRotationGeneratedCredentialsResponse
+  | TFireworksApiKeyRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -247,11 +271,14 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationOption;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
+  [SecretRotation.LiteLLMApiKey]: TLiteLLMApiKeyRotationOption;
+  [SecretRotation.OpenAIServiceAccount]: TOpenAIServiceAccountRotationOption;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationOption;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationOption;
+  [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -271,11 +298,14 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationGeneratedCredentialsResponse;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.LiteLLMApiKey]: TLiteLLMApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.OpenAIServiceAccount]: TOpenAIServiceAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.HpIloLocalAccount]: THpIloRotationGeneratedCredentialsResponse;
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

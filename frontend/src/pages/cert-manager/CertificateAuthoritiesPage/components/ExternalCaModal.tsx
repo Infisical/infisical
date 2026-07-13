@@ -120,6 +120,14 @@ const azureAdCsConfigurationSchema = z.object({
   })
 });
 
+const adcsConfigurationSchema = z.object({
+  adcsConnection: z.object({
+    id: z.string().min(1, "ADCS Connection is required"),
+    name: z.string()
+  }),
+  caName: z.string().trim().optional()
+});
+
 const awsPcaConfigurationSchema = z.object({
   awsConnection: z.object({
     id: z.string().min(1, "AWS Connection is required"),
@@ -217,6 +225,10 @@ const schema = z.discriminatedUnion("type", [
     configuration: azureAdCsConfigurationSchema
   }),
   baseSchema.extend({
+    type: z.literal(CaType.ADCS),
+    configuration: adcsConfigurationSchema
+  }),
+  baseSchema.extend({
     type: z.literal(CaType.AWS_PCA),
     configuration: awsPcaConfigurationSchema
   }),
@@ -247,7 +259,7 @@ type Props = {
 
 const caTypes = [
   { label: "ACME", value: CaType.ACME },
-  { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS },
+  { label: "Microsoft ADCS", value: CaType.ADCS },
   { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA },
   { label: "AWS ACM Public CA", value: CaType.AWS_ACM_PUBLIC_CA },
   { label: "DigiCert CertCentral", value: CaType.DIGICERT },
@@ -301,6 +313,19 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               id: "",
               name: ""
             }
+          }
+        });
+      } else if (initialType === CaType.ADCS) {
+        reset({
+          type: CaType.ADCS,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: {
+            adcsConnection: {
+              id: "",
+              name: ""
+            },
+            caName: ""
           }
         });
       } else if (initialType === CaType.AWS_PCA) {
@@ -427,6 +452,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.AZURE_AD_CS
     });
 
+  const { data: availableAdcsConnections, isPending: isAdcsPending } =
+    useListAvailableAppConnections(AppConnection.ADCS, currentProject.id, {
+      enabled: caType === CaType.ADCS
+    });
+
   const { data: availableAwsConnections, isPending: isAwsPending } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id,
@@ -454,6 +484,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
+    if (caType === CaType.ADCS) {
+      return availableAdcsConnections || [];
+    }
     if (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA) {
       return availableAwsConnections || [];
     }
@@ -479,6 +512,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availableAzureConnections,
+    availableAdcsConnections,
     availableAwsConnections,
     availableDigiCertConnections,
     availableVenafiTppConnections,
@@ -491,6 +525,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     isDNSMadeEasyPending ||
     isAzureDNSPending ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
+    (isAdcsPending && caType === CaType.ADCS) ||
     (isAwsPending && (caType === CaType.AWS_PCA || caType === CaType.AWS_ACM_PUBLIC_CA)) ||
     (isDigiCertPending && caType === CaType.DIGICERT) ||
     (isVenafiTppPending && caType === CaType.VENAFI_TPP) ||
@@ -558,6 +593,23 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               id: ca.configuration.azureAdcsConnectionId,
               name: selectedConnection?.name || ""
             }
+          }
+        });
+      } else if (ca.type === CaType.ADCS && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            adcsConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            caName: ca.configuration.caName
           }
         });
       } else if (ca.type === CaType.AWS_PCA && availableConnections?.length) {
@@ -744,6 +796,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
       configPayload = {
         azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
+      };
+    } else if (type === CaType.ADCS && "adcsConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.adcsConnection.id,
+        ...(formConfiguration.caName?.trim() ? { caName: formConfiguration.caName.trim() } : {})
       };
     } else if (type === CaType.AWS_PCA && "awsConnection" in formConfiguration) {
       configPayload = {
@@ -1138,6 +1195,53 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               control={control}
               name="configuration.azureAdcsConnection"
             />
+          )}
+          {caType === CaType.ADCS && (
+            <>
+              <Controller
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="ADCS App Connection contains the Windows domain credentials and Gateway used to reach the AD CS server."
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="ADCS Connection"
+                    isRequired
+                  >
+                    <FilterableSelect
+                      menuPlacement="top"
+                      value={value}
+                      onChange={(newValue) => {
+                        onChange(newValue);
+                      }}
+                      isLoading={isPending}
+                      options={availableConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FormControl>
+                )}
+                control={control}
+                name="configuration.adcsConnection"
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.caName"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Certificate Authority"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isOptional
+                    tooltipText="The AD CS certificate authority name (the CA's common name), e.g. corp-ca01-CA. Leave blank to discover it automatically from the CA host."
+                  >
+                    <Input {...field} placeholder="Auto-discovered if left blank" />
+                  </FormControl>
+                )}
+              />
+            </>
           )}
           {caType === CaType.AWS_PCA && (
             <>

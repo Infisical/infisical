@@ -139,7 +139,12 @@ export const secretVersionDALFactory = (db: TDbClient) => {
         .where("folderId", folderId)
         .whereIn(`${TableName.SecretVersion}.secretId`, secretIds)
         .join(
-          (tx || db)(TableName.SecretVersion).groupBy("secretId").max("version").select("secretId").as("latestVersion"),
+          (tx || db)(TableName.SecretVersion)
+            .whereIn("secretId", secretIds)
+            .groupBy("secretId")
+            .max("version")
+            .select("secretId")
+            .as("latestVersion"),
           (bd) => {
             bd.on(`${TableName.SecretVersion}.secretId`, "latestVersion.secretId").andOn(
               `${TableName.SecretVersion}.version`,
