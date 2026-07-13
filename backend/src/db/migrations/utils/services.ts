@@ -29,6 +29,7 @@ type TDependencies = {
   envConfig: TMigrationEnvConfig;
   db: Knex;
   keyStore: TKeyStoreFactory;
+  skipHsmLicenseCheck?: boolean;
 };
 
 type THsmServiceDependencies = {
@@ -49,7 +50,12 @@ export const getMigrationHsmService = async ({ envConfig }: THsmServiceDependenc
   return { hsmService };
 };
 
-export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }: TDependencies) => {
+export const getMigrationEncryptionServices = async ({
+  envConfig,
+  db,
+  keyStore,
+  skipHsmLicenseCheck = false
+}: TDependencies) => {
   // ----- DAL dependencies -----
   const orgDAL = orgDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
@@ -88,8 +94,6 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     envConfig
   });
 
-  await licenseService.init();
-
   // ----- HSM startup -----
 
   const { hsmService } = await getMigrationHsmService({ envConfig });
@@ -97,7 +101,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
     kmsRootConfigDAL,
-    licenseService
+    licenseService: skipHsmLicenseCheck ? undefined : licenseService
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key
