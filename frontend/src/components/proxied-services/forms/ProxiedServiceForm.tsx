@@ -433,34 +433,25 @@ export const ProxiedServiceForm = ({
 
         <div className="flex flex-col gap-3">
           <div>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium">Secret Substitution</p>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <InfoIcon className="size-3.5 text-muted" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  The placeholder is delivered as an environment variable the agent reads. The agent
-                  sends that placeholder value in its request, and the proxy swaps it for the real
-                  secret on the wire.
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <p className="text-sm font-medium">Secret Substitution</p>
             <p className="mt-1 text-xs text-muted">
-              Swap a placeholder in the request for the real secret, on the wire.
+              When an agent launches with{" "}
+              <span className="font-mono text-foreground">infisical secrets agent-proxy connect</span>,
+              Infisical sets each placeholder below as an environment variable on it. The agent sends the
+              placeholder in its requests, and the proxy swaps it for the real secret on the wire.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
+          <div className="flex flex-col gap-3">
             {substitutionFields.fields.length === 0 && (
-              <p className="text-center text-sm text-muted">
+              <div className="rounded-md border border-border bg-container/50 p-4 text-center text-sm text-muted">
                 No substitutions added. Click below to add.
-              </p>
+              </div>
             )}
             {substitutionFields.fields.map((row, i) => (
               <div
                 key={row.id}
-                className="flex flex-col gap-3 rounded-md border border-border bg-card p-4 text-sm"
+                className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4 text-sm"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
                   <span className="shrink-0 text-muted">Set</span>
@@ -491,8 +482,8 @@ export const ProxiedServiceForm = ({
                       <InfoIcon className="size-3.5 shrink-0 text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      The value the agent sends instead of the real secret; the proxy swaps it on
-                      the wire.
+                      The value the agent sends instead of the real secret; the proxy swaps it on the
+                      wire.
                     </TooltipContent>
                   </Tooltip>
                   <IconButton
@@ -512,6 +503,7 @@ export const ProxiedServiceForm = ({
                     errors.substitutions?.[i]?.placeholderValue
                   ]}
                 />
+
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 text-muted">and replace it in</span>
                   <div className="flex-1">
@@ -525,6 +517,7 @@ export const ProxiedServiceForm = ({
                     <FieldError errors={[errors.substitutions?.[i]?.surfaces]} />
                   </div>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 text-muted">with value of</span>
                   <div className="flex-1">
