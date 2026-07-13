@@ -1,0 +1,156 @@
+---
+title: "Tailscale"
+description: "Learn how to dynamically generate Tailscale auth keys and OAuth clients."
+---
+
+The Infisical Tailscale dynamic secret allows you to generate short-lived Tailscale auth keys and OAuth clients on demand. Each lease creates a new credential in your tailnet, and Infisical automatically revokes it when the lease expires.
+
+## Prerequisites
+
+Infisical needs a credential that is allowed to create and revoke keys in your tailnet. You can authenticate with either a Tailscale **API access token** or a Tailscale **OAuth client**.
+
+<Tabs>
+  <Tab title="API Key">
+    <Steps>
+      <Step title="Open the Tailscale admin console">
+        Navigate to [Settings → Keys](https://login.tailscale.com/admin/settings/keys) in the Tailscale admin console.
+      </Step>
+      <Step title="Generate an API access token">
+        Click **Generate access token…**, give it a description, and create the token.
+
+        ![Tailscale generate API key](/images/platform/dynamic-secrets/tailscale/api-key.png)
+
+        Copy the token and save it for later steps. This token is used by Infisical to create and revoke keys.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="OAuth">
+    <Steps>
+      <Step title="Open the Tailscale admin console">
+        Navigate to [Settings → OAuth clients](https://login.tailscale.com/admin/settings/oauth) in the Tailscale admin console.
+      </Step>
+      <Step title="Generate an OAuth client">
+        Click **Generate OAuth client…** and grant the scopes required for the keys you want to mint (for example, write access to `auth_keys` and/or `devices`). Attach any ACL tags that the client must be allowed to assign.
+
+        ![Tailscale generate OAuth client](/images/platform/dynamic-secrets/tailscale/oauth-client.png)
+
+        Copy the **Client ID** and **Client Secret** and save them for later steps.
+      </Step>
+    </Steps>
+
+    <Note>
+      Tailscale requires ACL tags on tailnet-owned auth keys created through OAuth. Make sure the tags you plan to use are owned by the OAuth client in your tailnet policy file.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Set up Dynamic Secrets with Tailscale
+
+<Steps>
+  <Step title="Open Secret Overview Dashboard">
+    Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+  </Step>
+  <Step title="Click on the 'Add Dynamic Secret' button">
+    ![Add Dynamic Secret Button](/images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+  </Step>
+  <Step title="Select 'Tailscale'">
+    ![Dynamic Secret Modal](/images/platform/dynamic-secrets/tailscale/modal.png)
+  </Step>
+  <Step title="Provide the inputs for dynamic secret parameters">
+    <ParamField path="Secret Name" type="string" required>
+      Name by which you want the secret to be referenced.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      Default time-to-live for a generated lease (e.g. `1h`). Must be between 1 minute and 90 days.
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      Maximum time-to-live for a generated lease (e.g. `24h`). Must be between 1 minute and 90 days.
+    </ParamField>
+
+    <ParamField path="Authentication Method" type="string" required>
+      How Infisical authenticates to the Tailscale API. Choose **API Key** to use a Tailscale API access token, or **OAuth** to use an OAuth client's credentials.
+    </ParamField>
+
+    <ParamField path="API Key" type="string" required>
+      Required when the authentication method is **API Key**. The Tailscale API access token with permission to create and revoke keys.
+    </ParamField>
+
+    <ParamField path="Client ID" type="string" required>
+      Required when the authentication method is **OAuth**. The Tailscale OAuth client ID.
+    </ParamField>
+
+    <ParamField path="Client Secret" type="string" required>
+      Required when the authentication method is **OAuth**. The Tailscale OAuth client secret with permission to create and revoke keys.
+    </ParamField>
+
+    <ParamField path="Key Type" type="string" required>
+      The type of credential to mint on each lease. Choose **Auth Key** to generate a device auth key, or **OAuth Client** to generate a tailnet OAuth client.
+    </ParamField>
+
+    <ParamField path="Tailnet" type="string" required default="-">
+      The tailnet identifier. Use `-` for the token owner's default tailnet, or provide a tailnet name (e.g. `example.com`).
+    </ParamField>
+
+    <ParamField path="Description" type="string">
+      Optional description applied to the created key or OAuth client (max 50 characters).
+    </ParamField>
+
+    <ParamField path="Tags" type="string">
+      Comma-separated ACL tags to attach (e.g. `tag:ci, tag:prod`). **Required** when the key type is **Auth Key** and the authentication method is **OAuth**; optional otherwise.
+    </ParamField>
+
+    <ParamField path="Scopes" type="string" required>
+      Comma-separated OAuth scopes granted to the client (e.g. `devices:core, auth_keys`). Shown and required only when the key type is **OAuth Client**.
+    </ParamField>
+
+    <ParamField path="Reusable" type="boolean" default="false">
+      Whether the auth key can register multiple devices. Available only when the key type is **Auth Key**.
+    </ParamField>
+
+    <ParamField path="Pre-authorized" type="boolean" default="false">
+      Whether devices registered with the key are pre-authorized. Available only when the key type is **Auth Key**.
+    </ParamField>
+  </Step>
+  <Step title="Click `Submit`">
+    After submitting the form, you will see a dynamic secret created in the dashboard.
+  </Step>
+  <Step title="Generate dynamic secrets">
+    Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+    To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+    Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+
+    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+
+    Specify the Time to Live (TTL) for the lease, then click the `Submit` button.
+
+    ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+    Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you. The values returned depend on the key type:
+
+    - **Auth Key** — an `AUTH_KEY` (the Tailscale auth key) and its `KEY_ID`.
+    - **OAuth Client** — a `CLIENT_ID` and `CLIENT_SECRET`.
+
+    ![Dynamic Secret Lease](/images/platform/dynamic-secrets/tailscale/lease.png)
+
+    <Warning>
+      Copy these credentials right away. For security reasons, the secret value is only shown once at creation time and cannot be retrieved again afterwards.
+    </Warning>
+  </Step>
+</Steps>
+
+## Audit or Revoke Leases
+
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+
+This will allow you to see the expiration time of the lease or delete a lease before its set time to live. Revoking a lease deletes the corresponding key in your tailnet.
+
+![Lease Data](/images/platform/dynamic-secrets/lease-data.png)
+
+## Renew Leases
+
+<Note>
+  Tailscale keys are immutable once created and cannot be renewed. To obtain a fresh credential, generate a new lease instead.
+</Note>
