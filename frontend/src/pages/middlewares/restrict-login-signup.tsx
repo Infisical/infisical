@@ -87,7 +87,11 @@ export const Route = createFileRoute("/_restrict-login-signup")({
         queryKey: authKeys.getAuthToken,
         queryFn: fetchAuthToken
       })
-      .catch(() => null);
+      .catch(() => {
+        // Refresh token failed (stale/rotated) — clear the cache so we don't retry with stale data
+        context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+        return null;
+      });
     if (!data) return;
 
     setAuthToken(data.token);
