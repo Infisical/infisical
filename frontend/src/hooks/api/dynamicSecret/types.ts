@@ -53,6 +53,11 @@ export enum TailscaleKeyAuthType {
   OAuthKeys = "oauth_keys"
 }
 
+export enum TailscaleAuthMethod {
+  ApiKey = "api_key",
+  OAuth = "oauth"
+}
+
 export enum KubernetesDynamicSecretCredentialType {
   Static = "static",
   Dynamic = "dynamic"
@@ -535,7 +540,9 @@ export type TDynamicSecretProvider =
       inputs:
         | {
             authType: TailscaleKeyAuthType.AuthKeys;
-            apiKey: string;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
             tailnet: string;
             description?: string;
             tags: string[];
@@ -544,7 +551,9 @@ export type TDynamicSecretProvider =
           }
         | {
             authType: TailscaleKeyAuthType.OAuthKeys;
-            apiKey: string;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
             tailnet: string;
             description?: string;
             tags: string[];

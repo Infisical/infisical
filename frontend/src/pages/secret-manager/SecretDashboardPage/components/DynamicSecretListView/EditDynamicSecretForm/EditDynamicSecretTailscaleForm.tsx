@@ -17,6 +17,7 @@ import {
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import {
   DynamicSecretProviders,
+  TailscaleAuthMethod,
   TailscaleKeyAuthType,
   TDynamicSecret,
   TDynamicSecretProvider
@@ -36,37 +37,64 @@ const validateTTL = (val: string, ctx: z.RefinementCtx) => {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 90 days" });
 };
 
-const formSchema = z.object({
-  inputs: z.discriminatedUnion("authType", [
-    z.object({
-      authType: z.literal(TailscaleKeyAuthType.AuthKeys),
-      apiKey: z.string().trim().min(1, "API key is required"),
-      tailnet: z.string().trim().min(1, "Tailnet is required"),
-      description: z.string().trim().max(50).optional(),
-      tags: z.string().trim().optional(),
-      reusable: z.boolean().default(false),
-      preauthorized: z.boolean().default(false)
-    }),
-    z.object({
-      authType: z.literal(TailscaleKeyAuthType.OAuthKeys),
-      apiKey: z.string().trim().min(1, "API key is required"),
-      tailnet: z.string().trim().min(1, "Tailnet is required"),
-      description: z.string().trim().max(50).optional(),
-      tags: z.string().trim().optional(),
-      scopes: z.string().trim().min(1, "At least one scope is required")
-    })
-  ]),
-  defaultTTL: z.string().superRefine(validateTTL),
-  maxTTL: z
-    .string()
-    .optional()
-    .superRefine((val, ctx) => {
-      if (!val) return;
-      validateTTL(val, ctx);
-    })
-    .nullable(),
-  newName: slugSchema().optional()
-});
+const tailscaleAuthSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z.literal(TailscaleAuthMethod.ApiKey),
+    apiKey: z.string().trim().min(1, "API key is required")
+  }),
+  z.object({
+    method: z.literal(TailscaleAuthMethod.OAuth),
+    clientId: z.string().trim().min(1, "Client ID is required"),
+    clientSecret: z.string().trim().min(1, "Client secret is required")
+  })
+]);
+
+const formSchema = z
+  .object({
+    inputs: z.discriminatedUnion("authType", [
+      z.object({
+        authType: z.literal(TailscaleKeyAuthType.AuthKeys),
+        auth: tailscaleAuthSchema,
+        tailnet: z.string().trim().min(1, "Tailnet is required"),
+        description: z.string().trim().max(50).optional(),
+        tags: z.string().trim().optional(),
+        reusable: z.boolean().default(false),
+        preauthorized: z.boolean().default(false)
+      }),
+      z.object({
+        authType: z.literal(TailscaleKeyAuthType.OAuthKeys),
+        auth: tailscaleAuthSchema,
+        tailnet: z.string().trim().min(1, "Tailnet is required"),
+        description: z.string().trim().max(50).optional(),
+        tags: z.string().trim().optional(),
+        scopes: z.string().trim().min(1, "At least one scope is required")
+      })
+    ]),
+    defaultTTL: z.string().superRefine(validateTTL),
+    maxTTL: z
+      .string()
+      .optional()
+      .superRefine((val, ctx) => {
+        if (!val) return;
+        validateTTL(val, ctx);
+      })
+      .nullable(),
+    newName: slugSchema().optional()
+  })
+  .superRefine((val, ctx) => {
+    // Tailscale requires tags on tailnet-owned auth keys (created via OAuth).
+    if (
+      val.inputs.authType === TailscaleKeyAuthType.AuthKeys &&
+      val.inputs.auth.method === TailscaleAuthMethod.OAuth &&
+      !val.inputs.tags?.trim()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["inputs", "tags"],
+        message: "Tags are required when creating auth keys with OAuth authentication"
+      });
+    }
+  });
 type TForm = z.infer<typeof formSchema>;
 
 const splitCsv = (val?: string) =>
@@ -77,11 +105,20 @@ const splitCsv = (val?: string) =>
         .filter(Boolean)
     : [];
 
+const buildAuth = (auth: TForm["inputs"]["auth"]): TailscaleInputs["auth"] =>
+  auth.method === TailscaleAuthMethod.ApiKey
+    ? { method: TailscaleAuthMethod.ApiKey, apiKey: auth.apiKey }
+    : {
+        method: TailscaleAuthMethod.OAuth,
+        clientId: auth.clientId,
+        clientSecret: auth.clientSecret
+      };
+
 const hydrateInputs = (rawInputs: TailscaleInputs): TForm["inputs"] => {
   if (rawInputs.authType === TailscaleKeyAuthType.AuthKeys) {
     return {
       authType: TailscaleKeyAuthType.AuthKeys,
-      apiKey: rawInputs.apiKey,
+      auth: rawInputs.auth,
       tailnet: rawInputs.tailnet,
       description: rawInputs.description,
       tags: (rawInputs.tags ?? []).join(", "),
@@ -91,7 +128,7 @@ const hydrateInputs = (rawInputs: TailscaleInputs): TForm["inputs"] => {
   }
   return {
     authType: TailscaleKeyAuthType.OAuthKeys,
-    apiKey: rawInputs.apiKey,
+    auth: rawInputs.auth,
     tailnet: rawInputs.tailnet,
     description: rawInputs.description,
     tags: (rawInputs.tags ?? []).join(", "),
@@ -131,15 +168,20 @@ export const EditDynamicSecretTailscaleForm = ({
 
   const updateDynamicSecret = useUpdateDynamicSecret();
   const authType = watch("inputs.authType");
+  const authMethod = watch("inputs.auth.method");
+  const tagsRequired =
+    authType === TailscaleKeyAuthType.AuthKeys && authMethod === TailscaleAuthMethod.OAuth;
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     if (updateDynamicSecret.isPending) return;
+
+    const auth = buildAuth(inputs.auth);
 
     const builtInputs: TailscaleInputs =
       inputs.authType === TailscaleKeyAuthType.AuthKeys
         ? {
             authType: TailscaleKeyAuthType.AuthKeys,
-            apiKey: inputs.apiKey,
+            auth,
             tailnet: inputs.tailnet,
             description: inputs.description || undefined,
             tags: splitCsv(inputs.tags),
@@ -148,7 +190,7 @@ export const EditDynamicSecretTailscaleForm = ({
           }
         : {
             authType: TailscaleKeyAuthType.OAuthKeys,
-            apiKey: inputs.apiKey,
+            auth,
             tailnet: inputs.tailnet,
             description: inputs.description || undefined,
             tags: splitCsv(inputs.tags),
@@ -251,24 +293,90 @@ export const EditDynamicSecretTailscaleForm = ({
             />
 
             <Controller
+              name="inputs.auth.method"
               control={control}
-              name="inputs.apiKey"
-              defaultValue=""
-              render={({ field, fieldState: { error } }) => (
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
-                  label="API Key"
-                  className="grow"
-                  isError={Boolean(error?.message)}
                   errorText={error?.message}
-                  isRequired
+                  isError={Boolean(error?.message)}
+                  label="Authentication Method"
                 >
-                  <SecretInput
-                    {...field}
-                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  />
+                  <Select
+                    value={value}
+                    onValueChange={(val) => onChange(val)}
+                    className="w-full border border-mineshaft-500"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
+                  >
+                    <SelectItem value={TailscaleAuthMethod.ApiKey}>API Key</SelectItem>
+                    <SelectItem value={TailscaleAuthMethod.OAuth}>OAuth</SelectItem>
+                  </Select>
                 </FormControl>
               )}
             />
+
+            {authMethod === TailscaleAuthMethod.ApiKey && (
+              <Controller
+                control={control}
+                name="inputs.auth.apiKey"
+                defaultValue=""
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="API Key"
+                    className="grow"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <SecretInput
+                      {...field}
+                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    />
+                  </FormControl>
+                )}
+              />
+            )}
+
+            {authMethod === TailscaleAuthMethod.OAuth && (
+              <>
+                <Controller
+                  control={control}
+                  name="inputs.auth.clientId"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Client ID"
+                      className="grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      isRequired
+                    >
+                      <Input {...field} placeholder="kXKWj5bUY611CNTRL" />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="inputs.auth.clientSecret"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Client Secret"
+                      className="grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      isRequired
+                      helperText="OAuth client secret with permission to create and revoke keys."
+                    >
+                      <SecretInput
+                        {...field}
+                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      />
+                    </FormControl>
+                  )}
+                />
+              </>
+            )}
 
             <Controller
               control={control}
@@ -313,10 +421,11 @@ export const EditDynamicSecretTailscaleForm = ({
                 <FormControl
                   label="Tags"
                   className="grow"
-                  isOptional
+                  isOptional={!tagsRequired}
+                  isRequired={tagsRequired}
                   isError={Boolean(error?.message)}
                   errorText={error?.message}
-                  helperText="Comma-separated ACL tags (e.g. tag:ci, tag:prod). Required when authenticating with an OAuth token."
+                  helperText="Comma-separated ACL tags (e.g. tag:ci, tag:prod). Required when creating auth keys with OAuth authentication."
                 >
                   <Input {...field} placeholder="tag:ci, tag:prod" />
                 </FormControl>

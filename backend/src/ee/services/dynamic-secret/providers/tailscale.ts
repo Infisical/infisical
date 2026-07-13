@@ -1,14 +1,24 @@
+import { z } from "zod";
+
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
-import { DynamicSecretTailscaleSchema, TailscaleKeyAuthType, TDynamicProviderFns } from "./models";
+import { DynamicSecretTailscaleSchema, TailscaleAuthMethod, TailscaleKeyAuthType, TDynamicProviderFns } from "./models";
 
 const TAILSCALE_API_BASE_URL = "https://api.tailscale.com/api/v2";
+
+type TTailscaleProviderInputs = z.infer<typeof DynamicSecretTailscaleSchema>;
+type TTailscaleAuth = TTailscaleProviderInputs["auth"];
 
 type TTailscaleKeyResponse = {
   id: string;
   key: string;
+};
+
+type TTailscaleOAuthTokenResponse = {
+  access_token: string;
 };
 
 export const TailscaleProvider = (): TDynamicProviderFns => {
@@ -17,28 +27,57 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const $requestConfig = (apiKey: string) => ({
+  const $requestConfig = (token: string) => ({
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json"
     },
     timeout: 30000,
     maxRedirects: 0
   });
 
+  // Secrets to redact from any surfaced error message.
+  const $sensitiveTokens = (auth: TTailscaleAuth): string[] =>
+    auth.method === TailscaleAuthMethod.ApiKey ? [auth.apiKey] : [auth.clientId, auth.clientSecret];
+
+  // Resolves the Bearer token used for the Tailscale API. API-key auth uses the token
+  // directly; OAuth auth exchanges the client credentials for a short-lived access token.
+  const $getBearerToken = async (auth: TTailscaleAuth): Promise<string> => {
+    if (auth.method === TailscaleAuthMethod.ApiKey) {
+      return auth.apiKey;
+    }
+
+    const tokenResponse = await safeRequest.post<TTailscaleOAuthTokenResponse>(
+      `${TAILSCALE_API_BASE_URL}/oauth/token`,
+      new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: auth.clientId,
+        client_secret: auth.clientSecret
+      }).toString(),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 30000,
+        maxRedirects: 0
+      }
+    );
+
+    return tokenResponse.data.access_token;
+  };
+
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs as object);
 
     try {
+      const token = await $getBearerToken(providerInputs.auth);
       await safeRequest.get(
         `${TAILSCALE_API_BASE_URL}/tailnet/${encodeURIComponent(providerInputs.tailnet)}/keys?all=true`,
-        $requestConfig(providerInputs.apiKey)
+        $requestConfig(token)
       );
       return true;
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
-        tokens: [providerInputs.apiKey]
+        tokens: $sensitiveTokens(providerInputs.auth)
       });
       throw new BadRequestError({ message: `Failed to connect with Tailscale: ${sanitizedErrorMessage}` });
     }
@@ -79,7 +118,8 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
     }
 
     try {
-      const response = await safeRequest.post<TTailscaleKeyResponse>(url, body, $requestConfig(providerInputs.apiKey));
+      const token = await $getBearerToken(providerInputs.auth);
+      const response = await safeRequest.post<TTailscaleKeyResponse>(url, body, $requestConfig(token));
       const { id, key } = response.data;
 
       if (providerInputs.authType === TailscaleKeyAuthType.AuthKeys) {
@@ -88,9 +128,10 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
 
       return { entityId: id, data: { CLIENT_ID: id, CLIENT_SECRET: key } };
     } catch (err) {
+      logger.error(err as Error);
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
-        tokens: [providerInputs.apiKey]
+        tokens: $sensitiveTokens(providerInputs.auth)
       });
       throw new BadRequestError({ message: `Failed to create Tailscale key: ${sanitizedErrorMessage}` });
     }
@@ -102,12 +143,13 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
     const url = `${TAILSCALE_API_BASE_URL}/tailnet/${encodeURIComponent(providerInputs.tailnet)}/keys/${encodeURIComponent(entityId)}`;
 
     try {
-      await safeRequest.delete(url, $requestConfig(providerInputs.apiKey));
+      const token = await $getBearerToken(providerInputs.auth);
+      await safeRequest.delete(url, $requestConfig(token));
       return { entityId };
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
-        tokens: [providerInputs.apiKey]
+        tokens: $sensitiveTokens(providerInputs.auth)
       });
       throw new BadRequestError({ message: `Failed to revoke Tailscale key: ${sanitizedErrorMessage}` });
     }

@@ -812,14 +812,27 @@ export enum TailscaleKeyAuthType {
   OAuthKeys = "oauth_keys"
 }
 
+export enum TailscaleAuthMethod {
+  ApiKey = "api_key",
+  OAuth = "oauth"
+}
+
+const DynamicSecretTailscaleAuthSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z.literal(TailscaleAuthMethod.ApiKey),
+    apiKey: z.string().trim().min(1).describe("Tailscale API access token used to create and revoke keys.")
+  }),
+  z.object({
+    method: z.literal(TailscaleAuthMethod.OAuth),
+    clientId: z.string().trim().min(1).describe("Tailscale OAuth client ID."),
+    clientSecret: z.string().trim().min(1).describe("Tailscale OAuth client secret.")
+  })
+]);
+
 export const DynamicSecretTailscaleSchema = z.discriminatedUnion("authType", [
   z.object({
     authType: z.literal(TailscaleKeyAuthType.AuthKeys),
-    apiKey: z
-      .string()
-      .trim()
-      .min(1)
-      .describe("Tailscale API access token or OAuth access token used to create and revoke keys."),
+    auth: DynamicSecretTailscaleAuthSchema,
     tailnet: z
       .string()
       .trim()
@@ -837,11 +850,7 @@ export const DynamicSecretTailscaleSchema = z.discriminatedUnion("authType", [
   }),
   z.object({
     authType: z.literal(TailscaleKeyAuthType.OAuthKeys),
-    apiKey: z
-      .string()
-      .trim()
-      .min(1)
-      .describe("Tailscale API access token or OAuth access token used to create and revoke keys."),
+    auth: DynamicSecretTailscaleAuthSchema,
     tailnet: z
       .string()
       .trim()
