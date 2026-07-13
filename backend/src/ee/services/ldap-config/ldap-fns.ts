@@ -143,7 +143,9 @@ export const searchGroups = async (
 
         res.on("searchEntry", (entry) => {
           const dn = entry.dn.toString();
-          const cnStartIndex = dn.indexOf("cn=");
+          // RFC 4514 attribute type names are case-insensitive; Active Directory
+          // returns DNs with uppercase "CN=", so match the prefix case-insensitively.
+          const cnStartIndex = dn.toLowerCase().indexOf("cn=");
 
           if (cnStartIndex !== -1) {
             const valueStartIndex = cnStartIndex + 3;
