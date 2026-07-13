@@ -35,11 +35,12 @@ const buildWinRMTarget = (pkiSync: TPkiSyncWithCredentials) => {
 
   const winrmCredentials: TWinRMCredentials = {
     host: credentials.host,
-    port: credentials.port ?? 5986,
+    port: credentials.port ?? 5985,
     username: credentials.username,
     password: credentials.password,
-    insecure: credentials.insecure,
-    caCertificate: credentials.caCertificate
+    sslEnabled: credentials.sslEnabled,
+    sslRejectUnauthorized: credentials.sslRejectUnauthorized,
+    sslCertificate: credentials.sslCertificate
   };
 
   return {

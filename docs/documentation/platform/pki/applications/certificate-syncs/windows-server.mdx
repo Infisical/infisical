@@ -17,7 +17,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 - The connection user must be able to write to the destination directory
 
 <Note>
-  Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. WinRM connections use HTTPS, so the host must have a WinRM HTTPS listener configured.
+  Windows delivery runs on the Gateway, which reaches the host inside your network and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which lets a certificate travel confidentially over the default WinRM listener without a server certificate. This is the same zero-configuration posture most Windows hosts already ship with. HTTPS is also supported.
 </Note>
 
 ## Create a Windows Server Sync
@@ -117,7 +117,7 @@ These are IIS requirements, configured once on the Windows host (the CCS feature
 ## FAQ
 
 <Accordion title="Which transport does the sync use?">
-  The connection uses WinRM over HTTPS (typically port 5986), so the host must have a WinRM HTTPS listener configured. For a self-signed listener certificate, paste that certificate as the CA certificate on the connection so it can be verified; skip verification only when pinning is not possible.
+  By default (SSL disabled) the connection uses HTTP with NTLM message encryption on port 5985, which needs no server certificate. Enable SSL on the connection to use HTTPS on port 5986. For a self-signed HTTPS listener, paste its certificate as the SSL certificate so it can be authenticated.
 </Accordion>
 
 <Accordion title="Can I import certificates from a Windows server back into Infisical?">

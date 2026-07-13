@@ -21,8 +21,9 @@ export type TWinRMCredentials = {
   port: number;
   username: string;
   password: string;
-  insecure?: boolean;
-  caCertificate?: string;
+  sslEnabled?: boolean;
+  sslRejectUnauthorized?: boolean;
+  sslCertificate?: string;
 };
 
 export const getWinRMConnectionListItem = () => ({
@@ -88,8 +89,11 @@ export const executeWinRMGatewayOperation = async <T>(
           username: args.credentials.username,
           password: args.credentials.password,
           params: {
-            insecure: args.credentials.caCertificate ? false : (args.credentials.insecure ?? false),
-            ...(args.credentials.caCertificate ? { caCertificate: args.credentials.caCertificate } : {}),
+            useHttps: args.credentials.sslEnabled ?? false,
+            insecure: args.credentials.sslEnabled ? args.credentials.sslRejectUnauthorized === false : false,
+            ...(args.credentials.sslEnabled && args.credentials.sslCertificate
+              ? { caCertificate: args.credentials.sslCertificate }
+              : {}),
             ...args.params
           }
         }

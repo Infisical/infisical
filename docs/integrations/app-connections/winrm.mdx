@@ -3,7 +3,7 @@ title: "Windows (WinRM) Connection"
 description: "Learn how to configure a Windows (WinRM) Connection for Infisical."
 ---
 
-Infisical supports connecting to Windows hosts over WinRM to deliver certificates. The connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network, which reaches the host and runs the WinRM session on Infisical's behalf. WinRM connections use HTTPS.
+Infisical supports connecting to Windows hosts over WinRM to deliver certificates. The connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network, which reaches the host and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which keeps the certificate and key confidential without a server certificate. HTTPS is also supported.
 
 ## Setup
 
@@ -14,12 +14,12 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
         You will need the following for the target Windows host:
 
         - **Host**: The DNS name (FQDN) or IP address of the Windows host.
-        - **Port**: The WinRM HTTPS port (typically `5986`).
+        - **Port**: The WinRM port. `5985` for HTTP with NTLM message encryption, `5986` for HTTPS.
         - **Username**: A Windows login, either `DOMAIN\user` or `user@domain.com`.
         - **Password**: The account password.
 
         <Note>
-          The host must have a WinRM HTTPS listener configured, and the account must be able to open a WinRM session and write to the destination directory used by the certificate sync.
+          The account must be able to open a WinRM session and write to the destination directory used by the certificate sync. HTTP with NTLM message encryption works against the default WinRM listener with no extra setup. HTTPS additionally requires a WinRM HTTPS listener on the host.
         </Note>
       </Step>
       <Step title="Navigate to App Connections">
@@ -32,10 +32,11 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
         Fill in the connection form:
 
         - **Gateway**: The Gateway that can reach the Windows host. This is required.
-        - **Host**: The DNS name or IP address of the Windows host.
-        - **Port**: The WinRM HTTPS port (typically `5986`).
+        - **Host** and **Port**: The Windows host and WinRM port (5985 for HTTP, 5986 for HTTPS).
         - **Username** and **Password**: The Windows account credentials.
-        - **TLS Certificate Verification**: Verify with the system trust store, verify against a **CA certificate** you paste in (recommended for a self-signed listener, since it keeps server authentication), or skip verification. Skipping gives confidentiality but does not authenticate the server, so an on-path attacker is not prevented.
+        - **Enable SSL**: Off (default) uses HTTP with NTLM message encryption, which needs no server certificate. On uses HTTPS.
+        - **SSL Certificate** (HTTPS only): Optional CA certificate (PEM). Leave empty to verify the listener against the system trust store, or paste the listener's certificate to verify a self-signed WinRM HTTPS listener.
+        - **Reject Unauthorized** (HTTPS only): When on (default), Infisical only connects if the listener presents a valid, trusted certificate.
 
         Click **Connect to Windows (WinRM)** to validate and save your connection.
       </Step>
@@ -62,10 +63,11 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
           "gatewayId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
           "credentials": {
               "host": "win01.corp.example.com",
-              "port": 5986,
+              "port": 5985,
               "username": "DOMAIN\\svc-infisical",
               "password": "[PASSWORD]",
-              "insecure": false
+              "sslEnabled": false,
+              "sslRejectUnauthorized": true
           }
       }'
     ```
@@ -75,7 +77,7 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
 ## Transport
 
 <Note>
-  WinRM connections use HTTPS (typically port `5986`), so the host must have a WinRM HTTPS listener configured. If the listener presents a self-signed certificate, paste that certificate as the CA certificate so it can be verified. Only skip verification when pinning a certificate is not possible; skipping protects confidentiality but not against an active on-path attacker.
+  By default (SSL disabled) the connection uses HTTP with NTLM message encryption on port 5985, which keeps the certificate and key confidential without a server certificate. This is the zero-configuration posture most Windows hosts already ship with. Enable SSL to use HTTPS on port 5986. For a self-signed HTTPS listener, paste its certificate as the SSL certificate so it can be authenticated.
 </Note>
 
 ## FAQ

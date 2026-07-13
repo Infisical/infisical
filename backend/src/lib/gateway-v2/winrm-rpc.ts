@@ -5,6 +5,7 @@ import { logger } from "@app/lib/logger";
 export type WinRmRpcEndpoint = "/v1/test" | "/v1/deliver" | "/v1/remove";
 
 export type WinRmTransportParams = {
+  useHttps?: boolean;
   insecure?: boolean;
   caCertificate?: string;
 };

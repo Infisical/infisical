@@ -6,16 +6,19 @@ import { z } from "zod";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
   Input,
+  Label,
   SecretInput,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   TextArea,
   Tooltip,
   TooltipContent,
@@ -52,8 +55,9 @@ const formSchema = z
         port: z.coerce.number().int().min(1).max(65535),
         username: z.string().trim().min(1, "Username required"),
         password: z.string().min(1, "Password required"),
-        caCertificate: z.string().optional(),
-        insecure: z.boolean()
+        sslEnabled: z.boolean(),
+        sslRejectUnauthorized: z.boolean(),
+        sslCertificate: z.string().optional()
       })
     })
   ])
@@ -81,11 +85,12 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
       gatewayPoolId: null,
       credentials: {
         host: "",
-        port: 5986,
+        port: 5985,
         username: "",
         password: "",
-        caCertificate: "",
-        insecure: false
+        sslEnabled: false,
+        sslRejectUnauthorized: true,
+        sslCertificate: ""
       }
     }
   });
@@ -94,10 +99,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const insecure = watch("credentials.insecure");
-  const caCertificate = watch("credentials.caCertificate");
-  // eslint-disable-next-line no-nested-ternary
-  const tlsMode = insecure ? "skip" : caCertificate ? "ca" : "verify";
+  const sslEnabled = watch("credentials.sslEnabled");
 
   return (
     <FormProvider {...form}>
@@ -247,56 +249,73 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
             )}
           />
         </div>
-        <Field className="mb-4">
-          <FieldLabel>TLS Certificate Verification</FieldLabel>
-          <Select
-            value={tlsMode}
-            onValueChange={(val) => {
-              if (val === "skip") {
-                setValue("credentials.insecure", true, { shouldDirty: true });
-                setValue("credentials.caCertificate", "", { shouldDirty: true });
-              } else if (val === "ca") {
-                setValue("credentials.insecure", false, { shouldDirty: true });
-              } else {
-                setValue("credentials.insecure", false, { shouldDirty: true });
-                setValue("credentials.caCertificate", "", { shouldDirty: true });
-              }
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value="verify">Verify with system trust store</SelectItem>
-              <SelectItem value="ca">Verify with a CA certificate</SelectItem>
-              <SelectItem value="skip">Skip verification (self-signed listener)</SelectItem>
-            </SelectContent>
-          </Select>
-          <FieldDescription>
-            WinRM connections use HTTPS. For a self-signed listener, pin its CA certificate to keep
-            server authentication. Skip verification only as a last resort: it gives confidentiality
-            but does not authenticate the server.
-          </FieldDescription>
-        </Field>
-        {tlsMode === "ca" && (
-          <Controller
-            name="credentials.caCertificate"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4">
-                <FieldLabel htmlFor="caCertificate">CA Certificate (PEM)</FieldLabel>
-                <TextArea
-                  id="caCertificate"
-                  {...field}
-                  placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
-                  rows={5}
-                  isError={Boolean(error?.message)}
-                />
-                <FieldError errors={[error]} />
+        <Controller
+          name="credentials.sslEnabled"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="ssl-enabled">Enable SSL</Label>
+                  <FieldDescription>
+                    Connect over HTTPS. When disabled, HTTP with NTLM message encryption is used and
+                    no server certificate is required.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch id="ssl-enabled" checked={value} onCheckedChange={onChange} />
               </Field>
-            )}
-          />
-        )}
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.sslCertificate"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <Field className={sslEnabled ? "mb-4" : "mb-4 opacity-50"}>
+              <FieldLabel htmlFor="ssl-certificate">
+                SSL Certificate <span className="text-mineshaft-400">(optional)</span>
+              </FieldLabel>
+              <TextArea
+                id="ssl-certificate"
+                {...field}
+                disabled={!sslEnabled}
+                placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
+                rows={5}
+                isError={Boolean(error?.message)}
+              />
+              <FieldDescription>
+                Leave empty to verify against the system trust store, or paste the listener&apos;s
+                certificate to verify a self-signed WinRM HTTPS listener.
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.sslRejectUnauthorized"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className={sslEnabled ? "mb-4" : "mb-4 opacity-50"}>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="ssl-reject-unauthorized">Reject Unauthorized</Label>
+                  <FieldDescription>
+                    If enabled, Infisical only connects when the listener presents a valid, trusted
+                    certificate.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  id="ssl-reject-unauthorized"
+                  checked={sslEnabled ? value : false}
+                  onCheckedChange={onChange}
+                  disabled={!sslEnabled}
+                />
+              </Field>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
         <AppConnectionFormFooter
           submitLabel={isUpdate ? "Update Credentials" : "Connect to Windows (WinRM)"}
         />

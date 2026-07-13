@@ -17,7 +17,13 @@ export const WinRMUsernamePasswordCredentialsSchema = z.object({
     .min(1, "Host required")
     .max(255)
     .describe("The Windows host's DNS name (FQDN) or IP address."),
-  port: z.coerce.number().int().min(1).max(65535).default(5986).describe("The WinRM HTTPS port (typically 5986)."),
+  port: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(65535)
+    .default(5985)
+    .describe("The WinRM port. 5985 for HTTP with NTLM message encryption, 5986 for HTTPS."),
   username: z
     .string()
     .trim()
@@ -25,20 +31,17 @@ export const WinRMUsernamePasswordCredentialsSchema = z.object({
     .max(255)
     .describe("Windows login: DOMAIN\\user or user@domain."),
   password: z.string().min(1, "Password required").max(255).describe("The account password."),
-  caCertificate: z
+  sslEnabled: z
+    .boolean()
+    .default(false)
+    .describe("Connect over HTTPS. When disabled, HTTP with NTLM message encryption is used."),
+  sslRejectUnauthorized: z.boolean().default(true).describe("Verify the listener's TLS certificate (HTTPS only)."),
+  sslCertificate: z
     .string()
     .trim()
     .max(8192)
     .optional()
-    .describe(
-      "PEM CA certificate used to verify a self-signed WinRM HTTPS listener. When set, TLS verification is enforced against it and 'insecure' is ignored."
-    ),
-  insecure: z
-    .boolean()
-    .default(false)
-    .describe(
-      "Skip TLS certificate verification. Gives confidentiality but not server authentication; prefer pinning a CA certificate for self-signed listeners."
-    )
+    .describe("CA certificate (PEM) used to verify a self-signed WinRM HTTPS listener (HTTPS only).")
 });
 
 const BaseWinRMConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.WinRM) });
@@ -56,8 +59,9 @@ export const SanitizedWinRMConnectionSchema = z.discriminatedUnion("method", [
       host: true,
       port: true,
       username: true,
-      caCertificate: true,
-      insecure: true
+      sslEnabled: true,
+      sslRejectUnauthorized: true,
+      sslCertificate: true
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.WinRM]} (Username and Password)` }))
 ]);
