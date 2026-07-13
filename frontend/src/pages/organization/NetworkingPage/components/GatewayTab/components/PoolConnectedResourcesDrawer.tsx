@@ -32,9 +32,6 @@ const getTotalResourceCount = (resources: TGatewayPoolConnectedResources | undef
   return (
     resources.kubernetesAuths.length +
     resources.pkiDiscoveryConfigs.length +
-    resources.pamDomains.length +
-    resources.pamResources.length +
-    resources.pamDiscoverySources.length +
     resources.appConnections.length +
     resources.dynamicSecrets.length
   );
@@ -82,9 +79,6 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
     [
       resources?.kubernetesAuths.length ? "kubernetes-auth" : null,
       resources?.pkiDiscoveryConfigs.length ? "pki-discovery" : null,
-      resources?.pamDomains.length ? "pam-domains" : null,
-      resources?.pamResources.length ? "pam-resources" : null,
-      resources?.pamDiscoverySources.length ? "pam-discovery" : null,
       resources?.appConnections.length ? "app-connections" : null,
       resources?.dynamicSecrets.length ? "dynamic-secrets" : null
     ] as (string | null)[]
@@ -154,63 +148,6 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                             name={r.name}
                             subtitle={r.projectName ? `Project: ${r.projectName}` : "PKI Discovery"}
                             isLast={idx === (resources?.pkiDiscoveryConfigs.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  {(resources?.pamDomains.length ?? 0) > 0 && (
-                    <AccordionItem value="pam-domains">
-                      <AccordionTrigger>
-                        <span className="flex-1">PAM Domains</span>
-                        <Badge variant="neutral">{resources?.pamDomains.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.pamDomains.map((r, idx) => (
-                          <ResourceRow
-                            key={r.id}
-                            name={r.name}
-                            subtitle={r.projectName ? `Project: ${r.projectName}` : "PAM Domain"}
-                            isLast={idx === (resources?.pamDomains.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  {(resources?.pamResources.length ?? 0) > 0 && (
-                    <AccordionItem value="pam-resources">
-                      <AccordionTrigger>
-                        <span className="flex-1">PAM Resources</span>
-                        <Badge variant="neutral">{resources?.pamResources.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.pamResources.map((r, idx) => (
-                          <ResourceRow
-                            key={r.id}
-                            name={r.name}
-                            subtitle={`${r.resourceType}${r.projectName ? ` · ${r.projectName}` : ""}`}
-                            isLast={idx === (resources?.pamResources.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  {(resources?.pamDiscoverySources.length ?? 0) > 0 && (
-                    <AccordionItem value="pam-discovery">
-                      <AccordionTrigger>
-                        <span className="flex-1">PAM Discovery Sources</span>
-                        <Badge variant="neutral">{resources?.pamDiscoverySources.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.pamDiscoverySources.map((r, idx) => (
-                          <ResourceRow
-                            key={r.id}
-                            name={r.name}
-                            subtitle={`${r.discoveryType}${r.projectName ? ` · ${r.projectName}` : ""}`}
-                            isLast={idx === (resources?.pamDiscoverySources.length ?? 0) - 1}
                           />
                         ))}
                       </AccordionContent>

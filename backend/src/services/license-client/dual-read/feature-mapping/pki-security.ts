@@ -12,7 +12,7 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     extractV1: (p) => p.pkiEst
   },
   {
-    v2Key: "pki_acme",
+    v2Key: "acme_client",
     v1Field: "pkiAcme",
     extractV1: (p) => p.pkiAcme
   },
@@ -25,11 +25,6 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     v2Key: "pki_pqc",
     v1Field: "pkiPqc",
     extractV1: (p) => p.pkiPqc
-  },
-  {
-    v2Key: "pki_legacy_templates",
-    v1Field: "pkiLegacyTemplates",
-    extractV1: (p) => p.pkiLegacyTemplates
   },
   {
     v2Key: "ssh_host_groups",

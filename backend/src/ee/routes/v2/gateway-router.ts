@@ -227,24 +227,6 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               environmentSlug: z.string()
             })
           ),
-          pamResources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              resourceType: z.string()
-            })
-          ),
-          pamDiscoverySources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              discoveryType: z.string()
-            })
-          ),
           kubernetesAuths: z.array(
             z.object({
               id: z.string(),

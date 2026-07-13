@@ -194,7 +194,9 @@ export const AdcsConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 placeholder="ca01.corp.example.com"
                 isError={Boolean(error?.message)}
               />
-              <FieldDescription>The CA server&apos;s DNS name, not a URL</FieldDescription>
+              <FieldDescription>
+                The address the Gateway uses to reach the CA server: an FQDN, hostname, or IP.
+              </FieldDescription>
               <FieldError errors={[error]} />
             </Field>
           )}

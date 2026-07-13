@@ -16,13 +16,6 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  CsvDelimiter,
-  parseCsvToMatrix,
-  parseDotEnv,
-  parseJson,
-  parseYaml
-} from "@app/components/utilities/parseSecrets";
-import {
   Button,
   Dialog,
   DialogContent,
@@ -39,6 +32,7 @@ import {
   FieldContent,
   FieldLabel,
   IconButton,
+  Input,
   Switch,
   Table,
   TableBody,
@@ -60,6 +54,7 @@ import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { SecretType } from "@app/hooks/api/types";
 
 import { CsvColumnMapDialog } from "./CsvColumnMapDialog";
+import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PasteSecretsDialog } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
 
@@ -96,13 +91,10 @@ const ImportSecretsContent = ({
   const [isDragActive, setDragActive] = useToggle();
   const [isImporting, setIsImporting] = useToggle();
   const [isPasteOpen, setIsPasteOpen] = useState(false);
-  const [csvData, setCsvData] = useState<{
-    headers: string[];
-    matrix: string[][];
-    delimiter: CsvDelimiter;
-  } | null>(null);
+  const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
+  const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>({});
 
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
@@ -133,6 +125,11 @@ const ImportSecretsContent = ({
     ? Object.values(activeSecrets).some((s) => s.tagSlugs?.length)
     : false;
   const isWaitingForTags = canReadTags && hasTagsToResolve && isTagsLoading;
+  const hasInvalidKey = activeSecrets
+    ? Object.entries(activeSecrets).some(
+        ([key, s]) => s.isFileSecret && !(keyOverrides[key] ?? key).trim()
+      )
+    : false;
 
   const handleParsedSecrets = useCallback((env: TParsedEnv) => {
     if (!Object.keys(env).length) {
@@ -155,50 +152,7 @@ const ImportSecretsContent = ({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (!event?.target?.result) {
-          createNotification({
-            type: "error",
-            text: "Invalid file contents."
-          });
-          return;
-        }
-
-        const src = event.target.result as ArrayBuffer;
-
-        switch (file.type) {
-          case "application/json":
-            handleParsedSecrets(parseJson(src));
-            break;
-          case "text/yaml":
-          case "application/x-yaml":
-          case "application/yaml":
-            handleParsedSecrets(parseYaml(src));
-            break;
-          case "text/csv": {
-            const { matrix: fullMatrix, delimiter } = parseCsvToMatrix(src);
-            if (!fullMatrix.length) {
-              createNotification({
-                type: "error",
-                text: "Failed to find secrets in CSV file. File might be empty."
-              });
-              return;
-            }
-            setCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1), delimiter });
-            return;
-          }
-          default:
-            handleParsedSecrets(parseDotEnv(src));
-            break;
-        }
-      };
-
-      try {
-        reader.readAsText(file);
-      } catch (error) {
-        console.log(error);
-      }
+      parseSecretFile(file, { onParsedSecrets: handleParsedSecrets, onCsvData: setCsvData });
     },
     [handleParsedSecrets]
   );
@@ -317,11 +271,17 @@ const ImportSecretsContent = ({
           {}
         );
 
+        // Resolve edited keys (file-based secrets can be renamed in the review table)
+        const resolvedEntries = Object.entries(activeSecrets).map(([origKey, secretData]) => ({
+          finalKey: (keyOverrides[origKey] ?? origKey).trim(),
+          secretData
+        }));
+
         // Split secrets into creates vs updates
-        const secretsToCreate = Object.entries(activeSecrets)
-          .filter(([key]) => !existingMap[key])
-          .map(([secretKey, secretData]) => ({
-            secretKey,
+        const secretsToCreate = resolvedEntries
+          .filter(({ finalKey }) => !existingMap[finalKey])
+          .map(({ finalKey, secretData }) => ({
+            secretKey: finalKey,
             secretValue: secretData.value,
             secretComment: secretData.comments.join("\n") || "",
             type: SecretType.Shared,
@@ -332,10 +292,10 @@ const ImportSecretsContent = ({
             skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
-        const secretsToUpdate = Object.entries(activeSecrets)
-          .filter(([key]) => existingMap[key])
-          .map(([secretKey, secretData]) => ({
-            secretKey,
+        const secretsToUpdate = resolvedEntries
+          .filter(({ finalKey }) => existingMap[finalKey])
+          .map(({ finalKey, secretData }) => ({
+            secretKey: finalKey,
             secretValue: secretData.value,
             secretComment: secretData.comments.join("\n") || undefined,
             type: SecretType.Shared,
@@ -440,6 +400,7 @@ const ImportSecretsContent = ({
   const handleBack = () => {
     setParsedSecrets(null);
     setVisibleSecretKeys(new Set());
+    setKeyOverrides({});
   };
 
   const toggleSecretVisibility = (key: string) => {
@@ -506,14 +467,15 @@ const ImportSecretsContent = ({
                     {isDragActive ? "Drop your file here" : "Upload your secrets"}
                   </EmptyTitle>
                   <EmptyDescription>
-                    Drag and drop your .env, .json, .yml, or .csv files here, or click to browse
+                    Drag and drop your .env, .json, .yml, .csv, .pfx, .pem, or .crt files here, or
+                    click to browse
                   </EmptyDescription>
                 </EmptyHeader>
                 <input
                   type="file"
                   disabled={!isAllowed}
                   className="absolute top-0 left-0 h-full w-full cursor-pointer opacity-0"
-                  accept=".txt,.env,.yml,.yaml,.json,.csv"
+                  accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
                   onChange={handleFileUpload}
                 />
               </Empty>
@@ -565,11 +527,25 @@ const ImportSecretsContent = ({
                   const hasTags = Boolean(secretData.tagSlugs?.length);
                   const hasMetadata = Boolean(secretData.secretMetadata?.length);
                   const hasSkipMl = secretData.skipMultilineEncoding === true;
+                  const editableKey = secretData.isFileSecret === true;
+                  const editedKey = keyOverrides[key] ?? key;
                   return (
                     <TableRow key={key}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <div className="flex w-full items-center gap-1.5">
-                          <p className="truncate">{key}</p>
+                          {editableKey ? (
+                            <Input
+                              value={editedKey}
+                              onChange={(e) =>
+                                setKeyOverrides((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                              isError={!editedKey.trim()}
+                              placeholder="Secret key"
+                              className="h-7 font-mono text-xs"
+                            />
+                          ) : (
+                            <p className="truncate">{key}</p>
+                          )}
                           {hasComments && (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -711,7 +687,7 @@ const ImportSecretsContent = ({
           <Button
             variant="project"
             onClick={handleImport}
-            isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags}
+            isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags || hasInvalidKey}
             isPending={isImporting || isWaitingForTags}
           >
             Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}

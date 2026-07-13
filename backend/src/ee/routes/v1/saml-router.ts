@@ -223,7 +223,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             orgId: loginResult.orgId
           });
         } catch (error) {
-          if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+          if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED && email) {
             authAttemptCounter.add(1, {
               "infisical.user.email": email.toLowerCase(),
               "infisical.auth.method": AuthAttemptAuthMethod.SAML,

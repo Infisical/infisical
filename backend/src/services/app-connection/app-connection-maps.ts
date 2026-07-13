@@ -53,6 +53,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Dbt]: "DBT",
   [AppConnection.SMB]: "SMB",
   [AppConnection.OpenRouter]: "OpenRouter",
+  [AppConnection.OpenAI]: "OpenAI",
   [AppConnection.CircleCI]: "CircleCI",
   [AppConnection.AzureEntraId]: "Azure Entra ID",
   [AppConnection.Venafi]: "Venafi TLS Protect Cloud",
@@ -72,9 +73,12 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.F5BigIp]: "F5 BIG-IP",
   [AppConnection.GoDaddy]: "GoDaddy",
   [AppConnection.Convex]: "Convex",
+  [AppConnection.Rundeck]: "Rundeck",
   [AppConnection.HasuraCloud]: "Hasura Cloud",
   [AppConnection.Qovery]: "Qovery",
-  [AppConnection.Cloud66]: "Cloud 66"
+  [AppConnection.Cloud66]: "Cloud 66",
+  [AppConnection.LiteLLM]: "LiteLLM",
+  [AppConnection.Fireworks]: "Fireworks"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -130,6 +134,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Dbt]: AppConnectionPlanType.Regular,
   [AppConnection.SMB]: AppConnectionPlanType.Regular,
   [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
+  [AppConnection.OpenAI]: AppConnectionPlanType.Regular,
   [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
   [AppConnection.AzureEntraId]: AppConnectionPlanType.Regular,
   [AppConnection.Venafi]: AppConnectionPlanType.Regular,
@@ -149,7 +154,10 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.F5BigIp]: AppConnectionPlanType.Regular,
   [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
   [AppConnection.Convex]: AppConnectionPlanType.Regular,
+  [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
   [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
-  [AppConnection.Cloud66]: AppConnectionPlanType.Regular
+  [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
+  [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
+  [AppConnection.Fireworks]: AppConnectionPlanType.Regular
 };
