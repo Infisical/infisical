@@ -143,6 +143,30 @@ Set proper site URL for your Infisical instance:
 SITE_URL="https://app.infisical.com"
 ```
 
+#### Public Signups Are Disabled After Admin Setup
+
+<Warning>
+  Leaving self-service signups open on a publicly reachable instance means anyone
+  can create an account without an invitation, which widens your attack surface.
+  Several features let an authenticated user configure outbound requests to
+  destinations they supply (App Connections, Webhooks, Audit Log Streams, Dynamic
+  Secrets, and similar). Infisical already routes these through an SSRF-safe
+  client that blocks internal and private IP ranges by default (see
+  [SSRF Protection](#server-side-request-forgery-ssrf-protection) above). 
+  Restricting who can reach those features limits exposure if that protection is ever relaxed (for example a
+  permissive `ALLOW_INTERNAL_IP_CONNECTIONS`).
+</Warning>
+
+On a self-hosted instance, self-service signups are **disabled by default** once
+the first super admin account is created. No configuration is required to get this
+hardened default. You can still invite users to your organization, and to
+provision additional users, prefer organization invitations over public signup.
+
+If you operate a trusted, internal instance and deliberately want open signups,
+re-enable them from the **Admin Console → Authentication** settings by setting
+**Allow user signups** to **Anyone**. The same control lets you disable signups
+again at any time.
+
 #### SMTP Security
 
 Use TLS for email communications:
