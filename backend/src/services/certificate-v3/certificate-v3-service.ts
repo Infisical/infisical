@@ -1989,7 +1989,7 @@ export const certificateV3ServiceFactory = ({
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
-      isAdcsCa ? { skipExtensionRequired: true } : undefined
+      isAdcsCa ? { skipCaManagedFieldValidation: true } : undefined
     );
 
     if (!validationResult.isValid) {
@@ -2479,11 +2479,13 @@ export const certificateV3ServiceFactory = ({
         keyAlgorithm: originalCert.keyAlgorithm || undefined
       };
 
+      const isAdcsCa = ca?.externalCa?.type === CaType.ADCS || ca?.externalCa?.type === CaType.AZURE_AD_CS;
       let validationResult: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] };
       if (profile?.certificatePolicyId) {
         validationResult = await certificatePolicyService.validateCertificateRequest(
           profile.certificatePolicyId,
-          certificateRequest
+          certificateRequest,
+          isAdcsCa ? { skipCaManagedFieldValidation: true } : undefined
         );
       }
 

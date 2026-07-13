@@ -308,7 +308,7 @@ export const certificatePolicyServiceFactory = ({
   const validateRequestAgainstPolicy = (
     template: TCertificatePolicy,
     request: TCertificateRequest,
-    options?: { skipRequired?: boolean; skipExtensionRequired?: boolean }
+    options?: { skipRequired?: boolean; skipCaManagedFieldValidation?: boolean }
   ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -478,7 +478,7 @@ export const certificatePolicyServiceFactory = ({
       // Check REQUIRED key usages - must have all required usages
       if (
         !options?.skipRequired &&
-        !options?.skipExtensionRequired &&
+        !options?.skipCaManagedFieldValidation &&
         keyUsagePolicy.required &&
         keyUsagePolicy.required.length > 0
       ) {
@@ -514,7 +514,7 @@ export const certificatePolicyServiceFactory = ({
       // Check REQUIRED extended key usages - must have all required usages
       if (
         !options?.skipRequired &&
-        !options?.skipExtensionRequired &&
+        !options?.skipCaManagedFieldValidation &&
         extendedKeyUsagePolicy.required &&
         extendedKeyUsagePolicy.required.length > 0
       ) {
@@ -592,7 +592,7 @@ export const certificatePolicyServiceFactory = ({
     }
 
     // Validate TTL against template validity constraints
-    if (request.validity?.ttl && template.validity) {
+    if (!options?.skipCaManagedFieldValidation && request.validity?.ttl && template.validity) {
       const requestDurationMs = parseTTL(request.validity.ttl);
 
       // Check maximum duration using max field
@@ -605,7 +605,7 @@ export const certificatePolicyServiceFactory = ({
       }
     }
     // Validate explicit date range against max duration
-    if ((request.notBefore || request.notAfter) && template.validity?.max) {
+    if (!options?.skipCaManagedFieldValidation && (request.notBefore || request.notAfter) && template.validity?.max) {
       const notBefore = request.notBefore || new Date();
       const { notAfter } = request;
 
@@ -630,7 +630,11 @@ export const certificatePolicyServiceFactory = ({
           "CA certificate issuance is denied by this policy. The policy does not allow issuing CA certificates."
         );
       }
-    } else if (!options?.skipRequired && !options?.skipExtensionRequired && isCaPolicy === CertPolicyState.REQUIRED) {
+    } else if (
+      !options?.skipRequired &&
+      !options?.skipCaManagedFieldValidation &&
+      isCaPolicy === CertPolicyState.REQUIRED
+    ) {
       if (!requestWantsCA) {
         errors.push(
           "CA certificate issuance is required by this policy. The request must include basicConstraints with isCA set to true."
@@ -1023,7 +1027,7 @@ export const certificatePolicyServiceFactory = ({
   const validateCertificateRequest = async (
     policyId: string,
     request: TCertificateRequest,
-    options?: { skipExtensionRequired?: boolean }
+    options?: { skipCaManagedFieldValidation?: boolean }
   ): Promise<TPolicyValidationResult> => {
     const policy = await certificatePolicyDAL.findById(policyId);
     if (!policy) {

@@ -700,7 +700,7 @@ export const certificateApprovalServiceFactory = (
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedReconstructedRequest,
-      isAdcsCa ? { skipExtensionRequired: true } : undefined
+      isAdcsCa ? { skipCaManagedFieldValidation: true } : undefined
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
