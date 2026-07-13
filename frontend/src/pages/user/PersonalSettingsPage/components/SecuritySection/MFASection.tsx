@@ -19,6 +19,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DocumentationLinkBadge,
   Select,
   SelectContent,
   SelectItem,
@@ -114,7 +115,10 @@ export const MFASection = () => {
   const banner = (
     <div className="p-6">
       <div className="flex items-start justify-between">
-        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
+          <DocumentationLinkBadge href={LEARN_MORE_URL} />
+        </div>
         {user.isMfaEnabled ? (
           <Badge variant="success">
             <ShieldCheckIcon /> Enabled
@@ -126,23 +130,9 @@ export const MFASection = () => {
         )}
       </div>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        {user.isMfaEnabled ? (
-          "Two-factor authentication is protecting your account. Manage your methods and recovery options below."
-        ) : (
-          <>
-            Two-factor authentication adds an additional layer of security to your account by
-            requiring more than just a password to sign in. Want to learn more about two-factor
-            authentication?{" "}
-            <a
-              href={LEARN_MORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Click here
-            </a>
-          </>
-        )}
+        {user.isMfaEnabled
+          ? "Two-factor authentication is protecting your account. Manage your methods and recovery options below."
+          : "Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to sign in."}
       </p>
 
       <div className="mt-6 border-t border-border pt-6">
@@ -213,17 +203,15 @@ export const MFASection = () => {
 
   return (
     <>
-      {/* One card, sectioned with separators, so the whole 2FA context reads as a
-          single unit rather than three disconnected cards. */}
       <div className="mb-6 rounded-lg border border-border bg-card">
         {banner}
-        <div className="border-t border-border">
-          <MfaMethodsCard />
-        </div>
+        <div className="mx-6 border-t border-border" />
+        <MfaMethodsCard />
         {hasRecoveryCodes && (
-          <div className="border-t border-border">
+          <>
+            <div className="mx-6 border-t border-border" />
             <RecoveryOptionsCard />
-          </div>
+          </>
         )}
       </div>
 
