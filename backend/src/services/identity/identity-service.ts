@@ -262,7 +262,7 @@ export const identityServiceFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
     if (!identityDetails) {
-      throw new NotFoundError({ message: `Identity with ID '${id}' not found` });
+      throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
     }
 
     if (identityDetails.projectId) {
