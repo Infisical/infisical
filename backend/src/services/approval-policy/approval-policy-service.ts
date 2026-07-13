@@ -79,6 +79,7 @@ import {
 import {
   createApprovalRequestWithSteps,
   notifyApproversForStep,
+  resolveStepApproverUserIds,
   sendApprovalEmailsForStep
 } from "./approval-request-fns";
 import { TPamAccessRequestData } from "./pam-access/pam-access-policy-types";
@@ -134,7 +135,11 @@ export const approvalPolicyServiceFactory = ({
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApprovers = async (step: ApprovalPolicyStep, request: TApprovalRequests) => {
-    await notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
+    if (!step.notifyApprovers) return;
+
+    const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
+
+    await notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService }, approverUserIds);
 
     if (request.type !== ApprovalPolicyType.CertRequest && request.type !== ApprovalPolicyType.CertCodeSigning) {
       return;
@@ -157,7 +162,8 @@ export const approvalPolicyServiceFactory = ({
           projectName: project?.name ?? "Unknown project",
           approvalUrl
         },
-        { userGroupMembershipDAL, userDAL, smtpService }
+        { userGroupMembershipDAL, userDAL, smtpService },
+        approverUserIds
       );
     } catch (err) {
       logger.error(err, `Failed to send approval request emails to approvers [requestId=${request.id}]`);

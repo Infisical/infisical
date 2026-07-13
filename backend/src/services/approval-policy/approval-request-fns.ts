@@ -150,7 +150,7 @@ export const createApprovalRequestWithSteps = async (
   return { ...request, steps } as TApprovalRequestWithSteps;
 };
 
-const resolveStepApproverUserIds = async (
+export const resolveStepApproverUserIds = async (
   step: ApprovalPolicyStep,
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">
 ): Promise<Set<string>> => {
@@ -174,12 +174,14 @@ export const notifyApproversForStep = async (
   dependencies: {
     userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
     notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  }
+  },
+  preResolvedApproverUserIds?: Set<string>
 ): Promise<void> => {
   if (!step.notifyApprovers) return;
 
   const { userGroupMembershipDAL, notificationService } = dependencies;
-  const userIdsToNotify = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
+  const userIdsToNotify =
+    preResolvedApproverUserIds ?? (await resolveStepApproverUserIds(step, userGroupMembershipDAL));
 
   if (userIdsToNotify.size === 0) return;
 
@@ -206,12 +208,14 @@ export const sendApprovalEmailsForStep = async (
     userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
     userDAL: Pick<TUserDALFactory, "find">;
     smtpService: Pick<TSmtpService, "sendMail">;
-  }
+  },
+  preResolvedApproverUserIds?: Set<string>
 ): Promise<void> => {
   if (!step.notifyApprovers) return;
 
   const { userGroupMembershipDAL, userDAL, smtpService } = dependencies;
-  const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
+  const approverUserIds =
+    preResolvedApproverUserIds ?? (await resolveStepApproverUserIds(step, userGroupMembershipDAL));
 
   if (approverUserIds.size === 0) return;
 
