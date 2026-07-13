@@ -436,9 +436,12 @@ export const ProxiedServiceForm = ({
             <p className="text-sm font-medium">Secret Substitution</p>
             <p className="mt-1 text-xs text-muted">
               When an agent launches with{" "}
-              <span className="font-mono text-foreground">infisical secrets agent-proxy connect</span>,
-              Infisical sets each placeholder below as an environment variable on it. The agent sends the
-              placeholder in its requests, and the proxy swaps it for the real secret on the wire.
+              <span className="font-mono text-foreground">
+                infisical secrets agent-proxy connect
+              </span>
+              , Infisical sets each placeholder below as an environment variable on it. The agent
+              sends the placeholder in its requests, and the proxy swaps it for the real secret on
+              the wire.
             </p>
           </div>
 
@@ -482,8 +485,8 @@ export const ProxiedServiceForm = ({
                       <InfoIcon className="size-3.5 shrink-0 text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      The value the agent sends instead of the real secret; the proxy swaps it on the
-                      wire.
+                      The value the agent sends instead of the real secret; the proxy swaps it on
+                      the wire.
                     </TooltipContent>
                   </Tooltip>
                   <IconButton
