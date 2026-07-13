@@ -2,8 +2,11 @@ import { Knex } from "knex";
 
 import { TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -237,4 +240,52 @@ export const sendApprovalEmailsForStep = async (
       approvalUrl: emailContext.approvalUrl
     }
   });
+};
+
+export const notifyStepApprovers = async (
+  step: ApprovalPolicyStep,
+  request: TApprovalRequests,
+  dependencies: {
+    userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+    notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+    userDAL: Pick<TUserDALFactory, "find">;
+    smtpService: Pick<TSmtpService, "sendMail">;
+    projectDAL: Pick<TProjectDALFactory, "findById">;
+  }
+): Promise<void> => {
+  if (!step.notifyApprovers) return;
+
+  const { userGroupMembershipDAL, notificationService, userDAL, smtpService, projectDAL } = dependencies;
+
+  const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
+
+  await notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService }, approverUserIds);
+
+  if (request.type !== ApprovalPolicyType.CertRequest && request.type !== ApprovalPolicyType.CertCodeSigning) {
+    return;
+  }
+
+  const cfg = getConfig();
+  // skip email when SITE_URL is unset, the review link would dead-link
+  if (!cfg.SITE_URL) return;
+
+  try {
+    const project = await projectDAL.findById(request.projectId);
+    const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}`;
+
+    await sendApprovalEmailsForStep(
+      step,
+      request,
+      {
+        requestTypeLabel:
+          request.type === ApprovalPolicyType.CertCodeSigning ? "code signing request" : "certificate request",
+        projectName: project?.name ?? "Unknown project",
+        approvalUrl
+      },
+      { userGroupMembershipDAL, userDAL, smtpService },
+      approverUserIds
+    );
+  } catch (err) {
+    logger.error(err, `Failed to send approval request emails to approvers [requestId=${request.id}]`);
+  }
 };

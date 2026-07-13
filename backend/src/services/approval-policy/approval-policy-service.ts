@@ -76,12 +76,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
-import {
-  createApprovalRequestWithSteps,
-  notifyApproversForStep,
-  resolveStepApproverUserIds,
-  sendApprovalEmailsForStep
-} from "./approval-request-fns";
+import { createApprovalRequestWithSteps, notifyStepApprovers } from "./approval-request-fns";
 import { TPamAccessRequestData } from "./pam-access/pam-access-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
@@ -134,41 +129,14 @@ export const approvalPolicyServiceFactory = ({
   userDAL,
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
-  const $notifyApprovers = async (step: ApprovalPolicyStep, request: TApprovalRequests) => {
-    if (!step.notifyApprovers) return;
-
-    const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
-
-    await notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService }, approverUserIds);
-
-    if (request.type !== ApprovalPolicyType.CertRequest && request.type !== ApprovalPolicyType.CertCodeSigning) {
-      return;
-    }
-
-    const cfg = getConfig();
-    // skip email when SITE_URL is unset, the review link would dead-link
-    if (!cfg.SITE_URL) return;
-
-    try {
-      const project = await projectDAL.findById(request.projectId);
-      const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}`;
-
-      await sendApprovalEmailsForStep(
-        step,
-        request,
-        {
-          requestTypeLabel:
-            request.type === ApprovalPolicyType.CertCodeSigning ? "code signing request" : "certificate request",
-          projectName: project?.name ?? "Unknown project",
-          approvalUrl
-        },
-        { userGroupMembershipDAL, userDAL, smtpService },
-        approverUserIds
-      );
-    } catch (err) {
-      logger.error(err, `Failed to send approval request emails to approvers [requestId=${request.id}]`);
-    }
-  };
+  const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
+    notifyStepApprovers(step, request, {
+      userGroupMembershipDAL,
+      notificationService,
+      userDAL,
+      smtpService,
+      projectDAL
+    });
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;

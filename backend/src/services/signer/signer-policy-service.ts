@@ -28,11 +28,14 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "../approval-policy/approval-request-dal";
-import { createApprovalRequestWithSteps } from "../approval-policy/approval-request-fns";
+import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
 import { TSignerRequestDALFactory } from "./signer-request-dal";
@@ -60,9 +63,12 @@ type TSignerPolicyServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-  userDAL: Pick<TUserDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TSignerPolicyServiceFactory = ReturnType<typeof signerPolicyServiceFactory>;
@@ -103,7 +109,10 @@ export const signerPolicyServiceFactory = ({
   identityGroupMembershipDAL,
   userDAL,
   identityDAL,
-  permissionService
+  permissionService,
+  notificationService,
+  smtpService,
+  projectDAL
 }: TSignerPolicyServiceFactoryDep) => {
   const $assertResourcePermission = async (
     signerId: string,
@@ -601,6 +610,16 @@ export const signerPolicyServiceFactory = ({
         approvalRequestStepEligibleApproversDAL
       }
     );
+
+    if (requestWithSteps.steps.length > 0) {
+      await notifyStepApprovers(requestWithSteps.steps[0], requestWithSteps, {
+        userGroupMembershipDAL,
+        notificationService,
+        userDAL,
+        smtpService,
+        projectDAL
+      });
+    }
 
     return requestWithSteps;
   };
