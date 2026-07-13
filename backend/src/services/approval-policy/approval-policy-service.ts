@@ -1222,9 +1222,7 @@ export const approvalPolicyServiceFactory = ({
             tx
           );
 
-          if (nextStep.notifyApprovers) {
-            nextStepToNotifyInner = nextStep;
-          }
+          nextStepToNotifyInner = nextStep;
         } else {
           // All steps completed
           const completedReq = await approvalRequestDAL.updateById(

@@ -180,8 +180,6 @@ export const notifyApproversForStep = async (
   },
   preResolvedApproverUserIds?: Set<string>
 ): Promise<void> => {
-  if (!step.notifyApprovers) return;
-
   const { userGroupMembershipDAL, notificationService } = dependencies;
   const userIdsToNotify =
     preResolvedApproverUserIds ?? (await resolveStepApproverUserIds(step, userGroupMembershipDAL));
@@ -214,8 +212,6 @@ export const sendApprovalEmailsForStep = async (
   },
   preResolvedApproverUserIds?: Set<string>
 ): Promise<void> => {
-  if (!step.notifyApprovers) return;
-
   const { userGroupMembershipDAL, userDAL, smtpService } = dependencies;
   const approverUserIds =
     preResolvedApproverUserIds ?? (await resolveStepApproverUserIds(step, userGroupMembershipDAL));
@@ -253,8 +249,6 @@ export const notifyStepApprovers = async (
     projectDAL: Pick<TProjectDALFactory, "findById">;
   }
 ): Promise<void> => {
-  if (!step.notifyApprovers) return;
-
   const { userGroupMembershipDAL, notificationService, userDAL, smtpService, projectDAL } = dependencies;
 
   const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);

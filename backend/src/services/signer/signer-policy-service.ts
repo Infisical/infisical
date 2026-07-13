@@ -448,8 +448,7 @@ export const signerPolicyServiceFactory = ({
             policyId,
             stepNumber: step.stepNumber,
             name: step.name?.trim() || null,
-            requiredApprovals: step.requiredApprovals,
-            notifyApprovers: true
+            requiredApprovals: step.requiredApprovals
           },
           tx
         );
