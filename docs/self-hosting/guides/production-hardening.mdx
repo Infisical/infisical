@@ -167,6 +167,15 @@ re-enable them from the **Admin Console → Authentication** settings by setting
 **Allow user signups** to **Anyone**. The same control lets you disable signups
 again at any time.
 
+<Note>
+  This hardened default applies to **new installations only**. It takes effect
+  when the first super admin account is created, so an instance that was already
+  initialized before upgrading keeps its existing **Allow user signups** setting
+  (open by default). If you run an existing self-hosted instance, verify this in
+  **Admin Console → Authentication** and set **Allow user signups** to
+  **Disabled** if you want the hardened behavior.
+</Note>
+
 #### SMTP Security
 
 Use TLS for email communications:
