@@ -36,9 +36,11 @@ describe("Windows Server destinationPath validation", () => {
     expect(parsePath("D:\\ProgramData\\ssl\\certs")).toBe(true);
   });
 
-  test("accepts UNC paths", () => {
-    expect(parsePath("\\\\server\\share")).toBe(true);
-    expect(parsePath("\\\\host\\share\\certs")).toBe(true);
+  test("rejects UNC paths", () => {
+    // UNC destinations would make the target host authenticate to, and write key material at, an
+    // arbitrary SMB server, so only local drive paths are allowed.
+    expect(parsePath("\\\\server\\share")).toBe(false);
+    expect(parsePath("\\\\host\\share\\certs")).toBe(false);
   });
 
   test("rejects relative and non-Windows paths", () => {
