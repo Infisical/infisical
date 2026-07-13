@@ -7,18 +7,23 @@ The Infisical Tailscale dynamic secret allows you to generate short-lived Tailsc
 
 ## Prerequisites
 
-Infisical needs a credential that is allowed to create and revoke keys in your tailnet. You can authenticate with either a Tailscale **API access token** or a Tailscale **OAuth client**.
+Infisical needs a credential that is allowed to create and revoke keys in your tailnet. You can authenticate with either **API access token** or **OAuth client**.
 
 <Tabs>
   <Tab title="API Key">
     <Steps>
       <Step title="Open the Tailscale admin console">
-        Navigate to [Settings → Keys](https://login.tailscale.com/admin/settings/keys) in the Tailscale admin console.
+        Open the Tailscale admin console and select **Settings** in the top navigation, then open [Settings → Keys](https://login.tailscale.com/admin/settings/keys).
+
+        ![Tailscale start](/images/platform/dynamic-secrets/tailscale/step-1.png)
+        ![Tailscale Keys settings](/images/platform/dynamic-secrets/tailscale/step-2-access-token.png)
+
       </Step>
       <Step title="Generate an API access token">
-        Click **Generate access token…**, give it a description, and create the token.
+        In the **API access tokens** section, click **Generate access token…**, give it a description, set an expiration (up to 90 days), and create the token.
 
-        ![Tailscale generate API key](/images/platform/dynamic-secrets/tailscale/api-key.png)
+        ![Tailscale generate access token](/images/platform/dynamic-secrets/tailscale/step-3-access-token.png)
+        ![Tailscale access token modal](/images/platform/dynamic-secrets/tailscale/step-4-access-token.png)
 
         Copy the token and save it for later steps. This token is used by Infisical to create and revoke keys.
       </Step>
@@ -27,19 +32,32 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
   <Tab title="OAuth">
     <Steps>
       <Step title="Open the Tailscale admin console">
-        Navigate to [Settings → OAuth clients](https://login.tailscale.com/admin/settings/oauth) in the Tailscale admin console.
+        Open the Tailscale admin console and select **Settings** in the top navigation, then open **Trust credentials** in the sidebar.
+
+        ![Tailscale start](/images/platform/dynamic-secrets/tailscale/step-1.png)
+        ![Tailscale Trust credentials settings](/images/platform/dynamic-secrets/tailscale/step-2-trusted-credentials.png)
       </Step>
-      <Step title="Generate an OAuth client">
-        Click **Generate OAuth client…** and grant the scopes required for the keys you want to mint (for example, write access to `auth_keys` and/or `devices`). Attach any ACL tags that the client must be allowed to assign.
+      <Step title="Create a trust credential">
+        Click **+ Credential** to start the new credential wizard.
 
-        ![Tailscale generate OAuth client](/images/platform/dynamic-secrets/tailscale/oauth-client.png)
+        ![Tailscale add credential](/images/platform/dynamic-secrets/tailscale/step-3-trusted-credentials.png)
 
-        Copy the **Client ID** and **Client Secret** and save them for later steps.
+        Choose **OAuth**, then click **Continue**.
+
+        ![Tailscale choose OAuth](/images/platform/dynamic-secrets/tailscale/step-4-trusted-credentials.png)
+
+        Under **Keys**, grant **write** access to the scopes for the credentials you plan to mint (for example, `auth_keys`, `oauth_keys`, and/or `federated_keys`). Attach any ACL tags the credential must be allowed to assign (for example, `tag:infisical-dynamic-secrets`), then click **Generate credential**.
+
+        ![Tailscale credential scopes](/images/platform/dynamic-secrets/tailscale/step-5-trusted-credentials.png)
+
+        Copy the **Client ID** and **Client Secret** and save them for later steps. The client secret is shown only once.
+
+        ![Tailscale credential created](/images/platform/dynamic-secrets/tailscale/step-6-trusted-credentials.png)
       </Step>
     </Steps>
 
     <Note>
-      Tailscale requires ACL tags on tailnet-owned auth keys created through OAuth. Make sure the tags you plan to use are owned by the OAuth client in your tailnet policy file.
+      Tailscale requires ACL tags on tailnet-owned auth keys created through OAuth. Make sure the tags you plan to use are owned by the trust credential in your tailnet policy file.
     </Note>
   </Tab>
 </Tabs>
@@ -124,6 +142,10 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
     <ParamField path="Pre-authorized" type="boolean" default="false">
       Whether devices registered with the key are pre-authorized. Available only when the key type is **Auth Key**.
     </ParamField>
+
+    <Note>
+    All credentials are created with `ephemeral` set to `false` because they are managed by Infisical. This ensures that only one system is responsible for revoking the credentials, avoiding concurrency issues.
+    </Note>
   </Step>
   <Step title="Click `Submit`">
     After submitting the form, you will see a dynamic secret created in the dashboard.
@@ -142,14 +164,15 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
 
     Once you click the `Submit` button, a new lease will be generated and its values will be shown to you. The values returned depend on the key type:
 
-    - **Auth Key**: an `AUTH_KEY` (the Tailscale auth key) and its `KEY_ID`.
+    - **Auth Key**: an `AUTH_KEY` and its `KEY_ID`.
     - **OAuth Client**: a `CLIENT_ID` and `CLIENT_SECRET`.
     - **Federated Identity**: a `FEDERATED_CREDENTIAL_ID` and an `AUDIENCE`. No secret is issued; the workload authenticates by exchanging its own OIDC token for a short-lived Tailscale token.
 
+    {/* TODO: capture Infisical UI screenshot — lease.png does not exist yet */}
     ![Dynamic Secret Lease](/images/platform/dynamic-secrets/tailscale/lease.png)
 
     <Warning>
-      Copy these values right away. For security reasons, secret values (auth keys and client secrets) are only shown once at creation time and cannot be retrieved again afterwards.
+      Copy these values right away. For security reasons, secret values (auth keys and client secrets) are shown only once at creation time and cannot be retrieved again. If the issued credential is a federated identity, you can view its values again in the Tailscale dashboard.
     </Warning>
   </Step>
 </Steps>

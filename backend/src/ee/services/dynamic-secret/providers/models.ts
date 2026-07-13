@@ -830,73 +830,88 @@ const DynamicSecretTailscaleAuthSchema = z.discriminatedUnion("method", [
   })
 ]);
 
-export const DynamicSecretTailscaleSchema = z.discriminatedUnion("authType", [
-  z.object({
-    authType: z.literal(TailscaleKeyAuthType.AuthKeys),
-    auth: DynamicSecretTailscaleAuthSchema,
-    tailnet: z
-      .string()
-      .trim()
-      .min(1)
-      .default("-")
-      .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
-    description: z.string().trim().max(50).optional().describe("Description applied to the created key."),
-    tags: z
-      .array(z.string().trim().min(1))
-      .default([])
-      .describe("ACL tags to attach to devices (e.g. tag:ci). Required when authenticating with an OAuth token."),
-    reusable: z.boolean().default(false).describe("Whether the auth key can register multiple devices."),
-    ephemeral: z.boolean().default(false).describe("Whether devices registered with the key are ephemeral."),
-    preauthorized: z.boolean().default(false).describe("Whether devices registered with the key are pre-authorized.")
-  }),
-  z.object({
-    authType: z.literal(TailscaleKeyAuthType.OAuthKeys),
-    auth: DynamicSecretTailscaleAuthSchema,
-    tailnet: z
-      .string()
-      .trim()
-      .min(1)
-      .default("-")
-      .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
-    description: z.string().trim().max(50).optional().describe("Description applied to the created OAuth client."),
-    tags: z
-      .array(z.string().trim().min(1))
-      .default([])
-      .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
-    scopes: z.array(z.string().trim().min(1)).min(1).describe("OAuth scopes granted to the client.")
-  }),
-  z.object({
-    authType: z.literal(TailscaleKeyAuthType.FederatedKeys),
-    auth: DynamicSecretTailscaleAuthSchema,
-    tailnet: z
-      .string()
-      .trim()
-      .min(1)
-      .default("-")
-      .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
-    description: z
-      .string()
-      .trim()
-      .max(50)
-      .optional()
-      .describe("Description applied to the created federated identity."),
-    tags: z
-      .array(z.string().trim().min(1))
-      .default([])
-      .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
-    scopes: z
-      .array(z.string().trim().min(1))
-      .min(1)
-      .describe("OAuth scopes granted to tokens issued via this federated identity."),
-    issuer: z.string().trim().min(1).describe("HTTPS URL of the OIDC issuer trusted for token exchange."),
-    subject: z.string().trim().min(1).describe("Pattern matched against the sub claim of the OIDC identity token."),
-    audience: z
-      .string()
-      .trim()
-      .optional()
-      .describe("Audience for the OIDC token exchange. Tailscale auto-generates one if omitted.")
-  })
-]);
+export const DynamicSecretTailscaleSchema = z
+  .discriminatedUnion("authType", [
+    z.object({
+      authType: z.literal(TailscaleKeyAuthType.AuthKeys),
+      auth: DynamicSecretTailscaleAuthSchema,
+      tailnet: z
+        .string()
+        .trim()
+        .min(1)
+        .default("-")
+        .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+      description: z.string().trim().max(50).optional().describe("Description applied to the created key."),
+      tags: z
+        .array(z.string().trim().min(1))
+        .default([])
+        .describe("ACL tags to attach to devices (e.g. tag:ci). Required when authenticating with an OAuth token."),
+      reusable: z.boolean().default(false).describe("Whether the auth key can register multiple devices."),
+      ephemeral: z.boolean().default(false).describe("Whether devices registered with the key are ephemeral."),
+      preauthorized: z.boolean().default(false).describe("Whether devices registered with the key are pre-authorized.")
+    }),
+    z.object({
+      authType: z.literal(TailscaleKeyAuthType.OAuthKeys),
+      auth: DynamicSecretTailscaleAuthSchema,
+      tailnet: z
+        .string()
+        .trim()
+        .min(1)
+        .default("-")
+        .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+      description: z.string().trim().max(50).optional().describe("Description applied to the created OAuth client."),
+      tags: z
+        .array(z.string().trim().min(1))
+        .default([])
+        .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
+      scopes: z.array(z.string().trim().min(1)).min(1).describe("OAuth scopes granted to the client.")
+    }),
+    z.object({
+      authType: z.literal(TailscaleKeyAuthType.FederatedKeys),
+      auth: DynamicSecretTailscaleAuthSchema,
+      tailnet: z
+        .string()
+        .trim()
+        .min(1)
+        .default("-")
+        .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+      description: z
+        .string()
+        .trim()
+        .max(50)
+        .optional()
+        .describe("Description applied to the created federated identity."),
+      tags: z
+        .array(z.string().trim().min(1))
+        .default([])
+        .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
+      scopes: z
+        .array(z.string().trim().min(1))
+        .min(1)
+        .describe("OAuth scopes granted to tokens issued via this federated identity."),
+      issuer: z.string().trim().min(1).describe("HTTPS URL of the OIDC issuer trusted for token exchange."),
+      subject: z.string().trim().min(1).describe("Pattern matched against the sub claim of the OIDC identity token."),
+      audience: z
+        .string()
+        .trim()
+        .optional()
+        .describe("Audience for the OIDC token exchange. Tailscale auto-generates one if omitted.")
+    })
+  ])
+  .superRefine((data, ctx) => {
+    // Mirrors the UI validation: Tailscale requires ACL tags on tailnet-owned auth keys created via OAuth.
+    if (
+      data.authType === TailscaleKeyAuthType.AuthKeys &&
+      data.auth.method === TailscaleAuthMethod.OAuth &&
+      data.tags.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tags"],
+        message: "Tags are required when creating auth keys with OAuth authentication"
+      });
+    }
+  });
 
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
