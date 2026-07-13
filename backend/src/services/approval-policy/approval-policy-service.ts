@@ -76,7 +76,11 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
-import { createApprovalRequestWithSteps, notifyApproversForStep } from "./approval-request-fns";
+import {
+  createApprovalRequestWithSteps,
+  notifyApproversForStep,
+  sendApprovalEmailsForStep
+} from "./approval-request-fns";
 import { TPamAccessRequestData } from "./pam-access/pam-access-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
@@ -129,8 +133,33 @@ export const approvalPolicyServiceFactory = ({
   userDAL,
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
-  const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
-    notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
+  const $notifyApprovers = async (step: ApprovalPolicyStep, request: TApprovalRequests) => {
+    await notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
+
+    if (request.type !== ApprovalPolicyType.CertRequest && request.type !== ApprovalPolicyType.CertCodeSigning) {
+      return;
+    }
+
+    // fire-and-forget so SMTP latency doesn't extend caller-owned transactions
+    void (async () => {
+      const project = await projectDAL.findById(request.projectId);
+      const approvalUrl = `${getConfig().SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${request.type}`;
+
+      await sendApprovalEmailsForStep(
+        step,
+        request,
+        {
+          requestTypeLabel:
+            request.type === ApprovalPolicyType.CertCodeSigning ? "code signing request" : "certificate request",
+          projectName: project.name,
+          approvalUrl
+        },
+        { userGroupMembershipDAL, userDAL, smtpService }
+      );
+    })().catch((err) => {
+      logger.error(err, `Failed to send approval request emails to approvers [requestId=${request.id}]`);
+    });
+  };
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;

@@ -4,6 +4,8 @@ import { TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   ApprovalPolicyType,
@@ -148,6 +150,24 @@ export const createApprovalRequestWithSteps = async (
   return { ...request, steps } as TApprovalRequestWithSteps;
 };
 
+const resolveStepApproverUserIds = async (
+  step: ApprovalPolicyStep,
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">
+): Promise<Set<string>> => {
+  const userIds = new Set<string>();
+
+  for await (const approver of step.approvers) {
+    if (approver.type === ApproverType.User) {
+      userIds.add(approver.id);
+    } else if (approver.type === ApproverType.Group) {
+      const members = await userGroupMembershipDAL.find({ groupId: approver.id });
+      members.forEach((member) => userIds.add(member.userId));
+    }
+  }
+
+  return userIds;
+};
+
 export const notifyApproversForStep = async (
   step: ApprovalPolicyStep,
   request: TApprovalRequests,
@@ -159,16 +179,7 @@ export const notifyApproversForStep = async (
   if (!step.notifyApprovers) return;
 
   const { userGroupMembershipDAL, notificationService } = dependencies;
-  const userIdsToNotify = new Set<string>();
-
-  for await (const approver of step.approvers) {
-    if (approver.type === ApproverType.User) {
-      userIdsToNotify.add(approver.id);
-    } else if (approver.type === ApproverType.Group) {
-      const members = await userGroupMembershipDAL.find({ groupId: approver.id });
-      members.forEach((member) => userIdsToNotify.add(member.userId));
-    }
-  }
+  const userIdsToNotify = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
 
   if (userIdsToNotify.size === 0) return;
 
@@ -181,4 +192,45 @@ export const notifyApproversForStep = async (
       body: `You have a new approval request for ${request.type} from ${request.requesterName}.`
     }))
   );
+};
+
+export const sendApprovalEmailsForStep = async (
+  step: ApprovalPolicyStep,
+  request: TApprovalRequests,
+  emailContext: {
+    requestTypeLabel: string;
+    projectName: string;
+    approvalUrl: string;
+  },
+  dependencies: {
+    userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+    userDAL: Pick<TUserDALFactory, "find">;
+    smtpService: Pick<TSmtpService, "sendMail">;
+  }
+): Promise<void> => {
+  if (!step.notifyApprovers) return;
+
+  const { userGroupMembershipDAL, userDAL, smtpService } = dependencies;
+  const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
+
+  if (approverUserIds.size === 0) return;
+
+  const approverUsers = await userDAL.find({ $in: { id: Array.from(approverUserIds) } });
+  const recipients = approverUsers.filter((user) => user.email).map((user) => user.email as string);
+
+  if (recipients.length === 0) return;
+
+  await smtpService.sendMail({
+    recipients,
+    subjectLine: "Approval Request",
+    template: SmtpTemplates.ApprovalRequestNeedsReview,
+    substitutions: {
+      requesterName: request.requesterName,
+      requesterEmail: request.requesterEmail || undefined,
+      requestType: emailContext.requestTypeLabel,
+      projectName: emailContext.projectName,
+      justification: request.justification || undefined,
+      approvalUrl: emailContext.approvalUrl
+    }
+  });
 };
