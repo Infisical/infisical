@@ -88,6 +88,8 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     envConfig
   });
 
+  await licenseService.init();
+
   // ----- HSM startup -----
 
   const { hsmService } = await getMigrationHsmService({ envConfig });
