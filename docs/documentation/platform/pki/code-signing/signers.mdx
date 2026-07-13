@@ -62,7 +62,8 @@ In **Certificate Manager → Code Signing → Signers**, click **Create Signer**
 
     | Field | Description |
     |-------|-------------|
-    | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS, DigiCert) issue asynchronously and the Signer enters **Pending** until the cert lands. |
+    | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS, ADCS, DigiCert) issue asynchronously and the Signer enters **Pending** until the cert lands. |
+    | **Certificate Template** | ADCS CAs only, required. The AD CS template this Signer requests. Pick a code-signing template published on your CA. |
     | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. You can change it later; doing so reissues the certificate. |
     | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
     | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |

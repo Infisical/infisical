@@ -232,20 +232,6 @@ export const recordKmipOperationMetric = (params: {
 
 const isTelemetryEnabled = () => getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED;
 
-/**
- * Pull only the keys that survive the InfisicalCore View allowlist (see instrumentation.ts):
- * organization.id. Returns an empty object when no request context is
- * available (e.g. queue workers / cron handlers) — those call sites pass their own tenant labels.
- */
-export const buildBaseAttributes = (): Record<string, string> => {
-  const attributes: Record<string, string> = {};
-
-  const orgId = requestContext.get(RequestContextKey.OrgId);
-  if (orgId) attributes["infisical.organization.id"] = orgId;
-
-  return attributes;
-};
-
 // Queue worker lifecycle metrics. Wired in queue-service.ts via worker.on('completed' | 'failed' | 'stalled').
 export const queueJobCounter = infisicalCoreMeter.createCounter("infisical.queue.job.count", {
   description: "Queue jobs processed by outcome (completed or failed)",
@@ -362,15 +348,14 @@ export const secretCacheOversizeSkipCounter = infisicalCoreMeter.createCounter(
 
 export const recordSecretCacheAccessMetric = (result: SecretCacheAccessResult) => {
   if (!isTelemetryEnabled()) return;
-  secretCacheAccessCounter.add(1, { ...buildBaseAttributes(), "cache.result": result });
+  secretCacheAccessCounter.add(1, { "cache.result": result });
 };
 
 export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: boolean }) => {
   if (!isTelemetryEnabled()) return;
-  const attributes = buildBaseAttributes();
-  secretCacheEntryBytesHistogram.record(params.bytes, attributes);
+  secretCacheEntryBytesHistogram.record(params.bytes);
   if (!params.stored) {
-    secretCacheOversizeSkipCounter.add(1, attributes);
+    secretCacheOversizeSkipCounter.add(1);
   }
 };
 
@@ -432,7 +417,6 @@ export const recordAuthAttemptMetric = (params: {
     "infisical.auth.result": params.result
   };
   if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
-  if (params.orgId) attributes["infisical.organization.id"] = params.orgId;
   authAttemptDurationHistogram.record((performance.now() - params.startTime) / 1000, attributes);
 };
 
@@ -483,7 +467,6 @@ export const recordScimOperationMetric = (params: {
     "scim.operation": params.operation,
     outcome: params.outcome
   };
-  if (params.orgId) attributes["infisical.organization.id"] = params.orgId;
   if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
   scimOperationDurationHistogram.record((performance.now() - params.startTime) / 1000, attributes);
 };
@@ -515,7 +498,6 @@ export const recordSsoConfigChangeMetric = (params: {
     "sso.provider": params.provider,
     "sso.action": params.action
   };
-  if (params.orgId) attributes["infisical.organization.id"] = params.orgId;
   ssoConfigChangeCounter.add(1, attributes);
 };
 

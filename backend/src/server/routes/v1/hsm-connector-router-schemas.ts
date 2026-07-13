@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { slugSchema } from "@app/server/lib/schemas";
+import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { HsmConnectorCredentialsSchema } from "@app/services/hsm-connector/hsm-connector-fns";
 
 const HSM_CONNECTOR_NAME_MAX = 32;
@@ -85,6 +86,17 @@ export const HsmConnectorLinkedResourcesResponseSchema = z.object({
       commonName: z.string(),
       status: z.string(),
       notAfter: z.date(),
+      hsmKeyLabel: z.string().nullable(),
+      createdAt: z.date()
+    })
+  ),
+  certificateAuthorities: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      commonName: z.string().nullable(),
+      status: z.nativeEnum(CaStatus),
+      type: z.nativeEnum(InternalCaType),
       hsmKeyLabel: z.string().nullable(),
       createdAt: z.date()
     })

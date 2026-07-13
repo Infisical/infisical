@@ -184,7 +184,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
               <div className="flex items-center justify-between">
                 <span className="text-mineshaft-300">New recurring total</span>
                 <span className="font-semibold text-foreground tabular-nums">
-                  {fmtMoney(preview.data.nextRecurringTotal, 2)}
+                  {fmtMoney(preview.data.estimatedTotal, 2)}
                 </span>
               </div>
             </div>

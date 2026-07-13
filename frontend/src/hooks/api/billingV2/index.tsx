@@ -15,6 +15,8 @@ export type {
   BillingV2CompareRow,
   BillingV2Dim,
   BillingV2Entitlement,
+  BillingV2EntitlementDim,
+  BillingV2EstimatedUsageLine,
   BillingV2Invoice,
   BillingV2Model,
   BillingV2Overview,

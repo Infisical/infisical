@@ -9,6 +9,7 @@ import { AccessTree } from "@app/components/permissions";
 import { Accordion, Button } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
+import { useServerConfig } from "@app/context/ServerConfigContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -27,8 +28,6 @@ import { GroupPermissionConditions } from "./GroupPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { MemberPermissionConditions } from "./MemberPermissionConditions";
-import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
-import { PamResourcePermissionConditions } from "./PamResourcePermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import { PkiSyncPermissionConditions } from "./PkiSyncPermissionConditions";
@@ -97,17 +96,6 @@ export const renderConditionalComponents = (
       return <AppConnectionPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.PamAccounts) {
-      return <PamAccountPermissionConditions isDisabled={isDisabled} />;
-    }
-
-    if (
-      subject === ProjectPermissionSub.PamResources ||
-      subject === ProjectPermissionSub.PamDomains
-    ) {
-      return <PamResourcePermissionConditions isDisabled={isDisabled} />;
-    }
-
     if (subject === ProjectPermissionSub.CertificateAuthorities) {
       return <CertificateAuthorityPermissionConditions isDisabled={isDisabled} />;
     }
@@ -132,6 +120,10 @@ export const renderConditionalComponents = (
       return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
     }
 
+    if (subject === ProjectPermissionSub.ProjectFolderGrant) {
+      return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
+    }
+
     if (subject === ProjectPermissionSub.SecretRotation) {
       return <SecretRotationPermissionConditions isDisabled={isDisabled} />;
     }
@@ -152,6 +144,7 @@ export const renderConditionalComponents = (
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentProject, projectId } = useProject();
+  const { config } = useServerConfig();
 
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
@@ -181,11 +174,17 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const onSubmit = async (el: TFormSchema) => {
     if (!projectId || !role?.id) return;
+
+    const permissionsForm = { ...el.permissions };
+    if (!config?.isCrossProjectSecretSharingEnabled) {
+      permissionsForm[ProjectPermissionSub.ProjectFolderGrant] = [];
+    }
+
     await updateRole({
       id: role?.id as string,
       projectId,
       ...el,
-      permissions: formRolePermission2API(el.permissions)
+      permissions: formRolePermission2API(permissionsForm)
     });
     createNotification({ type: "success", text: "Successfully updated role" });
   };
@@ -280,6 +279,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
                     .filter(
                       (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
+                    )
+                    .filter(
+                      (subject) =>
+                        subject !== ProjectPermissionSub.ProjectFolderGrant ||
+                        config?.isCrossProjectSecretSharingEnabled
                     )
                     .map((subject) => (
                       <GeneralPermissionPolicies

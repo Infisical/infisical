@@ -1,4 +1,5 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
+import { CertKeySource } from "../signers/types";
 import {
   AcmeDnsProvider,
   CaRenewalType,
@@ -38,6 +39,19 @@ export type TAzureAdCsCertificateAuthority = {
   configuration: {
     azureAdcsConnectionId: string;
     templateName: string;
+  };
+};
+
+export type TAdcsCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.ADCS;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    caName: string;
   };
 };
 
@@ -143,6 +157,9 @@ export type TInternalCertificateAuthority = {
     locality: string;
     maxPathLength: number;
     keyAlgorithm: CertKeyAlgorithm;
+    keySource?: CertKeySource;
+    hsmConnectorId?: string;
+    hsmKeyLabel?: string;
     notAfter?: string;
     notBefore?: string;
     dn?: string;
@@ -160,6 +177,7 @@ export const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
+  | TAdcsCertificateAuthority
   | TAwsPcaCertificateAuthority
   | TDigiCertCertificateAuthority
   | TGoDaddyCertificateAuthority
@@ -236,6 +254,11 @@ export type TAzureAdCsTemplate = {
   id: string;
   name: string;
   description?: string;
+};
+
+export type TAdcsTemplate = {
+  id: string;
+  name: string;
 };
 
 export type TImportCaCertificateDTO = {

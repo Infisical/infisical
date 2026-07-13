@@ -791,6 +791,13 @@ export const projectServiceFactory = ({
       });
     }
 
+    // PAM projects are managed (one per org); deleting would also cascade FK-referenced migrated data.
+    if (project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: "Privileged Access Manager projects cannot be deleted."
+      });
+    }
+
     if (project.type === ProjectType.CertificateManager) {
       const certManagerProjects = await projectDAL.find({
         orgId: project.orgId,

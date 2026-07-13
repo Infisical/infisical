@@ -67,11 +67,33 @@ export type BillingV2Invoice = {
   pdfUrl: string;
 };
 
+// One metered/priced dimension of an active product, resolved for display: label/noun come from the
+// catalog, the rest from the org's pinned subscription version. rate/freeBand (dollars/allowance) are
+// present only for metered dimensions; per-unit dimensions get their rate from the catalog client-side.
+export type BillingV2EntitlementDim = {
+  key: string;
+  label: string;
+  noun: string;
+  unit: string;
+  metered: boolean;
+  used: number;
+  limit: number | null;
+  freeBand?: number;
+  rate?: number;
+};
+
 export type BillingV2Entitlement = {
   entitled: boolean;
   // Tier the org is currently subscribed to for this product (from the subscription item), so the UI
   // can mark the matching plan card as the active one. Absent for feature-only entitlements.
   planTier?: string;
+  // Fixed recurring charge for this product (dollars); excludes metered usage per the contract.
+  amount?: number;
+  // Estimated metered usage cost for the current period (dollars); 0 when the product has no metered
+  // usage. The product headline is amount + estimatedUsageAmount.
+  estimatedUsageAmount?: number;
+  // Every priced/metered dimension of the product, for the per-dimension usage bars.
+  dimensions?: BillingV2EntitlementDim[];
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"), resolved from the catalog so the
@@ -111,6 +133,9 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  // Estimated metered usage cost for the current period across all products (dollars). Added to
+  // recurringAmount for the projected next-month total shown in the summary.
+  estimatedUsageAmount: number;
 };
 
 export type TGetBillingV2OverviewDTO = {
@@ -152,6 +177,17 @@ export type BillingV2PreviewLine = {
   proration: boolean;
 };
 
+// A projected metered usage line for a change preview. rate/amount are dollars; peak is the projected
+// period usage (peak for a max-aggregated dimension) and freeBand the included allowance.
+export type BillingV2EstimatedUsageLine = {
+  dimension: string;
+  unit: string;
+  peak: number;
+  freeBand: number;
+  rate: number;
+  amount: number;
+};
+
 export type BillingV2Preview = {
   currency: string;
   prorationAmount: number;
@@ -159,6 +195,11 @@ export type BillingV2Preview = {
   nextRecurringTotal: number;
   prorationDate: number;
   lines: BillingV2PreviewLine[];
+  // Projected metered usage for the period (dollars) and its per-dimension breakdown. estimatedTotal
+  // is nextRecurringTotal + estimatedUsage.
+  estimatedUsage: number;
+  estimatedUsageLines: BillingV2EstimatedUsageLine[];
+  estimatedTotal: number;
 };
 
 export type TPreviewBillingV2ChangeDTO = {

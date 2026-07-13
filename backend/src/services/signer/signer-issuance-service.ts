@@ -32,6 +32,7 @@ import { CertKeySource, HsmKeyAlgorithm, SignerIssuanceJobStatus, SignerStatus }
 import { formatSignerIssuanceErrorReason, isTerminalIssuanceError } from "./signer-issuance-errors";
 import { hsmKeyAlgorithmToCertKeyAlgorithm, verifyCodeSigningEku } from "./signer-issuance-fns";
 import { TSignerIssuanceJobDALFactory } from "./signer-issuance-job-dal";
+import { SignerExternalCaConfigSchema } from "./signer-types";
 
 const POLL_INTERVAL_PATTERN = "*/15 * * * *"; // every 15 minutes
 const POLL_BATCH = 25;
@@ -78,13 +79,16 @@ export type TSignerIssuanceServiceFactory = ReturnType<typeof signerIssuanceServ
 
 type TSignerIssuanceServiceDeps = {
   signerIssuanceJobDAL: TSignerIssuanceJobDALFactory;
-  signerDAL: Pick<TSignerDALFactory, "updateById" | "transaction">;
+  signerDAL: Pick<TSignerDALFactory, "updateById" | "transaction" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
-  certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "awsPcaFns" | "azureAdCsFns" | "digicertFns">;
+  certificateIssuanceQueue: Pick<
+    TCertificateIssuanceQueueFactory,
+    "awsPcaFns" | "azureAdCsFns" | "adcsFns" | "digicertFns"
+  >;
   cronJob: TCronJobFactory;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "generateKeyPair" | "sign" | "assertAttachPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "updateById" | "findById">;
@@ -121,7 +125,7 @@ export const signerIssuanceServiceFactory = ({
   hsmConnectorService,
   certificateDAL
 }: TSignerIssuanceServiceDeps) => {
-  const { awsPcaFns, azureAdCsFns, digicertFns } = certificateIssuanceQueue;
+  const { awsPcaFns, azureAdCsFns, adcsFns, digicertFns } = certificateIssuanceQueue;
 
   const buildCsrForSigner = async (
     commonName: string,
@@ -370,6 +374,9 @@ export const signerIssuanceServiceFactory = ({
         case CaType.AZURE_AD_CS:
           await stepSyncWithCsr(job, CaType.AZURE_AD_CS);
           break;
+        case CaType.ADCS:
+          await stepSyncWithCsr(job, CaType.ADCS);
+          break;
         case CaType.AWS_PCA:
           await stepSyncWithCsr(job, CaType.AWS_PCA);
           break;
@@ -379,7 +386,7 @@ export const signerIssuanceServiceFactory = ({
         default:
           await markJobFailed(
             job,
-            `CA type '${job.caType}' is not supported for code signing. Choose Internal CA, AWS Private CA, Azure AD CS, or DigiCert.`
+            `CA type '${job.caType}' is not supported for code signing. Choose Internal CA, AWS Private CA, Azure AD CS, Active Directory Certificate Service, or DigiCert.`
           );
       }
     } catch (err) {
@@ -513,7 +520,10 @@ export const signerIssuanceServiceFactory = ({
     );
   };
 
-  const stepSyncWithCsr = async (job: TPkiSignerCertificateIssuanceJobs, kind: CaType.AZURE_AD_CS | CaType.AWS_PCA) => {
+  const stepSyncWithCsr = async (
+    job: TPkiSignerCertificateIssuanceJobs,
+    kind: CaType.AZURE_AD_CS | CaType.ADCS | CaType.AWS_PCA
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(job.caId);
     if (!ca) {
       await markJobFailed(job, "Certificate authority is no longer available.");
@@ -546,6 +556,38 @@ export const signerIssuanceServiceFactory = ({
         throw new BadRequestError({ message: "Azure AD CS order returned without a certificate id." });
       }
       certificateId = azureResult.certificateId;
+    } else if (kind === CaType.ADCS) {
+      if (job.keySource === CertKeySource.Hsm) {
+        throw new BadRequestError({
+          message:
+            "HSM-backed signers are not supported with Active Directory Certificate Service yet. Use AWS Private CA, or switch the signer's key source to Infisical."
+        });
+      }
+      const signer = await signerDAL.findById(job.signerId);
+      const externalCaConfig = SignerExternalCaConfigSchema.safeParse(signer?.externalCaConfig);
+      const adcsTemplate =
+        externalCaConfig.success && externalCaConfig.data.caType === CaType.ADCS
+          ? externalCaConfig.data.template
+          : undefined;
+      const adcsResult = await adcsFns.orderCertificate({
+        caId: job.caId,
+        commonName: job.commonName,
+        altNames: [],
+        keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
+        validity: { ttl: `${job.certificateTtlDays}d` },
+        keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
+        template: adcsTemplate,
+        csr,
+        isRenewal: false,
+        isCancelled: async () => false
+      });
+      if (!adcsResult?.certificateId) {
+        throw new BadRequestError({
+          message: "Active Directory Certificate Service order returned without a certificate id."
+        });
+      }
+      certificateId = adcsResult.certificateId;
     } else {
       const awsResult = await awsPcaFns.orderCertificate({
         caId: job.caId,

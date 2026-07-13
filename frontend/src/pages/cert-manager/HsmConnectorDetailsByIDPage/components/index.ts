@@ -1,2 +1,2 @@
-export { HsmConnectorLinkedCertsSection } from "./HsmConnectorLinkedCertsSection";
+export { HsmConnectorLinkedResourcesSection } from "./HsmConnectorLinkedResourcesSection";
 export { HsmConnectorOverviewSection } from "./HsmConnectorOverviewSection";

@@ -11,7 +11,7 @@ export enum SessionEndReason {
   SetupFailed = "Failed to establish connection",
   IdleTimeout = "Session closed due to inactivity",
   SessionLimitReached = "Maximum concurrent sessions reached",
-  SessionGrantExpired = "Approval grant has expired"
+  ApprovalRevoked = "Your approved access is no longer active"
 }
 
 export enum TerminalServerMessageType {
@@ -20,7 +20,6 @@ export enum TerminalServerMessageType {
   SessionEnd = "session_end"
 }
 
-// Terminal server message schema — used by TSessionContext.sendMessage
 export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.enum([TerminalServerMessageType.Ready, TerminalServerMessageType.Output]),
@@ -35,18 +34,9 @@ export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
 
 export type TWebSocketServerMessage = z.input<typeof WebSocketServerMessageSchema>;
 
-// Default session duration for web access sessions (1 hour in ms)
 export const DEFAULT_WEB_SESSION_DURATION_MS = 60 * 60 * 1000;
-
-// Maximum concurrent web access sessions per user per project
 export const MAX_WEB_SESSIONS_PER_USER = 5;
-
-// WebSocket ping interval (ms) — keeps ALB from killing idle connections (default 60s timeout)
 export const WS_PING_INTERVAL_MS = 30000;
-
-// Idle timeout (ms) — auto-close sessions with no inbound WS traffic. The FE
-// sends an `activity` heartbeat while its browser tab is visible, so this fires
-// only when the tab has been hidden/backgrounded for the full window.
 export const WS_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export type TEarlyBufferedMsg = { data: Buffer; isBinary: boolean };
@@ -76,7 +66,7 @@ export type TIssueWebSocketTicketDTO = {
   actorEmail: string;
   actorName: string;
   auditLogInfo: AuditLogInfo;
-  mfaSessionId?: string;
   reason?: string;
-  resourceId?: string;
+  mfaSessionId?: string;
+  selectedHost?: string;
 };

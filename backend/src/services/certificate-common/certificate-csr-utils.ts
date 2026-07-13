@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
@@ -11,7 +12,7 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
-import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
+import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
@@ -317,5 +318,44 @@ export const extractAlgorithmsFromCSR = (csr: string) => {
   return {
     keyAlgorithm,
     signatureAlgorithm: normalizedSignatureAlg
+  };
+};
+
+/**
+ * Generates a leaf keypair and builds a PKCS#10 CSR for it. Callers pass the subject DN and the
+ * WebCrypto algorithm config (from keyAlgorithmToAlgCfg); DNS SANs are optional.
+ * Returns the private key (PKCS#8 PEM) plus the CSR in both PEM and base64-DER form.
+ */
+export const generateLeafKeypairAndCsr = async ({
+  subjectName,
+  algorithm,
+  altNames = []
+}: {
+  subjectName: string;
+  algorithm: ReturnType<typeof keyAlgorithmToAlgCfg>;
+  altNames?: string[];
+}): Promise<{ privateKeyPem: string; csrPem: string; csrDerBase64: string }> => {
+  const leafKeys = await crypto.nativeCrypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+  const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+  const privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+  const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+    name: subjectName,
+    keys: leafKeys,
+    signingAlgorithm: algorithm,
+    ...(altNames.length > 0 && {
+      extensions: [
+        new x509.SubjectAlternativeNameExtension(
+          altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
+          false
+        )
+      ]
+    })
+  });
+
+  return {
+    privateKeyPem,
+    csrPem: csrObj.toString("pem"),
+    csrDerBase64: Buffer.from(new Uint8Array(csrObj.rawData)).toString("base64")
   };
 };

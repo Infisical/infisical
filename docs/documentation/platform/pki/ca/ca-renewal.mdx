@@ -14,7 +14,7 @@ Renew a CA certificate to extend its validity period. The renewal process varies
 
 <Note>
   - If renewing an intermediate CA chained to an **Infisical CA**, Infisical will automate the process of generating a new certificate for you.
-  - If renewing an intermediate CA signed by an **external CA provider** (e.g., Venafi, Azure AD CS), you can configure auto-renewal to automate the process. See [Venafi auto-renewal](/documentation/platform/pki/ca/venafi#auto-renewal) or [AD CS auto-renewal](/documentation/platform/pki/ca/azure-adcs#auto-renewal-for-ad-cs-signed-cas).
+  - If renewing an intermediate CA signed by an **external CA provider** (e.g., Venafi, Microsoft ADCS), you can configure auto-renewal to automate the process. See [Venafi auto-renewal](/documentation/platform/pki/ca/venafi#auto-renewal) or [Microsoft ADCS auto-renewal](/documentation/platform/pki/ca/adcs).
   - If renewing an intermediate CA chained to an **external parent CA via manual import**, you'll need to generate a new certificate from the external parent CA and manually import it back.
 </Note>
 

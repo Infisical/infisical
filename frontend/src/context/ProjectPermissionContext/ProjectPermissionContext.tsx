@@ -7,13 +7,17 @@ import { useParams } from "@tanstack/react-router";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 
+import { useOrganization } from "../OrganizationContext";
 import { ProjectPermissionSet } from "./types";
 
 export const useProjectPermission = () => {
-  const projectId = useParams({
-    strict: false,
-    select: (el) => el?.projectId
+  const params = useParams({
+    strict: false
   });
+
+  const { currentOrg } = useOrganization();
+
+  const projectId = params.projectId ?? currentOrg.pamProjectId;
 
   if (!projectId) {
     throw new Error("useProjectPermission to be used within <ProjectPermissionContext>");

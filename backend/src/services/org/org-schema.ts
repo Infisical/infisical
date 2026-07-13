@@ -31,6 +31,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   maxSharedSecretLifetime: true,
   maxSharedSecretViewLimit: true,
   blockDuplicateSecretSyncDestinations: true,
+  allowCrossProjectSecretSharing: true,
   rootOrgId: true,
   parentOrgId: true,
   secretShareBrandConfig: true

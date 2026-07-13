@@ -24,6 +24,7 @@ import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerGitLabSyncRouter } from "./gitlab-sync-router";
+import { registerHasuraCloudSyncRouter } from "./hasura-cloud-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
@@ -36,6 +37,7 @@ import { registerOvhSyncRouter } from "./ovh-sync-router";
 import { registerQoverySyncRouter } from "./qovery-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
+import { registerRundeckSyncRouter } from "./rundeck-sync-router";
 import { registerSnowflakeSyncRouter } from "./snowflake-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
@@ -74,6 +76,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter,
   [SecretSync.CloudflareWorkers]: registerCloudflareWorkersSyncRouter,
   [SecretSync.Supabase]: registerSupabaseSyncRouter,
+  [SecretSync.Rundeck]: registerRundeckSyncRouter,
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
   [SecretSync.Railway]: registerRailwaySyncRouter,
   [SecretSync.Checkly]: registerChecklySyncRouter,
@@ -92,6 +95,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Ona]: registerOnaSyncRouter,
   [SecretSync.TravisCI]: registerTravisCISyncRouter,
   [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
+  [SecretSync.HasuraCloud]: registerHasuraCloudSyncRouter,
   [SecretSync.Qovery]: registerQoverySyncRouter,
   [SecretSync.Cloud66]: registerCloud66SyncRouter
 };

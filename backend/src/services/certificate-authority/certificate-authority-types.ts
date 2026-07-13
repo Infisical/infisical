@@ -1,4 +1,5 @@
 import { TAcmeCertificateAuthority, TAcmeCertificateAuthorityInput } from "./acme/acme-certificate-authority-types";
+import { TADCSCertificateAuthority, TCreateADCSCertificateAuthorityDTO } from "./adcs/adcs-certificate-authority-types";
 import {
   TAwsAcmPublicCaCertificateAuthority,
   TCreateAwsAcmPublicCaCertificateAuthorityDTO
@@ -33,6 +34,7 @@ export type TCertificateAuthority =
   | TInternalCertificateAuthority
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
+  | TADCSCertificateAuthority
   | TAwsPcaCertificateAuthority
   | TDigiCertCertificateAuthority
   | TGoDaddyCertificateAuthority
@@ -43,6 +45,7 @@ export type TCertificateAuthorityInput =
   | TInternalCertificateAuthorityInput
   | TAcmeCertificateAuthorityInput
   | TCreateAzureAdCsCertificateAuthorityDTO
+  | TCreateADCSCertificateAuthorityDTO
   | TCreateAwsPcaCertificateAuthorityDTO
   | TCreateDigiCertCertificateAuthorityDTO
   | TCreateGoDaddyCertificateAuthorityDTO

@@ -1,0 +1,84 @@
+---
+title: "Windows Accounts"
+sidebarTitle: "Windows"
+description: "Add and connect to Windows servers via RDP."
+---
+
+Windows accounts let you manage access to Windows servers via Remote Desktop Protocol (RDP). Users connect through Web Access (a browser-based RDP client) or CLI (using your own RDP client), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+
+<Note>
+Windows accounts require session recordings to be stored in an external S3 bucket. Configure this in the [template](/documentation/platform/pam/templates/overview) before creating Windows accounts.
+</Note>
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Windows [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `prod-app-server`) |
+    | **Host** | Server hostname or IP |
+    | **Port** | RDP port (default: 3389) |
+  </Step>
+  <Step title="Enter credentials">
+    | Field | Description |
+    |-------|-------------|
+    | **Username** | Windows username |
+    | **Password** | Windows password |
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Connecting
+
+<Tabs>
+  <Tab title="Web Access">
+    Web Access provides a browser-based RDP client:
+
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch → Connect in Browser**
+    3. A remote desktop session opens in a new tab
+
+    You get a full Windows desktop. To disconnect, log out or close the tab.
+  </Tab>
+  <Tab title="CLI">
+    The CLI starts a local proxy that you connect to with your own RDP client:
+
+    ```bash
+    infisical pam access <folder>/<account>
+    ```
+
+    The command prints the local port. Connect your RDP client to `localhost` on that port:
+
+    ```bash
+    # Example using xfreerdp
+    xfreerdp /v:localhost:53306
+    ```
+
+    <Tip>
+    The port is dynamically assigned. Use the `--port` flag if you need a specific port:
+    `infisical pam access <folder>/<account> --port 13389`
+    </Tip>
+
+    Press `Ctrl+C` to end the session and close the proxy.
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Windows AD Accounts" icon="windows" href="/documentation/platform/pam/accounts/windows-ad">
+    Add Windows Active Directory accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

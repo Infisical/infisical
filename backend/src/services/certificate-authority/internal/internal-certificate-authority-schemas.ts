@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
 import {
@@ -24,6 +25,9 @@ type TInternalCertificateAuthorityConfiguration = {
   notAfter?: string;
   maxPathLength?: number | null;
   keyAlgorithm: CertKeyAlgorithm;
+  keySource?: CertKeySource;
+  hsmConnectorId?: string;
+  hsmKeyLabel?: string;
   dn?: string | null;
   parentCaId?: string | null;
   serialNumber?: string | null;
@@ -46,6 +50,16 @@ export const InternalCertificateAuthorityConfigurationSchema = z
     notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
     maxPathLength: z.number().min(-1).nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
     keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keyAlgorithm),
+    keySource: z
+      .nativeEnum(CertKeySource)
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keySource),
+    hsmConnectorId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
+    hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
     dn: z.string().trim().nullish(),
     parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().nullish(),

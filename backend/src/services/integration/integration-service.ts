@@ -17,7 +17,9 @@ import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-
 import { deleteIntegrationSecrets } from "../integration-auth/integration-delete-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -44,6 +46,8 @@ type TIntegrationServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TIntegrationServiceFactory = ReturnType<typeof integrationServiceFactory>;
@@ -59,7 +63,9 @@ export const integrationServiceFactory = ({
   secretV2BridgeDAL,
   secretImportDAL,
   kmsService,
-  secretDAL
+  secretDAL,
+  projectFolderGrantDAL,
+  orgDAL
 }: TIntegrationServiceFactoryDep) => {
   const createIntegration = async ({
     app,
@@ -324,7 +330,10 @@ export const integrationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         secretDAL,
-        kmsService
+        kmsService,
+        projectFolderGrantDAL,
+        orgDAL,
+        actorOrgId
       });
     }
 

@@ -13,6 +13,7 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
+import { TMeteredFeature } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isV2SelfHostedLicenseKey } from "../license/license-fns";
@@ -23,6 +24,7 @@ import {
   BillingV2CompareRow,
   BillingV2Dim,
   BillingV2Entitlement,
+  BillingV2EntitlementDim,
   BillingV2Model,
   BillingV2Overview,
   BillingV2Plan,
@@ -44,6 +46,9 @@ type TLicenseV2ServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  // Feature-keyed live-count fns (the same source the usage meter uses), so per-unit dimensions can
+  // show real utilization instead of the zero the license server reports for non-metered dimensions.
+  meteredFeatures: TMeteredFeature[];
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
@@ -302,7 +307,8 @@ export const licenseV2ServiceFactory = ({
   orgDAL,
   identityOrgMembershipDAL,
   permissionService,
-  licenseClient
+  licenseClient,
+  meteredFeatures
 }: TLicenseV2ServiceFactoryDep) => {
   // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
   // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
@@ -335,20 +341,76 @@ export const licenseV2ServiceFactory = ({
     );
   };
 
+  const counterByFeatureKey = new Map(meteredFeatures.map((metered) => [metered.feature.key, metered.count]));
+
+  // Live per-org usage for the subscription's non-metered dimensions, keyed by feature key. Seeded
+  // values (e.g. the shared member+identity pool, computed once for the Usage card) win, so a
+  // dimension that also has its own count elsewhere on the page reads the same number. The rest are
+  // counted once each, in parallel, via the same counters the usage meter uses. A count failure is
+  // logged and dropped so the overview still renders.
+  const resolveLiveUsage = async (
+    orgId: string,
+    subscription: TSubscriptionResponse | null,
+    seed: Map<string, number>
+  ): Promise<Map<string, number>> => {
+    const usage = new Map<string, number>(seed);
+    if (!subscription) {
+      return usage;
+    }
+
+    const featureKeys = new Set<string>();
+    subscription.items.forEach((item) => {
+      item.dimensions.forEach((dimension) => {
+        if (
+          !dimension.metered &&
+          dimension.featureKey &&
+          !usage.has(dimension.featureKey) &&
+          counterByFeatureKey.has(dimension.featureKey)
+        ) {
+          featureKeys.add(dimension.featureKey);
+        }
+      });
+    });
+
+    await Promise.all(
+      [...featureKeys].map(async (featureKey) => {
+        const count = counterByFeatureKey.get(featureKey);
+        if (count === undefined) {
+          return;
+        }
+        try {
+          usage.set(featureKey, await count(orgId));
+        } catch (error) {
+          logger.error(error, `billing-v2: failed to count live usage [orgId=${orgId}, feature=${featureKey}]`);
+        }
+      })
+    );
+
+    return usage;
+  };
+
   // Fold the subscription items and the entitlement features sourced from a product into a single
   // per-product entitlement map, keyed by the server's product ids.
-  const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
+  const buildEntitlements = async (
+    org: TEntitlementOrg,
+    subscription: TSubscriptionResponse | null,
+    liveUsageSeed: Map<string, number>
+  ) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
-    // Dimension nouns (the unit a limit counts, e.g. "certificate") live on the catalog, keyed by
-    // dimension. Only fetch it when a subscription item actually carries a limit to name.
+    const labelByDimension = new Map<string, string>();
     const nounByDimension = new Map<string, string>();
-    const hasLimits = Boolean(subscription?.items.some((item) => Object.keys(item.limits).length > 0));
-    if (hasLimits) {
+    // Fetch the catalog when any item carries dimensions or limits to name; the pinned subscription
+    // dimensions supply used/limit/rate, the catalog supplies each dimension's label and noun.
+    const needsCatalog = Boolean(
+      subscription?.items.some((item) => item.dimensions.length > 0 || Object.keys(item.limits).length > 0)
+    );
+    if (needsCatalog) {
       try {
         const catalog = await licenseClient.getCatalog();
         catalog?.products.forEach((product) => {
           product.dimensions.forEach((dimension) => {
+            labelByDimension.set(`${product.id}:${dimension.key}`, dimension.label);
             nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
           });
         });
@@ -357,13 +419,65 @@ export const licenseV2ServiceFactory = ({
       }
     }
 
+    // The license server only tracks usage for metered dimensions, so per-unit ones come back with
+    // used=0. Overlay live counts, matched on the stable feature key (dimension keys drift). Metered
+    // dimensions keep the server's period peak, which is the billed figure.
+    const liveUsageByFeatureKey = await resolveLiveUsage(org.id, subscription, liveUsageSeed);
+
     if (subscription) {
       subscription.items.forEach((item) => {
-        // Surface one dimension's used count, limit, and noun together so the rendered
-        // "{used} / {limit} {unit}" always describes the same thing. "Most constraining" = the
-        // highest utilization (closest to, or furthest past, its cap), i.e. the limit the customer
-        // is likeliest to hit. Each limit is paired with its OWN quantity; taking Math.max across all
-        // quantities could otherwise report a different dimension's count than the resolved unit.
+        // Resolve the pinned per-dimension contract into a display-ready list: label/noun from the
+        // catalog, metered/used/limit/rate/freeBand from the org's pinned subscription version. Money
+        // is converted to dollars here so *Cents fields never reach the client. rate/freeBand are set
+        // only for metered dimensions; per-unit dimensions get their rate from the catalog client-side.
+        const dimensions: BillingV2EntitlementDim[] = item.dimensions.map((dimension) => {
+          const catalogKey = `${item.productId}:${dimension.key}`;
+          const metered = dimension.metered ?? false;
+          const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
+          const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
+          let used = dimension.used ?? 0;
+          const liveUsed = dimension.featureKey ? liveUsageByFeatureKey.get(dimension.featureKey) : undefined;
+          if (!metered && liveUsed !== undefined) {
+            used = liveUsed;
+          }
+          return {
+            key: dimension.key,
+            label: labelByDimension.get(catalogKey) ?? dimension.key,
+            noun: nounByDimension.get(catalogKey) ?? dimension.unit ?? dimension.key,
+            unit: dimension.unit ?? nounByDimension.get(catalogKey) ?? dimension.key,
+            metered,
+            used,
+            limit: dimension.limit ?? null,
+            ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
+            ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {})
+          };
+        });
+
+        // Estimated metered usage cost for the period: sum of max(0, used - freeBand) * rate over the
+        // metered dimensions. Fixed recurring (item.amount) excludes this per the contract.
+        const estimatedUsageAmount = dimensions.reduce((sum, dimension) => {
+          if (!dimension.metered || dimension.rate === undefined) {
+            return sum;
+          }
+          return sum + Math.max(0, dimension.used - (dimension.freeBand ?? 0)) * dimension.rate;
+        }, 0);
+
+        // Collapsed "most constraining" summary retained for callers that render a single limit line
+        // (the product sheet). Derived from the resolved dimensions when present, else from the legacy
+        // limits/quantities maps for older license servers. "Most constraining" = the highest
+        // utilization (closest to, or furthest past, its cap), i.e. the limit the customer is likeliest
+        // to hit; each limit is paired with its OWN quantity so the resolved unit matches the count.
+        const limitPairs: [string, number][] =
+          dimensions.length > 0
+            ? dimensions
+                .filter((dimension) => dimension.limit !== null)
+                .map((dimension) => [dimension.key, dimension.limit as number])
+            : Object.entries(item.limits);
+        const usedForKey = (key: string): number =>
+          dimensions.length > 0
+            ? (dimensions.find((dimension) => dimension.key === key)?.used ?? 0)
+            : (item.quantities[key] ?? 0);
+
         let used = 0;
         let limit: number | null = null;
         let limitKey: string | null = null;
@@ -371,8 +485,8 @@ export const licenseV2ServiceFactory = ({
         // Plain for-of (not forEach): assignments inside a closure don't refine the outer
         // variable's type, so after a forEach TS still sees limitKey as null and the `limitKey ?`
         // branch below collapses to `never`. A same-scope loop lets control-flow keep it string|null.
-        for (const [key, dimensionLimit] of Object.entries(item.limits)) {
-          const dimensionUsed = item.quantities[key] ?? 0;
+        for (const [key, dimensionLimit] of limitPairs) {
+          const dimensionUsed = usedForKey(key);
           // An unlimited (<= 0) cap can't be "hit"; only a positive cap yields a real ratio.
           const utilization =
             // eslint-disable-next-line no-nested-ternary
@@ -387,7 +501,16 @@ export const licenseV2ServiceFactory = ({
 
         const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
 
-        entitlements[item.productId] = { entitled: true, planTier: item.plan, used, limit, unit };
+        entitlements[item.productId] = {
+          entitled: true,
+          planTier: item.plan,
+          amount: item.amount !== undefined ? centsToDollars(item.amount) : undefined,
+          estimatedUsageAmount,
+          dimensions: dimensions.length > 0 ? dimensions : undefined,
+          used,
+          limit,
+          unit
+        };
       });
     }
 
@@ -519,6 +642,20 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
+    // The identity dimension caps against the same shared member+identity pool the Usage card shows,
+    // so seed its usage from that one figure instead of a separate count that could diverge from it.
+    const entitlements = await buildEntitlements(
+      { id: orgId, name: organization.name, slug: organization.slug },
+      subscription,
+      new Map([[IDENTITY_LIMIT_FEATURE_KEY, members + identities]])
+    );
+    // Org-wide projected metered usage (dollars): the summary adds this to recurringAmount for the
+    // next-month total, so every product's estimate is summed once here.
+    const estimatedUsageAmount = Object.values(entitlements).reduce(
+      (sum, entitlement) => sum + (entitlement.estimatedUsageAmount ?? 0),
+      0
+    );
+
     const overview: BillingV2Overview = {
       // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
       // "managed by your account team" banner off these two fields.
@@ -538,10 +675,8 @@ export const licenseV2ServiceFactory = ({
       payment,
       billingDetails,
       invoices,
-      entitlements: await buildEntitlements(
-        { id: orgId, name: organization.name, slug: organization.slug },
-        subscription
-      )
+      entitlements,
+      estimatedUsageAmount
     };
 
     return { overview };
@@ -652,6 +787,7 @@ export const licenseV2ServiceFactory = ({
     }
 
     const preview = await licenseClient.previewSubscriptionChange(orgId, payload);
+    const estimatedUsage = centsToDollars(preview.estimatedUsageCents);
     return {
       preview: {
         currency: preview.currency,
@@ -663,7 +799,21 @@ export const licenseV2ServiceFactory = ({
           description: line.description,
           amount: centsToDollars(line.amount),
           proration: line.proration
-        }))
+        })),
+        estimatedUsage,
+        estimatedUsageLines: preview.estimatedUsageLines.map((line) => ({
+          dimension: line.dimension,
+          unit: line.unit ?? line.dimension,
+          peak: line.peak,
+          freeBand: line.freeBand,
+          rate: centsToDollars(line.rateCents),
+          amount: centsToDollars(line.amountCents)
+        })),
+        // Fall back to nextRecurringTotal + estimatedUsage when an older server omits estimatedTotal.
+        estimatedTotal:
+          preview.estimatedTotal !== null && preview.estimatedTotal !== undefined
+            ? centsToDollars(preview.estimatedTotal)
+            : centsToDollars(preview.nextRecurringTotal) + estimatedUsage
       }
     };
   };

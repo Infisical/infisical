@@ -7,7 +7,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -17,7 +17,7 @@ import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permiss
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
-import { TAuditLogDALFactory } from "./audit-log-dal";
+import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
@@ -33,6 +33,13 @@ type TAuditLogServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  resolvePamAuditScope?: (args: {
+    projectId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => Promise<TPamAuditLogScope | null>;
 };
 
 export const auditLogServiceFactory = ({
@@ -43,7 +50,8 @@ export const auditLogServiceFactory = ({
   keyStore,
   smtpService,
   userDAL,
-  notificationService
+  notificationService,
+  resolvePamAuditScope
 }: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
   const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({
     actorAuthMethod,
@@ -52,20 +60,35 @@ export const auditLogServiceFactory = ({
     actor,
     filter
   }) => {
+    // Products with their own permission model (e.g. PAM) scope logs by resource
+    let pamScope: TPamAuditLogScope | null = null;
+
     // Filter logs for specific project
     if (filter.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: filter.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAuditLogsActions.Read,
-        ProjectPermissionSub.AuditLogs
-      );
+      pamScope = resolvePamAuditScope
+        ? await resolvePamAuditScope({
+            projectId: filter.projectId,
+            actor,
+            actorId,
+            actorAuthMethod,
+            actorOrgId
+          })
+        : null;
+
+      if (!pamScope) {
+        const { permission } = await permissionService.getProjectPermission({
+          actor,
+          actorId,
+          projectId: filter.projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actionProjectType: ActionProjectType.Any
+        });
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionAuditLogsActions.Read,
+          ProjectPermissionSub.AuditLogs
+        );
+      }
     } else {
       // Organization-wide logs
       const { permission } = await permissionService.getOrgPermission({
@@ -106,7 +129,8 @@ export const auditLogServiceFactory = ({
       secretKey: filter.secretKey,
       environment: filter.environment,
       orgId: actorOrgId,
-      ...(filter.projectId ? { projectId: filter.projectId } : {})
+      ...(filter.projectId ? { projectId: filter.projectId } : {}),
+      ...(pamScope ? { pamScope } : {})
     };
 
     // If ClickHouse querying is enabled and available, use it instead of Postgres

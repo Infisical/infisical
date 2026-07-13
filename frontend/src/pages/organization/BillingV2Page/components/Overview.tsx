@@ -43,13 +43,25 @@ import {
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
+  BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2Entitlement,
+  BillingV2EntitlementDim,
   BillingV2Invoice,
   BillingV2Overview
 } from "@app/hooks/api";
 
-import { fmtMoney, intervalWord, pluralizeUnit } from "../billing-v2-data";
+import {
+  cadenceWordShort,
+  dimRate,
+  fmtMoney,
+  intervalToCadence,
+  intervalWord,
+  pluralizeUnit,
+  productBreakdown,
+  productTotal,
+  usagePct
+} from "../billing-v2-data";
 import { ActiveBadge, ProductIcon } from "./shared";
 
 export type BillingV2Mode = "self-serve" | "managed";
@@ -238,11 +250,16 @@ const StatusBadge = ({ subState }: { subState: BillingV2RenderState }) => {
   return <ActiveBadge />;
 };
 
+// Projected next-month cost: fixed recurring plus estimated metered usage across all products.
+const nextMonthTotal = (overview: BillingV2Overview): number =>
+  (overview.recurringAmount ?? 0) + (overview.estimatedUsageAmount ?? 0);
+
 const recurringLabel = (overview: BillingV2Overview): string => {
-  if (!overview.recurringAmount) {
+  const total = nextMonthTotal(overview);
+  if (!total) {
     return "Free";
   }
-  return `${fmtMoney(overview.recurringAmount)} / ${intervalWord(overview.interval)}`;
+  return `${fmtMoney(total)} / ${intervalWord(overview.interval)}`;
 };
 
 type StatTone = "success" | "info" | "warning" | "danger" | "org";
@@ -297,9 +314,15 @@ const StatTile = ({ title, tone, icon, value, footer }: StatTileProps) => (
 
 const SummaryCard = ({ overview }: SummaryCardProps) => {
   const status = STATUS_VISUAL[overview.subState];
-  const recurringNote = overview.recurringAmount
-    ? `Billed ${intervalWord(overview.interval)}ly`
-    : "No recurring charges";
+  const total = nextMonthTotal(overview);
+  const usage = overview.estimatedUsageAmount ?? 0;
+  const hasUsage = usage > 0;
+  let recurringNote = "No recurring charges";
+  if (total) {
+    recurringNote = hasUsage
+      ? `Includes ~${fmtMoney(usage)} est. usage`
+      : `Billed ${intervalWord(overview.interval)}ly`;
+  }
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
@@ -318,10 +341,15 @@ const SummaryCard = ({ overview }: SummaryCardProps) => {
         footer={<span className="text-xs text-muted">All products renew together</span>}
       />
       <StatTile
-        title="Recurring total"
+        title="Next month"
         tone="org"
         icon={<CreditCard />}
-        value={recurringLabel(overview)}
+        value={
+          <span className="flex items-baseline gap-1.5">
+            {recurringLabel(overview)}
+            {hasUsage && <span className="text-xs font-normal text-muted">est.</span>}
+          </span>
+        }
         footer={<span className="text-xs text-muted">{recurringNote}</span>}
       />
     </div>
@@ -410,23 +438,65 @@ const UsageCard = ({ overview }: UsageCardProps) => {
   );
 };
 
+// Capitalize a plan tier ("pro" -> "Pro") for the badge beside an active product's name.
+const tierLabel = (tier: string): string => tier.charAt(0).toUpperCase() + tier.slice(1);
+
+type DimensionMeterProps = {
+  dim: BillingV2EntitlementDim;
+  product: BillingV2CatalogProduct;
+  planTier?: string;
+  cadence: BillingV2Cadence;
+};
+
+// One usage bar for a product dimension: "{used} / {limit} · $rate/unit/mo" with a fill bar. A
+// dimension with no finite cap (unlimited or usage-based) shows a running count and no bar.
+const DimensionMeter = ({ dim, product, planTier, cadence }: DimensionMeterProps) => {
+  const rate = dimRate(dim, product, planTier, cadence);
+  const pct = usagePct(dim.used, dim.limit);
+  const rateNote =
+    rate !== null && rate > 0 ? `${fmtMoney(rate)}/${dim.noun}/${cadenceWordShort(cadence)}` : null;
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2.5 text-xs">
+        <span className="text-muted">{dim.label}</span>
+        <span className="text-muted tabular-nums">
+          <span className="font-medium text-foreground">{dim.used.toLocaleString()}</span>
+          {dim.limit !== null ? ` / ${dim.limit.toLocaleString()}` : ` ${pluralizeUnit(dim.noun)}`}
+          {rateNote && <span> · {rateNote}</span>}
+        </span>
+      </div>
+      {pct !== null && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+          <div className="h-full rounded-full bg-org transition-all" style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 type ProductRowProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
+  cadence: BillingV2Cadence;
+  interval: "month" | "year" | null;
+  renewsOn: string | null;
   readOnly?: boolean;
   onManage: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: ProductRowProps) => {
+const ProductRow = ({
+  prod,
+  entitlement,
+  cadence,
+  interval,
+  renewsOn,
+  readOnly,
+  onManage,
+  onContact
+}: ProductRowProps) => {
   const entitled = Boolean(entitlement?.entitled);
-  let limitNote: string | null = null;
-  if (entitled && entitlement && entitlement.limit !== null && entitlement.limit !== undefined) {
-    const used = entitlement.used ?? 0;
-    const unit = entitlement.unit ? ` ${pluralizeUnit(entitlement.unit)}` : "";
-    limitNote = `${used.toLocaleString()} / ${entitlement.limit.toLocaleString()}${unit}`;
-  }
-
   const selfServe = prod.plans.some((plan) => plan.selfServe);
   const salesLed = prod.plans.some((plan) => plan.salesLed);
 
@@ -454,24 +524,71 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
     }
   }
 
-  return (
-    <div className="flex items-center gap-4 border-t border-border py-4 first:border-t-0">
-      <ProductIcon product={prod} />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{prod.name}</span>
-          {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-          {entitled ? <ActiveBadge /> : <Badge variant="neutral">Inactive</Badge>}
+  // Inactive product: compact row with the tagline and an upgrade / contact action.
+  if (!entitled) {
+    return (
+      <div className="flex items-center gap-4 border-t border-border py-4 first:border-t-0">
+        <ProductIcon product={prod} />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">{prod.name}</span>
+            {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+            <Badge variant="neutral">Inactive</Badge>
+          </div>
+          <div className="text-xs text-muted">{prod.tagline || prod.desc}</div>
         </div>
-        <div className="text-xs text-muted">{prod.tagline || prod.desc}</div>
+        {action && <div className="flex shrink-0 items-center gap-1.5">{action}</div>}
       </div>
-      {limitNote && (
+    );
+  }
+
+  // Active product: headline all-in total (fixed recurring + estimated metered usage), the renewal
+  // date, a price breakdown line, and one usage bar per dimension.
+  const dims = entitlement?.dimensions ?? [];
+  const total = productTotal(entitlement);
+  const hasUsage = (entitlement?.estimatedUsageAmount ?? 0) > 0;
+  const breakdown = productBreakdown(entitlement, prod, cadence);
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border py-4 first:border-t-0">
+      <div className="flex items-center gap-4">
+        <ProductIcon product={prod} />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">{prod.name}</span>
+            {entitlement?.planTier && (
+              <Badge variant="neutral">{tierLabel(entitlement.planTier)}</Badge>
+            )}
+            {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+            <ActiveBadge />
+          </div>
+          {renewsOn && <div className="text-xs text-muted">Renews {renewsOn}</div>}
+        </div>
         <div className="flex shrink-0 flex-col items-end gap-0.5">
-          <span className="text-xs font-semibold text-foreground">{limitNote}</span>
-          <span className="text-xs text-muted">in use</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-sm font-semibold text-foreground tabular-nums">
+              {fmtMoney(total)}
+            </span>
+            <span className="text-xs text-muted">/ {intervalWord(interval)}</span>
+            {hasUsage && <span className="text-[10px] text-muted">est.</span>}
+          </div>
+          {breakdown && <span className="text-xs text-muted">{breakdown}</span>}
+        </div>
+        {action && <div className="flex shrink-0 items-center gap-1.5">{action}</div>}
+      </div>
+      {dims.length > 0 && (
+        <div className="flex flex-col gap-3 pl-[52px]">
+          {dims.map((dim) => (
+            <DimensionMeter
+              key={dim.key}
+              dim={dim}
+              product={prod}
+              planTier={entitlement?.planTier}
+              cadence={cadence}
+            />
+          ))}
         </div>
       )}
-      {action && <div className="flex shrink-0 items-center gap-1.5">{action}</div>}
     </div>
   );
 };
@@ -484,38 +601,44 @@ type ProductsCardProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: ProductsCardProps) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>
-        <Package className="size-4 text-accent" />
-        Products
-      </CardTitle>
-      <CardDescription>Everything you can run on your subscription.</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {catalog.length === 0 ? (
-        <CardEmpty
-          title="No products available"
-          description="Products will appear here once they're available."
-        />
-      ) : (
-        <div className="flex flex-col">
-          {catalog.map((prod) => (
-            <ProductRow
-              key={prod.id}
-              prod={prod}
-              entitlement={overview.entitlements[prod.id]}
-              readOnly={readOnly}
-              onManage={onManage}
-              onContact={onContact}
-            />
-          ))}
-        </div>
-      )}
-    </CardContent>
-  </Card>
-);
+const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: ProductsCardProps) => {
+  const cadence = intervalToCadence(overview.interval);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Package className="size-4 text-accent" />
+          Products
+        </CardTitle>
+        <CardDescription>Everything you can run on your subscription.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {catalog.length === 0 ? (
+          <CardEmpty
+            title="No products available"
+            description="Products will appear here once they're available."
+          />
+        ) : (
+          <div className="flex flex-col">
+            {catalog.map((prod) => (
+              <ProductRow
+                key={prod.id}
+                prod={prod}
+                entitlement={overview.entitlements[prod.id]}
+                cadence={cadence}
+                interval={overview.interval}
+                renewsOn={overview.nextBillingDate}
+                readOnly={readOnly}
+                onManage={onManage}
+                onContact={onContact}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 type PaymentCardProps = {
   overview: BillingV2Overview;

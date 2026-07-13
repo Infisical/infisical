@@ -16,13 +16,18 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -47,8 +52,10 @@ type TSecretImportServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "findOne" | "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -62,6 +69,8 @@ export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceF
 export const secretImportServiceFactory = ({
   secretImportDAL,
   projectEnvDAL,
+  projectFolderGrantDAL,
+  orgDAL,
   permissionService,
   folderDAL,
   projectDAL,
@@ -72,6 +81,48 @@ export const secretImportServiceFactory = ({
   secretV2BridgeDAL,
   kmsService
 }: TSecretImportServiceFactoryDep) => {
+  const $annotateCrossProjectImports = async <
+    T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
+  >(
+    imports: T[],
+    projectId: string,
+    actorOrgId: string
+  ): Promise<(T & { isAccessRevoked: boolean })[]> => {
+    const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
+    if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
+
+    // If org-level toggle is disabled, strip cross-project imports entirely
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      return imports
+        .filter((imp) => imp.importEnv.projectId === projectId)
+        .map((imp) => ({ ...imp, isAccessRevoked: false }));
+    }
+
+    const sourceFolders = await folderDAL.findByManySecretPath(
+      crossProject.map((imp) => ({ envId: imp.importEnv.id, secretPath: imp.importPath }))
+    );
+    const grantedFolderIds = new Set<string>();
+    const validSourceFolderIds = sourceFolders.filter(Boolean).map((f) => f!.id);
+    if (validSourceFolderIds.length) {
+      const grants = await projectFolderGrantDAL.find({
+        $in: { sourceFolderId: validSourceFolderIds },
+        targetProjectId: projectId
+      });
+      grants.forEach((g) => grantedFolderIds.add(g.sourceFolderId));
+    }
+
+    const revokedIds = new Set(
+      crossProject
+        .filter((_, idx) => {
+          const folder = sourceFolders[idx];
+          return !folder || !grantedFolderIds.has(folder.id);
+        })
+        .map((imp) => imp.id)
+    );
+
+    return imports.map((imp) => ({ ...imp, isAccessRevoked: revokedIds.has(imp.id) }));
+  };
+
   const createImport = async ({
     environment,
     data,
@@ -92,19 +143,58 @@ export const secretImportServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // check if user has permission to import into destination  path
+    // check if user has permission to import into destination path
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
-    // check if user has permission to import from target path
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment: data.environment,
-      secretPath: data.path
-    });
+    const sourceProjectId = data.sourceProjectId ?? projectId;
+    const isCrossProjectImport = sourceProjectId !== projectId;
+
+    if (isCrossProjectImport) {
+      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+        throw new ForbiddenRequestError({
+          message: "Cross-project secret sharing is not enabled for this organization"
+        });
+      }
+
+      const sourceProject = await requestMemoize(requestMemoKeys.projectFindById(sourceProjectId), () =>
+        projectDAL.findById(sourceProjectId)
+      );
+      if (!sourceProject || sourceProject.orgId !== actorOrgId) {
+        throw new NotFoundError({ message: "Source project not found" });
+      }
+
+      const importFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
+      if (!importFolder) {
+        throw new NotFoundError({ message: "Source project not found" });
+      }
+
+      const grant = await projectFolderGrantDAL.findOne({
+        sourceFolderId: importFolder.id,
+        targetProjectId: projectId
+      });
+      if (!grant) {
+        throw new ForbiddenRequestError({
+          message: "No project grant found allowing this cross-project import"
+        });
+      }
+    } else {
+      // check if user has permission to import from target path
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: data.environment,
+        secretPath: data.path
+      });
+    }
 
     if (isReplication) {
+      if (isCrossProjectImport) {
+        throw new BadRequestError({
+          message: "Replication is not supported for cross-project imports"
+        });
+      }
+
       const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.secretApproval) {
         throw new BadRequestError({
@@ -121,18 +211,18 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
+    const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
     if (!importEnv) {
       throw new NotFoundError({
-        error: `Imported environment with slug '${data.environment}' in project with ID '${projectId}' not found`
+        error: `Imported environment with slug '${data.environment}' in project with ID '${sourceProjectId}' not found`
       });
     }
 
-    if (environment === data.environment && secretPath === data.path) {
+    if (!isCrossProjectImport && environment === data.environment && secretPath === data.path) {
       throw new BadRequestError({ message: "Cyclic import not allowed" });
     }
 
-    const sourceFolder = await folderDAL.findBySecretPath(projectId, data.environment, data.path);
+    const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, data.environment, data.path);
     if (sourceFolder) {
       const existingImport = await secretImportDAL.findOne({
         folderId: sourceFolder.id,
@@ -181,6 +271,7 @@ export const secretImportServiceFactory = ({
         actor
       });
     } else {
+      // TODO: check if I need to change anything here.
       await secretQueueService.syncSecrets({
         secretPath,
         orgId: actorOrgId,
@@ -551,9 +642,9 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    const count = await secretImportDAL.getProjectImportCount({ folderId: folder.id, search });
-
-    return count;
+    const allImports = await secretImportDAL.find({ folderId: folder.id, search });
+    const accessible = await $annotateCrossProjectImports(allImports, projectId, actorOrgId);
+    return accessible.length;
   };
 
   const getProjectImportMultiEnvCount = async ({
@@ -601,10 +692,21 @@ export const secretImportServiceFactory = ({
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
       });
-    return secretImportDAL.getUniqueImportCountByFolderIds(
-      folders.map((folder) => folder.id),
-      search
+
+    const importArrays = await Promise.all(
+      folders.map(async (folder) => {
+        const imports = await secretImportDAL.find({ folderId: folder.id, search });
+        return $annotateCrossProjectImports(imports, projectId, actorOrgId);
+      })
     );
+
+    const seen = new Set<string>();
+    for (const folderImports of importArrays) {
+      for (const imp of folderImports) {
+        seen.add(`${imp.importPath}:${imp.importEnv.id}`);
+      }
+    }
+    return seen.size;
   };
 
   const getImports = async ({
@@ -639,7 +741,7 @@ export const secretImportServiceFactory = ({
       });
 
     const secImports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-    return secImports;
+    return $annotateCrossProjectImports(secImports, projectId, actorOrgId);
   };
 
   const getImportById = async ({
@@ -734,11 +836,17 @@ export const secretImportServiceFactory = ({
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
-    const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
+    const secretImports = (
+      await $annotateCrossProjectImports(
+        await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+        projectId,
+        actorOrgId
+      )
+    ).filter((imp) => !imp.isAccessRevoked);
     const allowedImports = secretImports.filter((el) =>
       hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment: el.importEnv.slug,
-        secretPath: el.importPath
+        environment: el.importEnv.projectId && el.importEnv.projectId !== projectId ? environment : el.importEnv.slug,
+        secretPath: el.importEnv.projectId && el.importEnv.projectId !== projectId ? secretPath : el.importPath
       })
     );
 
@@ -770,7 +878,13 @@ export const secretImportServiceFactory = ({
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
-    const secretImports = await secretImportDAL.find({ folderId: folder.id, isReplication: false });
+    const secretImports = (
+      await $annotateCrossProjectImports(
+        await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+        projectId,
+        actorOrgId
+      )
+    ).filter((imp) => !imp.isAccessRevoked);
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
@@ -785,13 +899,19 @@ export const secretImportServiceFactory = ({
         secretDAL: secretV2BridgeDAL,
         secretImportDAL,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
           hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment: expandEnvironment,
             secretPath: expandSecretPath,
             secretName: expandSecretKey,
             secretTags: expandSecretTags
-          })
+          }),
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId,
+        orgDAL,
+        kmsService
       });
 
       return importedSecrets;
@@ -870,7 +990,8 @@ export const secretImportServiceFactory = ({
     const secImportsArrays = await Promise.all(
       folders.map(async (folder) => {
         const imports = await secretImportDAL.find({ folderId: folder.id, search, limit, offset });
-        return imports.map((importItem) => ({
+        const annotated = await $annotateCrossProjectImports(imports, projectId, actorOrgId);
+        return annotated.map((importItem) => ({
           ...importItem,
           environment: folder.environment.slug
         }));
@@ -911,11 +1032,43 @@ export const secretImportServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
 
-    const importedBy = await secretImportDAL.getFolderIsImportedBy(secretPath, folder.envId, environment, projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    const importedBy = await secretImportDAL.getFolderIsImportedBy(
+      secretPath,
+      folder.envId,
+      environment,
+      projectId,
+      project.slug
+    );
+
+    const sameProjItems = importedBy.filter((el) => !el.projectSlug);
+    let crossProjItems = importedBy.filter((el) => el.projectSlug);
+
+    if (crossProjItems.length) {
+      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+        crossProjItems = [];
+      } else {
+        const targetProjectIds = crossProjItems
+          .map((el) => el.projectId)
+          .filter((targetProjectId): targetProjectId is string => Boolean(targetProjectId));
+        const grants = targetProjectIds.length
+          ? await projectFolderGrantDAL.find({
+              sourceFolderId: folder.id,
+              $in: { targetProjectId: targetProjectIds }
+            })
+          : [];
+        const grantedTargetProjectIds = new Set(grants.map((grant) => grant.targetProjectId));
+
+        crossProjItems = crossProjItems.filter((el) => el.projectId && grantedTargetProjectIds.has(el.projectId));
+      }
+    }
+
     const deepPaths: { path: string; folderId: string }[] = [];
 
-    await Promise.all(
-      importedBy.map(async (el) => {
+    await Promise.all([
+      ...sameProjItems.map(async (el) => {
         const envDeepPaths = await recursivelyGetSecretPaths({
           folderDAL,
           projectEnvDAL,
@@ -924,21 +1077,50 @@ export const secretImportServiceFactory = ({
           currentPath: "/"
         });
         deepPaths.push(...envDeepPaths);
+      }),
+      ...crossProjItems.map(async (el) => {
+        const envDeepPaths = await recursivelyGetSecretPaths({
+          folderDAL,
+          projectEnvDAL,
+          projectId: el.projectId!,
+          environment: el.envSlug,
+          currentPath: "/"
+        });
+        deepPaths.push(...envDeepPaths);
       })
-    );
+    ]);
 
-    const result = importedBy.map((el) => ({
-      environment: {
-        name: el.envName,
-        slug: el.envSlug
-      },
-      folders: el.folders.map((folderItem) => ({
-        folderId: folderItem.folderId,
-        isImported: folderItem.folderImported,
-        secrets: folderItem.secrets,
-        name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+    const result = [
+      ...sameProjItems.map((el) => ({
+        environment: {
+          name: el.envName,
+          slug: el.envSlug
+        },
+        folders: el.folders.map((folderItem) => ({
+          folderId: folderItem.folderId,
+          isImported: folderItem.folderImported,
+          secrets: folderItem.secrets,
+          name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+        }))
+      })),
+      ...crossProjItems.map((el) => ({
+        environment: {
+          name: el.envName,
+          slug: el.envSlug
+        },
+        project: {
+          name: el.projectName!,
+          slug: el.projectSlug!,
+          id: el.projectId!
+        },
+        folders: el.folders.map((folderItem) => ({
+          folderId: folderItem.folderId,
+          isImported: folderItem.folderImported,
+          secrets: folderItem.secrets,
+          name: deepPaths.find((p) => p.folderId === folderItem.folderId)?.path || `...${folderItem.folderName}`
+        }))
       }))
-    }));
+    ];
 
     // Special case for same folder references as these do not have an entry on the references table
     const locallyReferenced =

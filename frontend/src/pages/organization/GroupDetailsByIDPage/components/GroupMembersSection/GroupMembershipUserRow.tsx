@@ -40,13 +40,21 @@ export const GroupMembershipUserRow = ({
   const { data: isOidcManageGroupMembershipsEnabled = false } =
     useOidcManageGroupMembershipsEnabled(currentOrg.id);
 
+  const fullName = `${firstName ?? ""} ${lastName ?? ""}`.trim();
+
   return (
     <TableRow key={`group-user-${id}`}>
       <TableCell>
         <UserIcon size={14} className="text-mineshaft-400" />
       </TableCell>
       <TableCell isTruncatable>
-        {`${firstName ?? "-"} ${lastName ?? ""}`} <span className="text-muted">({email})</span>
+        {fullName ? (
+          <>
+            {fullName} <span className="text-muted">({email})</span>
+          </>
+        ) : (
+          email
+        )}
       </TableCell>
       <TableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</TableCell>
       <TableCell>

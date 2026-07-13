@@ -60,6 +60,8 @@ import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants"
 import { caKeys } from "@app/hooks/api/ca/queries";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
+import { useGetHsmConnectorById } from "@app/hooks/api/hsmConnectors";
+import { CertKeySource } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -111,6 +113,11 @@ export const CaDetailsSection = ({ caId }: Props) => {
   });
 
   const parentCa = parentCaData as TInternalCertificateAuthority | undefined;
+
+  const isHsmBacked = ca?.configuration?.keySource === CertKeySource.Hsm;
+  const { data: hsmConnector } = useGetHsmConnectorById(ca?.configuration?.hsmConnectorId, {
+    enabled: Boolean(isHsmBacked && ca?.configuration?.hsmConnectorId)
+  });
 
   const { data: autoRenewal } = useGetCaAutoRenewal(caId, {
     enabled:
@@ -286,6 +293,34 @@ export const CaDetailsSection = ({ caId }: Props) => {
               <DetailLabel>Key Algorithm</DetailLabel>
               <DetailValue>{certKeyAlgorithmToNameMap[ca.configuration.keyAlgorithm]}</DetailValue>
             </Detail>
+
+            <Detail>
+              <DetailLabel>Key Source</DetailLabel>
+              <DetailValue>
+                <Badge variant={isHsmBacked ? "info" : "neutral"}>
+                  {isHsmBacked ? "HSM" : "Infisical"}
+                </Badge>
+              </DetailValue>
+            </Detail>
+
+            {isHsmBacked && (
+              <>
+                <Detail>
+                  <DetailLabel>HSM Connector</DetailLabel>
+                  <DetailValue className="break-all">
+                    {hsmConnector?.name ?? ca.configuration.hsmConnectorId ?? "-"}
+                  </DetailValue>
+                </Detail>
+                {ca.configuration.hsmKeyLabel && (
+                  <Detail>
+                    <DetailLabel>HSM Key Label</DetailLabel>
+                    <DetailValue className="font-mono text-xs break-all">
+                      {ca.configuration.hsmKeyLabel}
+                    </DetailValue>
+                  </Detail>
+                )}
+              </>
+            )}
 
             {showAutoRenewal && (
               <>

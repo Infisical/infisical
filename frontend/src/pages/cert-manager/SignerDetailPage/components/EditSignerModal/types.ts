@@ -9,6 +9,7 @@ export type CaOption = {
   groupType: CaGroup;
   caType: CaType;
   digicert?: { appConnectionId: string; organizationId: number; productNameId: string };
+  adcs?: { appConnectionId: string };
 };
 
 export type StepConfig = {

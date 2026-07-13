@@ -1,0 +1,5 @@
+{
+  "files": [
+    { "path": "DESIGN.md", "description": "v3 design system: tokens, components, and UI conventions for all frontend changes" }
+  ]
+}

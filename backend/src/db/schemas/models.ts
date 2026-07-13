@@ -61,6 +61,7 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ProjectSshConfig = "project_ssh_configs",
@@ -85,6 +86,7 @@ export enum TableName {
   SecretFolder = "secret_folders",
   SecretFolderVersion = "secret_folder_versions",
   SecretImport = "secret_imports",
+  ProjectFolderGrant = "project_folder_grants",
   Snapshot = "secret_snapshots",
   SnapshotSecret = "secret_snapshot_secrets",
   SnapshotFolder = "secret_snapshot_folders",
@@ -235,7 +237,9 @@ export enum TableName {
   KeyValueStore = "key_value_store",
 
   // PAM
+  PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
+  PamFolderNotificationConfig = "pam_folder_notification_configs",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
@@ -244,6 +248,7 @@ export enum TableName {
   PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoveredAccount = "pam_discovered_accounts",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
@@ -375,7 +380,9 @@ export enum ResourceMembershipRole {
 
 export enum ResourceType {
   CertificateApplication = "certificate-application",
-  Signer = "pki-signer"
+  Signer = "pki-signer",
+  PamFolder = "pam-folder",
+  PamAccount = "pam-account"
 }
 
 export enum SecretEncryptionAlgo {

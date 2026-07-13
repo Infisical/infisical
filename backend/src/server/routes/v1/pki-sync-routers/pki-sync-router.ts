@@ -100,6 +100,7 @@ const PkiSyncCertificateSchema = z.object({
   certificateRenewalError: z.string().nullish(),
   pkiSyncName: z.string().optional(),
   pkiSyncDestination: z.string().optional(),
+  externalIdentifier: z.string().nullish(),
   syncMetadata: SyncMetadataSchema
 });
 

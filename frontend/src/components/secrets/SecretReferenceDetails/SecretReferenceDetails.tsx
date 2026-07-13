@@ -27,6 +27,7 @@ import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/ap
 import { ApiErrorTypes, TApiErrors, TSecretReferenceTraceNode } from "@app/hooks/api/types";
 
 import { SecretReferenceEdge } from "./edges/SecretReferenceEdge";
+import { ProjectGroupNode } from "./nodes/ProjectGroupNode";
 import { SecretNode } from "./nodes/SecretNode";
 import { convertDependencyTreeToFlow } from "./utils/convertToFlowElements";
 import { SecretReferenceCloseContext } from "./SecretReferenceContext";
@@ -194,7 +195,7 @@ const SecretTree = ({
   );
 };
 
-const NODE_TYPES = { secretNode: SecretNode };
+const NODE_TYPES = { secretNode: SecretNode, projectGroupNode: ProjectGroupNode };
 const EDGE_TYPES = { secretEdge: SecretReferenceEdge };
 
 const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => {

@@ -1,0 +1,69 @@
+---
+title: "Set Up SSH Certificate Authentication"
+sidebarTitle: "SSH Certificate Auth"
+description: "Configure certificate-based SSH access to eliminate static credentials."
+---
+
+This guide walks through setting up SSH certificate authentication. Instead of managing passwords or SSH keys, Infisical mints a short-lived certificate for each [session](/documentation/platform/pam/sessions/overview) — valid only for that session, so there's nothing to rotate or revoke.
+
+## Prerequisites
+
+- Admin access to the [folder](/documentation/platform/pam/folders/overview) where you'll create the [account](/documentation/platform/pam/accounts/overview)
+- Root/sudo access on the target server
+- The server must be reachable from your [Gateway](/documentation/platform/gateways/gateway-deployment)
+
+## Steps
+
+<Steps>
+  <Step title="Create the SSH Account">
+    1. Go to **Privileged Access Management → Accounts** and click **Add Account**
+    2. Select your folder and an SSH [template](/documentation/platform/pam/templates/overview)
+    3. Fill in the connection details (host, port, username)
+    4. Set **Authentication Method** to **Certificate**
+    5. Click **Create**
+  </Step>
+  <Step title="Configure the Server">
+    Open the account you just created. You'll see a **CA Setup** section.
+
+    <Tabs>
+      <Tab title="Automated Setup">
+        Copy the setup command from the account page and run it on your server. The script downloads the CA public key, configures sshd to trust it, and restarts the service.
+      </Tab>
+      <Tab title="Manual Setup">
+        1. Copy the **CA Public Key** from the account page
+        2. Save it to `/etc/ssh/infisical_ca.pub` on the server
+        3. Add to sshd_config: `TrustedUserCAKeys /etc/ssh/infisical_ca.pub`
+        4. Restart sshd: `sudo systemctl restart sshd`
+      </Tab>
+    </Tabs>
+
+    Verify the setup:
+    ```bash
+    sudo sshd -T | grep trustedusercakeys
+    ```
+  </Step>
+  <Step title="Connect">
+    Your team can now connect from **My Access** — either in the browser or using the CLI proxy.
+
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch**
+  </Step>
+</Steps>
+
+## Why Certificates?
+
+- **No static credentials** to rotate or leak
+- **Short-lived** and valid only for the session
+- **Per-account CAs** so compromising one doesn't affect others
+- **Automatic** key management for users
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View SSH session recordings.
+  </Card>
+  <Card title="Team Access Guide" icon="users" href="/documentation/platform/pam/guides/team-access">
+    Grant team access to databases.
+  </Card>
+</CardGroup>

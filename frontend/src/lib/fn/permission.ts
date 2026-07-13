@@ -150,7 +150,6 @@ const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.CertificateProfiles]: "Certificate Profiles",
   [ProjectPermissionSub.CertificatePolicies]: "Certificate Policies",
   [ProjectPermissionSub.AppConnections]: "App Connections",
-  [ProjectPermissionSub.PamAccounts]: "PAM Accounts",
   [ProjectPermissionSub.McpEndpoints]: "MCP Endpoints",
   [ProjectPermissionSub.HoneyTokens]: "Honey Tokens",
   [ProjectPermissionSub.Role]: "Roles",
@@ -169,9 +168,6 @@ const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.Kms]: "Project KMS Configuration",
   [ProjectPermissionSub.Kmip]: "KMIP",
   [ProjectPermissionSub.Commits]: "Commits",
-  [ProjectPermissionSub.PamFolders]: "PAM Folders",
-  [ProjectPermissionSub.PamResources]: "PAM Resources",
-  [ProjectPermissionSub.PamSessions]: "PAM Sessions",
   [ProjectPermissionSub.ApprovalRequests]: "Approval Requests",
   [ProjectPermissionSub.ApprovalRequestGrants]: "Approval Request Grants"
 };

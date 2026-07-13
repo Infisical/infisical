@@ -2,7 +2,11 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { THsmConnector, THsmConnectorLinkedCertificate } from "./types";
+import {
+  THsmConnector,
+  THsmConnectorLinkedCertificate,
+  THsmConnectorLinkedCertificateAuthority
+} from "./types";
 
 export const hsmConnectorKeys = {
   all: ["hsm-connectors"] as const,
@@ -49,7 +53,11 @@ export const useListHsmConnectorLinkedResources = (
   connectorId: string | undefined,
   pagination?: { offset?: number; limit?: number },
   options?: Omit<
-    UseQueryOptions<{ certificates: THsmConnectorLinkedCertificate[]; totalCount: number }>,
+    UseQueryOptions<{
+      certificates: THsmConnectorLinkedCertificate[];
+      certificateAuthorities: THsmConnectorLinkedCertificateAuthority[];
+      totalCount: number;
+    }>,
     "queryKey" | "queryFn"
   >
 ) => {
@@ -61,12 +69,14 @@ export const useListHsmConnectorLinkedResources = (
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificates: THsmConnectorLinkedCertificate[];
+        certificateAuthorities: THsmConnectorLinkedCertificateAuthority[];
         totalCount: number;
       }>(`/api/v1/cert-manager/hsm-connectors/${connectorId}/linked-resources`, {
         params: { offset, limit }
       });
       return {
         certificates: data.certificates ?? [],
+        certificateAuthorities: data.certificateAuthorities ?? [],
         totalCount: data.totalCount ?? 0
       };
     },

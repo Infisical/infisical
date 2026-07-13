@@ -1,0 +1,62 @@
+---
+title: "Fireworks Connection"
+description: "Learn how to configure a Fireworks AI connection for Infisical."
+---
+
+[Fireworks AI](https://fireworks.ai/) is an AI inference platform for running and fine-tuning large language models. Infisical supports connecting to Fireworks using an **API Key** and **Account ID**.
+
+## Prerequisites
+
+- A [Fireworks AI](https://fireworks.ai/) account with API access.
+- An **API Key** with permissions to create and delete API keys for the target service account.
+- Your **Account ID**, which can be found in your Fireworks account settings.
+
+## Create a Fireworks API Key
+
+<Steps>
+    <Step title="Navigate to Settings">
+        In your [Fireworks AI account](https://app.fireworks.ai/), click **Settings** in the left sidebar.
+
+        ![Fireworks Settings](/images/app-connections/fireworks/settings.png)
+    </Step>
+    <Step title="Navigate to API Keys">
+        In the Settings sidebar, click **API Keys**.
+
+        ![Fireworks API Keys Nav](/images/app-connections/fireworks/api-keys-nav.png)
+    </Step>
+    <Step title="Create an API Key">
+        Click **+ Create API Key** and select **API Key** from the dropdown.
+
+        ![Fireworks Create API Key](/images/app-connections/fireworks/create-api-key.png)
+    </Step>
+    <Step title="Generate and copy your API Key">
+        Give the key a name and generate it. Copy the generated API key and store it securely. This value is viewable one time only, you will need it when creating the Infisical connection.
+
+        ![Fireworks Copy API Key](/images/app-connections/fireworks/copy-api-key.png)
+    </Step>
+    <Step title="Copy Your Account ID">
+        Click the account dropdown in the top-right corner and copy your **Account ID** using the copy button. You will also need this when creating the connection.
+
+        ![Fireworks Account ID](/images/app-connections/fireworks/account-id.png)
+    </Step>
+</Steps>
+
+## Setup Fireworks Connection in Infisical
+
+<Steps>
+    <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab in your organization and click **+ Add Connection**. Select the **Fireworks** option.
+
+        ![Select Fireworks Connection](/images/app-connections/fireworks/select-fireworks.png)
+    </Step>
+    <Step title="Create the Connection">
+        Fill in the connection **Name**, select the **API Key** method, paste the **Account ID** and **API Key** you copied earlier, and click **Connect to Fireworks**.
+
+        ![Create Fireworks Connection](/images/app-connections/fireworks/create-app-connection.png)
+    </Step>
+    <Step title="Connection Created">
+        Your **Fireworks Connection** is now available for use with [Fireworks API Key Secret Rotation](/documentation/platform/secret-rotation/fireworks-api-key).
+
+        ![Fireworks Connection Created](/images/app-connections/fireworks/created-app-connection.png)
+    </Step>
+</Steps>

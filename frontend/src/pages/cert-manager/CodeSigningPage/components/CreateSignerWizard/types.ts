@@ -10,6 +10,7 @@ export type CaOption = {
   groupType: CaGroup;
   caType: CaType;
   digicert?: { appConnectionId: string; organizationId: number; productNameId: string };
+  adcs?: { appConnectionId: string };
 };
 
 export type MemberOption = { value: string; label: string };
@@ -52,6 +53,7 @@ export type WizardState = {
   keySource: CertKeySource;
   hsmConnectorId: string | null;
   reissueFromExternalOrderId: string | null;
+  adcsTemplate: string;
   pendingMembers: PendingMember[];
   policySteps: PolicyStep[];
   maxSignings: number | null;
@@ -69,6 +71,7 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   keySource: CertKeySource.Infisical,
   hsmConnectorId: null,
   reissueFromExternalOrderId: null,
+  adcsTemplate: "",
   pendingMembers: [],
   policySteps: [],
   maxSignings: null,

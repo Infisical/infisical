@@ -1,0 +1,66 @@
+---
+title: "Core Components"
+sidebarTitle: "PAM Components"
+description: "Understand how Infisical PAM is structured."
+---
+
+Infisical PAM is built around four core components: accounts, folders, account templates, and memberships. Understanding how they relate helps you set up secure, organized access to your infrastructure.
+
+## Accounts
+
+An **account** represents a single database or server you want to manage. You provide the connection details (host, port, database) and credentials (username, password), and Infisical stores them securely. Users connect through Infisical without ever seeing the underlying credentials.
+
+Infisical supports databases (PostgreSQL, MySQL, MS SQL, MongoDB), servers (SSH, Windows), Kubernetes clusters, and AWS IAM roles.
+
+[Learn more about Accounts →](/documentation/platform/pam/accounts/overview)
+
+## Folders
+
+**Group accounts by who needs access to them.** If the same people need the same accounts, put them in one folder. If different people need different accounts, use separate folders.
+
+You might organize by team (`backend-team`), department (`engineering`), application (`checkout-service`), or environment — whatever matches how access actually works in your organization.
+
+Permissions are set at the folder level, so everyone with access to a folder can reach all accounts inside.
+
+[Learn more about Folders →](/documentation/platform/pam/folders/overview)
+
+## Account Templates
+
+**Account templates** define the policies that apply when someone connects to an account:
+
+- Maximum session duration
+- Whether a reason is required
+- Whether MFA is required
+
+Templates are specific to an account type. This allows for type-specific policies — for example, command restrictions for SSH or query restrictions for databases in future releases.
+
+Every account uses a template of the same type. Infisical provides default templates for each account type with sensible settings, so you can start creating accounts immediately. Create custom templates when you need different rules for different environments or compliance requirements.
+
+**Templates define rules, folders define access.** Accounts in the same folder can use different templates (different rules, same team access), and accounts in different folders can use the same template (same rules, different team access).
+
+[Learn more about Account Templates →](/documentation/platform/pam/templates/overview)
+
+## Memberships
+
+**Memberships** determine who can access what by assigning users or groups a role on a folder or account.
+
+| Role | Capabilities |
+|------|-------------|
+| **Admin** | Full control — accounts, folders, sessions, memberships |
+| **Connector** | Launch sessions and connect to accounts |
+| **Auditor** | View audit logs and session recordings |
+
+Memberships on a folder cascade to all accounts inside. For most cases, this is all you need. For exceptions, you can assign memberships directly on individual accounts.
+
+[Learn more about Access Control →](/documentation/platform/pam/concepts/access-control)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Launch Your First Session" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
+    Get hands-on with a step-by-step walkthrough.
+  </Card>
+  <Card title="Session Lifecycle" icon="circle-play" href="/documentation/platform/pam/concepts/session-lifecycle">
+    Understand what happens when you connect.
+  </Card>
+</CardGroup>

@@ -156,7 +156,9 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
-        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", lower("username")) ilike ?`, [`%${search}%`]);
+        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", lower("username"), lower("email")) ilike ?`, [
+          `%${search}%`
+        ]);
       } else if (username) {
         void query.andWhereRaw(`lower("${TableName.Users}"."username") ilike ?`, `%${username}%`);
       }

@@ -1,0 +1,55 @@
+---
+title: "Launch Your First Session"
+sidebarTitle: "Launch First Session"
+description: "Connect to a PostgreSQL database in under 10 minutes."
+---
+
+This quickstart walks you through connecting to a PostgreSQL database via PAM. You'll create a [folder](/documentation/platform/pam/folders/overview), add a database [account](/documentation/platform/pam/accounts/overview), and launch a session.
+
+<Note>
+**Gateway required** — PAM connects to your databases and servers through a Gateway. If you haven't deployed one yet, [deploy a Gateway](/documentation/platform/gateways/gateway-deployment) first.
+</Note>
+
+## Prerequisites
+
+- Admin access to PAM
+- A deployed [Gateway](/documentation/platform/gateways/gateway-deployment) that can reach your database
+- Database credentials (username and password)
+
+## Steps
+
+<Steps>
+  <Step title="Create a Folder">
+    Group accounts by who needs access to them — that's what folders are for.
+
+    1. Go to **Privileged Access Management → Accounts**
+    2. Click **Create Folder**
+    3. Name it based on who needs access (e.g., `platform-team`, `checkout-service`)
+    4. Click **Create**
+  </Step>
+  <Step title="Add a Database Account">
+    1. Click **Add Account**
+    2. Select the folder you just created
+    3. Select the `postgres` [template](/documentation/platform/pam/templates/overview)
+    4. Fill in your database connection details (host, port, credentials)
+    5. Click **Create**
+  </Step>
+  <Step title="Launch a Session">
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account you created and click **Launch**
+    3. Click **Connect in Browser**
+
+    You'll see the Data Explorer (browse tables) and SQL Editor (run queries).
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/documentation/platform/pam/concepts/pam-components">
+    Understand how folders, templates, and accounts work together.
+  </Card>
+  <Card title="Team Access Guide" icon="users" href="/documentation/platform/pam/guides/team-access">
+    Grant your team access to production databases.
+  </Card>
+</CardGroup>

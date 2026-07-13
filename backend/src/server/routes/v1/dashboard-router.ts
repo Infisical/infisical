@@ -146,14 +146,22 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               tags: SanitizedTagSchema.array().optional(),
               reminder: RemindersSchema.extend({
                 recipients: z.string().array().optional()
-              }).nullish()
+              }).nullish(),
+              revokedProjectFolderGrant: z.boolean().optional()
             })
             .array()
             .optional(),
           imports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
-              environment: z.string()
+              importEnv: z.object({
+                name: z.string(),
+                slug: z.string(),
+                id: z.string(),
+                projectId: z.string().optional()
+              }),
+              sourceProjectName: z.string().optional(),
+              environment: z.string(),
+              isAccessRevoked: z.boolean()
             })
             .array()
             .optional(),
@@ -166,6 +174,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                     name: z.string(),
                     slug: z.string()
                   }),
+                  project: z
+                    .object({
+                      name: z.string(),
+                      slug: z.string(),
+                      id: z.string()
+                    })
+                    .optional(),
                   folders: z
                     .object({
                       name: z.string(),
@@ -542,10 +557,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               ? await server.services.reminder.getRemindersForDashboard(rawSecrets.map((s) => s.id))
               : {};
 
+          const revokedGrantSecretIds = await server.services.secret.getSecretsWithRevokedProjectFolderGrant({
+            targetProjectId: projectId,
+            actorOrgId: req.permission.orgId,
+            secrets: rawSecrets.map((s) => ({
+              id: s.id,
+              secretValue: s.secretValue,
+              secretValueHidden: s.secretValueHidden
+            }))
+          });
+
           secrets = rawSecrets.map((secret) => ({
             ...secret,
             isEmpty: !secret.secretValue,
-            reminder: reminders[secret.id] ?? null
+            reminder: reminders[secret.id] ?? null,
+            revokedProjectFolderGrant: revokedGrantSecretIds.has(secret.id) ? true : undefined
           }));
         }
       }
@@ -711,7 +737,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           imports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: z.object({
+                name: z.string(),
+                slug: z.string(),
+                id: z.string(),
+                projectId: z.string().optional()
+              }),
+              sourceProjectName: z.string().optional(),
+              isAccessRevoked: z.boolean()
             })
             .array()
             .optional(),
@@ -781,6 +814,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 name: z.string(),
                 slug: z.string()
               }),
+              project: z
+                .object({
+                  name: z.string(),
+                  slug: z.string(),
+                  id: z.string()
+                })
+                .optional(),
               folders: z
                 .object({
                   name: z.string(),

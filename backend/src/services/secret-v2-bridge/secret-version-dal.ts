@@ -151,6 +151,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.SecretVersionV2}.secretId`, secretIds)
         .join(
           (tx || db.replicaNode())(TableName.SecretVersionV2)
+            .whereIn("secretId", secretIds)
             .groupBy("secretId")
             .max("version")
             .select("secretId")
@@ -364,6 +365,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       .whereIn(`${TableName.SecretVersionV2}.secretId`, secretIds)
       .join(
         knexInstance(TableName.SecretVersionV2)
+          .whereIn("secretId", secretIds)
           .groupBy("secretId")
           .max("version")
           .select("secretId")

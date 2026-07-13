@@ -26,7 +26,6 @@ import { extractCertificateRequestFromCSR } from "@app/services/certificate-comm
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -34,6 +33,11 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { booleanSchema } from "../sanitizedSchemas";
 
 type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertificateIssuanceResponse, "privateKey">;
+
+// Subject attributes are the requester's own certificate fields and flow into a structured
+// distinguished name (no string concatenation), so there's no injection risk. We don't constrain
+// their format here (wildcards like *.example.com are valid); only bound the length.
+const subjectAttributeField = z.string().trim().max(255);
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -136,12 +140,12 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional(),
           attributes: z
             .object({
-              commonName: validateTemplateRegexField.nullish(),
-              organization: validateTemplateRegexField.nullish(),
-              organizationalUnit: validateTemplateRegexField.nullish(),
-              country: validateTemplateRegexField.nullish(),
-              state: validateTemplateRegexField.nullish(),
-              locality: validateTemplateRegexField.nullish(),
+              commonName: subjectAttributeField.nullish(),
+              organization: subjectAttributeField.nullish(),
+              organizationalUnit: subjectAttributeField.nullish(),
+              country: subjectAttributeField.nullish(),
+              state: subjectAttributeField.nullish(),
+              locality: subjectAttributeField.nullish(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
@@ -842,7 +846,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           profileId: z.string().uuid(),
-          commonName: validateTemplateRegexField.optional(),
+          commonName: subjectAttributeField.optional(),
           ttl: z
             .string()
             .trim()
@@ -1064,7 +1068,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
-          commonName: validateTemplateRegexField.optional(),
+          commonName: subjectAttributeField.optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
           removeRootsFromChain: booleanSchema.default(false).optional()

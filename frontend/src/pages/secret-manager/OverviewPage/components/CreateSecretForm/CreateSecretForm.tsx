@@ -86,6 +86,9 @@ type Props = {
     tags?: { id: string; slug: string }[];
     metadata?: { key: string; value: string; isEncrypted?: boolean }[];
   }) => void;
+  // Called after the user actually creates a secret (non-batch path) so the parent can run the
+  // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
+  onSecretCreated?: () => void;
 };
 
 export const CreateSecretForm = ({
@@ -93,7 +96,8 @@ export const CreateSecretForm = ({
   defaultSelectedEnvs,
   onClose,
   isBatchMode,
-  onBatchSecretCreate
+  onBatchSecretCreate,
+  onSecretCreated
 }: Props) => {
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
@@ -268,6 +272,9 @@ export const CreateSecretForm = ({
           updatedEnvs.length > 1 ? "environments" : "environment"
         }: ${updatedEnvs.join(", ")}`
       });
+
+      // The user just created a secret: let the parent check whether to surface the nudge.
+      onSecretCreated?.();
     }
 
     if (!updatedEnvs.length && !forApprovalEnvs.length) {

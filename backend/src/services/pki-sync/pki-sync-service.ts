@@ -806,6 +806,7 @@ export const pkiSyncServiceFactory = ({
       certificateRenewalError: detail.certificateRenewalError || undefined,
       pkiSyncName: detail.pkiSyncName || undefined,
       pkiSyncDestination: detail.pkiSyncDestination || undefined,
+      externalIdentifier: detail.externalIdentifier || undefined,
       syncMetadata: detail.syncMetadata as TSyncMetadata
     }));
 

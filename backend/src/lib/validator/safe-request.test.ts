@@ -20,6 +20,7 @@ const { lookupMock, configState, verifyHostInputValidityMock, requestRequestMock
   const config = {
     isDevelopmentMode: false,
     ALLOW_INTERNAL_IP_CONNECTIONS: false,
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: false,
     SITE_URL: "https://infisical.example",
     REDIS_URL: "redis://internal-redis:6379",
     DB_HOST: "internal-db",
@@ -83,6 +84,7 @@ describe("safe-request SSRF helpers", () => {
   beforeEach(() => {
     configState.isDevelopmentMode = false;
     configState.ALLOW_INTERNAL_IP_CONNECTIONS = false;
+    configState.SAFE_REQUEST_FORCE_DIRECT_EGRESS = false;
     requestRequestMock.mockReset();
     requestRequestMock.mockResolvedValue({ data: undefined, status: 200, headers: {} });
     verifyHostInputValidityMock.mockReset();
@@ -431,6 +433,27 @@ describe("safe-request SSRF helpers", () => {
       // NOT a `new URL("/v1/items", baseURL)` recombination.
       expect(lookupMock).toHaveBeenCalledWith("example.com", expect.any(Object));
       expect(lookupMock).not.toHaveBeenCalledWith("attacker.example", expect.any(Object));
+    });
+
+    it("forces direct egress (proxy: false) when SAFE_REQUEST_FORCE_DIRECT_EGRESS is enabled", async () => {
+      configState.SAFE_REQUEST_FORCE_DIRECT_EGRESS = true;
+      requestRequestMock.mockResolvedValueOnce({ data: undefined, status: 200, headers: {} });
+      await safeRequest.get("https://example.com");
+      expect(lastRequestArgs().proxy).toBe(false);
+    });
+
+    it("leaves the ambient proxy untouched (no proxy key) when the flag is disabled", async () => {
+      configState.SAFE_REQUEST_FORCE_DIRECT_EGRESS = false;
+      requestRequestMock.mockResolvedValueOnce({ data: undefined, status: 200, headers: {} });
+      await safeRequest.get("https://example.com");
+      expect(lastRequestArgs().proxy).toBeUndefined();
+    });
+
+    it("forces direct egress on safeRequest.request when the flag is enabled", async () => {
+      configState.SAFE_REQUEST_FORCE_DIRECT_EGRESS = true;
+      requestRequestMock.mockResolvedValueOnce({ data: undefined, status: 200, headers: {} });
+      await safeRequest.request({ url: "https://example.com/v1/items", method: "GET" });
+      expect(lastRequestArgs().proxy).toBe(false);
     });
 
     it("safeRequest.request validates the combined URL when `url` is relative and baseURL is set", async () => {

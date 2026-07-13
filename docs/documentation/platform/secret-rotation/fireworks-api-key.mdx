@@ -1,0 +1,141 @@
+---
+title: "Fireworks API Key"
+description: "Learn how to automatically rotate Fireworks AI API keys."
+---
+
+<Note>
+  **Rotation Type: Dual-Phase**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Note>
+
+## Prerequisites
+
+- Create a [Fireworks Connection](/integrations/app-connections/fireworks) using an **API Key** and **Account ID**. That connection is used to create and delete API keys on your behalf during rotation.
+- A **Fireworks Service Account** whose API keys will be rotated. See [Create a Fireworks Service Account](#create-a-fireworks-service-account) below.
+
+## Create a Fireworks Service Account
+
+<Steps>
+    <Step title="Navigate to Settings">
+        In your [Fireworks AI account](https://fireworks.ai/), click **Settings** in the left sidebar.
+
+        ![Fireworks Settings](/images/app-connections/fireworks/settings.png)
+    </Step>
+    <Step title="Navigate to Users & Access">
+        In the Settings sidebar, click **Users & Access**.
+
+        ![Fireworks Users & Access](/images/secret-rotations-v2/fireworks-api-key/users-and-access.png)
+    </Step>
+    <Step title="Add a Service Account">
+        Click **+ Add** and select **Service Account** from the dropdown.
+
+        ![Add Service Account](/images/secret-rotations-v2/fireworks-api-key/add-service-account.png)
+    </Step>
+    <Step title="Configure the Service Account">
+        Enter a **Service Account ID** (lowercase letters, numbers, and hyphens only) and click **Add**. You will need this ID when configuring the rotation in Infisical.
+
+        ![Service Account ID](/images/secret-rotations-v2/fireworks-api-key/service-account-id.png)
+    </Step>
+</Steps>
+
+## Create a Fireworks API Key Rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **Fireworks Secret** option.
+
+        ![Select Fireworks Secret](/images/secret-rotations-v2/fireworks-api-key/select-fireworks-api-key.png)
+
+        3. Configure the rotation behavior, then click **Next**.
+
+        ![Rotation Configuration](/images/secret-rotations-v2/fireworks-api-key/configuration.png)
+
+        - **Fireworks Connection** -- The connection (with an API key) that will create and delete API keys during rotation.
+        - **Rotation Interval** -- The interval, in days, after which a rotation is triggered.
+        - **Rotate At** -- The local time of day when rotation runs once the interval has elapsed.
+        - **Auto-Rotation Enabled** -- Whether to rotate automatically on the interval. Turn off to rotate only manually or pause rotation.
+
+        4. Select the **Service Account** whose API keys will be rotated, then click **Next**. This is the service account you [created in Fireworks](#create-a-fireworks-service-account) earlier.
+
+        ![Rotation Parameters](/images/secret-rotations-v2/fireworks-api-key/parameters.png)
+
+        - **Service Account** -- The Fireworks service account created in the prerequisites step above.
+
+        5. Specify the secret name that the rotated API key will be mapped to. Then click **Next**.
+
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/fireworks-api-key/secrets-mapping.png)
+
+        - **API Key** -- The name of the secret in Infisical where the rotated API key value will be stored.
+
+        6. Give your rotation a name and description (optional). Then click **Next**.
+
+        ![Rotation Details](/images/secret-rotations-v2/fireworks-api-key/details.png)
+
+        - **Name** -- A slug-friendly name for this rotation configuration.
+        - **Description** (optional) -- Notes about this rotation.
+
+        7. Review your configuration, then click **Create Secret Rotation**.
+
+        ![Rotation Review](/images/secret-rotations-v2/fireworks-api-key/review.png)
+    </Tab>
+    <Tab title="API">
+        To create a Fireworks API Key rotation, call the [Create Fireworks API Key Rotation](/api-reference/endpoints/secret-rotations/fireworks-api-key/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+          --url https://us.infisical.com/api/v2/secret-rotations/fireworks-api-key \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "name": "my-fireworks-rotation",
+            "projectId": "<project-id>",
+            "description": "Fireworks API key rotation",
+            "connectionId": "<fireworks-connection-id>",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+              "hours": 0,
+              "minutes": 0
+            },
+            "parameters": {
+              "serviceAccountUserId": "<fireworks-user-id>"
+            },
+            "secretsMapping": {
+              "apiKey": "FIREWORKS_API_KEY"
+            }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "secretRotation": {
+            "id": "<rotation-id>",
+            "name": "my-fireworks-rotation",
+            "description": "Fireworks API key rotation",
+            "secretsMapping": {
+              "apiKey": "FIREWORKS_API_KEY"
+            },
+            "isAutoRotationEnabled": true,
+            "activeIndex": 0,
+            "connectionId": "<fireworks-connection-id>",
+            "rotationInterval": 30,
+            "rotateAtUtc": { "hours": 0, "minutes": 0 },
+            "type": "fireworks-api-key",
+            "parameters": {
+              "serviceAccountUserId": "<fireworks-user-id>"
+            }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

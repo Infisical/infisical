@@ -64,3 +64,13 @@ export type THsmConnectorLinkedCertificate = {
   hsmKeyLabel: string | null;
   createdAt: string;
 };
+
+export type THsmConnectorLinkedCertificateAuthority = {
+  id: string;
+  name: string;
+  commonName: string | null;
+  status: string;
+  type: string;
+  hsmKeyLabel: string | null;
+  createdAt: string;
+};

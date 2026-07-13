@@ -83,6 +83,48 @@ CORS_ALLOWED_ORIGINS=["https://your-app.example.com"]
 ALLOW_INTERNAL_IP_CONNECTIONS=false
 ```
 
+#### Server-Side Request Forgery (SSRF) Protection
+
+Outbound requests to user-configured destinations (App Connections, Webhooks,
+Audit Log Streams, Dynamic Secrets, PKI Discovery, and similar) run through an
+SSRF-safe HTTP client that validates the destination and pins the connection to
+the validated IP. Keep these controls in mind when hardening egress:
+
+**Reaching private resources: prefer the Gateway.** To integrate with services
+on an internal/private network, deploy the [Gateway](/documentation/platform/gateways/overview)
+rather than opening internal IP ranges on the Infisical instance. The Gateway
+runs inside your network and tunnels traffic over an mTLS connection, so no
+internal IP allowlisting is required and SSRF protection on the instance stays
+fully enabled.
+
+**Opening internal IPs: scope it as narrowly as possible.** For the features
+that egress directly (without a Gateway), private-IP access is disabled by
+default. When you must allow it, prefer the per-feature flags over the global
+switch, and understand that enabling any of these also disables DNS-rebinding pin
+protection for that path:
+
+```bash
+# Global (all direct-egress features) — broadest, least preferred
+ALLOW_INTERNAL_IP_CONNECTIONS=false
+
+# Per-feature (narrower, preferred when you must allow internal IPs)
+DYNAMIC_SECRET_ALLOW_INTERNAL_IP=false
+AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP=false
+```
+
+**Force direct egress to preserve the IP pin.** If your instance does not rely on
+an outbound forward proxy, enable `SAFE_REQUEST_FORCE_DIRECT_EGRESS` so requests
+cannot be routed through an ambient `HTTP_PROXY` / `HTTPS_PROXY` that would
+re-resolve the target and bypass the validated-IP pin. It is `false` by default
+(Infisical Cloud enables it through its own deployment configuration); set it
+explicitly for hardened self-hosted deployments that do not use an egress proxy:
+
+```bash
+# Guarantee outbound requests connect to the validated IP (no proxy re-resolution).
+# Only enable if you do NOT use an outbound HTTP(S)_PROXY for egress.
+SAFE_REQUEST_FORCE_DIRECT_EGRESS=true
+```
+
 **Implement network firewalls**. Restrict network access to only necessary services:
 
 - **Required ports**: Infisical API (8080) and HTTPS (if applicable)

@@ -72,6 +72,11 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
+  const visibleOptions = useMemo(
+    () => (appConnectionOptions ?? []).filter((option) => option.app !== AppConnection.AzureADCS),
+    [appConnectionOptions]
+  );
+
   const handleSelect = (app: AppConnection) => {
     if (APP_CONNECTION_MAP[app].enterprise && !subscription.enterpriseAppConnections) {
       handlePopUpOpen("upgradePlan", { isEnterpriseFeature: true });
@@ -82,16 +87,16 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
 
   const optionsByApp = useMemo(() => {
     const map = new Map<AppConnection, TAppConnectionOption>();
-    appConnectionOptions?.forEach((option) => map.set(option.app, option));
+    visibleOptions.forEach((option) => map.set(option.app, option));
     return map;
-  }, [appConnectionOptions]);
+  }, [visibleOptions]);
 
   const filteredOptions = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return appConnectionOptions ?? [];
+    if (!query) return visibleOptions;
 
     return (
-      appConnectionOptions?.filter(({ app, name }) => {
+      visibleOptions.filter(({ app, name }) => {
         const entry = APP_CONNECTION_MAP[app];
         const aliases = entry?.aliases ?? [];
         return (
@@ -103,7 +108,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         );
       }) ?? []
     );
-  }, [appConnectionOptions, search]);
+  }, [visibleOptions, search]);
 
   const popularOptions = useMemo(
     () =>
@@ -180,7 +185,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
           <section>
             <SectionLabel>All apps</SectionLabel>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {(appConnectionOptions ?? []).map((option) => (
+              {visibleOptions.map((option) => (
                 <ProviderCard
                   key={option.app}
                   app={option.app}

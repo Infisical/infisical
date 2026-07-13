@@ -84,6 +84,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         if (ca.type === CaType.INTERNAL) return true;
         if (ca.type === CaType.AWS_PCA) return true;
         if (ca.type === CaType.AZURE_AD_CS) return true;
+        if (ca.type === CaType.ADCS) return true;
         if (ca.type === CaType.DIGICERT) {
           return ca.configuration?.purpose === DigiCertCaPurpose.CodeSigning;
         }
@@ -101,6 +102,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 organizationId: ca.configuration.organizationId,
                 productNameId: ca.configuration.productNameId
               }
+            : undefined,
+        adcs:
+          ca.type === CaType.ADCS
+            ? { appConnectionId: ca.configuration.appConnectionId }
             : undefined
       }));
   }, [cas.data]);
@@ -152,7 +157,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: state.keyAlgorithm,
       keySource: state.keySource,
       hsmConnectorId: state.hsmConnectorId,
-      reissueFromExternalOrderId: state.reissueFromExternalOrderId
+      reissueFromExternalOrderId: state.reissueFromExternalOrderId,
+      adcsTemplate: state.adcsTemplate
     }
   });
 
@@ -178,7 +184,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
       keySource: CertKeySource.Infisical,
       hsmConnectorId: null,
-      reissueFromExternalOrderId: null
+      reissueFromExternalOrderId: null,
+      adcsTemplate: ""
     });
   };
 
@@ -215,6 +222,20 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
             }
           : undefined;
 
+      const selectedCaType = caOptions.find((o) => o.id === state.caId)?.caType;
+      let externalConfiguration;
+      if (state.reissueFromExternalOrderId) {
+        externalConfiguration = {
+          caType: CaType.DIGICERT,
+          reissueFromExternalOrderId: state.reissueFromExternalOrderId
+        } as const;
+      } else if (selectedCaType === CaType.ADCS && state.adcsTemplate.trim()) {
+        externalConfiguration = {
+          caType: CaType.ADCS,
+          template: state.adcsTemplate.trim()
+        } as const;
+      }
+
       await createSigner.mutateAsync({
         projectId,
         name: state.name,
@@ -231,12 +252,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         })),
         approvalPolicy,
         certificate,
-        externalConfiguration: state.reissueFromExternalOrderId
-          ? {
-              caType: CaType.DIGICERT,
-              reissueFromExternalOrderId: state.reissueFromExternalOrderId
-            }
-          : undefined
+        externalConfiguration
       });
 
       handleClose(false);
@@ -263,7 +279,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: values.keyAlgorithm,
       keySource: values.keySource,
       hsmConnectorId: values.hsmConnectorId ?? null,
-      reissueFromExternalOrderId: values.reissueFromExternalOrderId ?? null
+      reissueFromExternalOrderId: values.reissueFromExternalOrderId ?? null,
+      adcsTemplate: values.adcsTemplate ?? ""
     }));
   };
 
@@ -285,6 +302,13 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         "reissueFromExternalOrderId"
       ]);
       if (!ok) return;
+      if (
+        selectedCa?.caType === CaType.ADCS &&
+        !certificateForm.getValues("adcsTemplate")?.trim()
+      ) {
+        certificateForm.setError("adcsTemplate", { message: "Certificate template is required" });
+        return;
+      }
       persistCertificateForm();
       setStep(2);
       return;

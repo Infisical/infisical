@@ -1,0 +1,72 @@
+---
+title: "Sessions"
+sidebarTitle: "Overview"
+description: "View and manage active and past sessions."
+---
+
+Every time someone connects to an [account](/documentation/platform/pam/accounts/overview) through PAM, a session is created. The **Sessions** page shows all sessions — active and completed — so you can monitor who's connected and review what happened.
+
+## Viewing Sessions
+
+Go to **Privileged Access Management → Sessions** to see the session list.
+
+| Column | What it shows |
+|--------|---------------|
+| **Account** | Which account was accessed |
+| **Folder** | Which folder it belongs to |
+| **User** | Who connected |
+| **Status** | Active, Ended, or Terminated |
+| **Started** | When the session began |
+| **Duration** | How long it lasted (or has been active) |
+
+Click on any session to see its details and recording.
+
+### Filtering
+
+Use the filters to find specific sessions:
+- **Status** — Active, Ended
+- **Account** or **Folder** — Narrow to specific resources
+- **User** — Sessions by a specific person
+- **Date range** — Sessions within a time period
+
+The search bar finds sessions by account name, folder name, or user email.
+
+## Active Sessions
+
+Active sessions show a **Live** indicator. While a session is active:
+- Logs update in real-time
+- You can monitor what's happening
+- You can terminate the session if needed
+
+## Session Details
+
+Click on a session to see:
+- **Session info** — who, what, when, duration, IP address
+- **Session logs** — commands (SSH) or queries (PostgreSQL) executed
+- **Recording playback** — review everything that happened
+
+## Terminating Sessions
+
+If someone shouldn't be connected — security incident, policy violation, or they're stuck — you can terminate their session.
+
+1. Find the active session
+2. Click on it to open details
+3. Click **Terminate**
+4. Confirm
+
+<Warning>
+The user is immediately disconnected. Use this for emergencies; normal sessions should end naturally.
+</Warning>
+
+## Next Steps
+
+To understand how session recordings work and where they're stored:
+
+<CardGroup cols={2}>
+  <Card title="Session Recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
+    How sessions are recorded.
+  </Card>
+  <Card title="External Storage" icon="cloud" href="/documentation/platform/pam/sessions/external-storage">
+    Store recordings in your own S3 bucket.
+  </Card>
+</CardGroup>

@@ -6,6 +6,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -78,17 +79,26 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
 
   const handleSelectAll = () => setSelectedEnvs([]);
 
-  const handleSelectEnv = (envId: string) => {
+  const handleSwitchEnv = (envId: string) => {
     setSelectedEnvs((prev) => {
-      if (prev.map((env) => env.id).includes(envId)) {
-        return prev.filter((env) => env.id !== envId);
-      }
-
       const selectedEnv = projectEnvs.find((env) => env.id === envId);
 
-      if (selectedEnv) return [...prev, selectedEnv];
+      if (!selectedEnv) return prev;
 
-      return prev;
+      // switching to the sole selected environment clears back to all
+      return prev.length === 1 && prev[0].id === envId ? [] : [selectedEnv];
+    });
+  };
+
+  const handleToggleEnv = (envId: string) => {
+    setSelectedEnvs((prev) => {
+      const selectedEnv = projectEnvs.find((env) => env.id === envId);
+
+      if (!selectedEnv) return prev;
+
+      return prev.some((env) => env.id === envId)
+        ? prev.filter((env) => env.id !== envId)
+        : [...prev, selectedEnv];
     });
   };
 
@@ -140,13 +150,13 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 <>
                   <CommandGroup>
                     <CommandItem forceMount keywords={[]} onSelect={handleSelectAll}>
+                      All Environments
                       <CheckIcon
                         className={cn(
-                          "h-4 w-4",
+                          "ml-auto h-4 w-4",
                           !selectedEnvs.length ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      All Environments
                     </CommandItem>
                   </CommandGroup>
                   <CommandSeparator />
@@ -157,15 +167,9 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                   <CommandItem
                     key={env.id}
                     value={env.id}
-                    onSelect={handleSelectEnv}
+                    onSelect={handleSwitchEnv}
                     keywords={[env.name, env.slug]}
                   >
-                    <CheckIcon
-                      className={cn(
-                        "h-4 w-4 shrink-0",
-                        selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
-                      )}
-                    />
                     <Tooltip delayDuration={500} disableHoverableContent>
                       <TooltipTrigger asChild>
                         <span className="truncate">{env.name}</span>
@@ -174,6 +178,14 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                         {env.name}
                       </TooltipContent>
                     </Tooltip>
+                    <Checkbox
+                      className="ml-auto"
+                      variant="project"
+                      aria-label={`Select ${env.name}`}
+                      isChecked={selectedEnvs.some((e) => e.id === env.id)}
+                      onCheckedChange={() => handleToggleEnv(env.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -197,6 +209,9 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 )}
               </ProjectPermissionCan>
             </CommandGroup>
+            <div className="border-t border-border px-2 py-1.5 text-[10px] text-muted">
+              Use the checkboxes to select multiple environments.
+            </div>
           </Command>
         </PopoverContent>
       </Popover>

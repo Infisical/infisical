@@ -19,6 +19,7 @@ export {
   useGetProjectSshConfig,
   useGetUpgradeProjectStatus,
   useGetUserProjects,
+  useGetUserProjectsByType,
   useGetUserWorkspaceMemberships,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,

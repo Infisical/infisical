@@ -7,6 +7,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { TPamAuditLogScope } from "./audit-log-dal";
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
 type TAuditLogWithProjectName = TAuditLogs & { projectName: string | null };
@@ -26,6 +27,7 @@ type TClickHouseFindArg = {
   secretKey?: string;
   eventType?: EventType[];
   eventMetadata?: Record<string, string>;
+  pamScope?: TPamAuditLogScope;
 };
 
 // Shape of a row returned from ClickHouse's JSONEachRow format
@@ -120,6 +122,26 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         params[valParamName] = value;
         metaIdx += 1;
       }
+    }
+
+    // PAM resource scoping: account logs by accountId, folder logs by folderId, and resource-less
+    // (product-level) logs only for product admins
+    if (arg.pamScope) {
+      const scopeClauses: string[] = [];
+      if (arg.pamScope.accountIds.length) {
+        scopeClauses.push("JSONExtractString(eventMetadata, 'accountId') IN ({pamAccountIds:Array(String)})");
+        params.pamAccountIds = arg.pamScope.accountIds;
+      }
+      if (arg.pamScope.folderIds.length) {
+        scopeClauses.push(
+          "(JSONHas(eventMetadata, 'folderId') AND NOT JSONHas(eventMetadata, 'accountId') AND JSONExtractString(eventMetadata, 'folderId') IN ({pamFolderIds:Array(String)}))"
+        );
+        params.pamFolderIds = arg.pamScope.folderIds;
+      }
+      if (arg.pamScope.includeProductLevel) {
+        scopeClauses.push("(NOT JSONHas(eventMetadata, 'accountId') AND NOT JSONHas(eventMetadata, 'folderId'))");
+      }
+      conditions.push(scopeClauses.length ? `(${scopeClauses.join(" OR ")})` : "1 = 0");
     }
 
     // Secret-specific filters (environment, secretPath, secretKey)

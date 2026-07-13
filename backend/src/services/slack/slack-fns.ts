@@ -11,6 +11,11 @@ import { TSendSlackNotificationDTO } from "./slack-types";
 const COMPANY_BRAND_COLOR = "#e0ed34";
 const ERROR_COLOR = "#e74c3c";
 
+// Escapes Slack control sequences in user-supplied text so a requester can't inject
+// mentions (<!channel>) or disguised links (<url|label>) into notification channels
+const escapeSlackMrkdwn = (text: string) =>
+  text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
 export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
     name: string;
@@ -253,6 +258,123 @@ const buildSlackPayload = (notification: TNotification) => {
         headerBlocks,
         payloadBlocks,
         color: ERROR_COLOR
+      };
+    }
+    case TriggerFeature.PAM_ACCESS_REQUESTED: {
+      const { payload } = notification;
+      const requesterFullName = escapeSlackMrkdwn(payload.requesterFullName);
+      const requesterEmail = escapeSlackMrkdwn(payload.requesterEmail);
+      const accountName = escapeSlackMrkdwn(payload.accountName);
+      const folderName = escapeSlackMrkdwn(payload.folderName);
+      const reason = payload.reason ? escapeSlackMrkdwn(payload.reason) : undefined;
+
+      const messageBody = `${requesterFullName} (${requesterEmail}) has requested access to ${accountName} in the ${folderName} folder.\n\nDuration: ${payload.accessDuration}${
+        reason ? `\n\nReason: ${reason}` : ""
+      }`;
+
+      const headerBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "New PAM access request pending review",
+            emoji: true
+          }
+        }
+      ];
+
+      const payloadBlocks = [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${requesterFullName}* (${requesterEmail}) has requested access to *${accountName}* in the *${folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
+              reason ? `\n\n*Reason:* ${reason}` : ""
+            }`
+          }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View request",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
+        }
+      ];
+
+      return {
+        headerBlocks,
+        payloadMessage: messageBody,
+        payloadBlocks,
+        color: COMPANY_BRAND_COLOR
+      };
+    }
+    case TriggerFeature.PAM_ACCESS_REQUEST_APPROVED:
+    case TriggerFeature.PAM_ACCESS_REQUEST_DENIED: {
+      const { payload } = notification;
+      const isApproved = notification.type === TriggerFeature.PAM_ACCESS_REQUEST_APPROVED;
+      const decision = isApproved ? "approved" : "denied";
+      const requesterFullName = escapeSlackMrkdwn(payload.requesterFullName);
+      const requesterEmail = escapeSlackMrkdwn(payload.requesterEmail);
+      const accountName = escapeSlackMrkdwn(payload.accountName);
+      const folderName = escapeSlackMrkdwn(payload.folderName);
+      const comment = payload.comment ? escapeSlackMrkdwn(payload.comment) : undefined;
+
+      const messageBody = `The access request from ${requesterFullName} (${requesterEmail}) for ${accountName} in the ${folderName} folder has been ${decision}.${
+        comment ? `\n\nReviewer comment: ${comment}` : ""
+      }`;
+
+      const headerBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `PAM access request ${decision}`,
+            emoji: true
+          }
+        }
+      ];
+
+      const payloadBlocks = [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `The access request from *${requesterFullName}* (${requesterEmail}) for *${accountName}* in the *${folderName}* folder has been *${decision}*.${
+              comment ? `\n\n*Reviewer comment:* ${comment}` : ""
+            }`
+          }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View access",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
+        }
+      ];
+
+      return {
+        headerBlocks,
+        payloadMessage: messageBody,
+        payloadBlocks,
+        color: isApproved ? COMPANY_BRAND_COLOR : ERROR_COLOR
       };
     }
     default: {

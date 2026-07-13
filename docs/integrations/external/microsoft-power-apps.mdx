@@ -1,0 +1,111 @@
+---
+title: "Microsoft Power Apps"
+description: "Fetch secrets from Infisical in Microsoft Power Apps through an Azure Function and a custom connector."
+---
+
+Power Apps has no native way to fetch secrets from Infisical, and hardcoding secrets in app logic exposes them to anyone with collaboration rights. This integration places an Azure Function between your Power App and Infisical: the function fetches secrets with the [Infisical .NET SDK](/sdks/languages/dotnet), and the Power App calls the function through a custom connector.
+
+## How It Works
+
+1. The Power App invokes an Azure Function through a custom connector.
+2. The function authenticates with Infisical using a [machine identity](/documentation/platform/identities/machine-identities) and fetches the secret it needs.
+3. The function either returns the secret to the app or uses it directly to call the target service.
+
+There are two patterns for the last step:
+
+| Pattern | Behavior | Use when |
+|---------|----------|----------|
+| **Return the secret** | The function returns the secret; the app passes it to another connector that calls the target service. | The function is reused by multiple consumers. |
+| **Proxy the request** | The function calls the target service itself and returns only the response. The secret never reaches the app. | A single Power App is the only consumer. This keeps the secret out of the app entirely. |
+
+## Prerequisites
+
+- A Microsoft Power App
+- An Azure subscription
+- A [machine identity](/documentation/platform/identities/machine-identities) with access to your Infisical project
+
+## Setup
+
+### 1. Create an Azure Function
+
+Create a new Azure Function using the [Function App](https://azuremarketplace.microsoft.com/en-us/marketplace/apps/Microsoft.FunctionApp?tab=Overview) from the Azure Marketplace.
+
+![function app](/images/guides/microsoft-power-apps/function-app.png)
+
+Place it in a subscription using any resource group. This page uses .NET as the runtime stack, but any supported stack works. On the consumption plan, you only pay for the resources used per request.
+
+<Note>
+Windows-based Azure Functions have broader tooling support than Linux. For example, Linux-based functions cannot be edited from within the Azure Management Portal.
+</Note>
+
+Once the Function App is ready, add a function with the **HTTP trigger** template and the **function** authorization level. A minimal function looks like:
+
+```csharp
+using System.Net;
+
+public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+{
+    log.Info("C# HTTP trigger function processed a request.");
+    return req.CreateResponse(HttpStatusCode.OK, "Hello World");
+}
+```
+
+<Note>
+The code above is written for the older runtime. You may need to change the runtime version to 1 for the Power Apps integration to work. Starting at a newer version (for example, 3) triggers a warning before the migration.
+</Note>
+
+Finally, publish the Swagger (API) definitions and enable cross-origin resource sharing (CORS). The wildcard option allows all hosts; restrict it for production use.
+
+### 2. Fetch Secrets from Infisical
+
+Add the [Infisical .NET SDK](/sdks/languages/dotnet) to the function so it can fetch secrets:
+
+```csharp
+using Infisical.Sdk;
+using Infisical.Sdk.Model;
+
+var settings = new InfisicalSdkSettingsBuilder()
+    // .WithHostUri("https://your-infisical-instance.com") // Optional. Defaults to https://app.infisical.com
+    .Build();
+
+var client = new InfisicalClient(settings);
+
+await client.Auth().UniversalAuth().LoginAsync(
+    "<machine-identity-client-id>",
+    "<machine-identity-client-secret>");
+
+var secret = await client.Secrets().GetAsync(new GetSecretOptions
+{
+    SecretName = "API_KEY",
+    ProjectId = "<project-id>",
+    EnvironmentSlug = "dev",
+    SecretPath = "/",
+});
+```
+
+With the proxy pattern, the function uses the fetched secret to call the target service and returns only the response:
+
+```csharp
+using (var httpClient = new HttpClient())
+{
+    httpClient.DefaultRequestHeaders
+        .Accept
+        .Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+    httpClient.DefaultRequestHeaders.Add("X-API-KEY", secret.SecretValue);
+
+    var result = await httpClient.GetAsync(apiEndpoint);
+    var resultContent = await result.Content.ReadAsStringAsync();
+    req.CreateResponse(HttpStatusCode.OK, resultContent);
+}
+```
+
+### 3. Create a Custom Connector
+
+Create the custom connector from the data pane in Power Apps using **Create from Azure Service (Preview)**:
+
+![custom-connector](/images/guides/microsoft-power-apps/custom-connector.png)
+
+Fill out the fields with the information for your function. The combination boxes populate in order: select the subscription (tied to the account used to create the Power App), then the Azure Functions service, then the function itself.
+
+Your Power App can now call the function through the connector and use secrets from Infisical without ever storing them in the app.

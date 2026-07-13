@@ -492,6 +492,8 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       tags: [ApiDocsTags.SecretSyncs],
       body: z.object({
         destinationConfig: z.unknown(),
+        connectionId: z.string().uuid().optional(),
+        syncOptions: z.record(z.unknown()).optional(),
         excludeSyncId: z.string().uuid().optional(),
         projectId: z.string().uuid()
       }),
@@ -504,12 +506,14 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { destinationConfig, excludeSyncId, projectId } = req.body;
+      const { destinationConfig, connectionId, syncOptions, excludeSyncId, projectId } = req.body;
 
       const result = await server.services.secretSync.checkDuplicateDestination(
         {
           destinationConfig: destinationConfig as Record<string, unknown>,
           destination,
+          connectionId,
+          syncOptions,
           excludeSyncId,
           projectId
         },

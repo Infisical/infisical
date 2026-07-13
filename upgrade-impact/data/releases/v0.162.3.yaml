@@ -1,0 +1,32 @@
+version: v0.162.3
+releasedAt: 2026-07-10T19:03:59-03:00
+sourceTag: v0.162.3
+previousTag: v0.162.2
+impactLevel: low
+summary: Adds one startup-run PAM database migration. No required config or
+  deployment changes were found for self-hosted operators.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM folder notifications table
+    description: Adds a new PAM folder notification configuration table with foreign
+      keys to PAM folders and workflow integrations. The migration exits early
+      if the table already exists.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260708143943_pam-folder-notification-configs.ts
+        path: backend/src/db/migrations/20260708143943_pam-folder-notification-configs.ts
+        description: Creates PAM notification config table
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-10T23:09:08.916Z
+  sourceRange:
+    from: v0.162.2
+    to: v0.162.3

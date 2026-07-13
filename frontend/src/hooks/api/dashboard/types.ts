@@ -62,6 +62,7 @@ export type DashboardProjectSecretsDetailsResponse = {
 
 export type ProjectSecretsImportedBy = {
   environment: { name: string; slug: string };
+  project?: { name: string; slug: string; id: string };
   folders: {
     name: string;
     secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];

@@ -307,32 +307,6 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
               projectName: z.string().nullable()
             })
           ),
-          pamDomains: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string().nullable()
-            })
-          ),
-          pamResources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              resourceType: z.string(),
-              projectName: z.string().nullable()
-            })
-          ),
-          pamDiscoverySources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              discoveryType: z.string(),
-              projectName: z.string().nullable()
-            })
-          ),
           appConnections: z.array(
             z.object({
               id: z.string(),

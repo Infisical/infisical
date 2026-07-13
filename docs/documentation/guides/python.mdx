@@ -1,5 +1,7 @@
 ---
 title: "Python"
+sidebarTitle: "Python"
+description: "Manage secrets for your Python application from local development to production."
 ---
 
 This guide demonstrates how to use Infisical to manage secrets for your Python stack from local development to production. It uses:
@@ -15,7 +17,7 @@ To begin, we need to set up a project in Infisical and add secrets to an environ
 
 1. Create a new project in [Infisical](https://app.infisical.com/).
 
-2. Add a secret to the development environment of this project so we can pull it back for local development. In the **Secrets Overview** page, press **Explore Development** and add a secret with the key `NAME` and value `YOUR_NAME`.
+2. Add a secret to the development environment of this project so we can pull it back for local development. Select the **Development** environment from the environment selector, then click **Add Secret** and add a secret with the key `NAME` and value `YOUR_NAME`.
 
 ### Create a Machine Identity
 
@@ -59,15 +61,15 @@ client.auth.universal_auth.login(
 
 @app.route("/")
 def hello_world():
-    # access value
-     name = client.secrets.get_secret_by_name(
+   # access value
+   name = client.secrets.get_secret_by_name(
       secret_name="NAME",
       project_id="<project-id>",
       environment_slug="dev",
       secret_path="/"
-     )
+   )
 
-    return f"Hello! My name is: {name.secretValue}"
+   return f"Hello! My name is: {name.secretValue}"
 ```
 
 Here, we initialized a `client` instance of the Infisical Python SDK with the Infisical Token

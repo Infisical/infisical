@@ -1,0 +1,96 @@
+---
+title: "Microsoft SQL Server Accounts"
+sidebarTitle: "MS SQL"
+description: "Add and connect to Microsoft SQL Server databases."
+---
+
+MS SQL accounts let you manage access to your Microsoft SQL Server databases. Users connect through the CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an MS SQL [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `analytics-db`) |
+    | **Host** | Database hostname or IP |
+    | **Port** | SQL Server port (default: 1433) |
+    | **Database** | Database name (default: master) |
+    | **SSL Enabled** | Enable SSL for the connection |
+    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
+    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+  </Step>
+  <Step title="Choose authentication method">
+    MS SQL supports three authentication methods:
+
+    <Tabs>
+      <Tab title="SQL Server Authentication">
+        Standard SQL Server login with username and password.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Username** | SQL Server username |
+        | **Password** | SQL Server password |
+      </Tab>
+      <Tab title="Windows Authentication (NTLM)">
+        Windows domain authentication using NTLM.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Username** | Windows username |
+        | **Password** | Windows password |
+        | **Domain** | Windows domain name |
+      </Tab>
+      <Tab title="Windows Authentication (Kerberos)">
+        Windows domain authentication using Kerberos.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Username** | Windows username |
+        | **Password** | Windows password |
+        | **Realm** | Kerberos realm (uppercase) |
+        | **KDC Address** | Key Distribution Center address (optional) |
+        | **SPN** | Service Principal Name |
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Connecting
+
+The CLI starts a local proxy that you connect to with your preferred SQL Server client.
+
+```bash
+infisical pam access my-folder/analytics-db
+```
+
+The command outputs the local port to connect to. Then use `sqlcmd`, Azure Data Studio, or any SQL Server client:
+```bash
+sqlcmd -S localhost,<port> -d analytics
+```
+
+No password needed since the proxy handles authentication.
+
+**Flags:**
+- `--port <port>` — use a specific local port (otherwise one is assigned automatically)
+- `--reason <reason>` — provide an access reason (if required by template)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
+    Add PostgreSQL database accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

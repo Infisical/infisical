@@ -1,0 +1,166 @@
+---
+title: "Hasura Cloud Sync"
+description: "Learn how to configure a Hasura Cloud Sync for Infisical."
+---
+
+**Prerequisites:**
+- Create a [Hasura Cloud Connection](/integrations/app-connections/hasura-cloud)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/revamped-secret-syncs-tab.png)
+            </Step>
+            <Step title="Select 'Hasura Cloud'">
+                Choose **Hasura Cloud** as the destination for your secrets.
+
+                ![Select Hasura Cloud](/images/secret-syncs/hasura-cloud/step-1.png)
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then click **Continue**.
+
+                ![Configure Source](/images/secret-syncs/hasura-cloud/step-2.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then click **Continue**.
+
+                ![Configure Destination](/images/secret-syncs/hasura-cloud/step-3.png)
+
+                - **Hasura Cloud Connection**: The Hasura Cloud Connection to authenticate with.
+                - **Project**: The Hasura Cloud project whose environment variables secrets should be synced to.
+
+                <Note>
+                    Each project maps one-to-one to a tenant, so you only need to select a project. Synced secrets are written as the project's custom environment variables in Hasura Cloud.
+                </Note>
+            </Step>
+            <Step title="Configure initial sync behavior">
+                Choose how Infisical should reconcile existing secrets in Hasura Cloud the first time this sync runs, then click **Continue**.
+
+                ![Configure Initial Sync](/images/secret-syncs/hasura-cloud/step-4.png)
+
+                - **Overwrite Hasura Cloud**: On the initial sync, Infisical writes its secrets to Hasura Cloud. No secrets are imported, so depending on your configuration this can remove secrets from Hasura.
+                - **Import from Hasura (Prioritize Infisical)**: Imports secrets from Hasura Cloud before syncing. If an imported secret already exists in Infisical, the imported value is ignored, preserving the Infisical value.
+                - **Import from Hasura (Prioritize Hasura)**: Imports secrets from Hasura Cloud before syncing. If an imported secret already exists in Infisical, the imported value overwrites the existing value in Infisical.
+            </Step>
+            <Step title="Configure sync options">
+                Control how secrets are written and whether they sync automatically, then click **Continue**.
+
+                ![Configure Sync Options](/images/secret-syncs/hasura-cloud/step-5.png)
+
+                - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from Hasura Cloud during a sync. Enable this option if you intend to manage some secrets manually outside of Infisical.
+                - **Auto-Sync on Changes**: If enabled, secrets will automatically be synced to Hasura Cloud when changes occur in the source location. Disable to enforce manual syncing only.
+                - **Customize Key Names**: Add a prefix or suffix so Infisical can identify which keys in Hasura Cloud it manages, leaving everything else untouched. This uses a key schema, where `{{secretKey}}` is a placeholder for the original secret name and `{{environment}}` for the environment.
+                <Note>
+                    We highly recommend customizing key names to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your Hasura Cloud Sync, then click **Continue**.
+
+                ![Configure Details](/images/secret-syncs/hasura-cloud/step-6.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Sync created">
+                Review your Hasura Cloud Sync configuration and click **Create Sync**. Your sync will appear in the list and, if enabled, begin syncing your secrets to Hasura Cloud.
+
+                ![Sync Created](/images/secret-syncs/hasura-cloud/step-7.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a **Hasura Cloud Sync**, make an API request to the [Create Hasura Cloud Sync](/api-reference/endpoints/secret-syncs/hasura-cloud/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/hasura-cloud \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-hasura-cloud-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/my-secrets",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination",
+                        "autoSyncEnabled": true,
+                        "disableSecretDeletion": false
+                    },
+                    "destinationConfig": {
+                        "projectId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                        "projectName": "My Hasura Project"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-hasura-cloud-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination",
+                    "autoSyncEnabled": true,
+                    "disableSecretDeletion": false
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "hasura-cloud",
+                    "name": "my-hasura-cloud-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "hasura-cloud",
+                "destinationConfig": {
+                    "projectId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                    "projectName": "My Hasura Project"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

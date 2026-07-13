@@ -48,7 +48,7 @@ export const SettingsPage = () => {
     {
       name: "Policies",
       description:
-        "Configure validation rules, retention, sharing, and other behaviors that govern this project's secrets.",
+        "Configure validation rules, retention, cross-project sharing, and other behaviors that govern this project's secrets.",
       key: "tab-secret-policies",
       Component: PoliciesTab
     },

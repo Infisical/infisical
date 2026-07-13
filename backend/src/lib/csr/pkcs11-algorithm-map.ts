@@ -66,3 +66,9 @@ export const ecdsaRawRsToDer = (raw: Buffer): Buffer => {
   const seqBody = Buffer.concat([rTlv, sTlv]);
   return Buffer.concat([Buffer.from([0x30, seqBody.length]), seqBody]);
 };
+
+export const bufferToArrayBuffer = (buf: Buffer): ArrayBuffer => {
+  const ab = new ArrayBuffer(buf.length);
+  new Uint8Array(ab).set(buf);
+  return ab;
+};

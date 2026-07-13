@@ -6,6 +6,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import {
   CertExtendedKeyUsage,
@@ -16,12 +17,14 @@ import {
   TAltNameType
 } from "../certificate/certificate-types";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   TDNParts,
   TGetCaCertChainDTO,
   TGetCaCertChainsDTO,
   TGetCaCredentialsDTO,
+  TGetCaSignerDTO,
   TRebuildCaCrlDTO
 } from "./internal/internal-certificate-authority-types";
 
@@ -364,6 +367,11 @@ export const getCaCredentials = async ({
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
   if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
+  if (!caSecret.encryptedPrivateKey) {
+    throw new BadRequestError({
+      message: `Certificate authority '${caId}' is HSM-backed; its signing key is not available locally.`
+    });
+  }
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -417,6 +425,80 @@ export const getCaCredentials = async ({
     caPrivateKey,
     caPublicKey
   };
+};
+
+/**
+ * Return a signer for CA with id [caId] that abstracts over where the signing key lives.
+ * For locally-keyed CAs it decrypts the KMS-stored private key; for HSM-backed CAs it routes
+ * signing through the HSM Connector. Every issuance / renewal / CRL path uses this so the
+ * call sites never branch on key source.
+ */
+export const getCaSigner = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  projectDAL,
+  kmsService,
+  hsmConnectorService,
+  signatureAlgorithm
+}: TGetCaSignerDTO): Promise<{
+  caSecret: Awaited<ReturnType<typeof getCaCredentials>>["caSecret"];
+  signer: TCaSigner;
+}> => {
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
+
+  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
+  if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
+
+  const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
+
+  if (caSecret.keySource === CertKeySource.Hsm) {
+    if (!caSecret.hsmConnectorId || !caSecret.hsmKeyLabel || !caSecret.hsmPublicKeySpki) {
+      throw new BadRequestError({ message: "HSM-backed CA secret is missing its connector, key label, or public key" });
+    }
+
+    const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
+    const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
+      "spki",
+      caSecret.hsmPublicKeySpki,
+      shape.importParams,
+      true,
+      ["verify"]
+    );
+
+    const connectorId = caSecret.hsmConnectorId;
+    const keyLabel = caSecret.hsmKeyLabel;
+    const signer = buildHsmCaSigner({
+      caPublicKey,
+      keyAlgorithm,
+      signingAlgorithm: signatureAlgorithm,
+      sign: (data, mechanism, isDigest) =>
+        hsmConnectorService.sign({
+          connectorId,
+          projectId: ca.projectId,
+          keyLabel,
+          mechanism,
+          data,
+          isDigest
+        })
+    });
+
+    return { caSecret, signer };
+  }
+
+  const { caPrivateKey, caPublicKey } = await getCaCredentials({
+    caId,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    signatureAlgorithm
+  });
+  const signingAlgorithm = signatureAlgorithm || keyAlgorithmToAlgCfg(keyAlgorithm);
+  const signer = buildLocalCaSigner({ privateKey: caPrivateKey, publicKey: caPublicKey, signingAlgorithm });
+
+  return { caSecret, signer };
 };
 
 /**
@@ -520,43 +602,26 @@ export const rebuildCaCrl = async ({
   certificateAuthoritySecretDAL,
   projectDAL,
   certificateDAL,
-  kmsService
+  kmsService,
+  hsmConnectorService
 }: TRebuildCaCrlDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
-  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
-
-  const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
-  const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
+  const { signer } = await getCaSigner({
+    caId: ca.id,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    hsmConnectorService
+  });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
     projectDAL,
     kmsService
   });
-
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
-    kmsId: keyId
-  });
-
-  const privateKey = await kmsDecryptor({
-    cipherTextBlob: caSecret.encryptedPrivateKey
-  });
-
-  let sk: CryptoKey;
-  if (isPqcAlgorithm(keyAlgorithm)) {
-    sk = await getPqcCrypto().subtle.importKey("pkcs8", privateKey, alg, true, ["sign"]);
-  } else {
-    const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-    sk = await crypto.nativeCrypto.subtle.importKey(
-      "pkcs8",
-      skObj.export({ format: "der", type: "pkcs8" }),
-      alg,
-      true,
-      ["sign"]
-    );
-  }
 
   const revokedCerts = await certificateDAL.find({
     caId: ca.id,
@@ -567,7 +632,7 @@ export const rebuildCaCrl = async ({
   const nextUpdate = new Date(thisUpdate);
   nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
 
-  const crl = await x509.X509CrlGenerator.create({
+  const crl = await signer.createCrl({
     issuer: ca.internalCa.dn,
     thisUpdate,
     nextUpdate,
@@ -578,9 +643,7 @@ export const rebuildCaCrl = async ({
         revocationDate,
         reason: revokedCert.revocationReason as number
       };
-    }),
-    signingAlgorithm: alg,
-    signingKey: sk
+    })
   });
 
   const kmsEncryptor = await kmsService.encryptWithKmsKey({

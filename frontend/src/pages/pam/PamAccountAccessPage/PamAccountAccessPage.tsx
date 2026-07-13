@@ -1,40 +1,34 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
 
-import {
-  PamResourceType,
-  TPamAccount,
-  useGetPamAccountById,
-  useGetPamResourceById
-} from "@app/hooks/api/pam";
+import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
-import { RdpContent } from "./RdpContent";
-import { ReasonGate } from "./ReasonGate";
+import { AwsIamAccessContent } from "./AwsIamAccessContent";
+import { DisconnectedScreen } from "./DisconnectedScreen";
+import { RdpLauncher } from "./RdpLauncher";
+import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
+import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 const TerminalContent = ({
   account,
-  projectId,
-  orgId,
-  reason
+  reason,
+  mfaSessionId
 }: {
   account: TPamAccount;
-  projectId: string;
-  orgId: string;
   reason?: string;
+  mfaSessionId?: string;
 }) => {
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
     accountId: account.id,
-    projectId,
-    orgId,
-    resourceName: account?.resource?.name ?? "",
-    accountName: account?.name ?? "",
-    resourceType: account?.resource?.resourceType ?? "",
+    accountType: account.accountType,
     reason,
+    mfaSessionId,
     onSessionEnd: () => setSessionEnded(true)
   });
 
@@ -44,55 +38,42 @@ const TerminalContent = ({
   };
 
   let statusLabel = "Connecting";
-  let statusDotClass = "bg-yellow-500";
+  let statusDotClass = "bg-warning";
   if (isConnected) {
     statusLabel = "Connected";
-    statusDotClass = "bg-green-500";
+    statusDotClass = "bg-success";
   } else if (sessionEnded) {
     statusLabel = "Disconnected";
-    statusDotClass = "bg-mineshaft-400";
+    statusDotClass = "bg-muted";
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0d1117]">
+    <div className="flex h-screen w-screen flex-col bg-background">
       <div
-        className="thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
+        className="relative thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       >
         <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
+        {sessionEnded && <DisconnectedScreen onReconnect={handleReconnect} />}
       </div>
-      <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
+      <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">
           <span className={`inline-block size-2 rounded-full ${statusDotClass}`} />
-          <span className="text-mineshaft-300">{statusLabel}</span>
+          <span className="text-muted">{statusLabel}</span>
           {isConnected && (
             <button
               type="button"
               onClick={disconnect}
-              className="ml-2 text-mineshaft-400 hover:text-red-400"
+              className="ml-2 text-muted hover:text-danger"
             >
               Disconnect
-            </button>
-          )}
-          {sessionEnded && (
-            <button
-              type="button"
-              onClick={handleReconnect}
-              className="ml-2 text-mineshaft-400 hover:text-green-400"
-            >
-              Reconnect
             </button>
           )}
         </span>
         <div className="flex items-center gap-4">
           <span>
-            <span className="text-mineshaft-400">Resource:</span>{" "}
-            <span className="text-mineshaft-300">{account.resource?.name}</span>
-          </span>
-          <span className="text-mineshaft-500">|</span>
-          <span>
-            <span className="text-mineshaft-400">Account:</span>{" "}
-            <span className="text-mineshaft-300">{account.name}</span>
+            <span className="text-muted">Account:</span>{" "}
+            <span className="text-muted">{account.name}</span>
           </span>
         </div>
       </div>
@@ -105,31 +86,16 @@ const PageContent = () => {
     strict: false
   }) as {
     accountId?: string;
-    projectId?: string;
-    orgId?: string;
-    resourceType?: string;
-    resourceId?: string;
+    accountType?: string;
   };
 
-  const {
-    accountId,
-    projectId,
-    orgId,
-    resourceType: routeResourceType,
-    resourceId: routeResourceId
-  } = params;
+  const { accountId } = params;
+  const { host: preselectedHost } = useSearch({ strict: false }) as { host?: string };
   const { data: account, isPending } = useGetPamAccountById(accountId);
-
-  const isDomainAccount = !!account && !account.resourceId;
-  const { data: domainResource } = useGetPamResourceById(
-    routeResourceType as PamResourceType,
-    routeResourceId,
-    { enabled: isDomainAccount && !!routeResourceType && !!routeResourceId }
-  );
 
   if (isPending) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117] text-mineshaft-300">
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-muted">
         Loading...
       </div>
     );
@@ -137,47 +103,48 @@ const PageContent = () => {
 
   if (!account) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117]">
-        <p className="text-mineshaft-300">Could not find PAM Account with ID {accountId}</p>
-      </div>
+      <WebAccessStatusCard
+        tone="danger"
+        icon={TriangleAlert}
+        title="Account not found"
+        description={`Could not find an account with ID ${accountId}.`}
+      />
     );
   }
 
-  const effectiveResourceType = account.resource?.resourceType ?? routeResourceType;
+  if (account.accountType === PamAccountType.AwsIam) {
+    return <AwsIamAccessContent account={account} />;
+  }
 
-  // SSH uses inline terminal prompts for reason — bypass the upfront ReasonGate so the
-  // approval prompt and reason prompt render in the same terminal stream, in order.
-  if (account.resource?.resourceType === PamResourceType.SSH) {
-    return <TerminalContent account={account} projectId={projectId!} orgId={orgId!} />;
+  if (account.accountType === PamAccountType.SSH) {
+    return <TerminalContent account={account} />;
   }
 
   return (
-    <ReasonGate account={account}>
-      {(reason) => {
-        if (account.resource?.resourceType === PamResourceType.Postgres) {
-          return <PamDataExplorerPage reason={reason} />;
+    <SessionAccessGate account={account}>
+      {({ reason, mfaSessionId }) => {
+        if (
+          account.accountType === PamAccountType.Postgres ||
+          account.accountType === PamAccountType.MySQL
+        ) {
+          return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
-        if (effectiveResourceType === PamResourceType.Windows) {
+        if (
+          account.accountType === PamAccountType.Windows ||
+          account.accountType === PamAccountType.WindowsAd
+        ) {
           return (
-            <RdpContent
+            <RdpLauncher
               account={account}
-              projectId={projectId!}
-              resourceId={account.resource?.id ?? routeResourceId ?? ""}
-              resourceName={account.resource?.name ?? domainResource?.name ?? ""}
               reason={reason}
+              mfaSessionId={mfaSessionId}
+              preselectedHost={preselectedHost}
             />
           );
         }
-        return (
-          <TerminalContent
-            account={account}
-            projectId={projectId!}
-            orgId={orgId!}
-            reason={reason}
-          />
-        );
+        return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}
-    </ReasonGate>
+    </SessionAccessGate>
   );
 };
 

@@ -34,6 +34,7 @@ export type NavItem = {
   pathSuffix: string;
   activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
+  badgeVariant?: "warning" | "danger" | "pam";
   hidden?: boolean;
   submenu?: Submenu;
   /** For SSH CA permission gating */

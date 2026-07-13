@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Control, Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -36,7 +36,11 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { CaType } from "@app/hooks/api/ca/enums";
-import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
+import {
+  useGetAdcsTemplates,
+  useGetAzureAdcsTemplates,
+  useListCasByProjectId
+} from "@app/hooks/api/ca/queries";
 import {
   TCertificatePolicy,
   useGetCertificatePolicyById,
@@ -211,6 +215,50 @@ const editSchema = z
   );
 
 export type FormData = z.infer<typeof createSchema>;
+
+type ExternalCaTemplateOption = { id: string; name: string; description?: string };
+
+const ExternalCaTemplateSelect = ({
+  control,
+  templates,
+  valueKey,
+  placeholder
+}: {
+  control: Control<FormData>;
+  templates: ExternalCaTemplateOption[];
+  valueKey: "id" | "name";
+  placeholder: string;
+}) => (
+  <Controller
+    control={control}
+    name="externalConfigs.template"
+    render={({ field: { onChange, value }, fieldState: { error } }) => (
+      <FormControl
+        label="Windows ADCS Template"
+        isRequired
+        isError={Boolean(error)}
+        errorText={error?.message}
+      >
+        <FilterableSelect
+          value={templates.find((template) => template[valueKey] === value) || null}
+          onChange={(selected) => {
+            const option = Array.isArray(selected) ? selected[0] : selected;
+            onChange(
+              option && typeof option === "object" && valueKey in option
+                ? option[valueKey] || ""
+                : ""
+            );
+          }}
+          getOptionLabel={(template) => template.name}
+          getOptionValue={(template) => template[valueKey]}
+          options={templates}
+          placeholder={placeholder}
+          className="w-full"
+        />
+      </FormControl>
+    )}
+  />
+);
 
 // Convert profile defaults from API format to form format
 const convertDefaultsToForm = (
@@ -546,6 +594,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   // Get the selected CA to check if it's Azure ADCS
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
   const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
+  const isAdcsCa = selectedCa?.type === CaType.ADCS;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
   const isAwsAcmPublicCa = selectedCa?.type === CaType.AWS_ACM_PUBLIC_CA;
 
@@ -553,6 +602,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
     caId: watchedCertificateAuthorityId || "",
     isAzureAdcsCa
+  });
+
+  const { data: adcsTemplatesData } = useGetAdcsTemplates({
+    caId: watchedCertificateAuthorityId || "",
+    isAdcsCa
   });
 
   // Reset step to 0 when modal opens/closes
@@ -568,13 +622,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     }
   }, [isEdit, isClone, profile, reset, allCaData]);
 
-  // Additional effect to reset external configs when Azure ADCS templates are loaded
+  // Re-apply the saved template once the external CA's templates have loaded (edit/clone).
   useEffect(() => {
+    const templatesLoaded =
+      (isAzureAdcsCa && azureAdcsTemplatesData?.templates) ||
+      (isAdcsCa && adcsTemplatesData?.templates);
     if (
       (isEdit || isClone) &&
       profile &&
-      isAzureAdcsCa &&
-      azureAdcsTemplatesData?.templates &&
+      templatesLoaded &&
       profile.externalConfigs &&
       typeof profile.externalConfigs === "object" &&
       profile.externalConfigs !== null &&
@@ -582,7 +638,16 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     ) {
       setValue("externalConfigs.template", profile.externalConfigs.template);
     }
-  }, [isEdit, isClone, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
+  }, [
+    isEdit,
+    isClone,
+    profile,
+    isAzureAdcsCa,
+    isAdcsCa,
+    azureAdcsTemplatesData,
+    adcsTemplatesData,
+    setValue
+  ]);
 
   // Pin TTL to 198 days when the selected CA is AWS ACM Public CA — backend rejects any other value.
   // Also re-applies when the user lands on the Defaults tab (policy selected) so the field shows 198
@@ -596,13 +661,10 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const onFormSubmit = async (data: FormData) => {
     if (!currentProject?.id && !isEdit) return;
 
-    // Validate Azure ADCS template requirement
-    if (
-      isAzureAdcsCa &&
-      (!data.externalConfigs?.template || data.externalConfigs.template.trim() === "")
-    ) {
+    // Both AD CS variants require a template on the profile's external config.
+    if ((isAzureAdcsCa || isAdcsCa) && !data.externalConfigs?.template?.trim()) {
       createNotification({
-        text: "Azure ADCS Certificate Authority requires a template to be specified",
+        text: `${isAzureAdcsCa ? "Azure ADCS" : "ADCS"} Certificate Authority requires a template to be specified`,
         type: "error"
       });
       return;
@@ -869,45 +931,21 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   />
                 )}
 
-                {/* Azure ADCS Template Selection */}
                 {isAzureAdcsCa && (
-                  <Controller
+                  <ExternalCaTemplateSelect
                     control={control}
-                    name="externalConfigs.template"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Windows ADCS Template"
-                        isRequired
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <FilterableSelect
-                          value={
-                            azureAdcsTemplatesData?.templates.find(
-                              (template) => template.id === value
-                            ) || null
-                          }
-                          onChange={(selectedTemplate) => {
-                            if (Array.isArray(selectedTemplate)) {
-                              onChange(selectedTemplate[0]?.id || "");
-                            } else if (
-                              selectedTemplate &&
-                              typeof selectedTemplate === "object" &&
-                              "id" in selectedTemplate
-                            ) {
-                              onChange(selectedTemplate.id || "");
-                            } else {
-                              onChange("");
-                            }
-                          }}
-                          getOptionLabel={(template) => template.name}
-                          getOptionValue={(template) => template.id}
-                          options={azureAdcsTemplatesData?.templates || []}
-                          placeholder="Select an Azure ADCS certificate template"
-                          className="w-full"
-                        />
-                      </FormControl>
-                    )}
+                    templates={azureAdcsTemplatesData?.templates || []}
+                    valueKey="id"
+                    placeholder="Select an Azure ADCS certificate template"
+                  />
+                )}
+
+                {isAdcsCa && (
+                  <ExternalCaTemplateSelect
+                    control={control}
+                    templates={adcsTemplatesData?.templates || []}
+                    valueKey="name"
+                    placeholder="Select an ADCS certificate template"
                   />
                 )}
 

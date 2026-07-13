@@ -19,7 +19,9 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
 import { getCaIssuanceCapabilities } from "@app/hooks/api/ca";
+import { CaType } from "@app/hooks/api/ca/enums";
 
+import { AdcsTemplateField } from "../../../components/AdcsTemplateField";
 import { CertificateForm } from "./schemas";
 import { CaGroup, CaOption } from "./types";
 
@@ -58,6 +60,9 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
 
   const reissueOrderId = form.watch("reissueFromExternalOrderId");
   const isReissue = Boolean(reissueOrderId);
+
+  const isAdcs = selectedCa?.caType === CaType.ADCS;
+  const adcsConnectionId = selectedCa?.adcs?.appConnectionId;
 
   useEffect(() => {
     if (!canReuseOrder && reissueOrderId) {
@@ -128,6 +133,15 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
           </Field>
         )}
       />
+
+      {isAdcs && (
+        <AdcsTemplateField
+          control={form.control}
+          name="adcsTemplate"
+          connectionId={adcsConnectionId}
+          description="Select a code-signing template published on your CA."
+        />
+      )}
 
       {canReuseOrder && (
         <Controller

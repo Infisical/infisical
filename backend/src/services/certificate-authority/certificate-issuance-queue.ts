@@ -55,6 +55,7 @@ import {
   runWithAcmeOrderTimeout
 } from "./acme/acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
+import { ADCSCertificateAuthorityFns } from "./adcs/adcs-certificate-authority-fns";
 import { AcmPendingError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
 import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
@@ -94,6 +95,25 @@ const ensureCsrPemFormat = (csr: string): string => {
 
   const base64Lines = standardBase64.match(/.{1,64}/g) || [standardBase64];
   return `-----BEGIN CERTIFICATE REQUEST-----\n${base64Lines.join("\n")}\n-----END CERTIFICATE REQUEST-----`;
+};
+
+const extractProfileTemplate = async (
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById"> | undefined,
+  profileId: string | undefined
+): Promise<string | undefined> => {
+  if (!certificateProfileDAL || !profileId) return undefined;
+  try {
+    const profile = await certificateProfileDAL.findById(profileId);
+    if (profile?.externalConfigs && typeof profile.externalConfigs === "object" && profile.externalConfigs !== null) {
+      const { template } = profile.externalConfigs;
+      if (typeof template === "string") return template;
+    }
+  } catch (error) {
+    logger.warn(
+      `Failed to fetch profile ${profileId} for template extraction: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  return undefined;
 };
 
 export type TIssueCertificateFromProfileJobData = {
@@ -215,6 +235,21 @@ export const certificateIssuanceQueueFactory = ({
     pkiSyncDAL,
     pkiSyncQueue,
     certificateProfileDAL
+  });
+
+  const adcsFns = ADCSCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const awsPcaFns = AwsPcaCertificateAuthorityFns({
@@ -530,26 +565,7 @@ export const certificateIssuanceQueueFactory = ({
         }
       } else if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
         await setPending("Submitting the request to Azure AD CS");
-        let template: string | undefined;
-        if (certificateProfileDAL && profileId) {
-          try {
-            const profile = await certificateProfileDAL.findById(profileId);
-            if (
-              profile?.externalConfigs &&
-              typeof profile.externalConfigs === "object" &&
-              profile.externalConfigs !== null
-            ) {
-              const configs = profile.externalConfigs;
-              if (typeof configs.template === "string") {
-                template = configs.template;
-              }
-            }
-          } catch (error) {
-            logger.warn(
-              `Failed to fetch profile ${profileId} for template extraction: ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }
+        const template = await extractProfileTemplate(certificateProfileDAL, profileId);
 
         const azureParams = {
           caId,
@@ -592,6 +608,74 @@ export const certificateIssuanceQueueFactory = ({
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
               certificateId: azureResult.certificateId
+            });
+
+            logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
+          } catch (attachError) {
+            logger.error(
+              attachError,
+              `Failed to attach certificate to request [certificateRequestId=${certificateRequestId}]`
+            );
+            try {
+              await certificateRequestService.updateCertificateRequestStatus({
+                certificateRequestId,
+                status: CertificateRequestStatus.FAILED,
+                errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
+              });
+            } catch (statusUpdateError) {
+              logger.error(
+                statusUpdateError,
+                `Failed to update certificate request status [certificateRequestId=${certificateRequestId}]`
+              );
+            }
+          }
+        }
+      } else if (ca.externalCa?.type === CaType.ADCS) {
+        await setPending("Submitting the request to Active Directory Certificate Service");
+        const template = await extractProfileTemplate(certificateProfileDAL, profileId);
+
+        const adcsParams = {
+          caId,
+          profileId,
+          commonName: commonName || "",
+          altNames: altNames?.map((san) => san.value) || [],
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+          validity: { ttl },
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          isRenewal,
+          originalCertificateId,
+          template,
+          isCancelled
+        };
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled before Active Directory Certificate Service order [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        const adcsResult = await adcsFns.orderCertificate(adcsParams as Parameters<typeof adcsFns.orderCertificate>[0]);
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after Active Directory Certificate Service order [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        if (certificateRequestId && certificateRequestService && adcsResult?.certificateId) {
+          try {
+            await certificateRequestService.attachCertificateToRequest({
+              certificateRequestId,
+              certificateId: adcsResult.certificateId
+            });
+
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: adcsResult.certificateId
             });
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
@@ -1242,6 +1326,7 @@ export const certificateIssuanceQueueFactory = ({
     processCertificateIssuanceJobs,
     acmeFns,
     azureAdCsFns,
+    adcsFns,
     awsPcaFns,
     awsAcmPublicCaFns,
     digicertFns,

@@ -7,7 +7,7 @@ import type { TableDetail } from "./data-explorer-types";
 type TabBase = {
   id: string;
   connectionId: string;
-  backendPid: number | null;
+  nativeConnectionId: number | null;
   isInTransaction: boolean;
   lastFocusedAt: number;
   isDead?: boolean;
@@ -33,7 +33,7 @@ type Tab = BrowseTab | QueryTab;
 const MAX_TABS = 20;
 
 type UseQueryTabsOptions = {
-  openConnection: () => Promise<{ connectionId: string; backendPid: number | null }>;
+  openConnection: () => Promise<{ connectionId: string; nativeConnectionId: number | null }>;
   closeConnection: (connectionId: string) => void;
   fetchTableDetail: (
     connectionId: string,
@@ -71,7 +71,7 @@ export const useQueryTabs = ({
   // failure as a toast. Returns null if the caller should bail out.
   const acquireTabConnection = useCallback(async (): Promise<{
     connectionId: string;
-    backendPid: number | null;
+    nativeConnectionId: number | null;
   } | null> => {
     if (!guardLimit()) return null;
     setIsOpeningTab(true);
@@ -101,7 +101,7 @@ export const useQueryTabs = ({
         kind: "query",
         id,
         connectionId: conn.connectionId,
-        backendPid: conn.backendPid,
+        nativeConnectionId: conn.nativeConnectionId,
         isInTransaction: false,
         lastFocusedAt: Date.now(),
         title,
@@ -145,7 +145,7 @@ export const useQueryTabs = ({
           kind: "browse",
           id,
           connectionId: conn.connectionId,
-          backendPid: conn.backendPid,
+          nativeConnectionId: conn.nativeConnectionId,
           isInTransaction: false,
           lastFocusedAt: Date.now(),
           title: `${schema}.${table}`,

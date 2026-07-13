@@ -31,9 +31,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
-import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
-import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
-import { PamResource } from "../pam-resource/pam-resource-enums";
+import { PamAccountType } from "../pam/pam-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
@@ -66,8 +64,6 @@ type TGatewayV2ServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
-  pamResourceDAL: Pick<TPamResourceDALFactory, "findByGatewayId" | "countByGatewayId">;
-  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
   aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
@@ -90,8 +86,6 @@ export const gatewayV2ServiceFactory = ({
   notificationService,
   appConnectionDAL,
   dynamicSecretDAL,
-  pamResourceDAL,
-  pamDiscoverySourceDAL,
   identityKubernetesAuthDAL,
   aiMcpServerDAL,
   pkiDiscoveryConfigDAL,
@@ -311,16 +305,12 @@ export const gatewayV2ServiceFactory = ({
     const [
       appConnectionsCounts,
       dynamicSecretsCounts,
-      pamResourcesCounts,
-      pamDiscoverySourcesCounts,
       kubernetesAuthsCounts,
       mcpServersCounts,
       pkiDiscoveryConfigsCounts
     ] = await Promise.all([
       Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
       Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(gatewayIds.map((id) => pamResourceDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(gatewayIds.map((id) => pamDiscoverySourceDAL.countByGatewayId(id).then((count) => ({ id, count })))),
       Promise.all(
         gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
       ),
@@ -334,12 +324,6 @@ export const gatewayV2ServiceFactory = ({
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
     for (const { id, count } of dynamicSecretsCounts) {
-      countMap.set(id, (countMap.get(id) ?? 0) + count);
-    }
-    for (const { id, count } of pamResourcesCounts) {
-      countMap.set(id, (countMap.get(id) ?? 0) + count);
-    }
-    for (const { id, count } of pamDiscoverySourcesCounts) {
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
     for (const { id, count } of kubernetesAuthsCounts) {
@@ -504,14 +488,14 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     sessionId,
     duration,
-    resourceType,
+    accountType,
     host,
     port,
     actorMetadata
   }: {
     gatewayId: string;
     sessionId: string;
-    resourceType: PamResource;
+    accountType: PamAccountType;
     duration?: number;
     host: string;
     port?: number;
@@ -598,7 +582,7 @@ export const gatewayV2ServiceFactory = ({
       Buffer.from(
         JSON.stringify({
           sessionId,
-          resourceType
+          resourceType: accountType // "resourceType" name needed to support current CLI version
         })
       )
     );
@@ -1176,19 +1160,9 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const [
-      appConnections,
-      dynamicSecrets,
-      pamResources,
-      pamDiscoverySources,
-      kubernetesAuths,
-      mcpServers,
-      pkiDiscoveryConfigs
-    ] = await Promise.all([
+    const [appConnections, dynamicSecrets, kubernetesAuths, mcpServers, pkiDiscoveryConfigs] = await Promise.all([
       appConnectionDAL.findByGatewayId(gatewayId),
       dynamicSecretDAL.findByGatewayId(gatewayId),
-      pamResourceDAL.findByGatewayId(gatewayId),
-      pamDiscoverySourceDAL.findByGatewayId(gatewayId),
       identityKubernetesAuthDAL.findByGatewayId(gatewayId),
       aiMcpServerDAL.findByGatewayId(gatewayId),
       pkiDiscoveryConfigDAL.findByGatewayId(gatewayId)
@@ -1197,8 +1171,6 @@ export const gatewayV2ServiceFactory = ({
     return {
       appConnections,
       dynamicSecrets,
-      pamResources,
-      pamDiscoverySources,
       kubernetesAuths,
       mcpServers,
       pkiDiscoveryConfigs

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
+import { isValidAzureKeyVaultUrl } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -17,6 +18,9 @@ const AzureKeyVaultSyncDestinationConfigSchema = z.object({
     .string()
     .url("Invalid vault base URL format")
     .min(1, "Vault base URL required")
+    .refine(isValidAzureKeyVaultUrl, {
+      message: "Vault base URL must be a valid Azure Key Vault URL (https://<vault-name>.vault.azure.net)"
+    })
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
 });
 

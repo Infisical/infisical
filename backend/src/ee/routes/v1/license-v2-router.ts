@@ -68,9 +68,27 @@ const BillingV2InvoiceSchema = z.object({
   pdfUrl: z.string()
 });
 
+const BillingV2EntitlementDimSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  noun: z.string(),
+  unit: z.string(),
+  metered: z.boolean(),
+  used: z.number(),
+  limit: z.number().nullable(),
+  // Present for metered dimensions: the included allowance and per-unit overage rate (dollars).
+  freeBand: z.number().optional(),
+  rate: z.number().optional()
+});
+
 const BillingV2EntitlementSchema = z.object({
   entitled: z.boolean(),
   planTier: z.string().optional(),
+  // Fixed recurring charge and estimated metered usage for the product (dollars); the headline is
+  // their sum. dimensions drives the per-dimension usage bars.
+  amount: z.number().optional(),
+  estimatedUsageAmount: z.number().optional(),
+  dimensions: BillingV2EntitlementDimSchema.array().optional(),
   limit: z.number().nullable().optional(),
   used: z.number().optional(),
   unit: z.string().nullable().optional()
@@ -110,7 +128,8 @@ const BillingV2OverviewSchema = z.object({
     })
     .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
-  entitlements: z.record(BillingV2EntitlementSchema)
+  entitlements: z.record(BillingV2EntitlementSchema),
+  estimatedUsageAmount: z.number()
 });
 
 const BillingV2PreviewLineSchema = z.object({
@@ -119,13 +138,26 @@ const BillingV2PreviewLineSchema = z.object({
   proration: z.boolean()
 });
 
+const BillingV2EstimatedUsageLineSchema = z.object({
+  dimension: z.string(),
+  unit: z.string(),
+  peak: z.number(),
+  freeBand: z.number(),
+  rate: z.number(),
+  amount: z.number()
+});
+
 const BillingV2PreviewSchema = z.object({
   currency: z.string(),
   prorationAmount: z.number(),
   nextInvoiceTotal: z.number(),
   nextRecurringTotal: z.number(),
   prorationDate: z.number(),
-  lines: BillingV2PreviewLineSchema.array()
+  lines: BillingV2PreviewLineSchema.array(),
+  // Projected metered usage (dollars) and its breakdown; estimatedTotal = nextRecurringTotal + usage.
+  estimatedUsage: z.number(),
+  estimatedUsageLines: BillingV2EstimatedUsageLineSchema.array(),
+  estimatedTotal: z.number()
 });
 
 // Subscription mutations mirror the checkout result: the change applies in place and the affected

@@ -1,0 +1,99 @@
+---
+title: "SSH Accounts"
+sidebarTitle: "SSH"
+description: "Add and connect to SSH servers."
+---
+
+SSH accounts let you manage access to your Linux/Unix servers. Users connect through Web Access (a browser-based terminal) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) can be recorded.
+
+SSH accounts support three authentication methods: password, public key, and certificate-based.
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an SSH [template](/documentation/platform/pam/templates/overview) (e.g., the default `ssh` or a custom one).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `prod-web-01`) |
+    | **Host** | Server hostname or IP |
+    | **Port** | SSH port (default: 22) |
+    | **Username** | Linux username to connect as |
+  </Step>
+  <Step title="Choose authentication method">
+    See the section below for each method.
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Authentication Methods
+
+<Tabs>
+  <Tab title="Password">
+    The simplest option. Provide the username and password.
+
+    The server must have `PasswordAuthentication yes` in sshd_config.
+  </Tab>
+  <Tab title="Public Key">
+    Authenticate with an SSH private key (OpenSSH format).
+
+    The corresponding public key must be in the user's `~/.ssh/authorized_keys` on the server.
+  </Tab>
+  <Tab title="Certificate (Recommended)">
+    The most secure option. Instead of storing static credentials, Infisical mints a short-lived certificate for each session.
+
+    After creating the account, configure the server to trust Infisical's CA. The account detail page provides a setup script.
+
+    See the [SSH Certificate Auth guide](/documentation/platform/pam/guides/ssh-certificate-auth) for a full walkthrough.
+  </Tab>
+</Tabs>
+
+## Connecting
+
+<Tabs>
+  <Tab title="Web Access">
+    Web Access provides an interactive terminal in your browser.
+
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch → Connect in Browser**
+    3. A terminal opens in a new tab
+
+    You get a full shell. To disconnect, type `exit` or close the tab.
+  </Tab>
+  <Tab title="CLI">
+    The CLI starts a local proxy that you connect to with your SSH client.
+
+    ```bash
+    infisical pam access prod-servers/web-01
+    ```
+
+    The command outputs the local port to connect to. Then use your SSH client:
+    ```bash
+    ssh deploy@localhost -p <port>
+    ```
+
+    No password or key needed since the proxy handles authentication.
+
+    **Flags:**
+    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
+    - `--reason <reason>` — provide an access reason (if required by template)
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSH Certificate Auth" icon="key" href="/documentation/platform/pam/guides/ssh-certificate-auth">
+    Set up certificate-based authentication.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

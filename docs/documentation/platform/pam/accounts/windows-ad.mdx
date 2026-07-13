@@ -1,0 +1,101 @@
+---
+title: "Windows Active Directory Accounts"
+sidebarTitle: "Windows AD"
+description: "Add and connect to Windows servers through Active Directory."
+---
+
+Windows AD accounts let you manage access to Windows servers using Active Directory domain credentials. Users connect through Web Access (a browser-based RDP client) or CLI (using your own RDP client) to any allowed host, and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+
+<Note>
+Windows AD accounts require session recordings to be stored in an external S3 bucket. Configure this in the [template](/documentation/platform/pam/templates/overview) before creating Windows AD accounts.
+</Note>
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Windows AD [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `domain-admin`) |
+    | **FQDN** | Fully qualified domain name (e.g., `corp.example.com`) |
+    | **DC Address** | Domain controller hostname or IP for LDAP |
+    | **Allowed Hosts** | Hostnames or IPs this account can connect to (one per line) |
+    | **LDAP Port** | LDAP port (default: 389) |
+    | **RDP Port** | RDP port (default: 3389) |
+    | **Use LDAPS** | Enable LDAP over SSL |
+  </Step>
+  <Step title="Enter credentials">
+    | Field | Description |
+    |-------|-------------|
+    | **Username** | Domain username in `DOMAIN\username` format (e.g., `CORP\Administrator`) |
+    | **Password** | Domain password |
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Connecting
+
+<Tabs>
+  <Tab title="Web Access">
+    Web Access provides a browser-based RDP client:
+
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch**
+    3. If the account has multiple allowed hosts, select which host to connect to
+    4. Click **Connect in Browser**
+    5. A remote desktop session opens in a new tab
+
+    You get a full Windows desktop. To disconnect, log out or close the tab.
+  </Tab>
+  <Tab title="CLI">
+    The CLI starts a local proxy that you connect to with your own RDP client:
+
+    ```bash
+    infisical pam access <folder>/<account>
+    ```
+
+    If the account has multiple allowed hosts, use `--target` to specify which one:
+    ```bash
+    infisical pam access <folder>/<account> --target <host>
+    ```
+
+    The command prints the local port. Connect your RDP client to `localhost` on that port:
+
+    ```bash
+    # Example using xfreerdp
+    xfreerdp /v:localhost:53306
+    ```
+
+    <Tip>
+    The port is dynamically assigned. Use the `--port` flag if you need a specific port:
+    `infisical pam access <folder>/<account> --port 13389`
+    </Tip>
+
+    Press `Ctrl+C` to end the session and close the proxy.
+  </Tab>
+</Tabs>
+
+## Allowed Hosts
+
+Unlike single-server Windows accounts, Windows AD accounts can connect to multiple hosts. When you create the account, you define the list of allowed hosts. Users choose which host to connect to when launching a session.
+
+This is useful for domain admin accounts that need access to multiple servers — you can manage a single account with one set of credentials while controlling which servers it can access.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Windows Accounts" icon="windows" href="/documentation/platform/pam/accounts/windows">
+    Add single-server Windows accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

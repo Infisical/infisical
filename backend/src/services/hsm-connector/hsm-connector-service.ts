@@ -9,6 +9,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -320,13 +321,33 @@ export const hsmConnectorServiceFactory = ({
     await assertProjectPermission(actor, row.projectId, ProjectPermissionHsmConnectorActions.Delete);
 
     await hsmConnectorDAL.transaction(async (tx) => {
-      const refCount = await hsmConnectorDAL.countReferencingCertificates(row.id, tx);
-      if (refCount > 0) {
+      const [certCount, caCount] = await Promise.all([
+        hsmConnectorDAL.countReferencingCertificates(row.id, tx),
+        hsmConnectorDAL.countReferencingCertificateAuthorities(row.id, tx)
+      ]);
+      if (certCount > 0) {
         throw new BadRequestError({
-          message: `HSM Connector is in use by ${refCount} certificate(s). Open the connector to see the linked certificates panel and re-issue or retire them first.`
+          message: `HSM Connector is in use by ${certCount} certificate(s). Open the connector to see the linked certificates panel and re-issue or retire them first.`
         });
       }
-      await hsmConnectorDAL.deleteById(row.id, tx);
+      if (caCount > 0) {
+        throw new BadRequestError({
+          message: `HSM Connector is in use by ${caCount} certificate authority(ies). Delete or migrate those CAs before removing this connector.`
+        });
+      }
+      try {
+        await hsmConnectorDAL.deleteById(row.id, tx);
+      } catch (err) {
+        // 23503 = FK violation: something started referencing this connector after the count check.
+        const cause = (err as { error?: { code?: string } })?.error;
+        if (cause?.code === "23503") {
+          throw new BadRequestError({
+            message:
+              "HSM Connector is in use by a certificate or certificate authority. Re-issue or retire them, or delete/migrate the CAs, before removing this connector."
+          });
+        }
+        throw err;
+      }
     });
     return { id: row.id, name: row.name, projectId: row.projectId };
   };
@@ -352,9 +373,15 @@ export const hsmConnectorServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    const includeCertificateAuthorities = permission.can(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
     return hsmConnectorDAL.listLinkedResources(row.id, {
       offset: dto.offset,
-      limit: dto.limit
+      limit: dto.limit,
+      includeCertificateAuthorities
     });
   };
 

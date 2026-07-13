@@ -7,6 +7,7 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SanitizedAcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { ADCSCertificateAuthoritySchema } from "@app/services/certificate-authority/adcs/adcs-certificate-authority-schemas";
 import { AwsAcmPublicCaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-schemas";
 import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-schemas";
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
@@ -20,6 +21,7 @@ const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
   SanitizedAcmeCertificateAuthoritySchema,
   AzureAdCsCertificateAuthoritySchema,
+  ADCSCertificateAuthoritySchema,
   AwsPcaCertificateAuthoritySchema,
   DigiCertCertificateAuthoritySchema,
   GoDaddyCertificateAuthoritySchema,
@@ -75,6 +77,14 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
         req.permission
       );
 
+      const adcsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId,
+          type: CaType.ADCS
+        },
+        req.permission
+      );
+
       const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
           projectId,
@@ -125,6 +135,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
               ...(azureAdCsCas ?? []).map((ca) => ca.id),
+              ...(adcsCas ?? []).map((ca) => ca.id),
               ...(awsPcaCas ?? []).map((ca) => ca.id),
               ...(digicertCas ?? []).map((ca) => ca.id),
               ...(awsAcmPublicCas ?? []).map((ca) => ca.id),
@@ -140,6 +151,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           ...(internalCas ?? []),
           ...(acmeCas ?? []),
           ...(azureAdCsCas ?? []),
+          ...(adcsCas ?? []),
           ...(awsPcaCas ?? []),
           ...(digicertCas ?? []),
           ...(awsAcmPublicCas ?? []),

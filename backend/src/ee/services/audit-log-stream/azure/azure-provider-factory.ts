@@ -2,9 +2,9 @@ import { RawAxiosRequestHeaders } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
+import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -48,7 +48,7 @@ export const AzureProviderFactory = () => {
   }) => {
     const { tenantId, clientId, clientSecret, dceUrl, dcrId, cltName } = credentials;
 
-    await blockLocalAndPrivateIpAddresses(dceUrl);
+    await blockAuditLogStreamInternalIps(dceUrl);
 
     const token = await getAzureToken(tenantId, clientId, clientSecret);
 
@@ -81,7 +81,7 @@ export const AzureProviderFactory = () => {
 
     const { tenantId, clientId, clientSecret, dceUrl, dcrId, cltName } = credentials;
 
-    await blockLocalAndPrivateIpAddresses(dceUrl);
+    await blockAuditLogStreamInternalIps(dceUrl);
 
     const token = await getAzureToken(tenantId, clientId, clientSecret);
 

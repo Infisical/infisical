@@ -69,10 +69,32 @@ export type BillingV2Invoice = {
   pdfUrl: string | null;
 };
 
+// One priced/metered dimension of an active product, resolved for display by the backend. rate and
+// freeBand (dollars/allowance) are present only for metered dimensions; per-unit dimensions get their
+// rate from the catalog on the client.
+export type BillingV2EntitlementDim = {
+  key: string;
+  label: string;
+  noun: string;
+  unit: string;
+  metered: boolean;
+  used: number;
+  limit: number | null;
+  freeBand?: number;
+  rate?: number;
+};
+
 export type BillingV2Entitlement = {
   entitled: boolean;
   // Tier the org is currently subscribed to for this product; lets the UI mark the active plan card.
   planTier?: string;
+  // Fixed recurring charge for this product (dollars); excludes metered usage.
+  amount?: number;
+  // Estimated metered usage cost for the current period (dollars). The product headline is
+  // amount + estimatedUsageAmount.
+  estimatedUsageAmount?: number;
+  // Every priced/metered dimension of the product, for the per-dimension usage bars.
+  dimensions?: BillingV2EntitlementDim[];
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
@@ -93,6 +115,9 @@ export type BillingV2Overview = {
     identities: number;
     identityLimit: number | null;
   };
+  // Projected metered usage across all products (dollars); added to recurringAmount for the summary's
+  // next-month total.
+  estimatedUsageAmount: number;
   payment: BillingV2PaymentMethod;
   billingDetails: {
     name: string;
@@ -142,6 +167,17 @@ export type BillingV2PreviewLine = {
   proration: boolean;
 };
 
+// A projected metered usage line for a change preview. rate/amount are dollars; peak is the projected
+// period usage and freeBand the included allowance.
+export type BillingV2EstimatedUsageLine = {
+  dimension: string;
+  unit: string;
+  peak: number;
+  freeBand: number;
+  rate: number;
+  amount: number;
+};
+
 // prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
 // invoice (a removal). prorationDate is the timestamp the preview was computed at, for display only.
 export type BillingV2Preview = {
@@ -151,6 +187,11 @@ export type BillingV2Preview = {
   nextRecurringTotal: number;
   prorationDate: number;
   lines: BillingV2PreviewLine[];
+  // Projected metered usage for the period (dollars) and its breakdown; estimatedTotal is
+  // nextRecurringTotal + estimatedUsage.
+  estimatedUsage: number;
+  estimatedUsageLines: BillingV2EstimatedUsageLine[];
+  estimatedTotal: number;
 };
 
 export type BillingV2MutationResult = {
