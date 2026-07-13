@@ -19,7 +19,7 @@ description: "Run the Infisical Agent Proxy and connect agents to it"
     infisical secrets agent-proxy connect [options] -- [agent start command]
 
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --path=/ai-agents -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --path=/ai-agents -- claude
     ```
 
   </Tab>
@@ -130,7 +130,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
 $ infisical secrets agent-proxy connect --proxy=<host>:<port> --env=<env-slug> -- [agent start command]
 
 # Example
-$ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+$ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
 ```
 
 ### Environment variables
@@ -170,7 +170,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy.internal:17322 --env=prod -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod -- claude
     ```
   </Accordion>
 
@@ -179,7 +179,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=staging -- codex
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=staging -- codex
     ```
   </Accordion>
 
@@ -188,7 +188,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --path=/ai-agents -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --path=/ai-agents -- claude
     ```
 
     Default value: `/`
@@ -199,7 +199,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --no-proxy=internal.corp.com -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --no-proxy=internal.corp.com -- claude
     ```
   </Accordion>
 
@@ -208,7 +208,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --projectId=<project-id> -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --projectId=<project-id> -- claude
     ```
   </Accordion>
 
@@ -217,7 +217,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --client-id=<client-id> --client-secret=<client-secret> -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --client-id=<client-id> --client-secret=<client-secret> -- claude
     ```
   </Accordion>
 
@@ -226,7 +226,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --token=<access-token> -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --token=<access-token> -- claude
     ```
   </Accordion>
 
@@ -235,7 +235,7 @@ $ infisical secrets agent-proxy connect --proxy=proxy:17322 --projectId=<project
 
     ```bash
     # Example
-    infisical secrets agent-proxy connect --proxy=proxy:17322 --env=prod --allow-readable-brokered-secrets -- claude
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --allow-readable-brokered-secrets -- claude
     ```
 
     Default value: `false`
