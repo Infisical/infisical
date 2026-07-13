@@ -51,7 +51,7 @@ export const SSOStep = ({ setSection, type }: Props) => {
     <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
       <Card className="w-full items-stretch gap-0 p-6">
         <CardHeader className="mb-4 gap-4">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+          <CardTitle className="font-alliance ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-2xl font-normal text-transparent">
             What&apos;s your work email?
           </CardTitle>
         </CardHeader>

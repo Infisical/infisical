@@ -185,7 +185,7 @@ export const SignupSsoPage = () => {
                     size="lg"
                     isFullWidth
                     isPending={completeAccountSignup.isPending}
-                    isDisabled={completeAccountSignup.isPending}
+                    isDisabled={code.length !== 6 || completeAccountSignup.isPending}
                   >
                     Verify
                   </Button>

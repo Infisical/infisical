@@ -1,22 +1,24 @@
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
+import { PasswordField } from "@app/components/auth/PasswordField";
+import {
+  checkPasswordBreachStatus,
+  PasswordBreachStatus
+} from "@app/components/utilities/checks/password/checkIsPasswordBreached";
+import { passwordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  FieldError,
-  IconButton,
+  Field,
+  FieldLabel,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   TextArea
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -25,29 +27,7 @@ import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
-import { checkIsPasswordBreached } from "../utilities/checks/password/checkIsPasswordBreached";
-import {
-  escapeCharRegex,
-  letterCharRegex,
-  lowEntropyRegexes,
-  numAndSpecialCharRegex,
-  repeatedCharRegex
-} from "../utilities/checks/password/passwordRegexes";
 import SecurityClient from "../utilities/SecurityClient";
-
-const passwordSchema = z
-  .string()
-  .min(1, "Password is required")
-  .min(14, "at least 14 characters")
-  .max(100, "at most 100 characters")
-  .regex(letterCharRegex, "at least 1 letter character")
-  .regex(numAndSpecialCharRegex, "at least 1 number or special character")
-  .refine((pwd) => !repeatedCharRegex.test(pwd), "at most 3 repeated, consecutive characters")
-  .refine((pwd) => !escapeCharRegex.test(pwd), "No escape characters allowed")
-  .refine(
-    (pwd) => !lowEntropyRegexes.some((regex) => regex.test(pwd)),
-    "Password contains personal info"
-  );
 
 const createUserInfoFormSchema = (isInvite: boolean) =>
   z.object({
@@ -67,16 +47,14 @@ interface UserInfoStepProps {
   isInvite?: boolean;
 }
 
-const BREACH_CHECK_DEBOUNCE_MS = 1000;
-
 export default function UserInfoStep({
   onComplete,
   email,
   isInvite = false
 }: UserInfoStepProps): JSX.Element {
-  const [showPassword, setShowPassword] = useState(false);
-  const [breachWarning, setBreachWarning] = useState<string | null>(null);
-  const breachTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [passwordBreachStatus, setPasswordBreachStatus] = useState<
+    PasswordBreachStatus | "idle" | "checking"
+  >("idle");
 
   const { mutateAsync: completeSignup, isPending: isLoading } = useCompleteAccountSignup();
   const { t } = useTranslation();
@@ -84,11 +62,12 @@ export default function UserInfoStep({
   const {
     register,
     handleSubmit,
+    setError,
     watch,
-    formState: { errors }
+    formState: { errors, isValid, submitCount }
   } = useForm<UserInfoFormData>({
     resolver: zodResolver(createUserInfoFormSchema(isInvite)),
-    criteriaMode: "all",
+    mode: "onChange",
     defaultValues: {
       name: "",
       organizationName: "",
@@ -98,29 +77,18 @@ export default function UserInfoStep({
   });
 
   const passwordValue = watch("password");
-  const passwordIssues = errors.password?.types
-    ? (Object.values(errors.password.types).flat().filter(Boolean) as string[])
-    : [];
-
-  const debouncedBreachCheck = useCallback((pwd: string) => {
-    if (breachTimerRef.current) {
-      clearTimeout(breachTimerRef.current);
-    }
-    if (pwd.length < 14) {
-      setBreachWarning(null);
-      return;
-    }
-    breachTimerRef.current = setTimeout(async () => {
-      const isBreached = await checkIsPasswordBreached(pwd);
-      setBreachWarning(isBreached ? "Password was found in a data breach" : null);
-    }, BREACH_CHECK_DEBOUNCE_MS);
-  }, []);
+  const showDangerState = submitCount > 0;
+  const isPasswordValidated =
+    passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
+  const canSubmit = isValid && isPasswordValidated && !isLoading;
 
   const onSubmit = async (formData: UserInfoFormData) => {
-    // Run breach check synchronously on submit if not already checked
-    const isBreached = await checkIsPasswordBreached(formData.password);
-    if (isBreached) {
-      setBreachWarning("Password was found in a data breach");
+    const latestBreachStatus = await checkPasswordBreachStatus(formData.password);
+    if (latestBreachStatus === "breached") {
+      setError("password", {
+        type: "validate",
+        message: "This password was found in a known data breach."
+      });
       return;
     }
 
@@ -159,90 +127,64 @@ export default function UserInfoStep({
     onComplete();
   };
 
-  const allIssues = [...passwordIssues, ...(breachWarning ? [breachWarning] : [])];
-
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             {isInvite ? "Set up your account" : t("signup.step3-message")}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex w-full flex-col items-stretch py-2">
-            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Your Name</p>
+          <Field className="py-2" data-invalid={showDangerState && Boolean(errors.name)}>
+            <FieldLabel htmlFor="signup-name">Your Name</FieldLabel>
             <Input
               {...register("name")}
+              id="signup-name"
               placeholder="Jane Doe"
-              autoComplete="given-name"
-              isError={!!errors.name}
+              autoComplete="name"
+              isError={showDangerState && Boolean(errors.name)}
             />
-            {errors.name && <FieldError>{errors.name.message}</FieldError>}
-          </div>
+          </Field>
           {!isInvite && (
             <>
-              <div className="flex w-full flex-col items-stretch py-2">
-                <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Organization Name</p>
+              <Field
+                className="py-2"
+                data-invalid={showDangerState && Boolean(errors.organizationName)}
+              >
+                <FieldLabel htmlFor="signup-organization-name">Organization Name</FieldLabel>
                 <Input
                   {...register("organizationName")}
-                  placeholder="Infisical"
+                  id="signup-organization-name"
+                  placeholder="Acme Inc."
                   maxLength={64}
-                  isError={!!errors.organizationName}
+                  autoComplete="organization"
+                  isError={showDangerState && Boolean(errors.organizationName)}
                 />
-                {errors.organizationName && (
-                  <FieldError>{errors.organizationName.message}</FieldError>
-                )}
-              </div>
-              <div className="flex w-full flex-col items-stretch py-2">
-                <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">
+              </Field>
+              <Field className="py-2">
+                <FieldLabel htmlFor="signup-attribution-source">
                   Where did you hear about us? <span className="font-light">(optional)</span>
-                </p>
-                <TextArea {...register("attributionSource")} placeholder="" rows={2} />
-              </div>
+                </FieldLabel>
+                <TextArea
+                  {...register("attributionSource")}
+                  id="signup-attribution-source"
+                  placeholder="A colleague, search engine, conference…"
+                  rows={2}
+                />
+              </Field>
             </>
           )}
-          <div className="flex w-full flex-col items-stretch py-2">
-            <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">
-              {t("section.password.password")}
-            </p>
-            <InputGroup className="h-10">
-              <InputGroupInput
-                {...register("password", {
-                  onChange(e) {
-                    setBreachWarning(null);
-                    debouncedBreachCheck(e.target.value);
-                  }
-                })}
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter a strong password..."
-                autoComplete="new-password"
-                id="new-password"
-              />
-              <InputGroupAddon align="inline-end">
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </IconButton>
-              </InputGroupAddon>
-            </InputGroup>
-            {allIssues.length > 0 && passwordValue.length > 0 && (
-              <div className="mt-4 flex w-full flex-col items-start rounded-md border border-border bg-container px-3 py-2.5">
-                <div className="mb-1 text-sm text-gray-400">
-                  {t("section.password.validate-base")}
-                </div>
-                {allIssues.map((issue) => (
-                  <div className="items-top flex flex-row justify-start" key={issue}>
-                    <X className="mt-0.5 mr-2 size-4 shrink-0 text-danger" />
-                    <p className="text-sm text-gray-400">{issue}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="py-2">
+            <PasswordField
+              id="new-password"
+              value={passwordValue}
+              placeholder="••••••••"
+              registration={register("password")}
+              error={showDangerState ? errors.password : undefined}
+              submitCount={submitCount}
+              onBreachStatusChange={setPasswordBreachStatus}
+            />
           </div>
           <div className="mt-4 w-full">
             <Button
@@ -252,7 +194,7 @@ export default function UserInfoStep({
               size="lg"
               isFullWidth
               isPending={isLoading}
-              isDisabled={isLoading}
+              isDisabled={!canSubmit}
             >
               {String(t("signup.signup"))}
             </Button>

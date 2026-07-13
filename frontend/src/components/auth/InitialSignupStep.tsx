@@ -14,7 +14,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  FieldError,
   Input
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
@@ -38,6 +37,7 @@ export default function InitialSignupStep({
   const { config } = useServerConfig();
   const { mutateAsync, isPending } = useSendVerificationEmail();
   const [emailError, setEmailError] = useState(false);
+  const isEmailValid = z.string().email().safeParse(email).success;
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -73,7 +73,7 @@ export default function InitialSignupStep({
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
         <CardHeader className="mb-4 gap-4">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             {t("signup.initial-title")}
           </CardTitle>
           <CardAction className="-mr-2">
@@ -131,15 +131,17 @@ export default function InitialSignupStep({
               <div className="w-full">
                 <Input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(false);
+                  }}
                   type="email"
-                  placeholder="Enter your email..."
+                  placeholder="you@company.com"
                   required
                   autoComplete="username"
                   className="h-10"
                   isError={emailError}
                 />
-                {emailError && <FieldError>Please enter a valid email.</FieldError>}
               </div>
               <div className="mt-4 w-full">
                 <Button
@@ -148,7 +150,7 @@ export default function InitialSignupStep({
                   variant="outline"
                   size="lg"
                   isFullWidth
-                  isDisabled={isPending}
+                  isDisabled={!isEmailValid || isPending}
                   isPending={isPending}
                 >
                   Continue with Email

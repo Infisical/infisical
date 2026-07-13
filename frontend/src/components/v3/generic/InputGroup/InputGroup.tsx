@@ -13,8 +13,9 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="input-group"
       role="group"
       className={cn(
-        "group/input-group dark:bg-input/30 relative flex w-full items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] outline-none",
+        "group/input-group dark:bg-input/30 relative flex w-full items-center rounded-md border border-border shadow-xs transition-colors outline-1 outline-offset-4 outline-transparent outline-solid",
         "h-9 min-w-0 has-[>textarea]:h-auto",
+        "[&_[data-slot=icon-button]:focus-visible]:ring-0",
 
         // Variants based on alignment.
         "has-[>[data-align=inline-start]]:[&>input]:pl-2",
@@ -22,11 +23,14 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
         "has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3",
         "has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3",
 
+        // Hover state.
+        "hover:border-foreground/20",
+
         // Focus state.
-        "has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50",
+        "has-[:focus-visible]:border-accent has-[:focus-visible]:outline-accent/60",
 
         // Error state.
-        "has-[[data-slot][aria-invalid=true]]:border-danger has-[[data-slot][aria-invalid=true]]:ring-danger/40",
+        "has-[[data-slot][aria-invalid=true]]:border-danger has-[[data-slot][aria-invalid=true]]:outline-danger/60",
 
         className
       )}
@@ -128,7 +132,7 @@ const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<
         ref={ref}
         data-slot="input-group-control"
         className={cn(
-          "flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent",
+          "flex-1 rounded-none border-0 bg-transparent shadow-none outline-none focus-visible:border-0 dark:bg-transparent",
           className
         )}
         {...props}
@@ -148,7 +152,7 @@ const InputGroupTextArea = React.forwardRef<
       ref={ref}
       data-slot="input-group-control"
       className={cn(
-        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none outline-none focus-visible:border-0 dark:bg-transparent",
         className
       )}
       {...props}
