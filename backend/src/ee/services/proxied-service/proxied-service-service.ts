@@ -78,7 +78,7 @@ export const proxiedServiceServiceFactory = ({
     projectId: string,
     environment: string,
     secretPath: string,
-    credentials: TProxiedServiceCredentialInput[]
+    credentials: { secretKey: string }[]
   ) => {
     const uniqueKeys = [...new Set(credentials.map((c) => c.secretKey))];
     if (!uniqueKeys.length) return;
@@ -338,15 +338,17 @@ export const proxiedServiceServiceFactory = ({
       }
     }
 
-    if (credentials) {
-      await $assertReferencedSecretsReadable(
-        actor,
-        service.projectId,
-        service.environmentSlug,
-        resolvedSecretPath,
-        credentials
-      );
-    }
+    // Validate the effective credentials on every update, not just when they're being replaced: an editor
+    // without ReadValue could otherwise reroute (change hostPattern) or enable a service while retaining
+    // credentials they can't read, and have the broker apply those values to a host they control.
+    const effectiveCredentials = credentials ?? (await proxiedServiceCredentialDAL.findByServiceIds([service.id]));
+    await $assertReferencedSecretsReadable(
+      actor,
+      service.projectId,
+      service.environmentSlug,
+      resolvedSecretPath,
+      effectiveCredentials
+    );
 
     const serviceUpdate = {
       ...(name !== undefined ? { name } : {}),
