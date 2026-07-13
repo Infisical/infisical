@@ -324,12 +324,10 @@ export const secretSyncServiceFactory = ({
             const isDuplicate = await DESTINATION_DUPLICATE_CHECK_MAP[destination]({
               existingSync: {
                 connectionId: sync.connectionId,
-                syncOptions: (sync.syncOptions as Record<string, unknown>) ?? null,
                 destinationConfig: sync.destinationConfig as Record<string, unknown>
               },
               newSync: {
                 connectionId: connectionId ?? null,
-                syncOptions: syncOptions ?? null,
                 destinationConfig
               },
               decryptConnection

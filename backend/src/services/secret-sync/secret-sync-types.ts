@@ -574,7 +574,6 @@ export type TSecretMap = Record<
 
 export type DuplicateCheckSyncFields = {
   connectionId: string | null;
-  syncOptions: Record<string, unknown> | null;
   destinationConfig: Record<string, unknown>;
 };
 
