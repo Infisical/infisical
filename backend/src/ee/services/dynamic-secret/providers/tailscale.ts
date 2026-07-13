@@ -14,7 +14,10 @@ type TTailscaleAuth = TTailscaleProviderInputs["auth"];
 
 type TTailscaleKeyResponse = {
   id: string;
-  key: string;
+  // auth keys and OAuth clients return a secret in `key`; federated identities do not.
+  key?: string;
+  // federated identities return the audience.
+  audience?: string;
 };
 
 type TTailscaleOAuthTokenResponse = {
@@ -32,8 +35,7 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json"
     },
-    timeout: 30000,
-    maxRedirects: 0
+    timeout: 30000
   });
 
   // Secrets to redact from any surfaced error message.
@@ -56,8 +58,7 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
       }).toString(),
       {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        timeout: 30000,
-        maxRedirects: 0
+        timeout: 30000
       }
     );
 
@@ -90,43 +91,67 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
     const url = `${TAILSCALE_API_BASE_URL}/tailnet/${encodeURIComponent(providerInputs.tailnet)}/keys`;
 
     let body: Record<string, unknown>;
-    if (providerInputs.authType === TailscaleKeyAuthType.AuthKeys) {
-      // Tailscale expires auth keys after expirySeconds; align it with the lease TTL as defense-in-depth.
-      const expirySeconds = Math.max(Math.floor(expireAt / 1000) - Math.floor(Date.now() / 1000), 0);
-      body = {
-        keyType: "auth",
-        description: providerInputs.description,
-        expirySeconds,
-        capabilities: {
-          devices: {
-            create: {
-              reusable: providerInputs.reusable,
-              ephemeral: false,
-              preauthorized: providerInputs.preauthorized,
-              tags: providerInputs.tags
+    switch (providerInputs.authType) {
+      case TailscaleKeyAuthType.AuthKeys: {
+        // Tailscale expires auth keys after expirySeconds; align it with the lease TTL as defense-in-depth.
+        const expirySeconds = Math.max(Math.floor(expireAt / 1000) - Math.floor(Date.now() / 1000), 0);
+        body = {
+          keyType: "auth",
+          description: providerInputs.description,
+          expirySeconds,
+          capabilities: {
+            devices: {
+              create: {
+                reusable: providerInputs.reusable,
+                ephemeral: false,
+                preauthorized: providerInputs.preauthorized,
+                tags: providerInputs.tags
+              }
             }
           }
-        }
-      };
-    } else {
-      body = {
-        keyType: "client",
-        description: providerInputs.description,
-        scopes: providerInputs.scopes,
-        tags: providerInputs.tags
-      };
+        };
+        break;
+      }
+      case TailscaleKeyAuthType.OAuthKeys:
+        body = {
+          keyType: "client",
+          description: providerInputs.description,
+          scopes: providerInputs.scopes,
+          tags: providerInputs.tags
+        };
+        break;
+      case TailscaleKeyAuthType.FederatedKeys:
+        // Federated identities carry no secret and never expire on their own; the lease revoke deletes them.
+        body = {
+          keyType: "federated",
+          description: providerInputs.description,
+          scopes: providerInputs.scopes,
+          tags: providerInputs.tags,
+          issuer: providerInputs.issuer,
+          subject: providerInputs.subject,
+          ...(providerInputs.audience ? { audience: providerInputs.audience } : {})
+        };
+        break;
+      default: {
+        const exhaustiveCheck: never = providerInputs;
+        throw new Error(`Unhandled Tailscale auth type: ${JSON.stringify(exhaustiveCheck)}`);
+      }
     }
 
     try {
       const token = await $getBearerToken(providerInputs.auth);
       const response = await safeRequest.post<TTailscaleKeyResponse>(url, body, $requestConfig(token));
-      const { id, key } = response.data;
+      const { id, key, audience } = response.data;
 
       if (providerInputs.authType === TailscaleKeyAuthType.AuthKeys) {
         return { entityId: id, data: { AUTH_KEY: key, KEY_ID: id } };
       }
 
-      return { entityId: id, data: { CLIENT_ID: id, CLIENT_SECRET: key } };
+      if (providerInputs.authType === TailscaleKeyAuthType.OAuthKeys) {
+        return { entityId: id, data: { CLIENT_ID: id, CLIENT_SECRET: key } };
+      }
+
+      return { entityId: id, data: { FEDERATED_CREDENTIAL_ID: id, AUDIENCE: audience ?? "" } };
     } catch (err) {
       logger.error(err as Error);
       const sanitizedErrorMessage = sanitizeString({

@@ -67,6 +67,21 @@ const formSchema = z
         description: z.string().trim().max(50).optional(),
         tags: z.string().trim().optional(),
         scopes: z.string().trim().min(1, "At least one scope is required")
+      }),
+      z.object({
+        authType: z.literal(TailscaleKeyAuthType.FederatedKeys),
+        auth: tailscaleAuthSchema,
+        tailnet: z.string().trim().min(1, "Tailnet is required"),
+        description: z.string().trim().max(50).optional(),
+        tags: z.string().trim().optional(),
+        scopes: z.string().trim().min(1, "At least one scope is required"),
+        issuer: z
+          .string()
+          .trim()
+          .min(1, "Issuer is required")
+          .url("Issuer must be a valid https URL"),
+        subject: z.string().trim().min(1, "Subject is required"),
+        audience: z.string().trim().optional()
       })
     ]),
     defaultTTL: z.string().superRefine(validateTTL),
@@ -104,6 +119,10 @@ const splitCsv = (val?: string) =>
         .filter(Boolean)
     : [];
 
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled Tailscale auth type: ${String(value)}`);
+};
+
 const buildAuth = (auth: TForm["provider"]["auth"]): TailscaleInputs["auth"] =>
   auth.method === TailscaleAuthMethod.ApiKey
     ? { method: TailscaleAuthMethod.ApiKey, apiKey: auth.apiKey }
@@ -112,6 +131,45 @@ const buildAuth = (auth: TForm["provider"]["auth"]): TailscaleInputs["auth"] =>
         clientId: auth.clientId,
         clientSecret: auth.clientSecret
       };
+
+const buildInputs = (
+  provider: TForm["provider"],
+  auth: TailscaleInputs["auth"]
+): TailscaleInputs => {
+  const base = {
+    auth,
+    tailnet: provider.tailnet,
+    description: provider.description || undefined,
+    tags: splitCsv(provider.tags)
+  };
+
+  switch (provider.authType) {
+    case TailscaleKeyAuthType.AuthKeys:
+      return {
+        ...base,
+        authType: provider.authType,
+        reusable: provider.reusable,
+        preauthorized: provider.preauthorized
+      };
+    case TailscaleKeyAuthType.OAuthKeys:
+      return {
+        ...base,
+        authType: provider.authType,
+        scopes: splitCsv(provider.scopes)
+      };
+    case TailscaleKeyAuthType.FederatedKeys:
+      return {
+        ...base,
+        authType: provider.authType,
+        scopes: splitCsv(provider.scopes),
+        issuer: provider.issuer,
+        subject: provider.subject,
+        audience: provider.audience || undefined
+      };
+    default:
+      return assertNever(provider.authType);
+  }
+};
 
 type Props = {
   onCompleted: () => void;
@@ -165,26 +223,7 @@ export const TailscaleInputForm = ({
     if (createDynamicSecret.isPending) return;
 
     const auth = buildAuth(provider.auth);
-
-    const inputs: TailscaleInputs =
-      provider.authType === TailscaleKeyAuthType.AuthKeys
-        ? {
-            authType: TailscaleKeyAuthType.AuthKeys,
-            auth,
-            tailnet: provider.tailnet,
-            description: provider.description || undefined,
-            tags: splitCsv(provider.tags),
-            reusable: provider.reusable,
-            preauthorized: provider.preauthorized
-          }
-        : {
-            authType: TailscaleKeyAuthType.OAuthKeys,
-            auth,
-            tailnet: provider.tailnet,
-            description: provider.description || undefined,
-            tags: splitCsv(provider.tags),
-            scopes: splitCsv(provider.scopes)
-          };
+    const inputs = buildInputs(provider, auth);
 
     await createDynamicSecret.mutateAsync({
       provider: { type: DynamicSecretProviders.Tailscale, inputs },
@@ -362,6 +401,9 @@ export const TailscaleInputForm = ({
                     >
                       <SelectItem value={TailscaleKeyAuthType.AuthKeys}>Auth Key</SelectItem>
                       <SelectItem value={TailscaleKeyAuthType.OAuthKeys}>OAuth Client</SelectItem>
+                      <SelectItem value={TailscaleKeyAuthType.FederatedKeys}>
+                        Federated Identity
+                      </SelectItem>
                     </Select>
                   </FormControl>
                 )}
@@ -421,7 +463,8 @@ export const TailscaleInputForm = ({
                 )}
               />
 
-              {authType === TailscaleKeyAuthType.OAuthKeys && (
+              {(authType === TailscaleKeyAuthType.OAuthKeys ||
+                authType === TailscaleKeyAuthType.FederatedKeys) && (
                 <Controller
                   control={control}
                   name="provider.scopes"
@@ -439,6 +482,65 @@ export const TailscaleInputForm = ({
                     </FormControl>
                   )}
                 />
+              )}
+
+              {authType === TailscaleKeyAuthType.FederatedKeys && (
+                <>
+                  <Controller
+                    control={control}
+                    name="provider.issuer"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Issuer"
+                        className="grow"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        isRequired
+                        helperText="HTTPS URL of the OIDC issuer trusted for token exchange."
+                      >
+                        <Input
+                          {...field}
+                          placeholder="https://token.actions.githubusercontent.com"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.subject"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Subject"
+                        className="grow"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        isRequired
+                        helperText="Pattern matched against the sub claim of the OIDC token (supports wildcards)."
+                      >
+                        <Input {...field} placeholder="repo:my-org/my-repo:*" />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.audience"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Audience"
+                        className="grow"
+                        isOptional
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        helperText="Leave blank to let Tailscale auto-generate one."
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                </>
               )}
 
               {authType === TailscaleKeyAuthType.AuthKeys && (

@@ -809,7 +809,8 @@ export const DynamicSecretIbmApiConnectSchema = z.object({
 
 export enum TailscaleKeyAuthType {
   AuthKeys = "auth_keys",
-  OAuthKeys = "oauth_keys"
+  OAuthKeys = "oauth_keys",
+  FederatedKeys = "federated_keys"
 }
 
 export enum TailscaleAuthMethod {
@@ -863,6 +864,37 @@ export const DynamicSecretTailscaleSchema = z.discriminatedUnion("authType", [
       .default([])
       .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
     scopes: z.array(z.string().trim().min(1)).min(1).describe("OAuth scopes granted to the client.")
+  }),
+  z.object({
+    authType: z.literal(TailscaleKeyAuthType.FederatedKeys),
+    auth: DynamicSecretTailscaleAuthSchema,
+    tailnet: z
+      .string()
+      .trim()
+      .min(1)
+      .default("-")
+      .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+    description: z
+      .string()
+      .trim()
+      .max(50)
+      .optional()
+      .describe("Description applied to the created federated identity."),
+    tags: z
+      .array(z.string().trim().min(1))
+      .default([])
+      .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
+    scopes: z
+      .array(z.string().trim().min(1))
+      .min(1)
+      .describe("OAuth scopes granted to tokens issued via this federated identity."),
+    issuer: z.string().trim().min(1).describe("HTTPS URL of the OIDC issuer trusted for token exchange."),
+    subject: z.string().trim().min(1).describe("Pattern matched against the sub claim of the OIDC identity token."),
+    audience: z
+      .string()
+      .trim()
+      .optional()
+      .describe("Audience for the OIDC token exchange. Tailscale auto-generates one if omitted.")
   })
 ]);
 

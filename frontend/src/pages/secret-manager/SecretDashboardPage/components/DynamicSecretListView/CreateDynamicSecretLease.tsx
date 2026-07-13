@@ -432,10 +432,12 @@ const renderOutputForm = (
   }
 
   if (provider === DynamicSecretProviders.Tailscale) {
-    const { AUTH_KEY, CLIENT_ID, CLIENT_SECRET } = data as {
+    const { AUTH_KEY, CLIENT_ID, CLIENT_SECRET, FEDERATED_CREDENTIAL_ID, AUDIENCE } = data as {
       AUTH_KEY?: string;
       CLIENT_ID?: string;
       CLIENT_SECRET?: string;
+      FEDERATED_CREDENTIAL_ID?: string;
+      AUDIENCE?: string;
     };
 
     if (AUTH_KEY) {
@@ -446,6 +448,21 @@ const renderOutputForm = (
             value={AUTH_KEY}
             helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
           />
+        </div>
+      );
+    }
+
+    if (FEDERATED_CREDENTIAL_ID) {
+      return (
+        <div>
+          <OutputDisplay label="Federated Credential ID" value={FEDERATED_CREDENTIAL_ID} />
+          {AUDIENCE && (
+            <OutputDisplay
+              label="Audience"
+              value={AUDIENCE}
+              helperText="Use this audience value when configuring your workload's OIDC token exchange."
+            />
+          )}
         </div>
       );
     }

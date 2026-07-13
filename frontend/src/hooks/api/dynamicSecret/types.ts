@@ -50,7 +50,8 @@ export enum DynamicSecretProviders {
 
 export enum TailscaleKeyAuthType {
   AuthKeys = "auth_keys",
-  OAuthKeys = "oauth_keys"
+  OAuthKeys = "oauth_keys",
+  FederatedKeys = "federated_keys"
 }
 
 export enum TailscaleAuthMethod {
@@ -558,6 +559,19 @@ export type TDynamicSecretProvider =
             description?: string;
             tags: string[];
             scopes: string[];
+          }
+        | {
+            authType: TailscaleKeyAuthType.FederatedKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            scopes: string[];
+            issuer: string;
+            subject: string;
+            audience?: string;
           };
     };
 

@@ -68,6 +68,21 @@ const formSchema = z
         description: z.string().trim().max(50).optional(),
         tags: z.string().trim().optional(),
         scopes: z.string().trim().min(1, "At least one scope is required")
+      }),
+      z.object({
+        authType: z.literal(TailscaleKeyAuthType.FederatedKeys),
+        auth: tailscaleAuthSchema,
+        tailnet: z.string().trim().min(1, "Tailnet is required"),
+        description: z.string().trim().max(50).optional(),
+        tags: z.string().trim().optional(),
+        scopes: z.string().trim().min(1, "At least one scope is required"),
+        issuer: z
+          .string()
+          .trim()
+          .min(1, "Issuer is required")
+          .url("Issuer must be a valid https URL"),
+        subject: z.string().trim().min(1, "Subject is required"),
+        audience: z.string().trim().optional()
       })
     ]),
     defaultTTL: z.string().superRefine(validateTTL),
@@ -126,13 +141,26 @@ const hydrateInputs = (rawInputs: TailscaleInputs): TForm["inputs"] => {
       preauthorized: rawInputs.preauthorized
     };
   }
+  if (rawInputs.authType === TailscaleKeyAuthType.OAuthKeys) {
+    return {
+      authType: TailscaleKeyAuthType.OAuthKeys,
+      auth: rawInputs.auth,
+      tailnet: rawInputs.tailnet,
+      description: rawInputs.description,
+      tags: (rawInputs.tags ?? []).join(", "),
+      scopes: (rawInputs.scopes ?? []).join(", ")
+    };
+  }
   return {
-    authType: TailscaleKeyAuthType.OAuthKeys,
+    authType: TailscaleKeyAuthType.FederatedKeys,
     auth: rawInputs.auth,
     tailnet: rawInputs.tailnet,
     description: rawInputs.description,
     tags: (rawInputs.tags ?? []).join(", "),
-    scopes: (rawInputs.scopes ?? []).join(", ")
+    scopes: (rawInputs.scopes ?? []).join(", "),
+    issuer: rawInputs.issuer,
+    subject: rawInputs.subject,
+    audience: rawInputs.audience
   };
 };
 
@@ -177,25 +205,39 @@ export const EditDynamicSecretTailscaleForm = ({
 
     const auth = buildAuth(inputs.auth);
 
-    const builtInputs: TailscaleInputs =
-      inputs.authType === TailscaleKeyAuthType.AuthKeys
-        ? {
-            authType: TailscaleKeyAuthType.AuthKeys,
-            auth,
-            tailnet: inputs.tailnet,
-            description: inputs.description || undefined,
-            tags: splitCsv(inputs.tags),
-            reusable: inputs.reusable,
-            preauthorized: inputs.preauthorized
-          }
-        : {
-            authType: TailscaleKeyAuthType.OAuthKeys,
-            auth,
-            tailnet: inputs.tailnet,
-            description: inputs.description || undefined,
-            tags: splitCsv(inputs.tags),
-            scopes: splitCsv(inputs.scopes)
-          };
+    let builtInputs: TailscaleInputs;
+    if (inputs.authType === TailscaleKeyAuthType.AuthKeys) {
+      builtInputs = {
+        authType: TailscaleKeyAuthType.AuthKeys,
+        auth,
+        tailnet: inputs.tailnet,
+        description: inputs.description || undefined,
+        tags: splitCsv(inputs.tags),
+        reusable: inputs.reusable,
+        preauthorized: inputs.preauthorized
+      };
+    } else if (inputs.authType === TailscaleKeyAuthType.OAuthKeys) {
+      builtInputs = {
+        authType: TailscaleKeyAuthType.OAuthKeys,
+        auth,
+        tailnet: inputs.tailnet,
+        description: inputs.description || undefined,
+        tags: splitCsv(inputs.tags),
+        scopes: splitCsv(inputs.scopes)
+      };
+    } else {
+      builtInputs = {
+        authType: TailscaleKeyAuthType.FederatedKeys,
+        auth,
+        tailnet: inputs.tailnet,
+        description: inputs.description || undefined,
+        tags: splitCsv(inputs.tags),
+        scopes: splitCsv(inputs.scopes),
+        issuer: inputs.issuer,
+        subject: inputs.subject,
+        audience: inputs.audience || undefined
+      };
+    }
 
     await updateDynamicSecret.mutateAsync({
       name: dynamicSecret.name,
@@ -373,6 +415,9 @@ export const EditDynamicSecretTailscaleForm = ({
                   >
                     <SelectItem value={TailscaleKeyAuthType.AuthKeys}>Auth Key</SelectItem>
                     <SelectItem value={TailscaleKeyAuthType.OAuthKeys}>OAuth Client</SelectItem>
+                    <SelectItem value={TailscaleKeyAuthType.FederatedKeys}>
+                      Federated Identity
+                    </SelectItem>
                   </Select>
                 </FormControl>
               )}
@@ -432,7 +477,8 @@ export const EditDynamicSecretTailscaleForm = ({
               )}
             />
 
-            {authType === TailscaleKeyAuthType.OAuthKeys && (
+            {(authType === TailscaleKeyAuthType.OAuthKeys ||
+              authType === TailscaleKeyAuthType.FederatedKeys) && (
               <Controller
                 control={control}
                 name="inputs.scopes"
@@ -450,6 +496,62 @@ export const EditDynamicSecretTailscaleForm = ({
                   </FormControl>
                 )}
               />
+            )}
+
+            {authType === TailscaleKeyAuthType.FederatedKeys && (
+              <>
+                <Controller
+                  control={control}
+                  name="inputs.issuer"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Issuer"
+                      className="grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      isRequired
+                      helperText="HTTPS URL of the OIDC issuer trusted for token exchange."
+                    >
+                      <Input {...field} placeholder="https://token.actions.githubusercontent.com" />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="inputs.subject"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Subject"
+                      className="grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      isRequired
+                      helperText="Pattern matched against the sub claim of the OIDC token (supports wildcards)."
+                    >
+                      <Input {...field} placeholder="repo:my-org/my-repo:*" />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="inputs.audience"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Audience"
+                      className="grow"
+                      isOptional
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      helperText="Leave blank to let Tailscale auto-generate one."
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+              </>
             )}
 
             {authType === TailscaleKeyAuthType.AuthKeys && (
