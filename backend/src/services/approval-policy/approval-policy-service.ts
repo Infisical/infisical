@@ -146,7 +146,7 @@ export const approvalPolicyServiceFactory = ({
 
     try {
       const project = await projectDAL.findById(request.projectId);
-      const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${request.type}`;
+      const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}`;
 
       await sendApprovalEmailsForStep(
         step,
