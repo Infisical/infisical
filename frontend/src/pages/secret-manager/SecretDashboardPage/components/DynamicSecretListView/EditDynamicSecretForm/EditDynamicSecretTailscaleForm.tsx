@@ -270,29 +270,6 @@ export const EditDynamicSecretTailscaleForm = ({
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div className="flex flex-col">
             <Controller
-              name="inputs.authType"
-              control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Key Type"
-                >
-                  <Select
-                    value={value}
-                    onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
-                    position="popper"
-                    dropdownContainerClassName="max-w-none"
-                  >
-                    <SelectItem value={TailscaleKeyAuthType.AuthKeys}>Auth Key</SelectItem>
-                    <SelectItem value={TailscaleKeyAuthType.OAuthKeys}>OAuth Client</SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-
-            <Controller
               name="inputs.auth.method"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
@@ -377,6 +354,29 @@ export const EditDynamicSecretTailscaleForm = ({
                 />
               </>
             )}
+
+            <Controller
+              name="inputs.authType"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Key Type"
+                >
+                  <Select
+                    value={value}
+                    onValueChange={(val) => onChange(val)}
+                    className="w-full border border-mineshaft-500"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
+                  >
+                    <SelectItem value={TailscaleKeyAuthType.AuthKeys}>Auth Key</SelectItem>
+                    <SelectItem value={TailscaleKeyAuthType.OAuthKeys}>OAuth Client</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
 
             <Controller
               control={control}
