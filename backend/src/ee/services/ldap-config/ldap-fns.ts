@@ -109,6 +109,11 @@ export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<bo
 /**
  * Extract the value of the first CN RDN from an LDAP DN string.
  * RFC 4514 attribute types are case-insensitive.
+ *
+ * Expects the ldapjs DN.toString() serialization, which hex-escapes commas
+ * inside values (\2c), so splitting on "," cannot cut a value in half. A raw
+ * RFC 4514 string using the alternative `\,` escape form would be split
+ * mid-value; do not pass DNs from other sources.
  */
 export const extractCnFromDn = (dn: string): string | undefined => {
   const cnRdn = dn
