@@ -5,7 +5,7 @@ import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
-interface ApprovalRequestNeedsReviewTemplateProps
+interface PkiApprovalRequestNeedsReviewTemplateProps
   extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   requesterName: string;
   requesterEmail?: string;
@@ -15,7 +15,7 @@ interface ApprovalRequestNeedsReviewTemplateProps
   approvalUrl: string;
 }
 
-export const ApprovalRequestNeedsReviewTemplate = ({
+export const PkiApprovalRequestNeedsReviewTemplate = ({
   siteUrl,
   requesterName,
   requesterEmail,
@@ -23,7 +23,7 @@ export const ApprovalRequestNeedsReviewTemplate = ({
   projectName,
   justification,
   approvalUrl
-}: ApprovalRequestNeedsReviewTemplateProps) => {
+}: PkiApprovalRequestNeedsReviewTemplateProps) => {
   return (
     <BaseEmailWrapper title="Approval Request" preview="An approval request is awaiting your review." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
@@ -53,9 +53,9 @@ export const ApprovalRequestNeedsReviewTemplate = ({
   );
 };
 
-export default ApprovalRequestNeedsReviewTemplate;
+export default PkiApprovalRequestNeedsReviewTemplate;
 
-ApprovalRequestNeedsReviewTemplate.PreviewProps = {
+PkiApprovalRequestNeedsReviewTemplate.PreviewProps = {
   requesterName: "Dan Cooper",
   requesterEmail: "dan@infisical.com",
   requestType: "code signing request",
@@ -63,4 +63,4 @@ ApprovalRequestNeedsReviewTemplate.PreviewProps = {
   justification: "Need to sign the v2.1.0 release artifacts.",
   approvalUrl: "https://infisical.com",
   siteUrl: "https://infisical.com"
-} as ApprovalRequestNeedsReviewTemplateProps;
+} as PkiApprovalRequestNeedsReviewTemplateProps;

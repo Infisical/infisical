@@ -226,7 +226,7 @@ export const sendApprovalEmailsForStep = async (
   await smtpService.sendMail({
     recipients,
     subjectLine: "Approval Request",
-    template: SmtpTemplates.ApprovalRequestNeedsReview,
+    template: SmtpTemplates.PkiApprovalRequestNeedsReview,
     substitutions: {
       requesterName: request.requesterName,
       requesterEmail: request.requesterEmail || undefined,
