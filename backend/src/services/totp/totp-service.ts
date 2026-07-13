@@ -24,7 +24,7 @@ type TTotpServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
-authenticator.options = { window: 1 };
+authenticator.options = { window: 2 };
 
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
@@ -187,7 +187,7 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
       "1"
     );
     if (!claimed) {
-      throw new ForbiddenRequestError({ message: "Invalid TOTP" });
+      throw new ForbiddenRequestError({ message: "TOTP code has already been used" });
     }
   };
 
