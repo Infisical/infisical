@@ -60,17 +60,17 @@ On the agent machine, the `connect` wrapper downloads the root CA to `~/.infisic
 
 ## Permissions
 
-Proxied services have their own project-level permission subject, so you can control who manages them and which identities can route traffic through them.
+Proxied services have their own project-level permission subject, with five actions:
 
-| Action | Description | Admin | Member | Viewer |
-| --- | --- | --- | --- | --- |
-| **Read** | View proxied services and their configuration | Yes | Yes | Yes |
-| **Create** | Create new proxied services | Yes | No | No |
-| **Edit** | Update a service's host patterns, secrets, or enabled state | Yes | No | No |
-| **Delete** | Delete proxied services | Yes | No | No |
-| **Proxy** | Route traffic through the service and have credentials applied | Yes | No | No |
+| Action | What it allows |
+| --- | --- |
+| **Read** | View proxied services and their configuration |
+| **Create** | Create new proxied services |
+| **Edit** | Update a service's host patterns, secrets, or enabled state |
+| **Delete** | Delete proxied services |
+| **Proxy** | Route traffic through the service and have secrets applied |
 
-The **Proxy** action is intended for agent machine identities, not humans. An identity with Proxy on a service gets the service's credentials applied to its traffic without ever being able to read the secret values.
+**Proxy** is meant for agent machine identities: an identity with Proxy gets a service's secrets applied to its traffic without ever being able to read the values.
 
 ### Built-in Roles
 

@@ -2919,11 +2919,7 @@ export const registerRoutes = async (
     proxiedServiceDAL,
     proxiedServiceCredentialDAL,
     folderDAL,
-    secretV2BridgeDAL,
-    secretImportDAL,
-    orgDAL,
-    projectFolderGrantDAL,
-    kmsService,
+    secretV2BridgeService,
     permissionService,
     licenseService
   });

@@ -1,27 +1,16 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, SecretType } from "@app/db/schemas";
-import {
-  hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "@app/ee/services/permission/permission-fns";
+import { ActionProjectType } from "@app/db/schemas";
 import {
   ProjectPermissionProxiedServiceActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
+import { PersonalOverridesBehavior, SecretImportReferencesBehavior } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
-import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
-import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -48,11 +37,7 @@ type TProxiedServiceServiceFactoryDep = {
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds" | "findByManySecretPath"
   >;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findBySecretKeys" | "find" | "findByFolderIds">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "getSecrets">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -73,11 +58,7 @@ export const proxiedServiceServiceFactory = ({
   proxiedServiceDAL,
   proxiedServiceCredentialDAL,
   folderDAL,
-  secretV2BridgeDAL,
-  secretImportDAL,
-  orgDAL,
-  projectFolderGrantDAL,
-  kmsService,
+  secretV2BridgeService,
   permissionService,
   licenseService
 }: TProxiedServiceServiceFactoryDep) => {
@@ -90,79 +71,64 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
-  // Validates every referenced secret exists and that the caller holds ReadValue on it. The check is
-  // per-key and tag-aware so a deny rule scoped by secret name or tag can't be bypassed to wire in a
-  // secret the caller can't read (the proxy would otherwise broker its value on their behalf). Keys not
-  // found in the folder are resolved through its secret imports with the same rules the secrets list API
-  // applies: ReadValue is checked at the import source (or against the importing folder for cross-project
-  // grants), and a secret the caller cannot read is treated as not found.
+  // Requires ReadValue (not just DescribeSecret) on each referenced secret: the proxy brokers the value on
+  // the caller's behalf, so attaching a secret they can't read would let them exfiltrate it on the wire.
   const $assertReferencedSecretsReadable = async (
-    permission: MongoAbility<ProjectPermissionSet>,
+    actor: OrgServiceActor,
     projectId: string,
-    actorOrgId: string,
     environment: string,
     secretPath: string,
-    folderId: string,
     credentials: TProxiedServiceCredentialInput[]
   ) => {
     const uniqueKeys = [...new Set(credentials.map((c) => c.secretKey))];
     if (!uniqueKeys.length) return;
 
-    const found = await secretV2BridgeDAL.findBySecretKeys(
-      folderId,
-      uniqueKeys.map((key) => ({ key, type: SecretType.Shared }))
-    );
-    const tagsByKey = new Map(found.map((s) => [s.key, s.tags?.map((t) => t.slug) ?? []]));
+    // viewSecretValue must be true so secretValueHidden reflects real ReadValue access; values are discarded.
+    const { secrets, imports } = await secretV2BridgeService.getSecrets({
+      actor: actor.type,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      projectId,
+      environment,
+      path: secretPath,
+      keys: uniqueKeys,
+      includeImports: true,
+      recursive: false,
+      viewSecretValue: true,
+      throwOnMissingReadValuePermission: false,
+      expandSecretReferences: false,
+      expandPersonalOverrides: false,
+      personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
+      secretImportReferencesBehavior: SecretImportReferencesBehavior.Relative
+    });
 
-    uniqueKeys
-      .filter((key) => tagsByKey.has(key))
-      .forEach((secretName) => {
-        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment,
-          secretPath,
-          secretName,
-          secretTags: tagsByKey.get(secretName) ?? []
-        });
-      });
+    // Folder secrets take precedence over imports at resolution time, so a key hidden in the folder is not
+    // readable even if an import would expose it. Imports only return keys the caller can read.
+    const readableFolderKeys = new Set(secrets.filter((s) => !s.secretValueHidden).map((s) => s.secretKey));
+    const describeOnlyFolderKeys = new Set(secrets.filter((s) => s.secretValueHidden).map((s) => s.secretKey));
+    const readableImportKeys = new Set(imports.flatMap((group) => group.secrets.map((s) => s.secretKey)));
 
-    let missing = uniqueKeys.filter((key) => !tagsByKey.has(key));
-    if (!missing.length) return;
+    const notReadable: string[] = [];
+    const notFound: string[] = [];
+    uniqueKeys.forEach((key) => {
+      if (readableFolderKeys.has(key)) return;
+      if (describeOnlyFolderKeys.has(key)) {
+        notReadable.push(key);
+        return;
+      }
+      if (readableImportKeys.has(key)) return;
+      notFound.push(key);
+    });
 
-    const secretImports = await secretImportDAL.findByFolderIds([folderId]);
-    const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
-    if (allowedImports.length) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+    if (notReadable.length) {
+      throw new ForbiddenRequestError({
+        message: `You do not have permission to read the value of secret(s): ${notReadable.join(", ")}`
       });
-      const importedGroups = await fnSecretsV2FromImports({
-        secretImports: allowedImports,
-        folderDAL,
-        secretDAL: secretV2BridgeDAL,
-        secretImportDAL,
-        orgDAL,
-        kmsService,
-        viewSecretValue: false,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        hasSecretAccess: (importEnvironment, importSecretPath, importSecretKey, importSecretTags) =>
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment: importEnvironment,
-            secretPath: importSecretPath,
-            secretName: importSecretKey,
-            secretTags: importSecretTags
-          }),
-        importAccessScopeByFolderId: new Map([[folderId, { environment, secretPath }]]),
-        projectId,
-        projectFolderGrantDAL,
-        actorOrgId
-      });
-      const importedKeys = new Set(importedGroups.flatMap((group) => group.secrets.map((s) => s.secretKey)));
-      missing = missing.filter((key) => !importedKeys.has(key));
     }
-
-    if (missing.length) {
+    if (notFound.length) {
       throw new BadRequestError({
-        message: `Referenced secret(s) not found in folder or its imports: ${missing.join(", ")}`
+        message: `Referenced secret(s) not found in folder or its imports: ${notFound.join(", ")}`
       });
     }
   };
@@ -202,15 +168,7 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
-    await $assertReferencedSecretsReadable(
-      permission,
-      projectId,
-      actor.orgId,
-      environment,
-      canonicalPath,
-      folder.id,
-      credentials
-    );
+    await $assertReferencedSecretsReadable(actor, projectId, environment, canonicalPath, credentials);
 
     const existing = await proxiedServiceDAL.findOne({ folderId: folder.id, name });
     if (existing) {
@@ -382,12 +340,10 @@ export const proxiedServiceServiceFactory = ({
 
     if (credentials) {
       await $assertReferencedSecretsReadable(
-        permission,
+        actor,
         service.projectId,
-        actor.orgId,
         service.environmentSlug,
         resolvedSecretPath,
-        service.folderId,
         credentials
       );
     }
