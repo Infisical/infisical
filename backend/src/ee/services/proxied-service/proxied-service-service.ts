@@ -84,6 +84,10 @@ export const proxiedServiceServiceFactory = ({
     if (!uniqueKeys.length) return;
 
     // viewSecretValue must be true so secretValueHidden reflects real ReadValue access; values are discarded.
+    // expandSecretReferences must be true to mirror what the broker fetches at runtime: it resolves each
+    // referenced value with expansion on, so the referenced value the broker would send may itself pull in
+    // another secret (${OTHER}). Expanding here under the caller's permissions makes getSecrets throw if they
+    // can't read a transitively-referenced secret, blocking them from attaching a value they can't fully read.
     const { secrets, imports } = await secretV2BridgeService.getSecrets({
       actor: actor.type,
       actorId: actor.id,
@@ -97,7 +101,7 @@ export const proxiedServiceServiceFactory = ({
       recursive: false,
       viewSecretValue: true,
       throwOnMissingReadValuePermission: false,
-      expandSecretReferences: false,
+      expandSecretReferences: true,
       expandPersonalOverrides: false,
       personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
       secretImportReferencesBehavior: SecretImportReferencesBehavior.Relative
