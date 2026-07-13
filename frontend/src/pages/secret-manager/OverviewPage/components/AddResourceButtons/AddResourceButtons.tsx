@@ -1,6 +1,6 @@
 import {
-  ArrowRightLeftIcon,
   ChevronDown,
+  ChevronsLeftRightEllipsisIcon,
   ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
@@ -172,7 +172,7 @@ export function AddResourceButtons({
                     onClick={onAddProxiedService}
                     isDisabled={!isSingleEnvSelected || !isAllowed}
                   >
-                    <ArrowRightLeftIcon className="text-proxied-service" />
+                    <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
                     Add Proxied Service
                   </DropdownMenuItem>
                 </TooltipTrigger>

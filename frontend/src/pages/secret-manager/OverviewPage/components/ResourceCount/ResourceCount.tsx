@@ -1,5 +1,5 @@
 import {
-  ArrowRightLeftIcon,
+  ChevronsLeftRightEllipsisIcon,
   FingerprintIcon,
   FolderIcon,
   ImportIcon,
@@ -76,7 +76,7 @@ export function ResourceCount({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="ml-2.5 flex items-center gap-2">
-              <ArrowRightLeftIcon className="size-4 text-proxied-service" />
+              <ChevronsLeftRightEllipsisIcon className="size-4 text-proxied-service" />
               <span>{proxiedServiceCount}</span>
             </div>
           </TooltipTrigger>

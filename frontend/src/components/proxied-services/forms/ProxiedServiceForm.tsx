@@ -12,10 +12,15 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   IconButton,
   Input,
   SheetFooter,
   Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -227,24 +232,6 @@ export const ProxiedServiceForm = ({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 overflow-hidden">
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <Controller
-          control={control}
-          name="isEnabled"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="proxied-service-enabled" className="cursor-pointer">
-                Enabled
-              </FieldLabel>
-              <Switch
-                id="proxied-service-enabled"
-                variant="project"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </Field>
-          )}
-        />
-
         <Field>
           <FieldLabel>Service Name</FieldLabel>
           <FieldContent>
@@ -282,14 +269,44 @@ export const ProxiedServiceForm = ({
           </FieldContent>
         </Field>
 
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="text-sm font-medium">Header Rewriting</p>
-            <p className="mt-1 text-xs text-muted">Sets these headers on every request.</p>
-          </div>
+        <Controller
+          control={control}
+          name="isEnabled"
+          render={({ field }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Enabled</FieldTitle>
+                <FieldDescription>
+                  When off, the proxy stops brokering this service&apos;s traffic.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="proxied-service-enabled"
+                variant="project"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </Field>
+          )}
+        />
 
-          {headerMode === HeaderRewritingMode.Headers ? (
-            <>
+        <div className="flex flex-col gap-3">
+          <Tabs
+            value={headerMode}
+            onValueChange={(value) => setValue("headerMode", value as HeaderRewritingMode)}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">Header Rewrites</p>
+                <p className="mt-1 text-xs text-muted">Sets these headers on every request.</p>
+              </div>
+              <TabsList>
+                <TabsTrigger value={HeaderRewritingMode.Headers}>Custom Headers</TabsTrigger>
+                <TabsTrigger value={HeaderRewritingMode.BasicAuth}>Basic Auth</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value={HeaderRewritingMode.Headers} className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
                 {headerFields.fields.length === 0 && (
                   <p className="text-center text-sm text-muted">
@@ -363,20 +380,12 @@ export const ProxiedServiceForm = ({
                   <PlusIcon className="mr-1 size-4" />
                   Add Header
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setValue("headerMode", HeaderRewritingMode.BasicAuth)}
-                >
-                  Switch to Basic Auth
-                </Button>
               </div>
               {headersRootError && <FieldError>{headersRootError}</FieldError>}
-            </>
-          ) : (
-            <>
-              <div className="flex gap-3">
+            </TabsContent>
+
+            <TabsContent value={HeaderRewritingMode.BasicAuth}>
+              <div className="flex gap-3 rounded-md border border-border bg-container/50 p-4">
                 <Field className="flex-1">
                   <FieldLabel>Username</FieldLabel>
                   <FieldContent>
@@ -418,24 +427,14 @@ export const ProxiedServiceForm = ({
                   </FieldContent>
                 </Field>
               </div>
-              <div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setValue("headerMode", HeaderRewritingMode.Headers)}
-                >
-                  Switch to Custom Headers
-                </Button>
-              </div>
-            </>
-          )}
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="flex flex-col gap-3">
           <div>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium">Credential Substitution</p>
+              <p className="text-sm font-medium">Secret Substitution</p>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <InfoIcon className="size-3.5 text-muted" />
@@ -461,7 +460,7 @@ export const ProxiedServiceForm = ({
             {substitutionFields.fields.map((row, i) => (
               <div
                 key={row.id}
-                className="flex flex-col gap-3 rounded-md border border-border p-4 text-sm"
+                className="flex flex-col gap-3 rounded-md border border-border bg-card p-4 text-sm"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
                   <span className="shrink-0 text-muted">Set</span>
@@ -507,6 +506,12 @@ export const ProxiedServiceForm = ({
                     <TrashIcon className="size-4" />
                   </IconButton>
                 </div>
+                <FieldError
+                  errors={[
+                    errors.substitutions?.[i]?.placeholderKey,
+                    errors.substitutions?.[i]?.placeholderValue
+                  ]}
+                />
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 text-muted">and replace it in</span>
                   <div className="flex-1">
@@ -517,6 +522,7 @@ export const ProxiedServiceForm = ({
                         <SurfaceSelect value={field.value} onChange={field.onChange} />
                       )}
                     />
+                    <FieldError errors={[errors.substitutions?.[i]?.surfaces]} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -536,16 +542,9 @@ export const ProxiedServiceForm = ({
                         />
                       )}
                     />
+                    <FieldError errors={[errors.substitutions?.[i]?.secretKey]} />
                   </div>
                 </div>
-                <FieldError
-                  errors={[
-                    errors.substitutions?.[i]?.placeholderKey,
-                    errors.substitutions?.[i]?.placeholderValue,
-                    errors.substitutions?.[i]?.surfaces,
-                    errors.substitutions?.[i]?.secretKey
-                  ]}
-                />
               </div>
             ))}
           </div>

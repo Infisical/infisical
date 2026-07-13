@@ -20,7 +20,7 @@ export const EditProxiedServiceModal = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-3xl">
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-4xl">
         <SheetHeader className="border-b">
           <SheetTitle>Edit Proxied Service</SheetTitle>
           <SheetDescription>Update how the agent proxy brokers this service.</SheetDescription>

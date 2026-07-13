@@ -1,5 +1,11 @@
 import { subject } from "@casl/ability";
-import { ArrowRightLeftIcon, ChevronDownIcon, EditIcon, Trash2Icon } from "lucide-react";
+import {
+  BanIcon,
+  ChevronDownIcon,
+  ChevronsLeftRightEllipsisIcon,
+  EditIcon,
+  Trash2Icon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -118,19 +124,27 @@ export const ProxiedServiceTableRow = ({
   );
 
   const renderInlineDetails = (proxiedService: TDashboardProxiedService) => (
-    <div
-      className={twMerge(
-        "ml-auto flex items-center gap-x-2 transition-[margin] duration-300",
-        "group-hover:mr-24"
-      )}
-    >
-      <Badge variant="neutral" className="max-w-[240px] overflow-hidden">
-        <span className="block max-w-[240px] truncate" title={proxiedService.hostPattern}>
-          {proxiedService.hostPattern}
-        </span>
-      </Badge>
-      {!proxiedService.isEnabled && <Badge variant="neutral">Disabled</Badge>}
-    </div>
+    <>
+      <span
+        className="ml-2 max-w-[240px] truncate text-xs text-muted"
+        title={proxiedService.hostPattern}
+      >
+        {proxiedService.hostPattern}
+      </span>
+      <div
+        className={twMerge(
+          "ml-auto flex items-center gap-x-2 transition-[margin] duration-300",
+          "group-hover:mr-24"
+        )}
+      >
+        {!proxiedService.isEnabled && (
+          <Badge variant="neutral">
+            <BanIcon />
+            Disabled
+          </Badge>
+        )}
+      </div>
+    </>
   );
 
   return (
@@ -149,7 +163,7 @@ export const ProxiedServiceTableRow = ({
           {!isSingleEnvView && isExpanded ? (
             <ChevronDownIcon className="block" />
           ) : (
-            <ArrowRightLeftIcon className="text-proxied-service" />
+            <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
           )}
         </TableCell>
         <TableCell

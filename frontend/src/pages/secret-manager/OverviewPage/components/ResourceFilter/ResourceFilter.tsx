@@ -1,5 +1,5 @@
 import {
-  ArrowRightLeftIcon,
+  ChevronsLeftRightEllipsisIcon,
   FilterIcon,
   FingerprintIcon,
   FolderIcon,
@@ -49,7 +49,7 @@ const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
   {
     type: "proxiedService",
     label: "Proxied Services",
-    icon: <ArrowRightLeftIcon className="text-proxied-service" />
+    icon: <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
   },
   { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> }
 ];
