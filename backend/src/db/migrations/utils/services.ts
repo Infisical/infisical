@@ -88,6 +88,11 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     envConfig
   });
 
+  // Establish the license connection so onPremFeatures reflects the instance's actual entitlements.
+  // Without this, onPremFeatures stays at its defaults (all disabled) and the HSM entitlement check
+  // below fails for licensed HSM instances during migrations.
+  await licenseService.init();
+
   // ----- HSM startup -----
 
   const { hsmService } = await getMigrationHsmService({ envConfig });
