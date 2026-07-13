@@ -134,9 +134,7 @@ export const nutanixPrismCentralPkiSyncFactory = ({
     const [certName, { cert, privateKey, certificateChain, certificateId }] = sortedEntries[0];
     const skipped = certEntries.length - 1;
 
-    // Nutanix has a single certificate slot per cluster, so only the newest
-    // certificate is uploaded. Report the rest as skipped so their sync records
-    // are not marked as succeeded by the queue.
+    // Nutanix has one certificate slot per cluster; only the newest certificate is uploaded
     const skippedCertificates = sortedEntries.slice(1).map(([name]) => ({
       name,
       reason: "Only the newest certificate is synced to the Nutanix Prism Central cluster certificate slot"
@@ -181,8 +179,6 @@ export const nutanixPrismCentralPkiSyncFactory = ({
     const gatewayId = await resolveGateway(pkiSync);
 
     try {
-      // Inside the try so an unsupported key algorithm marks the certificate
-      // sync record as failed instead of leaving it in a running state.
       const algo = inferPrivateKeyAlgorithm(cert);
 
       logger.info(
@@ -200,8 +196,7 @@ export const nutanixPrismCentralPkiSyncFactory = ({
         async (makeRequest) => {
           const clusterPath = encodeURIComponent(clusterId);
 
-          // Step 1: GET current SSL certificate. Nutanix returns the ETag required
-          // for the subsequent PUT (If-Match) as an HTTP response header.
+          // the ETag response header is required as If-Match on the subsequent PUT
           const getResponse = await makeRequest<unknown>({
             method: "GET",
             url: `${baseUrl}/api/clustermgmt/v4.2/config/clusters/${clusterPath}/ssl-certificate`
@@ -214,7 +209,6 @@ export const nutanixPrismCentralPkiSyncFactory = ({
             `Nutanix Prism Central PKI sync [syncId=${pkiSync.id}]: fetched current SSL certificate for ETag [clusterId=${clusterId}]`
           );
 
-          // Step 2: PUT the new SSL certificate
           const sslCertBody: Record<string, unknown> = {
             privateKeyAlgorithm: algo,
             privateKey: pemToNutanixFormat(privateKey),
@@ -250,7 +244,6 @@ export const nutanixPrismCentralPkiSyncFactory = ({
             `Nutanix Prism Central PKI sync [syncId=${pkiSync.id}]: certificate update task queued [taskExtId=${taskExtId}]`
           );
 
-          // Step 3: Poll the task until completion
           if (taskExtId) {
             let lastPollError: unknown;
 
@@ -354,9 +347,6 @@ export const nutanixPrismCentralPkiSyncFactory = ({
         );
       }
 
-      // Preserve the retry semantics of errors thrown inside the operation
-      // (e.g. non-retryable post-PUT poll failures). Transient network/API
-      // errors fall through to a retryable PkiSyncError, matching other syncs.
       if (error instanceof PkiSyncError) throw error;
 
       throw new PkiSyncError({

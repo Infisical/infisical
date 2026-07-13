@@ -7,9 +7,7 @@ import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 const NutanixPrismCentralSyncOptionsSchema = z.object({
   canImportCertificates: z.literal(false).default(false),
   canRemoveCertificates: z.literal(false).default(false),
-  // Nutanix has a single certificate slot per cluster, so destination-side
-  // certificate names do not apply. The field is hidden in the UI and must
-  // override the base schema's required certificateNameSchema.
+  // hidden in the UI; overrides the base schema's required field
   certificateNameSchema: z.string().optional()
 });
 

@@ -31,8 +31,7 @@ export const buildNutanixAuthHeaders = (
   credentials: TNutanixPrismCentralConnectionConfig["credentials"],
   method: NutanixPrismCentralConnectionMethod
 ): Record<string, string> => {
-  // NTNX-Request-Id must be unique per request (Nutanix uses it for idempotency),
-  // so callers must invoke this once per request, not once per operation.
+  // Nutanix uses NTNX-Request-Id for idempotency; must be unique per request
   const headers: Record<string, string> = {
     Accept: "application/json",
     "NTNX-Request-Id": crypto.randomUUID()
