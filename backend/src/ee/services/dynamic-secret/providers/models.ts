@@ -898,7 +898,13 @@ export const DynamicSecretTailscaleSchema = z
     })
   ])
   .superRefine((data, ctx) => {
-    if (data.authType === TailscaleKeyAuthType.AuthKeys && data.tags.length === 0) {
+    // Tailscale requires ACL tags on tailnet-owned auth keys, which are the ones created via OAuth.
+    // Auth keys created with a user's API access token are user-owned and may omit tags.
+    if (
+      data.authType === TailscaleKeyAuthType.AuthKeys &&
+      data.auth.method === TailscaleAuthMethod.OAuth &&
+      data.tags.length === 0
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["tags"],

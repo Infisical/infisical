@@ -1,8 +1,8 @@
+import { isAxiosError } from "axios";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
 import { DynamicSecretTailscaleSchema, TailscaleAuthMethod, TailscaleKeyAuthType, TDynamicProviderFns } from "./models";
@@ -42,6 +42,18 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
   const $sensitiveTokens = (auth: TTailscaleAuth): string[] =>
     auth.method === TailscaleAuthMethod.ApiKey ? [auth.apiKey] : [auth.clientId, auth.clientSecret];
 
+  // Surfaces the message Tailscale returns in the response body (e.g. "actor cannot set scopes: [devices:core]")
+  // rather than the generic Axios "Request failed with status code 4xx". Falls back to the raw error message.
+  const $getErrorMessage = (err: unknown): string => {
+    if (isAxiosError<{ message?: string } | string>(err) && err.response) {
+      const { data } = err.response;
+      if (typeof data === "string" && data) return data;
+      if (data && typeof data === "object" && data.message) return data.message;
+      if (data) return JSON.stringify(data);
+    }
+    return (err as Error)?.message;
+  };
+
   // Resolves the Bearer token used for the Tailscale API. API-key auth uses the token
   // directly; OAuth auth exchanges the client credentials for a short-lived access token.
   const $getBearerToken = async (auth: TTailscaleAuth): Promise<string> => {
@@ -70,14 +82,23 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
 
     try {
       const token = await $getBearerToken(providerInputs.auth);
-      await safeRequest.get(
-        `${TAILSCALE_API_BASE_URL}/tailnet/${encodeURIComponent(providerInputs.tailnet)}/keys?all=true`,
-        $requestConfig(token)
-      );
+
+      // OAuth auth is fully validated by the client_credentials exchange in $getBearerToken: a
+      // successful token proves the credentials are valid without assuming a key-read scope. An OAuth
+      // client scoped only to create keys (all a lease needs) would fail a key listing, so we must not
+      // probe reads here. API-key auth performs no exchange, so probe a read endpoint to confirm the
+      // token; Tailscale API access tokens are owner-scoped, so a valid key always passes.
+      if (providerInputs.auth.method === TailscaleAuthMethod.ApiKey) {
+        await safeRequest.get(
+          `${TAILSCALE_API_BASE_URL}/tailnet/${encodeURIComponent(providerInputs.tailnet)}/keys?all=true`,
+          $requestConfig(token)
+        );
+      }
+
       return true;
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
-        unsanitizedString: (err as Error)?.message,
+        unsanitizedString: $getErrorMessage(err),
         tokens: $sensitiveTokens(providerInputs.auth)
       });
       throw new BadRequestError({ message: `Failed to connect with Tailscale: ${sanitizedErrorMessage}` });
@@ -155,9 +176,8 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
 
       return { entityId: id, data: { FEDERATED_CREDENTIAL_ID: id, AUDIENCE: audience ?? "" } };
     } catch (err) {
-      logger.error(err as Error);
       const sanitizedErrorMessage = sanitizeString({
-        unsanitizedString: (err as Error)?.message,
+        unsanitizedString: $getErrorMessage(err),
         tokens: $sensitiveTokens(providerInputs.auth)
       });
       throw new BadRequestError({ message: `Failed to create Tailscale key: ${sanitizedErrorMessage}` });
@@ -175,7 +195,7 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
       return { entityId };
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
-        unsanitizedString: (err as Error)?.message,
+        unsanitizedString: $getErrorMessage(err),
         tokens: $sensitiveTokens(providerInputs.auth)
       });
       throw new BadRequestError({ message: `Failed to revoke Tailscale key: ${sanitizedErrorMessage}` });

@@ -212,7 +212,7 @@ export const TailscaleInputForm = ({
   const authType = watch("provider.authType");
   const authMethod = watch("provider.auth.method");
   const tagsRequired =
-    authType === TailscaleKeyAuthType.AuthKeys && authMethod === TailscaleAuthMethod.OAuth;
+    authType === TailscaleKeyAuthType.OAuthKeys || authType === TailscaleKeyAuthType.FederatedKeys;
 
   const handleCreateDynamicSecret = async ({
     name,

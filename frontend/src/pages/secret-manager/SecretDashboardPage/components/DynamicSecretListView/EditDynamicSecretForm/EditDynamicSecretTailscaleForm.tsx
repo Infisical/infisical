@@ -238,7 +238,7 @@ export const EditDynamicSecretTailscaleForm = ({
   const authType = watch("inputs.authType");
   const authMethod = watch("inputs.auth.method");
   const tagsRequired =
-    authType === TailscaleKeyAuthType.AuthKeys && authMethod === TailscaleAuthMethod.OAuth;
+    authType === TailscaleKeyAuthType.OAuthKeys || authType === TailscaleKeyAuthType.FederatedKeys;
 
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     if (updateDynamicSecret.isPending) return;
