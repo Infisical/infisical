@@ -64,6 +64,7 @@ interface CertificateRequestForService {
   country?: string;
   state?: string;
   locality?: string;
+  domainComponents?: string[];
   keyUsages?: CertKeyUsageType[];
   extendedKeyUsages?: CertExtendedKeyUsageType[];
   altNames?: Array<{
@@ -146,6 +147,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               country: subjectAttributeField.nullish(),
               state: subjectAttributeField.nullish(),
               locality: subjectAttributeField.nullish(),
+              domainComponents: z.array(subjectAttributeField.min(1, "Domain component cannot be empty")).optional(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
@@ -367,6 +369,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           certificateRequestForService[field] = attributes[field] ?? undefined;
         }
       }
+      // Domain components are multi-valued; only include when the request explicitly provides a non-empty list.
+      if (attributes?.domainComponents && attributes.domainComponents.length > 0) {
+        certificateRequestForService.domainComponents = attributes.domainComponents;
+      }
 
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 
@@ -441,6 +447,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           country: z.string().nullable().optional(),
           state: z.string().nullable().optional(),
           locality: z.string().nullable().optional(),
+          domainComponents: z.array(z.string()).nullable().optional(),
           basicConstraints: z
             .object({
               isCA: z.boolean(),
@@ -1344,7 +1351,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
                 organizationalUnit: z.string().optional(),
                 country: z.string().optional(),
                 state: z.string().optional(),
-                locality: z.string().optional()
+                locality: z.string().optional(),
+                domainComponents: z.array(z.string()).optional()
               })
               .optional(),
             fingerprints: z

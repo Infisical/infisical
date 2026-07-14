@@ -59,6 +59,7 @@ Control what X.509 distinguished name attributes can appear in certificates:
 | Country | C | `US` |
 | State/Province | ST | `California` |
 | Locality | L | `San Francisco` |
+| Domain Component | DC | `example` |
 
 For each attribute, configure enforcement:
 
@@ -73,6 +74,15 @@ For each attribute, configure enforcement:
     Values that **must not appear**. The request is rejected if the attribute matches a denied pattern.
   </Accordion>
 </AccordionGroup>
+
+<Note>
+  Domain Component (DC) is matched independently from the Common Name. A subject can carry more than
+  one domain component (for example `CN=host, DC=auth, DC=lucidgov, DC=app`), and each value is
+  checked against the Domain Component rule individually, similar to Subject Alternative Names. To
+  scope certificates to a domain, add a Common Name rule for the hostname and a separate Domain
+  Component rule for the domain labels (for the example above, allow `auth`, `lucidgov`, and `app`,
+  or a pattern such as `*`).
+</Note>
 
 <Warning>
   Any subject attribute in a certificate request that isn't explicitly defined in the policy will be rejected. If no subject rules are defined, any request with subject attributes will fail.

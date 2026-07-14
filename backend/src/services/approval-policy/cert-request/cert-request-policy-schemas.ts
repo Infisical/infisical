@@ -32,6 +32,7 @@ export const CertRequestPolicyRequestDataSchema = z.object({
     country: z.string().optional(),
     state: z.string().optional(),
     locality: z.string().optional(),
+    domainComponents: z.array(z.string()).optional(),
     keyUsages: z.array(z.string()).optional(),
     extendedKeyUsages: z.array(z.string()).optional(),
     altNames: z

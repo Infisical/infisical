@@ -70,7 +70,8 @@ export enum CertSubjectAttributeType {
   COUNTRY = "country",
   STATE = "state",
   LOCALITY = "locality",
-  ORGANIZATIONAL_UNIT = "organizational_unit"
+  ORGANIZATIONAL_UNIT = "organizational_unit",
+  DOMAIN_COMPONENT = "domain_component"
 }
 
 export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {

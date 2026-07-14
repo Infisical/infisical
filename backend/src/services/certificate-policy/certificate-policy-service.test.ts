@@ -715,6 +715,109 @@ describe("CertificatePolicyService", () => {
       expect(result.isValid).toBe(true);
     });
 
+    const buildSubjectPolicy = (subject: TTemplateV2Policy["subject"]): TCertificatePolicy =>
+      ({
+        id: "template-123",
+        projectId: "project-123",
+        name: "subject-only-template",
+        description: null,
+        subject,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }) as unknown as TCertificatePolicy;
+
+    it("should allow domain components that match the domain_component allowed patterns", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(
+        buildSubjectPolicy([
+          { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
+          { type: CertSubjectAttributeType.DOMAIN_COMPONENT, allowed: ["app", "lucidgov", "auth"] }
+        ])
+      );
+
+      const request: TCertificateRequest = {
+        commonName: "auth-AD-MANAGER02-CA",
+        domainComponents: ["app", "lucidgov", "auth"]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", request);
+      expect(result.isValid).toBe(true);
+    });
+
+    it("should reject a domain component that does not match the domain_component allowed patterns", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(
+        buildSubjectPolicy([
+          { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
+          { type: CertSubjectAttributeType.DOMAIN_COMPONENT, allowed: ["*.lucidgov"] }
+        ])
+      );
+
+      const request: TCertificateRequest = {
+        commonName: "auth-AD-MANAGER02-CA",
+        domainComponents: ["app", "lucidgov", "auth"]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", request);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("domain_component value 'app' does not match allowed patterns: *.lucidgov");
+    });
+
+    it("should deny a domain component that matches a denied pattern", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(
+        buildSubjectPolicy([
+          { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
+          { type: CertSubjectAttributeType.DOMAIN_COMPONENT, denied: ["auth"] }
+        ])
+      );
+
+      const request: TCertificateRequest = {
+        commonName: "auth-AD-MANAGER02-CA",
+        domainComponents: ["app", "lucidgov", "auth"]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", request);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("domain_component value 'auth' is denied by template policy");
+    });
+
+    it("should enforce required domain_component patterns", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(
+        buildSubjectPolicy([
+          { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
+          { type: CertSubjectAttributeType.DOMAIN_COMPONENT, allowed: ["*"], required: ["auth"] }
+        ])
+      );
+
+      const missing: TCertificateRequest = {
+        commonName: "auth-AD-MANAGER02-CA",
+        domainComponents: ["app", "lucidgov"]
+      };
+      const missingResult = await service.validateCertificateRequest("template-123", missing);
+      expect(missingResult.isValid).toBe(false);
+      expect(missingResult.errors).toContain("Required domain_component matching pattern 'auth' not found in request");
+
+      const present: TCertificateRequest = {
+        commonName: "auth-AD-MANAGER02-CA",
+        domainComponents: ["app", "lucidgov", "auth"]
+      };
+      const presentResult = await service.validateCertificateRequest("template-123", present);
+      expect(presentResult.isValid).toBe(true);
+    });
+
+    it("should reject domain components when the policy defines subject rules but no domain_component rule", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(
+        buildSubjectPolicy([{ type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] }])
+      );
+
+      const request: TCertificateRequest = {
+        commonName: "auth-AD-MANAGER02-CA",
+        domainComponents: ["app", "lucidgov", "auth"]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", request);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("domain_component is not allowed by template policy (not defined in template)");
+    });
+
     it("should prevent certificates from including denied SANs", async () => {
       const denyTemplate = {
         ...sampleTemplate,

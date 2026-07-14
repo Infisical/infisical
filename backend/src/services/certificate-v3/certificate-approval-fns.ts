@@ -17,14 +17,12 @@ import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/servi
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  assertCaInProfileProject,
-  createDistinguishedName
-} from "@app/services/certificate-authority/certificate-authority-fns";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
+  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
@@ -519,12 +517,12 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
-    const subjectOverride = createDistinguishedName({
+    const subjectOverride = buildSubjectOverrideForCsr(csr || "", {
       commonName: reconstructedRequest.commonName,
       organization: reconstructedRequest.organization,
-      ou: reconstructedRequest.organizationalUnit,
+      organizationalUnit: reconstructedRequest.organizationalUnit,
       country: reconstructedRequest.country,
-      province: reconstructedRequest.state,
+      state: reconstructedRequest.state,
       locality: reconstructedRequest.locality
     });
 

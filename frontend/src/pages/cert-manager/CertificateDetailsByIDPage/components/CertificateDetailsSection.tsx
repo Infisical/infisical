@@ -123,6 +123,22 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
               </div>
             )}
             <Detail>
+              <DetailLabel>Domain Components</DetailLabel>
+              <DetailValue>
+                {certificate.subject?.domainComponents?.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {certificate.subject.domainComponents.map((dc) => (
+                      <Badge key={dc} variant="neutral">
+                        {dc}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
+              </DetailValue>
+            </Detail>
+            <Detail>
               <DetailLabel>Subject Alternative Names</DetailLabel>
               <DetailValue>
                 {sanList.length > 0 ? (

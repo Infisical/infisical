@@ -39,7 +39,8 @@ const CertificateProfileDefaultsResponseSchema = z
     organizationalUnit: z.string().optional(),
     country: z.string().optional(),
     state: z.string().optional(),
-    locality: z.string().optional()
+    locality: z.string().optional(),
+    domainComponents: z.array(z.string()).optional()
   })
   .nullish();
 
@@ -122,7 +123,8 @@ export const registerCertificateProfilesRouter = async (
               organizationalUnit: z.string().optional(),
               country: z.string().optional(),
               state: z.string().optional(),
-              locality: z.string().optional()
+              locality: z.string().optional(),
+              domainComponents: z.array(z.string().trim().min(1)).optional()
             })
             .nullish()
         })
@@ -605,7 +607,8 @@ export const registerCertificateProfilesRouter = async (
               organizationalUnit: z.string().optional(),
               country: z.string().optional(),
               state: z.string().optional(),
-              locality: z.string().optional()
+              locality: z.string().optional(),
+              domainComponents: z.array(z.string().trim().min(1)).optional()
             })
             .nullish()
         })
