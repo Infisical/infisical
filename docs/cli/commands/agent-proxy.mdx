@@ -127,7 +127,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
 
 ```bash
-$ infisical secrets agent-proxy connect --proxy=<host>:<port> --env=<env-slug> -- [agent start command]
+$ infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
 
 # Example
 $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
