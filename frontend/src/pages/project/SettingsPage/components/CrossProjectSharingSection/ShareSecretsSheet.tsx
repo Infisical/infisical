@@ -2,28 +2,13 @@ import { useEffect, useState } from "react";
 import { MultiValue } from "react-select";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import {
-  ArrowRight,
-  Box,
-  FolderIcon,
-  Layers,
-  Pencil,
-  Plus,
-  Trash2,
-  TriangleAlert
-} from "lucide-react";
+import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Alert,
-  AlertDescription,
-  Badge,
   Button,
-  Card,
   Field,
-  FieldDescription,
   FieldGroup,
-  FieldLabel,
   FilterableSelect,
   IconButton,
   SecretPathInput,
@@ -50,21 +35,25 @@ import {
 } from "@app/hooks/api/projectFolderGrants/types";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
-import { useGetSecretImports } from "@app/hooks/api/secretImports";
+import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
 
-type SourceEntry = {
+type EnvironmentGroup = {
   environment: string;
-  secretPath: string;
+  secretPaths: string[];
 };
-
-const EMPTY_ENTRY: SourceEntry = { environment: "", secretPath: "/" };
 
 const normalizePath = (p: string) => {
   const segments = p.split("/").filter(Boolean);
   return segments.length === 0 ? "/" : `/${segments.join("/")}`;
 };
 
-const entryKey = (e: SourceEntry) => `${e.environment}:${normalizePath(e.secretPath)}`;
+const flattenGroups = (groups: EnvironmentGroup[]) =>
+  groups.flatMap((g) =>
+    g.secretPaths.map((sp) => ({ environment: g.environment, secretPath: sp }))
+  );
+
+const entryKey = (environment: string, secretPath: string) =>
+  `${environment}:${normalizePath(secretPath)}`;
 
 export type ShareSecretsEditData = {
   targetProjectId: string;
@@ -72,101 +61,137 @@ export type ShareSecretsEditData = {
   grants: TProjectFolderGrant[];
 };
 
-type SourceEntryRowProps = {
-  entry: SourceEntry;
-  index: number;
-  environments: { id: string; slug: string; name: string }[];
-  onChange: (index: number, updated: Partial<SourceEntry>) => void;
+type PathAdderProps = {
+  environment: string;
+  existingPaths: string[];
+  onAdd: (path: string) => void;
 };
 
-const SourceEntryRow = ({ entry, index, environments, onChange }: SourceEntryRowProps) => {
+const PathAdder = ({ environment, existingPaths, onAdd }: PathAdderProps) => {
   const { currentProject } = useProject();
-  const { data: secretImports = [] } = useGetSecretImports({
+  const [value, setValue] = useState("/");
+
+  const normalized = normalizePath(value);
+  const isRoot = normalized === "/";
+  const parentPath = isRoot ? "/" : normalized.substring(0, normalized.lastIndexOf("/")) || "/";
+  const folderName = isRoot ? "" : (normalized.split("/").filter(Boolean).pop() ?? "");
+
+  const { data: folders = [] } = useGetProjectFolders({
     projectId: currentProject.id,
-    environment: entry.environment,
-    path: entry.secretPath,
-    options: { enabled: Boolean(entry.environment) && Boolean(entry.secretPath) }
+    environment,
+    path: parentPath,
+    options: { enabled: Boolean(environment) && !isRoot }
   });
 
+  const pathExists = isRoot || folders.some((f) => f.name === folderName);
+  const canAdd = value.trim().length > 0 && !existingPaths.includes(normalized) && pathExists;
+
+  const handleAdd = () => {
+    if (!canAdd) return;
+    onAdd(normalized);
+    setValue("/");
+  };
+
   return (
-    <div className="flex flex-col gap-3">
-      <Field>
-        <FieldLabel>Environment</FieldLabel>
-        <Select
-          value={entry.environment}
-          onValueChange={(val) => onChange(index, { environment: val, secretPath: "/" })}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select environment" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            {environments.map((env) => (
-              <SelectItem key={env.id} value={env.slug}>
-                {env.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-
-      <Field>
-        <FieldLabel>Folder path</FieldLabel>
+    <div className="flex items-center gap-2">
+      <div className="flex-1">
         <SecretPathInput
-          value={entry.secretPath}
-          onChange={(val) => onChange(index, { secretPath: val })}
-          environment={entry.environment}
-          placeholder="/"
+          value={value}
+          onChange={setValue}
+          environment={environment}
+          placeholder="Add a folder path..."
+          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
         />
-        <FieldDescription>
-          Secrets at this path become available to the target project.
-        </FieldDescription>
-      </Field>
-
-      {secretImports.length > 0 && (
-        <Alert variant="warning">
-          <TriangleAlert />
-          <AlertDescription>
-            This folder contains secret imports. Imports aren&apos;t re-shared across projects, so
-            only the folder&apos;s own static secrets will be shared with the target project.
-          </AlertDescription>
-        </Alert>
-      )}
+      </div>
+      <IconButton variant="ghost-muted" size="sm" onClick={handleAdd} isDisabled={!canAdd}>
+        <Plus />
+      </IconButton>
     </div>
   );
 };
 
-type CompactEntryRowProps = {
-  entry: SourceEntry;
-  envName: string;
-  onEdit: () => void;
-  onRemove: () => void;
+type EnvironmentGroupRowProps = {
+  group: EnvironmentGroup;
+  index: number;
+  environments: { id: string; slug: string; name: string }[];
+  onChangeEnvironment: (index: number, env: string) => void;
+  onAddPath: (index: number, path: string) => void;
+  onRemovePath: (index: number, pathIndex: number) => void;
+  onRemoveGroup: (index: number) => void;
 };
 
-const CompactEntryRow = ({ entry, envName, onEdit, onRemove }: CompactEntryRowProps) => (
-  <div className="flex items-center gap-2 px-3 py-2">
-    <div className="flex flex-1 items-center gap-2">
-      <Badge variant="neutral" className="gap-1.5">
-        <Layers className="size-3" />
-        {envName}
-      </Badge>
-      <ArrowRight className="size-3.5 shrink-0 text-muted" />
-      <div className="flex items-center gap-1.5">
-        <FolderIcon className="size-3.5 text-muted" />
-        <span className="text-sm text-muted">
-          {entry.secretPath === "/" ? "/" : entry.secretPath}
-        </span>
+const EnvironmentGroupRow = ({
+  group,
+  index,
+  environments,
+  onChangeEnvironment,
+  onAddPath,
+  onRemovePath,
+  onRemoveGroup
+}: EnvironmentGroupRowProps) => {
+  const envName = environments.find((e) => e.slug === group.environment)?.name;
+
+  return (
+    <div className="overflow-hidden rounded-md border border-border">
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <Layers className="size-4 shrink-0 text-muted" />
+        {group.environment ? (
+          <span className="flex-1 text-sm font-medium">{envName ?? group.environment}</span>
+        ) : (
+          <div className="flex-1">
+            <Select
+              value={group.environment}
+              onValueChange={(val) => onChangeEnvironment(index, val)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select environment" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {environments.map((env) => (
+                  <SelectItem key={env.id} value={env.slug}>
+                    {env.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <IconButton variant="ghost-muted" size="xs" onClick={() => onRemoveGroup(index)}>
+          <Trash2 />
+        </IconButton>
       </div>
+
+      {group.secretPaths.map((sp, pathIndex) => (
+        <div key={sp} className="flex items-center gap-2 border-t border-border px-3 py-2.5">
+          <FolderIcon className="size-3.5 shrink-0 text-warning" />
+          <span className="flex-1 text-sm">{sp}</span>
+          <button
+            type="button"
+            className="text-muted transition-colors hover:text-foreground"
+            onClick={() => onRemovePath(index, pathIndex)}
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ))}
+
+      {group.environment && (
+        <div className="border-t border-border px-3 py-2.5">
+          <PathAdder
+            environment={group.environment}
+            existingPaths={group.secretPaths}
+            onAdd={(path) => onAddPath(index, path)}
+          />
+        </div>
+      )}
     </div>
-    <div className="flex items-center gap-1">
-      <IconButton variant="ghost-muted" size="xs" onClick={onEdit}>
-        <Pencil />
-      </IconButton>
-      <IconButton variant="ghost-muted" size="xs" onClick={onRemove}>
-        <Trash2 />
-      </IconButton>
-    </div>
-  </div>
-);
+  );
+};
 
 type Props = {
   isOpen: boolean;
@@ -176,8 +201,7 @@ type Props = {
 
 export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => {
   const { currentProject } = useProject();
-  const [entries, setEntries] = useState<SourceEntry[]>([{ ...EMPTY_ENTRY }]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(0);
+  const [groups, setGroups] = useState<EnvironmentGroup[]>([{ environment: "", secretPaths: [] }]);
   const [targetProjects, setTargetProjects] = useState<Project[]>([]);
 
   const queryClient = useQueryClient();
@@ -192,16 +216,19 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
     if (!isOpen) return;
 
     if (editData) {
-      const initialEntries: SourceEntry[] = editData.grants.map((g) => ({
-        environment: g.environmentSlug,
-        secretPath: g.secretPath
-      }));
-      setEntries(initialEntries.length > 0 ? initialEntries : [{ ...EMPTY_ENTRY }]);
-      setEditingIndex(null);
+      const groupMap = new Map<string, string[]>();
+      editData.grants.forEach((g) => {
+        const paths = groupMap.get(g.environmentSlug) ?? [];
+        paths.push(g.secretPath);
+        groupMap.set(g.environmentSlug, paths);
+      });
+      const initialGroups: EnvironmentGroup[] = Array.from(groupMap.entries()).map(
+        ([env, paths]) => ({ environment: env, secretPaths: paths })
+      );
+      setGroups(initialGroups.length > 0 ? initialGroups : [{ environment: "", secretPaths: [] }]);
       setTargetProjects([]);
     } else {
-      setEntries([{ ...EMPTY_ENTRY }]);
-      setEditingIndex(0);
+      setGroups([{ environment: "", secretPaths: [] }]);
       setTargetProjects([]);
     }
   }, [isOpen, editData]);
@@ -217,36 +244,40 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
 
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 
-  const hasValidEntry = entries.some((e) => e.environment && e.secretPath);
+  const hasValidEntry = groups.some((g) => g.environment && g.secretPaths.length > 0);
 
-  const envNameBySlug = new Map(currentProject.environments.map((e) => [e.slug, e.name]));
-  const isEntryFilled = (entry: SourceEntry) => Boolean(entry.environment);
-
-  const compactEntries = entries
-    .map((entry, originalIndex) => ({ entry, originalIndex }))
-    .filter(({ entry, originalIndex }) => originalIndex !== editingIndex && isEntryFilled(entry));
-
-  const handleEntryChange = (index: number, updated: Partial<SourceEntry>) => {
-    setEntries((prev) => prev.map((e, i) => (i === index ? { ...e, ...updated } : e)));
+  const handleChangeEnvironment = (index: number, env: string) => {
+    setGroups((prev) =>
+      prev.map((g, i) => (i === index ? { ...g, environment: env, secretPaths: ["/"] } : g))
+    );
   };
 
-  const handleEntryRemove = (index: number) => {
-    setEntries((prev) => {
+  const handleAddPath = (index: number, path: string) => {
+    setGroups((prev) =>
+      prev.map((g, i) => (i === index ? { ...g, secretPaths: [...g.secretPaths, path] } : g))
+    );
+  };
+
+  const handleRemovePath = (groupIndex: number, pathIndex: number) => {
+    setGroups((prev) =>
+      prev.map((g, i) =>
+        i === groupIndex
+          ? { ...g, secretPaths: g.secretPaths.filter((_, pi) => pi !== pathIndex) }
+          : g
+      )
+    );
+  };
+
+  const handleRemoveGroup = (index: number) => {
+    setGroups((prev) => {
       const next = prev.filter((_, i) => i !== index);
-      if (next.length === 0) return [{ ...EMPTY_ENTRY }];
+      if (next.length === 0) return [{ environment: "", secretPaths: [] }];
       return next;
     });
-    setEditingIndex((prev) => {
-      if (prev === null) return null;
-      if (index < prev) return prev - 1;
-      if (index === prev) return null;
-      return prev;
-    });
   };
 
-  const handleAddEntry = () => {
-    setEntries((prev) => [...prev, { ...EMPTY_ENTRY }]);
-    setEditingIndex(entries.length);
+  const handleAddGroup = () => {
+    setGroups((prev) => [...prev, { environment: "", secretPaths: [] }]);
   };
 
   const postGrant = async (dto: TCreateProjectFolderGrantDTO) => {
@@ -271,7 +302,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
   };
 
   const handleSubmit = async () => {
-    const validEntries = entries.filter((e) => e.environment && e.secretPath);
+    const validEntries = flattenGroups(groups).filter((e) => e.environment && e.secretPath);
     if (validEntries.length === 0 || (!isEditMode && targetProjects.length === 0)) return;
 
     setIsSubmitting(true);
@@ -279,28 +310,20 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
       const operations: Promise<void>[] = [];
 
       if (editData) {
-        const currentKeys = new Set(validEntries.map(entryKey));
+        const currentKeys = new Set(validEntries.map((e) => entryKey(e.environment, e.secretPath)));
         const originalKeys = new Set(
-          editData.grants.map((g) =>
-            entryKey({
-              environment: g.environmentSlug,
-              secretPath: g.secretPath
-            })
-          )
+          editData.grants.map((g) => entryKey(g.environmentSlug, g.secretPath))
         );
 
         editData.grants.forEach((g) => {
-          const key = entryKey({
-            environment: g.environmentSlug,
-            secretPath: g.secretPath
-          });
+          const key = entryKey(g.environmentSlug, g.secretPath);
           if (!currentKeys.has(key)) {
             operations.push(removeGrant({ grantId: g.id, sourceProjectId: currentProject.id }));
           }
         });
 
         validEntries.forEach((entry) => {
-          if (!originalKeys.has(entryKey(entry))) {
+          if (!originalKeys.has(entryKey(entry.environment, entry.secretPath))) {
             operations.push(
               postGrant({
                 sourceProjectId: currentProject.id,
@@ -369,51 +392,52 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
 
         <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
           <FieldGroup>
-            <p className="text-xs font-semibold tracking-widest text-muted uppercase">
-              From This Project
-            </p>
+            <div>
+              <p className="text-xs font-semibold tracking-widest text-muted uppercase">
+                Environments &amp; Folders
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Choose an environment, then pick which of its folders to share.
+              </p>
+            </div>
 
-            {compactEntries.length > 0 && (
-              <Card className="gap-0 divide-y divide-border p-0">
-                {compactEntries.map(({ entry, originalIndex }) => (
-                  <CompactEntryRow
-                    key={originalIndex}
-                    entry={entry}
-                    envName={envNameBySlug.get(entry.environment) ?? entry.environment}
-                    onEdit={() => setEditingIndex(originalIndex)}
-                    onRemove={() => handleEntryRemove(originalIndex)}
-                  />
-                ))}
-              </Card>
-            )}
+            <div className="flex flex-col gap-3">
+              {groups.map((group, index) => (
+                <EnvironmentGroupRow
+                  key={group.environment || `new-${String(index)}`}
+                  group={group}
+                  index={index}
+                  environments={currentProject.environments}
+                  onChangeEnvironment={handleChangeEnvironment}
+                  onAddPath={handleAddPath}
+                  onRemovePath={handleRemovePath}
+                  onRemoveGroup={handleRemoveGroup}
+                />
+              ))}
+            </div>
 
-            {editingIndex !== null && entries[editingIndex] && (
-              <SourceEntryRow
-                entry={entries[editingIndex]}
-                index={editingIndex}
-                environments={currentProject.environments}
-                onChange={handleEntryChange}
-              />
-            )}
-
-            <Button variant="outline" size="sm" className="w-fit" onClick={handleAddEntry}>
-              <Plus className="size-3.5" />
-              Add another path
+            <Button variant="outline" size="sm" className="w-fit" onClick={handleAddGroup}>
+              <Layers className="size-3.5" />
+              Add another environment
             </Button>
 
+            <div className="flex justify-center py-2">
+              <ArrowDown className="size-4 text-muted" />
+            </div>
+
             <div className="rounded-md border border-border p-4">
-              <p className="mb-4 text-xs font-semibold tracking-widest text-muted uppercase">
-                To Another Project
+              <p className="mb-1 text-xs font-semibold tracking-widest text-muted uppercase">
+                Share With Projects
+              </p>
+              <p className="mb-4 text-xs text-muted">
+                These projects get read access to the folders above.
               </p>
 
               <Field>
-                <FieldLabel>Target projects</FieldLabel>
                 {isEditMode ? (
                   <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
-                    <Badge variant="project" className="gap-1.5">
-                      <Box className="size-3" />
-                      {editData!.targetProjectName}
-                    </Badge>
+                    <Box className="size-3 text-muted" />
+                    <span className="text-sm">{editData!.targetProjectName}</span>
                   </div>
                 ) : (
                   <FilterableSelect
