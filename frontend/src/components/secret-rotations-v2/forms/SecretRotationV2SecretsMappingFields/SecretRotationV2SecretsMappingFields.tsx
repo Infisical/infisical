@@ -20,6 +20,7 @@ import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKey
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SalesforceOauthCredentialsRotationSecretsMappingFields } from "./SalesforceOauthCredentialsRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
+import { SnowflakeUserKeyPairRotationSecretsMappingFields } from "./SnowflakeUserKeyPairRotationSecretsMappingFields";
 import { SupabaseApiKeyRotationSecretsMappingFields } from "./SupabaseApiKeyRotationSecretsMappingFields";
 import { UnixLinuxLocalAccountRotationSecretsMappingFields } from "./UnixLinuxLocalAccountRotationSecretsMappingFields";
 import { WindowsLocalAccountRotationSecretsMappingFields } from "./WindowsLocalAccountRotationSecretsMappingFields";
@@ -51,7 +52,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DatadogApplicationKeySecret]:
     DatadogApplicationKeySecretRotationSecretsMappingFields,
   [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields,
-  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationSecretsMappingFields
+  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationSecretsMappingFields,
+  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

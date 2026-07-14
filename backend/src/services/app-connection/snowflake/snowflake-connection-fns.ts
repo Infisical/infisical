@@ -12,7 +12,7 @@ const noop = () => {};
 const SNOWFLAKE_EXCLUDED_DATABASES = new Set(["SNOWFLAKE", "SNOWFLAKE_SAMPLE_DATA"]);
 const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
 
-export const SNOWFLAKE_SHOW_PAGE_SIZE = 1000;
+export const SNOWFLAKE_SHOW_PAGE_SIZE = 100;
 
 const escapeSnowflakeStringLiteral = (value: string) => value.replace(/'/g, "''");
 
@@ -126,7 +126,7 @@ export const withSnowflakeClient = async <T>(
   }
 };
 
-const sanitizeSnowflakeError = (
+export const sanitizeSnowflakeError = (
   err: unknown,
   credentials: TSnowflakeConnection["credentials"],
   errorPrefix: string
@@ -189,5 +189,23 @@ export const listSnowflakeSchemas = async (credentials: TSnowflakeConnection["cr
     });
   } catch (err) {
     throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake schemas");
+  }
+};
+
+export const listSnowflakeUsers = async (credentials: TSnowflakeConnection["credentials"]) => {
+  try {
+    return await withSnowflakeClient(credentials, async (client) => {
+      const users: { name: string }[] = [];
+      for await (const page of paginateSnowflakeShow<{ name?: string }>(client, "SHOW USERS")) {
+        for (const row of page) {
+          // eslint-disable-next-line no-continue
+          if (!row.name) continue;
+          users.push({ name: row.name });
+        }
+      }
+      return users;
+    });
+  } catch (err) {
+    throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake users");
   }
 };

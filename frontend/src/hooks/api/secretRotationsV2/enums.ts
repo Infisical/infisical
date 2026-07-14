@@ -22,7 +22,8 @@ export enum SecretRotation {
   SalesforceOauthCredentials = "salesforce-oauth-credentials",
   DatadogApplicationKeySecret = "datadog-application-key-secret",
   ConvexAccessKey = "convex-access-key",
-  FireworksApiKey = "fireworks-api-key"
+  FireworksApiKey = "fireworks-api-key",
+  SnowflakeUserKeyPair = "snowflake-user-key-pair"
 }
 
 export enum SecretRotationStatus {

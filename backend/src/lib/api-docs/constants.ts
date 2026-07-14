@@ -3564,6 +3564,9 @@ export const SecretRotations = {
     },
     FIREWORKS_API_KEY: {
       serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      username: "The Snowflake user whose RSA key pair will be rotated."
     }
   },
   SECRETS_MAPPING: {
@@ -3647,6 +3650,10 @@ export const SecretRotations = {
     },
     FIREWORKS_API_KEY: {
       apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
+      publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
     }
   }
 };

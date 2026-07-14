@@ -34,6 +34,7 @@ import { ViewOpenAIServiceAccountRotationGeneratedCredentials } from "./ViewOpen
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewSalesforceOauthCredentialsRotationGeneratedCredentials } from "./ViewSalesforceOauthCredentialsRotationGeneratedCredentials";
+import { ViewSnowflakeUserKeyPairRotationGeneratedCredentials } from "./ViewSnowflakeUserKeyPairRotationGeneratedCredentials";
 import { ViewSupabaseApiKeyRotationGeneratedCredentials } from "./ViewSupabaseApiKeyRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
@@ -216,6 +217,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.FireworksApiKey:
       Component = (
         <ViewFireworksApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.SnowflakeUserKeyPair:
+      Component = (
+        <ViewSnowflakeUserKeyPairRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

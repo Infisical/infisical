@@ -105,6 +105,11 @@ import {
   TSalesforceOauthCredentialsRotationOption
 } from "./salesforce-oauth-credentials-rotation";
 import {
+  TSnowflakeUserKeyPairRotation,
+  TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse,
+  TSnowflakeUserKeyPairRotationOption
+} from "./snowflake-user-key-pair-rotation";
+import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentialsResponse,
   TSupabaseApiKeyRotationOption
@@ -145,6 +150,7 @@ export type TSecretRotationV2 = (
   | TDatadogApplicationKeySecretRotation
   | TConvexAccessKeyRotation
   | TFireworksApiKeyRotation
+  | TSnowflakeUserKeyPairRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -170,7 +176,8 @@ export type TSecretRotationV2Option =
   | TSalesforceOauthCredentialsRotationOption
   | TDatadogApplicationKeySecretRotationOption
   | TConvexAccessKeyRotationOption
-  | TFireworksApiKeyRotationOption;
+  | TFireworksApiKeyRotationOption
+  | TSnowflakeUserKeyPairRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -200,7 +207,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
   | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse
   | TConvexAccessKeyRotationGeneratedCredentialsResponse
-  | TFireworksApiKeyRotationGeneratedCredentialsResponse;
+  | TFireworksApiKeyRotationGeneratedCredentialsResponse
+  | TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -279,6 +287,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationOption;
   [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationOption;
+  [SecretRotation.SnowflakeUserKeyPair]: TSnowflakeUserKeyPairRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -306,6 +315,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.SnowflakeUserKeyPair]: TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

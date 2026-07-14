@@ -27,6 +27,7 @@ import { OpenAIServiceAccountRotationSchema } from "./openai-service-account-rot
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { SalesforceOauthCredentialsRotationSchema } from "./salesforce-oauth-credentials-rotation-schema";
+import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair-rotation-schema";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
@@ -58,7 +59,8 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         SalesforceOauthCredentialsRotationSchema,
         DatadogApplicationKeySecretRotationSchema,
         ConvexAccessKeyRotationSchema,
-        FireworksApiKeyRotationSchema
+        FireworksApiKeyRotationSchema,
+        SnowflakeUserKeyPairRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

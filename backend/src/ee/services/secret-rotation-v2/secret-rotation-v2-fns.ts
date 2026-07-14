@@ -41,6 +41,7 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
+import { SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION, TSnowflakeUserKeyPairRotation } from "./snowflake-user-key-pair";
 import { SUPABASE_API_KEY_ROTATION_LIST_OPTION, TSupabaseApiKeyRotation } from "./supabase-api-key";
 import {
   TUnixLinuxLocalAccountRotation,
@@ -75,7 +76,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.SalesforceOauthCredentials]: SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatadogApplicationKeySecret]: DATADOG_APPLICATION_KEY_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION,
-  [SecretRotation.FireworksApiKey]: FIREWORKS_API_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.FireworksApiKey]: FIREWORKS_API_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.SnowflakeUserKeyPair]: SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -407,6 +409,17 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update project ID" });
+      }
+      break;
+    case SecretRotation.SnowflakeUserKeyPair:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TSnowflakeUserKeyPairRotation["parameters"],
+          secretRotation.parameters as TSnowflakeUserKeyPairRotation["parameters"],
+          ["username"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update username" });
       }
       break;
     default:
