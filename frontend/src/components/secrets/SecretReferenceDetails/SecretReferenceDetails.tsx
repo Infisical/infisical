@@ -163,7 +163,7 @@ const SecretTree = ({
         {importedFrom && (
           <Tooltip
             className="max-w-md break-words"
-            content={`Imported from ${importedFrom.environment}${importedFrom.secretPath}`}
+            content="Value resolved through a secret import"
           >
             <span className="rounded bg-mineshaft-600 px-1 text-xs text-mineshaft-300">
               imported from {importedFrom.environment}
