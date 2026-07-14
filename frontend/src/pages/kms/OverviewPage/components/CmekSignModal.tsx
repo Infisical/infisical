@@ -19,7 +19,7 @@ import {
 } from "@app/components/v2";
 import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
-import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
 
 const formSchema = z.object({
   data: z.string(),
@@ -77,6 +77,8 @@ const SignForm = ({ cmek }: FormProps) => {
     if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA"))
       return (a as string) === (cmek.encryptionAlgorithm as string);
     if (cmek?.encryptionAlgorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    if ((cmek?.encryptionAlgorithm as string) === AsymmetricKeyAlgorithm.ECC_SECG_P256K1)
+      return a === SigningAlgorithm.ECDSA_SHA_256;
     return a.toLowerCase().startsWith("ecdsa");
   });
 

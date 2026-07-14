@@ -22,7 +22,7 @@ import {
   FieldTitle,
   Switch
 } from "@app/components/v3";
-import { useProject, useSubscription } from "@app/context";
+import { useProject, useServerConfig, useSubscription } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
@@ -62,6 +62,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
   const projectId = currentProject.id;
   const isUpdate = !!cmek;
   const { subscription } = useSubscription();
+  const { config: serverConfig } = useServerConfig();
 
   const {
     control,
@@ -192,6 +193,13 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                           );
                         }
                         if (selectedKeyUsage === KmsKeyUsage.SIGN_VERIFY) {
+                          // secp256k1 is not available in FIPS mode of operation
+                          if (
+                            value === (AsymmetricKeyAlgorithm.ECC_SECG_P256K1 as string) &&
+                            serverConfig?.fipsEnabled
+                          ) {
+                            return false;
+                          }
                           return Object.values(AsymmetricKeyAlgorithm).includes(
                             value as unknown as AsymmetricKeyAlgorithm
                           );

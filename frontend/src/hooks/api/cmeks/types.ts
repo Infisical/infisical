@@ -137,6 +137,9 @@ export enum CmekOrderBy {
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECC_NIST_P256 = "ECC_NIST_P256",
+  ECC_NIST_P384 = "ECC_NIST_P384",
+  ECC_NIST_P521 = "ECC_NIST_P521",
+  ECC_SECG_P256K1 = "ECC_SECG_P256K1",
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"

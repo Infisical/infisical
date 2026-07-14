@@ -39,6 +39,46 @@ export const KMS_TO_OPENSSL_NAME: Partial<Record<AsymmetricKeyAlgorithm, string>
   [AsymmetricKeyAlgorithm.ML_DSA_87]: "ML-DSA-87"
 };
 
+// secp256k1 group order (n). Signatures on this curve are normalized to low-s form because
+// many verifiers on this curve enforce canonical signatures and reject s > n/2 (malleability).
+const SECP256K1_ORDER = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
+
+const readDerInteger = (der: Buffer, offset: number): { value: bigint; nextOffset: number } => {
+  const length = der[offset + 1];
+  if (der[offset] !== 0x02 || length === 0 || length >= 0x80) {
+    throw new BadRequestError({ message: "Invalid ECDSA signature: malformed DER integer" });
+  }
+  const start = offset + 2;
+  const end = start + length;
+  if (end > der.length) {
+    throw new BadRequestError({ message: "Invalid ECDSA signature: truncated DER integer" });
+  }
+  return { value: BigInt(`0x${der.subarray(start, end).toString("hex")}`), nextOffset: end };
+};
+
+const encodeDerInteger = (value: bigint): Buffer => {
+  let hex = value.toString(16);
+  if (hex.length % 2 === 1) hex = `0${hex}`;
+  let bytes = Buffer.from(hex, "hex");
+  if (bytes[0] >= 0x80) bytes = Buffer.concat([Buffer.from([0x00]), bytes]);
+  return Buffer.concat([Buffer.from([0x02, bytes.length]), bytes]);
+};
+
+export const normalizeEcdsaSignatureToLowS = (signature: Buffer, curveOrder: bigint): Buffer => {
+  if (signature[0] !== 0x30 || signature[1] >= 0x80) {
+    throw new BadRequestError({ message: "Invalid ECDSA signature: expected DER sequence" });
+  }
+  const { value: r, nextOffset } = readDerInteger(signature, 2);
+  const { value: s } = readDerInteger(signature, nextOffset);
+
+  if (s <= curveOrder / BigInt(2)) {
+    return signature;
+  }
+
+  const body = Buffer.concat([encodeDerInteger(r), encodeDerInteger(curveOrder - s)]);
+  return Buffer.concat([Buffer.from([0x30, body.length]), body]);
+};
+
 /**
  * Service for cryptographic signing and verification operations using asymmetric keys
  *
@@ -107,6 +147,8 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
         return { full: "secp384r1", short: "p384" };
       case AsymmetricKeyAlgorithm.ECC_NIST_P521:
         return { full: "secp521r1", short: "p521" };
+      case AsymmetricKeyAlgorithm.ECC_SECG_P256K1:
+        return { full: "secp256k1", short: "k256" };
       default:
         throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
     }
@@ -129,6 +171,12 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       throw new BadRequestError({ message: `KMS ECC key cannot be used with ${signingAlgorithm}` });
     }
 
+    if (algorithm === AsymmetricKeyAlgorithm.ECC_SECG_P256K1 && signingAlgorithm !== SigningAlgorithm.ECDSA_SHA_256) {
+      throw new BadRequestError({
+        message: `KMS ${algorithm} key can only be used with ${SigningAlgorithm.ECDSA_SHA_256} signing algorithm`
+      });
+    }
+
     if (isPqcKey) {
       if (!isPqcAlgorithm || (signingAlgorithm as string) !== (algorithm as string)) {
         throw new BadRequestError({
@@ -137,6 +185,11 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
     }
   };
+
+  const $toCanonicalSignature = (signature: Buffer): Buffer =>
+    algorithm === AsymmetricKeyAlgorithm.ECC_SECG_P256K1
+      ? normalizeEcdsaSignatureToLowS(signature, SECP256K1_ORDER)
+      : signature;
 
   const $signRsaDigest = async (
     digest: Buffer,
@@ -371,6 +424,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $verifyEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_SECG_P256K1]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $verifyRsaDigest
   };
 
@@ -388,6 +442,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $signEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $signEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $signEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_SECG_P256K1]: $signEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest
   };
 
@@ -425,7 +480,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
 
       const signature = await signFunction(data, privateKey, hashAlgorithm, signingAlgorithm);
-      return signature;
+      return $toCanonicalSignature(signature);
     }
 
     const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
@@ -449,10 +504,12 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       // For ECDSA signatures
       const signer = crypto.nativeCrypto.createSign(hashAlgorithm);
       signer.update(data);
-      return signer.sign({
-        key: privateKeyObject,
-        dsaEncoding: "der"
-      });
+      return $toCanonicalSignature(
+        signer.sign({
+          key: privateKeyObject,
+          dsaEncoding: "der"
+        })
+      );
     }
     throw new BadRequestError({
       message: `Signing algorithm ${signingAlgorithm} not implemented`
