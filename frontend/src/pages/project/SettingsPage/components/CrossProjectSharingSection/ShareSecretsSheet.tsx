@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SingleValue } from "react-select";
+import { MultiValue } from "react-select";
 import { TriangleAlert } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,7 +27,10 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useCreateProjectFolderGrant } from "@app/hooks/api/projectFolderGrants";
+import {
+  useCreateProjectFolderGrant,
+  useListProjectFolderGrants
+} from "@app/hooks/api/projectFolderGrants";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetSecretImports } from "@app/hooks/api/secretImports";
@@ -41,7 +44,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const [environment, setEnvironment] = useState("");
   const [folderPath, setFolderPath] = useState("/");
-  const [targetProject, setTargetProject] = useState<Project | null>(null);
+  const [targetProjects, setTargetProjects] = useState<Project[]>([]);
 
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjectsByType(
     ProjectType.SecretManager
@@ -52,25 +55,41 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
     path: folderPath,
     options: { enabled: Boolean(environment) && Boolean(folderPath) }
   });
+  const { data: existingGrants = [] } = useListProjectFolderGrants(currentProject.id);
   const createGrant = useCreateProjectFolderGrant();
 
-  const availableProjects = projects.filter((p) => p.id !== currentProject.id);
+  const expectedFolderName =
+    folderPath === "/" ? "root" : folderPath.split("/").filter(Boolean).pop() ?? "root";
+
+  const grantedProjectIds = new Set(
+    existingGrants
+      .filter((g) => g.environmentSlug === environment && g.folderName === expectedFolderName)
+      .map((g) => g.targetProjectId)
+  );
+
+  const availableProjects = projects.filter(
+    (p) => p.id !== currentProject.id && !grantedProjectIds.has(p.id)
+  );
 
   const handleSubmit = async () => {
-    if (!environment || !targetProject || !folderPath) return;
+    if (!environment || targetProjects.length === 0 || !folderPath) return;
 
     try {
-      await createGrant.mutateAsync({
-        sourceProjectId: currentProject.id,
-        environment,
-        secretPath: folderPath,
-        targetProjectId: targetProject.id
-      });
+      await Promise.all(
+        targetProjects.map((project) =>
+          createGrant.mutateAsync({
+            sourceProjectId: currentProject.id,
+            environment,
+            secretPath: folderPath,
+            targetProjectId: project.id
+          })
+        )
+      );
       createNotification({ text: "Access granted successfully", type: "success" });
       onOpenChange(false);
       setEnvironment("");
       setFolderPath("/");
-      setTargetProject(null);
+      setTargetProjects([]);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create grant", type: "error" });
@@ -95,7 +114,13 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
 
             <Field>
               <FieldLabel>Environment</FieldLabel>
-              <Select value={environment} onValueChange={setEnvironment}>
+              <Select
+                value={environment}
+                onValueChange={(val) => {
+                  setEnvironment(val);
+                  setTargetProjects([]);
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select environment" />
                 </SelectTrigger>
@@ -113,7 +138,10 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
               <FieldLabel>Folder path</FieldLabel>
               <SecretPathInput
                 value={folderPath}
-                onChange={setFolderPath}
+                onChange={(val) => {
+                  setFolderPath(val);
+                  setTargetProjects([]);
+                }}
                 environment={environment}
                 placeholder="/"
               />
@@ -139,10 +167,11 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
               </p>
 
               <Field>
-                <FieldLabel>Target project</FieldLabel>
+                <FieldLabel>Target projects</FieldLabel>
                 <FilterableSelect
-                  value={targetProject}
-                  onChange={(option) => setTargetProject(option as SingleValue<Project>)}
+                  isMulti
+                  value={targetProjects}
+                  onChange={(options) => setTargetProjects([...(options as MultiValue<Project>)])}
                   isLoading={isProjectsLoading}
                   options={availableProjects}
                   placeholder="Search projects..."
@@ -160,7 +189,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
           </SheetClose>
           <Button
             variant="project"
-            disabled={!environment || !targetProject || !folderPath}
+            disabled={!environment || targetProjects.length === 0 || !folderPath}
             isPending={createGrant.isPending}
             onClick={handleSubmit}
           >

@@ -1,17 +1,12 @@
-import { useState } from "react";
-import {
-  ArrowRight,
-  Box,
-  FolderIcon,
-  KeyRound,
-  Layers,
-  Plus,
-  SlashIcon,
-  Trash2
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, Box, FolderIcon, KeyRound, Layers, Plus, SlashIcon, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,6 +22,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
   IconButton,
   Input
@@ -41,6 +40,29 @@ import {
 
 import { ShareSecretsSheet } from "./ShareSecretsSheet";
 
+type ProjectGroup = {
+  targetProjectId: string;
+  targetProjectName: string;
+  totalSecrets: number;
+  grants: TProjectFolderGrant[];
+};
+
+const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => {
+  const byProject = new Map<string, TProjectFolderGrant[]>();
+  for (const grant of grants) {
+    const existing = byProject.get(grant.targetProjectId) ?? [];
+    existing.push(grant);
+    byProject.set(grant.targetProjectId, existing);
+  }
+
+  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => ({
+    targetProjectId,
+    targetProjectName: projectGrants[0].targetProjectName,
+    totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
+    grants: projectGrants
+  }));
+};
+
 type FolderPathProps = { folderName: string };
 
 const FolderPath = ({ folderName }: FolderPathProps) => {
@@ -51,14 +73,10 @@ const FolderPath = ({ folderName }: FolderPathProps) => {
         <BreadcrumbItem>
           <FolderIcon className="size-3.5" />
         </BreadcrumbItem>
-        {!isRoot && (
-          <>
-            <BreadcrumbSeparator>
-              <SlashIcon className="size-3 -rotate-12" />
-            </BreadcrumbSeparator>
-            <BreadcrumbPage className="text-muted">{folderName}</BreadcrumbPage>
-          </>
-        )}
+        <BreadcrumbSeparator>
+          <SlashIcon className="size-3 -rotate-12" />
+        </BreadcrumbSeparator>
+        {!isRoot && <BreadcrumbPage className="text-muted">{folderName}</BreadcrumbPage>}
       </BreadcrumbList>
     </Breadcrumb>
   );
@@ -178,30 +196,35 @@ export const CrossProjectSharingSection = () => {
 
   const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
 
+  const projectGroups = useMemo(() => groupGrantsByProject(grants), [grants]);
+
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex w-full items-center justify-between">
-        <div className="flex items-center gap-2">
-          <p className="text-xl font-medium">Cross-Project Secret Sharing</p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
+    <Card className="mb-6">
+      <CardHeader>
+        <div className="flex w-full items-center justify-between">
+          <CardTitle>
+            Cross-Project Secret Sharing
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
+          </CardTitle>
+          <Button variant="project" size="sm" onClick={() => setIsShareSheetOpen(true)}>
+            <Plus className="size-3.5" />
+            Share Secrets
+          </Button>
+          <ShareSecretsSheet isOpen={isShareSheetOpen} onOpenChange={setIsShareSheetOpen} />
         </div>
-        <Button variant="project" size="sm" onClick={() => setIsShareSheetOpen(true)}>
-          <Plus className="size-3.5" />
-          Share Secrets
-        </Button>
-        <ShareSecretsSheet isOpen={isShareSheetOpen} onOpenChange={setIsShareSheetOpen} />
-      </div>
-      <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
-        Grant another project read access to a slice of this project&apos;s secrets. The target
-        project can then import them, or reference them inline with{" "}
-        <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono text-xs text-yellow-200">
-          ${"{@project-a.SECRET}"}
-        </code>
-        .
-      </p>
+        <p className="max-w-2xl text-sm text-accent">
+          Grant another project read access to a slice of this project&apos;s secrets. The target
+          project can then import them, or reference them inline with{" "}
+          <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono text-xs text-yellow-200">
+            ${"{@project-a.SECRET}"}
+          </code>
+          .
+        </p>
+      </CardHeader>
+      <CardContent>
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-sm text-mineshaft-400">Granted Access</span>
-        <Badge variant="neutral">{grants.length}</Badge>
+        <span className="text-sm text-mineshaft-400">Linked Projects</span>
+        <Badge variant="neutral">{projectGroups.length}</Badge>
       </div>
       {grants.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-md border border-mineshaft-700 py-10 text-center">
@@ -211,46 +234,58 @@ export const CrossProjectSharingSection = () => {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-mineshaft-700 rounded-md border border-mineshaft-700">
-          {grants.map((grant) => (
-            <div
-              key={grant.id}
-              className="grid items-center gap-x-3 px-4 py-3"
-              style={{ gridTemplateColumns: "minmax(7rem,max-content) 1fr auto 1.75rem" }}
-            >
-              {/* env */}
-              <Badge variant="neutral" className="gap-1.5">
-                <Layers className="size-3" />
-                {grant.environmentName}
-              </Badge>
-
-              {/* folder path → project name */}
-              <div className="flex min-w-0 items-center gap-2">
-                <FolderPath folderName={grant.folderName} />
-                <ArrowRight className="size-3.5 shrink-0 text-mineshaft-400" />
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Box className="size-3.5 shrink-0 text-mineshaft-300" />
-                  <span className="truncate text-sm font-medium text-mineshaft-100">
-                    {grant.targetProjectName}
+        <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
+          {projectGroups.map((projectGroup) => (
+            <AccordionItem key={projectGroup.targetProjectId} value={projectGroup.targetProjectId}>
+              <AccordionTrigger>
+                <div className="flex flex-1 items-center justify-between">
+                  <Badge variant="project" className="gap-1.5">
+                    <Box className="size-3" />
+                    {projectGroup.targetProjectName}
+                  </Badge>
+                  <span className="mr-2 text-xs text-muted">
+                    {projectGroup.totalSecrets} secrets shared
                   </span>
                 </div>
-              </div>
-
-              {/* secret count */}
-              <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-mineshaft-400">
-                <KeyRound className="size-3 shrink-0" />
-                <span className="tabular-nums">
-                  {grant.secretCount} shared {grant.secretCount === 1 ? "secret" : "secrets"}
-                </span>
-              </div>
-
-              {/* delete */}
-              <IconButton variant="ghost-muted" size="xs" onClick={() => setGrantToDelete(grant)}>
-                <Trash2 />
-              </IconButton>
-            </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="divide-y divide-mineshaft-700 rounded-md border border-mineshaft-700">
+                  {projectGroup.grants.map((grant) => (
+                    <div
+                      key={grant.id}
+                      className="grid items-center gap-x-3 px-4 py-3"
+                      style={{
+                        gridTemplateColumns: "minmax(7rem,max-content) 1fr auto 1.75rem"
+                      }}
+                    >
+                      <Badge variant="neutral" className="gap-1.5">
+                        <Layers className="size-3" />
+                        {grant.environmentName}
+                      </Badge>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ArrowRight className="size-3.5 shrink-0 text-mineshaft-400" />
+                        <FolderPath folderName={grant.folderName} />
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-mineshaft-400">
+                        <KeyRound className="size-3 shrink-0" />
+                        <span className="tabular-nums">
+                          {grant.secretCount} {grant.secretCount === 1 ? "secret" : "secrets"}
+                        </span>
+                      </div>
+                      <IconButton
+                        variant="ghost-muted"
+                        size="xs"
+                        onClick={() => setGrantToDelete(grant)}
+                      >
+                        <Trash2 />
+                      </IconButton>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       )}
       <DeleteGrantDialog
         grant={grantToDelete}
@@ -259,6 +294,7 @@ export const CrossProjectSharingSection = () => {
         }}
         sourceProjectId={currentProject.id}
       />
-    </div>
+    </CardContent>
+    </Card>
   );
 };
