@@ -58,6 +58,8 @@ export const projectEnvQueueFactory = ({
   }
 
   const meter = opentelemetry.metrics.getMeter("InfisicalCore");
+  // Per-pod, last-tick value: only the pod that won the cron redlock updates this; other pods report 0.
+  // Alarms must aggregate with max() across pods, else a "stuck at cap" backlog gets diluted to ~0.
   let lastDiscoveryCount = 0;
   const discoveryGauge = meter.createObservableGauge("infisical.project_env_cleanup.discovered", {
     description:
