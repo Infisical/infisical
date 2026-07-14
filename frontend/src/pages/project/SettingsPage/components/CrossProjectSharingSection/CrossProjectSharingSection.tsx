@@ -53,12 +53,12 @@ type ProjectGroup = {
 };
 
 const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => {
-  const byProject = new Map<string, TProjectFolderGrant[]>();
-  for (const grant of grants) {
-    const existing = byProject.get(grant.targetProjectId) ?? [];
+  const byProject = grants.reduce((map, grant) => {
+    const existing = map.get(grant.targetProjectId) ?? [];
     existing.push(grant);
-    byProject.set(grant.targetProjectId, existing);
-  }
+    map.set(grant.targetProjectId, existing);
+    return map;
+  }, new Map<string, TProjectFolderGrant[]>());
 
   return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => {
     const uniqueEnvs = new Set(projectGrants.map((g) => g.environmentSlug));
@@ -277,8 +277,7 @@ export const CrossProjectSharingSection = () => {
                             <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-muted">
                               <KeyRound className="size-3 shrink-0" />
                               <span className="tabular-nums">
-                                {grant.secretCount}{" "}
-                                {grant.secretCount === 1 ? "secret" : "secrets"}
+                                {grant.secretCount} {grant.secretCount === 1 ? "secret" : "secrets"}
                               </span>
                             </div>
                           </TableCell>
