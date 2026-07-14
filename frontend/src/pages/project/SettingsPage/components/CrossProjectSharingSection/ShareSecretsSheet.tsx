@@ -262,7 +262,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
 
   const handleSubmit = async () => {
     const validEntries = entries.filter((e) => e.environment && e.secretPath);
-    if (validEntries.length === 0 || targetProjects.length === 0) return;
+    if (validEntries.length === 0 || (!isEditMode && targetProjects.length === 0)) return;
 
     setIsSubmitting(true);
     try {
@@ -321,10 +321,13 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
       await queryClient.invalidateQueries({
         queryKey: projectFolderGrantKeys.listByProject(currentProject.id)
       });
+      const targetProjectIds = isEditMode
+        ? [editData!.targetProjectId]
+        : targetProjects.map((p) => p.id);
       await Promise.all(
-        targetProjects.map((p) =>
+        targetProjectIds.map((id) =>
           queryClient.invalidateQueries({
-            queryKey: projectFolderGrantKeys.listReceived(p.id)
+            queryKey: projectFolderGrantKeys.listReceived(id)
           })
         )
       );
@@ -425,7 +428,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
           </SheetClose>
           <Button
             variant="project"
-            disabled={!hasValidEntry || targetProjects.length === 0}
+            disabled={!hasValidEntry || (!isEditMode && targetProjects.length === 0)}
             isPending={isSubmitting}
             onClick={handleSubmit}
           >
