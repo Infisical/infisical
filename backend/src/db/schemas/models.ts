@@ -321,6 +321,11 @@ export enum TableName {
   // Audit Reports (exportable compliance reports)
   AuditReport = "audit_reports",
 
+  // Secrets Brokering (Agent Proxy)
+  OrgAgentProxyConfig = "org_agent_proxy_config",
+  ProxiedService = "proxied_services",
+  ProxiedServiceCredential = "proxied_service_credentials",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
@@ -368,7 +373,10 @@ export enum ProjectMembershipRole {
   // ssh
   SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
-  KmsCryptographicOperator = "cryptographic-operator"
+  KmsCryptographicOperator = "cryptographic-operator",
+  // secrets brokering (agent proxy)
+  Agent = "agent",
+  AgentProxy = "agent-proxy"
 }
 
 export enum ResourceMembershipRole {

@@ -26,6 +26,8 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
+import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
 import { aiMcpActivityLogDALFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-dal";
 import { aiMcpActivityLogServiceFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-service";
 import { aiMcpEndpointDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-dal";
@@ -156,6 +158,9 @@ import { projectTemplateGroupMembershipDALFactory } from "@app/ee/services/proje
 import { projectTemplateIdentityMembershipDALFactory } from "@app/ee/services/project-template/project-template-identity-membership-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/project-template/project-template-user-membership-dal";
+import { proxiedServiceCredentialDALFactory } from "@app/ee/services/proxied-service/proxied-service-credential-dal";
+import { proxiedServiceDALFactory } from "@app/ee/services/proxied-service/proxied-service-dal";
+import { proxiedServiceServiceFactory } from "@app/ee/services/proxied-service/proxied-service-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
 import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
@@ -749,6 +754,10 @@ export const registerRoutes = async (
   const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
   const honeyTokenDAL = honeyTokenDALFactory(db);
   const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
+
+  const proxiedServiceDAL = proxiedServiceDALFactory(db);
+  const proxiedServiceCredentialDAL = proxiedServiceCredentialDALFactory(db);
+  const orgAgentProxyConfigDAL = orgAgentProxyConfigDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
@@ -2922,6 +2931,22 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  const proxiedServiceService = proxiedServiceServiceFactory({
+    proxiedServiceDAL,
+    proxiedServiceCredentialDAL,
+    folderDAL,
+    secretV2BridgeService,
+    permissionService,
+    licenseService
+  });
+
+  const agentProxyCaService = agentProxyCaServiceFactory({
+    orgAgentProxyConfigDAL,
+    kmsService,
+    licenseService,
+    permissionService
+  });
+
   const webhookService = webhookServiceFactory({
     permissionService,
     webhookDAL,
@@ -3936,6 +3961,8 @@ export const registerRoutes = async (
     gitHubApp: gitHubAppService,
     honeyTokenConfig: honeyTokenConfigService,
     honeyToken: honeyTokenService,
+    proxiedService: proxiedServiceService,
+    agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,

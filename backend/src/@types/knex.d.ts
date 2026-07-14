@@ -326,6 +326,9 @@ import {
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
+  TOrgAgentProxyConfig,
+  TOrgAgentProxyConfigInsert,
+  TOrgAgentProxyConfigUpdate,
   TOrganizationAssets,
   TOrganizationAssetsInsert,
   TOrganizationAssetsUpdate,
@@ -485,6 +488,12 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
+  TProxiedServiceCredentials,
+  TProxiedServiceCredentialsInsert,
+  TProxiedServiceCredentialsUpdate,
+  TProxiedServices,
+  TProxiedServicesInsert,
+  TProxiedServicesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -1585,6 +1594,21 @@ declare module "knex/types/tables" {
       TOrgGatewayConfig,
       TOrgGatewayConfigInsert,
       TOrgGatewayConfigUpdate
+    >;
+    [TableName.OrgAgentProxyConfig]: KnexOriginal.CompositeTableType<
+      TOrgAgentProxyConfig,
+      TOrgAgentProxyConfigInsert,
+      TOrgAgentProxyConfigUpdate
+    >;
+    [TableName.ProxiedService]: KnexOriginal.CompositeTableType<
+      TProxiedServices,
+      TProxiedServicesInsert,
+      TProxiedServicesUpdate
+    >;
+    [TableName.ProxiedServiceCredential]: KnexOriginal.CompositeTableType<
+      TProxiedServiceCredentials,
+      TProxiedServiceCredentialsInsert,
+      TProxiedServiceCredentialsUpdate
     >;
     [TableName.SecretRotationV2]: KnexOriginal.CompositeTableType<
       TSecretRotationsV2,

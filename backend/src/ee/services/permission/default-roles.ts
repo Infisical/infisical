@@ -29,6 +29,7 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -467,6 +468,17 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Insights
   );
 
+  can(
+    [
+      ProjectPermissionProxiedServiceActions.Read,
+      ProjectPermissionProxiedServiceActions.Create,
+      ProjectPermissionProxiedServiceActions.Edit,
+      ProjectPermissionProxiedServiceActions.Delete,
+      ProjectPermissionProxiedServiceActions.Proxy
+    ],
+    ProjectPermissionSub.ProxiedServices
+  );
+
   return rules;
 };
 
@@ -568,6 +580,8 @@ const buildMemberPermissionRules = () => {
   );
 
   can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
+
+  can([ProjectPermissionProxiedServiceActions.Read], ProjectPermissionSub.ProxiedServices);
 
   can(
     [
@@ -711,6 +725,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
+  can(ProjectPermissionProxiedServiceActions.Read, ProjectPermissionSub.ProxiedServices);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -798,6 +813,25 @@ const buildCryptographicOperatorPermissionRules = () => {
   return rules;
 };
 
+const buildAgentPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  can(ProjectPermissionProxiedServiceActions.Proxy, ProjectPermissionSub.ProxiedServices);
+
+  return rules;
+};
+
+const buildAgentProxyPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  can(
+    [ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue],
+    ProjectPermissionSub.Secrets
+  );
+
+  return rules;
+};
+
 // General
 export const projectAdminPermissions = buildAdminPermissionRules();
 export const projectMemberPermissions = buildMemberPermissionRules();
@@ -809,6 +843,10 @@ export const sshHostBootstrapPermissions = buildSshHostBootstrapPermissionRules(
 
 // KMS
 export const cryptographicOperatorPermissions = buildCryptographicOperatorPermissionRules();
+
+// Secrets Brokering (Agent Proxy)
+export const agentPermissions = buildAgentPermissionRules();
+export const agentProxyPermissions = buildAgentProxyPermissionRules();
 
 const buildApplicationAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);

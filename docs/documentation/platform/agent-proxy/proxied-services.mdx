@@ -1,0 +1,153 @@
+---
+title: "Proxied Services"
+description: "Define how the agent proxy applies credentials to traffic bound for an external service."
+---
+
+A proxied service tells the agent proxy how to handle traffic to a specific external service. It lives in a folder alongside your secrets, references those secrets by key name, and defines which hosts it applies to and how each secret is placed into the outbound request.
+
+You manage proxied services in the secrets dashboard: open a folder, click the dropdown arrow next to **Add Secret**, and select **Add Proxied Service**. They appear in the folder view next to your secrets.
+
+## Configuration
+
+<ParamField path="Service Name" type="string" required>
+  A slug (lowercase letters, numbers, hyphens) that identifies the service, such as `stripe-api`. Names are unique within a folder.
+</ParamField>
+
+<ParamField path="Host Pattern" type="string" required>
+  One or more comma-separated patterns describing which hosts this service applies to. See [Host Patterns](#host-patterns) below.
+</ParamField>
+
+<ParamField path="Enabled" type="boolean" default="true">
+  Toggle a service off without deleting it. A disabled service is skipped entirely: its placeholder environment variables are not set, no credentials are applied, and traffic to its hosts falls back to the [unmatched host policy](/documentation/platform/agent-proxy/security#unmatched-hosts).
+</ParamField>
+
+A service then applies one or more secrets in two ways, **Header Rewriting** and **Credential Substitution**. Both are independent; use either or both.
+
+## Host Patterns
+
+A host pattern routes requests to the right service. Each pattern is a `host[:port][/path]`, and multiple patterns can be combined with commas:
+
+```bash
+api.stripe.com                            # exact host
+*.github.com                              # wildcard: matches api.github.com, not a.b.github.com
+api.stripe.com:443                        # specific port
+api.stripe.com/v1/*                       # path prefix
+internal.corp.com:3000/api/*              # port and path
+api.stripe.com, dashboard.stripe.com      # multiple patterns, matches either
+```
+
+A few rules to keep in mind:
+
+- A `*.` wildcard matches exactly **one** label: `*.github.com` matches `api.github.com` but not `a.b.github.com` or bare `github.com`.
+- Host matching is case-insensitive. A pattern without a port matches any port.
+- Do not include a scheme (`https://`); patterns are hosts, not URLs.
+
+When a request could match more than one service, the agent proxy picks the best match:
+
+1. Exact host beats wildcard host.
+2. A pattern with a specific port beats one that matches any port.
+3. The longest matching path prefix wins.
+4. If still tied, the service whose name sorts first alphabetically wins.
+
+<Note>
+  Host patterns are for routing only. Proxied services are also scoped to their folder: an agent connected with `--env=prod --path=/ai-agents` only ever matches services defined in that folder, so the same hostname can be configured differently in different folders, environments, or projects.
+</Note>
+
+## Header Rewriting
+
+Header rewriting adds or replaces an HTTP header on the outbound request. The agent does not need to send any credential; if it sends a made-up one, the header is overwritten with the real value. This covers most APIs:
+
+| Auth style | Configuration | Resulting header |
+| --- | --- | --- |
+| Bearer token | Header name `Authorization`, prefix `Bearer`, one secret | `Authorization: Bearer <secret>` |
+| API key header | Header name `x-api-key`, no prefix, one secret | `x-api-key: <secret>` |
+| Basic auth | Two secrets, one as **Username** and one as **Password** | `Authorization: Basic base64(username:password)` |
+| Custom | Any header name and optional prefix | `<name>: <prefix> <secret>` |
+
+A service can rewrite multiple distinct headers (for example, an API key header plus a tenant header), but each header name can only be set by one secret. To build one header value out of several secrets, or use a secret kept elsewhere, see [reusing secrets from other folders and environments](#reusing-secrets-from-other-folders-and-environments).
+
+## Credential Substitution
+
+With credential substitution, the agent is handed a dummy placeholder value and the agent proxy swaps it for the real credential wherever it appears in the request. It is useful in two situations:
+
+- The API carries the credential somewhere other than a header. Telegram, for example, puts the bot token in the URL path: `api.telegram.org/bot<token>/sendMessage`.
+- The agent has to see a value before it will make the call at all, headers included. Some HTTP clients validate that a credential is set, and agents often refuse to attempt a request without a real-looking key. The placeholder satisfies them, and the proxy swaps in the real value on the way out.
+
+<ParamField path="Environment Variable" type="string" required>
+  The environment variable name the agent receives, such as `TELEGRAM_BOT_TOKEN`. When an agent connects, `infisical secrets agent-proxy connect` sets this variable to the placeholder, so the agent uses it like a normal credential.
+</ParamField>
+
+<ParamField path="Placeholder Value" type="string" required>
+  The dummy value that appears on the wire. A distinctive random string is generated for you, but you can override it, for example when the agent's HTTP client validates the credential's format.
+</ParamField>
+
+<ParamField path="Replace In" type="string[]" required>
+  The request surfaces the agent proxy scans for the placeholder: `path`, `query`, `header`, and/or `body`. Scoping is the security boundary: the proxy only substitutes in the surfaces you list.
+</ParamField>
+
+<ParamField path="Secret" type="string" required>
+  The secret (from the same folder) whose real value replaces the placeholder.
+</ParamField>
+
+A few behaviors worth knowing:
+
+- Replacement is a literal string swap of every occurrence of the placeholder in the selected surfaces.
+- Request bodies are scanned up to 10 MiB; larger bodies, and bodies with a `Content-Encoding` (compressed payloads), are forwarded unchanged without substitution.
+- WebSocket traffic is not supported; substitution applies to regular HTTP(S) requests.
+
+<Note>
+  If a placeholder environment variable has the same name as a regular secret the agent can read, the real secret value wins and the CLI logs a warning. Rename one of the two to avoid the ambiguity.
+</Note>
+
+## Using Secrets
+
+A proxied service uses secrets **by key name, from its own folder**. This keeps the relationship self-healing:
+
+- At creation time, Infisical validates that each secret exists and that you can read its value, so typos are caught the moment you save.
+- If a secret is later renamed or deleted, the proxied service skips it (the agent proxy logs a warning and the request still goes through, just without that value). Recreating the secret with the same key restores it automatically.
+- Deleting the folder deletes the proxied services in it.
+
+<Note>
+  Creating or updating a proxied service requires **Read Value** permission on each secret it uses. This prevents someone with edit access to proxied services from wiring in a secret they are not allowed to read and exfiltrating it through the proxy.
+</Note>
+
+### Reusing secrets from other folders and environments
+
+You cannot point a proxied service at another folder directly, but you can bring an outside value into its folder so the service can use it. There are two ways, both using features that already exist in Infisical:
+
+| Approach | What you do | Example |
+| --- | --- | --- |
+| **Imported secret** | [Import](/documentation/platform/secret-reference) another folder into the service's folder, then use the imported key by name | Import `/shared-creds`, then use its `SHARED_API_KEY` from the service's folder |
+| **Composed with references** | Create a secret whose value is one or more [secret references](/documentation/platform/secret-reference), then use that secret. Lets you combine several secrets, including ones from different environments | A secret set to `${dev.gateway.KEY}.${staging.gateway.KEY}.${prod.gateway.KEY}` resolves to the three values joined together |
+
+A folder-local secret always wins over an imported one with the same key. Read permission on an imported secret is checked where it actually lives, so an import cannot widen anyone's access.
+
+Either way, the value is fully resolved before the proxy applies it.
+
+## Example: API Request
+
+Proxied services can also be managed via the [API](/api-reference/endpoints/proxied-services/create). For example, creating the Telegram service described above:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/proxied-services \
+  -H "Authorization: Bearer $INFISICAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "<project-id>",
+    "environment": "prod",
+    "secretPath": "/ai-agents",
+    "name": "telegram-bot-api",
+    "hostPattern": "api.telegram.org",
+    "credentials": [
+      {
+        "secretKey": "TELEGRAM_BOT_TOKEN",
+        "role": "credential-substitution",
+        "placeholderKey": "TELEGRAM_BOT_TOKEN",
+        "placeholderValue": "placeholder_tg_bot",
+        "substitutionSurfaces": ["path"]
+      }
+    ]
+  }'
+```
+
+Header-rewrite credentials use `"role": "header-rewrite"` with `headerName` and an optional `headerPrefix`, or `headerPurpose` (`username`/`password`) for basic auth.
