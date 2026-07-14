@@ -96,6 +96,12 @@ export const buildCertificateSubjectFromTemplate = (
   };
 
   if (!templateAttributes || templateAttributes.length === 0) {
+    Object.entries(attributeMap).forEach(([attrType, requestKey]) => {
+      const value = request[requestKey];
+      if (value && typeof value === "string") {
+        subject[attrType] = value;
+      }
+    });
     return subject;
   }
 

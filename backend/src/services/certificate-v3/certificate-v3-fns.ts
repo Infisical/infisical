@@ -121,12 +121,15 @@ export const applyProfileDefaults = <
     keyUsages?: string[];
     extendedKeyUsages?: string[];
     basicConstraints?: { isCA: boolean; pathLength?: number };
+    altNames?: { type: string; value: string }[];
   }
 >(
   request: T,
   defaults: TCertificateProfileDefaults | null | undefined
 ): T => {
   if (!defaults) return request;
+
+  const altNames = request.altNames && request.altNames.length > 0 ? request.altNames : defaults.subjectAltNames;
 
   // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
   // CSR extraction (extractCertificateRequestFromCSR) omits keys for absent fields,
@@ -143,6 +146,7 @@ export const applyProfileDefaults = <
     signatureAlgorithm: "signatureAlgorithm" in request ? request.signatureAlgorithm : defaults.signatureAlgorithm,
     keyUsages: request.keyUsages !== undefined ? request.keyUsages : defaults.keyUsages,
     extendedKeyUsages: request.extendedKeyUsages !== undefined ? request.extendedKeyUsages : defaults.extendedKeyUsages,
-    basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints
+    basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints,
+    altNames
   };
 };

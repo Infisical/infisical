@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 import {
@@ -99,16 +99,24 @@ export const useCertificatePolicy = (
   });
 
   const filteredKeyUsages = useMemo(() => {
+    if (constraints.allowedKeyUsages.length === 0) return [...KEY_USAGES_OPTIONS];
     return KEY_USAGES_OPTIONS.filter(({ value }) => constraints.allowedKeyUsages.includes(value));
   }, [constraints.allowedKeyUsages]);
 
   const filteredExtendedKeyUsages = useMemo(() => {
+    if (constraints.allowedExtendedKeyUsages.length === 0) return [...EXTENDED_KEY_USAGES_OPTIONS];
     return EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) =>
       constraints.allowedExtendedKeyUsages.includes(value)
     );
   }, [constraints.allowedExtendedKeyUsages]);
 
   const availableSignatureAlgorithms = useMemo(() => {
+    if (constraints.allowedSignatureAlgorithms.length === 0) {
+      return SIGNATURE_ALGORITHMS_OPTIONS.map((opt) => ({
+        value: opt.value as string,
+        label: opt.label
+      }));
+    }
     const allowed = new Set(
       constraints.allowedSignatureAlgorithms.map(mapPolicySignatureAlgorithmToApi)
     );
@@ -119,6 +127,9 @@ export const useCertificatePolicy = (
   }, [constraints.allowedSignatureAlgorithms]);
 
   const availableKeyAlgorithms = useMemo(() => {
+    if (constraints.allowedKeyAlgorithms.length === 0) {
+      return certKeyAlgorithms.map((opt) => ({ value: opt.value as string, label: opt.label }));
+    }
     const allowed = new Set(constraints.allowedKeyAlgorithms.map(mapPolicyKeyAlgorithmToApi));
     return certKeyAlgorithms
       .filter((opt) => allowed.has(opt.value))
@@ -148,8 +159,14 @@ export const useCertificatePolicy = (
     });
   };
 
+  const prevProfileIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     if (templateData && selectedProfile && isModalOpen) {
+      const profileChanged = prevProfileIdRef.current !== selectedProfile.id;
+      prevProfileIdRef.current = selectedProfile.id;
+
+      // CA issuance is a privilege boundary: an undefined basicConstraints policy denies CA by default
       const isCaPolicy =
         (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
       const templateAllowsCA =
@@ -204,7 +221,7 @@ export const useCertificatePolicy = (
         }
       }
 
-      // Handle SAN types
+      // Handle SAN types. An undefined SAN policy allows every SAN type (allow all).
       if (templateData.sans && templateData.sans.length > 0) {
         const sanTypes: CertSubjectAlternativeNameType[] = [];
         templateData.sans.forEach((sanPolicy: any) => {
@@ -215,13 +232,17 @@ export const useCertificatePolicy = (
         newConstraints.allowedSanTypes = sanTypes;
         newConstraints.shouldShowSanSection = true;
       } else {
-        newConstraints.allowedSanTypes = [];
-        newConstraints.shouldShowSanSection = false;
-        setValue("subjectAltNames", []);
+        newConstraints.allowedSanTypes = [
+          CertSubjectAlternativeNameType.DNS_NAME,
+          CertSubjectAlternativeNameType.IP_ADDRESS,
+          CertSubjectAlternativeNameType.EMAIL,
+          CertSubjectAlternativeNameType.URI
+        ];
+        newConstraints.shouldShowSanSection = true;
       }
 
+      newConstraints.shouldShowSubjectSection = true;
       if (templateData.subject && templateData.subject.length > 0) {
-        newConstraints.shouldShowSubjectSection = true;
         const subjectTypes: CertSubjectAttributeType[] = [];
         templateData.subject.forEach((subjectPolicy: any) => {
           if (!subjectTypes.includes(subjectPolicy.type)) {
@@ -230,67 +251,78 @@ export const useCertificatePolicy = (
         });
         newConstraints.allowedSubjectAttributeTypes =
           subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
-
-        // Pre-populate subject attributes from profile defaults
-        const defaultSubjectAttrs: Array<{ type: CertSubjectAttributeType; value: string }> = [];
-        if (defaults?.commonName) {
-          defaultSubjectAttrs.push({
-            type: CertSubjectAttributeType.COMMON_NAME,
-            value: defaults.commonName
-          });
-        }
-        if (defaults?.organization) {
-          defaultSubjectAttrs.push({
-            type: CertSubjectAttributeType.ORGANIZATION,
-            value: defaults.organization
-          });
-        }
-        if (defaults?.organizationalUnit) {
-          defaultSubjectAttrs.push({
-            type: CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
-            value: defaults.organizationalUnit
-          });
-        }
-        if (defaults?.country) {
-          defaultSubjectAttrs.push({
-            type: CertSubjectAttributeType.COUNTRY,
-            value: defaults.country
-          });
-        }
-        if (defaults?.state) {
-          defaultSubjectAttrs.push({
-            type: CertSubjectAttributeType.STATE,
-            value: defaults.state
-          });
-        }
-        if (defaults?.locality) {
-          defaultSubjectAttrs.push({
-            type: CertSubjectAttributeType.LOCALITY,
-            value: defaults.locality
-          });
-        }
-
-        const currentSubjectAttrs = watch("subjectAttributes");
-        if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {
-          if (defaultSubjectAttrs.length > 0) {
-            // Filter to only allowed attribute types
-            const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
-              newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
-            );
-            const subjectValue =
-              filteredDefaults.length > 0
-                ? filteredDefaults
-                : [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
-            setValue("subjectAttributes", subjectValue);
-          } else {
-            const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
-            setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
-          }
-        }
       } else {
-        newConstraints.shouldShowSubjectSection = false;
-        newConstraints.allowedSubjectAttributeTypes = [];
-        setValue("subjectAttributes", undefined);
+        // No subject policy allows every subject attribute type (allow all)
+        newConstraints.allowedSubjectAttributeTypes = [
+          CertSubjectAttributeType.COMMON_NAME,
+          CertSubjectAttributeType.ORGANIZATION,
+          CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
+          CertSubjectAttributeType.COUNTRY,
+          CertSubjectAttributeType.STATE,
+          CertSubjectAttributeType.LOCALITY
+        ];
+      }
+
+      // Pre-populate subject attributes from profile defaults
+      const defaultSubjectAttrs: Array<{ type: CertSubjectAttributeType; value: string }> = [];
+      if (defaults?.commonName) {
+        defaultSubjectAttrs.push({
+          type: CertSubjectAttributeType.COMMON_NAME,
+          value: defaults.commonName
+        });
+      }
+      if (defaults?.organization) {
+        defaultSubjectAttrs.push({
+          type: CertSubjectAttributeType.ORGANIZATION,
+          value: defaults.organization
+        });
+      }
+      if (defaults?.organizationalUnit) {
+        defaultSubjectAttrs.push({
+          type: CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
+          value: defaults.organizationalUnit
+        });
+      }
+      if (defaults?.country) {
+        defaultSubjectAttrs.push({
+          type: CertSubjectAttributeType.COUNTRY,
+          value: defaults.country
+        });
+      }
+      if (defaults?.state) {
+        defaultSubjectAttrs.push({
+          type: CertSubjectAttributeType.STATE,
+          value: defaults.state
+        });
+      }
+      if (defaults?.locality) {
+        defaultSubjectAttrs.push({
+          type: CertSubjectAttributeType.LOCALITY,
+          value: defaults.locality
+        });
+      }
+
+      // Switching profiles resets SAN entries so a previous profile's values don't carry over.
+      if (profileChanged) {
+        setValue("subjectAltNames", []);
+      }
+
+      const currentSubjectAttrs = watch("subjectAttributes");
+      if (profileChanged || !currentSubjectAttrs || currentSubjectAttrs.length === 0) {
+        if (defaultSubjectAttrs.length > 0) {
+          // Filter to only allowed attribute types
+          const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
+            newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
+          );
+          const subjectValue =
+            filteredDefaults.length > 0
+              ? filteredDefaults
+              : [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
+          setValue("subjectAttributes", subjectValue);
+        } else {
+          const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
+          setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
+        }
       }
 
       // Set isCA if template requires it

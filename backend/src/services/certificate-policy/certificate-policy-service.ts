@@ -387,12 +387,8 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`${attrType} is not allowed by template policy (not defined in template)`);
         }
       }
-    } else if (requestAttributes.size > 0) {
-      // No subject policies defined but request has subject attributes - deny all
-      for (const [attrType] of requestAttributes) {
-        errors.push(`${attrType} is not allowed by template policy (no subject policies defined)`);
-      }
     }
+    // No subject policy defined means no subject constraint (allow all)
 
     // Validate Subject Alternative Names
     const sansPolicies = template.sans;
@@ -465,12 +461,8 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`${requestSanType} SAN is not allowed by template policy (not defined in template)`);
         }
       }
-    } else if (request.subjectAlternativeNames && request.subjectAlternativeNames.length > 0) {
-      // No SAN policies defined but request has SANs - deny all
-      for (const san of request.subjectAlternativeNames) {
-        errors.push(`${san.type} SAN is not allowed by template policy (no SAN policies defined)`);
-      }
     }
+    // No SAN policy defined means no SAN constraint (allow all)
 
     // Validate key usages
     const keyUsagePolicy = template.keyUsages;
@@ -504,9 +496,8 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`Invalid key usages: ${invalidUsages.join(", ")}`);
         }
       }
-    } else if (request.keyUsages && request.keyUsages.length > 0) {
-      errors.push(`Key usages are not allowed by template policy (not defined in template)`);
     }
+    // No key usage policy defined means no key usage constraint (allow all)
 
     // Validate extended key usages
     const extendedKeyUsagePolicy = template.extendedKeyUsages;
@@ -549,34 +540,21 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`Invalid extended key usages: ${invalidExtendedUsages.join(", ")}`);
         }
       }
-    } else if (request.extendedKeyUsages && request.extendedKeyUsages.length > 0) {
-      errors.push(`Extended key usages are not allowed by template policy (not defined in template)`);
     }
+    // No extended key usage policy defined means no EKU constraint (allow all)
 
-    // Validate algorithms with new structure
-    if (request.signatureAlgorithm) {
-      if (template.algorithms?.signature && template.algorithms.signature.length > 0) {
-        const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
-        if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
-          errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
-        }
-      } else if (!template.algorithms?.signature) {
-        errors.push(
-          `Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy (not defined in template)`
-        );
+    // An undefined algorithm policy means no algorithm constraint (allow all).
+    if (request.signatureAlgorithm && template.algorithms?.signature && template.algorithms.signature.length > 0) {
+      const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
+      if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
+        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
       }
     }
 
-    if (request.keyAlgorithm) {
-      if (template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
-        const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
-        if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
-          errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
-        }
-      } else if (!template.algorithms?.keyAlgorithm) {
-        errors.push(
-          `Key algorithm '${request.keyAlgorithm}' is not allowed by template policy (not defined in template)`
-        );
+    if (request.keyAlgorithm && template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
+      const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
+      if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
+        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
       }
     }
 

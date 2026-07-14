@@ -77,6 +77,7 @@ export type TCertificatePolicy = {
 };
 
 export type TCreateCertificatePolicyDTO = {
+  projectId?: string;
   name: string;
   description?: string;
   subject?: TCertificatePolicyRule["subject"];

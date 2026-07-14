@@ -15,11 +15,21 @@ import {
   CertExtendedKeyUsageType,
   CertKeyAlgorithm,
   CertKeyUsageType,
-  CertSignatureAlgorithm
+  CertSignatureAlgorithm,
+  CertSubjectAlternativeNameType
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SubjectAltNameDefaultsSchema = z
+  .array(
+    z.object({
+      type: z.nativeEnum(CertSubjectAlternativeNameType),
+      value: z.string().trim().min(1)
+    })
+  )
+  .optional();
 
 const CertificateProfileDefaultsResponseSchema = z
   .object({
@@ -39,7 +49,8 @@ const CertificateProfileDefaultsResponseSchema = z
     organizationalUnit: z.string().optional(),
     country: z.string().optional(),
     state: z.string().optional(),
-    locality: z.string().optional()
+    locality: z.string().optional(),
+    subjectAltNames: SubjectAltNameDefaultsSchema
   })
   .nullish();
 
@@ -122,7 +133,8 @@ export const registerCertificateProfilesRouter = async (
               organizationalUnit: z.string().optional(),
               country: z.string().optional(),
               state: z.string().optional(),
-              locality: z.string().optional()
+              locality: z.string().optional(),
+              subjectAltNames: SubjectAltNameDefaultsSchema
             })
             .nullish()
         })
@@ -605,7 +617,8 @@ export const registerCertificateProfilesRouter = async (
               organizationalUnit: z.string().optional(),
               country: z.string().optional(),
               state: z.string().optional(),
-              locality: z.string().optional()
+              locality: z.string().optional(),
+              subjectAltNames: SubjectAltNameDefaultsSchema
             })
             .nullish()
         })

@@ -45,6 +45,7 @@ export enum CertPolicyState {
 }
 
 export enum CertDurationUnit {
+  HOURS = "hours",
   DAYS = "days",
   MONTHS = "months",
   YEARS = "years"

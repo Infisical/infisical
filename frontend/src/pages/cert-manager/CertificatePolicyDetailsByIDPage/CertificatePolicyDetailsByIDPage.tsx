@@ -26,6 +26,7 @@ import {
   PolicyAlgorithmsSection,
   PolicyDetailsSection,
   PolicyKeyUsagesSection,
+  PolicyNoRulesSection,
   PolicySansRulesSection,
   PolicySubjectRulesSection,
   PolicyValiditySection
@@ -61,6 +62,21 @@ const Page = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const projectId = currentProject?.id || "";
+
+  const hasAnyEnforcement = Boolean(
+    policy?.subject?.length ||
+      policy?.sans?.length ||
+      policy?.keyUsages?.required?.length ||
+      policy?.keyUsages?.allowed?.length ||
+      policy?.keyUsages?.denied?.length ||
+      policy?.extendedKeyUsages?.required?.length ||
+      policy?.extendedKeyUsages?.allowed?.length ||
+      policy?.extendedKeyUsages?.denied?.length ||
+      policy?.algorithms?.signature?.length ||
+      policy?.algorithms?.keyAlgorithm?.length ||
+      policy?.validity?.max ||
+      policy?.basicConstraints?.isCA
+  );
 
   const handleDeleteConfirm = async () => {
     if (!policy) return;
@@ -143,11 +159,17 @@ const Page = () => {
                     />
                   </div>
                   <div className="flex flex-1 flex-col gap-y-5">
-                    <PolicyValiditySection policy={policy} />
-                    <PolicySubjectRulesSection policy={policy} />
-                    <PolicySansRulesSection policy={policy} />
-                    <PolicyKeyUsagesSection policy={policy} />
-                    <PolicyAlgorithmsSection policy={policy} />
+                    {hasAnyEnforcement ? (
+                      <>
+                        <PolicyValiditySection policy={policy} />
+                        <PolicySubjectRulesSection policy={policy} />
+                        <PolicySansRulesSection policy={policy} />
+                        <PolicyKeyUsagesSection policy={policy} />
+                        <PolicyAlgorithmsSection policy={policy} />
+                      </>
+                    ) : (
+                      <PolicyNoRulesSection />
+                    )}
                   </div>
                 </div>
 
