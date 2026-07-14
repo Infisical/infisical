@@ -279,7 +279,11 @@ export const MFASection = () => {
         return;
       }
 
-      if (!serverDetails?.emailConfigured && formData.isMfaEnabled) {
+      if (
+        !serverDetails?.emailConfigured &&
+        formData.isMfaEnabled &&
+        formData.selectedMfaMethod === MfaMethod.EMAIL
+      ) {
         handlePopUpOpen("setUpEmail");
         return;
       }
