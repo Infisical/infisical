@@ -745,9 +745,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return "API Key";
-    case DatadogConnectionMethod.ApplicationKey:
-      return "Application Keys";
     case ChefConnectionMethod.UserKey:
       return "User Key";
     case QoveryConnectionMethod.AccessToken:

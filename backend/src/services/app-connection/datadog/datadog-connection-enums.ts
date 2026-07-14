@@ -1,4 +1,4 @@
 export enum DatadogConnectionMethod {
   Token = "token",
-  ApplicationKey = "application-key"
+  ApiKey = "api-key"
 }

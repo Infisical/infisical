@@ -3,7 +3,7 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 
 export enum DatadogConnectionMethod {
   Token = "token",
-  ApplicationKey = "application-key"
+  ApiKey = "api-key"
 }
 
 export type TDatadogConnection = TRootAppConnection & { app: AppConnection.Datadog } & (
@@ -15,7 +15,7 @@ export type TDatadogConnection = TRootAppConnection & { app: AppConnection.Datad
         };
       }
     | {
-        method: DatadogConnectionMethod.ApplicationKey;
+        method: DatadogConnectionMethod.ApiKey;
         credentials: {
           url: string;
           apiKey: string;
