@@ -72,6 +72,16 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
+  // The connection's own credentials are used to perform the rotation, so rotating that same user's
+  // key can break the connection. Disallow targeting it. Snowflake login names are case-insensitive
+  // (unquoted identifiers fold to uppercase), so compare case-insensitively.
+  if (username.trim().toUpperCase() === connection.credentials.username.trim().toUpperCase()) {
+    throw new BadRequestError({
+      message:
+        "The user being rotated cannot be the same as the user configured on the Snowflake connection, since the connection's credentials are used to perform the rotation."
+    });
+  }
+
   const runSnowflake = async <T>(fn: (client: snowflake.Connection) => Promise<T>, errorPrefix: string): Promise<T> => {
     try {
       return await withSnowflakeClient(connection.credentials, fn);
