@@ -53,6 +53,7 @@ type TreeNodeData = {
   environment?: string;
   secretPath?: string;
   secretKey?: string;
+  importedFrom?: TSecretReferenceTraceNode["importedFrom"];
 };
 
 const createNodeId = (node: TSecretReferenceTraceNode, parentId?: string): string => {
@@ -98,7 +99,8 @@ const convertToTreeItems = (
       isRoot: !parentId,
       environment: node.environment,
       secretPath: node.secretPath,
-      secretKey: node.key
+      secretKey: node.key,
+      importedFrom: node.importedFrom
     }
   };
 
@@ -142,7 +144,7 @@ const SecretTree = ({
   onSecretClick?: (env: string, path: string, key: string) => void;
 }) => {
   const renderItemTitle = ({ item }: { item: TreeItem<TreeNodeData> }) => {
-    const { title, value, isRoot, environment, secretPath, secretKey } = item.data;
+    const { title, value, isRoot, environment, secretPath, secretKey, importedFrom } = item.data;
     const isClickable = !isRoot && onSecretClick && environment && secretPath && secretKey;
 
     return (
@@ -157,6 +159,17 @@ const SecretTree = ({
           </button>
         ) : (
           <span className={isRoot ? "font-medium" : ""}>{title}</span>
+        )}
+        {importedFrom && (
+          <Tooltip
+            className="max-w-md break-words"
+            content={`Imported from ${importedFrom.environment}${importedFrom.secretPath}`}
+          >
+            <span className="rounded bg-mineshaft-600 px-1 text-xs text-mineshaft-300">
+              imported from {importedFrom.environment}
+              {importedFrom.secretPath}
+            </span>
+          </Tooltip>
         )}
         <Tooltip className="max-w-md break-words" content={value || "No value"}>
           <span className={`px-1 text-xs ${value ? "text-mineshaft-400" : "text-red-400"}`}>

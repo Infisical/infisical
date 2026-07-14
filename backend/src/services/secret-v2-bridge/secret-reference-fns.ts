@@ -13,6 +13,7 @@ import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-f
 import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
+import type { TImportedFrom } from "./secret-v2-bridge-fns";
 
 // Supports standard refs like ${ENV.path.KEY} and cross-project refs like ${@project-slug.ENV.path.KEY}
 const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.@]+)}`;
@@ -85,7 +86,16 @@ export type TSecretReferenceTraceNode = {
   secretPath: string;
   // Present when this node references a secret from a different project
   projectSlug?: string;
+  // Present when this node's value was resolved through a secret import rather than being defined directly at environment/secretPath
+  importedFrom?: TImportedFrom;
   children: TSecretReferenceTraceNode[];
+};
+
+type TCachedSecretValue = {
+  value: string;
+  tags: string[];
+  // Present when this value was resolved through a secret import rather than being defined directly in the folder
+  importedFrom?: TImportedFrom;
 };
 
 type TInterpolateSecretArg = {
@@ -126,7 +136,7 @@ export const expandSecretReferencesFactory = ({
   kmsService,
   crossProjectSecretDAL
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
+  const secretCache: Record<string, Record<string, TCachedSecretValue>> = {};
   let crossProjectAllowedCache: boolean | undefined;
   const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
@@ -173,7 +183,7 @@ export const expandSecretReferencesFactory = ({
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
 
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
+      const decryptedSecret = secrets.reduce<Record<string, TCachedSecretValue>>((prev, secret) => {
         // When userId is set, personal overrides (userId !== null) should take precedence
         // over shared secrets for the same key. We skip overwriting if a personal override
         // is already stored and the current secret is a shared one.
@@ -184,7 +194,8 @@ export const expandSecretReferencesFactory = ({
         // eslint-disable-next-line no-param-reassign
         prev[secret.key] = {
           value: decryptSecret(secret.encryptedValue) || "",
-          tags: secret.tags?.map((el) => el.slug)
+          tags: secret.tags?.map((el) => el.slug),
+          importedFrom: (secret as { secretImportedFrom?: TImportedFrom }).secretImportedFrom
         };
         return prev;
       }, {});
@@ -269,6 +280,7 @@ export const expandSecretReferencesFactory = ({
           let referencedSecretEnvironmentSlug = "";
           let referencedSecretValue = "";
           let referencedProjectSlug: string | undefined;
+          let referencedImportedFrom: TImportedFrom | undefined;
           let isCrossProjectRef = false;
 
           if (entities.length === 1) {
@@ -288,6 +300,7 @@ export const expandSecretReferencesFactory = ({
             referencedSecretKey = secretKey;
             referencedSecretPath = secretPath;
             referencedSecretEnvironmentSlug = environment;
+            referencedImportedFrom = referredValue.importedFrom;
           } else if (entities[0].startsWith("@")) {
             // Cross-project reference: ${@project-slug.env.path.KEY}
             // eslint-disable-next-line no-await-in-loop
@@ -402,6 +415,7 @@ export const expandSecretReferencesFactory = ({
             referencedSecretKey = secretReferenceKey;
             referencedSecretPath = secretReferencePath;
             referencedSecretEnvironmentSlug = secretReferenceEnvironment;
+            referencedImportedFrom = referedValue.importedFrom;
           }
 
           const node = {
@@ -409,6 +423,7 @@ export const expandSecretReferencesFactory = ({
             secretPath: referencedSecretPath,
             environment: referencedSecretEnvironmentSlug,
             ...(referencedProjectSlug ? { projectSlug: referencedProjectSlug } : {}),
+            ...(referencedImportedFrom ? { importedFrom: referencedImportedFrom } : {}),
             depth: depth + 1,
             secretKey: referencedSecretKey,
             trace

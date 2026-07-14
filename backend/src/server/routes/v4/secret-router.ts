@@ -35,6 +35,12 @@ const SecretReferenceNode = z.object({
       slug: z.string(),
       name: z.string()
     })
+    .optional(),
+  importedFrom: z
+    .object({
+      environment: z.string(),
+      secretPath: z.string()
+    })
     .optional()
 });
 

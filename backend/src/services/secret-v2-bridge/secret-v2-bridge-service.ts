@@ -3158,7 +3158,9 @@ export const secretV2BridgeServiceFactory = ({
     const { getExpandedSecretStackTrace } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
-      secretDAL,
+      secretDAL: {
+        findByFolderId: createFetchFolderSecretsWithImports({ projectId, secretDAL, secretImportDAL, folderDAL })
+      },
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretName, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -3171,7 +3173,9 @@ export const secretV2BridgeServiceFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsService,
+      // Cross-project reads must stay on the raw DAL so source-project imports aren't resolved through this project's context.
+      crossProjectSecretDAL: secretDAL
     });
 
     if (

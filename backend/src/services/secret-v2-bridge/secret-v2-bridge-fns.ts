@@ -1298,6 +1298,8 @@ type TCreateFetchFolderSecretsWithImportsArg = {
 
 // Returns a function that fetches direct secrets for a folder merged with its
 // one-level-deep imported secrets. Direct secrets take priority over imports.
+export type TImportedFrom = { environment: string; secretPath: string };
+
 export const createFetchFolderSecretsWithImports = ({
   projectId,
   secretDAL,
@@ -1305,7 +1307,11 @@ export const createFetchFolderSecretsWithImports = ({
   folderDAL
 }: TCreateFetchFolderSecretsWithImportsArg) => {
   type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
-  type SecretRow = Awaited<ReturnType<TCreateFetchFolderSecretsWithImportsArg["secretDAL"]["findByFolderId"]>>[number];
+  type SecretRow = Awaited<
+    ReturnType<TCreateFetchFolderSecretsWithImportsArg["secretDAL"]["findByFolderId"]>
+  >[number] & {
+    secretImportedFrom?: TImportedFrom;
+  };
 
   const recursiveFetch = async (
     folderId: string,
@@ -1343,7 +1349,13 @@ export const createFetchFolderSecretsWithImports = ({
       activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
     );
     const importedSecretArrays = await Promise.all(
-      importedFolders.filter(Boolean).map((f) => recursiveFetch(f!.id, userIdArg, visitedFolderIds))
+      activeImports.map(async (imp, idx) => {
+        const folder = importedFolders[idx];
+        if (!folder) return [];
+        const secrets = await recursiveFetch(folder.id, userIdArg, visitedFolderIds);
+        const importedFrom: TImportedFrom = { environment: imp.importEnv.slug, secretPath: imp.importPath };
+        return secrets.map((s) => ({ ...s, secretImportedFrom: importedFrom }));
+      })
     );
     const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
     directSecrets.forEach((s) => importedMerged.set(s.key, s));

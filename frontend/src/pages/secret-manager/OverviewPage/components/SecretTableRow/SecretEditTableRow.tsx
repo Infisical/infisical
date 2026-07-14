@@ -1546,14 +1546,14 @@ export const SecretEditTableRow = ({
               <div className="my-1" />
               <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">Insights</DropdownMenuLabel>
               <Tooltip
-                open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
+                open={!canReadSecretValue || !canFetchSharedValue ? undefined : false}
                 disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
                     onClick={() => setIsSecretReferenceOpen(true)}
-                    isDisabled={!canReadSecretValue || !secretId || isEmpty}
+                    isDisabled={!canReadSecretValue || !canFetchSharedValue}
                   >
                     <WorkflowIcon />
                     Secret References
@@ -1869,9 +1869,9 @@ export const SecretEditTableRow = ({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <SecretReferenceTree
-            secretPath={secretPath}
-            environment={environment}
-            secretKey={secretName}
+            secretPath={fetchSharedValueParams.secretPath}
+            environment={fetchSharedValueParams.environment}
+            secretKey={fetchSharedValueParams.secretKey}
             onClose={() => setIsSecretReferenceOpen(false)}
           />
         </ModalContent>
