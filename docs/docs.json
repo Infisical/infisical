@@ -503,7 +503,8 @@
                           "documentation/platform/secret-rotation/mysql-credentials",
                           "documentation/platform/secret-rotation/oracledb-credentials",
                           "documentation/platform/secret-rotation/postgres-credentials",
-                          "documentation/platform/secret-rotation/redis-credentials"
+                          "documentation/platform/secret-rotation/redis-credentials",
+                          "documentation/platform/secret-rotation/snowflake-user-key-pair"
                         ]
                       },
                       {
@@ -2747,6 +2748,19 @@
                       "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/list",
                       "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Snowflake User Key Pair",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/create",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/delete",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-by-id",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-by-name",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/list",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/update"
                     ]
                   },
                   {
