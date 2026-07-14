@@ -15,7 +15,8 @@ import {
   CertExtendedKeyUsageType,
   CertKeyAlgorithm,
   CertKeyUsageType,
-  CertSignatureAlgorithm
+  CertSignatureAlgorithm,
+  domainComponentSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -124,7 +125,7 @@ export const registerCertificateProfilesRouter = async (
               country: z.string().optional(),
               state: z.string().optional(),
               locality: z.string().optional(),
-              domainComponents: z.array(z.string().trim().min(1)).optional()
+              domainComponents: z.array(domainComponentSchema).optional()
             })
             .nullish()
         })
@@ -608,7 +609,7 @@ export const registerCertificateProfilesRouter = async (
               country: z.string().optional(),
               state: z.string().optional(),
               locality: z.string().optional(),
-              domainComponents: z.array(z.string().trim().min(1)).optional()
+              domainComponents: z.array(domainComponentSchema).optional()
             })
             .nullish()
         })

@@ -112,18 +112,8 @@ export const buildSubjectOverrideForCsr = (
     TCertificateRequest,
     "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality"
   >
-): string | undefined => {
+): string => {
   const csrSubject = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
-
-  const injectsDefault =
-    (!csrSubject.commonName && !!request.commonName) ||
-    (!csrSubject.organization && !!request.organization) ||
-    (!csrSubject.ou && !!request.organizationalUnit) ||
-    (!csrSubject.country && !!request.country) ||
-    (!csrSubject.province && !!request.state) ||
-    (!csrSubject.locality && !!request.locality);
-
-  if (!injectsDefault) return undefined;
 
   return createDistinguishedName({
     commonName: csrSubject.commonName ?? request.commonName,

@@ -1,3 +1,12 @@
+import { z } from "zod";
+
+export const domainComponentSchema = z
+  .string()
+  .trim()
+  .min(1, "Domain component cannot be empty")
+  .max(255)
+  .refine((value) => !value.includes(","), { message: "Domain component cannot contain a comma" });
+
 export enum CertificateRequestStatus {
   PENDING_APPROVAL = "pending_approval",
   PENDING = "pending",

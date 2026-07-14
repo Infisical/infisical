@@ -20,7 +20,8 @@ import { validateCaDateField } from "@app/services/certificate-authority/certifi
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  domainComponentSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
@@ -147,7 +148,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               country: subjectAttributeField.nullish(),
               state: subjectAttributeField.nullish(),
               locality: subjectAttributeField.nullish(),
-              domainComponents: z.array(subjectAttributeField.min(1, "Domain component cannot be empty")).optional(),
+              domainComponents: z.array(domainComponentSchema).optional(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z

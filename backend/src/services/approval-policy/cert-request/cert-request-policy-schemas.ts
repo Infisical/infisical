@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { domainComponentSchema } from "@app/services/certificate-common/certificate-constants";
+
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -32,7 +34,7 @@ export const CertRequestPolicyRequestDataSchema = z.object({
     country: z.string().optional(),
     state: z.string().optional(),
     locality: z.string().optional(),
-    domainComponents: z.array(z.string()).optional(),
+    domainComponents: z.array(domainComponentSchema).optional(),
     keyUsages: z.array(z.string()).optional(),
     extendedKeyUsages: z.array(z.string()).optional(),
     altNames: z
