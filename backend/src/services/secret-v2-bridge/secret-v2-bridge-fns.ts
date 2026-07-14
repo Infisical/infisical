@@ -1354,7 +1354,9 @@ export const createFetchFolderSecretsWithImports = ({
         if (!folder) return [];
         const secrets = await recursiveFetch(folder.id, userIdArg, visitedFolderIds);
         const importedFrom: TImportedFrom = { environment: imp.importEnv.slug, secretPath: imp.importPath };
-        return secrets.map((s) => ({ ...s, secretImportedFrom: importedFrom }));
+        // Preserve the deepest tag already set by a nested import hop, so multi-level chains
+        // report the secret's true origin rather than the nearest relay.
+        return secrets.map((s) => ({ ...s, secretImportedFrom: s.secretImportedFrom ?? importedFrom }));
       })
     );
     const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
