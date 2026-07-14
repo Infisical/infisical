@@ -73,9 +73,33 @@ export const hostPatternSchema = z
     });
   });
 
+// structural check only; the provider-specific config shape is validated in the service where the
+// referenced dynamic secret's provider type is known
+const DynamicSecretConfigSchema = z
+  .object({
+    namespace: z.string().trim().min(1).optional(),
+    principals: z.array(z.string().trim().min(1)).optional()
+  })
+  .strict();
+
 const CredentialInputSchema = z
   .object({
-    secretKey: z.string().trim().min(1).max(255).describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
+    secretKey: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
+    dynamicSecretName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretName),
+    dynamicSecretField: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretField),
+    dynamicSecretConfig: DynamicSecretConfigSchema.optional().describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretConfig),
     role: z.nativeEnum(ProxiedServiceCredentialRole).describe(PROXIED_SERVICES.CREDENTIAL.role),
     headerName: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerName),
     headerPrefix: z.string().trim().max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerPrefix),
@@ -98,6 +122,27 @@ const CredentialInputSchema = z
       .describe(PROXIED_SERVICES.CREDENTIAL.substitutionSurfaces)
   })
   .superRefine((cred, ctx) => {
+    // exactly one credential source: static secretKey XOR dynamicSecretName
+    if (Boolean(cred.secretKey) === Boolean(cred.dynamicSecretName)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide exactly one of secretKey or dynamicSecretName"
+      });
+    }
+    if (cred.dynamicSecretName) {
+      if (!cred.dynamicSecretField) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "dynamicSecretField is required when dynamicSecretName is set"
+        });
+      }
+    } else if (cred.dynamicSecretField || cred.dynamicSecretConfig) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "dynamicSecretField and dynamicSecretConfig are only valid with dynamicSecretName"
+      });
+    }
+
     if (cred.role === ProxiedServiceCredentialRole.HeaderRewrite) {
       if (cred.headerPurpose) {
         if (cred.headerName || cred.headerPrefix) {
@@ -200,7 +245,16 @@ export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentials
   headerPurpose: true,
   placeholderKey: true,
   placeholderValue: true,
-  substitutionSurfaces: true
+  substitutionSurfaces: true,
+  dynamicSecretName: true,
+  dynamicSecretField: true,
+  dynamicSecretConfig: true
+});
+
+// callerCanLease is present only on dynamic-secret credentials; the connect wrapper (CLI) reads it to
+// warn when the agent identity itself holds Lease on a brokered dynamic secret.
+export const SanitizedProxiedServiceCredentialWithLeaseAccessSchema = SanitizedProxiedServiceCredentialSchema.extend({
+  callerCanLease: z.boolean().optional()
 });
 
 export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
@@ -218,5 +272,11 @@ export const ProxiedServiceWithCredentialsSchema = SanitizedProxiedServiceBaseSc
 });
 
 export const ProxiedServiceWithCanProxySchema = ProxiedServiceWithCredentialsSchema.extend({
+  canProxy: z.boolean()
+});
+
+// used by the list/get responses so callerCanLease survives Fastify's Zod response serialization
+export const ProxiedServiceWithCanProxyAndLeaseAccessSchema = SanitizedProxiedServiceBaseSchema.extend({
+  credentials: SanitizedProxiedServiceCredentialWithLeaseAccessSchema.array(),
   canProxy: z.boolean()
 });

@@ -4,7 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   CredentialsArraySchema,
   hostPatternSchema,
-  ProxiedServiceWithCanProxySchema,
+  ProxiedServiceWithCanProxyAndLeaseAccessSchema,
   ProxiedServiceWithCredentialsSchema,
   SanitizedProxiedServiceBaseSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
@@ -48,7 +48,12 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
             proxiedServiceId: service.id,
             name: service.name,
             hostPattern: service.hostPattern,
-            secretKeys: [...new Set(req.body.credentials.map((c) => c.secretKey))],
+            secretKeys: [
+              ...new Set(req.body.credentials.map((c) => c.secretKey).filter((k): k is string => Boolean(k)))
+            ],
+            dynamicSecretNames: [
+              ...new Set(req.body.credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))
+            ],
             environment: req.body.environment,
             secretPath: req.body.secretPath
           }
@@ -75,7 +80,8 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          services: ProxiedServiceWithCanProxySchema.array()
+          projectSlug: z.string(),
+          services: ProxiedServiceWithCanProxyAndLeaseAccessSchema.array()
         })
       }
     },
@@ -98,7 +104,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          service: ProxiedServiceWithCanProxySchema
+          service: ProxiedServiceWithCanProxyAndLeaseAccessSchema
         })
       }
     },
@@ -127,7 +133,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          service: ProxiedServiceWithCanProxySchema
+          service: ProxiedServiceWithCanProxyAndLeaseAccessSchema
         })
       }
     },
@@ -180,7 +186,12 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
             name: service.name,
             hostPattern: service.hostPattern,
             updatedFields: Object.keys(req.body),
-            secretKeys: [...new Set(service.credentials.map((c) => c.secretKey))],
+            secretKeys: [
+              ...new Set(service.credentials.map((c) => c.secretKey).filter((k): k is string => Boolean(k)))
+            ],
+            dynamicSecretNames: [
+              ...new Set(service.credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))
+            ],
             environment: service.environment,
             secretPath: service.secretPath
           }

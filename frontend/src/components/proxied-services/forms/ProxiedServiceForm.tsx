@@ -39,8 +39,13 @@ import {
   TProxiedServiceCredentialInput
 } from "@app/hooks/api/proxiedServices/types";
 
-import { HeaderRewritingMode, proxiedServiceFormSchema, TProxiedServiceForm } from "./schema";
-import { SecretSelect } from "./SecretSelect";
+import { CredentialSourceFields, TCredentialSource } from "./CredentialSourceFields";
+import {
+  HeaderRewritingMode,
+  proxiedServiceFormSchema,
+  TCredentialSourceForm,
+  TProxiedServiceForm
+} from "./schema";
 import { SurfaceSelect } from "./SurfaceSelect";
 
 type Props = {
@@ -55,6 +60,50 @@ type Props = {
 const genPlaceholder = () =>
   `placeholder_${Array.from({ length: 12 }, () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]).join("")}`;
 
+const emptySource = (): TCredentialSourceForm => ({
+  secretKey: "",
+  dynamicSecretName: "",
+  dynamicSecretField: "",
+  leaseConfig: undefined
+});
+
+// map a persisted credential to the form's source shape (static secretKey OR dynamic name+field+config)
+const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredentialSourceForm =>
+  c.dynamicSecretName
+    ? {
+        secretKey: "",
+        dynamicSecretName: c.dynamicSecretName,
+        dynamicSecretField: c.dynamicSecretField ?? "",
+        leaseConfig: c.dynamicSecretConfig?.namespace
+          ? { namespace: c.dynamicSecretConfig.namespace }
+          : undefined
+      }
+    : {
+        secretKey: c.secretKey ?? "",
+        dynamicSecretName: "",
+        dynamicSecretField: "",
+        leaseConfig: undefined
+      };
+
+const hasSource = (src: TCredentialSourceForm) => Boolean(src.secretKey || src.dynamicSecretName);
+
+// map a form source back to the credential-input source fields (omit null so the API accepts it)
+const sourceToInput = (
+  src: TCredentialSourceForm
+): Pick<
+  TProxiedServiceCredentialInput,
+  "secretKey" | "dynamicSecretName" | "dynamicSecretField" | "dynamicSecretConfig"
+> =>
+  src.dynamicSecretName
+    ? {
+        dynamicSecretName: src.dynamicSecretName,
+        dynamicSecretField: src.dynamicSecretField,
+        dynamicSecretConfig: src.leaseConfig?.namespace
+          ? { namespace: src.leaseConfig.namespace }
+          : undefined
+      }
+    : { secretKey: src.secretKey };
+
 const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm => {
   if (!svc) {
     return {
@@ -62,7 +111,8 @@ const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm =>
       hostPattern: "",
       isEnabled: true,
       headerMode: HeaderRewritingMode.Headers,
-      headers: [{ secretKey: "", headerName: "Authorization", headerPrefix: "Bearer" }],
+      headers: [{ ...emptySource(), headerName: "Authorization", headerPrefix: "Bearer" }],
+      basicAuth: { username: emptySource(), password: emptySource() },
       substitutions: []
     };
   }
@@ -89,20 +139,18 @@ const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm =>
     headers: isBasicAuth
       ? []
       : headerCreds.map((c) => ({
-          secretKey: c.secretKey,
+          ...toSource(c),
           headerName: c.headerName ?? "",
           headerPrefix: c.headerPrefix ?? ""
         })),
-    basicAuth: isBasicAuth
-      ? {
-          usernameSecretKey: username?.secretKey ?? "",
-          passwordSecretKey: password?.secretKey ?? ""
-        }
-      : undefined,
+    basicAuth: {
+      username: username ? toSource(username) : emptySource(),
+      password: password ? toSource(password) : emptySource()
+    },
     substitutions: subs.map((c) => ({
+      ...toSource(c),
       placeholderKey: c.placeholderKey ?? "",
       placeholderValue: c.placeholderValue ?? genPlaceholder(),
-      secretKey: c.secretKey,
       surfaces: (c.substitutionSurfaces ?? []) as ProxiedServiceSubstitutionSurface[]
     }))
   };
@@ -112,16 +160,16 @@ const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInpu
   const credentials: TProxiedServiceCredentialInput[] = [];
 
   if (form.headerMode === HeaderRewritingMode.BasicAuth) {
-    if (form.basicAuth?.usernameSecretKey) {
+    if (form.basicAuth && hasSource(form.basicAuth.username)) {
       credentials.push({
-        secretKey: form.basicAuth.usernameSecretKey,
+        ...sourceToInput(form.basicAuth.username),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Username
       });
     }
-    if (form.basicAuth?.passwordSecretKey) {
+    if (form.basicAuth && hasSource(form.basicAuth.password)) {
       credentials.push({
-        secretKey: form.basicAuth.passwordSecretKey,
+        ...sourceToInput(form.basicAuth.password),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Password
       });
@@ -129,7 +177,7 @@ const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInpu
   } else {
     form.headers.forEach((h) => {
       credentials.push({
-        secretKey: h.secretKey,
+        ...sourceToInput(h),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerName: h.headerName,
         // omit rather than send null: the API field is optional and rejects null
@@ -140,7 +188,7 @@ const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInpu
 
   form.substitutions.forEach((s) => {
     credentials.push({
-      secretKey: s.secretKey,
+      ...sourceToInput(s),
       role: ProxiedServiceCredentialRole.CredentialSubstitution,
       placeholderKey: s.placeholderKey,
       placeholderValue: s.placeholderValue,
@@ -176,9 +224,31 @@ export const ProxiedServiceForm = ({
   });
 
   const headerMode = watch("headerMode");
+  const watchedHeaders = watch("headers");
+  const watchedBasicAuth = watch("basicAuth");
+  const watchedSubstitutions = watch("substitutions");
 
   const headerFields = useFieldArray({ control, name: "headers" });
   const substitutionFields = useFieldArray({ control, name: "substitutions" });
+
+  const setHeaderSource = (i: number, v: TCredentialSource) => {
+    setValue(`headers.${i}.secretKey`, v.secretKey ?? "");
+    setValue(`headers.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
+    setValue(`headers.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
+    setValue(`headers.${i}.leaseConfig`, v.leaseConfig);
+  };
+  const setSubstitutionSource = (i: number, v: TCredentialSource) => {
+    setValue(`substitutions.${i}.secretKey`, v.secretKey ?? "");
+    setValue(`substitutions.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
+    setValue(`substitutions.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
+    setValue(`substitutions.${i}.leaseConfig`, v.leaseConfig);
+  };
+  const setBasicAuthSource = (which: "username" | "password", v: TCredentialSource) => {
+    setValue(`basicAuth.${which}.secretKey`, v.secretKey ?? "");
+    setValue(`basicAuth.${which}.dynamicSecretName`, v.dynamicSecretName ?? "");
+    setValue(`basicAuth.${which}.dynamicSecretField`, v.dynamicSecretField ?? "");
+    setValue(`basicAuth.${which}.leaseConfig`, v.leaseConfig);
+  };
 
   // The "at least one credential" issue is attached to the headers array node by the schema.
   const headersArrayError = errors.headers as
@@ -335,21 +405,26 @@ export const ProxiedServiceForm = ({
                     <Field className="flex-1">
                       {i === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
                       <FieldContent>
-                        <Controller
-                          control={control}
-                          name={`headers.${i}.secretKey`}
-                          render={({ field }) => (
-                            <SecretSelect
-                              projectId={projectId}
-                              environment={environment}
-                              secretPath={secretPath}
-                              value={field.value}
-                              onChange={field.onChange}
-                              isError={Boolean(errors.headers?.[i]?.secretKey)}
-                            />
-                          )}
+                        <CredentialSourceFields
+                          projectId={projectId}
+                          environment={environment}
+                          secretPath={secretPath}
+                          value={{
+                            secretKey: watchedHeaders?.[i]?.secretKey,
+                            dynamicSecretName: watchedHeaders?.[i]?.dynamicSecretName,
+                            dynamicSecretField: watchedHeaders?.[i]?.dynamicSecretField,
+                            leaseConfig: watchedHeaders?.[i]?.leaseConfig
+                          }}
+                          onChange={(v) => setHeaderSource(i, v)}
+                          isSecretError={Boolean(errors.headers?.[i]?.secretKey)}
+                          isFieldError={Boolean(errors.headers?.[i]?.dynamicSecretField)}
                         />
-                        <FieldError errors={[errors.headers?.[i]?.secretKey]} />
+                        <FieldError
+                          errors={[
+                            errors.headers?.[i]?.secretKey,
+                            errors.headers?.[i]?.dynamicSecretField
+                          ]}
+                        />
                       </FieldContent>
                     </Field>
                     <IconButton
@@ -374,7 +449,7 @@ export const ProxiedServiceForm = ({
                   size="xs"
                   type="button"
                   onClick={() =>
-                    headerFields.append({ secretKey: "", headerName: "", headerPrefix: "" })
+                    headerFields.append({ ...emptySource(), headerName: "", headerPrefix: "" })
                   }
                 >
                   <PlusIcon className="mr-1 size-4" />
@@ -389,41 +464,51 @@ export const ProxiedServiceForm = ({
                 <Field className="flex-1">
                   <FieldLabel>Username</FieldLabel>
                   <FieldContent>
-                    <Controller
-                      control={control}
-                      name="basicAuth.usernameSecretKey"
-                      render={({ field }) => (
-                        <SecretSelect
-                          projectId={projectId}
-                          environment={environment}
-                          secretPath={secretPath}
-                          value={field.value}
-                          onChange={field.onChange}
-                          isError={Boolean(errors.basicAuth?.usernameSecretKey)}
-                        />
-                      )}
+                    <CredentialSourceFields
+                      projectId={projectId}
+                      environment={environment}
+                      secretPath={secretPath}
+                      value={{
+                        secretKey: watchedBasicAuth?.username?.secretKey,
+                        dynamicSecretName: watchedBasicAuth?.username?.dynamicSecretName,
+                        dynamicSecretField: watchedBasicAuth?.username?.dynamicSecretField,
+                        leaseConfig: watchedBasicAuth?.username?.leaseConfig
+                      }}
+                      onChange={(v) => setBasicAuthSource("username", v)}
+                      isSecretError={Boolean(errors.basicAuth?.username?.secretKey)}
+                      isFieldError={Boolean(errors.basicAuth?.username?.dynamicSecretField)}
                     />
-                    <FieldError errors={[errors.basicAuth?.usernameSecretKey]} />
+                    <FieldError
+                      errors={[
+                        errors.basicAuth?.username?.secretKey,
+                        errors.basicAuth?.username?.dynamicSecretField
+                      ]}
+                    />
                   </FieldContent>
                 </Field>
                 <Field className="flex-1">
                   <FieldLabel>Password</FieldLabel>
                   <FieldContent>
-                    <Controller
-                      control={control}
-                      name="basicAuth.passwordSecretKey"
-                      render={({ field }) => (
-                        <SecretSelect
-                          projectId={projectId}
-                          environment={environment}
-                          secretPath={secretPath}
-                          value={field.value}
-                          onChange={field.onChange}
-                          isError={Boolean(errors.basicAuth?.passwordSecretKey)}
-                        />
-                      )}
+                    <CredentialSourceFields
+                      projectId={projectId}
+                      environment={environment}
+                      secretPath={secretPath}
+                      value={{
+                        secretKey: watchedBasicAuth?.password?.secretKey,
+                        dynamicSecretName: watchedBasicAuth?.password?.dynamicSecretName,
+                        dynamicSecretField: watchedBasicAuth?.password?.dynamicSecretField,
+                        leaseConfig: watchedBasicAuth?.password?.leaseConfig
+                      }}
+                      onChange={(v) => setBasicAuthSource("password", v)}
+                      isSecretError={Boolean(errors.basicAuth?.password?.secretKey)}
+                      isFieldError={Boolean(errors.basicAuth?.password?.dynamicSecretField)}
                     />
-                    <FieldError errors={[errors.basicAuth?.passwordSecretKey]} />
+                    <FieldError
+                      errors={[
+                        errors.basicAuth?.password?.secretKey,
+                        errors.basicAuth?.password?.dynamicSecretField
+                      ]}
+                    />
                   </FieldContent>
                 </Field>
               </div>
@@ -524,21 +609,26 @@ export const ProxiedServiceForm = ({
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 text-muted">with value of</span>
                   <div className="flex-1">
-                    <Controller
-                      control={control}
-                      name={`substitutions.${i}.secretKey`}
-                      render={({ field }) => (
-                        <SecretSelect
-                          projectId={projectId}
-                          environment={environment}
-                          secretPath={secretPath}
-                          value={field.value}
-                          onChange={field.onChange}
-                          isError={Boolean(errors.substitutions?.[i]?.secretKey)}
-                        />
-                      )}
+                    <CredentialSourceFields
+                      projectId={projectId}
+                      environment={environment}
+                      secretPath={secretPath}
+                      value={{
+                        secretKey: watchedSubstitutions?.[i]?.secretKey,
+                        dynamicSecretName: watchedSubstitutions?.[i]?.dynamicSecretName,
+                        dynamicSecretField: watchedSubstitutions?.[i]?.dynamicSecretField,
+                        leaseConfig: watchedSubstitutions?.[i]?.leaseConfig
+                      }}
+                      onChange={(v) => setSubstitutionSource(i, v)}
+                      isSecretError={Boolean(errors.substitutions?.[i]?.secretKey)}
+                      isFieldError={Boolean(errors.substitutions?.[i]?.dynamicSecretField)}
                     />
-                    <FieldError errors={[errors.substitutions?.[i]?.secretKey]} />
+                    <FieldError
+                      errors={[
+                        errors.substitutions?.[i]?.secretKey,
+                        errors.substitutions?.[i]?.dynamicSecretField
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -551,9 +641,9 @@ export const ProxiedServiceForm = ({
               type="button"
               onClick={() =>
                 substitutionFields.append({
+                  ...emptySource(),
                   placeholderKey: "",
                   placeholderValue: genPlaceholder(),
-                  secretKey: "",
                   surfaces: []
                 })
               }
