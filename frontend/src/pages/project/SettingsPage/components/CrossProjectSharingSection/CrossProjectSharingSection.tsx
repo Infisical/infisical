@@ -72,7 +72,7 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
     let oldestDate = projectGrants[0].createdAt;
 
     projectGrants.forEach((g) => {
-      const folder = g.folderName === "root" ? "/" : `/${g.folderName}`;
+      const folder = g.secretPath;
       folderSet.add(folder);
       grantMatrix.set(`${folder}:${g.environmentSlug}`, g);
       if (g.createdAt < oldestDate) oldestDate = g.createdAt;

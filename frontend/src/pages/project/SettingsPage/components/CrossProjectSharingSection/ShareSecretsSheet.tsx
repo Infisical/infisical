@@ -59,7 +59,12 @@ type SourceEntry = {
 
 const EMPTY_ENTRY: SourceEntry = { environment: "", secretPath: "/" };
 
-const entryKey = (e: SourceEntry) => `${e.environment}:${e.secretPath}`;
+const normalizePath = (p: string) => {
+  const segments = p.split("/").filter(Boolean);
+  return segments.length === 0 ? "/" : `/${segments.join("/")}`;
+};
+
+const entryKey = (e: SourceEntry) => `${e.environment}:${normalizePath(e.secretPath)}`;
 
 export type ShareSecretsEditData = {
   targetProjectId: string;
@@ -189,21 +194,26 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
     if (editData) {
       const initialEntries: SourceEntry[] = editData.grants.map((g) => ({
         environment: g.environmentSlug,
-        secretPath: g.folderName === "root" ? "/" : `/${g.folderName}`
+        secretPath: g.secretPath
       }));
       setEntries(initialEntries.length > 0 ? initialEntries : [{ ...EMPTY_ENTRY }]);
       setEditingIndex(null);
-
-      const matchingProject = projects.find((p) => p.id === editData.targetProjectId);
-      if (matchingProject) {
-        setTargetProjects([matchingProject]);
-      }
+      setTargetProjects([]);
     } else {
       setEntries([{ ...EMPTY_ENTRY }]);
       setEditingIndex(0);
       setTargetProjects([]);
     }
-  }, [isOpen, editData, projects]);
+  }, [isOpen, editData]);
+
+  useEffect(() => {
+    if (!isOpen || !editData || targetProjects.length > 0) return;
+
+    const matchingProject = projects.find((p) => p.id === editData.targetProjectId);
+    if (matchingProject) {
+      setTargetProjects([matchingProject]);
+    }
+  }, [isOpen, editData, projects, targetProjects.length]);
 
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 
@@ -274,7 +284,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
           editData.grants.map((g) =>
             entryKey({
               environment: g.environmentSlug,
-              secretPath: g.folderName === "root" ? "/" : `/${g.folderName}`
+              secretPath: g.secretPath
             })
           )
         );
@@ -282,7 +292,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
         editData.grants.forEach((g) => {
           const key = entryKey({
             environment: g.environmentSlug,
-            secretPath: g.folderName === "root" ? "/" : `/${g.folderName}`
+            secretPath: g.secretPath
           });
           if (!currentKeys.has(key)) {
             operations.push(removeGrant({ grantId: g.id, sourceProjectId: currentProject.id }));
