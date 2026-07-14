@@ -42,7 +42,7 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
-  const authHeaders = getDatadogAuthHeaders(connection.credentials);
+  const authHeaders = getDatadogAuthHeaders(connection);
 
   const $createApplicationKey = async () => {
     const baseUrl = await getDatadogBaseUrl(connection);
@@ -164,7 +164,7 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
 
     try {
       await request.get(`${baseUrl}/api/v2/permissions`, {
-        headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": applicationKey }
+        headers: { ...getDatadogAuthHeaders(connection), "DD-APPLICATION-KEY": applicationKey }
       });
     } catch (error: unknown) {
       if (error instanceof BadRequestError) throw error;

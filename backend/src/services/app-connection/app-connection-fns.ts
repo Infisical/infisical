@@ -694,6 +694,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -742,10 +743,11 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
-    case DatadogConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
       return "API Key";
+    case DatadogConnectionMethod.ApiKey:
+      return "Application Keys";
     case ChefConnectionMethod.UserKey:
       return "User Key";
     case QoveryConnectionMethod.AccessToken:

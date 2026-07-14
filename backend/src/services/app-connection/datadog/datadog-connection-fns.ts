@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { DiscriminativePick } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
@@ -37,15 +38,24 @@ export const getDatadogConnectionListItem = () => {
   return {
     name: "Datadog" as const,
     app: AppConnection.Datadog as const,
-    methods: Object.values(DatadogConnectionMethod) as [DatadogConnectionMethod.ApiKey]
+    methods: Object.values(DatadogConnectionMethod) as [DatadogConnectionMethod.Token, DatadogConnectionMethod.ApiKey]
   };
 };
 
-export const getDatadogAppKeysAuthHeaders = (credentials: { apiKey: string; applicationKey: string }) => ({
-  "DD-API-KEY": credentials.apiKey,
-  "DD-APPLICATION-KEY": credentials.applicationKey,
-  Accept: "application/json"
-});
+export const getDatadogAuthHeaders = (connection: DiscriminativePick<TDatadogConnection, "method" | "credentials">) => {
+  if (connection.method === DatadogConnectionMethod.Token) {
+    return {
+      Authorization: `Bearer ${connection.credentials.token}`,
+      Accept: "application/json"
+    };
+  }
+
+  return {
+    "DD-API-KEY": connection.credentials.apiKey,
+    "DD-APPLICATION-KEY": connection.credentials.applicationKey,
+    Accept: "application/json"
+  };
+};
 
 type TDatadogJsonApiError = { detail?: string; title?: string; status?: string };
 
@@ -68,7 +78,7 @@ export const validateDatadogConnectionCredentials = async (config: TDatadogConne
 
   try {
     await safeRequest.get(`${baseUrl}/api/v2/validate_keys`, {
-      headers: getDatadogAppKeysAuthHeaders(config.credentials)
+      headers: getDatadogAuthHeaders(config)
     });
   } catch (error: unknown) {
     throw new BadRequestError({
@@ -115,7 +125,7 @@ export const listDatadogServiceAccounts = async (connection: TDatadogConnection)
           "page[size]": PAGE_SIZE,
           "page[number]": pageNumber
         },
-        headers: getDatadogAppKeysAuthHeaders(connection.credentials)
+        headers: getDatadogAuthHeaders(connection)
       });
 
       const pageEntries = data.data ?? [];

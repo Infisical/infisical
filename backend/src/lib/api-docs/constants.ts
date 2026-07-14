@@ -2961,7 +2961,8 @@ export const AppConnections = {
     DATADOG: {
       url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
       apiKey: "The Datadog API key used to authenticate.",
-      applicationKey: "The Datadog Application key used to authenticate."
+      applicationKey: "The Datadog Application key used to authenticate.",
+      token: "The Datadog API token used to authenticate."
     },
     SSH: {
       host: "The hostname or IP address of the SSH server.",

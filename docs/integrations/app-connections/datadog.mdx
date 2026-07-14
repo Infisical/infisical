@@ -3,13 +3,16 @@ title: "Datadog Connection"
 description: "Learn how to configure a Datadog Connection for Infisical."
 ---
 
-Infisical supports the use of a Datadog [API Key](https://docs.datadoghq.com/account_management/api-app-keys/) paired with a Service Account [Application Key](https://docs.datadoghq.com/account_management/org_settings/service_accounts/) to authenticate with Datadog.
+Infisical supports two methods for authenticating with Datadog:
+
+- **API Token** (recommended): a Datadog API token that is sent as a bearer token (`Authorization: Bearer <token>`).
+- **Application Keys**: a Datadog [API Key](https://docs.datadoghq.com/account_management/api-app-keys/) paired with a Service Account [Application Key](https://docs.datadoghq.com/account_management/org_settings/service_accounts/).
 
 <Note>
-    We recommend issuing the Application Key on a dedicated Service Account so the credentials Infisical uses can be rotated and revoked independently of any individual user.
+    If you use the **Application Keys** method, we recommend issuing the Application Key on a dedicated Service Account so the credentials Infisical uses can be rotated and revoked independently of any individual user. The steps below walk through creating those credentials; the **API Token** method only requires a Datadog API token and the site URL.
 </Note>
 
-## Create Datadog Credentials
+## Create Datadog Application Keys Credentials
 
 <Steps>
     <Step title="Open Organization Settings">
@@ -110,9 +113,10 @@ Infisical supports the use of a Datadog [API Key](https://docs.datadoghq.com/acc
                 Complete the Datadog Connection form by entering:
                 - A descriptive name for the connection
                 - An optional description for future reference
+                - The **Method** you want to use to authenticate (**API Token**, recommended, or **Application Keys**)
                 - The Datadog **URL** for your region (e.g. `https://api.datadoghq.com`, `https://api.us5.datadoghq.com`, or `https://api.ddog-gov.com`)
-                - The **API Key** from earlier steps
-                - The Service Account **Application Key** from earlier steps
+                - If using **API Token**: the Datadog **API Token**
+                - If using **Application Keys**: the **API Key** and the Service Account **Application Key** from the earlier steps
 
                 ![Datadog Connection form](/images/app-connections/datadog/datadog-form.png)
             </Step>
@@ -128,7 +132,23 @@ Infisical supports the use of a Datadog [API Key](https://docs.datadoghq.com/acc
 
         ### Sample request
 
-        ```bash Request
+        <CodeGroup>
+        ```bash API Token (Recommended)
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/datadog \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-datadog-connection",
+                    "method": "token",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                    "credentials": {
+                        "url": "https://api.datadoghq.com",
+                        "token": "<YOUR-API-TOKEN>"
+                    }
+                }'
+        ```
+
+        ```bash Application Keys
         curl    --request POST \
                 --url https://app.infisical.com/api/v1/app-connections/datadog \
                 --header 'Content-Type: application/json' \
@@ -143,6 +163,7 @@ Infisical supports the use of a Datadog [API Key](https://docs.datadoghq.com/acc
                     }
                 }'
         ```
+        </CodeGroup>
 
         ### Sample response
 
