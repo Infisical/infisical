@@ -122,11 +122,30 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     }
   };
 
+  // Create the target user as a key-pair-only SERVICE account if it does not already exist. We check
+  // first (rather than CREATE USER IF NOT EXISTS) so managing a pre-existing user still needs only
+  // ALTER privileges; the CREATE USER privilege is required only when a user is actually created.
+  const ensureUserExists = async () => {
+    await runSnowflake(async (client) => {
+      const escapedUsername = username.replace(/'/g, "''");
+      const rows = await executeSnowflakeSql<Record<string, unknown>>(client, `SHOW USERS LIKE '${escapedUsername}'`);
+      // SHOW ... LIKE is case-insensitive and treats _/% as wildcards, so exact-match the name.
+      const exists = rows.some((row) => String(row.name ?? row.NAME ?? "") === username);
+      if (!exists) {
+        await executeSnowflakeSql(
+          client,
+          `CREATE USER ${quoteSnowflakeIdent(username)} TYPE = SERVICE COMMENT = 'Created by Infisical secret rotation'`
+        );
+      }
+    }, `Failed to ensure Snowflake user "${username}" exists`);
+  };
+
   const issueCredentials: TRotationFactoryIssueCredentials<TSnowflakeUserKeyPairRotationGeneratedCredentials> = async (
     callback
   ) => {
     // On creation the first credential always occupies slot 0 (activeIndex defaults to 0).
     const keyPair = await generateRsaKeyPair();
+    await ensureUserExists();
     await setPublicKeyForSlot(slotForIndex(0), keyPair);
     return callback(keyPair);
   };

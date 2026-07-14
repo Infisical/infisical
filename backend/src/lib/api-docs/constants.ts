@@ -3566,7 +3566,8 @@ export const SecretRotations = {
       serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
     },
     SNOWFLAKE_USER_KEY_PAIR: {
-      username: "The Snowflake user whose RSA key pair will be rotated."
+      username:
+        "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user."
     }
   },
   SECRETS_MAPPING: {
