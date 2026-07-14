@@ -175,7 +175,8 @@ export const projectFolderGrantServiceFactory = ({
     const grants = await projectFolderGrantDAL.listBySourceProject(sourceProjectId);
 
     const folderIds = grants.map((g) => g.sourceFolderId);
-    const folderPaths = folderIds.length > 0 ? await folderDAL.findSecretPathByFolderIds(sourceProjectId, folderIds) : [];
+    const folderPaths =
+      folderIds.length > 0 ? await folderDAL.findSecretPathByFolderIds(sourceProjectId, folderIds) : [];
 
     return grants.map((g, i) => ({
       ...g,
