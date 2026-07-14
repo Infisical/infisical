@@ -4,7 +4,6 @@ import {
   ChevronDownIcon,
   ChevronsLeftRightEllipsisIcon,
   EditIcon,
-  FingerprintIcon,
   Trash2Icon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -138,12 +137,6 @@ export const ProxiedServiceTableRow = ({
           "group-hover:mr-24"
         )}
       >
-        {proxiedService.credentials.some((c) => c.dynamicSecretName) && (
-          <Badge variant="neutral">
-            <FingerprintIcon />
-            Dynamic
-          </Badge>
-        )}
         {!proxiedService.isEnabled && (
           <Badge variant="neutral">
             <BanIcon />

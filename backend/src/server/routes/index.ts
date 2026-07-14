@@ -2939,7 +2939,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     dynamicSecretDAL,
-    projectDAL
+    projectDAL,
+    kmsService
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({

@@ -52,19 +52,23 @@ const hostPatternField = z
       });
   });
 
+// Per-lease inputs a provider needs when the proxy mints a lease (kubernetes namespace, ssh principals).
+// Collected ONCE per dynamic secret in dynamicSecretConfigs below — not per credential — so every credential
+// referencing the same dynamic secret shares one config (and therefore one minted lease).
+const leaseConfigSchema = z.object({
+  namespace: z.string().trim().optional(),
+  principals: z.array(z.string().trim().min(1)).optional()
+});
+
+export type TLeaseConfig = z.infer<typeof leaseConfigSchema>;
+
 // A credential row references either a static secret (secretKey) or a dynamic secret
 // (dynamicSecretName + dynamicSecretField). Required-ness / XOR is enforced conditionally in the
 // top-level superRefine (via refineCredentialSource) so fields of the inactive header mode don't block submission.
 const credentialSourceSchema = z.object({
   secretKey: z.string().trim().default(""),
   dynamicSecretName: z.string().trim().default(""),
-  dynamicSecretField: z.string().trim().default(""),
-  leaseConfig: z
-    .object({
-      namespace: z.string().trim().optional(),
-      principals: z.array(z.string().trim().min(1)).optional()
-    })
-    .optional()
+  dynamicSecretField: z.string().trim().default("")
 });
 
 export type TCredentialSourceForm = z.infer<typeof credentialSourceSchema>;
@@ -132,7 +136,10 @@ export const proxiedServiceFormSchema = z
     headerMode: z.nativeEnum(HeaderRewritingMode).default(HeaderRewritingMode.Headers),
     headers: z.array(headerCredentialSchema).default([]),
     basicAuth: basicAuthSchema.optional(),
-    substitutions: z.array(substitutionSchema).default([])
+    substitutions: z.array(substitutionSchema).default([]),
+    // lease inputs keyed by dynamic secret name; collected once per secret and fanned out to every
+    // credential that references it in toCredentials()
+    dynamicSecretConfigs: z.record(z.string(), leaseConfigSchema).default({})
   })
   .superRefine((form, ctx) => {
     if (form.headerMode === HeaderRewritingMode.Headers) {

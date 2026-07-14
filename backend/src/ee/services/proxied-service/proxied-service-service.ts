@@ -10,6 +10,8 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor, TDynamicSecretWithMetadata } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { PersonalOverridesBehavior, SecretImportReferencesBehavior } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -48,6 +50,7 @@ type TProxiedServiceServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 const toCredentialRow = (serviceId: string, credential: TProxiedServiceCredentialInput) => ({
@@ -73,6 +76,17 @@ type TCredentialRef = {
   dynamicSecretConfig?: unknown;
 };
 
+// Stable string form of a lease config for equality comparison. Object keys are sorted; array values keep
+// their order (the agent proxy hashes the config verbatim, so principal order is significant to lease identity).
+// null / undefined / {} all normalize to "".
+const canonicalizeLeaseConfig = (config: unknown): string => {
+  if (!config || typeof config !== "object") return "";
+  const obj = config as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  if (!keys.length) return "";
+  return JSON.stringify(keys.map((k) => [k, obj[k]]));
+};
+
 export const proxiedServiceServiceFactory = ({
   proxiedServiceDAL,
   proxiedServiceCredentialDAL,
@@ -81,7 +95,8 @@ export const proxiedServiceServiceFactory = ({
   permissionService,
   licenseService,
   dynamicSecretDAL,
-  projectDAL
+  projectDAL,
+  kmsService
 }: TProxiedServiceServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
@@ -173,6 +188,7 @@ export const proxiedServiceServiceFactory = ({
   const $assertReferencedDynamicSecretsLeasable = async (
     permission: MongoAbility<ProjectPermissionSet>,
     orgId: string,
+    projectId: string,
     environment: string,
     secretPath: string,
     folderId: string,
@@ -180,6 +196,22 @@ export const proxiedServiceServiceFactory = ({
   ) => {
     const dynamicCreds = credentials.filter((c) => Boolean(c.dynamicSecretName));
     if (!dynamicCreds.length) return;
+
+    // Every credential referencing the same dynamic secret must carry an identical lease config: the agent
+    // proxy keys leases by (secret, config), so divergent configs would mint separate leases (e.g. basic-auth
+    // username/password from different accounts). The UI collects config once per secret; this guards the API.
+    const configByName = new Map<string, string>();
+    dynamicCreds.forEach((cred) => {
+      const name = cred.dynamicSecretName as string;
+      const canonical = canonicalizeLeaseConfig(cred.dynamicSecretConfig);
+      const seen = configByName.get(name);
+      if (seen !== undefined && seen !== canonical) {
+        throw new BadRequestError({
+          message: `Conflicting lease config for dynamic secret "${name}": all credentials referencing it must use the same config`
+        });
+      }
+      configByName.set(name, canonical);
+    });
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.dynamicSecret) {
@@ -229,6 +261,45 @@ export const proxiedServiceServiceFactory = ({
         }
       }
     });
+
+    // SSH leases require at least one principal, and each must be in the dynamic secret's allowed list — the
+    // provider enforces this at mint time, so validate it here too (decrypting the secret) to fail the save
+    // immediately rather than saving a config that can never mint. Only SSH constrains its input this way.
+    const sshCreds = dynamicCreds.filter(
+      (c) => byName.get(c.dynamicSecretName as string)?.type === DynamicSecretProviders.Ssh
+    );
+    if (sshCreds.length) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const allowedByName = new Map<string, Set<string>>();
+      const allowedPrincipals = (name: string) => {
+        if (!allowedByName.has(name)) {
+          const ds = byName.get(name) as TDynamicSecretWithMetadata;
+          const decrypted = JSON.parse(decryptor({ cipherTextBlob: Buffer.from(ds.encryptedInput) }).toString()) as {
+            principals?: string[];
+          };
+          allowedByName.set(name, new Set(decrypted.principals ?? []));
+        }
+        return allowedByName.get(name) as Set<string>;
+      };
+
+      sshCreds.forEach((cred) => {
+        const name = cred.dynamicSecretName as string;
+        const requested = (cred.dynamicSecretConfig as { principals?: string[] } | undefined)?.principals ?? [];
+        if (!requested.length) {
+          throw new BadRequestError({ message: `SSH dynamic secret "${name}" requires at least one principal` });
+        }
+        const allowed = allowedPrincipals(name);
+        const invalid = requested.filter((p) => !allowed.has(p));
+        if (invalid.length) {
+          throw new BadRequestError({
+            message: `Principal(s) not allowed for dynamic secret "${name}": ${invalid.join(", ")}. Allowed: ${[...allowed].join(", ") || "none"}`
+          });
+        }
+      });
+    }
   };
 
   // Stamps callerCanLease on each dynamic-secret credential so the CLI connect wrapper can warn when the
@@ -295,6 +366,7 @@ export const proxiedServiceServiceFactory = ({
     await $assertReferencedDynamicSecretsLeasable(
       permission,
       actor.orgId,
+      projectId,
       environment,
       canonicalPath,
       folder.id,
@@ -512,6 +584,7 @@ export const proxiedServiceServiceFactory = ({
     await $assertReferencedDynamicSecretsLeasable(
       permission,
       actor.orgId,
+      service.projectId,
       service.environmentSlug,
       resolvedSecretPath,
       service.folderId,

@@ -38,8 +38,7 @@ const kubernetesLeaseInputs: TProviderLeaseInput[] = [
     name: "namespace",
     kind: "string",
     label: "Namespace",
-    helperText:
-      "The Kubernetes namespace to lease into. If not set, the first namespace in the dynamic secret configuration is used."
+    helperText: "Kubernetes namespace to use. Optional."
   }
 ];
 
@@ -48,7 +47,7 @@ const sshLeaseInputs: TProviderLeaseInput[] = [
     name: "principals",
     kind: "string[]",
     label: "Principals",
-    helperText: "The usernames to embed in the certificate (must be from the allowed list)."
+    helperText: "Usernames to include in the certificate."
   }
 ];
 

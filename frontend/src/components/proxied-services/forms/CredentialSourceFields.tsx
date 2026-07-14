@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
+import { components as reactSelectComponents, OptionProps } from "react-select";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
 import {
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   FingerprintIcon,
@@ -9,13 +11,7 @@ import {
   LockIcon
 } from "lucide-react";
 
-import {
-  FilterableSelect,
-  Input,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { FilterableSelect, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -33,7 +29,6 @@ export type TCredentialSource = {
   secretKey?: string;
   dynamicSecretName?: string;
   dynamicSecretField?: string;
-  leaseConfig?: { namespace?: string; principals?: string[] };
 };
 
 type Props = {
@@ -76,6 +71,29 @@ type SourceOption =
 const SECRETS_GROUP = "Secrets";
 const DYNAMIC_GROUP = "Dynamic Secrets";
 const BACK_VALUE = "__back__";
+
+// The default v3 Option wraps the label in a content-width <p>, so a right-aligned chevron inside
+// formatOptionLabel only reaches the end of the (variable-length) name, not the row's edge. This override
+// gives the label a full-width flex-1 wrapper so `ml-auto` reaches the true right edge, and keeps the
+// selected tick in the same trailing slot the chevrons line up against.
+const AlignedOption = <T,>({ isSelected, children, ...props }: OptionProps<T>) => {
+  const data = props.data as unknown as SourceOption;
+  // a drill-able dynamic secret shows a chevron — but not when it's the selected row, where the tick wins
+  const showChevron = !isSelected && data.kind === "dynamic-parent" && data.isSelectable;
+  return (
+    <reactSelectComponents.Option isSelected={isSelected} {...props}>
+      <div className="flex w-full items-center">
+        <div className="min-w-0 flex-1">{children}</div>
+        {/* One fixed trailing slot at the far right holding the tick OR the chevron (mutually exclusive),
+            so every row's trailing indicator lines up regardless of name length or selection. */}
+        <span className="ml-2 flex size-4 shrink-0 items-center justify-center">
+          {isSelected && <CheckIcon className="size-4" />}
+          {showChevron && <ChevronRightIcon className="size-4 text-bunker-300" />}
+        </span>
+      </div>
+    </reactSelectComponents.Option>
+  );
+};
 
 const fieldLabelFor = (provider: DynamicSecretProviders | undefined, fieldName: string) => {
   if (!provider) return fieldName;
@@ -250,10 +268,6 @@ export const CredentialSourceFields = ({
     return null;
   }, [value.secretKey, value.dynamicSecretName, value.dynamicSecretField, selectedProvider]);
 
-  const leaseInputs = selectedProvider
-    ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[selectedProvider].leaseInputs
-    : [];
-
   const commit = (next: TCredentialSource) => {
     onChange(next);
     setDrill(null);
@@ -278,24 +292,14 @@ export const CredentialSourceFields = ({
           : [];
         // a single-field provider (e.g. kubernetes) needs no drill step
         if (fields.length === 1) {
-          const sameSecret = value.dynamicSecretName === option.name;
-          commit({
-            dynamicSecretName: option.name,
-            dynamicSecretField: fields[0].name,
-            leaseConfig: sameSecret ? value.leaseConfig : undefined
-          });
+          commit({ dynamicSecretName: option.name, dynamicSecretField: fields[0].name });
         } else {
           setDrill({ name: option.name, provider: option.provider });
         }
         break;
       }
       case "field": {
-        const sameSecret = value.dynamicSecretName === drill?.name;
-        commit({
-          dynamicSecretName: drill?.name ?? "",
-          dynamicSecretField: option.name,
-          leaseConfig: sameSecret ? value.leaseConfig : undefined
-        });
+        commit({ dynamicSecretName: drill?.name ?? "", dynamicSecretField: option.name });
         break;
       }
       default:
@@ -303,7 +307,7 @@ export const CredentialSourceFields = ({
     }
   };
 
-  const formatOptionLabel = (option: SourceOption, meta: { context: "menu" | "value" }) => {
+  const formatOptionLabel = (option: SourceOption) => {
     if (option.kind === "back") {
       return (
         <div className="flex items-center gap-2 text-bunker-300">
@@ -327,16 +331,12 @@ export const CredentialSourceFields = ({
           <LockIcon className="size-4 shrink-0 text-bunker-300" />
         )}
         <span className="truncate">{option.label}</span>
-        {/* committed dynamic selection: secret name › chosen field (the chevron mirrors the drill affordance) */}
+        {/* committed dynamic selection: secret name › chosen field (shown on the selected value) */}
         {committedField && (
           <span className="flex min-w-0 items-center gap-1 text-muted">
             <ChevronRightIcon className="size-3.5 shrink-0" />
             <span className="truncate">{committedField}</span>
           </span>
-        )}
-        {/* drill affordance, only in the menu (not on the committed value) */}
-        {option.kind === "dynamic-parent" && option.isSelectable && meta.context === "menu" && (
-          <ChevronRightIcon className="ml-auto size-4 shrink-0 text-bunker-300" />
         )}
       </div>
     );
@@ -377,6 +377,7 @@ export const CredentialSourceFields = ({
         }}
         closeMenuOnSelect={false}
         blurInputOnSelect={false}
+        components={{ Option: AlignedOption }}
         isOptionDisabled={(option) => {
           const o = option as SourceOption;
           return (o.kind === "secret" || o.kind === "dynamic-parent") && !o.isSelectable;
@@ -384,47 +385,8 @@ export const CredentialSourceFields = ({
         onChange={(newValue) => handleChange(newValue as SourceOption | null)}
         getOptionLabel={(option) => (option as SourceOption).label}
         getOptionValue={(option) => (option as SourceOption).value}
-        formatOptionLabel={(option, meta) => formatOptionLabel(option as SourceOption, meta)}
+        formatOptionLabel={(option) => formatOptionLabel(option as SourceOption)}
       />
-      {value.dynamicSecretName &&
-        leaseInputs.map((input) => {
-          if (input.kind === "string[]") {
-            // e.g. ssh principals: comma-separated list
-            return (
-              <Input
-                key={input.name}
-                placeholder={`${input.label} (comma-separated)`}
-                value={(value.leaseConfig?.principals ?? []).join(", ")}
-                onChange={(e) => {
-                  const principals = e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean);
-                  onChange({
-                    ...value,
-                    leaseConfig: {
-                      ...value.leaseConfig,
-                      principals: principals.length ? principals : undefined
-                    }
-                  });
-                }}
-              />
-            );
-          }
-          return (
-            <Input
-              key={input.name}
-              placeholder={input.label}
-              value={value.leaseConfig?.namespace ?? ""}
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  leaseConfig: { ...value.leaseConfig, namespace: e.target.value || undefined }
-                })
-              }
-            />
-          );
-        })}
     </div>
   );
 };

@@ -145,7 +145,7 @@ How the agent proxy handles the lease:
 </Note>
 
 <Note>
-  Not every provider fits HTTP brokering. AWS IAM leases return access keys that require SigV4 request signing (not just a header), which the proxy does not perform, and SSH leases return key material rather than an HTTP credential — these are not offered in the picker for injection.
+  Not every provider's output makes a working HTTP credential. Providers whose secret authenticates by presence work well (a database password, a GitHub or bearer token, etc.). AWS IAM leases return access keys that AWS expects you to SigV4-sign each request with, which the proxy does not do, so injecting them as a header will not authenticate. Pick fields accordingly.
 </Note>
 
 ## Example: API Request

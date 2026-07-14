@@ -41,10 +41,12 @@ import {
 } from "@app/hooks/api/proxiedServices/types";
 
 import { CredentialSourceFields, TCredentialSource } from "./CredentialSourceFields";
+import { DynamicSecretLeaseSettings } from "./DynamicSecretLeaseSettings";
 import {
   HeaderRewritingMode,
   proxiedServiceFormSchema,
   TCredentialSourceForm,
+  TLeaseConfig,
   TProxiedServiceForm
 } from "./schema";
 import { SurfaceSelect } from "./SurfaceSelect";
@@ -64,39 +66,28 @@ const genPlaceholder = () =>
 const emptySource = (): TCredentialSourceForm => ({
   secretKey: "",
   dynamicSecretName: "",
-  dynamicSecretField: "",
-  leaseConfig: undefined
+  dynamicSecretField: ""
 });
 
-// map a persisted credential to the form's source shape (static secretKey OR dynamic name+field+config)
+// map a persisted credential to the form's source shape (static secretKey OR dynamic name+field).
+// The lease config is not carried per credential; it's rebuilt into dynamicSecretConfigs (see toDefaultValues).
 const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredentialSourceForm =>
   c.dynamicSecretName
     ? {
         secretKey: "",
         dynamicSecretName: c.dynamicSecretName,
-        dynamicSecretField: c.dynamicSecretField ?? "",
-        leaseConfig:
-          c.dynamicSecretConfig?.namespace || c.dynamicSecretConfig?.principals?.length
-            ? {
-                namespace: c.dynamicSecretConfig.namespace,
-                principals: c.dynamicSecretConfig.principals
-              }
-            : undefined
+        dynamicSecretField: c.dynamicSecretField ?? ""
       }
     : {
         secretKey: c.secretKey ?? "",
         dynamicSecretName: "",
-        dynamicSecretField: "",
-        leaseConfig: undefined
+        dynamicSecretField: ""
       };
 
 const hasSource = (src: TCredentialSourceForm) => Boolean(src.secretKey || src.dynamicSecretName);
 
-// build the API lease config from the form, omitting empty values (so an empty object isn't sent)
-const toLeaseConfig = (leaseConfig?: {
-  namespace?: string;
-  principals?: string[];
-}): TProxiedServiceLeaseConfig | undefined => {
+// build the API lease config from a form entry, omitting empty values (so an empty object isn't sent)
+const toLeaseConfig = (leaseConfig?: TLeaseConfig): TProxiedServiceLeaseConfig | undefined => {
   if (!leaseConfig) return undefined;
   const cfg: TProxiedServiceLeaseConfig = {};
   if (leaseConfig.namespace) cfg.namespace = leaseConfig.namespace;
@@ -104,9 +95,12 @@ const toLeaseConfig = (leaseConfig?: {
   return Object.keys(cfg).length ? cfg : undefined;
 };
 
-// map a form source back to the credential-input source fields (omit null so the API accepts it)
+// map a form source back to the credential-input source fields (omit null so the API accepts it). A dynamic
+// credential pulls its lease config from the shared per-secret map, so every credential referencing the same
+// dynamic secret ends up with an identical config (one config => one minted lease in the proxy).
 const sourceToInput = (
-  src: TCredentialSourceForm
+  src: TCredentialSourceForm,
+  configs: Record<string, TLeaseConfig>
 ): Pick<
   TProxiedServiceCredentialInput,
   "secretKey" | "dynamicSecretName" | "dynamicSecretField" | "dynamicSecretConfig"
@@ -115,9 +109,23 @@ const sourceToInput = (
     ? {
         dynamicSecretName: src.dynamicSecretName,
         dynamicSecretField: src.dynamicSecretField,
-        dynamicSecretConfig: toLeaseConfig(src.leaseConfig)
+        dynamicSecretConfig: toLeaseConfig(configs[src.dynamicSecretName])
       }
     : { secretKey: src.secretKey };
+
+// rebuild the shared per-secret lease config map from persisted credentials (they all carry the same config
+// for a given dynamic secret, so the first non-empty one wins)
+const toDynamicSecretConfigs = (svc: TDashboardProxiedService): Record<string, TLeaseConfig> => {
+  const configs: Record<string, TLeaseConfig> = {};
+  svc.credentials.forEach((c) => {
+    if (!c.dynamicSecretName || configs[c.dynamicSecretName]) return;
+    const cfg = c.dynamicSecretConfig;
+    if (cfg?.namespace || cfg?.principals?.length) {
+      configs[c.dynamicSecretName] = { namespace: cfg.namespace, principals: cfg.principals };
+    }
+  });
+  return configs;
+};
 
 const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm => {
   if (!svc) {
@@ -128,7 +136,8 @@ const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm =>
       headerMode: HeaderRewritingMode.Headers,
       headers: [{ ...emptySource(), headerName: "Authorization", headerPrefix: "Bearer" }],
       basicAuth: { username: emptySource(), password: emptySource() },
-      substitutions: []
+      substitutions: [],
+      dynamicSecretConfigs: {}
     };
   }
 
@@ -167,24 +176,26 @@ const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm =>
       placeholderKey: c.placeholderKey ?? "",
       placeholderValue: c.placeholderValue ?? genPlaceholder(),
       surfaces: (c.substitutionSurfaces ?? []) as ProxiedServiceSubstitutionSurface[]
-    }))
+    })),
+    dynamicSecretConfigs: toDynamicSecretConfigs(svc)
   };
 };
 
 const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInput[] => {
   const credentials: TProxiedServiceCredentialInput[] = [];
+  const configs = form.dynamicSecretConfigs ?? {};
 
   if (form.headerMode === HeaderRewritingMode.BasicAuth) {
     if (form.basicAuth && hasSource(form.basicAuth.username)) {
       credentials.push({
-        ...sourceToInput(form.basicAuth.username),
+        ...sourceToInput(form.basicAuth.username, configs),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Username
       });
     }
     if (form.basicAuth && hasSource(form.basicAuth.password)) {
       credentials.push({
-        ...sourceToInput(form.basicAuth.password),
+        ...sourceToInput(form.basicAuth.password, configs),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Password
       });
@@ -192,7 +203,7 @@ const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInpu
   } else {
     form.headers.forEach((h) => {
       credentials.push({
-        ...sourceToInput(h),
+        ...sourceToInput(h, configs),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerName: h.headerName,
         // omit rather than send null: the API field is optional and rejects null
@@ -203,7 +214,7 @@ const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInpu
 
   form.substitutions.forEach((s) => {
     credentials.push({
-      ...sourceToInput(s),
+      ...sourceToInput(s, configs),
       role: ProxiedServiceCredentialRole.CredentialSubstitution,
       placeholderKey: s.placeholderKey,
       placeholderValue: s.placeholderValue,
@@ -242,6 +253,7 @@ export const ProxiedServiceForm = ({
   const watchedHeaders = watch("headers");
   const watchedBasicAuth = watch("basicAuth");
   const watchedSubstitutions = watch("substitutions");
+  const watchedConfigs = watch("dynamicSecretConfigs");
 
   const headerFields = useFieldArray({ control, name: "headers" });
   const substitutionFields = useFieldArray({ control, name: "substitutions" });
@@ -250,19 +262,39 @@ export const ProxiedServiceForm = ({
     setValue(`headers.${i}.secretKey`, v.secretKey ?? "");
     setValue(`headers.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
     setValue(`headers.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
-    setValue(`headers.${i}.leaseConfig`, v.leaseConfig);
   };
   const setSubstitutionSource = (i: number, v: TCredentialSource) => {
     setValue(`substitutions.${i}.secretKey`, v.secretKey ?? "");
     setValue(`substitutions.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
     setValue(`substitutions.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
-    setValue(`substitutions.${i}.leaseConfig`, v.leaseConfig);
   };
   const setBasicAuthSource = (which: "username" | "password", v: TCredentialSource) => {
     setValue(`basicAuth.${which}.secretKey`, v.secretKey ?? "");
     setValue(`basicAuth.${which}.dynamicSecretName`, v.dynamicSecretName ?? "");
     setValue(`basicAuth.${which}.dynamicSecretField`, v.dynamicSecretField ?? "");
-    setValue(`basicAuth.${which}.leaseConfig`, v.leaseConfig);
+  };
+
+  // unique dynamic secret names referenced by the ACTIVE credentials (matches toCredentials' mode gating),
+  // so the settings section only asks for inputs that will actually be sent. Computed inline (not memoized):
+  // react-hook-form mutates the watched objects in place, so their references are stable across renders and a
+  // useMemo keyed on them would never recompute after a nested setValue.
+  const referencedDynamicSecretNames = (() => {
+    const names = new Set<string>();
+    const add = (name?: string) => {
+      if (name) names.add(name);
+    };
+    if (headerMode === HeaderRewritingMode.BasicAuth) {
+      add(watchedBasicAuth?.username?.dynamicSecretName);
+      add(watchedBasicAuth?.password?.dynamicSecretName);
+    } else {
+      (watchedHeaders ?? []).forEach((h) => add(h?.dynamicSecretName));
+    }
+    (watchedSubstitutions ?? []).forEach((s) => add(s?.dynamicSecretName));
+    return [...names];
+  })();
+
+  const setDynamicSecretConfig = (name: string, config: TLeaseConfig) => {
+    setValue("dynamicSecretConfigs", { ...(watchedConfigs ?? {}), [name]: config });
   };
 
   // The "at least one credential" issue is attached to the headers array node by the schema.
@@ -427,8 +459,7 @@ export const ProxiedServiceForm = ({
                           value={{
                             secretKey: watchedHeaders?.[i]?.secretKey,
                             dynamicSecretName: watchedHeaders?.[i]?.dynamicSecretName,
-                            dynamicSecretField: watchedHeaders?.[i]?.dynamicSecretField,
-                            leaseConfig: watchedHeaders?.[i]?.leaseConfig
+                            dynamicSecretField: watchedHeaders?.[i]?.dynamicSecretField
                           }}
                           onChange={(v) => setHeaderSource(i, v)}
                           isSecretError={Boolean(errors.headers?.[i]?.secretKey)}
@@ -486,8 +517,7 @@ export const ProxiedServiceForm = ({
                       value={{
                         secretKey: watchedBasicAuth?.username?.secretKey,
                         dynamicSecretName: watchedBasicAuth?.username?.dynamicSecretName,
-                        dynamicSecretField: watchedBasicAuth?.username?.dynamicSecretField,
-                        leaseConfig: watchedBasicAuth?.username?.leaseConfig
+                        dynamicSecretField: watchedBasicAuth?.username?.dynamicSecretField
                       }}
                       onChange={(v) => setBasicAuthSource("username", v)}
                       isSecretError={Boolean(errors.basicAuth?.username?.secretKey)}
@@ -511,8 +541,7 @@ export const ProxiedServiceForm = ({
                       value={{
                         secretKey: watchedBasicAuth?.password?.secretKey,
                         dynamicSecretName: watchedBasicAuth?.password?.dynamicSecretName,
-                        dynamicSecretField: watchedBasicAuth?.password?.dynamicSecretField,
-                        leaseConfig: watchedBasicAuth?.password?.leaseConfig
+                        dynamicSecretField: watchedBasicAuth?.password?.dynamicSecretField
                       }}
                       onChange={(v) => setBasicAuthSource("password", v)}
                       isSecretError={Boolean(errors.basicAuth?.password?.secretKey)}
@@ -631,8 +660,7 @@ export const ProxiedServiceForm = ({
                       value={{
                         secretKey: watchedSubstitutions?.[i]?.secretKey,
                         dynamicSecretName: watchedSubstitutions?.[i]?.dynamicSecretName,
-                        dynamicSecretField: watchedSubstitutions?.[i]?.dynamicSecretField,
-                        leaseConfig: watchedSubstitutions?.[i]?.leaseConfig
+                        dynamicSecretField: watchedSubstitutions?.[i]?.dynamicSecretField
                       }}
                       onChange={(v) => setSubstitutionSource(i, v)}
                       isSecretError={Boolean(errors.substitutions?.[i]?.secretKey)}
@@ -668,6 +696,14 @@ export const ProxiedServiceForm = ({
             </Button>
           </div>
         </div>
+
+        <DynamicSecretLeaseSettings
+          environment={environment}
+          secretPath={secretPath}
+          referencedNames={referencedDynamicSecretNames}
+          configs={watchedConfigs ?? {}}
+          onChange={setDynamicSecretConfig}
+        />
       </div>
 
       <SheetFooter className="border-t">
