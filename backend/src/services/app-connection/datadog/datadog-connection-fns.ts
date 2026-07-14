@@ -38,10 +38,7 @@ export const getDatadogConnectionListItem = () => {
   return {
     name: "Datadog" as const,
     app: AppConnection.Datadog as const,
-    methods: Object.values(DatadogConnectionMethod) as [
-      DatadogConnectionMethod.Token,
-      DatadogConnectionMethod.ApiKey
-    ]
+    methods: Object.values(DatadogConnectionMethod) as [DatadogConnectionMethod.Token, DatadogConnectionMethod.ApiKey]
   };
 };
 

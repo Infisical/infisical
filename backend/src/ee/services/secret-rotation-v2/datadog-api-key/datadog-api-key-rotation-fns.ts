@@ -165,8 +165,7 @@ export const datadogApiKeyRotationFactory: TRotationFactory<
     const baseUrl = await getDatadogBaseUrl(connection);
 
     try {
-      // Validate the freshly-issued API key against the connection's known-good application key.
-      await safeRequest.get(`${baseUrl}/api/v2/validate`, {
+      await safeRequest.get(`${baseUrl}/api/v1/validate`, {
         headers: { "DD-API-KEY": apiKey }
       });
     } catch (error: unknown) {

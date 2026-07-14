@@ -67,9 +67,7 @@ export const ValidateDatadogConnectionCredentialsSchema = z.discriminatedUnion("
     )
   }),
   z.object({
-    method: z
-      .literal(DatadogConnectionMethod.ApiKey)
-      .describe(AppConnections.CREATE(AppConnection.Datadog).method),
+    method: z.literal(DatadogConnectionMethod.ApiKey).describe(AppConnections.CREATE(AppConnection.Datadog).method),
     credentials: DatadogConnectionApiKeyCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Datadog).credentials
     )
