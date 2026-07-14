@@ -95,6 +95,11 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
         deletedRevocationIds = await db.transaction(async (trx) => {
           await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
 
+          // The default random_page_cost is 4.0, which is too high for this query.
+          // With SSD powered database, random access is way faster.
+          // We set it to 1.1 to make the query opt for random access and thus more likely to use the index.
+          await trx.raw(`SET LOCAL random_page_cost = 1.1`);
+
           const findExpiredRevocationsSubQuery = trx(TableName.IdentityAccessTokenRevocation)
             .where("expiresAt", "<", db.fn.now())
             .select("id")
