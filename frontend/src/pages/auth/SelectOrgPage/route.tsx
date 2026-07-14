@@ -163,18 +163,19 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         });
       }
     } catch (error) {
-      console.error(error);
       // If it's a redirect, re-throw it
       if (error instanceof Error && error.message === "REDIRECT") throw error;
       // For redirect objects from TanStack Router
       if (typeof error === "object" && error !== null && "to" in error) throw error;
       // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
-      // never fires for it — surface SMTP errors manually and log the user out.
+      // never fires for it — surface SMTP and lockout errors manually and log the user out.
       if (typeof error === "object" && error !== null && "response" in error) {
         const { response } = error as {
           response?: { status?: number; data?: { error?: string; message?: string } };
         };
-        if (response?.data?.error === "SmtpError") {
+        const isLockError =
+          response?.data?.error === "UserLocked" || response?.data?.message === "Account is locked";
+        if (response?.data?.error === "SmtpError" || isLockError) {
           onRequestError(error);
           // We can't use the useLogoutUser hook here (beforeLoad runs outside React),
           // so we replicate its mutationFn manually:
