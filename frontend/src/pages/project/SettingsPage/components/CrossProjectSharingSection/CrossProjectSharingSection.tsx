@@ -27,8 +27,16 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input
+  Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -227,12 +235,14 @@ export const CrossProjectSharingSection = () => {
         <Badge variant="neutral">{projectGroups.length}</Badge>
       </div>
       {grants.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-md border border-mineshaft-700 py-10 text-center">
-          <p className="text-sm font-medium text-mineshaft-300">No projects have access yet</p>
-          <p className="mt-1 text-xs text-mineshaft-500">
-            Share secrets to grant another project read access.
-          </p>
-        </div>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No projects have access yet</EmptyTitle>
+            <EmptyDescription>
+              Share secrets to grant another project read access.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
           {projectGroups.map((projectGroup) => (
@@ -249,39 +259,42 @@ export const CrossProjectSharingSection = () => {
                 </div>
               </AccordionTrigger>
               <AccordionContent>
-                <div className="divide-y divide-mineshaft-700 rounded-md border border-mineshaft-700">
-                  {projectGroup.grants.map((grant) => (
-                    <div
-                      key={grant.id}
-                      className="grid items-center gap-x-3 px-4 py-3"
-                      style={{
-                        gridTemplateColumns: "minmax(7rem,max-content) 1fr auto 1.75rem"
-                      }}
-                    >
-                      <Badge variant="neutral" className="gap-1.5">
-                        <Layers className="size-3" />
-                        {grant.environmentName}
-                      </Badge>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <ArrowRight className="size-3.5 shrink-0 text-mineshaft-400" />
-                        <FolderPath folderName={grant.folderName} />
-                      </div>
-                      <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-mineshaft-400">
-                        <KeyRound className="size-3 shrink-0" />
-                        <span className="tabular-nums">
-                          {grant.secretCount} {grant.secretCount === 1 ? "secret" : "secrets"}
-                        </span>
-                      </div>
-                      <IconButton
-                        variant="ghost-muted"
-                        size="xs"
-                        onClick={() => setGrantToDelete(grant)}
-                      >
-                        <Trash2 />
-                      </IconButton>
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableBody>
+                    {projectGroup.grants.map((grant) => (
+                      <TableRow key={grant.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="neutral" className="gap-1.5">
+                              <Layers className="size-3" />
+                              {grant.environmentName}
+                            </Badge>
+                            <ArrowRight className="size-3.5 shrink-0 text-muted" />
+                            <FolderPath folderName={grant.folderName} />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-muted">
+                            <KeyRound className="size-3 shrink-0" />
+                            <span className="tabular-nums">
+                              {grant.secretCount}{" "}
+                              {grant.secretCount === 1 ? "secret" : "secrets"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-10">
+                          <IconButton
+                            variant="ghost-muted"
+                            size="xs"
+                            onClick={() => setGrantToDelete(grant)}
+                          >
+                            <Trash2 />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </AccordionContent>
             </AccordionItem>
           ))}
