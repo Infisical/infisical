@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Box, FolderIcon, KeyRound, Layers, Plus, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { format } from "date-fns";
+import { Box, Check, FolderIcon, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -31,24 +34,27 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
+  TableHeader,
   TableRow
 } from "@app/components/v3";
+import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
 import {
   TProjectFolderGrant,
-  useDeleteProjectFolderGrant,
-  useGetProjectFolderGrantUsage,
   useListProjectFolderGrants
 } from "@app/hooks/api/projectFolderGrants";
+import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
 
-import { ShareSecretsSheet } from "./ShareSecretsSheet";
+import { ShareSecretsEditData, ShareSecretsSheet } from "./ShareSecretsSheet";
 
 type ProjectGroup = {
   targetProjectId: string;
   targetProjectName: string;
   totalSecrets: number;
-  uniqueEnvCount: number;
-  uniqueFolderCount: number;
+  folders: string[];
+  grantMatrix: Map<string, TProjectFolderGrant>;
+  oldestGrantDate: string;
   grants: TProjectFolderGrant[];
 };
 
@@ -61,89 +67,90 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
   }, new Map<string, TProjectFolderGrant[]>());
 
   return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => {
-    const uniqueEnvs = new Set(projectGrants.map((g) => g.environmentSlug));
-    const uniqueFolders = new Set(projectGrants.map((g) => g.folderName));
+    const folderSet = new Set<string>();
+    const grantMatrix = new Map<string, TProjectFolderGrant>();
+    let oldestDate = projectGrants[0].createdAt;
+
+    projectGrants.forEach((g) => {
+      const folder = g.folderName === "root" ? "/" : `/${g.folderName}`;
+      folderSet.add(folder);
+      grantMatrix.set(`${folder}:${g.environmentSlug}`, g);
+      if (g.createdAt < oldestDate) oldestDate = g.createdAt;
+    });
 
     return {
       targetProjectId,
       targetProjectName: projectGrants[0].targetProjectName,
       totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
-      uniqueEnvCount: uniqueEnvs.size,
-      uniqueFolderCount: uniqueFolders.size,
+      folders: Array.from(folderSet).sort(),
+      grantMatrix,
+      oldestGrantDate: oldestDate,
       grants: projectGrants
     };
   });
 };
 
-type DeleteGrantDialogProps = {
-  grant: TProjectFolderGrant | null;
+type DeleteProjectGrantsDialogProps = {
+  grants: TProjectFolderGrant[];
+  projectName: string;
+  isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   sourceProjectId: string;
 };
 
 const CONFIRMATION_KEYWORD = "confirm";
 
-const DeleteGrantDialog = ({ grant, onOpenChange, sourceProjectId }: DeleteGrantDialogProps) => {
+const DeleteProjectGrantsDialog = ({
+  grants,
+  projectName,
+  isOpen,
+  onOpenChange,
+  sourceProjectId
+}: DeleteProjectGrantsDialogProps) => {
   const [confirmation, setConfirmation] = useState("");
-  const deleteGrant = useDeleteProjectFolderGrant();
-  const { data: usage, isLoading: isLoadingUsage } = useGetProjectFolderGrantUsage(
-    grant?.id ?? "",
-    sourceProjectId,
-    Boolean(grant)
-  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const queryClient = useQueryClient();
 
-  const totalUsage = (usage?.importCount ?? 0) + (usage?.referenceCount ?? 0);
   const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
 
   const handleConfirmDelete = async () => {
-    if (!grant || !isConfirmed) return;
+    if (!isConfirmed || grants.length === 0) return;
+
+    setIsDeleting(true);
     try {
-      await deleteGrant.mutateAsync({ grantId: grant.id, sourceProjectId });
-      createNotification({ text: "Grant removed", type: "success" });
+      await Promise.all(
+        grants.map((g) =>
+          apiRequest
+            .delete(`/api/v1/project-folder-grants/${g.id}`, {
+              params: { sourceProjectId }
+            })
+            .catch((err) => {
+              if (axios.isAxiosError(err) && err.response?.status === 404) return;
+              throw err;
+            })
+        )
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: projectFolderGrantKeys.listByProject(sourceProjectId)
+      });
+      await queryClient.invalidateQueries({
+        queryKey: projectFolderGrantKeys.listReceived(grants[0].targetProjectId)
+      });
+
+      createNotification({ text: "All grants removed", type: "success" });
       onOpenChange(false);
     } catch (err) {
       console.error(err);
-      createNotification({ text: "Failed to remove grant", type: "error" });
+      createNotification({ text: "Failed to remove grants", type: "error" });
+    } finally {
+      setIsDeleting(false);
     }
-  };
-
-  const renderDescription = () => {
-    if (isLoadingUsage) {
-      return "Checking for active usage...";
-    }
-
-    if (totalUsage > 0) {
-      const parts: string[] = [];
-      if (usage!.importCount > 0) {
-        parts.push(
-          `${usage!.importCount} secret ${usage!.importCount === 1 ? "import" : "imports"}`
-        );
-      }
-      if (usage!.referenceCount > 0) {
-        parts.push(
-          `${usage!.referenceCount} secret ${usage!.referenceCount === 1 ? "reference" : "references"}`
-        );
-      }
-      return (
-        <>
-          This grant is actively used by {parts.join(" and ")} in{" "}
-          <strong>{grant?.targetProjectName}</strong>. Removing it will break{" "}
-          {totalUsage === 1 ? "that link" : "those links"}.
-        </>
-      );
-    }
-
-    return (
-      <>
-        This will revoke <strong>{grant?.targetProjectName}</strong>&apos;s access to the shared
-        secrets. This action cannot be undone.
-      </>
-    );
   };
 
   return (
     <AlertDialog
-      open={Boolean(grant)}
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) setConfirmation("");
         onOpenChange(open);
@@ -151,8 +158,11 @@ const DeleteGrantDialog = ({ grant, onOpenChange, sourceProjectId }: DeleteGrant
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove Grant</AlertDialogTitle>
-          <AlertDialogDescription>{renderDescription()}</AlertDialogDescription>
+          <AlertDialogTitle>Remove All Grants</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will revoke <strong>{projectName}</strong>&apos;s access to all {grants.length}{" "}
+            shared {grants.length === 1 ? "grant" : "grants"}. This action cannot be undone.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="w-full pb-4">
           <p className="mb-2 text-sm text-muted">
@@ -171,8 +181,8 @@ const DeleteGrantDialog = ({ grant, onOpenChange, sourceProjectId }: DeleteGrant
           <AlertDialogAction
             variant="danger"
             onClick={handleConfirmDelete}
-            isPending={deleteGrant.isPending}
-            disabled={!isConfirmed || isLoadingUsage}
+            isPending={isDeleting}
+            disabled={!isConfirmed}
           >
             Remove
           </AlertDialogAction>
@@ -184,12 +194,27 @@ const DeleteGrantDialog = ({ grant, onOpenChange, sourceProjectId }: DeleteGrant
 
 export const CrossProjectSharingSection = () => {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-  const [grantToDelete, setGrantToDelete] = useState<TProjectFolderGrant | null>(null);
+  const [editData, setEditData] = useState<ShareSecretsEditData | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProjectGroup | null>(null);
   const { currentProject } = useProject();
 
   const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
 
   const projectGroups = useMemo(() => groupGrantsByProject(grants), [grants]);
+
+  const handleEdit = (group: ProjectGroup) => {
+    setEditData({
+      targetProjectId: group.targetProjectId,
+      targetProjectName: group.targetProjectName,
+      grants: group.grants
+    });
+    setIsShareSheetOpen(true);
+  };
+
+  const handleSheetOpenChange = (open: boolean) => {
+    setIsShareSheetOpen(open);
+    if (!open) setEditData(null);
+  };
 
   return (
     <Card className="mb-6">
@@ -199,11 +224,22 @@ export const CrossProjectSharingSection = () => {
             Cross-Project Secret Sharing
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
           </CardTitle>
-          <Button variant="project" size="sm" onClick={() => setIsShareSheetOpen(true)}>
+          <Button
+            variant="project"
+            size="sm"
+            onClick={() => {
+              setEditData(null);
+              setIsShareSheetOpen(true);
+            }}
+          >
             <Plus className="size-3.5" />
             Share Secrets
           </Button>
-          <ShareSecretsSheet isOpen={isShareSheetOpen} onOpenChange={setIsShareSheetOpen} />
+          <ShareSecretsSheet
+            isOpen={isShareSheetOpen}
+            onOpenChange={handleSheetOpenChange}
+            editData={editData}
+          />
         </div>
         <p className="max-w-2xl text-sm text-accent">
           Grant another project read access to a slice of this project&apos;s secrets. The target
@@ -216,7 +252,7 @@ export const CrossProjectSharingSection = () => {
       </CardHeader>
       <CardContent>
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm text-mineshaft-400">Granted Projects</span>
+          <span className="text-sm text-mineshaft-400">Linked Projects</span>
           <Badge variant="neutral">{projectGroups.length}</Badge>
         </div>
         {grants.length === 0 ? (
@@ -242,54 +278,69 @@ export const CrossProjectSharingSection = () => {
                       {projectGroup.targetProjectName}
                     </Badge>
                     <span className="text-xs text-muted">
-                      {projectGroup.uniqueEnvCount}{" "}
-                      {projectGroup.uniqueEnvCount === 1 ? "environment" : "environments"}
-                      {" · "}
-                      {projectGroup.uniqueFolderCount}{" "}
-                      {projectGroup.uniqueFolderCount === 1 ? "folder" : "folders"}
-                      {" · "}
                       {projectGroup.totalSecrets}{" "}
-                      {projectGroup.totalSecrets === 1 ? "secret" : "secrets"}
+                      {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2 pr-2">
+                    <span className="text-xs text-muted">
+                      {format(new Date(projectGroup.oldestGrantDate), "MMM d, yyyy")}
+                    </span>
+                    <IconButton
+                      variant="ghost-muted"
+                      size="xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(projectGroup);
+                      }}
+                    >
+                      <Pencil />
+                    </IconButton>
+                    <IconButton
+                      variant="ghost-muted"
+                      size="xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTarget(projectGroup);
+                      }}
+                    >
+                      <Trash2 />
+                    </IconButton>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Folder</TableHead>
+                        {currentProject.environments.map((env) => (
+                          <TableHead key={env.slug} className="text-center">
+                            {env.name}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
-                      {projectGroup.grants.map((grant) => (
-                        <TableRow key={grant.id}>
+                      {projectGroup.folders.map((folder) => (
+                        <TableRow key={folder}>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="neutral" className="gap-1.5">
-                                <Layers className="size-3" />
-                                {grant.environmentName}
-                              </Badge>
-                              <ArrowRight className="size-3.5 shrink-0 text-muted" />
-                              <div className="flex items-center gap-1.5">
-                                <FolderIcon className="size-3.5 text-muted" />
-                                <span className="text-sm text-muted">
-                                  {grant.folderName === "root" ? "/" : `/${grant.folderName}`}
-                                </span>
-                              </div>
+                            <div className="flex items-center gap-1.5">
+                              <FolderIcon className="size-3.5 text-muted" />
+                              <span className="text-sm">{folder}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-muted">
-                              <KeyRound className="size-3 shrink-0" />
-                              <span className="tabular-nums">
-                                {grant.secretCount} {grant.secretCount === 1 ? "secret" : "secrets"}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="w-10">
-                            <IconButton
-                              variant="ghost-muted"
-                              size="xs"
-                              onClick={() => setGrantToDelete(grant)}
-                            >
-                              <Trash2 />
-                            </IconButton>
-                          </TableCell>
+                          {currentProject.environments.map((env) => {
+                            const grant = projectGroup.grantMatrix.get(`${folder}:${env.slug}`);
+                            return (
+                              <TableCell key={env.slug} className="text-center">
+                                {grant ? (
+                                  <Check className="mx-auto size-4 text-success" />
+                                ) : (
+                                  <Minus className="mx-auto size-4 text-muted" />
+                                )}
+                              </TableCell>
+                            );
+                          })}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -300,10 +351,12 @@ export const CrossProjectSharingSection = () => {
           </Accordion>
         )}
       </CardContent>
-      <DeleteGrantDialog
-        grant={grantToDelete}
+      <DeleteProjectGrantsDialog
+        grants={deleteTarget?.grants ?? []}
+        projectName={deleteTarget?.targetProjectName ?? ""}
+        isOpen={Boolean(deleteTarget)}
         onOpenChange={(open) => {
-          if (!open) setGrantToDelete(null);
+          if (!open) setDeleteTarget(null);
         }}
         sourceProjectId={currentProject.id}
       />

@@ -1,8 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MultiValue } from "react-select";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { ArrowRight, FolderIcon, Layers, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
+import {
+  ArrowRight,
+  Box,
+  FolderIcon,
+  Layers,
+  Pencil,
+  Plus,
+  Trash2,
+  TriangleAlert
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -33,8 +42,12 @@ import {
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
+import { TProjectFolderGrant } from "@app/hooks/api/projectFolderGrants";
 import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
-import { TCreateProjectFolderGrantDTO } from "@app/hooks/api/projectFolderGrants/types";
+import {
+  TCreateProjectFolderGrantDTO,
+  TDeleteProjectFolderGrantDTO
+} from "@app/hooks/api/projectFolderGrants/types";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetSecretImports } from "@app/hooks/api/secretImports";
@@ -45,6 +58,14 @@ type SourceEntry = {
 };
 
 const EMPTY_ENTRY: SourceEntry = { environment: "", secretPath: "/" };
+
+const entryKey = (e: SourceEntry) => `${e.environment}:${e.secretPath}`;
+
+export type ShareSecretsEditData = {
+  targetProjectId: string;
+  targetProjectName: string;
+  grants: TProjectFolderGrant[];
+};
 
 type SourceEntryRowProps = {
   entry: SourceEntry;
@@ -145,9 +166,10 @@ const CompactEntryRow = ({ entry, envName, onEdit, onRemove }: CompactEntryRowPr
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  editData?: ShareSecretsEditData | null;
 };
 
-export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
+export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => {
   const { currentProject } = useProject();
   const [entries, setEntries] = useState<SourceEntry[]>([{ ...EMPTY_ENTRY }]);
   const [editingIndex, setEditingIndex] = useState<number | null>(0);
@@ -158,6 +180,30 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjectsByType(
     ProjectType.SecretManager
   );
+
+  const isEditMode = Boolean(editData);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (editData) {
+      const initialEntries: SourceEntry[] = editData.grants.map((g) => ({
+        environment: g.environmentSlug,
+        secretPath: g.folderName === "root" ? "/" : `/${g.folderName}`
+      }));
+      setEntries(initialEntries.length > 0 ? initialEntries : [{ ...EMPTY_ENTRY }]);
+      setEditingIndex(null);
+
+      const matchingProject = projects.find((p) => p.id === editData.targetProjectId);
+      if (matchingProject) {
+        setTargetProjects([matchingProject]);
+      }
+    } else {
+      setEntries([{ ...EMPTY_ENTRY }]);
+      setEditingIndex(0);
+      setTargetProjects([]);
+    }
+  }, [isOpen, editData, projects]);
 
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 
@@ -193,7 +239,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
     setEditingIndex(entries.length);
   };
 
-  const createGrant = async (dto: TCreateProjectFolderGrantDTO) => {
+  const postGrant = async (dto: TCreateProjectFolderGrantDTO) => {
     try {
       await apiRequest.post("/api/v1/project-folder-grants", dto);
     } catch (err) {
@@ -208,24 +254,69 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
     }
   };
 
+  const removeGrant = async (dto: TDeleteProjectFolderGrantDTO) => {
+    await apiRequest.delete(`/api/v1/project-folder-grants/${dto.grantId}`, {
+      params: { sourceProjectId: dto.sourceProjectId }
+    });
+  };
+
   const handleSubmit = async () => {
     const validEntries = entries.filter((e) => e.environment && e.secretPath);
     if (validEntries.length === 0 || targetProjects.length === 0) return;
 
     setIsSubmitting(true);
     try {
-      await Promise.all(
-        validEntries.flatMap((entry) =>
-          targetProjects.map((project) =>
-            createGrant({
-              sourceProjectId: currentProject.id,
-              environment: entry.environment,
-              secretPath: entry.secretPath,
-              targetProjectId: project.id
+      const operations: Promise<void>[] = [];
+
+      if (editData) {
+        const currentKeys = new Set(validEntries.map(entryKey));
+        const originalKeys = new Set(
+          editData.grants.map((g) =>
+            entryKey({
+              environment: g.environmentSlug,
+              secretPath: g.folderName === "root" ? "/" : `/${g.folderName}`
             })
           )
-        )
-      );
+        );
+
+        editData.grants.forEach((g) => {
+          const key = entryKey({
+            environment: g.environmentSlug,
+            secretPath: g.folderName === "root" ? "/" : `/${g.folderName}`
+          });
+          if (!currentKeys.has(key)) {
+            operations.push(removeGrant({ grantId: g.id, sourceProjectId: currentProject.id }));
+          }
+        });
+
+        validEntries.forEach((entry) => {
+          if (!originalKeys.has(entryKey(entry))) {
+            operations.push(
+              postGrant({
+                sourceProjectId: currentProject.id,
+                environment: entry.environment,
+                secretPath: entry.secretPath,
+                targetProjectId: editData.targetProjectId
+              })
+            );
+          }
+        });
+      } else {
+        validEntries.forEach((entry) => {
+          targetProjects.forEach((project) => {
+            operations.push(
+              postGrant({
+                sourceProjectId: currentProject.id,
+                environment: entry.environment,
+                secretPath: entry.secretPath,
+                targetProjectId: project.id
+              })
+            );
+          });
+        });
+      }
+
+      await Promise.all(operations);
 
       await queryClient.invalidateQueries({
         queryKey: projectFolderGrantKeys.listByProject(currentProject.id)
@@ -238,14 +329,14 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
         )
       );
 
-      createNotification({ text: "Access granted successfully", type: "success" });
+      createNotification({
+        text: isEditMode ? "Grants updated successfully" : "Access granted successfully",
+        type: "success"
+      });
       onOpenChange(false);
-      setEntries([{ ...EMPTY_ENTRY }]);
-      setEditingIndex(0);
-      setTargetProjects([]);
     } catch (err) {
       console.error(err);
-      createNotification({ text: "Failed to create grant", type: "error" });
+      createNotification({ text: "Failed to save grants", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -255,9 +346,11 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetHeader className="border-b">
-          <SheetTitle>Share Secrets</SheetTitle>
+          <SheetTitle>{isEditMode ? "Edit Shared Secrets" : "Share Secrets"}</SheetTitle>
           <SheetDescription>
-            Select which project receives read access and optionally scope what they can see.
+            {isEditMode
+              ? "Add or remove environment and folder combinations shared with this project."
+              : "Select which project receives read access and optionally scope what they can see."}
           </SheetDescription>
         </SheetHeader>
 
@@ -302,16 +395,25 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
 
               <Field>
                 <FieldLabel>Target projects</FieldLabel>
-                <FilterableSelect
-                  isMulti
-                  value={targetProjects}
-                  onChange={(options) => setTargetProjects([...(options as MultiValue<Project>)])}
-                  isLoading={isProjectsLoading}
-                  options={availableProjects}
-                  placeholder="Search projects..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                />
+                {isEditMode ? (
+                  <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
+                    <Badge variant="project" className="gap-1.5">
+                      <Box className="size-3" />
+                      {editData!.targetProjectName}
+                    </Badge>
+                  </div>
+                ) : (
+                  <FilterableSelect
+                    isMulti
+                    value={targetProjects}
+                    onChange={(options) => setTargetProjects([...(options as MultiValue<Project>)])}
+                    isLoading={isProjectsLoading}
+                    options={availableProjects}
+                    placeholder="Search projects..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                  />
+                )}
               </Field>
             </div>
           </FieldGroup>
@@ -327,7 +429,7 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
             isPending={isSubmitting}
             onClick={handleSubmit}
           >
-            Share
+            {isEditMode ? "Save" : "Share"}
           </Button>
         </SheetFooter>
       </SheetContent>
