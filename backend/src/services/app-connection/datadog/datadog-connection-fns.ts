@@ -1,9 +1,8 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { DatadogConnectionMethod } from "./datadog-connection-enums";
@@ -31,8 +30,6 @@ export const getDatadogBaseUrl = async (config: TDatadogConnectionConfig) => {
     });
   }
 
-  await blockLocalAndPrivateIpAddresses(rawUrl);
-
   return rawUrl;
 };
 
@@ -44,7 +41,7 @@ export const getDatadogConnectionListItem = () => {
   };
 };
 
-export const getDatadogAuthHeaders = (credentials: { apiKey: string; applicationKey: string }) => ({
+export const getDatadogAppKeysAuthHeaders = (credentials: { apiKey: string; applicationKey: string }) => ({
   "DD-API-KEY": credentials.apiKey,
   "DD-APPLICATION-KEY": credentials.applicationKey,
   Accept: "application/json"
@@ -70,7 +67,9 @@ export const validateDatadogConnectionCredentials = async (config: TDatadogConne
   const baseUrl = await getDatadogBaseUrl(config);
 
   try {
-    await request.get(`${baseUrl}/api/v2/permissions`, { headers: getDatadogAuthHeaders(config.credentials) });
+    await safeRequest.get(`${baseUrl}/api/v2/validate_keys`, {
+      headers: getDatadogAppKeysAuthHeaders(config.credentials)
+    });
   } catch (error: unknown) {
     throw new BadRequestError({
       message: `Failed to validate Datadog credentials: ${getDatadogErrorMessage(error)}`
@@ -110,13 +109,13 @@ export const listDatadogServiceAccounts = async (connection: TDatadogConnection)
   try {
     for (let pageNumber = 0; pageNumber < MAX_PAGES; pageNumber += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
+      const { data } = await safeRequest.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
         params: {
           "filter[service_account]": "true",
           "page[size]": PAGE_SIZE,
           "page[number]": pageNumber
         },
-        headers: getDatadogAuthHeaders(connection.credentials)
+        headers: getDatadogAppKeysAuthHeaders(connection.credentials)
       });
 
       const pageEntries = data.data ?? [];
