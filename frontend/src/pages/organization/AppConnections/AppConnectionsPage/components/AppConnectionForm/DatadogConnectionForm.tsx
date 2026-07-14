@@ -153,7 +153,7 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
             shouldUnregister
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel htmlFor="token">API Token</FieldLabel>
+                <FieldLabel htmlFor="token">Service Access Token</FieldLabel>
                 <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
                 <FieldError errors={[error]} />
               </Field>

@@ -43,7 +43,7 @@ export const DatadogConnectionSchema = z.discriminatedUnion("method", [
     credentials: DatadogConnectionTokenCredentialsSchema
   }),
   BaseDatadogConnectionSchema.extend({
-    method: z.literal(DatadogConnectionMethod.ApiKey),
+    method: z.literal(DatadogConnectionMethod.ApplicationKey),
     credentials: DatadogConnectionApiKeyCredentialsSchema
   })
 ]);
@@ -52,9 +52,9 @@ export const SanitizedDatadogConnectionSchema = z.discriminatedUnion("method", [
   BaseDatadogConnectionSchema.extend({
     method: z.literal(DatadogConnectionMethod.Token),
     credentials: DatadogConnectionTokenCredentialsSchema.pick({ url: true })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Datadog]} (API Token)` })),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Datadog]} (Service Access Token)` })),
   BaseDatadogConnectionSchema.extend({
-    method: z.literal(DatadogConnectionMethod.ApiKey),
+    method: z.literal(DatadogConnectionMethod.ApplicationKey),
     credentials: DatadogConnectionApiKeyCredentialsSchema.pick({ url: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Datadog]} (Application Keys)` }))
 ]);
@@ -67,7 +67,9 @@ export const ValidateDatadogConnectionCredentialsSchema = z.discriminatedUnion("
     )
   }),
   z.object({
-    method: z.literal(DatadogConnectionMethod.ApiKey).describe(AppConnections.CREATE(AppConnection.Datadog).method),
+    method: z
+      .literal(DatadogConnectionMethod.ApplicationKey)
+      .describe(AppConnections.CREATE(AppConnection.Datadog).method),
     credentials: DatadogConnectionApiKeyCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Datadog).credentials
     )

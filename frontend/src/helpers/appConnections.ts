@@ -643,7 +643,6 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
-    case DatadogConnectionMethod.Token:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
@@ -714,7 +713,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
-    case DatadogConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.Token:
+      return { name: "Service Access Token", icon: faKey };
+    case DatadogConnectionMethod.ApplicationKey:
       return { name: "Application Keys", icon: faKey };
     case SshConnectionMethod.Password:
       return { name: "Password", icon: faLock };
