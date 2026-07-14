@@ -49,6 +49,8 @@ export const datadogApiKeyRotationFactory: TRotationFactory<
 
   const authHeaders = getDatadogAuthHeaders(connection);
 
+  const appendTimestamp = (keyName: string) => `${keyName}-${Date.now()}`;
+
   const $createApiKey = async () => {
     const baseUrl = await getDatadogBaseUrl(connection);
 
@@ -59,7 +61,7 @@ export const datadogApiKeyRotationFactory: TRotationFactory<
           data: {
             type: DatadogAPIKeyType.API,
             attributes: {
-              name
+              name: appendTimestamp(name)
             }
           }
         },
