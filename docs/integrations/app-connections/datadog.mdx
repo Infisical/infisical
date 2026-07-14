@@ -61,9 +61,10 @@ Infisical supports two methods for authenticating with Datadog:
 
                 <Note>
                     If you plan to use this connection for [Datadog Application Key Secret Rotation](/documentation/platform/secret-rotation/datadog-application-key-secret), the token needs scopes to read users and manage Service Account Application Keys. Set `user_app_keys` under **API and Application Keys** and `service_account_write`, `user_access_manage`, and `user_access_read` under **Access Management**.
+
+                    If you are plan to use this connection for [Datadog API Key Secret Rotation](/documentation/platform/secret-rotation/datadog-api-key), the token needs scopes to delete and read API Keys. Set `api_keys_delete` and `api_key_write` under **API and Application Keys**
                 </Note>
 
-                ![Access Token Scope button](/images/app-connections/datadog/access-token-scope-button.png)
 
                 ![Access Token Scopes](/images/app-connections/datadog/access-token-scopes.png)
             </Step>
@@ -140,12 +141,14 @@ Infisical supports two methods for authenticating with Datadog:
             <Step title="Configure Application Key Scopes">
                 Assign the scopes required for your use case. On **Scope** click on **Edit**, so you can define the scopes you want. If this is left empty, the scope of this key will be the same as the service account.
                 
-                At minimum, the Application Key needs scopes to read users and manage Service Account Application Keys if you plan to use [Datadog Application Key Secret Rotation](/documentation/platform/secret-rotation/datadog-application-key-secret). For this use case, 
-                you need to set `user_app_keys` under **API and Application Keys** and `service_account_write`, `user_access_manage` and `user_access_read` under **Access Management**
+                <Note>
+                    If you plan to use this connection for [Datadog Application Key Secret Rotation](/documentation/platform/secret-rotation/datadog-application-key-secret), the token needs scopes to read users and manage Service Account Application Keys. Set `user_app_keys` under **API and Application Keys** and `service_account_write`, `user_access_manage`, and `user_access_read` under **Access Management**.
 
-                ![Application Key button](/images/app-connections/datadog/scope-button.png)
+                    If you are plan to use this connection for [Datadog API Key Secret Rotation](/documentation/platform/secret-rotation/datadog-api-key), the token needs scopes to delete and read API Keys. Set `api_keys_delete` and `api_key_write` under **API and Application Keys**
+                </Note>
 
-                ![Application Key Scopes](/images/app-connections/datadog/scopes-key.png)
+                ![Application Key button](/images/app-connections/datadog/access-token-scopes.png)
+
             </Step>
             <Step title="Copy the Application Key Value">
                 Copy the **Application Key** value and store it somewhere safe. You will need it when creating the Infisical connection.
