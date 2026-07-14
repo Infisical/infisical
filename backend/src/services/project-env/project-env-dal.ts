@@ -117,6 +117,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       const [doc] = await (tx || db)(TableName.Environment)
         .where({ id, projectId })
         .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", ">", new Date())
         .update({
           deleteAfter: null,
           softDeletedAt: null,
@@ -190,7 +191,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
   };
 
   // Oldest-first, bounded discovery for the hard-delete cron. The LIMIT keeps the enqueued set bounded
-  // regardless of backlog size. Backed by the partial index.
+  // regardless of backlog size.
   const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
@@ -205,13 +206,18 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Count of environments awaiting hard delete (deleteAfter set). Uses the partial index.
-  const countPendingHardDelete = async (tx?: Knex) => {
+  // Atomic hard-delete guard for the worker: removes the env only while it is still expired
+  const hardDeleteIfExpired = async (id: string, projectId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.Environment).whereNotNull("deleteAfter").count();
-      return Number(doc?.[0]?.count ?? 0);
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", "<=", new Date())
+        .del()
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count pending environment hard delete" });
+      throw new DatabaseError({ error, name: "Hard delete environment if expired" });
     }
   };
 
@@ -261,7 +267,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     shiftPositions,
     closePositionGap,
     findExpiredForHardDelete,
-    countPendingHardDelete,
+    hardDeleteIfExpired,
     hardDeleteEnvironmentSecretVersionsInBatches
   };
 };

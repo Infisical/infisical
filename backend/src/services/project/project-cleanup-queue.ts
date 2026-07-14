@@ -39,7 +39,6 @@ type TProjectCleanupQueueFactoryDep = {
   projectDAL: Pick<
     TProjectDALFactory,
     | "findExpiredForHardDelete"
-    | "countPendingHardDelete"
     | "findByIdIncludingExpired"
     | "findIncludingExpired"
     | "findProjectGhostUser"
@@ -76,18 +75,15 @@ export const projectCleanupQueueFactory = ({
 
   // ── observability ─────────────────────────────────────────────────────────────
   const meter = opentelemetry.metrics.getMeter("InfisicalCore");
-  const pendingGauge = meter.createObservableGauge("infisical.project_cleanup.pending", {
+  let lastDiscoveryCount = 0;
+  const discoveryGauge = meter.createObservableGauge("infisical.project_cleanup.discovered", {
     description:
-      "Projects awaiting hard delete (deleteAfter set). Sustained growth = drain can't keep up / mass-delete.",
+      "Expired projects found on last discovery tick (capped at discovery batch). Sustained value at the cap = backlog remains.",
     unit: "{project}"
   });
-  pendingGauge.addCallback(async (observableResult) => {
+  discoveryGauge.addCallback((observableResult) => {
     if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
-    try {
-      observableResult.observe(await projectDAL.countPendingHardDelete());
-    } catch (err) {
-      logger.warn({ err }, "project_cleanup.pending gauge: count failed");
-    }
+    observableResult.observe(lastDiscoveryCount);
   });
 
   const processProjectHardDelete = async (projectId: string) => {
@@ -206,6 +202,7 @@ export const projectCleanupQueueFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         const expiredProjects = await projectDAL.findExpiredForHardDelete(DISCOVERY_BATCH);
+        lastDiscoveryCount = expiredProjects.length;
         if (expiredProjects.length === 0) return;
 
         logger.info(`cron[${CronJobName.ProjectHardDelete}]: enqueuing ${expiredProjects.length} expired project(s)`);

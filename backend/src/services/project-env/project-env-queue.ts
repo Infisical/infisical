@@ -31,8 +31,7 @@ type TProjectEnvQueueFactoryDep = {
     TProjectEnvDALFactory,
     | "findByIdIncludingExpired"
     | "findExpiredForHardDelete"
-    | "countPendingHardDelete"
-    | "delete"
+    | "hardDeleteIfExpired"
     | "transaction"
     | "closePositionGap"
     | "hardDeleteEnvironmentSecretVersionsInBatches"
@@ -59,23 +58,24 @@ export const projectEnvQueueFactory = ({
   }
 
   const meter = opentelemetry.metrics.getMeter("InfisicalCore");
-  const pendingGauge = meter.createObservableGauge("infisical.project_env_cleanup.pending", {
-    description: "Environments awaiting hard delete (deleteAfter set).",
+  let lastDiscoveryCount = 0;
+  const discoveryGauge = meter.createObservableGauge("infisical.project_env_cleanup.discovered", {
+    description:
+      "Expired environments found on last discovery tick (capped at discovery batch). Sustained value at the cap = backlog remains.",
     unit: "{environment}"
   });
-  pendingGauge.addCallback(async (observableResult) => {
+  discoveryGauge.addCallback((observableResult) => {
     if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
-    try {
-      observableResult.observe(await projectEnvDAL.countPendingHardDelete());
-    } catch (err) {
-      logger.warn({ err }, "project_env_cleanup.pending gauge: count failed");
-    }
+    observableResult.observe(lastDiscoveryCount);
   });
 
   const processEnvHardDelete = async (envId: string, projectId: string) => {
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], ENV_DELETE_LOCK_TTL_MS)
-      .catch(() => null);
+      .catch((err: unknown) => {
+        logger.warn({ err }, `project-env-hard-delete: lock acquire error [envId=${envId}] [projectId=${projectId}]`);
+        return null;
+      });
     if (!lock) {
       logger.info(
         `project-env-hard-delete: lock held, will retry next firing [envId=${envId}] [projectId=${projectId}]`
@@ -102,10 +102,19 @@ export const projectEnvQueueFactory = ({
         INTER_BATCH_SLEEP_MS
       );
 
-      await projectEnvDAL.transaction(async (tx) => {
-        await projectEnvDAL.delete({ id: envId, projectId }, tx);
-        await projectEnvDAL.closePositionGap(projectId, fresh.position, tx);
+      const deleted = await projectEnvDAL.transaction(async (tx) => {
+        const doc = await projectEnvDAL.hardDeleteIfExpired(envId, projectId, tx);
+        if (!doc) return undefined;
+        await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+        return doc;
       });
+
+      if (!deleted) {
+        logger.info(
+          `project-env-hard-delete: environment restored/changed mid-flight, skipping delete [envId=${envId}] [projectId=${projectId}]`
+        );
+        return;
+      }
 
       await auditLogService.createAuditLog({
         projectId,
@@ -113,8 +122,8 @@ export const projectEnvQueueFactory = ({
         event: {
           type: EventType.DELETE_ENVIRONMENT,
           metadata: {
-            name: fresh.name,
-            slug: fresh.slug,
+            name: deleted.name,
+            slug: deleted.slug,
             hardDelete: true
           }
         }
@@ -155,6 +164,7 @@ export const projectEnvQueueFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         const expiredEnvs = await projectEnvDAL.findExpiredForHardDelete(DISCOVERY_BATCH);
+        lastDiscoveryCount = expiredEnvs.length;
         if (expiredEnvs.length === 0) return;
 
         logger.info(
