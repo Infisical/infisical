@@ -251,9 +251,7 @@ export const CredentialSourceFields = ({
   }, [value.secretKey, value.dynamicSecretName, value.dynamicSecretField, selectedProvider]);
 
   const leaseInputs = selectedProvider
-    ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[selectedProvider].leaseInputs.filter(
-        (i) => i.kind === "string"
-      )
+    ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[selectedProvider].leaseInputs
     : [];
 
   const commit = (next: TCredentialSource) => {
@@ -280,7 +278,12 @@ export const CredentialSourceFields = ({
           : [];
         // a single-field provider (e.g. kubernetes) needs no drill step
         if (fields.length === 1) {
-          commit({ dynamicSecretName: option.name, dynamicSecretField: fields[0].name });
+          const sameSecret = value.dynamicSecretName === option.name;
+          commit({
+            dynamicSecretName: option.name,
+            dynamicSecretField: fields[0].name,
+            leaseConfig: sameSecret ? value.leaseConfig : undefined
+          });
         } else {
           setDrill({ name: option.name, provider: option.provider });
         }
@@ -384,19 +387,44 @@ export const CredentialSourceFields = ({
         formatOptionLabel={(option, meta) => formatOptionLabel(option as SourceOption, meta)}
       />
       {value.dynamicSecretName &&
-        leaseInputs.map((input) => (
-          <Input
-            key={input.name}
-            placeholder={input.label}
-            value={value.leaseConfig?.namespace ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                leaseConfig: { ...value.leaseConfig, namespace: e.target.value || undefined }
-              })
-            }
-          />
-        ))}
+        leaseInputs.map((input) => {
+          if (input.kind === "string[]") {
+            // e.g. ssh principals: comma-separated list
+            return (
+              <Input
+                key={input.name}
+                placeholder={`${input.label} (comma-separated)`}
+                value={(value.leaseConfig?.principals ?? []).join(", ")}
+                onChange={(e) => {
+                  const principals = e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  onChange({
+                    ...value,
+                    leaseConfig: {
+                      ...value.leaseConfig,
+                      principals: principals.length ? principals : undefined
+                    }
+                  });
+                }}
+              />
+            );
+          }
+          return (
+            <Input
+              key={input.name}
+              placeholder={input.label}
+              value={value.leaseConfig?.namespace ?? ""}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  leaseConfig: { ...value.leaseConfig, namespace: e.target.value || undefined }
+                })
+              }
+            />
+          );
+        })}
     </div>
   );
 };

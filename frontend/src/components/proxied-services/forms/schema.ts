@@ -59,7 +59,12 @@ const credentialSourceSchema = z.object({
   secretKey: z.string().trim().default(""),
   dynamicSecretName: z.string().trim().default(""),
   dynamicSecretField: z.string().trim().default(""),
-  leaseConfig: z.object({ namespace: z.string().trim().optional() }).optional()
+  leaseConfig: z
+    .object({
+      namespace: z.string().trim().optional(),
+      principals: z.array(z.string().trim().min(1)).optional()
+    })
+    .optional()
 });
 
 export type TCredentialSourceForm = z.infer<typeof credentialSourceSchema>;

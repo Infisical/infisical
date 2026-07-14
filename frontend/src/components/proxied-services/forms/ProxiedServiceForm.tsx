@@ -36,7 +36,8 @@ import {
 } from "@app/hooks/api/proxiedServices/mutations";
 import {
   TDashboardProxiedService,
-  TProxiedServiceCredentialInput
+  TProxiedServiceCredentialInput,
+  TProxiedServiceLeaseConfig
 } from "@app/hooks/api/proxiedServices/types";
 
 import { CredentialSourceFields, TCredentialSource } from "./CredentialSourceFields";
@@ -74,9 +75,13 @@ const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredenti
         secretKey: "",
         dynamicSecretName: c.dynamicSecretName,
         dynamicSecretField: c.dynamicSecretField ?? "",
-        leaseConfig: c.dynamicSecretConfig?.namespace
-          ? { namespace: c.dynamicSecretConfig.namespace }
-          : undefined
+        leaseConfig:
+          c.dynamicSecretConfig?.namespace || c.dynamicSecretConfig?.principals?.length
+            ? {
+                namespace: c.dynamicSecretConfig.namespace,
+                principals: c.dynamicSecretConfig.principals
+              }
+            : undefined
       }
     : {
         secretKey: c.secretKey ?? "",
@@ -86,6 +91,18 @@ const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredenti
       };
 
 const hasSource = (src: TCredentialSourceForm) => Boolean(src.secretKey || src.dynamicSecretName);
+
+// build the API lease config from the form, omitting empty values (so an empty object isn't sent)
+const toLeaseConfig = (leaseConfig?: {
+  namespace?: string;
+  principals?: string[];
+}): TProxiedServiceLeaseConfig | undefined => {
+  if (!leaseConfig) return undefined;
+  const cfg: TProxiedServiceLeaseConfig = {};
+  if (leaseConfig.namespace) cfg.namespace = leaseConfig.namespace;
+  if (leaseConfig.principals?.length) cfg.principals = leaseConfig.principals;
+  return Object.keys(cfg).length ? cfg : undefined;
+};
 
 // map a form source back to the credential-input source fields (omit null so the API accepts it)
 const sourceToInput = (
@@ -98,9 +115,7 @@ const sourceToInput = (
     ? {
         dynamicSecretName: src.dynamicSecretName,
         dynamicSecretField: src.dynamicSecretField,
-        dynamicSecretConfig: src.leaseConfig?.namespace
-          ? { namespace: src.leaseConfig.namespace }
-          : undefined
+        dynamicSecretConfig: toLeaseConfig(src.leaseConfig)
       }
     : { secretKey: src.secretKey };
 
