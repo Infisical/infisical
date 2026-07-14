@@ -168,7 +168,7 @@ export const executeWithPotentialGateway = async <T>(
   const { gatewayId: directGatewayId, gatewayPoolId, credentials } = config;
 
   if (gatewayPoolId && !gatewayPoolService) {
-    throw new BadRequestError({
+    throw new InternalServerError({
       message: "Pool-backed connections require gatewayPoolService at the call site"
     });
   }
@@ -179,7 +179,9 @@ export const executeWithPotentialGateway = async <T>(
 
   if (gatewayId) {
     if (!gatewayV2Service) {
-      throw new BadRequestError({ message: "Gateway-backed connections require gatewayV2Service at the call site" });
+      throw new InternalServerError({
+        message: "Gateway-backed connections require gatewayV2Service at the call site"
+      });
     }
 
     await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, true);

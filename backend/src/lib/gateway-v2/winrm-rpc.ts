@@ -2,7 +2,11 @@ import http from "node:http";
 
 import { logger } from "@app/lib/logger";
 
-export type WinRmRpcEndpoint = "/v1/test" | "/v1/deliver" | "/v1/remove";
+export enum WinRmRpcEndpoint {
+  Test = "/v1/test",
+  DeliverFiles = "/v1/deliver",
+  RemoveFiles = "/v1/remove"
+}
 
 export type WinRmTransportParams = {
   useHttps?: boolean;

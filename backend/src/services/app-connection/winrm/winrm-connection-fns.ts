@@ -1,7 +1,7 @@
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
@@ -52,7 +52,7 @@ export const executeWinRMGatewayOperation = async <T>(
   const { gatewayV2Service, gatewayPoolService } = deps;
 
   if (args.gatewayPoolId && !gatewayPoolService) {
-    throw new BadRequestError({ message: "Pool-backed connections require gatewayPoolService at the call site" });
+    throw new InternalServerError({ message: "Pool-backed connections require gatewayPoolService at the call site" });
   }
 
   const gatewayId =
@@ -123,7 +123,7 @@ export const validateWinRMConnectionCredentials = async (
         gatewayId: config.gatewayId,
         gatewayPoolId: config.gatewayPoolId,
         credentials: config.credentials,
-        endpoint: "/v1/test"
+        endpoint: WinRmRpcEndpoint.Test
       },
       { gatewayV2Service }
     );

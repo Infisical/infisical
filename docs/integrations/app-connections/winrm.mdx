@@ -76,12 +76,12 @@ Infisical supports connecting to Windows hosts over WinRM to deliver certificate
 
 ## Transport
 
-<Note>
-  By default (SSL disabled) the connection uses HTTP with NTLM message encryption on port 5985, which keeps the certificate and key confidential without a server certificate. This is the zero-configuration posture most Windows hosts already ship with. Enable SSL to use HTTPS on port 5986. For a self-signed HTTPS listener, paste its certificate as the SSL certificate so it can be authenticated.
-</Note>
+By default (SSL disabled) the connection uses HTTP with NTLM message encryption on port 5985, which keeps the certificate and key confidential without a server certificate. This is the zero-configuration posture most Windows hosts already ship with.
+
+Enable SSL to use HTTPS on port 5986. For a self-signed HTTPS listener, paste its certificate as the SSL certificate so it can be authenticated. For a host on an untrusted network, prefer HTTPS.
 
 ## FAQ
 
 <Accordion title="Why does this connection require a Gateway?">
-  The Windows host is inside your network and is not reachable from Infisical directly. The Gateway sits inside your network, reaches the host, and runs the WinRM session on Infisical's behalf.
+  The Gateway runs the WinRM session on Infisical's behalf, so a Gateway with access to the Windows host is always required.
 </Accordion>

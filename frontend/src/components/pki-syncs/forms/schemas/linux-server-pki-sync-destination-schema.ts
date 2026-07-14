@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { PemCertificateExtension, PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 
 import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 
@@ -15,7 +15,41 @@ const compileNameSchema = (val: string) =>
 
 const LinuxServerSyncOptionsSchema = z.object({
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pem),
+  pemCertificateExtension: z
+    .nativeEnum(PemCertificateExtension)
+    .default(PemCertificateExtension.Pem),
+  combineCertificateChain: z.boolean().default(false),
   includePrivateKey: z.boolean().default(true),
+  fileMode: z
+    .string()
+    .trim()
+    .refine((m) => !m || /^0?[0-7]{3}$/.test(m), {
+      message: "File mode must be a 3-digit octal value (e.g. 644)"
+    })
+    .optional(),
+  privateKeyFileMode: z
+    .string()
+    .trim()
+    .refine((m) => !m || /^0?[0-7]{3}$/.test(m), {
+      message: "Private key file mode must be a 3-digit octal value (e.g. 600)"
+    })
+    .optional(),
+  owner: z
+    .string()
+    .trim()
+    .max(32)
+    .refine((v) => !v || /^[a-z_][a-z0-9_-]*\$?$/i.test(v), {
+      message: "Owner must be a valid Linux user name"
+    })
+    .optional(),
+  group: z
+    .string()
+    .trim()
+    .max(32)
+    .refine((v) => !v || /^[a-z_][a-z0-9_-]*\$?$/i.test(v), {
+      message: "Group must be a valid Linux group name"
+    })
+    .optional(),
   certificateNameSchema: z
     .string()
     .trim()

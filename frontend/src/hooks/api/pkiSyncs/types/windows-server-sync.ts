@@ -1,6 +1,6 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { PkiSync, PkiSyncExportFormat } from "../enums";
+import { PemCertificateExtension, PkiSync, PkiSyncExportFormat, WindowsFileAccess } from "../enums";
 import { TRootPkiSync } from "./common";
 
 export type TWindowsServerPkiSync = TRootPkiSync & {
@@ -10,7 +10,10 @@ export type TWindowsServerPkiSync = TRootPkiSync & {
   };
   syncOptions: TRootPkiSync["syncOptions"] & {
     exportFormat?: PkiSyncExportFormat;
+    pemCertificateExtension?: PemCertificateExtension;
+    combineCertificateChain?: boolean;
     includePrivateKey?: boolean;
+    fileAccessRules?: { identity: string; access: WindowsFileAccess }[];
   };
   connection: {
     app: AppConnection.WinRM;

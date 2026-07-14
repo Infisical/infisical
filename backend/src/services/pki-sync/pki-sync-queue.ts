@@ -432,6 +432,7 @@ export const pkiSyncQueueFactory = ({
     );
 
     let isSynced = false;
+    let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
@@ -577,6 +578,49 @@ export const pkiSyncQueueFactory = ({
         await certificateSyncDAL.bulkUpdateSyncStatus(postSyncUpdates);
       }
 
+      const failedCertificateCount = postSyncUpdates.filter(
+        (update) => update.status === CertificateSyncStatus.Failed
+      ).length;
+      certSyncFailureCount = failedCertificateCount + (syncResult.failedRemovals ?? 0);
+
+      const processedCertificateIds = new Set(Array.from(certificateMetadata.values()).map((meta) => meta.id));
+      const nonTerminalStatuses = new Set<string>([
+        CertificateSyncStatus.Pending,
+        CertificateSyncStatus.Running,
+        CertificateSyncStatus.Syncing
+      ]);
+      const trackedRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+      const strandedCertificateIds = trackedRecords
+        .filter(
+          (record) =>
+            record.certificateId &&
+            !processedCertificateIds.has(record.certificateId) &&
+            nonTerminalStatuses.has(record.syncStatus ?? "")
+        )
+        .map((record) => record.certificateId)
+        .filter((id): id is string => typeof id === "string");
+      if (strandedCertificateIds.length > 0) {
+        const stillEligible = (await certificateDAL.findActiveCertificatesByIds(strandedCertificateIds)).filter(
+          (cert) => !cert.renewedByCertificateId
+        );
+        if (stillEligible.length > 0) {
+          await certificateSyncDAL.bulkUpdateSyncStatus(
+            stillEligible.map((cert) => ({
+              pkiSyncId: pkiSync.id,
+              certificateId: cert.id,
+              status: CertificateSyncStatus.Failed,
+              message:
+                "Certificate could not be prepared for syncing (its data could not be loaded, or it resolved to the same file name as another certificate)"
+            }))
+          );
+          certSyncFailureCount += stillEligible.length;
+        }
+      }
+
+      if (certSyncFailureCount > 0) {
+        syncMessage = `${certSyncFailureCount} certificate(s) failed to sync to the destination`;
+      }
+
       isSynced = true;
     } catch (err) {
       logger.error(
@@ -605,7 +649,8 @@ export const pkiSyncQueueFactory = ({
       }
     } finally {
       const ranAt = new Date();
-      const syncStatus = isSynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
+      const fullySynced = isSynced && certSyncFailureCount === 0;
+      const syncStatus = fullySynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
 
       await auditLogService.createAuditLog({
         projectId: pkiSync.projectId,
@@ -631,7 +676,7 @@ export const pkiSyncQueueFactory = ({
           syncStatus,
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
-          lastSyncedAt: isSynced ? ranAt : undefined
+          lastSyncedAt: fullySynced ? ranAt : undefined
         });
 
         await telemetryService.sendPostHogEvents({
@@ -641,7 +686,7 @@ export const pkiSyncQueueFactory = ({
           properties: {
             orgId: pkiSync.connection.orgId,
             destination: pkiSync.destination,
-            success: isSynced
+            success: fullySynced
           }
         });
       }

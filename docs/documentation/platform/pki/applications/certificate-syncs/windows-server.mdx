@@ -34,6 +34,9 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 
         4. Configure the **Sync Options**:
             - **Export Format**: Choose **PKCS#12** to write a single password-protected `.pfx` bundle, or **PEM** to write separate certificate, chain, and key files.
+            - **Certificate File Extension**: For PEM, choose `.pem` (default) or `.crt` for the certificate and chain files. Both hold the same PEM-encoded content, so pick the one the consuming service expects.
+            - **Combine Certificate and Chain**: For PEM, write the leaf certificate followed by the chain in a single file (a full-chain file) and skip the separate chain file.
+            - **File Permissions**: Optionally grant Windows users or groups (for example a service account) Read, Modify, or Full Control on the delivered files, so you can restrict who reads the private key. Rules are added on top of the destination folder's inherited permissions.
             - **PKCS#12 Password**: Required when the export format is PKCS#12. It protects the delivered bundle.
             - **Include Private Key**: For PEM, controls whether the private key is written alongside the certificate. The sync fails for a certificate whose key is not available, for example one issued from an external CSR.
             - **Include Root CA in Certificate Chain**: Include the root CA in the delivered chain. Leave it off when the consuming service only needs the intermediates.
@@ -83,19 +86,27 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 
 ## Export Formats
 
-<Note>
-  The file extension is decided by the export format, not by the name schema. The name schema only provides the base name.
-  - **PKCS#12**: `<name>.pfx`, a single password-protected bundle containing the certificate, chain, and key.
-  - **PEM**: `<name>.pem` (certificate), `<name>.chain.pem` (chain), and `<name>.key` (private key, when included).
-</Note>
+The file extension is set by the export format, not by the name schema. The name schema only provides the base file name.
+
+**PKCS#12** writes a single password-protected `.pfx` bundle that contains the certificate, chain, and private key.
+
+**PEM** writes the certificate, chain, and private key (when included) as separate files. The certificate and chain files use the extension you select, either `.pem` (default) or `.crt`.
+
+For a certificate whose common name is `app.example.com`, synced to `C:\certs` with the default `{{commonName}}` name schema, the delivered files are:
+
+```text
+PKCS#12
+  C:\certs\app.example.com.pfx
+
+PEM (.pem extension)
+  C:\certs\app.example.com.pem        certificate
+  C:\certs\app.example.com.chain.pem  chain
+  C:\certs\app.example.com.key        private key (when included)
+```
 
 ## How It Works
 
-When syncing certificates, Infisical asks the Gateway to open a WinRM session to the server and, for each certificate:
-
-1. Packages the certificate in the chosen export format.
-2. Writes each file to a temporary name in the destination directory.
-3. Renames the temporary file over the final name so the delivered file is always complete.
+When syncing certificates, Infisical asks the Gateway to open a WinRM session to the server and, for each certificate, packages it in the chosen export format and writes the resulting files to the destination directory. Files are written atomically so a reader never sees a partially written certificate or key.
 
 ## Removing Certificates
 
@@ -115,10 +126,6 @@ IIS can serve a synced PKCS#12 certificate directly from a local folder through 
 These are IIS requirements, configured once on the Windows host (the CCS feature, its store folder, and the store account). Infisical only delivers the `.pfx`. IIS is responsible for loading and serving it.
 
 ## FAQ
-
-<Accordion title="Which transport does the sync use?">
-  By default (SSL disabled) the connection uses HTTP with NTLM message encryption on port 5985, which needs no server certificate. Enable SSL on the connection to use HTTPS on port 5986. For a self-signed HTTPS listener, paste its certificate as the SSL certificate so it can be authenticated.
-</Accordion>
 
 <Accordion title="Can I import certificates from a Windows server back into Infisical?">
   No. The Windows Server sync only delivers certificates to the server. It does not read certificates back into Infisical.

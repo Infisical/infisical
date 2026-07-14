@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import {
+  PemCertificateExtension,
+  PkiSync,
+  PkiSyncExportFormat,
+  WindowsFileAccess
+} from "@app/hooks/api/pkiSyncs";
 
 import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 
@@ -15,6 +20,26 @@ const compileNameSchema = (val: string) =>
 
 const WindowsServerSyncOptionsSchema = z.object({
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pkcs12),
+  pemCertificateExtension: z
+    .nativeEnum(PemCertificateExtension)
+    .default(PemCertificateExtension.Pem),
+  combineCertificateChain: z.boolean().default(false),
+  fileAccessRules: z
+    .array(
+      z.object({
+        identity: z
+          .string()
+          .trim()
+          .min(1, "Identity is required")
+          .max(256)
+          .refine((v) => /^[A-Za-z0-9 ._@$\\-]+$/.test(v), {
+            message: "Identity must be a valid Windows user or group (e.g. DOMAIN\\svc-account)"
+          }),
+        access: z.nativeEnum(WindowsFileAccess)
+      })
+    )
+    .max(20)
+    .optional(),
   includePrivateKey: z.boolean().default(true),
   certificateNameSchema: z
     .string()

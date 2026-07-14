@@ -1,11 +1,10 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
+import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { WINDOWS_SERVER_NAMING } from "./windows-server-pki-sync-constants";
@@ -24,6 +23,16 @@ const WINDOWS_PATH_ALLOWED_CHARS = new RE2("^[A-Za-z0-9 ._\\-\\\\/:]+$");
 // Runs of 2+ separators (e.g. C:\\certs). Windows can normalize these to a different location, so a
 // delivery would silently land elsewhere.
 const WINDOWS_DOUBLE_SEPARATOR = new RE2("[\\\\/]{2,}");
+// A Windows account name (user or group), e.g. "DOMAIN\\svc", "user@domain.com", "BUILTIN\\Administrators",
+// "NT AUTHORITY\\SYSTEM", ".\\localuser". Restricted so it is safe to embed in the icacls command on the host.
+const WINDOWS_IDENTITY = new RE2("^[A-Za-z0-9 ._@$\\\\-]+$");
+
+// Access level granted on delivered files; mapped to icacls rights on the gateway (R / M / F).
+export enum WindowsFileAccess {
+  Read = "read",
+  Modify = "modify",
+  FullControl = "full-control"
+}
 
 export const WindowsServerPkiSyncConfigSchema = z.object({
   destinationPath: z
@@ -48,6 +57,24 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
   includeRootCa: z.boolean().default(false),
   includePrivateKey: z.boolean().default(true),
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pkcs12),
+  pemCertificateExtension: z.nativeEnum(PemCertificateExtension).default(PemCertificateExtension.Pem),
+  combineCertificateChain: z.boolean().default(false),
+  fileAccessRules: z
+    .array(
+      z.object({
+        identity: z
+          .string()
+          .trim()
+          .min(1)
+          .max(256)
+          .refine((v) => WINDOWS_IDENTITY.test(v), {
+            message: "Identity must be a valid Windows user or group (for example DOMAIN\\svc-account)"
+          }),
+        access: z.nativeEnum(WindowsFileAccess)
+      })
+    )
+    .max(20)
+    .optional(),
   certificateNameSchema: z
     .string()
     .trim()
@@ -89,7 +116,6 @@ export const CreateWindowsServerPkiSyncSchema = z
     credentials: WindowsServerPkiSyncCredentialsSchema.optional(),
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
-    projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
     applicationId: z.string().uuid().optional(),
     certificateIds: z.array(z.string().uuid()).optional()
   })

@@ -1,20 +1,41 @@
-import { Controller, useFormContext } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Input, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
-import { PkiSync, PkiSyncExportFormat, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
+import {
+  Button,
+  FormControl,
+  IconButton,
+  Input,
+  Select,
+  SelectItem,
+  Switch,
+  Tooltip
+} from "@app/components/v2";
+import {
+  PemCertificateExtension,
+  PkiSync,
+  PkiSyncExportFormat,
+  usePkiSyncOption,
+  WindowsFileAccess
+} from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
 
 type Props = {
   destination?: PkiSync;
+  isUpdate?: boolean;
 };
 
-export const PkiSyncOptionsFields = ({ destination }: Props) => {
+export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const currentDestination = destination || watch("destination");
   const { syncOption } = usePkiSyncOption(currentDestination);
+  const {
+    fields: accessRuleFields,
+    append: appendAccessRule,
+    remove: removeAccessRule
+  } = useFieldArray({ control, name: "syncOptions.fileAccessRules" as never });
 
   return (
     <>
@@ -440,6 +461,57 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
               </FormControl>
             )}
           />
+          {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pem && (
+            <Controller
+              control={control}
+              name="syncOptions.pemCertificateExtension"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="Certificate File Extension"
+                  tooltipText="The extension for the certificate and chain files. Both hold the same PEM-encoded content; choose the one the consuming service expects."
+                >
+                  <Select
+                    value={value ?? PemCertificateExtension.Pem}
+                    onValueChange={(v) => onChange(v as PemCertificateExtension)}
+                    className="w-full border border-mineshaft-500"
+                    position="popper"
+                  >
+                    <SelectItem value={PemCertificateExtension.Pem}>.pem</SelectItem>
+                    <SelectItem value={PemCertificateExtension.Crt}>.crt</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
+          {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pem && (
+            <Controller
+              control={control}
+              name="syncOptions.combineCertificateChain"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl isError={Boolean(error)} errorText={error?.message}>
+                  <Switch
+                    className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                    id="combine-certificate-chain"
+                    thumbClassName="bg-mineshaft-800"
+                    onCheckedChange={onChange}
+                    isChecked={value ?? false}
+                  >
+                    <p>
+                      Combine Certificate and Chain{" "}
+                      <Tooltip
+                        className="max-w-md"
+                        content="When on, the certificate file holds the leaf certificate followed by the chain (a full-chain file, as nginx expects) and no separate chain file is written."
+                      >
+                        <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                      </Tooltip>
+                    </p>
+                  </Switch>
+                </FormControl>
+              )}
+            />
+          )}
           {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pkcs12 && (
             <Controller
               control={control}
@@ -449,7 +521,11 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                   isError={Boolean(error)}
                   errorText={error?.message}
                   label="PKCS#12 Password"
-                  tooltipText="Protects the .pfx bundle. When editing, leave blank to keep the current password."
+                  tooltipText={
+                    isUpdate
+                      ? "Protects the .pfx bundle. Leave blank to keep the current password."
+                      : "Protects the .pfx bundle."
+                  }
                 >
                   <Input
                     type="password"
@@ -489,6 +565,148 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
             />
           )}
         </>
+      )}
+
+      {currentDestination === PkiSync.LinuxServer && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Controller
+              control={control}
+              name="syncOptions.fileMode"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="File Permissions"
+                  isOptional
+                  tooltipText="Octal mode for the delivered certificate and chain files (default 644)."
+                >
+                  <Input value={value ?? ""} onChange={onChange} placeholder="644" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="syncOptions.privateKeyFileMode"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="Private Key Permissions"
+                  isOptional
+                  tooltipText="Octal mode for the delivered private key file (default 600)."
+                >
+                  <Input value={value ?? ""} onChange={onChange} placeholder="600" />
+                </FormControl>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Controller
+              control={control}
+              name="syncOptions.owner"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="Owner"
+                  isOptional
+                  tooltipText="Owner applied to the delivered files (chown). Requires the connection user to be root or have passwordless sudo."
+                >
+                  <Input value={value ?? ""} onChange={onChange} placeholder="e.g. root" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="syncOptions.group"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="Group"
+                  isOptional
+                  tooltipText="Group applied to the delivered files (chown). Requires the connection user to be root or have passwordless sudo."
+                >
+                  <Input value={value ?? ""} onChange={onChange} placeholder="e.g. ssl-cert" />
+                </FormControl>
+              )}
+            />
+          </div>
+        </>
+      )}
+
+      {currentDestination === PkiSync.WindowsServer && (
+        <FormControl
+          label="File Permissions"
+          isOptional
+          tooltipText="Grant Windows users or groups access to the delivered files (for example, restrict who can read the private key). Rules are added on top of the destination folder's inherited permissions."
+        >
+          <div className="flex flex-col gap-2">
+            {accessRuleFields.map((ruleField, index) => (
+              <div key={ruleField.id} className="flex items-start gap-2">
+                <Controller
+                  control={control}
+                  name={`syncOptions.fileAccessRules.${index}.identity` as never}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      className="mb-0 flex-1"
+                    >
+                      <Input
+                        {...field}
+                        value={(field.value as string) ?? ""}
+                        placeholder="DOMAIN\svc-account"
+                      />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name={`syncOptions.fileAccessRules.${index}.access` as never}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      className="mb-0 w-40"
+                    >
+                      <Select
+                        value={(value as WindowsFileAccess) ?? WindowsFileAccess.Read}
+                        onValueChange={onChange}
+                        className="w-full border border-mineshaft-500"
+                        position="popper"
+                      >
+                        <SelectItem value={WindowsFileAccess.Read}>Read</SelectItem>
+                        <SelectItem value={WindowsFileAccess.Modify}>Modify</SelectItem>
+                        <SelectItem value={WindowsFileAccess.FullControl}>Full Control</SelectItem>
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                <IconButton
+                  ariaLabel="Remove permission rule"
+                  variant="plain"
+                  className="mt-1"
+                  onClick={() => removeAccessRule(index)}
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                </IconButton>
+              </div>
+            ))}
+            <div>
+              <Button
+                type="button"
+                variant="outline_bg"
+                size="xs"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => appendAccessRule({ identity: "", access: WindowsFileAccess.Read })}
+              >
+                Add Permission
+              </Button>
+            </div>
+          </div>
+        </FormControl>
       )}
 
       <Controller

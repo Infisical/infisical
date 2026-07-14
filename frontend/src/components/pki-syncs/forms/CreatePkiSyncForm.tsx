@@ -167,9 +167,34 @@ export const CreatePkiSyncForm = ({
     setSelectedTabIndex((prev) => prev - 1);
   };
 
-  const { handleSubmit, trigger, control } = formMethods;
+  const { handleSubmit, trigger, control, getValues, setError } = formMethods;
 
-  const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
+  const isStepValid = async (index: number) => {
+    const isValid = await trigger(FORM_TABS[index].fields);
+    if (!isValid) return false;
+
+    if (FORM_TABS[index].key === "options") {
+      const values = getValues() as {
+        destination?: PkiSync;
+        syncOptions?: { exportFormat?: PkiSyncExportFormat };
+        credentials?: { exportPassword?: string };
+      };
+      const requiresPassword =
+        (values.destination === PkiSync.WindowsServer ||
+          values.destination === PkiSync.LinuxServer) &&
+        values.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+        !values.credentials?.exportPassword;
+      if (requiresPassword) {
+        setError("credentials.exportPassword" as FieldPath<TPkiSyncForm>, {
+          type: "manual",
+          message: "A password is required for PKCS#12 exports"
+        });
+        return false;
+      }
+    }
+
+    return true;
+  };
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
 

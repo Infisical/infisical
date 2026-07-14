@@ -3,11 +3,12 @@ import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { executeWinRMGatewayOperation, TWinRMConnection, TWinRMCredentials } from "@app/services/app-connection/winrm";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
-import { exportCertificateForSync, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TWindowsServerPkiSyncConfig } from "./windows-server-pki-sync-types";
 
@@ -23,8 +24,11 @@ type TWindowsServerPkiSyncFactoryDeps = {
 type TWindowsServerSyncOptions = {
   certificateNameSchema?: string;
   exportFormat?: PkiSyncExportFormat;
+  pemCertificateExtension?: PemCertificateExtension;
+  combineCertificateChain?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
+  fileAccessRules?: Array<{ identity: string; access: string }>;
 };
 
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
@@ -87,7 +91,7 @@ const reconcileWindowsServerRemovals = async (args: {
   try {
     if (orphanPaths.length > 0) {
       await executeWinRMGatewayOperation(
-        { ...target, endpoint: "/v1/remove", params: { paths: orphanPaths } },
+        { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: orphanPaths } },
         gatewayDeps
       );
     }
@@ -165,7 +169,9 @@ export const windowsServerPkiSyncFactory = ({
           privateKey,
           includePrivateKey,
           password: exportPassword,
-          alias: baseName
+          alias: baseName,
+          pemCertificateExtension: options.pemCertificateExtension,
+          combineCertificateChain: options.combineCertificateChain
         });
 
         const paths: string[] = [];
@@ -177,7 +183,14 @@ export const windowsServerPkiSyncFactory = ({
           deliveredPaths.add(fullPath);
         }
 
-        await executeWinRMGatewayOperation({ ...target, endpoint: "/v1/deliver", params: { files } }, gatewayDeps);
+        await executeWinRMGatewayOperation(
+          {
+            ...target,
+            endpoint: WinRmRpcEndpoint.DeliverFiles,
+            params: { files, accessRules: options.fileAccessRules ?? [] }
+          },
+          gatewayDeps
+        );
 
         if (typeof certificateId === "string") {
           let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
@@ -258,7 +271,7 @@ export const windowsServerPkiSyncFactory = ({
     if (pathsToRemove.size > 0) {
       const target = buildWinRMTarget(pkiSync);
       await executeWinRMGatewayOperation(
-        { ...target, endpoint: "/v1/remove", params: { paths: Array.from(pathsToRemove) } },
+        { ...target, endpoint: WinRmRpcEndpoint.RemoveFiles, params: { paths: Array.from(pathsToRemove) } },
         gatewayDeps
       );
     }

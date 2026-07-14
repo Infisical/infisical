@@ -1,16 +1,19 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
+import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { LINUX_SERVER_NAMING } from "./linux-server-pki-sync-constants";
 
 const PATH_TRAVERSAL = new RE2("(^|/)\\.\\.(/|$)");
+// A 3- or 4-digit octal file mode, optionally with a leading zero (e.g. "640", "0640").
+const OCTAL_FILE_MODE = new RE2("^0?[0-7]{3}$");
+// A POSIX user/group name. Restricted so it is safe to embed in the chown command run on the server.
+const POSIX_NAME = new RE2("^[a-z_][a-z0-9_-]*\\$?$", "i");
 
 export const LinuxServerPkiSyncConfigSchema = z.object({
   destinationPath: z
@@ -27,6 +30,32 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
   includeRootCa: z.boolean().default(false),
   includePrivateKey: z.boolean().default(true),
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pem),
+  pemCertificateExtension: z.nativeEnum(PemCertificateExtension).default(PemCertificateExtension.Pem),
+  combineCertificateChain: z.boolean().default(false),
+  fileMode: z
+    .string()
+    .trim()
+    .refine((m) => OCTAL_FILE_MODE.test(m), { message: "File mode must be a 3-digit octal value (for example 644)" })
+    .optional(),
+  privateKeyFileMode: z
+    .string()
+    .trim()
+    .refine((m) => OCTAL_FILE_MODE.test(m), {
+      message: "Private key file mode must be a 3-digit octal value (for example 600)"
+    })
+    .optional(),
+  owner: z
+    .string()
+    .trim()
+    .max(32)
+    .refine((v) => POSIX_NAME.test(v), { message: "Owner must be a valid Linux user name" })
+    .optional(),
+  group: z
+    .string()
+    .trim()
+    .max(32)
+    .refine((v) => POSIX_NAME.test(v), { message: "Group must be a valid Linux group name" })
+    .optional(),
   certificateNameSchema: z
     .string()
     .trim()
@@ -68,7 +97,6 @@ export const CreateLinuxServerPkiSyncSchema = z
     credentials: LinuxServerPkiSyncCredentialsSchema.optional(),
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
-    projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
     applicationId: z.string().uuid().optional(),
     certificateIds: z.array(z.string().uuid()).optional()
   })

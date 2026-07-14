@@ -16,7 +16,7 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
-import { exportCertificateForSync, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
 
@@ -32,8 +32,14 @@ type TLinuxServerPkiSyncFactoryDeps = {
 type TLinuxServerSyncOptions = {
   certificateNameSchema?: string;
   exportFormat?: PkiSyncExportFormat;
+  pemCertificateExtension?: PemCertificateExtension;
+  combineCertificateChain?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
+  fileMode?: string;
+  privateKeyFileMode?: string;
+  owner?: string;
+  group?: string;
 };
 
 const buildSshConfig = (pkiSync: TPkiSyncWithCredentials): TSshConnectionConfig => {
@@ -68,6 +74,48 @@ const CERTIFICATE_FILE_MODE = 0o644;
 const openSftp = (client: Client) =>
   new Promise<SFTPWrapper>((resolve, reject) => {
     client.sftp((err, sftp) => (err ? reject(err) : resolve(sftp)));
+  });
+
+// Parses an octal file-mode string (e.g. "0640" or "640") into a number, falling back when unset/invalid.
+const parseFileMode = (mode: string | undefined, fallback: number): number => {
+  if (!mode) return fallback;
+  const parsed = Number.parseInt(mode, 8);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+// Escapes a value for a POSIX single-quoted shell literal so a path is safe to embed in a command.
+const singleQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
+
+const applyOwnership = (
+  client: Client,
+  owner: string | undefined,
+  group: string | undefined,
+  filePath: string
+): Promise<void> =>
+  new Promise<void>((resolve, reject) => {
+    if (!owner && !group) {
+      resolve();
+      return;
+    }
+    const spec = `${owner ?? ""}${group ? `:${group}` : ""}`;
+    const target = singleQuote(filePath);
+    const command = `chown ${spec} -- ${target} 2>/dev/null || sudo -n chown ${spec} -- ${target}`;
+    client.exec(command, (err, stream) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      let stderr = "";
+      stream
+        .on("close", (code: number) => {
+          if (code === 0) resolve();
+          else reject(new Error(stderr.trim() || `chown exited with code ${code}`));
+        })
+        .stderr.on("data", (chunk: Buffer) => {
+          stderr += chunk.toString();
+        });
+      stream.on("data", () => {});
+    });
   });
 
 const writeFileAtomic = (sftp: SFTPWrapper, filePath: string, content: Buffer, mode: number): Promise<void> => {
@@ -185,6 +233,8 @@ export const linuxServerPkiSyncFactory = ({
     const format = options.exportFormat ?? PkiSyncExportFormat.Pem;
     const includePrivateKey = options.includePrivateKey ?? true;
     const canRemoveCertificates = options.canRemoveCertificates ?? false;
+    const privateKeyMode = parseFileMode(options.privateKeyFileMode, PRIVATE_KEY_FILE_MODE);
+    const certificateMode = parseFileMode(options.fileMode, CERTIFICATE_FILE_MODE);
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
 
     const failedUploads: Array<{ name: string; error: string }> = [];
@@ -233,19 +283,16 @@ export const linuxServerPkiSyncFactory = ({
             privateKey,
             includePrivateKey,
             password: exportPassword,
-            alias: baseName
+            alias: baseName,
+            pemCertificateExtension: options.pemCertificateExtension,
+            combineCertificateChain: options.combineCertificateChain
           });
 
           const writtenPaths: string[] = [];
           for (const file of files) {
             const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
             try {
-              await writeFileAtomic(
-                sftp,
-                filePath,
-                file.content,
-                file.isPrivateKey ? PRIVATE_KEY_FILE_MODE : CERTIFICATE_FILE_MODE
-              );
+              await writeFileAtomic(sftp, filePath, file.content, file.isPrivateKey ? privateKeyMode : certificateMode);
             } catch (writeErr) {
               const msg = (writeErr as Error)?.message ?? "";
               if (NO_SUCH_FILE_ERROR.test(msg)) {
@@ -255,6 +302,7 @@ export const linuxServerPkiSyncFactory = ({
               }
               throw writeErr;
             }
+            await applyOwnership(client, options.owner, options.group, filePath);
             writtenPaths.push(filePath);
             deliveredPaths.add(filePath);
           }

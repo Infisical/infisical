@@ -253,7 +253,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="credentials.sslEnabled"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
+            <Field className="mt-2 mb-4">
               <Field orientation="horizontal">
                 <FieldContent>
                   <Label htmlFor="ssl-enabled">Enable SSL</Label>

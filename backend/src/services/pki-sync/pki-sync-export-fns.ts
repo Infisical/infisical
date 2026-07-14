@@ -5,6 +5,11 @@ export enum PkiSyncExportFormat {
   Pkcs12 = "pkcs12"
 }
 
+export enum PemCertificateExtension {
+  Pem = "pem",
+  Crt = "crt"
+}
+
 export type TExportedCertificateFile = {
   suffix: string;
   content: Buffer;
@@ -21,12 +26,18 @@ export type TExportCertificateForSyncParams = {
   password?: string;
   // Friendly name / alias used inside a PKCS#12 keystore.
   alias: string;
+  // PEM only: the extension for the certificate and chain files. Defaults to ".pem".
+  pemCertificateExtension?: PemCertificateExtension;
+  // PEM only: when true, the certificate file holds the leaf certificate followed by the chain (a
+  // "full chain" file, as nginx expects) and no separate chain file is written. Defaults to false.
+  combineCertificateChain?: boolean;
 };
 
 /**
  * Packages a certificate for delivery to a server. The extension is decided here from the format,
  * never from the caller's name schema (the schema only provides the base name):
- * - PEM      -> "<base>.pem" (cert), "<base>.chain.pem" (chain), "<base>.key" (key, when included)
+ * - PEM      -> "<base>.<pem|crt>" (cert), "<base>.chain.<pem|crt>" (chain), "<base>.key" (key, when included)
+ * - PEM (combined chain) -> "<base>.<pem|crt>" (leaf + chain), "<base>.key" (key, when included)
  * - PKCS#12  -> "<base>.pfx" (cert + chain + key, password-protected)
  *
  * The caller is responsible for deciding whether the private key is available and whether it is
@@ -40,7 +51,9 @@ export const exportCertificateForSync = ({
   privateKey,
   includePrivateKey,
   password,
-  alias
+  alias,
+  pemCertificateExtension,
+  combineCertificateChain
 }: TExportCertificateForSyncParams): Promise<TExportedCertificateFile[]> | TExportedCertificateFile[] => {
   if (format === PkiSyncExportFormat.Pkcs12) {
     return generatePkcs12FromCertificate({
@@ -52,10 +65,20 @@ export const exportCertificateForSync = ({
     }).then((pfx) => [{ suffix: ".pfx", content: pfx, isPrivateKey: true }]);
   }
 
-  const files: TExportedCertificateFile[] = [{ suffix: ".pem", content: Buffer.from(certificate, "utf8") }];
-  if (certificateChain) {
-    files.push({ suffix: ".chain.pem", content: Buffer.from(certificateChain, "utf8") });
+  const certExtension = pemCertificateExtension ?? PemCertificateExtension.Pem;
+  const files: TExportedCertificateFile[] = [];
+
+  if (combineCertificateChain && certificateChain) {
+    // Full chain: leaf certificate followed by the chain, in one file, no separate chain file.
+    const fullChain = `${certificate.trim()}\n${certificateChain.trim()}\n`;
+    files.push({ suffix: `.${certExtension}`, content: Buffer.from(fullChain, "utf8") });
+  } else {
+    files.push({ suffix: `.${certExtension}`, content: Buffer.from(certificate, "utf8") });
+    if (certificateChain) {
+      files.push({ suffix: `.chain.${certExtension}`, content: Buffer.from(certificateChain, "utf8") });
+    }
   }
+
   if (includePrivateKey && privateKey) {
     files.push({ suffix: ".key", content: Buffer.from(privateKey, "utf8"), isPrivateKey: true });
   }

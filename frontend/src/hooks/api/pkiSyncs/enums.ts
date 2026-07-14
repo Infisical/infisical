@@ -16,6 +16,17 @@ export enum PkiSyncExportFormat {
   Pkcs12 = "pkcs12"
 }
 
+export enum PemCertificateExtension {
+  Pem = "pem",
+  Crt = "crt"
+}
+
+export enum WindowsFileAccess {
+  Read = "read",
+  Modify = "modify",
+  FullControl = "full-control"
+}
+
 export enum PkiSyncStatus {
   Pending = "pending",
   Running = "running",
