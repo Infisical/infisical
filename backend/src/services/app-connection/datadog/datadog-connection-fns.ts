@@ -21,6 +21,10 @@ export const getDatadogBaseUrl = async (config: TDatadogConnectionConfig) => {
     throw new BadRequestError({ message: "Invalid Datadog URL" });
   }
 
+  if (parsed.protocol !== "https:") {
+    throw new BadRequestError({ message: "Datadog URL must use HTTPS" });
+  }
+
   const { hostname } = parsed;
   const isAllowedHost = DATADOG_ALLOWED_DOMAIN_SUFFIXES.some(
     (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`)
