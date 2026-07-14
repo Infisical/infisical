@@ -37,13 +37,13 @@ description: "Learn how to automatically rotate Datadog API Keys."
 
         4. Provide a **Key Name** for the generated Datadog API keys. Then click **Next**.
 
-        ![Rotation Parameters](/images/secret-rotations-v2/datadog/datadog-parameter.png)
+        ![Rotation Parameters](/images/secret-rotations-v2/datadog-api-key/datadog-parameter.png)
 
         - **Key Name** - the name assigned to the API keys created by this rotation in Datadog. Each rotation creates a new key using this name.
 
         5. Specify the secret names that the rotated credentials should be mapped to. Then click **Next**.
 
-        ![Rotation Secrets Mapping](/images/secret-rotations-v2/datadog/datadog-mappings.png)
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/datadog-api-key/datadog-mappings.png)
 
         - **API Key ID** - the name of the secret that the Datadog API Key ID will be mapped to.
         - **API Key** - the name of the secret that the rotated Datadog API Key value will be mapped to.
@@ -57,11 +57,11 @@ description: "Learn how to automatically rotate Datadog API Keys."
 
         7. Review your configuration, then click **Create Secret Rotation**.
 
-        ![Rotation Review](/images/secret-rotations-v2/datadog/datadog-review.png)
+        ![Rotation Review](/images/secret-rotations-v2/datadog-api-key/datadog-review.png)
 
         8. Your **Datadog API Key** credentials are now available for use via the mapped secrets.
 
-        ![Datadog Credentials](/images/secret-rotations-v2/datadog/datadog-credentials.png)
+        ![Datadog Credentials](/images/secret-rotations-v2/datadog-api-key/datadog-credentials.png)
     </Tab>
     <Tab title="API">
         To create a Datadog API Key Rotation, make an API request to the [Create Datadog API Key Rotation](/api-reference/endpoints/secret-rotations/datadog-api-key/create) API endpoint.
