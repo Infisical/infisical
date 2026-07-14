@@ -2,17 +2,16 @@ import net from "node:net";
 
 import ldapjs from "@infisical/ldapjs";
 import slugify from "@sindresorhus/slugify";
+import RE2 from "re2";
 import { runPowershell } from "winrm-client";
 
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 
-import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { PamAccountType } from "../../pam/pam-enums";
 import { isDomainQualifiedUsername, toNetbiosUsername } from "../../pam-account/pam-account-schemas";
+import { executeWithGateway } from "../pam-discovery-fns";
 import {
   TDiscoveredAccount,
   TDiscoveryMachineError,
@@ -23,6 +22,7 @@ import { resolveDnsTcp } from "./dns-over-dc";
 
 const LDAP_TIMEOUT = 30 * 1000;
 const LDAP_PAGE_SIZE = 500;
+const TRAILING_HYPHENS_REGEX = new RE2(/-+$/);
 
 type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 type TLdapAttribute = { type: string; values: string[]; buffers: Buffer[] };
@@ -92,30 +92,6 @@ type TAdConnection = {
 };
 
 type TWinrmConfig = { port: number; useHttps: boolean; rejectUnauthorized: boolean; caCert?: string };
-
-// Opens a gateway TCP proxy to targetHost:targetPort and runs the operation against the local proxy port
-const executeWithGateway = async <T>(
-  targetHost: string,
-  targetPort: number,
-  gatewayId: string,
-  gatewayV2Service: TGatewayDep,
-  operation: (proxyPort: number) => Promise<T>
-): Promise<T> => {
-  const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
-  const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
-    targetHost: host,
-    targetPort
-  });
-  if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
-
-  return withGatewayV2Proxy((proxyPort) => operation(proxyPort), {
-    protocol: GatewayProxyProtocol.Tcp,
-    relayHost: platform.relayHost,
-    gateway: platform.gateway,
-    relay: platform.relay
-  });
-};
 
 const runLdap = <T>(
   conn: TAdConnection,
@@ -226,9 +202,10 @@ const enumerateLocalUsers = (
 export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
   gatewayId,
   configuration,
-  credentialAccount,
+  credentialAccounts,
   gatewayV2Service
 }) => {
+  const [credentialAccount] = credentialAccounts;
   const connectionDetails = credentialAccount.connectionDetails as unknown as {
     domain: string;
     dcAddress: string;
@@ -307,7 +284,9 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     const domainShortName = domain.split(".")[0];
     const discovered: TDiscoveredAccount[] = users.map((u) => ({
       accountType: PamAccountType.WindowsAd,
-      name: slugify(`${domainShortName} ${u.sAMAccountName}`, { lowercase: true }).slice(0, 64).replace(/-+$/, ""),
+      name: slugify(`${domainShortName} ${u.sAMAccountName}`, { lowercase: true })
+        .slice(0, 64)
+        .replace(TRAILING_HYPHENS_REGEX, ""),
       fingerprint: `${domain}:${u.objectGUID}`,
       details: { connectionDetails, credentials: { username: u.sAMAccountName } }
     }));
@@ -339,7 +318,9 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
           for (const u of localUsers.filter((lu) => lu.Name)) {
             discovered.push({
               accountType: PamAccountType.Windows,
-              name: slugify(`${hostLabel} ${u.Name}`, { lowercase: true }).slice(0, 64).replace(/-+$/, ""),
+              name: slugify(`${hostLabel} ${u.Name}`, { lowercase: true })
+                .slice(0, 64)
+                .replace(TRAILING_HYPHENS_REGEX, ""),
               fingerprint: `${domain}:${computer.objectGUID}:${u.Name.toLowerCase()}`,
               details: {
                 connectionDetails: { host, port: connectionDetails.rdpPort },

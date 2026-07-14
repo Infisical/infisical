@@ -23,15 +23,17 @@ export type TPamDiscoveryProvider = {
   scan: () => Promise<TDiscoveryScanResult>;
 };
 
+export type TDiscoveryCredentialAccount = {
+  accountType: PamAccountType;
+  connectionDetails: Record<string, unknown>;
+  credentials: Record<string, unknown>;
+};
+
 export type TPamDiscoveryFactoryInput = {
   projectId: string;
   gatewayId: string;
   configuration: Record<string, unknown>;
-  credentialAccount: {
-    accountType: PamAccountType;
-    connectionDetails: Record<string, unknown>;
-    credentials: Record<string, unknown>;
-  };
+  credentialAccounts: TDiscoveryCredentialAccount[];
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
