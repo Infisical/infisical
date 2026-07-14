@@ -2093,6 +2093,7 @@ export const registerRoutes = async (
 
   const projectEnvQueue = projectEnvQueueFactory({
     cronJob,
+    queueService,
     projectEnvDAL,
     keyStore,
     auditLogService

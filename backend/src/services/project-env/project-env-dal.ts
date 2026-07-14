@@ -189,16 +189,61 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       .decrement("position", 1);
   };
 
-  const findExpiredForHardDelete = async (tx?: Knex) => {
+  // Oldest-first, bounded discovery for the hard-delete cron. The LIMIT keeps the enqueued set bounded
+  // regardless of backlog size. Backed by the partial index.
+  const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.Environment)
         .whereNotNull("deleteAfter")
         .andWhere("deleteAfter", "<=", new Date())
+        .orderBy("deleteAfter", "asc")
+        .limit(limit)
         .select("*");
       return result as TProjectEnvironments[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find expired for hard delete" });
     }
+  };
+
+  // Count of environments awaiting hard delete (deleteAfter set). Uses the partial index.
+  const countPendingHardDelete = async (tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.Environment).whereNotNull("deleteAfter").count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count pending environment hard delete" });
+    }
+  };
+
+  // Batched delete of an environment's secret_versions_v2 rows. Must run before the environment is
+  // deleted, since those rows have no FK back to the folder/env tree and would otherwise be orphaned.
+  const hardDeleteEnvironmentSecretVersionsInBatches = async (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number
+  ) => {
+    let totalDeleted = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      const deletedCount = await db.transaction(async (tx): Promise<number> => {
+        await tx.raw(`SET LOCAL statement_timeout = ${statementTimeoutMs}`);
+        const folderIdsSubquery = tx(TableName.SecretFolder).where("envId", envId).select("id");
+        const idsToDelete = tx(TableName.SecretVersionV2)
+          .whereIn("folderId", folderIdsSubquery)
+          .select("id")
+          .limit(batchSize);
+        const deleted = await tx(TableName.SecretVersionV2).whereIn("id", idsToDelete).delete();
+        return deleted;
+      });
+      totalDeleted += deletedCount;
+      if (deletedCount < batchSize) break;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => {
+        setTimeout(resolve, interBatchSleepMs + Math.floor(Math.random() * interBatchSleepMs));
+      });
+    }
+    return totalDeleted;
   };
 
   return {
@@ -215,6 +260,8 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     updateAllPosition,
     shiftPositions,
     closePositionGap,
-    findExpiredForHardDelete
+    findExpiredForHardDelete,
+    countPendingHardDelete,
+    hardDeleteEnvironmentSecretVersionsInBatches
   };
 };

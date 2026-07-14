@@ -28,7 +28,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   identityAccessTokenRevocationDAL: Pick<TIdentityAccessTokenRevocationDALFactory, "removeExpiredRevocations">;
   identityUniversalAuthClientSecretDAL: Pick<TIdentityUaClientSecretDALFactory, "removeExpiredClientSecrets">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
-  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "pruneExcessVersions">;
+  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "pruneExcessVersions" | "pruneOrphanedVersions">;
   secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
@@ -110,6 +110,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         logger.info(`cron[${CronJobName.DailySecretVersionCleanup}]: task started`);
+        await secretVersionV2DAL.pruneOrphanedVersions();
         await secretVersionDAL.pruneExcessVersions();
         await secretVersionV2DAL.pruneExcessVersions();
         await secretFolderVersionDAL.pruneExcessVersions();

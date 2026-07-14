@@ -16,15 +16,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${INDEX_NAME}"`);
 
   if (await knex.schema.hasColumn(TableName.SecretVersionV2, COLUMN_NAME)) {
-    const lockResult = await knex.raw("SHOW lock_timeout");
-    const originalLockTimeout = lockResult.rows[0].lock_timeout;
-    try {
-      await knex.raw(`SET lock_timeout = ${DROP_LOCK_TIMEOUT}`);
-      await knex.raw(`ALTER TABLE ${TableName.SecretVersionV2} DROP CONSTRAINT IF EXISTS "${FK_NAME}"`);
-      await knex.raw(`ALTER TABLE ${TableName.SecretVersionV2} DROP COLUMN IF EXISTS "${COLUMN_NAME}"`);
-    } finally {
-      await knex.raw(`SET lock_timeout = '${originalLockTimeout}'`);
-    }
+    await knex.transaction(async (tx) => {
+      await tx.raw(`SET LOCAL lock_timeout = ${DROP_LOCK_TIMEOUT}`);
+      await tx.raw(
+        `ALTER TABLE ${TableName.SecretVersionV2} DROP CONSTRAINT IF EXISTS "${FK_NAME}", DROP COLUMN IF EXISTS "${COLUMN_NAME}"`
+      );
+    });
   }
 }
 
@@ -37,14 +34,20 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
-  await knex.raw(`
-    DO $$ BEGIN
-      ALTER TABLE ${TableName.SecretVersionV2}
-        ADD CONSTRAINT "${FK_NAME}" FOREIGN KEY ("${COLUMN_NAME}")
-        REFERENCES ${TableName.Environment}(id) ON DELETE CASCADE;
-    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-  `);
+  await knex.transaction(async (tx) => {
+    await tx.raw(`SET LOCAL lock_timeout = ${DROP_LOCK_TIMEOUT}`);
+    await tx.raw(`
+      DO $$ BEGIN
+        ALTER TABLE ${TableName.SecretVersionV2}
+          ADD CONSTRAINT "${FK_NAME}" FOREIGN KEY ("${COLUMN_NAME}")
+          REFERENCES ${TableName.Environment}(id) ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+  });
 
+  // A prior failed CREATE INDEX CONCURRENTLY can leave an INVALID index that CREATE ... IF NOT EXISTS
+  // would then skip, leaving it permanently invalid. Drop any leftover first so recreation is retry-safe.
+  await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${INDEX_NAME}"`);
   await knex.raw(`
     CREATE INDEX CONCURRENTLY IF NOT EXISTS "${INDEX_NAME}"
     ON ${TableName.SecretVersionV2} ("${COLUMN_NAME}")

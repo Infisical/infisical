@@ -75,26 +75,7 @@ export const projectCleanupQueueFactory = ({
   }
 
   // ── observability ─────────────────────────────────────────────────────────────
-  // Generic per-queue metrics (job count/duration/wait/depth, tagged queue.name=project-hard-delete)
-  // come for free from queue-service. These are the domain-specific signals that tell us whether the
-  // drain is healthy or the knobs (RATE_LIMIT_MAX / WORKER_CONCURRENCY / SECRET_VERSION_DELETE_BATCH)
-  // need tuning — and surface a mass-delete event early.
   const meter = opentelemetry.metrics.getMeter("InfisicalCore");
-  const processedCounter = meter.createCounter("infisical.project_cleanup.processed", {
-    description: "Projects processed by the hard-delete worker, by outcome (deleted/skipped/failed)",
-    unit: "{project}"
-  });
-  const durationHistogram = meter.createHistogram("infisical.project_cleanup.duration", {
-    description: "Per-project hard-delete wall-clock seconds. Rising p95 → raise concurrency/limiter or lower batch.",
-    unit: "s"
-  });
-  const versionsPrunedHistogram = meter.createHistogram("infisical.project_cleanup.secret_versions_pruned", {
-    description: "secret_versions_v2 rows pruned per project — reveals project-size distribution for batch tuning",
-    unit: "{row}"
-  });
-  // Queue depth caps at ~DISCOVERY_BATCH, so it can't reveal the true
-  // backlog. This counts projects with deleteAfter set directly in the DB. Sustained growth = the
-  // drain rate can't keep up  or a mass-delete is in progress.
   const pendingGauge = meter.createObservableGauge("infisical.project_cleanup.pending", {
     description:
       "Projects awaiting hard delete (deleteAfter set). Sustained growth = drain can't keep up / mass-delete.",
@@ -110,12 +91,10 @@ export const projectCleanupQueueFactory = ({
   });
 
   const processProjectHardDelete = async (projectId: string) => {
-    const startedAt = Date.now();
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectDeleteLock(projectId)], PROJECT_DELETE_LOCK_TTL_MS)
       .catch(() => null);
     if (!lock) {
-      processedCounter.add(1, { outcome: "skipped", reason: "locked" });
       logger.info(`project-hard-delete: lock held, will retry next firing [projectId=${projectId}]`);
       return;
     }
@@ -125,7 +104,6 @@ export const projectCleanupQueueFactory = ({
       // worker that already finished.
       const project = await projectDAL.transaction((tx) => projectDAL.findByIdIncludingExpired(projectId, tx));
       if (!project || !project.deleteAfter || new Date(project.deleteAfter).getTime() > Date.now()) {
-        processedCounter.add(1, { outcome: "skipped", reason: "gone_or_restored" });
         logger.info(`project-hard-delete: skipping (gone/already-removed/not-yet-expired) [projectId=${projectId}]`);
         return;
       }
@@ -179,7 +157,6 @@ export const projectCleanupQueueFactory = ({
       });
 
       if (!deleted) {
-        processedCounter.add(1, { outcome: "skipped", reason: "already_removed" });
         logger.info(`project-hard-delete: already removed by a concurrent worker [projectId=${projectId}]`);
         return;
       }
@@ -195,16 +172,11 @@ export const projectCleanupQueueFactory = ({
         }
       });
 
-      const durationSec = (Date.now() - startedAt) / 1000;
-      processedCounter.add(1, { outcome: "deleted" });
-      durationHistogram.record(durationSec);
-      versionsPrunedHistogram.record(deletedVersions);
       logger.info(
-        { projectId, deletedVersions, durationSec },
-        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}] [durationSec=${durationSec.toFixed(1)}]`
+        { projectId, deletedVersions },
+        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}]`
       );
     } catch (err) {
-      processedCounter.add(1, { outcome: "failed" });
       logger.error({ err, projectId }, `project-hard-delete: failed [projectId=${projectId}]`);
       throw err; // surface to BullMQ so it retries (attempts: 3) and the generic failure metric fires
     } finally {
