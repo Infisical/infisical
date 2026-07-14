@@ -33,6 +33,7 @@ import {
 } from "@app/hooks/api/projectFolderGrants";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import { useGetProjectFolders } from "@app/hooks/api/secretFolders";
 import { useGetSecretImports } from "@app/hooks/api/secretImports";
 
 type Props = {
@@ -58,12 +59,26 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange }: Props) => {
   const { data: existingGrants = [] } = useListProjectFolderGrants(currentProject.id);
   const createGrant = useCreateProjectFolderGrant();
 
-  const expectedFolderName =
-    folderPath === "/" ? "root" : folderPath.split("/").filter(Boolean).pop() ?? "root";
+  const pathSegments = folderPath.split("/").filter(Boolean);
+  const parentPath = pathSegments.length <= 1 ? "/" : `/${pathSegments.slice(0, -1).join("/")}`;
+  const leafName = pathSegments.at(-1) ?? "";
+
+  const { data: parentFolders = [] } = useGetProjectFolders({
+    projectId: currentProject.id,
+    environment,
+    path: parentPath,
+    options: { enabled: Boolean(environment) && folderPath !== "/" }
+  });
+
+  const selectedFolderId = parentFolders.find((f) => f.name === leafName)?.id;
 
   const grantedProjectIds = new Set(
     existingGrants
-      .filter((g) => g.environmentSlug === environment && g.folderName === expectedFolderName)
+      .filter((g) =>
+        selectedFolderId
+          ? g.sourceFolderId === selectedFolderId
+          : g.environmentSlug === environment && g.folderName === "root"
+      )
       .map((g) => g.targetProjectId)
   );
 

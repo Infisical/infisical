@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Box, FolderIcon, KeyRound, Layers, Plus, SlashIcon, Trash2 } from "lucide-react";
+import { ArrowRight, Box, FolderIcon, KeyRound, Layers, Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,11 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Badge,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
   Button,
   Card,
   CardContent,
@@ -52,6 +47,8 @@ type ProjectGroup = {
   targetProjectId: string;
   targetProjectName: string;
   totalSecrets: number;
+  uniqueEnvCount: number;
+  uniqueFolderCount: number;
   grants: TProjectFolderGrant[];
 };
 
@@ -63,31 +60,19 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
     byProject.set(grant.targetProjectId, existing);
   }
 
-  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => ({
-    targetProjectId,
-    targetProjectName: projectGrants[0].targetProjectName,
-    totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
-    grants: projectGrants
-  }));
-};
+  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => {
+    const uniqueEnvs = new Set(projectGrants.map((g) => g.environmentSlug));
+    const uniqueFolders = new Set(projectGrants.map((g) => g.folderName));
 
-type FolderPathProps = { folderName: string };
-
-const FolderPath = ({ folderName }: FolderPathProps) => {
-  const isRoot = folderName === "root";
-  return (
-    <Breadcrumb>
-      <BreadcrumbList className="flex-nowrap gap-1 sm:gap-1">
-        <BreadcrumbItem>
-          <FolderIcon className="size-3.5" />
-        </BreadcrumbItem>
-        <BreadcrumbSeparator>
-          <SlashIcon className="size-3 -rotate-12" />
-        </BreadcrumbSeparator>
-        {!isRoot && <BreadcrumbPage className="text-muted">{folderName}</BreadcrumbPage>}
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
+    return {
+      targetProjectId,
+      targetProjectName: projectGrants[0].targetProjectName,
+      totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
+      uniqueEnvCount: uniqueEnvs.size,
+      uniqueFolderCount: uniqueFolders.size,
+      grants: projectGrants
+    };
+  });
 };
 
 type DeleteGrantDialogProps = {
@@ -230,76 +215,92 @@ export const CrossProjectSharingSection = () => {
         </p>
       </CardHeader>
       <CardContent>
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-sm text-mineshaft-400">Linked Projects</span>
-        <Badge variant="neutral">{projectGroups.length}</Badge>
-      </div>
-      {grants.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>No projects have access yet</EmptyTitle>
-            <EmptyDescription>
-              Share secrets to grant another project read access.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
-          {projectGroups.map((projectGroup) => (
-            <AccordionItem key={projectGroup.targetProjectId} value={projectGroup.targetProjectId}>
-              <AccordionTrigger>
-                <div className="flex flex-1 items-center justify-between">
-                  <Badge variant="project" className="gap-1.5">
-                    <Box className="size-3" />
-                    {projectGroup.targetProjectName}
-                  </Badge>
-                  <span className="mr-2 text-xs text-muted">
-                    {projectGroup.totalSecrets} secrets shared
-                  </span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <Table>
-                  <TableBody>
-                    {projectGroup.grants.map((grant) => (
-                      <TableRow key={grant.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="neutral" className="gap-1.5">
-                              <Layers className="size-3" />
-                              {grant.environmentName}
-                            </Badge>
-                            <ArrowRight className="size-3.5 shrink-0 text-muted" />
-                            <FolderPath folderName={grant.folderName} />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-muted">
-                            <KeyRound className="size-3 shrink-0" />
-                            <span className="tabular-nums">
-                              {grant.secretCount}{" "}
-                              {grant.secretCount === 1 ? "secret" : "secrets"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="w-10">
-                          <IconButton
-                            variant="ghost-muted"
-                            size="xs"
-                            onClick={() => setGrantToDelete(grant)}
-                          >
-                            <Trash2 />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      )}
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-sm text-mineshaft-400">Granted Projects</span>
+          <Badge variant="neutral">{projectGroups.length}</Badge>
+        </div>
+        {grants.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No projects have access yet</EmptyTitle>
+              <EmptyDescription>
+                Share secrets to grant another project read access.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
+            {projectGroups.map((projectGroup) => (
+              <AccordionItem
+                key={projectGroup.targetProjectId}
+                value={projectGroup.targetProjectId}
+              >
+                <AccordionTrigger>
+                  <div className="flex flex-1 items-center gap-3">
+                    <Badge variant="project" className="gap-1.5">
+                      <Box className="size-3" />
+                      {projectGroup.targetProjectName}
+                    </Badge>
+                    <span className="text-xs text-muted">
+                      {projectGroup.uniqueEnvCount}{" "}
+                      {projectGroup.uniqueEnvCount === 1 ? "environment" : "environments"}
+                      {" · "}
+                      {projectGroup.uniqueFolderCount}{" "}
+                      {projectGroup.uniqueFolderCount === 1 ? "folder" : "folders"}
+                      {" · "}
+                      {projectGroup.totalSecrets}{" "}
+                      {projectGroup.totalSecrets === 1 ? "secret" : "secrets"}
+                    </span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <Table>
+                    <TableBody>
+                      {projectGroup.grants.map((grant) => (
+                        <TableRow key={grant.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="neutral" className="gap-1.5">
+                                <Layers className="size-3" />
+                                {grant.environmentName}
+                              </Badge>
+                              <ArrowRight className="size-3.5 shrink-0 text-muted" />
+                              <div className="flex items-center gap-1.5">
+                                <FolderIcon className="size-3.5 text-muted" />
+                                <span className="text-sm text-muted">
+                                  {grant.folderName === "root" ? "/" : `/${grant.folderName}`}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5 text-xs whitespace-nowrap text-muted">
+                              <KeyRound className="size-3 shrink-0" />
+                              <span className="tabular-nums">
+                                {grant.secretCount}{" "}
+                                {grant.secretCount === 1 ? "secret" : "secrets"}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-10">
+                            <IconButton
+                              variant="ghost-muted"
+                              size="xs"
+                              onClick={() => setGrantToDelete(grant)}
+                            >
+                              <Trash2 />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </CardContent>
       <DeleteGrantDialog
         grant={grantToDelete}
         onOpenChange={(open) => {
@@ -307,7 +308,6 @@ export const CrossProjectSharingSection = () => {
         }}
         sourceProjectId={currentProject.id}
       />
-    </CardContent>
     </Card>
   );
 };
