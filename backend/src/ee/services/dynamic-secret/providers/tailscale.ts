@@ -5,7 +5,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { safeRequest } from "@app/lib/validator";
 
-import { DynamicSecretTailscaleSchema, TailscaleAuthMethod, TailscaleKeyAuthType, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretTailscaleSchema,
+  TAILSCALE_BLOCKED_SCOPES,
+  TailscaleAuthMethod,
+  TailscaleKeyAuthType,
+  TDynamicProviderFns
+} from "./models";
 
 const TAILSCALE_API_BASE_URL = "https://api.tailscale.com/api/v2";
 
@@ -78,10 +84,10 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
   };
 
   // oauth credentials issued can have the auth-keys or oauth scope, which allow them
-  // to modify other credentials. Let's block it so this is not possible
+  // to modify other credentials. This is also blocked at the schema level (see
+  // DynamicSecretTailscaleSchema); kept here as defense-in-depth for direct provider calls.
   const $validateScopes = (scopes: string[]) => {
-    const blockedScopes = new Set(["auth_keys", "oauth_keys", "federated_keys", "api_access_tokens", "all"]);
-    if (scopes.some((scope) => blockedScopes.has(scope))) {
+    if (scopes.some((scope) => TAILSCALE_BLOCKED_SCOPES.has(scope))) {
       throw new BadRequestError({ message: "OAuth credentials cannot be used to create or modify other credentials" });
     }
     return scopes;

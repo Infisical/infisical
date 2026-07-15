@@ -818,6 +818,16 @@ export enum TailscaleAuthMethod {
   OAuth = "oauth"
 }
 
+// OAuth/federated credentials issued with these scopes could create or modify other credentials,
+// which would let a lease escalate its own privileges. Block them at both the schema and provider level.
+export const TAILSCALE_BLOCKED_SCOPES = new Set([
+  "auth_keys",
+  "oauth_keys",
+  "federated_keys",
+  "api_access_tokens",
+  "all"
+]);
+
 const DynamicSecretTailscaleAuthSchema = z.discriminatedUnion("method", [
   z.object({
     method: z.literal(TailscaleAuthMethod.ApiKey),
@@ -908,6 +918,18 @@ export const DynamicSecretTailscaleSchema = z
         code: z.ZodIssueCode.custom,
         path: ["tags"],
         message: "Tags are required when the key type is OAuth or Federated Identity"
+      });
+    }
+
+    // Block scopes that would let a lease escalate its own privileges (e.g. mint new auth/OAuth keys).
+    if (
+      (data.authType === TailscaleKeyAuthType.OAuthKeys || data.authType === TailscaleKeyAuthType.FederatedKeys) &&
+      data.scopes.some((scope) => TAILSCALE_BLOCKED_SCOPES.has(scope))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scopes"],
+        message: "OAuth credentials cannot be used to create or modify other credentials"
       });
     }
   });

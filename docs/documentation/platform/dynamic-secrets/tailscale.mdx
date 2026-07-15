@@ -140,7 +140,7 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
         </ParamField>
 
         <Note>
-          OAuth clients cannot be created with the `auth-keys` or `oauth` scopes. Those scopes can create or modify other credentials in your tailnet, so Infisical blocks them to prevent leases from changing existing Tailscale credentials.
+          OAuth clients cannot be created with the `auth_keys`, `oauth_keys`, `federated_keys`, `api_access_tokens`, and `all` scopes. Those scopes can create or modify other credentials in your tailnet, so Infisical blocks them to prevent leases from changing existing Tailscale credentials.
         </Note>
       </Tab>
       <Tab title="Federated Identity">

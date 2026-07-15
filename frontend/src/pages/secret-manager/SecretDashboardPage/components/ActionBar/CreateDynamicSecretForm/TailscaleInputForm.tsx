@@ -477,9 +477,9 @@ export const TailscaleInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                       isRequired
-                      helperText="Comma-separated OAuth scopes (e.g. devices:core, auth_keys)."
+                      helperText="Comma-separated OAuth scopes (e.g. devices:core, users:read)."
                     >
-                      <Input {...field} placeholder="devices:core, auth_keys" />
+                      <Input {...field} placeholder="devices:core, users:read" />
                     </FormControl>
                   )}
                 />
