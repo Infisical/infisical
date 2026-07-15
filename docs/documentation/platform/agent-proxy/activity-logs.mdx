@@ -17,23 +17,26 @@ flowchart LR
 ```
 
 <Note>
-  A record is written for every request that reaches the forwarding stage, meaning after the agent's identity has been resolved against Infisical. Requests rejected earlier (missing or failed proxy auth, an invalid `CONNECT` target, TLS handshake failures, disallowed methods) never had a trustworthy identity, so they appear only in the operational logs, not here.
+  Only requests that reach the forwarding stage are recorded, i.e. after the agent has been authenticated. Anything rejected before that appears only in the proxy's operational logs, not here.
 </Note>
 
 ## What's in a record
 
-Each record captures the request line, the scoped folder, the matched service, the credentials that were applied, and the outcome:
+Each record captures the request line, the scoped folder, the matched service, the credentials that were applied, and the outcome. The `json` format uses these field names (the `pretty` format renders the same data as a columnar line):
 
 | Field | Meaning |
 | --- | --- |
-| `occurredAt` | When the proxy handled the request (proxy clock, UTC) |
-| `agentId` / `agentName` | The agent that made the request, read from its access token |
-| `projectId` / `environment` / `secretPath` | The folder the request was scoped to |
-| `serviceId` / `serviceName` | The matched proxied service, or empty when none matched |
-| `decision` | `brokered`, `passthrough`, `blocked`, or `error` (see below) |
-| `method` / `host` / `port` / `path` | The request line, before substitution (so `path` shows the placeholder) |
-| `status` | Upstream status on `brokered` / `passthrough`; `403` on `blocked`; `502` on `error` |
-| `credentials` | What was actually injected: each entry's secret key, and the header or surfaces it landed in |
+| `@timestamp` | When the proxy handled the request (UTC) |
+| `http.request.method` / `http.response.status_code` | The method, and the resulting status: upstream status on `brokered` / `passthrough`, `403` on `blocked`, `502` on `error` |
+| `server.address` / `server.port` | The upstream host and port |
+| `url.path` | The request path, before substitution (so it shows the placeholder, never a real secret) |
+| `user.id` / `user.name` | The agent that made the request, read from its access token |
+| `infisical.decision` | `brokered`, `passthrough`, `blocked`, or `error` (see below) |
+| `infisical.project.id` / `infisical.environment` / `infisical.secret_path` | The folder the request was scoped to |
+| `infisical.service.id` / `infisical.service.name` | The matched proxied service, or omitted when none matched |
+| `infisical.credentials` | What was injected: each entry's secret key, and the header or surfaces it landed in |
+
+Records also carry standard ECS `event.*` fields (`event.action`, `event.outcome`) and `infisical.schema_version`.
 
 | `decision` | Meaning |
 | --- | --- |
