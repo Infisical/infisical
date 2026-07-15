@@ -721,7 +721,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccount.getSshCaPublicKey({
+      const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -729,6 +729,23 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+
+      if (result.created) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+            metadata: {
+              accountId: req.params.accountId,
+              keyAlgorithm: result.keyAlgorithm!
+            }
+          }
+        });
+      }
+
+      return { publicKey: result.publicKey };
     }
   });
 
@@ -747,7 +764,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
-      const { publicKey: caPublicKey } = await server.services.pamAccount.getSshCaPublicKey({
+      const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -755,6 +772,22 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      const caPublicKey = result.publicKey;
+
+      if (result.created) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+            metadata: {
+              accountId: req.params.accountId,
+              keyAlgorithm: result.keyAlgorithm!
+            }
+          }
+        });
+      }
 
       const setupScript = `#!/bin/bash
 set -e

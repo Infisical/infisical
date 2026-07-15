@@ -47,6 +47,7 @@ import {
 import {
   PamAccountType,
   PamDiscoverySchedule,
+  PamDiscoveryType,
   pamKeys,
   TPamDiscoveredAccount,
   TPamDiscoverySource,
@@ -67,12 +68,18 @@ import { PAM_DISCOVERY_TABS } from "../../components/pamResourceTabs";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import {
   buildDiscoveryConfiguration,
+  buildUnixDiscoveryConfiguration,
   CredentialAccountField,
   DiscoveryConfigFields,
   discoveryConfigFormShape,
   discoveryConfigFromSource,
   ScheduleField,
-  TDiscoveryConfigFields
+  SshCredentialAccountsField,
+  TDiscoveryConfigFields,
+  TUnixDiscoveryConfigFields,
+  UnixDiscoveryConfigFields,
+  unixDiscoveryConfigFormShape,
+  unixDiscoveryConfigFromSource
 } from "./DiscoveryConfigFields";
 import { DiscoveryStatusBadge } from "./DiscoveryStatusBadge";
 import { ImportDiscoveredModal } from "./ImportDiscoveredModal";
@@ -87,7 +94,52 @@ const RunStatusBadge = ({ status }: { status: string }) => (
   <Badge variant={STATUS_VARIANT[status] ?? "neutral"}>{status}</Badge>
 );
 
-const configSchema = z.object({
+const NameField = ({ control }: { control: Control<{ name: string }> }) => (
+  <Controller
+    control={control}
+    name="name"
+    render={({ field, fieldState }) => (
+      <Field>
+        <FieldLabel>Name</FieldLabel>
+        <FieldContent>
+          <Input {...field} isError={!!fieldState.error} />
+          <FieldError>{fieldState.error?.message}</FieldError>
+        </FieldContent>
+      </Field>
+    )}
+  />
+);
+
+const GatewayField = ({
+  gatewayId,
+  gatewayPoolId,
+  onChange
+}: {
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  onChange: (value: { gatewayId: string | null; gatewayPoolId: string | null }) => void;
+}) => (
+  <Field>
+    <FieldLabel>Gateway</FieldLabel>
+    <FieldContent>
+      <GatewayPicker isRequired value={{ gatewayId, gatewayPoolId }} onChange={onChange} />
+    </FieldContent>
+  </Field>
+);
+
+const ConfigCard = ({ children }: { children: ReactNode }) => (
+  <Card>
+    <CardHeader className="border-b">
+      <CardTitle className="text-base">Configuration</CardTitle>
+      <CardDescription>
+        Edit the source name, credential accounts, gateway, schedule, and account discovery.
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-4">{children}</CardContent>
+  </Card>
+);
+
+const activeDirectoryConfigSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
   credentialAccountId: z.string().uuid("Select a credential account"),
   schedule: z.nativeEnum(PamDiscoverySchedule),
@@ -96,9 +148,7 @@ const configSchema = z.object({
   ...discoveryConfigFormShape
 });
 
-type ConfigForm = z.infer<typeof configSchema>;
-
-const ConfigurationTab = ({
+const ActiveDirectoryConfigForm = ({
   source,
   onDirtyChange
 }: {
@@ -107,7 +157,7 @@ const ConfigurationTab = ({
 }) => {
   const updateSource = useUpdatePamDiscoverySource();
 
-  const defaults: ConfigForm = {
+  const defaults: z.infer<typeof activeDirectoryConfigSchema> = {
     name: source.name,
     credentialAccountId: source.credentialAccountId,
     schedule: source.schedule,
@@ -123,7 +173,7 @@ const ConfigurationTab = ({
     watch,
     setValue,
     formState: { isDirty }
-  } = useForm<ConfigForm>({ resolver: zodResolver(configSchema), defaultValues: defaults });
+  } = useForm({ resolver: zodResolver(activeDirectoryConfigSchema), defaultValues: defaults });
 
   useEffect(() => {
     onDirtyChange(isDirty);
@@ -135,10 +185,7 @@ const ConfigurationTab = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
-  const gatewayId = watch("gatewayId");
-  const gatewayPoolId = watch("gatewayPoolId");
-
-  const onSubmit = (data: ConfigForm) => {
+  const onSubmit = (data: z.infer<typeof activeDirectoryConfigSchema>) => {
     updateSource.mutate(
       {
         sourceId: source.id,
@@ -156,60 +203,132 @@ const ConfigurationTab = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="text-base">Configuration</CardTitle>
-          <CardDescription>
-            Edit the source name, credential account, gateway, schedule, and local-account
-            discovery.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Name</FieldLabel>
-                <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-
-          <CredentialAccountField
-            control={control as unknown as Control<{ credentialAccountId: string }>}
-          />
-
-          <Field>
-            <FieldLabel>Gateway</FieldLabel>
-            <FieldContent>
-              <GatewayPicker
-                isRequired
-                value={{ gatewayId, gatewayPoolId }}
-                onChange={(value) => {
-                  setValue("gatewayId", value.gatewayId, { shouldDirty: true });
-                  setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
-                }}
-              />
-            </FieldContent>
-          </Field>
-
-          <ScheduleField
-            control={control as unknown as Control<{ schedule: PamDiscoverySchedule }>}
-          />
-
-          <DiscoveryConfigFields control={control as unknown as Control<TDiscoveryConfigFields>} />
-        </CardContent>
-      </Card>
+      <ConfigCard>
+        <NameField control={control as unknown as Control<{ name: string }>} />
+        <CredentialAccountField
+          control={control as unknown as Control<{ credentialAccountId: string }>}
+        />
+        <GatewayField
+          gatewayId={watch("gatewayId")}
+          gatewayPoolId={watch("gatewayPoolId")}
+          onChange={(value) => {
+            setValue("gatewayId", value.gatewayId, { shouldDirty: true });
+            setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
+          }}
+        />
+        <ScheduleField
+          control={control as unknown as Control<{ schedule: PamDiscoverySchedule }>}
+        />
+        <DiscoveryConfigFields control={control as unknown as Control<TDiscoveryConfigFields>} />
+      </ConfigCard>
 
       <div aria-hidden className="h-8 shrink-0" />
       {isDirty && <SheetSaveBar isPending={updateSource.isPending} onDiscard={() => reset()} />}
     </form>
   );
 };
+
+const unixConfigSchema = z.object({
+  name: z.string().min(1, "Name is required").max(64),
+  schedule: z.nativeEnum(PamDiscoverySchedule),
+  gatewayId: z.string().nullable(),
+  gatewayPoolId: z.string().nullable(),
+  ...unixDiscoveryConfigFormShape
+});
+
+const UnixConfigForm = ({
+  source,
+  onDirtyChange
+}: {
+  source: TPamDiscoverySource;
+  onDirtyChange: (isDirty: boolean) => void;
+}) => {
+  const updateSource = useUpdatePamDiscoverySource();
+
+  const defaults: z.infer<typeof unixConfigSchema> = {
+    name: source.name,
+    schedule: source.schedule,
+    gatewayId: source.gatewayId ?? null,
+    gatewayPoolId: source.gatewayPoolId ?? null,
+    ...unixDiscoveryConfigFromSource(source.discoveryConfiguration)
+  };
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { isDirty }
+  } = useForm({ resolver: zodResolver(unixConfigSchema), defaultValues: defaults });
+
+  useEffect(() => {
+    onDirtyChange(isDirty);
+    return () => onDirtyChange(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    reset(defaults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, reset]);
+
+  const onSubmit = (data: z.infer<typeof unixConfigSchema>) => {
+    updateSource.mutate(
+      {
+        sourceId: source.id,
+        discoveryType: source.discoveryType,
+        name: data.name,
+        credentialAccountId: data.credentialAccountIds[0],
+        schedule: data.schedule,
+        gatewayId: data.gatewayId,
+        gatewayPoolId: data.gatewayPoolId,
+        configuration: buildUnixDiscoveryConfiguration(data)
+      },
+      { onSuccess: () => createNotification({ type: "success", text: "Discovery source updated" }) }
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
+      <ConfigCard>
+        <NameField control={control as unknown as Control<{ name: string }>} />
+        <SshCredentialAccountsField
+          control={control as unknown as Control<{ credentialAccountIds: string[] }>}
+        />
+        <GatewayField
+          gatewayId={watch("gatewayId")}
+          gatewayPoolId={watch("gatewayPoolId")}
+          onChange={(value) => {
+            setValue("gatewayId", value.gatewayId, { shouldDirty: true });
+            setValue("gatewayPoolId", value.gatewayPoolId, { shouldDirty: true });
+          }}
+        />
+        <ScheduleField
+          control={control as unknown as Control<{ schedule: PamDiscoverySchedule }>}
+        />
+        <UnixDiscoveryConfigFields
+          control={control as unknown as Control<TUnixDiscoveryConfigFields>}
+        />
+      </ConfigCard>
+
+      <div aria-hidden className="h-8 shrink-0" />
+      {isDirty && <SheetSaveBar isPending={updateSource.isPending} onDiscard={() => reset()} />}
+    </form>
+  );
+};
+
+const ConfigurationTab = ({
+  source,
+  onDirtyChange
+}: {
+  source: TPamDiscoverySource;
+  onDirtyChange: (isDirty: boolean) => void;
+}) =>
+  source.discoveryType === PamDiscoveryType.Unix ? (
+    <UnixConfigForm source={source} onDirtyChange={onDirtyChange} />
+  ) : (
+    <ActiveDirectoryConfigForm source={source} onDirtyChange={onDirtyChange} />
+  );
 
 type Props = {
   isOpen: boolean;
