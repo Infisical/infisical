@@ -86,6 +86,13 @@ export const webAuthnServiceFactory = ({
       userName: user.email || "",
       userDisplayName: user.email || "",
       attestationType: "none",
+      // ES256/RS256 only. The library default also offers EdDSA (-8) first, which
+      // Ed25519-capable authenticators (e.g. modern YubiKeys) will pick, but Ed25519
+      // cannot be verified under FIPS mode (OpenSSL FIPS provider rejects the key
+      // import with "Invalid keyData"), so the credential enrolls and then always
+      // fails MFA. ES256 is mandatory for FIDO2 authenticators, so nothing is
+      // excluded in practice;
+      supportedAlgorithmIDs: [-7, -257],
       excludeCredentials: existingCredentials.map((cred) => ({
         id: cred.credentialId,
         transports: cred.transports as AuthenticatorTransportFuture[]
