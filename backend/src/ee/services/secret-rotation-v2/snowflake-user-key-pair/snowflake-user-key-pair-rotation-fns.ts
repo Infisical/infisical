@@ -90,12 +90,12 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     }
   };
 
-  const readFingerprints = async (client: snowflake.Connection) => {
+  const readFingerprints = async (client: snowflake.Connection, resolvedUsername: string) => {
     // DESC USER returns one row per user property with `property`/`value` columns. Snowflake reports
     // these column names in lowercase, but we read them case-insensitively to be safe across drivers.
     const rows = await executeSnowflakeSql<Record<string, unknown>>(
       client,
-      `DESC USER ${quoteSnowflakeIdent(username)}`
+      `DESC USER ${quoteSnowflakeIdent(resolvedUsername)}`
     );
 
     const fingerprints: Partial<Record<TSnowflakePublicKeySlot, string>> = {};
@@ -110,6 +110,20 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     return fingerprints;
   };
 
+  const resolveSnowflakeUsername = async (client: snowflake.Connection): Promise<string | null> => {
+    const escapedUsername = username.replace(/'/g, "''");
+    const rows = await executeSnowflakeSql<Record<string, unknown>>(client, `SHOW USERS LIKE '${escapedUsername}'`);
+    const names = rows.map((row) => String(row.name ?? row.NAME ?? ""));
+    const matches = names.filter((name) => name.toUpperCase() === username.toUpperCase());
+
+    if (matches.length > 1) {
+      throw new BadRequestError({
+        message: `Multiple Snowflake users found for "${username}". Please ensure the username is unique.`
+      });
+    }
+    return matches[0] ?? null;
+  };
+
   // Assign the public key to the given slot, then confirm Snowflake stored it by comparing fingerprints.
   const setPublicKeyForSlot = async (
     slot: TSnowflakePublicKeySlot,
@@ -118,11 +132,12 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     const expectedFingerprint = computeFingerprint(keyPair.privateKey);
 
     const fingerprints = await runSnowflake(async (client) => {
+      const resolvedUsername = (await resolveSnowflakeUsername(client)) ?? username;
       await executeSnowflakeSql(
         client,
-        `ALTER USER ${quoteSnowflakeIdent(username)} SET ${slot} = '${toSnowflakePublicKeyBody(keyPair.publicKey)}'`
+        `ALTER USER ${quoteSnowflakeIdent(resolvedUsername)} SET ${slot} = '${toSnowflakePublicKeyBody(keyPair.publicKey)}'`
       );
-      return readFingerprints(client);
+      return readFingerprints(client, resolvedUsername);
     }, `Failed to set RSA public key for Snowflake user "${username}"`);
 
     if (fingerprints[slot] !== expectedFingerprint) {
@@ -137,14 +152,13 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
   // ALTER privileges; the CREATE USER privilege is required only when a user is actually created.
   const ensureUserExists = async () => {
     await runSnowflake(async (client) => {
-      const escapedUsername = username.replace(/'/g, "''");
-      const rows = await executeSnowflakeSql<Record<string, unknown>>(client, `SHOW USERS LIKE '${escapedUsername}'`);
-      // SHOW ... LIKE is case-insensitive and treats _/% as wildcards, so exact-match the name.
-      const exists = rows.some((row) => String(row.name ?? row.NAME ?? "") === username);
-      if (!exists) {
+      const resolvedUsername = await resolveSnowflakeUsername(client);
+      if (!resolvedUsername) {
+        // Create the user in Snowflake's canonical (uppercase) form, matching how an unquoted CREATE USER
+        // folds the identifier, so the account resolves case-insensitively on every subsequent rotation.
         await executeSnowflakeSql(
           client,
-          `CREATE USER ${quoteSnowflakeIdent(username)} TYPE = SERVICE COMMENT = 'Created by Infisical secret rotation'`
+          `CREATE USER ${quoteSnowflakeIdent(username.toUpperCase())} TYPE = SERVICE COMMENT = 'Created by Infisical secret rotation'`
         );
       }
     }, `Failed to ensure Snowflake user "${username}" exists`);
@@ -181,11 +195,12 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     const managedFingerprints = new Set(credentialsToRevoke.map((cred) => computeFingerprint(cred.privateKey)));
 
     await runSnowflake(async (client) => {
-      const fingerprints = await readFingerprints(client);
+      const resolvedUsername = (await resolveSnowflakeUsername(client)) ?? username;
+      const fingerprints = await readFingerprints(client, resolvedUsername);
       for (const slot of RSA_PUBLIC_KEY_SLOTS) {
         const slotFingerprint = fingerprints[slot];
         if (slotFingerprint && managedFingerprints.has(slotFingerprint)) {
-          await executeSnowflakeSql(client, `ALTER USER ${quoteSnowflakeIdent(username)} UNSET ${slot}`);
+          await executeSnowflakeSql(client, `ALTER USER ${quoteSnowflakeIdent(resolvedUsername)} UNSET ${slot}`);
         }
       }
     }, `Failed to revoke RSA public keys for Snowflake user "${username}"`);
@@ -204,10 +219,10 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     TSnowflakeUserKeyPairRotationGeneratedCredentials
   > = async (activeCredentials) => {
     const expectedFingerprint = computeFingerprint(activeCredentials.privateKey);
-    const fingerprints = await runSnowflake(
-      async (client) => readFingerprints(client),
-      `Failed to verify RSA public key for Snowflake user "${username}"`
-    );
+    const fingerprints = await runSnowflake(async (client) => {
+      const resolvedUsername = (await resolveSnowflakeUsername(client)) ?? username;
+      return readFingerprints(client, resolvedUsername);
+    }, `Failed to verify RSA public key for Snowflake user "${username}"`);
 
     const isPresent = RSA_PUBLIC_KEY_SLOTS.some((slot) => fingerprints[slot] === expectedFingerprint);
     if (!isPresent) {
