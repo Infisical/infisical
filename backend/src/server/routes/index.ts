@@ -1706,6 +1706,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     approvalPolicyDAL,
+    projectAccessRequestDAL,
     pamFolderDAL,
     pamAccountDAL,
     userDAL,
