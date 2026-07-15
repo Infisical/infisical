@@ -13,7 +13,7 @@ export const DISCOVERY_TYPE_CONFIGS = {
     configuration: ActiveDirectoryDiscoveryConfigSchema
   },
   [PamDiscoveryType.Unix]: {
-    name: "Unix",
+    name: "Linux/Unix",
     icon: "SSH.png",
     credentialAccountType: PamAccountType.SSH,
     configuration: UnixDiscoveryConfigSchema
