@@ -98,8 +98,7 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.PamSessionCancellation]: ["infisical-pam-session-cancellation"],
     [GatewayProxyProtocol.Pkcs11]: ["infisical-pkcs11"],
     [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
-    [GatewayProxyProtocol.PortSweep]: ["infisical-port-sweep"],
-    [GatewayProxyProtocol.SshExec]: ["infisical-ssh-exec"]
+    [GatewayProxyProtocol.Discovery]: ["infisical-discovery"]
   };
 
   const tlsOptions: tls.ConnectionOptions = {

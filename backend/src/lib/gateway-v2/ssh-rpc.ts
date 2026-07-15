@@ -18,7 +18,7 @@ export type SshExecResponse = SshExecSuccess | SshExecFailure;
 
 export const SSH_EXEC_RPC_TIMEOUT_MS = 120_000;
 
-const MAX_SSH_EXEC_RESPONSE_BYTES = 16 * 1024 * 1024;
+const MAX_RPC_RESPONSE_BYTES = 16 * 1024 * 1024;
 
 // calls the gateway's ssh-exec handler over the local relay proxy; the gateway performs the ssh login (any auth
 // method, including certificates the node client can't present) and returns the command output
@@ -48,8 +48,8 @@ export const callSshExec = (args: {
         let received = 0;
         res.on("data", (chunk: Buffer) => {
           received += chunk.length;
-          if (received > MAX_SSH_EXEC_RESPONSE_BYTES) {
-            res.destroy(new Error(`SSH exec response exceeded ${MAX_SSH_EXEC_RESPONSE_BYTES} bytes`));
+          if (received > MAX_RPC_RESPONSE_BYTES) {
+            res.destroy(new Error(`SSH exec response exceeded ${MAX_RPC_RESPONSE_BYTES} bytes`));
             return;
           }
           chunks.push(chunk);
@@ -93,6 +93,73 @@ export const callSshExec = (args: {
       logger.warn({ err }, `SSH exec RPC request error [port=${args.port}]`);
       reject(err);
     });
+    req.write(payload);
+    req.end();
+  });
+};
+
+// calls the gateway's port-sweep handler over the local relay proxy; the gateway TCP-probes every target
+// in-network and returns the reachable "host:port" set, so a scan can filter a whole CIDR to live hosts
+export const callPortSweep = (args: {
+  port: number;
+  targets: string[];
+  dialTimeoutMs: number;
+  responseTimeoutMs: number;
+}): Promise<Set<string>> => {
+  const payload = JSON.stringify({ targets: args.targets, timeoutMs: args.dialTimeoutMs });
+  return new Promise<Set<string>>((resolve, reject) => {
+    const req = http.request(
+      {
+        host: "127.0.0.1",
+        port: args.port,
+        path: "/v1/sweep",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload).toString(),
+          Connection: "close"
+        },
+        timeout: args.responseTimeoutMs
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        let received = 0;
+        res.on("data", (chunk: Buffer) => {
+          received += chunk.length;
+          if (received > MAX_RPC_RESPONSE_BYTES) {
+            res.destroy(new Error(`Port sweep response exceeded ${MAX_RPC_RESPONSE_BYTES} bytes`));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          const text = Buffer.concat(chunks).toString("utf8");
+          if (status < 200 || status >= 300) {
+            const errEnv = (() => {
+              try {
+                return (JSON.parse(text) as { error?: { message?: string } }).error;
+              } catch {
+                return undefined;
+              }
+            })();
+            reject(new Error(errEnv?.message ?? `Port sweep returned HTTP ${status}`));
+            return;
+          }
+          try {
+            const parsed = JSON.parse(text) as { open?: string[] };
+            resolve(new Set(parsed.open ?? []));
+          } catch {
+            reject(new Error("Invalid port sweep response"));
+          }
+        });
+        res.on("error", reject);
+      }
+    );
+    req.on("timeout", () => {
+      req.destroy(new Error(`Port sweep timed out after ${args.responseTimeoutMs}ms`));
+    });
+    req.on("error", reject);
     req.write(payload);
     req.end();
   });

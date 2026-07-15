@@ -14,8 +14,7 @@ export enum GatewayProxyProtocol {
   PamSessionCancellation = "pam-session-cancellation",
   Pkcs11 = "pkcs11",
   Adcs = "adcs",
-  PortSweep = "port-sweep",
-  SshExec = "ssh-exec"
+  Discovery = "discovery"
 }
 
 export enum GatewayHttpProxyActions {

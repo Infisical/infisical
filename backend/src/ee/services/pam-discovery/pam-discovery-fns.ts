@@ -1,9 +1,7 @@
-import net from "node:net";
-
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
+import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -38,7 +36,7 @@ export const sshExecWithGateway = async (
       return response.result.stdout;
     },
     {
-      protocol: GatewayProxyProtocol.SshExec,
+      protocol: GatewayProxyProtocol.Discovery,
       relayHost: platform.relayHost,
       gateway: platform.gateway,
       relay: platform.relay
@@ -88,37 +86,18 @@ export const sweepReachableTargets = async (
   });
   if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
 
-  const request = `${JSON.stringify({ targets: targets.map((t) => `${t.host}:${t.port}`), timeoutMs: dialTimeoutMs })}\n`;
+  const hostPorts = targets.map((t) => `${t.host}:${t.port}`);
 
   return withGatewayV2Proxy(
     (proxyPort) =>
-      new Promise<Set<string>>((resolve, reject) => {
-        const socket = net.connect({ host: "127.0.0.1", port: proxyPort });
-        let buffer = "";
-        const timer = setTimeout(() => {
-          socket.destroy();
-          reject(new Error("Port sweep timed out"));
-        }, SWEEP_RESPONSE_TIMEOUT_MS);
-        const finish = (err: Error | null) => {
-          clearTimeout(timer);
-          socket.destroy();
-          if (err) return reject(err);
-          try {
-            const parsed = JSON.parse(buffer) as { open?: string[] };
-            return resolve(new Set(parsed.open ?? []));
-          } catch {
-            return reject(new Error("Invalid port sweep response"));
-          }
-        };
-        socket.on("connect", () => socket.write(request));
-        socket.on("data", (chunk) => {
-          buffer += chunk.toString("utf-8");
-        });
-        socket.on("end", () => finish(null));
-        socket.on("error", (err) => finish(err));
+      callPortSweep({
+        port: proxyPort,
+        targets: hostPorts,
+        dialTimeoutMs,
+        responseTimeoutMs: SWEEP_RESPONSE_TIMEOUT_MS
       }),
     {
-      protocol: GatewayProxyProtocol.PortSweep,
+      protocol: GatewayProxyProtocol.Discovery,
       relayHost: platform.relayHost,
       gateway: platform.gateway,
       relay: platform.relay,
