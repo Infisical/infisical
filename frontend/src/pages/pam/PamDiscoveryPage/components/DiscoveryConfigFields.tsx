@@ -221,7 +221,8 @@ export const SshCredentialAccountsField = ({
               <AlertTriangle />
               <AlertDescription>
                 Password accounts send their password to every host scanned in the range, including
-                hosts you don&apos;t control. We recommend a key or certificate account for scanning.
+                hosts you don&apos;t control. We recommend a key or certificate account for
+                scanning.
               </AlertDescription>
             </Alert>
           </FieldContent>
