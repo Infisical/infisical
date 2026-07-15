@@ -61,7 +61,7 @@ const headerCredentialSchema = z.object({
 
 const basicAuthSchema = z.object({
   usernameSecretKey: z.string().trim(),
-  passwordSecretKey: z.string().trim()
+  passwordSecretKey: z.string().trim().optional()
 });
 
 const substitutionSchema = z.object({
@@ -131,21 +131,12 @@ export const proxiedServiceFormSchema = z
           path: ["headers"]
         });
       }
-    } else {
-      if (!form.basicAuth?.usernameSecretKey) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Select a secret",
-          path: ["basicAuth", "usernameSecretKey"]
-        });
-      }
-      if (!form.basicAuth?.passwordSecretKey) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Select a secret",
-          path: ["basicAuth", "passwordSecretKey"]
-        });
-      }
+    } else if (!form.basicAuth?.usernameSecretKey) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select a secret",
+        path: ["basicAuth", "usernameSecretKey"]
+      });
     }
 
     const seenPlaceholderKeys = new Map<string, number>();

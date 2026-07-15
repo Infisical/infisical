@@ -61,8 +61,10 @@ Header rewriting adds or replaces an HTTP header on the outbound request. The ag
 | --- | --- | --- |
 | Bearer token | Header name `Authorization`, prefix `Bearer`, one secret | `Authorization: Bearer <secret>` |
 | API key header | Header name `x-api-key`, no prefix, one secret | `x-api-key: <secret>` |
-| Basic auth | Two secrets, one as **Username** and one as **Password** | `Authorization: Basic base64(username:password)` |
+| Basic auth | One secret as **Username**, and optionally a second as **Password** | `Authorization: Basic base64(username:password)` |
 | Custom | Any header name and optional prefix | `<name>: <prefix> <secret>` |
+
+The password is optional for basic auth. Many APIs pass an API key as the username with an empty password; omitting the password produces `Authorization: Basic base64(username:)`.
 
 A service can rewrite multiple distinct headers (for example, an API key header plus a tenant header), but each header name can only be set by one secret. To build one header value out of several secrets, or use a secret kept elsewhere, see [reusing secrets from other folders and environments](#reusing-secrets-from-other-folders-and-environments).
 

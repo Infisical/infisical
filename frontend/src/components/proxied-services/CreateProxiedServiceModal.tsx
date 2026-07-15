@@ -1,6 +1,7 @@
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
+import { Sheet, SheetContent, SheetHeader } from "@app/components/v3";
 
 import { ProxiedServiceForm } from "./forms";
+import { ProxiedServiceModalHeader } from "./ProxiedServiceModalHeader";
 
 type Props = {
   isOpen: boolean;
@@ -21,10 +22,7 @@ export const CreateProxiedServiceModal = ({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-4xl">
         <SheetHeader className="border-b">
-          <SheetTitle>Create Proxied Service</SheetTitle>
-          <SheetDescription>
-            Define a service the agent proxy can broker secrets for.
-          </SheetDescription>
+          <ProxiedServiceModalHeader />
         </SheetHeader>
         <ProxiedServiceForm
           projectId={projectId}
