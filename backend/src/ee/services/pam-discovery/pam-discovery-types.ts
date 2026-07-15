@@ -20,7 +20,7 @@ export type TDiscoveryScanResult = {
 
 export type TPamDiscoveryProvider = {
   validateConnection: () => Promise<void>;
-  scan: () => Promise<TDiscoveryScanResult>;
+  scan: (signal: AbortSignal) => Promise<TDiscoveryScanResult>;
 };
 
 export type TDiscoveryCredentialAccount = {

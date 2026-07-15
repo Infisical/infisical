@@ -27,6 +27,7 @@ export const callSshExec = (args: {
   command: string;
   credentials: SshExecCredentials;
   timeoutMs: number;
+  signal?: AbortSignal;
 }): Promise<SshExecResponse> => {
   const payload = JSON.stringify({ command: args.command, ...args.credentials, timeoutMs: args.timeoutMs });
   return new Promise<SshExecResponse>((resolve, reject) => {
@@ -41,7 +42,8 @@ export const callSshExec = (args: {
           "Content-Length": Buffer.byteLength(payload).toString(),
           Connection: "close"
         },
-        timeout: SSH_EXEC_RPC_TIMEOUT_MS
+        timeout: SSH_EXEC_RPC_TIMEOUT_MS,
+        signal: args.signal
       },
       (res) => {
         const chunks: Buffer[] = [];
@@ -105,6 +107,7 @@ export const callPortSweep = (args: {
   targets: string[];
   dialTimeoutMs: number;
   responseTimeoutMs: number;
+  signal?: AbortSignal;
 }): Promise<Set<string>> => {
   const payload = JSON.stringify({ targets: args.targets, timeoutMs: args.dialTimeoutMs });
   return new Promise<Set<string>>((resolve, reject) => {
@@ -119,7 +122,8 @@ export const callPortSweep = (args: {
           "Content-Length": Buffer.byteLength(payload).toString(),
           Connection: "close"
         },
-        timeout: args.responseTimeoutMs
+        timeout: args.responseTimeoutMs,
+        signal: args.signal
       },
       (res) => {
         const chunks: Buffer[] = [];

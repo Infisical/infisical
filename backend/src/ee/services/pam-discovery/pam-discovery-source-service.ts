@@ -1,3 +1,5 @@
+import pLimit from "p-limit";
+
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -75,10 +77,14 @@ type TPamDiscoverySourceServiceFactoryDep = {
 // hard ceiling on how long a single scan may run
 const MAX_SCAN_DURATION_MS = 45 * 60 * 1000;
 
-const withScanTimeout = async <T>(scan: Promise<T>, timeoutMs: number): Promise<T> => {
+// bound concurrent discovered-account upserts so a large result set can't exhaust the DB connection pool
+const DISCOVERED_UPSERT_CONCURRENCY = 8;
+
+const withScanTimeout = async <T>(scan: Promise<T>, controller: AbortController, timeoutMs: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
+      controller.abort();
       reject(
         new BadRequestError({
           message: `Scan exceeded the maximum duration of ${Math.round(timeoutMs / 60000)} minutes`
@@ -90,7 +96,8 @@ const withScanTimeout = async <T>(scan: Promise<T>, timeoutMs: number): Promise<
     return await Promise.race([scan, timeout]);
   } finally {
     if (timer) clearTimeout(timer);
-    scan.catch(() => {}); // swallow late rejection if the scan settles after the timeout fires
+    // wait for the aborted scan to actually stop before finalizing the run
+    await scan.catch(() => {});
   }
 };
 
@@ -212,6 +219,24 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     if (account.accountType !== expectedType) {
       throw new BadRequestError({ message: `Credential account must be of type '${expectedType}'` });
     }
+
+    // discovery transmits an SSH password to every scanned host, so a password account may only be used by an actor
+    // allowed to view its secret
+    if (account.accountType === PamAccountType.SSH) {
+      const { decryptor } = await getProjectCipher(projectId);
+      const { authMethod } = decryptToObject(account.encryptedCredentials, decryptor) as { authMethod?: string };
+      if (authMethod === PamSshAuthMethod.Password) {
+        await checkAccountAccess(
+          permissionService,
+          credentialAccountId,
+          account.folderId,
+          projectId,
+          ResourcePermissionPamResourceActions.ViewCredentials,
+          ctx
+        );
+      }
+    }
+
     return account;
   };
 
@@ -421,14 +446,22 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         gatewayV2Service
       });
 
-      const { accounts, machineErrors } = await withScanTimeout(provider.scan(), MAX_SCAN_DURATION_MS);
+      const controller = new AbortController();
+      const { accounts, machineErrors } = await withScanTimeout(
+        provider.scan(controller.signal),
+        controller,
+        MAX_SCAN_DURATION_MS
+      );
+      const upsertLimit = pLimit(DISCOVERED_UPSERT_CONCURRENCY);
       const results = await Promise.all(
         accounts.map((d) =>
-          pamDiscoveredAccountDAL.upsertByFingerprint(sourceId, d.fingerprint, {
-            accountType: d.accountType,
-            name: d.name,
-            encryptedDetails: encryptor({ plainText: Buffer.from(JSON.stringify(d.details)) }).cipherTextBlob
-          })
+          upsertLimit(() =>
+            pamDiscoveredAccountDAL.upsertByFingerprint(sourceId, d.fingerprint, {
+              accountType: d.accountType,
+              name: d.name,
+              encryptedDetails: encryptor({ plainText: Buffer.from(JSON.stringify(d.details)) }).cipherTextBlob
+            })
+          )
         )
       );
 

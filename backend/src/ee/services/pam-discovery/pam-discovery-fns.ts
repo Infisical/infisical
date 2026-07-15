@@ -19,7 +19,8 @@ export const sshExecWithGateway = async (
   gatewayV2Service: TGatewayDep,
   command: string,
   credentials: SshExecCredentials,
-  timeoutMs: number
+  timeoutMs: number,
+  signal?: AbortSignal
 ): Promise<string> => {
   const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
   const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -31,7 +32,7 @@ export const sshExecWithGateway = async (
 
   return withGatewayV2Proxy(
     async (proxyPort) => {
-      const response = await callSshExec({ port: proxyPort, command, credentials, timeoutMs });
+      const response = await callSshExec({ port: proxyPort, command, credentials, timeoutMs, signal });
       if (!response.ok) throw new Error(response.errorMessage);
       return response.result.stdout;
     },
@@ -74,7 +75,8 @@ export const sweepReachableTargets = async (
   targets: { host: string; port: number }[],
   gatewayId: string,
   gatewayV2Service: TGatewayDep,
-  dialTimeoutMs: number
+  dialTimeoutMs: number,
+  signal?: AbortSignal
 ): Promise<Set<string>> => {
   if (!targets.length) return new Set();
 
@@ -94,7 +96,8 @@ export const sweepReachableTargets = async (
         port: proxyPort,
         targets: hostPorts,
         dialTimeoutMs,
-        responseTimeoutMs: SWEEP_RESPONSE_TIMEOUT_MS
+        responseTimeoutMs: SWEEP_RESPONSE_TIMEOUT_MS,
+        signal
       }),
     {
       protocol: GatewayProxyProtocol.Discovery,

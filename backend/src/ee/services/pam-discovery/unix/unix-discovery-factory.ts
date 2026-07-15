@@ -21,6 +21,9 @@ const SSH_EXEC_TIMEOUT_MS = 20 * 1000;
 const SCAN_CONCURRENCY = 64;
 const SWEEP_DIAL_TIMEOUT_MS = 3 * 1000;
 const MAX_SWEEP_TARGETS = 65536;
+const MAX_ACCOUNTS_PER_HOST = 2000;
+const MAX_ACCOUNTS_PER_SCAN = 50000;
+const MAX_USERNAME_LENGTH = 64;
 const PASSWD_MARKER = "__INFISICAL_PASSWD__";
 const DEFAULT_UID_MIN = 1000;
 const DEFAULT_UID_MAX = 60000;
@@ -97,8 +100,9 @@ const parseUnixUsernames = (output: string, includeSystemAccounts: boolean): str
 
   const usernames = new Set<string>();
   for (const line of passwdPart.split("\n")) {
+    if (usernames.size >= MAX_ACCOUNTS_PER_HOST) break;
     const [name, , uidStr, , , , shell = ""] = line.trim().split(":");
-    if (name) {
+    if (name && name.length <= MAX_USERNAME_LENGTH) {
       if (name === "root" || includeSystemAccounts || isLoginAccount(name, uidStr, shell, uidMin, uidMax)) {
         usernames.add(name);
       }
@@ -122,7 +126,7 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
     ...accounts.filter((a) => a.host !== host)
   ];
 
-  const enumerateHost = (host: string, account: TUnixAccount) =>
+  const enumerateHost = (host: string, account: TUnixAccount, signal?: AbortSignal) =>
     sshExecWithGateway(
       host,
       account.port,
@@ -130,13 +134,16 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
       gatewayV2Service,
       ENUMERATION_COMMAND,
       account.credentials,
-      SSH_EXEC_TIMEOUT_MS
+      SSH_EXEC_TIMEOUT_MS,
+      signal
     );
 
   const scanHost = async (
     host: string,
-    open: Set<string>
+    open: Set<string>,
+    signal: AbortSignal
   ): Promise<{ accounts: TDiscoveredAccount[]; error?: TDiscoveryMachineError }> => {
+    if (signal.aborted) return { accounts: [] };
     const isKnownHost = accounts.some((a) => a.host === host);
     const candidates = orderAccountsForHost(host).filter(
       (account) => isUsableAccount(account) && (isKnownHost || open.has(`${host}:${account.port}`))
@@ -146,7 +153,7 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
     for (const account of candidates) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        const output = await enumerateHost(host, account);
+        const output = await enumerateHost(host, account, signal);
         return {
           accounts: parseUnixUsernames(output, config.includeSystemAccounts ?? false).map((username) => ({
             accountType: PamAccountType.SSH,
@@ -184,7 +191,7 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
     });
   };
 
-  const scan = async (): Promise<TDiscoveryScanResult> => {
+  const scan = async (signal: AbortSignal): Promise<TDiscoveryScanResult> => {
     if (!accounts.some(isUsableAccount)) {
       throw new BadRequestError({
         message: "No credential account has usable authentication (password, private key, or certificate)"
@@ -200,7 +207,7 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
         message: `Scan expands to ${sweepTargets.length} host-port combinations, exceeding the limit of ${MAX_SWEEP_TARGETS}. Reduce the target ranges or the number of distinct credential ports.`
       });
     }
-    const open = await sweepReachableTargets(sweepTargets, gatewayId, gatewayV2Service, SWEEP_DIAL_TIMEOUT_MS);
+    const open = await sweepReachableTargets(sweepTargets, gatewayId, gatewayV2Service, SWEEP_DIAL_TIMEOUT_MS, signal);
 
     const hostsToScan = targets.filter(
       (host) => accounts.some((a) => a.host === host) || usablePorts.some((port) => open.has(`${host}:${port}`))
@@ -214,10 +221,17 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
     }
 
     const limit = pLimit(SCAN_CONCURRENCY);
-    const results = await Promise.all(hostsToScan.map((host) => limit(() => scanHost(host, open))));
+    const results = await Promise.all(hostsToScan.map((host) => limit(() => scanHost(host, open, signal))));
+
+    const discovered = results.flatMap((r) => r.accounts);
+    if (discovered.length > MAX_ACCOUNTS_PER_SCAN) {
+      logger.warn(
+        `PAM Unix discovery truncating discovered accounts to the per-scan limit [found=${discovered.length}] [limit=${MAX_ACCOUNTS_PER_SCAN}]`
+      );
+    }
 
     return {
-      accounts: results.flatMap((r) => r.accounts),
+      accounts: discovered.slice(0, MAX_ACCOUNTS_PER_SCAN),
       machineErrors: results.flatMap((r) => (r.error ? [r.error] : []))
     };
   };

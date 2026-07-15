@@ -234,7 +234,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     });
   };
 
-  const scan = async (): Promise<TDiscoveryScanResult> => {
+  const scan = async (signal: AbortSignal): Promise<TDiscoveryScanResult> => {
     const domain = connectionDetails.domain.toLowerCase();
     const baseDN = buildDomainDN(connectionDetails.domain);
     const machineErrors: TDiscoveryMachineError[] = [];
@@ -302,6 +302,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
       };
 
       for (const computer of computers) {
+        if (signal.aborted) break;
         const host = computer.resolvedIp || computer.dNSHostName || computer.cn;
         const hostLabel = computer.cn || computer.dNSHostName || host;
         try {
