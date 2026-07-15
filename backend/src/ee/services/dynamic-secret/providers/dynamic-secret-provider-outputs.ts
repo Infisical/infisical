@@ -4,16 +4,14 @@ import { DynamicSecretProviders } from "./models";
 
 // keep field names in sync with the frontend mirror at frontend/src/hooks/api/dynamicSecret/providerOutputs.ts
 
-export type TDynamicSecretProviderOutputEntry = {
+type TDynamicSecretProviderOutputEntry = {
   outputFields: string[];
   leaseConfigSchema?: z.ZodTypeAny;
 };
 
-export const DynamicSecretKubernetesLeaseConfigSchema = z
-  .object({ namespace: z.string().trim().min(1).optional() })
-  .strict();
+const DynamicSecretKubernetesLeaseConfigSchema = z.object({ namespace: z.string().trim().min(1).optional() }).strict();
 
-export const DynamicSecretSshLeaseConfigSchema = z
+const DynamicSecretSshLeaseConfigSchema = z
   .object({ principals: z.array(z.string().trim().min(1)).optional() })
   .strict();
 
