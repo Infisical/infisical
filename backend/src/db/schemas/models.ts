@@ -374,10 +374,7 @@ export enum ProjectMembershipRole {
   // ssh
   SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
-  KmsCryptographicOperator = "cryptographic-operator",
-  // secrets brokering (agent proxy)
-  Agent = "agent",
-  AgentProxy = "agent-proxy"
+  KmsCryptographicOperator = "cryptographic-operator"
 }
 
 export enum ResourceMembershipRole {
