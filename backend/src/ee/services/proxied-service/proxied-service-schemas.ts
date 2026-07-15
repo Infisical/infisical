@@ -176,10 +176,12 @@ export const CredentialsArraySchema = CredentialInputSchema.array()
         message: "Basic auth allows at most one username and one password credential"
       });
     }
-    if (usernameCount !== passwordCount) {
+    // Password is optional (username-only basic auth yields `base64(username:)`), but a lone
+    // password with no username is meaningless.
+    if (passwordCount > 0 && usernameCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Basic auth requires both a username and a password credential"
+        message: "Basic auth password requires a username credential"
       });
     }
     if (usernameCount + passwordCount > 0 && headerNameCounts.size > 0) {

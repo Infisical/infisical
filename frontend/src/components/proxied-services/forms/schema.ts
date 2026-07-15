@@ -61,7 +61,8 @@ const headerCredentialSchema = z.object({
 
 const basicAuthSchema = z.object({
   usernameSecretKey: z.string().trim(),
-  passwordSecretKey: z.string().trim()
+  // Optional: username-only basic auth is valid (yields `base64(username:)`).
+  passwordSecretKey: z.string().trim().optional()
 });
 
 const substitutionSchema = z.object({
@@ -139,13 +140,7 @@ export const proxiedServiceFormSchema = z
           path: ["basicAuth", "usernameSecretKey"]
         });
       }
-      if (!form.basicAuth?.passwordSecretKey) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Select a secret",
-          path: ["basicAuth", "passwordSecretKey"]
-        });
-      }
+      // Password is optional — username-only basic auth is allowed.
     }
 
     const seenPlaceholderKeys = new Map<string, number>();

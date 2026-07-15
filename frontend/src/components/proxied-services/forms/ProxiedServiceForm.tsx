@@ -407,7 +407,10 @@ export const ProxiedServiceForm = ({
                   </FieldContent>
                 </Field>
                 <Field className="flex-1">
-                  <FieldLabel>Password</FieldLabel>
+                  <FieldLabel>
+                    Password
+                    <span className="ml-1 font-normal text-muted">(optional)</span>
+                  </FieldLabel>
                   <FieldContent>
                     <Controller
                       control={control}
