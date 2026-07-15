@@ -18,7 +18,7 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 
 <Steps>
     <Step title="Open Snowsight User Settings">
-        In [Snowsight](https://app.snowflake.com/), open the side bar menu and select **User & Roles** under **Governance & Security**.
+        In [Snowsight](https://app.snowflake.com/), open the side bar menu and select **Users & roles** under **Governance & Security**.
 
         ![Snowflake User Profile](/images/app-connections/snowflake/step-1.png)
     </Step>
@@ -30,12 +30,11 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
     </Step>
 
     <Step title="Configure user details and role">
-        Provide a **Username** and assign a role. The role must have permission to create and manage secrets in the target database. The snippet below grants the minimum required privileges (alternatively, assign the **ACCOUNTADMIN** role).
+        Provide a **Username** and assign a role. The role must have permission to create and manage secrets in the target database.
 
         ![Configure User](/images/app-connections/snowflake/step-3.png)
 
-        If you decide to go with a custom role, you just need to run the following snippet. To do this, select the **Projects** tab and click on **Workspaces** to open the query editor.
-
+        If you decide to go with a custom role, you just need to run the following snippet, which grants the minimum privileges required for operations on specific tables and schemas. To do this, select the **Projects** tab and click on **Workspaces** to open the query editor.
 
         ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
 
@@ -56,7 +55,7 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
     </Step>
 
     <Step title="Create a network policy">
-        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user.
+        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user. To create one, hover over **Projects**, click on **Workspaces**, and create a network policy. The snippet below creates one that allows access from any IP.
 
 
         ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
@@ -75,7 +74,7 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
         </Warning>
     </Step>
     <Step title="Generate a Programmatic Access Token">
-        Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
+        Hover over **Governance & Security** and click on **Users & roles**. Select the user you want to use in Infisical. Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
 
         ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
         ![Fill up PAT info](/images/app-connections/snowflake/step-6.png)

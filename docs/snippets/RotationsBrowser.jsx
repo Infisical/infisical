@@ -213,6 +213,15 @@ export const RotationsBrowser = () => {
       category: "AI & LLM",
       rotationType: "Dual-Phase",
     },
+    {
+      name: "Snowflake User Key Pair",
+      slug: "snowflake-user-key-pair",
+      path: "/documentation/platform/secret-rotation/snowflake-user-key-pair",
+      description:
+        "Learn how to automatically rotate Snowflake user key pairs.",
+      category: "Databases",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
