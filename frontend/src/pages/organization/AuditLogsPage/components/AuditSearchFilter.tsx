@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, TriangleAlert, X } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
+import {
+  eventToNameMap,
+  projectToEventsMap,
+  userAgentTypeToNameMap
+} from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import {
   ActorSuggestion,
@@ -28,7 +32,7 @@ type FilterProperty = {
 const FILTER_PROPERTIES: FilterProperty[] = [
   {
     key: "event",
-    hints: "get-secret, get-secrets, create-secret, ...",
+    hints: "add-project-member, remove-project-member, ...",
     suggestions: Object.entries(eventToNameMap).map(([value, label]) => ({
       value,
       label: `${value} (${label})`
@@ -69,7 +73,20 @@ const PRODUCT_FILTER_KEYS: Partial<Record<ProjectType, string[]>> = {
 
 const getProductFilterProperties = (projectType?: ProjectType) => {
   const keys = projectType ? PRODUCT_FILTER_KEYS[projectType] : undefined;
-  return keys ? FILTER_PROPERTIES.filter((prop) => keys.includes(prop.key)) : FILTER_PROPERTIES;
+  const properties = keys
+    ? FILTER_PROPERTIES.filter((prop) => keys.includes(prop.key))
+    : FILTER_PROPERTIES;
+
+  // Narrow event suggestions to the current product's events (secrets default shows all)
+  const projectEvents = projectType ? projectToEventsMap[projectType] : undefined;
+  if (!projectEvents) return properties;
+
+  const allowedEvents = new Set<string>(projectEvents);
+  return properties.map((prop) =>
+    prop.key === "event"
+      ? { ...prop, suggestions: prop.suggestions?.filter((s) => allowedEvents.has(s.value)) }
+      : prop
+  );
 };
 
 const getDisplayLabel = (key: string) =>
