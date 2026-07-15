@@ -39,7 +39,8 @@ export const PgSqlLock = {
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
-  AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`)
+  AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -89,9 +90,13 @@ export const KeyStorePrefixes = {
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
+  MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
+  UserStepUpMfaAttempts: (userId: string) => `user-step-up-mfa-attempts:${userId}` as const,
+  UserStepUpMfaLockout: (userId: string) => `user-step-up-mfa-lockout:${userId}` as const,
+  RecentMfaAuth: (userId: string, tokenVersionId: string) => `recent-mfa-auth:${userId}:${tokenVersionId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
@@ -164,7 +169,11 @@ export const KeyStoreTtls = {
   IdentityRevocationVersionInSeconds: 604800, // 7 days
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
+
   MfaSessionInSeconds: 300, // 5 minutes
+  RecentMfaAuthInSeconds: 600, // 10 minutes
+  MfaCodeResendCooldownInSeconds: 60, // 1 minute
+
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
@@ -187,6 +196,8 @@ export const KeyStoreTtls = {
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
+  StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
+  StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
   TelemetryAggregatedEventInSeconds: 600, // 10 minutes
   SecretEtagInSeconds: 900, // 15 minutes

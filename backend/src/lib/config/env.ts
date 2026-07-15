@@ -238,9 +238,8 @@ const envSchema = z
     CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
-    // Secrets activation nudge tuning. Gates whether the member-invite activation banner shows and
-    // the org size/age window in which it appears.
-    SECRETS_ACTIVATION_ENABLED: zodStrBool.default("false"),
+    // Secrets activation nudge tuning. Controls the org size/age window in which the
+    // member-invite activation banner appears.
     SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
     SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
     // jwt options

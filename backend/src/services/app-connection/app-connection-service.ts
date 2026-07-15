@@ -187,6 +187,7 @@ import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
+import { ValidateWinRMConnectionCredentialsSchema } from "./winrm/winrm-connection-schemas";
 import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
 import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
 
@@ -222,6 +223,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureDevOps]: ValidateAzureDevOpsConnectionCredentialsSchema,
   [AppConnection.AzureADCS]: ValidateAzureADCSConnectionCredentialsSchema,
   [AppConnection.ADCS]: ValidateADCSConnectionCredentialsSchema,
+  [AppConnection.WinRM]: ValidateWinRMConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
   [AppConnection.TerraformCloud]: ValidateTerraformCloudConnectionCredentialsSchema,

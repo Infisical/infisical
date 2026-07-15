@@ -1,0 +1,257 @@
+---
+title: "infisical secrets agent-proxy"
+description: "Run the Infisical Agent Proxy and connect agents to it"
+---
+
+<Tabs>
+  <Tab title="Start the agent proxy">
+    ```bash
+    infisical secrets agent-proxy start [options]
+
+    # Example
+    infisical secrets agent-proxy start --port 17322
+    ```
+
+  </Tab>
+
+  <Tab title="Connect an agent">
+    ```bash
+    infisical secrets agent-proxy connect [options] -- [agent start command]
+
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+    ```
+
+  </Tab>
+</Tabs>
+
+## Description
+
+Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview): `start` launches the proxy that brokers real credentials onto agent traffic on the wire, and `connect` launches an agent behind it with the proxy routing, CA trust, and dummy placeholder credentials already set up.
+
+Both subcommands authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth). Use separate identities for the proxy and for each agent; see the [Quickstart](/documentation/platform/agent-proxy/quickstart) for the recommended permissions.
+
+## Subcommands & flags
+
+<Accordion title="infisical secrets agent-proxy start" defaultOpen="true">
+  Start the agent proxy, an HTTP(S) forward proxy that brokers credentials for the agents that connect to it. Requires machine identity credentials with read access to the secrets your proxied services reference.
+
+  Agents reach HTTPS services through standard `CONNECT` tunnels and plain-HTTP services through regular forward-proxy requests; credentials are brokered on both. Requests for `https://` URLs sent as plain forward-proxy requests (rather than `CONNECT`) are rejected so the proxy can never be used to downgrade TLS.
+
+```bash
+$ infisical secrets agent-proxy start
+
+# Example
+$ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
+```
+
+### Environment variables
+
+  <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
+    The Universal Auth credentials of the agent proxy's machine identity. Alternative to passing `--client-id` and `--client-secret`.
+
+    ```bash
+      # Example
+      export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
+      export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_DOMAIN">
+    Point the CLI to your Infisical instance (for example `https://eu.infisical.com` for EU Cloud, or your self-hosted URL). Alternative to the `--domain` flag.
+
+    ```bash
+      # Example
+      export INFISICAL_DOMAIN=https://eu.infisical.com
+    ```
+  </Accordion>
+
+### Flags
+
+  <Accordion title="--port">
+    Port for the agent proxy to listen on.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --port 18000
+    ```
+
+    Default value: `17322`
+  </Accordion>
+
+  <Accordion title="--unmatched-host">
+    Policy for requests to hosts with no matching proxied service: `allow` forwards them untouched with no credentials applied (the normal mode: documentation, package registries, and services the agent authenticates to itself pass straight through); `block` rejects them with `403`, restricting agents to the services you have defined.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --unmatched-host=block
+    ```
+
+    Default value: `allow`
+
+    <Note>
+      `block` blocks every host without a matching proxied service, including your Infisical instance itself. Since agent traffic routes through the proxy, Infisical CLI commands run from inside the agent (using the `INFISICAL_TOKEN` from its environment) will also be rejected in this mode.
+    </Note>
+  </Accordion>
+
+  <Accordion title="--poll-interval">
+    Seconds between permission and credential refreshes for active agents. Changes to proxied services, permissions, and secret values (for example, after a rotation) take effect within one interval.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --poll-interval 30
+    ```
+
+    Default value: `60`
+  </Accordion>
+
+  <Accordion title="--client-id / --client-secret">
+    Universal Auth credentials for the agent proxy's machine identity. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --client-id=<client-id> --client-secret=<client-secret>
+    ```
+  </Accordion>
+</Accordion>
+
+<Accordion title="infisical secrets agent-proxy connect">
+  Set up the environment and launch an agent behind the agent proxy. Everything after `--` is the agent's own start command. The wrapper authenticates the agent's machine identity, then starts the agent process with:
+
+  - `HTTPS_PROXY` / `HTTP_PROXY` pointing at the agent proxy, plus `NO_PROXY` (always includes `localhost,127.0.0.1`, merged with any `NO_PROXY` already in your environment and the `--no-proxy` flag).
+  - The organization's root CA written to `~/.infisical/agent-proxy/mitm-ca.pem` and trusted via `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
+  - Dummy placeholder environment variables for credential-substitution services the agent has **Proxy** access to.
+  - Real values for regular secrets the agent has **Read Value** on in the scoped folder, including secrets imported into it (similar to `infisical run`). This is opt-in; an agent identity scoped to just the proxy permission has no read access, and brokered credentials never appear in the agent's environment. If the agent can read a secret that a proxied service brokers to it, `connect` refuses to start, since the agent would receive the real value directly and bypass the proxy; fix the permissions or pass `--allow-readable-brokered-secrets` to override.
+  - `INFISICAL_TOKEN` set to the agent's access token, so the agent can run Infisical CLI commands itself.
+
+  The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
+
+```bash
+$ infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
+
+# Example
+$ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+```
+
+### Environment variables
+
+  <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
+    The Universal Auth credentials of the agent's machine identity. Alternative to passing `--client-id` and `--client-secret`.
+
+    ```bash
+      # Example
+      export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
+      export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_PROJECT_ID">
+    The project to fetch proxied services and secrets from. Alternative to the `--projectId` flag or running inside a directory with an `.infisical.json` file (created by `infisical init`).
+
+    ```bash
+      # Example
+      export INFISICAL_PROJECT_ID=<project-id>
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_DOMAIN">
+    Point the CLI to your Infisical instance. Alternative to the `--domain` flag.
+
+    ```bash
+      # Example
+      export INFISICAL_DOMAIN=https://eu.infisical.com
+    ```
+  </Accordion>
+
+### Flags
+
+  <Accordion title="--proxy">
+    Address of the agent proxy as `host:port`. Required.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--env">
+    The environment slug to fetch proxied services and secrets from (for example `dev`, `staging`, `prod`). Falls back to the environment in `.infisical.json` if present; required otherwise.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=staging -- codex
+    ```
+  </Accordion>
+
+  <Accordion title="--path">
+    The secret path (folder) to scope to. Proxied services and secrets are fetched from this folder.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --path=/ai-agents -- claude
+    ```
+
+    Default value: `/`
+  </Accordion>
+
+  <Accordion title="--no-proxy">
+    Additional comma-separated hosts that should bypass the proxy. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` already set in your environment.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --no-proxy=internal.corp.com -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--projectId">
+    The project to fetch proxied services and secrets from. Falls back to the `INFISICAL_PROJECT_ID` environment variable, then to `.infisical.json`.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --projectId=<project-id> -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--client-id / --client-secret">
+    Universal Auth credentials for the agent's machine identity. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --client-id=<client-id> --client-secret=<client-secret> -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--token">
+    Authenticate with a pre-fetched machine identity access token instead of client credentials.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --token=<access-token> -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--allow-readable-brokered-secrets">
+    Start even if the agent can **Read Value** on a secret that a proxied service brokers to it. By default `connect` refuses to start in that case, since the agent would receive the real value directly and bypass the proxy, defeating the point of brokering it. This is a misconfiguration guardrail, not a security boundary: the real fix is to not grant the agent read access to brokered secrets. Use this flag only for the rare intentional case.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --allow-readable-brokered-secrets -- claude
+    ```
+
+    Default value: `false`
+  </Accordion>
+</Accordion>
+
+<Accordion title="Shared flags">
+
+  <Accordion title="--domain">
+    Point the CLI to your Infisical instance (for example `https://eu.infisical.com` for EU Cloud, or your self-hosted URL). Can also be set via the `INFISICAL_DOMAIN` environment variable or the `domain` field in `.infisical.json`. Required for non-US Cloud users.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --domain=https://your-instance.com
+    ```
+
+    Default value: `https://app.infisical.com`
+  </Accordion>
+</Accordion>

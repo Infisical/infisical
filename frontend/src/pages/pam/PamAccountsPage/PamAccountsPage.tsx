@@ -152,7 +152,12 @@ export const PamAccountsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Accounts" })}</title>
       </Helmet>
-      <PageHeader title="Accounts" scope={ProjectType.PAM} icon={FolderOpen} />
+      <PageHeader
+        title="Accounts"
+        description="Manage privileged accounts grouped into folders."
+        scope={ProjectType.PAM}
+        icon={FolderOpen}
+      />
 
       <Card className="mt-4">
         <CardHeader>
