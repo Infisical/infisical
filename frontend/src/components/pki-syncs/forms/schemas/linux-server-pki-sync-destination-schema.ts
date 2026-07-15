@@ -26,6 +26,7 @@ const LinuxServerSyncOptionsSchema = z.object({
     .refine((m) => !m || /^0?[0-7]{3}$/.test(m), {
       message: "File mode must be a 3-digit octal value (e.g. 644)"
     })
+    .transform((v) => v || undefined)
     .optional(),
   privateKeyFileMode: z
     .string()
@@ -33,6 +34,7 @@ const LinuxServerSyncOptionsSchema = z.object({
     .refine((m) => !m || /^0?[0-7]{3}$/.test(m), {
       message: "Private key file mode must be a 3-digit octal value (e.g. 600)"
     })
+    .transform((v) => v || undefined)
     .optional(),
   owner: z
     .string()
@@ -41,6 +43,7 @@ const LinuxServerSyncOptionsSchema = z.object({
     .refine((v) => !v || /^[a-z_][a-z0-9_-]*\$?$/i.test(v), {
       message: "Owner must be a valid Linux user name"
     })
+    .transform((v) => v || undefined)
     .optional(),
   group: z
     .string()
@@ -49,6 +52,7 @@ const LinuxServerSyncOptionsSchema = z.object({
     .refine((v) => !v || /^[a-z_][a-z0-9_-]*\$?$/i.test(v), {
       message: "Group must be a valid Linux group name"
     })
+    .transform((v) => v || undefined)
     .optional(),
   certificateNameSchema: z
     .string()
