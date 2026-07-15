@@ -1,7 +1,4 @@
-import net from "node:net";
-
 import slugify from "@sindresorhus/slugify";
-import { Netmask } from "netmask";
 import pLimit from "p-limit";
 import RE2 from "re2";
 
@@ -18,11 +15,11 @@ import {
   TDiscoveryScanResult,
   TPamDiscoveryFactory
 } from "../pam-discovery-types";
+import { expandTargets } from "./unix-discovery-fns";
 
 const SSH_EXEC_TIMEOUT_MS = 20 * 1000;
 const SCAN_CONCURRENCY = 64;
 const SWEEP_DIAL_TIMEOUT_MS = 3 * 1000;
-const MAX_TARGET_HOSTS = 65536;
 const MAX_SWEEP_TARGETS = 65536;
 const PASSWD_MARKER = "__INFISICAL_PASSWD__";
 const DEFAULT_UID_MIN = 1000;
@@ -82,31 +79,6 @@ const isUsableAccount = (account: TUnixAccount) => {
   if (authMethod === PamSshAuthMethod.PublicKey) return Boolean(privateKey);
   if (authMethod === PamSshAuthMethod.Certificate) return Boolean(privateKey && certificate);
   return false;
-};
-
-const expandTargets = (cidrRanges: string[]): string[] => {
-  const hosts = new Set<string>();
-  for (const range of cidrRanges) {
-    const trimmed = range.trim();
-    if (trimmed) {
-      if (trimmed.includes("/")) {
-        if (!net.isIPv4(trimmed.split("/")[0])) {
-          throw new BadRequestError({ message: `Only IPv4 CIDR ranges are supported: ${trimmed}` });
-        }
-        const block = new Netmask(trimmed);
-        if (hosts.size + block.size > MAX_TARGET_HOSTS) {
-          throw new BadRequestError({ message: `Targets expand to more than ${MAX_TARGET_HOSTS} hosts` });
-        }
-        block.forEach((ip) => hosts.add(ip));
-      } else {
-        hosts.add(trimmed);
-        if (hosts.size > MAX_TARGET_HOSTS) {
-          throw new BadRequestError({ message: `Targets expand to more than ${MAX_TARGET_HOSTS} hosts` });
-        }
-      }
-    }
-  }
-  return [...hosts];
 };
 
 const isLoginAccount = (name: string, uidStr: string, shell: string, uidMin: number, uidMax: number) => {

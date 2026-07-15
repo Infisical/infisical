@@ -1,7 +1,10 @@
 import { Control, Controller, useWatch } from "react-hook-form";
+import { AlertTriangle } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
   Field,
   FieldContent,
   FieldDescription,
@@ -214,6 +217,13 @@ export const SshCredentialAccountsField = ({
               connects.
             </FieldDescription>
             <FieldError>{fieldState.error?.message}</FieldError>
+            <Alert variant="warning" className="mt-1">
+              <AlertTriangle />
+              <AlertDescription>
+                Password accounts send their password to every host scanned in the range, including
+                hosts you don&apos;t control. We recommend a key or certificate account for scanning.
+              </AlertDescription>
+            </Alert>
           </FieldContent>
         </Field>
       )}

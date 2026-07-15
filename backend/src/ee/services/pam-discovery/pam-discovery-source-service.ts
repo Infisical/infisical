@@ -104,7 +104,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
   const decryptToObject = (blob: Buffer, decryptor: (i: { cipherTextBlob: Buffer }) => Buffer) =>
     JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
 
-  const SSH_CERT_TTL = "10m";
+  // one cert is minted per scan and reused for every host, so it must outlive the whole run
+  const SSH_CERT_TTL = "1h";
 
   // certificate accounts can't be presented by an ssh client, so sign an ephemeral user cert the gateway will present;
   // password/private-key accounts pass through unchanged
