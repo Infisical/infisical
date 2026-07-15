@@ -11,6 +11,10 @@ import { TableName } from "../schemas";
 // account/template overrides the default gateway/pool or opts into a recording connection),
 // so a partial `WHERE col IS NOT NULL` index is the right shape: it serves the RI lookup
 // at a fraction of the size and write cost of a full index.
+//
+// Built CONCURRENTLY so the deploy doesn't take a write-blocking lock on production
+// pam_accounts / pam_account_templates while each index is created — pattern mirrors
+// 20260602100000_add-secret-versions-v2-envid-index.ts.
 const FK_INDEXES = [
   {
     table: TableName.PamAccountTemplate,
@@ -44,31 +48,39 @@ const FK_INDEXES = [
   }
 ];
 
-const indexExists = async (knex: Knex, indexName: string): Promise<boolean> => {
-  const result = await knex.raw(`SELECT 1 FROM pg_indexes WHERE indexname = ?`, [indexName]);
-  return result.rows.length > 0;
-};
+const MIGRATION_TIMEOUT = 60 * 60 * 1000; // 60 minutes
+const MIGRATION_LOCK_TIMEOUT = 30 * 1000; // 30 seconds
 
 export async function up(knex: Knex): Promise<void> {
-  for await (const idx of FK_INDEXES) {
-    if (
-      (await knex.schema.hasTable(idx.table)) &&
-      (await knex.schema.hasColumn(idx.table, idx.column)) &&
-      !(await indexExists(knex, idx.name))
-    ) {
-      await knex.schema.alterTable(idx.table, (t) => {
-        t.index([idx.column], idx.name, { predicate: knex.whereNotNull(idx.column) });
-      });
+  const stmtResult = await knex.raw("SHOW statement_timeout");
+  const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
+  const lockResult = await knex.raw("SHOW lock_timeout");
+  const originalLockTimeout = lockResult.rows[0].lock_timeout;
+
+  try {
+    await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
+    await knex.raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
+
+    for await (const idx of FK_INDEXES) {
+      if ((await knex.schema.hasTable(idx.table)) && (await knex.schema.hasColumn(idx.table, idx.column))) {
+        await knex.raw(`
+          CREATE INDEX CONCURRENTLY IF NOT EXISTS "${idx.name}"
+          ON ${idx.table} ("${idx.column}")
+          WHERE "${idx.column}" IS NOT NULL
+        `);
+      }
     }
+  } finally {
+    await knex.raw(`SET statement_timeout = '${originalStatementTimeout}'`);
+    await knex.raw(`SET lock_timeout = '${originalLockTimeout}'`);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
   for await (const idx of FK_INDEXES) {
-    if ((await knex.schema.hasTable(idx.table)) && (await indexExists(knex, idx.name))) {
-      await knex.schema.alterTable(idx.table, (t) => {
-        t.dropIndex([idx.column], idx.name);
-      });
-    }
+    await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${idx.name}"`);
   }
 }
+
+const config = { transaction: false };
+export { config };
