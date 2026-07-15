@@ -92,9 +92,11 @@ The built-in roles grant the right permissions but across all environments and p
 | Identity | Minimum permissions | Notes |
 | --- | --- | --- |
 | **Agent** | `Proxy` on **Proxied Services**, scoped to the environments and paths where its services live | This alone lets it route traffic and have credentials applied. It does not need to read any secret. Add `Read Value` on **Secrets** only for values the agent uses directly (not brokered ones). |
-| **Agent Proxy** | `Read Value` and `Describe Secret` on **Secrets**, covering every secret the services reference | This is the identity that actually fetches the real values. Both actions are required: `Describe Secret` determines whether a secret is visible to the identity at all, and `Read Value` reveals its value. It needs no proxied-service permission. |
+| **Agent Proxy** | `Read Value` and `Describe Secret` on **Secrets**, covering every secret the services reference; plus `Lease` on **Dynamic Secrets** for any dynamic secret a service brokers | This is the identity that actually fetches the real values and mints leases. `Describe Secret` determines whether a secret is visible to the identity at all, `Read Value` reveals its value, and `Lease` lets it mint a brokered dynamic secret. It needs no proxied-service permission. |
 
 The key thing to get right for the agent proxy: it needs **Read Value on every secret referenced by every service any of its agents use**, across the relevant environments and paths. If a referenced secret comes from a [secret import](/documentation/platform/agent-proxy/proxied-services#using-secrets), the read permission has to cover the secret's real location (the import source), not just the folder it is imported into. If a grant is missing, that credential is skipped.
+
+For a service that brokers a [dynamic secret](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets), the proxy identity needs `Lease` on it instead of `Read Value` — and the agent identity must **not** have `Lease` on it, or `agent-proxy connect` refuses to start.
 
 ### How Many Machine Identities Do You Need?
 
