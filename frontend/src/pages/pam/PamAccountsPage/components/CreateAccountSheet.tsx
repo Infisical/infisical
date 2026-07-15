@@ -62,6 +62,7 @@ import {
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
 import { CreateFolderModal } from "./CreateFolderModal";
 import { CredentialsForm } from "./CredentialsForm";
+import { SshCaSetupCallout } from "./SshCaSetupCallout";
 
 const CREATE_FOLDER_VALUE = "__create_folder__";
 
@@ -473,7 +474,10 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                 {(selectedMetadata?.credentialFields.length ?? 0) > 0 && (
                   <div className="mt-2">
                     <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
-                    <CredentialsForm control={control} />
+                    <div className="flex flex-col gap-4">
+                      <CredentialsForm control={control} />
+                      <SshCaSetupCallout control={control} />
+                    </div>
                   </div>
                 )}
 
