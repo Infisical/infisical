@@ -14,8 +14,7 @@ const buildInstallCommand = (accountId: string) =>
 type Props = {
   accountType?: string;
   authMethod?: string;
-  // present only for an existing account; the CA is per-account and can't be provisioned until it exists
-  accountId?: string;
+  accountId?: string; // present only for an existing account
 };
 
 export const SshCaSetupCallout = ({ accountType, authMethod, accountId }: Props) => {
