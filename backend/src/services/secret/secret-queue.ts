@@ -1489,7 +1489,6 @@ export const secretQueueFactory = ({
               reminderNote: el.secretReminderNote,
               reminderRepeatDays: el.secretReminderRepeatDays,
               secretId: el.secretId,
-              envId: el.envId,
               isRedacted: false
             };
             el.tags.forEach(({ secretTagId }) => {
@@ -1552,7 +1551,6 @@ export const secretQueueFactory = ({
             reminderNote: el.secretReminderNote,
             reminderRepeatDays: el.secretReminderRepeatDays,
             secretId: el.secretId,
-            envId: el.envId,
             isRedacted: false
           };
         });
