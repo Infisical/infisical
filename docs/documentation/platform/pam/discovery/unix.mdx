@@ -1,27 +1,27 @@
 ---
-title: "Unix Discovery"
-sidebarTitle: "Unix"
-description: "Scan Unix hosts over SSH for local accounts and import them into PAM."
+title: "Linux/Unix Discovery"
+sidebarTitle: "Linux/Unix"
+description: "Scan Linux and Unix hosts over SSH for local accounts and import them into PAM."
 ---
 
-Unix discovery scans a set of Unix hosts over SSH, enumerates their local accounts, stages them for review, and lets you import them into PAM as [SSH accounts](/documentation/platform/pam/accounts/ssh). Because there is no central directory to read from, you point a source at the hosts to scan and the [SSH accounts](/documentation/platform/pam/accounts/ssh) to scan with.
+Linux/Unix discovery scans a set of Linux and Unix hosts over SSH, enumerates their local accounts, stages them for review, and lets you import them into PAM as [SSH accounts](/documentation/platform/pam/accounts/ssh). Because there is no central directory to read from, you point a source at the hosts to scan and the [SSH accounts](/documentation/platform/pam/accounts/ssh) to scan with.
 
 All scan traffic is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
 
 ## How It Works
 
-A Unix scan connects entirely through the Gateway:
+A Linux/Unix scan connects entirely through the Gateway:
 
 1. Each **CIDR range** is expanded into a list of target hosts; individual IPs and hostnames are used as-is (hostnames are resolved by the gateway in the target network).
 2. For each host, discovery picks a credential account: it first tries an account whose stored host matches the target, otherwise it tries each account in turn until one authenticates.
 3. It reads the host's local accounts from `/etc/passwd` (via `getent passwd`) over SSH.
-4. Each account it keeps is staged as an **SSH** account scoped to that host. `root` on two hosts becomes two separate staged accounts.
+4. Each login-capable account is staged as an **SSH** account scoped to that host. `root` on two hosts becomes two separate staged accounts.
 
 Hosts that no credential can reach or authenticate to are reported on the run and skipped; the rest of the scan still completes.
 
 ## Prerequisites
 
-Before creating a Unix discovery source, make sure you have:
+Before creating a Linux/Unix discovery source, make sure you have:
 
 - A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to the hosts you want to scan.
 - One or more [SSH accounts](/documentation/platform/pam/accounts/ssh) in PAM to use as **credential accounts**. Discovery authenticates to each host as one of these accounts, using its port. Password, private-key, and certificate (SSH CA) auth are all supported for scanning; certificate accounts are brokered through the gateway and require the target hosts to trust the account's CA.
@@ -35,7 +35,7 @@ A scanning identity is typically provisioned uniformly across the fleet, most re
 
 <Steps>
   <Step title="Start adding a source">
-    Go to **Privileged Access Manager → Discovery** and click **Add Source**, then choose **Unix**.
+    Go to **Privileged Access Manager → Discovery** and click **Add Source**, then choose **Linux/Unix**.
   </Step>
   <Step title="Configure the source">
     | Field | Description |
@@ -46,9 +46,6 @@ A scanning identity is typically provisioned uniformly across the fleet, most re
     | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
     | **Targets** | IP addresses, IPv4 CIDR ranges, or hostnames to scan, one per line or comma-separated. Hostnames are resolved by the gateway in the target network |
   </Step>
-  <Step title="Choose which accounts to surface">
-    Leave **Include system/service accounts** off to surface only real login accounts, or turn it on to surface every account in `/etc/passwd`. See [Account Filtering](#account-filtering).
-  </Step>
   <Step title="Save">
     Click **Add Source**. The source appears in the Discovery table.
   </Step>
@@ -56,9 +53,7 @@ A scanning identity is typically provisioned uniformly across the fleet, most re
 
 ## Account Filtering
 
-By default discovery surfaces only login-capable accounts and excludes daemon and system accounts. It reads the UID bounds from each host's `/etc/login.defs` and drops accounts outside that range, accounts with a `nologin`/`false` shell, and well-known system account names.
-
-Turn on **Include system/service accounts** to skip this filtering and surface every account in `/etc/passwd`, including daemon accounts.
+Discovery surfaces only accounts that can be logged into. Because it reads only `/etc/passwd`, login-capability is inferred from each account's shell: accounts with a real login shell are kept (regular users, `root`, and service accounts such as `postgres`), while accounts with a `nologin`/`false` (or similar non-interactive) shell are dropped. This keeps daemon and system accounts that can never open a session out of the results.
 
 ## Running a Scan
 
