@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Dialog,
   DialogContent,
@@ -16,6 +19,7 @@ import {
 import { useOrganization, useProject } from "@app/context";
 import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
 
@@ -33,6 +37,12 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const { mutate: addUser, isPending } = useAddUserToWsNonE2EE();
+  const navigate = useNavigate({ from: "" });
+
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (el) => (el as { requesterEmail?: string })?.requesterEmail
+  });
 
   const [selectedUsers, setSelectedUsers] = useState<SelectOption[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>(ProjectMembershipRole.Member);
@@ -40,8 +50,9 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { data: members } = useGetWorkspaceUsers(currentProject.id);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
 
+  const wsUsernames = useMemo(() => new Set(members?.map((m) => m.user.username)), [members]);
+
   const availableUsers = useMemo(() => {
-    const wsUsernames = new Set(members?.map((m) => m.user.username));
     return (orgUsers || [])
       .filter(({ user: u }) => !wsUsernames.has(u.username))
       .map(({ id, inviteEmail, user: { firstName, lastName, email } }) => ({
@@ -51,11 +62,34 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
             ? `${firstName} ${lastName}`
             : firstName || lastName || email || inviteEmail
       }));
-  }, [orgUsers, members]);
+  }, [orgUsers, wsUsernames]);
+
+  const requesterStatus = useMemo(
+    () => getRequesterStatus(requesterEmail, orgUsers, wsUsernames),
+    [requesterEmail, orgUsers, wsUsernames]
+  );
+
+  useEffect(() => {
+    if (requesterEmail && requesterStatus.userId && !requesterStatus.isProjectUser) {
+      setSelectedUsers([{ value: requesterStatus.userId, label: requesterStatus.userLabel }]);
+    }
+  }, [
+    requesterEmail,
+    requesterStatus.userId,
+    requesterStatus.isProjectUser,
+    requesterStatus.userLabel
+  ]);
+
+  const clearRequesterEmail = () => {
+    if (requesterEmail) {
+      navigate({ search: (prev) => ({ ...prev, requesterEmail: "" }) });
+    }
+  };
 
   const handleClose = () => {
     setSelectedUsers([]);
     setSelectedRole(ProjectMembershipRole.Member);
+    clearRequesterEmail();
     onOpenChange(false);
   };
 
@@ -90,7 +124,13 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) clearRequesterEmail();
+        onOpenChange(open);
+      }}
+    >
       <DialogContent className="overflow-visible sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
@@ -118,6 +158,22 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
             </FieldLabel>
             <ProductRoleOptionList value={selectedRole} onChange={setSelectedRole} />
           </Field>
+
+          {requesterEmail && requesterStatus.isProjectUser && (
+            <Alert variant="danger">
+              <AlertDescription>
+                Requested user is already a member of this product.
+              </AlertDescription>
+            </Alert>
+          )}
+          {requesterEmail && !requesterStatus.isProjectUser && requesterStatus.userId && (
+            <Alert>
+              <AlertDescription>
+                Assign a role to provide access to requesting user{" "}
+                <b>{requesterStatus.userLabel}</b>.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>

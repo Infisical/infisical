@@ -6,6 +6,7 @@ export type TProjectFolderGrant = {
   createdAt: string;
   updatedAt: string;
   folderName: string;
+  secretPath: string;
   environmentName: string;
   environmentSlug: string;
   targetProjectName: string;
@@ -20,6 +21,7 @@ export type TProjectFolderGrantReceived = {
   createdAt: string;
   updatedAt: string;
   folderName: string;
+  secretPath: string;
   environmentName: string;
   environmentSlug: string;
   sourceProjectName: string;

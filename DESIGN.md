@@ -88,7 +88,8 @@ The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
 
 Reserved for resource types in the secret management product:
 `--color-folder`, `--color-secret`, `--color-dynamic-secret`,
-`--color-import`, `--color-secret-rotation`, `--color-override`.
+`--color-import`, `--color-secret-rotation`, `--color-override`,
+`--color-proxied-service`.
 Do not repurpose these for generic UI.
 
 ### Tint pattern

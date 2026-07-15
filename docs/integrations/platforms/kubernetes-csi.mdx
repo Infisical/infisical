@@ -9,6 +9,10 @@ description: "How to use the Infisical Kubernetes CSI provider to inject secrets
 The Infisical CSI provider allows you to use Infisical with the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io) to inject secrets directly into your Kubernetes pods through a volume mount.
 In contrast to the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes), the Infisical CSI provider will allow you to sync Infisical secrets directly to pods as files, removing the need for Kubernetes secret resources.
 
+<Tip>
+  For a complete Helm chart reference including all configurable values, see the [CSI Provider Helm chart documentation](/self-hosting/helm-charts/csi-provider).
+</Tip>
+
 ```mermaid
 flowchart LR
     subgraph Secrets Management

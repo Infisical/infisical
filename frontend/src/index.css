@@ -100,6 +100,7 @@
   --color-import: #457d91;
   --color-secret-rotation: #4c6081;
   --color-override: #694c81;
+  --color-proxied-service: #7d4ca9;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;

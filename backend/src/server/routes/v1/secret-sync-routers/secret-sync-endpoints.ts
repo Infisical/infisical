@@ -506,14 +506,13 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { destinationConfig, connectionId, syncOptions, excludeSyncId, projectId } = req.body;
+      const { destinationConfig, connectionId, excludeSyncId, projectId } = req.body;
 
       const result = await server.services.secretSync.checkDuplicateDestination(
         {
           destinationConfig: destinationConfig as Record<string, unknown>,
           destination,
           connectionId,
-          syncOptions,
           excludeSyncId,
           projectId
         },

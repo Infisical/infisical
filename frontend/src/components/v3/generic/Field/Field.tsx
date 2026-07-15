@@ -208,9 +208,19 @@ function FieldError({
       return null;
     }
 
-    const uniqueErrors = [...new Map(errors.map((error) => [error?.message, error])).values()];
+    // Ignore entries without a message: callers often pass a fixed-shape array with `undefined` slots for
+    // fields that currently have no error, and those must not count toward the single-vs-list decision.
+    const uniqueErrors = [
+      ...new Map(
+        errors.filter((error) => error?.message).map((error) => [error?.message, error])
+      ).values()
+    ];
 
-    if (uniqueErrors?.length === 1) {
+    if (!uniqueErrors.length) {
+      return null;
+    }
+
+    if (uniqueErrors.length === 1) {
       return uniqueErrors[0]?.message;
     }
 

@@ -180,7 +180,12 @@ export const PamTemplatesPage = () => {
         <title>{t("common.head-title", { title: "Account Templates" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <PageHeader scope={ProjectType.PAM} icon={ClipboardList} title="Account Templates" />
+        <PageHeader
+          scope={ProjectType.PAM}
+          icon={ClipboardList}
+          title="Account Templates"
+          description="Define the policies, rotation behavior, and settings for a type of account."
+        />
 
         <Card className="mt-4">
           <CardHeader>

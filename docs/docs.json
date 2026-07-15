@@ -182,6 +182,7 @@
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
+                      "integrations/app-connections/winrm",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -349,7 +350,6 @@
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
                   "self-hosting/deployment-options/gcp-native"
                 ]
@@ -360,6 +360,18 @@
                   "self-hosting/deployment-options/native/linux-package/installation",
                   "self-hosting/deployment-options/native/linux-package/commands-configuration",
                   "self-hosting/deployment-options/linux-upgrade"
+                ]
+              },
+              {
+                "group": "Helm Charts",
+                "pages": [
+                  "self-hosting/helm-charts/overview",
+                  "self-hosting/deployment-options/kubernetes-helm",
+                  "self-hosting/helm-charts/secrets-operator",
+                  "self-hosting/helm-charts/gateway",
+                  "self-hosting/helm-charts/pki-issuer",
+                  "self-hosting/helm-charts/csi-provider",
+                  "self-hosting/helm-charts/agent-injector"
                 ]
               },
               "self-hosting/guides/replication",
@@ -603,6 +615,15 @@
                           "documentation/platform/honey-tokens/aws/usage"
                         ]
                       }
+                    ]
+                  },
+                  {
+                    "group": "Agent Proxy",
+                    "pages": [
+                      "documentation/platform/agent-proxy/overview",
+                      "documentation/platform/agent-proxy/quickstart",
+                      "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/security"
                     ]
                   }
                 ]
@@ -925,7 +946,9 @@
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
-                          "documentation/platform/pki/applications/certificate-syncs/netscaler"
+                          "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/linux-server",
+                          "documentation/platform/pki/applications/certificate-syncs/windows-server"
                         ]
                       }
                     ]
@@ -1130,6 +1153,7 @@
                   "cli/commands/init",
                   "cli/commands/run",
                   "cli/commands/secrets",
+                  "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
                   "cli/commands/pam",
                   "cli/commands/gateway",
@@ -2227,6 +2251,18 @@
                     ]
                   },
                   {
+                    "group": "Windows (WinRM)",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/winrm/list",
+                      "api-reference/endpoints/app-connections/winrm/available",
+                      "api-reference/endpoints/app-connections/winrm/get-by-id",
+                      "api-reference/endpoints/app-connections/winrm/get-by-name",
+                      "api-reference/endpoints/app-connections/winrm/create",
+                      "api-reference/endpoints/app-connections/winrm/update",
+                      "api-reference/endpoints/app-connections/winrm/delete"
+                    ]
+                  },
+                  {
                     "group": "Zabbix",
                     "pages": [
                       "api-reference/endpoints/app-connections/zabbix/list",
@@ -2513,6 +2549,17 @@
                   "api-reference/endpoints/dynamic-secrets/delete-lease",
                   "api-reference/endpoints/dynamic-secrets/renew-lease",
                   "api-reference/endpoints/dynamic-secrets/get-lease"
+                ]
+              },
+              {
+                "group": "Proxied Services",
+                "pages": [
+                  "api-reference/endpoints/proxied-services/create",
+                  "api-reference/endpoints/proxied-services/update",
+                  "api-reference/endpoints/proxied-services/delete",
+                  "api-reference/endpoints/proxied-services/get-by-id",
+                  "api-reference/endpoints/proxied-services/get-by-name",
+                  "api-reference/endpoints/proxied-services/list"
                 ]
               },
               {
@@ -3608,6 +3655,30 @@
                           "api-reference/endpoints/pki/syncs/netscaler/delete",
                           "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
                           "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Linux Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/linux-server/list",
+                          "api-reference/endpoints/pki/syncs/linux-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/linux-server/create",
+                          "api-reference/endpoints/pki/syncs/linux-server/update",
+                          "api-reference/endpoints/pki/syncs/linux-server/delete",
+                          "api-reference/endpoints/pki/syncs/linux-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/linux-server/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Windows Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/windows-server/list",
+                          "api-reference/endpoints/pki/syncs/windows-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/windows-server/create",
+                          "api-reference/endpoints/pki/syncs/windows-server/update",
+                          "api-reference/endpoints/pki/syncs/windows-server/delete",
+                          "api-reference/endpoints/pki/syncs/windows-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/windows-server/remove-certificates"
                         ]
                       }
                     ]

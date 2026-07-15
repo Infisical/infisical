@@ -16,6 +16,13 @@ import {
   TGcpSyncWithCredentials
 } from "./gcp-sync-types";
 
+const getGlobalReplication = (locationId?: string) => {
+  if (locationId) {
+    return { userManaged: { replicas: [{ location: locationId }] } };
+  }
+  return { automatic: {} };
+};
+
 const getProjectUrl = (secretSync: TGcpSyncWithCredentials) => {
   const { destinationConfig } = secretSync;
 
@@ -123,9 +130,7 @@ export const GcpSyncFns = {
             {
               replication:
                 destinationConfig.scope === GcpSyncScope.Global
-                  ? {
-                      automatic: {}
-                    }
+                  ? getGlobalReplication(destinationConfig.locationId)
                   : undefined
             },
             {

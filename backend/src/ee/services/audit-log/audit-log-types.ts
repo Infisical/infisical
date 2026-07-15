@@ -822,6 +822,12 @@ export enum EventType {
   GET_DYNAMIC_SECRET = "get-dynamic-secret",
   LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
 
+  // Proxied Services
+  CREATE_PROXIED_SERVICE = "create-proxied-service",
+  UPDATE_PROXIED_SERVICE = "update-proxied-service",
+  DELETE_PROXIED_SERVICE = "delete-proxied-service",
+  SIGN_AGENT_PROXY_INTERMEDIATE_CA = "sign-agent-proxy-intermediate-ca",
+
   // Dynamic Secret Leases
   CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
   DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
@@ -4770,6 +4776,8 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    connectionId?: string;
+    hasCredentials?: boolean;
   };
 }
 
@@ -6930,6 +6938,50 @@ interface ListDynamicSecretsEvent {
   };
 }
 
+interface CreateProxiedServiceEvent {
+  type: EventType.CREATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    // secret key names only; never placeholder/secret values
+    secretKeys: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateProxiedServiceEvent {
+  type: EventType.UPDATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    updatedFields: string[];
+    secretKeys: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProxiedServiceEvent {
+  type: EventType.DELETE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface SignAgentProxyIntermediateCaEvent {
+  type: EventType.SIGN_AGENT_PROXY_INTERMEDIATE_CA;
+  metadata: {
+    serialNumber: string;
+    expiration: string;
+  };
+}
+
 interface ListDynamicSecretLeasesEvent {
   type: EventType.LIST_DYNAMIC_SECRET_LEASES;
   metadata: {
@@ -7962,6 +8014,10 @@ export type Event =
   | DeleteDynamicSecretEvent
   | GetDynamicSecretEvent
   | ListDynamicSecretsEvent
+  | CreateProxiedServiceEvent
+  | UpdateProxiedServiceEvent
+  | DeleteProxiedServiceEvent
+  | SignAgentProxyIntermediateCaEvent
   | ListDynamicSecretLeasesEvent
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent
