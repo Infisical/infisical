@@ -346,6 +346,7 @@ export const certificateApprovalServiceFactory = (
   }: {
     certificateRequest: {
       commonName?: string;
+      domainComponents?: string[];
       keyUsages?: CertKeyUsageType[];
       extendedKeyUsages?: CertExtendedKeyUsageType[];
       validity: { ttl: string };
@@ -1044,6 +1045,7 @@ export const certificateApprovalServiceFactory = (
       const basicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | null;
       const certificateRequestInput = {
         commonName: certRequest.commonName || undefined,
+        domainComponents: certRequest.domainComponents ? certRequest.domainComponents.split(",") : undefined,
         keyUsages: certRequest.keyUsages as CertKeyUsageType[] | undefined,
         extendedKeyUsages: certRequest.extendedKeyUsages as CertExtendedKeyUsageType[] | undefined,
         altNames: altNames || undefined,
