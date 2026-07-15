@@ -23,6 +23,7 @@ const SSH_EXEC_TIMEOUT_MS = 20 * 1000;
 const SCAN_CONCURRENCY = 64;
 const SWEEP_DIAL_TIMEOUT_MS = 3 * 1000;
 const MAX_TARGET_HOSTS = 65536;
+const MAX_SWEEP_TARGETS = 65536;
 const PASSWD_MARKER = "__INFISICAL_PASSWD__";
 const DEFAULT_UID_MIN = 1000;
 const DEFAULT_UID_MAX = 60000;
@@ -222,6 +223,11 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
     const usablePorts = [...new Set(accounts.filter(isUsableAccount).map((a) => a.port))];
 
     const sweepTargets = targets.flatMap((host) => usablePorts.map((port) => ({ host, port })));
+    if (sweepTargets.length > MAX_SWEEP_TARGETS) {
+      throw new BadRequestError({
+        message: `Scan expands to ${sweepTargets.length} host-port combinations, exceeding the limit of ${MAX_SWEEP_TARGETS}. Reduce the target ranges or the number of distinct credential ports.`
+      });
+    }
     const open = await sweepReachableTargets(sweepTargets, gatewayId, gatewayV2Service, SWEEP_DIAL_TIMEOUT_MS);
 
     const hostsToScan = targets.filter(

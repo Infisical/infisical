@@ -244,7 +244,8 @@ export const setupRelayServer = async ({
       reject(err);
     });
 
-    server.listen(0, () => {
+    // bind to loopback only so the ephemeral relay port is not reachable from other hosts/interfaces
+    server.listen(0, "127.0.0.1", () => {
       const address = server.address();
       if (!address || typeof address === "string") {
         server.close();

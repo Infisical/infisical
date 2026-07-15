@@ -18,6 +18,8 @@ export type SshExecResponse = SshExecSuccess | SshExecFailure;
 
 export const SSH_EXEC_RPC_TIMEOUT_MS = 120_000;
 
+const MAX_SSH_EXEC_RESPONSE_BYTES = 16 * 1024 * 1024;
+
 // calls the gateway's ssh-exec handler over the local relay proxy; the gateway performs the ssh login (any auth
 // method, including certificates the node client can't present) and returns the command output
 export const callSshExec = (args: {
@@ -43,7 +45,15 @@ export const callSshExec = (args: {
       },
       (res) => {
         const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        let received = 0;
+        res.on("data", (chunk: Buffer) => {
+          received += chunk.length;
+          if (received > MAX_SSH_EXEC_RESPONSE_BYTES) {
+            res.destroy(new Error(`SSH exec response exceeded ${MAX_SSH_EXEC_RESPONSE_BYTES} bytes`));
+            return;
+          }
+          chunks.push(chunk);
+        });
         res.on("end", () => {
           const text = Buffer.concat(chunks).toString("utf8");
           const status = res.statusCode ?? 0;

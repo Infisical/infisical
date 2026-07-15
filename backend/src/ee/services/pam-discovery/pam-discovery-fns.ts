@@ -80,9 +80,10 @@ export const sweepReachableTargets = async (
 ): Promise<Set<string>> => {
   if (!targets.length) return new Set();
 
+  const [host] = await verifyHostInputValidity({ host: targets[0].host, isGateway: true, isDynamicSecret: false });
   const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
-    targetHost: targets[0].host,
+    targetHost: host,
     targetPort: targets[0].port
   });
   if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
@@ -92,7 +93,7 @@ export const sweepReachableTargets = async (
   return withGatewayV2Proxy(
     (proxyPort) =>
       new Promise<Set<string>>((resolve, reject) => {
-        const socket = net.connect({ host: "localhost", port: proxyPort });
+        const socket = net.connect({ host: "127.0.0.1", port: proxyPort });
         let buffer = "";
         const timer = setTimeout(() => {
           socket.destroy();
