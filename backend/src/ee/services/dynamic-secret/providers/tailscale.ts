@@ -79,10 +79,11 @@ export const TailscaleProvider = (): TDynamicProviderFns => {
 
   // oauth credentials issued can have the auth-keys or oauth scope, which allow them
   // to modify other credentials. Let's block it so this is not possible
-  const $validateScopes = async (scopes: string[]) => {
+  const $validateScopes = (scopes: string[]) => {
     if (scopes.includes("auth-keys") || scopes.includes("oauth")) {
       throw new BadRequestError({ message: "OAuth credentials cannot be used to create or modify other credentials" });
     }
+    return scopes;
   };
 
   const validateConnection = async (inputs: unknown) => {

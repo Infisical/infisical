@@ -901,14 +901,13 @@ export const DynamicSecretTailscaleSchema = z
     // Tailscale requires ACL tags on tailnet-owned auth keys, which are the ones created via OAuth.
     // Auth keys created with a user's API access token are user-owned and may omit tags.
     if (
-      data.authType === TailscaleKeyAuthType.AuthKeys &&
-      data.auth.method === TailscaleAuthMethod.OAuth &&
+      (data.authType === TailscaleKeyAuthType.OAuthKeys || data.authType === TailscaleKeyAuthType.FederatedKeys) &&
       data.tags.length === 0
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["tags"],
-        message: "Tags are required when creating auth keys with OAuth authentication"
+        message: "Tags are required when the key type is OAuth or Federated Identity"
       });
     }
   });
