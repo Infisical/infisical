@@ -110,7 +110,7 @@ export const buildSubjectOverrideForCsr = (
   csr: string,
   request: Pick<
     TCertificateRequest,
-    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality"
+    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
   >
 ): string => {
   const csrSubject = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
@@ -122,7 +122,7 @@ export const buildSubjectOverrideForCsr = (
     country: csrSubject.country ?? request.country,
     province: csrSubject.province ?? request.state,
     locality: csrSubject.locality ?? request.locality,
-    domainComponents: csrSubject.domainComponents
+    domainComponents: csrSubject.domainComponents ?? request.domainComponents
   });
 };
 

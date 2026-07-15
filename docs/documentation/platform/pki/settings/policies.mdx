@@ -76,12 +76,11 @@ For each attribute, configure enforcement:
 </AccordionGroup>
 
 <Note>
-  Domain Component (DC) is matched independently from the Common Name. A subject can carry more than
-  one domain component (for example `CN=host, DC=auth, DC=lucidgov, DC=app`), and each value is
-  checked against the Domain Component rule individually, similar to Subject Alternative Names. To
-  scope certificates to a domain, add a Common Name rule for the hostname and a separate Domain
-  Component rule for the domain labels (for the example above, allow `auth`, `lucidgov`, and `app`,
-  or a pattern such as `*`).
+  Domain Component (DC) support is for requests that use DC attributes explicitly. Each DC value is
+  matched independently against the Domain Component rule (like a Subject Alternative Name),
+  separately from the Common Name. A subject can carry more than one domain component (for example
+  `CN=host, DC=auth, DC=lucidgov, DC=app`), so allow the labels your requests use, such as `auth`,
+  `lucidgov`, and `app`, or a pattern like `*`.
 </Note>
 
 <Warning>

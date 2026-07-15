@@ -1767,7 +1767,8 @@ export const certificateV3ServiceFactory = ({
       organizationalUnit: certificateRequest.organizationalUnit,
       country: certificateRequest.country,
       state: certificateRequest.state,
-      locality: certificateRequest.locality
+      locality: certificateRequest.locality,
+      domainComponents: certificateRequest.domainComponents
     });
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =

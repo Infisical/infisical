@@ -523,7 +523,8 @@ export const certificateApprovalServiceFactory = (
       organizationalUnit: reconstructedRequest.organizationalUnit,
       country: reconstructedRequest.country,
       state: reconstructedRequest.state,
-      locality: reconstructedRequest.locality
+      locality: reconstructedRequest.locality,
+      domainComponents: reconstructedRequest.domainComponents
     });
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert } =

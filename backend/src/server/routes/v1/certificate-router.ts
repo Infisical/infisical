@@ -148,7 +148,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               country: subjectAttributeField.nullish(),
               state: subjectAttributeField.nullish(),
               locality: subjectAttributeField.nullish(),
-              domainComponents: z.array(domainComponentSchema).optional(),
+              domainComponents: z.array(domainComponentSchema).nullish(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
