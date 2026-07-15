@@ -1,16 +1,7 @@
-import {
-  DocumentationLinkBadge,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v3";
+import { Sheet, SheetContent, SheetHeader } from "@app/components/v3";
 
 import { ProxiedServiceForm } from "./forms";
-
-const QUICKSTART_DOCS_URL =
-  "https://infisical.com/docs/documentation/platform/agent-proxy/quickstart";
+import { ProxiedServiceModalHeader } from "./ProxiedServiceModalHeader";
 
 type Props = {
   isOpen: boolean;
@@ -31,13 +22,7 @@ export const CreateProxiedServiceModal = ({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-4xl">
         <SheetHeader className="border-b">
-          <div className="flex items-center gap-x-2">
-            <SheetTitle>Create Proxied Service</SheetTitle>
-            <DocumentationLinkBadge href={QUICKSTART_DOCS_URL} />
-          </div>
-          <SheetDescription>
-            Define a service the agent proxy can broker secrets for.
-          </SheetDescription>
+          <ProxiedServiceModalHeader />
         </SheetHeader>
         <ProxiedServiceForm
           projectId={projectId}
