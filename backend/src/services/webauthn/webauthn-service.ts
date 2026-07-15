@@ -91,7 +91,7 @@ export const webAuthnServiceFactory = ({
       // cannot be verified under FIPS mode (OpenSSL FIPS provider rejects the key
       // import with "Invalid keyData"), so the credential enrolls and then always
       // fails MFA. ES256 is mandatory for FIDO2 authenticators, so nothing is
-      // excluded in practice;
+      // excluded in practice
       supportedAlgorithmIDs: [-7, -257],
       excludeCredentials: existingCredentials.map((cred) => ({
         id: cred.credentialId,
