@@ -14,7 +14,9 @@ import {
   AzureKeyVaultPkiSyncDestinationSection,
   ChefPkiSyncDestinationSection,
   F5BigIpPkiSyncDestinationSection,
-  NetScalerPkiSyncDestinationSection
+  LinuxServerPkiSyncDestinationSection,
+  NetScalerPkiSyncDestinationSection,
+  WindowsServerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -56,6 +58,12 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       break;
     case PkiSync.F5BigIp:
       DestinationComponents = <F5BigIpPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.LinuxServer:
+      DestinationComponents = <LinuxServerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.WindowsServer:
+      DestinationComponents = <WindowsServerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     default:
       // For future destinations, return null (no additional fields to show)
