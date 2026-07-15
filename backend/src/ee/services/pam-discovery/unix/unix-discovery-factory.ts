@@ -24,45 +24,12 @@ const MAX_SWEEP_TARGETS = 65536;
 const MAX_ACCOUNTS_PER_HOST = 2000;
 const MAX_ACCOUNTS_PER_SCAN = 50000;
 const MAX_USERNAME_LENGTH = 64;
-const PASSWD_MARKER = "__INFISICAL_PASSWD__";
-const DEFAULT_UID_MIN = 1000;
-const DEFAULT_UID_MAX = 60000;
 
-// one round-trip that returns the login.defs uid bounds followed by the passwd database
-const ENUMERATION_COMMAND = `grep -E '^UID_(MIN|MAX)' /etc/login.defs 2>/dev/null; echo '${PASSWD_MARKER}'; getent passwd 2>/dev/null || cat /etc/passwd 2>/dev/null`;
+// enumerate the passwd database; login-capability is decided from each entry's shell
+const ENUMERATION_COMMAND = `getent passwd 2>/dev/null || cat /etc/passwd 2>/dev/null`;
 
 const NOLOGIN_SHELL_REGEX = new RE2(/(nologin|\/false|\/true|\/sync|\/shutdown|\/halt)$/);
-const UID_MIN_REGEX = new RE2(/^UID_MIN\s+(\d+)/m);
-const UID_MAX_REGEX = new RE2(/^UID_MAX\s+(\d+)/m);
 const TRAILING_HYPHENS_REGEX = new RE2(/-+$/);
-
-const SYSTEM_ACCOUNT_NAMES = new Set([
-  "daemon",
-  "bin",
-  "sys",
-  "adm",
-  "lp",
-  "sync",
-  "shutdown",
-  "halt",
-  "mail",
-  "news",
-  "uucp",
-  "operator",
-  "games",
-  "gopher",
-  "ftp",
-  "nobody",
-  "dbus",
-  "sshd",
-  "www-data",
-  "backup",
-  "list",
-  "irc",
-  "gnats",
-  "proxy",
-  "man"
-]);
 
 type TUnixAccount = { host: string; port: number; credentials: SshExecCredentials };
 
@@ -84,28 +51,16 @@ const isUsableAccount = (account: TUnixAccount) => {
   return false;
 };
 
-const isLoginAccount = (name: string, uidStr: string, shell: string, uidMin: number, uidMax: number) => {
-  const uid = Number(uidStr);
-  if (Number.isNaN(uid) || uid < uidMin || uid > uidMax) return false;
-  if (name.startsWith("_") || SYSTEM_ACCOUNT_NAMES.has(name)) return false;
-  if (shell && NOLOGIN_SHELL_REGEX.test(shell)) return false;
-  return true;
-};
+// an account is discoverable if it can be logged into
+const hasLoginShell = (shell: string) => !(shell && NOLOGIN_SHELL_REGEX.test(shell));
 
-const parseUnixUsernames = (output: string, includeSystemAccounts: boolean): string[] => {
-  const [defsPart = "", passwdPart = ""] = output.split(PASSWD_MARKER);
-
-  const uidMin = Number(defsPart.match(UID_MIN_REGEX)?.[1]) || DEFAULT_UID_MIN;
-  const uidMax = Number(defsPart.match(UID_MAX_REGEX)?.[1]) || DEFAULT_UID_MAX;
-
+const parseUnixUsernames = (output: string): string[] => {
   const usernames = new Set<string>();
-  for (const line of passwdPart.split("\n")) {
+  for (const line of output.split("\n")) {
     if (usernames.size >= MAX_ACCOUNTS_PER_HOST) break;
-    const [name, , uidStr, , , , shell = ""] = line.trim().split(":");
-    if (name && name.length <= MAX_USERNAME_LENGTH) {
-      if (name === "root" || includeSystemAccounts || isLoginAccount(name, uidStr, shell, uidMin, uidMax)) {
-        usernames.add(name);
-      }
+    const [name, , , , , , shell = ""] = line.trim().split(":");
+    if (name && name.length <= MAX_USERNAME_LENGTH && hasLoginShell(shell)) {
+      usernames.add(name);
     }
   }
   return [...usernames];
@@ -118,7 +73,7 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
   gatewayV2Service
 }) => {
   const accounts = credentialAccounts.map(toUnixAccount);
-  const config = configuration as { cidrRanges: string[]; includeSystemAccounts?: boolean };
+  const config = configuration as { cidrRanges: string[] };
 
   // accounts whose stored host matches the target are tried first, then every other account
   const orderAccountsForHost = (host: string) => [
@@ -155,7 +110,7 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
         // eslint-disable-next-line no-await-in-loop
         const output = await enumerateHost(host, account, signal);
         return {
-          accounts: parseUnixUsernames(output, config.includeSystemAccounts ?? false).map((username) => ({
+          accounts: parseUnixUsernames(output).map((username) => ({
             accountType: PamAccountType.SSH,
             name: slugify(`${host} ${username}`, { lowercase: true }).slice(0, 64).replace(TRAILING_HYPHENS_REGEX, ""),
             fingerprint: `${host}:${username}`,

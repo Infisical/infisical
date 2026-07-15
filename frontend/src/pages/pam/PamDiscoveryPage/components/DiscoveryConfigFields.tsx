@@ -149,16 +149,14 @@ export const DiscoveryConfigFields = ({
 
 export const unixDiscoveryConfigFormShape = {
   cidrRanges: z.string().min(1, "At least one target is required"),
-  credentialAccountIds: z.array(z.string()).min(1, "Select at least one account"),
-  includeSystemAccounts: z.boolean()
+  credentialAccountIds: z.array(z.string()).min(1, "Select at least one account")
 };
 
 export type TUnixDiscoveryConfigFields = z.infer<z.ZodObject<typeof unixDiscoveryConfigFormShape>>;
 
 export const UNIX_DISCOVERY_CONFIG_DEFAULTS: TUnixDiscoveryConfigFields = {
   cidrRanges: "",
-  credentialAccountIds: [],
-  includeSystemAccounts: false
+  credentialAccountIds: []
 };
 
 const parseCidrRanges = (value: string): string[] =>
@@ -173,16 +171,14 @@ export const unixDiscoveryConfigFromSource = (
   cidrRanges: Array.isArray(config.cidrRanges) ? (config.cidrRanges as string[]).join("\n") : "",
   credentialAccountIds: Array.isArray(config.credentialAccountIds)
     ? (config.credentialAccountIds as string[])
-    : [],
-  includeSystemAccounts: Boolean(config.includeSystemAccounts)
+    : []
 });
 
 export const buildUnixDiscoveryConfiguration = (
   data: TUnixDiscoveryConfigFields
 ): Record<string, unknown> => ({
   cidrRanges: parseCidrRanges(data.cidrRanges),
-  credentialAccountIds: data.credentialAccountIds,
-  includeSystemAccounts: data.includeSystemAccounts
+  credentialAccountIds: data.credentialAccountIds
 });
 
 export const SshCredentialAccountsField = ({
@@ -237,44 +233,22 @@ export const UnixDiscoveryConfigFields = ({
 }: {
   control: Control<TUnixDiscoveryConfigFields>;
 }) => (
-  <>
-    <Controller
-      control={control}
-      name="cidrRanges"
-      render={({ field, fieldState }) => (
-        <Field>
-          <FieldLabel>Targets</FieldLabel>
-          <FieldContent>
-            <TextArea {...field} rows={3} placeholder="10.0.0.0/24, 192.168.1.10, host.internal" />
-            <FieldDescription>
-              IP addresses, IPv4 CIDR ranges, or hostnames, one per line or comma-separated.
-            </FieldDescription>
-            <FieldError>{fieldState.error?.message}</FieldError>
-          </FieldContent>
-        </Field>
-      )}
-    />
-
-    <Controller
-      control={control}
-      name="includeSystemAccounts"
-      render={({ field }) => (
-        <Field>
-          <div className="flex items-center justify-between gap-4">
-            <FieldLabel htmlFor="includeSystemAccounts" className="mb-0">
-              Include system/service accounts
-            </FieldLabel>
-            <Switch
-              id="includeSystemAccounts"
-              variant="pam"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          </div>
-        </Field>
-      )}
-    />
-  </>
+  <Controller
+    control={control}
+    name="cidrRanges"
+    render={({ field, fieldState }) => (
+      <Field>
+        <FieldLabel>Targets</FieldLabel>
+        <FieldContent>
+          <TextArea {...field} rows={3} placeholder="10.0.0.0/24, 192.168.1.10, host.internal" />
+          <FieldDescription>
+            IP addresses, IPv4 CIDR ranges, or hostnames, one per line or comma-separated.
+          </FieldDescription>
+          <FieldError>{fieldState.error?.message}</FieldError>
+        </FieldContent>
+      </Field>
+    )}
+  />
 );
 
 // Shared credential-account + schedule fields, used by both the create modal and the edit tab.

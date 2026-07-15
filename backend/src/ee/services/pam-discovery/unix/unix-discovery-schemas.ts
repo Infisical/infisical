@@ -29,8 +29,7 @@ export const UnixDiscoveryConfigSchema = z
       .refine((ranges) => ranges.every(isValidTarget), {
         message: "Each target must be a valid IPv4 address, IPv4 CIDR range, or hostname"
       }),
-    credentialAccountIds: z.array(z.string().uuid()).min(1).max(50),
-    includeSystemAccounts: z.boolean().default(false)
+    credentialAccountIds: z.array(z.string().uuid()).min(1).max(50)
   })
   .superRefine((config, ctx) => {
     try {
