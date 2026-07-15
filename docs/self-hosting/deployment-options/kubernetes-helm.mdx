@@ -554,7 +554,7 @@ ingress-nginx:
     spec:
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: infisical
+          component: infisical
       policyTypes:
         - Ingress
         - Egress
@@ -666,7 +666,7 @@ ingress-nginx:
     spec:
       selector:
         matchLabels:
-          app.kubernetes.io/name: infisical
+          component: infisical
       endpoints:
         - port: metrics
           interval: 30s
@@ -693,7 +693,7 @@ ingress-nginx:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: infisical
+              component: infisical
     ```
 
     **2. Pod Disruption Budget:**
@@ -708,7 +708,7 @@ ingress-nginx:
       minAvailable: 1
       selector:
         matchLabels:
-          app.kubernetes.io/name: infisical
+          component: infisical
     ```
 
     ```bash
