@@ -25,6 +25,7 @@ import {
 import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { coreHttpErrorCounter, rateLimitExceededCounter } from "@app/lib/telemetry/metrics";
+import { getTelemetryDistinctId } from "../lib/telemetry";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -86,6 +87,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           errorMessage: error.message,
           route: req.routeOptions?.url,
           method: req.method,
+          orgId: req.auth?.orgId,
+          realIp: req.realIp,
+          actor: req.auth?.actor,
+          actorId: getTelemetryDistinctId(req),
           details: (error as { details?: unknown }).details
         },
         `client error: ${error.name}`
