@@ -14,6 +14,7 @@ import {
   TAddSubscriptionItemsPayload,
   TBillingProfileResponse,
   TCatalogResponse,
+  TChangeCommitmentPayload,
   TCheckoutResult,
   TCloudPlanResponse,
   TCreateCheckoutPayload,
@@ -21,10 +22,13 @@ import {
   TEntitlementOrg,
   TEntitlementsResponse,
   TLicenseClientBackend,
+  trialResultSchema,
   TSessionResponse,
+  TStartTrialPayload,
   TSubscriptionPreview,
   TSubscriptionPreviewPayload,
-  TSubscriptionResponse
+  TSubscriptionResponse,
+  TTrialResult
 } from "./license-client-types";
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
@@ -233,8 +237,15 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  removeSubscriptionItem: async (orgId: string, productId: string): Promise<TCheckoutResult> => {
+  removeSubscriptionItem: async (
+    orgId: string,
+    productId: string,
+    prorationDate?: number
+  ): Promise<TCheckoutResult> => {
     const url = new URL(orgScoped(orgId, `/subscription/items/${encodeURIComponent(productId)}`), serverUrl);
+    if (prorationDate !== undefined) {
+      url.searchParams.set("prorationDate", String(prorationDate));
+    }
     const res = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
@@ -243,6 +254,36 @@ export const licenseServerBackend = (
     await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
+  },
+
+  // Apply a previewed per_resource commitment change; echoes the preview's prorationDate so the
+  // billed amount matches the confirmation the customer saw.
+  changeCommitment: async (orgId: string, payload: TChangeCommitmentPayload): Promise<TCheckoutResult> => {
+    const url = new URL(orgScoped(orgId, "/subscription/commitments"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return checkoutResultSchema.parse(body);
+  },
+
+  // Start a plan-scoped self-serve trial. The wire request/response use snake_case; map to camelCase.
+  startTrial: async (orgId: string, payload: TStartTrialPayload): Promise<TTrialResult> => {
+    const url = new URL(orgScoped(orgId, "/billing/trial"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ product_key: payload.productKey, plan_key: payload.planKey }),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    const parsed = trialResultSchema.parse(body);
+    return { outcome: parsed.outcome, checkoutUrl: parsed.checkout_url };
   },
 
   cancelSubscription: async (orgId: string): Promise<TCheckoutResult> => {
@@ -349,6 +390,8 @@ export const licenseServerSelfHostedBackend = (
   previewSubscriptionChange: notSupportedOnSelfHosted("previewSubscriptionChange"),
   addSubscriptionItems: notSupportedOnSelfHosted("addSubscriptionItems"),
   removeSubscriptionItem: notSupportedOnSelfHosted("removeSubscriptionItem"),
+  changeCommitment: notSupportedOnSelfHosted("changeCommitment"),
+  startTrial: notSupportedOnSelfHosted("startTrial"),
   cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
   resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
 });

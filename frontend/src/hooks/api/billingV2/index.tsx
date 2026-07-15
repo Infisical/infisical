@@ -2,27 +2,29 @@ export {
   useAddBillingV2PaymentMethod,
   useAddBillingV2Product,
   useCancelBillingV2Subscription,
+  useChangeBillingV2Commitment,
   useCreateBillingV2CheckoutSession,
   useCreateBillingV2PortalSession,
   usePreviewBillingV2Change,
   useRemoveBillingV2Product,
-  useResumeBillingV2Subscription
+  useResumeBillingV2Subscription,
+  useStartBillingV2Trial
 } from "./mutations";
 export { billingV2Keys, useGetBillingV2Catalog, useGetBillingV2Overview } from "./queries";
 export type {
   BillingV2Cadence,
   BillingV2CatalogProduct,
+  BillingV2CommitmentChange,
   BillingV2CompareRow,
   BillingV2Dim,
   BillingV2Entitlement,
   BillingV2EntitlementDim,
-  BillingV2EstimatedUsageLine,
   BillingV2Invoice,
-  BillingV2Model,
   BillingV2Overview,
   BillingV2PaymentMethod,
   BillingV2Plan,
   BillingV2Preview,
   BillingV2PreviewLine,
-  BillingV2SubState
+  BillingV2SubState,
+  BillingV2TrialResult
 } from "./types";

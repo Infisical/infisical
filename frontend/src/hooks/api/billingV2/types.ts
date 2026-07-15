@@ -1,5 +1,3 @@
-export type BillingV2Model = "seat" | "usage" | "limit" | "flat";
-
 export type BillingV2Cadence = "monthly" | "annual";
 
 export type BillingV2Dim = {
@@ -27,6 +25,8 @@ export type BillingV2Plan = {
   name: string;
   selfServe: boolean;
   salesLed: boolean;
+  // Offers a self-serve trial; the trial CTA shows only when selfServe && trialable.
+  trialable: boolean;
   feature?: string;
   base?: { monthly: number; annual: number };
   dims: BillingV2Dim[];
@@ -37,9 +37,7 @@ export type BillingV2CatalogProduct = {
   name: string;
   icon: string;
   color: string;
-  model: BillingV2Model;
   addon?: boolean;
-  desc: string;
   tagline?: string;
   plans: BillingV2Plan[];
   includes?: string[];
@@ -69,32 +67,45 @@ export type BillingV2Invoice = {
   pdfUrl: string | null;
 };
 
-// One priced/metered dimension of an active product, resolved for display by the backend. rate and
-// freeBand (dollars/allowance) are present only for metered dimensions; per-unit dimensions get their
-// rate from the catalog on the client.
+// One dimension of an active product, resolved for display by the backend (rates in dollars). An
+// annual per_resource dimension carries committed + committedRate (annual) + onDemandRate (monthly
+// overage); a metered dimension carries rate + freeBand. onDemandAmount is the computed monthly
+// overage cost (max(0, used - committed) * onDemandRate).
 export type BillingV2EntitlementDim = {
   key: string;
   label: string;
   noun: string;
   unit: string;
   metered: boolean;
+  cadence: BillingV2Cadence | null;
   used: number;
   limit: number | null;
-  freeBand?: number;
+  committed: number | null;
+  committedRate?: number;
+  onDemandRate?: number;
   rate?: number;
+  freeBand?: number;
+  onDemandAmount: number;
 };
 
 export type BillingV2Entitlement = {
   entitled: boolean;
   // Tier the org is currently subscribed to for this product; lets the UI mark the active plan card.
   planTier?: string;
-  // Fixed recurring charge for this product (dollars); excludes metered usage.
+  // Product cadence: "annual" when any dimension is annually committed, else "monthly". Drives the
+  // YEARLY/MONTHLY badge and the "/ year" vs "/ month" headline period.
+  cadence?: BillingV2Cadence | null;
+  // Recurring charge for the product (dollars): annual committed total for yearly, monthly for monthly.
   amount?: number;
-  // Estimated metered usage cost for the current period (dollars). The product headline is
-  // amount + estimatedUsageAmount.
-  estimatedUsageAmount?: number;
+  // Monthly on-demand overage across the product's committed dimensions (dollars), for the
+  // "+ $X / mo on-demand" line.
+  onDemandAmount?: number;
   // Every priced/metered dimension of the product, for the per-dimension usage bars.
   dimensions?: BillingV2EntitlementDim[];
+  // Trial state; trialEndsAt is a formatted date string (null when not trialing).
+  status?: string;
+  isTrialing?: boolean;
+  trialEndsAt?: string | null;
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
@@ -115,9 +126,8 @@ export type BillingV2Overview = {
     identities: number;
     identityLimit: number | null;
   };
-  // Projected metered usage across all products (dollars); added to recurringAmount for the summary's
-  // next-month total.
-  estimatedUsageAmount: number;
+  // Total monthly on-demand overage across all products (dollars).
+  onDemandAmount: number;
   payment: BillingV2PaymentMethod;
   billingDetails: {
     name: string;
@@ -152,6 +162,8 @@ export type TCreateBillingV2CheckoutSessionDTO = {
   productId: string;
   plan?: string;
   cadence?: BillingV2Cadence;
+  // Per-dimension committed quantities; required for an annual per_resource line.
+  commitments?: Record<string, number>;
   email?: string;
   returnPath?: string;
 };
@@ -167,17 +179,6 @@ export type BillingV2PreviewLine = {
   proration: boolean;
 };
 
-// A projected metered usage line for a change preview. rate/amount are dollars; peak is the projected
-// period usage and freeBand the included allowance.
-export type BillingV2EstimatedUsageLine = {
-  dimension: string;
-  unit: string;
-  peak: number;
-  freeBand: number;
-  rate: number;
-  amount: number;
-};
-
 // prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
 // invoice (a removal). prorationDate is the timestamp the preview was computed at, for display only.
 export type BillingV2Preview = {
@@ -187,15 +188,16 @@ export type BillingV2Preview = {
   nextRecurringTotal: number;
   prorationDate: number;
   lines: BillingV2PreviewLine[];
-  // Projected metered usage for the period (dollars) and its breakdown; estimatedTotal is
-  // nextRecurringTotal + estimatedUsage.
-  estimatedUsage: number;
-  estimatedUsageLines: BillingV2EstimatedUsageLine[];
-  estimatedTotal: number;
 };
 
 export type BillingV2MutationResult = {
   subscriptionId?: string;
+};
+
+// A single per_resource commitment quantity change, shared by preview and apply.
+export type BillingV2CommitmentChange = {
+  dimensionKey: string;
+  quantity: number;
 };
 
 export type TPreviewBillingV2ChangeDTO = {
@@ -203,7 +205,11 @@ export type TPreviewBillingV2ChangeDTO = {
   addProductId?: string;
   plan?: string;
   cadence?: BillingV2Cadence;
+  // Initial per-dimension commitments for an annual add.
+  commitments?: Record<string, number>;
   removeProductId?: string;
+  // Per_resource commitment quantity changes to preview against the existing subscription.
+  commitmentChanges?: BillingV2CommitmentChange[];
 };
 
 export type TAddBillingV2ProductDTO = {
@@ -211,11 +217,34 @@ export type TAddBillingV2ProductDTO = {
   productId: string;
   plan?: string;
   cadence?: BillingV2Cadence;
+  // Per-dimension committed quantities; required for an annual per_resource line.
+  commitments?: Record<string, number>;
 };
 
 export type TRemoveBillingV2ProductDTO = {
   orgId: string;
   productId: string;
+};
+
+// Apply one or more previewed per_resource commitment changes; the backend loops the per-dimension
+// apply, reusing prorationDate so the billed total matches the preview.
+export type TChangeBillingV2CommitmentDTO = {
+  orgId: string;
+  changes: BillingV2CommitmentChange[];
+  prorationDate?: number;
+};
+
+export type TStartBillingV2TrialDTO = {
+  orgId: string;
+  productId: string;
+  plan: string;
+};
+
+// trial_started: attached directly. collect_payment_method: complete the setup Checkout at checkoutUrl
+// to add a card (the trial then auto-starts via webhook).
+export type BillingV2TrialResult = {
+  outcome: "trial_started" | "collect_payment_method";
+  checkoutUrl?: string;
 };
 
 export type TBillingV2LifecycleDTO = {

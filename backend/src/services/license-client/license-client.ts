@@ -7,10 +7,12 @@ import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
   TAddSubscriptionItemsPayload,
+  TChangeCommitmentPayload,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TLicenseClientBackend,
+  TStartTrialPayload,
   TSubscriptionPreviewPayload
 } from "./license-client-types";
 
@@ -159,11 +161,25 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.addSubscriptionItems(orgId, payload);
   };
 
-  const removeSubscriptionItem = async (orgId: string, productId: string) => {
+  const removeSubscriptionItem = async (orgId: string, productId: string, prorationDate?: number) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.removeSubscriptionItem(orgId, productId);
+    return backend.removeSubscriptionItem(orgId, productId, prorationDate);
+  };
+
+  const changeCommitment = async (orgId: string, payload: TChangeCommitmentPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.changeCommitment(orgId, payload);
+  };
+
+  const startTrial = async (orgId: string, payload: TStartTrialPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.startTrial(orgId, payload);
   };
 
   const cancelSubscription = async (orgId: string) => {
@@ -194,6 +210,8 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     previewSubscriptionChange,
     addSubscriptionItems,
     removeSubscriptionItem,
+    changeCommitment,
+    startTrial,
     cancelSubscription,
     resumeSubscription
   };

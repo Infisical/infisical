@@ -41,6 +41,8 @@ const catalogPlanSchema = z
     name: z.string(),
     selfServe: z.boolean(),
     salesLed: z.boolean(),
+    // Offers a self-serve trial; a plan is trialable only when selfServe && trialable.
+    trialable: z.boolean().default(false),
     feature: z.string().optional(),
     basePriceMonthlyCents: z.number().nullish(),
     basePriceAnnualCents: z.number().nullish(),
@@ -66,11 +68,9 @@ const catalogProductSchema = z
   .object({
     id: z.string(),
     name: z.string(),
-    description: z.string().optional(),
     tagline: z.string().optional(),
     icon: z.string().optional(),
     color: z.string().optional(),
-    model: z.string(),
     addon: z.boolean(),
     dimensions: z.array(catalogDimensionSchema),
     plans: z.array(catalogPlanSchema),
@@ -85,20 +85,32 @@ export const catalogResponseSchema = z
   })
   .passthrough();
 
-// Per-dimension metered usage on a subscription item. metered/aggregation/freeBand/rateCents come
-// from the org's pinned plan version (not the global feature flag); freeBand/rateCents are only
-// meaningful for metered dimensions. Additive + permissive so an older server (no dimensions) parses.
+// A dimension descriptor on a subscription item (the org's version-pinned billing view). Rates are
+// grandfathered, so they reflect what the customer is billed, not the current catalog price.
+// - cadence is per dimension ("annual" | "monthly" | ""); do NOT infer it from the top-level cadence
+//   or from committed != null.
+// - per_resource: committed (prepaid floor) + committedRateCents (annual) + onDemandRateCents (monthly
+//   overage). Overflow is max(0, used - committed), costed client-side at onDemandRateCents.
+// - metered: freeBand (included) + rateCents (per-unit). committed/*RateCents are null for metered;
+//   rateCents/freeBand are null for per_resource.
+// - limitKey is the stable feature key the dimension caps against; live per-org usage is overlaid on
+//   it (dimension keys drift). limit is the optional hard feature cap, independent of committed.
+// Additive + permissive so an older server (no dimensions) parses.
 const subscriptionItemDimensionSchema = z
   .object({
     key: z.string(),
-    // Stable feature key the dimension caps against; used to overlay live per-org usage. Dimension
-    // keys drift (e.g. a display rename), so usage is matched on this, not on key.
+    limitKey: z.string().nullish(),
+    // Legacy alias for limitKey emitted by pre-contract servers; the service prefers limitKey.
     featureKey: z.string().nullish(),
     unit: z.string().optional(),
     metered: z.boolean().default(false),
     aggregation: z.string().optional(),
+    cadence: z.string().nullish(),
     used: z.number().default(0),
     limit: z.number().nullish(),
+    committed: z.number().nullish(),
+    committedRateCents: z.number().nullish(),
+    onDemandRateCents: z.number().nullish(),
     freeBand: z.number().nullish(),
     rateCents: z.number().nullish()
   })
@@ -111,6 +123,10 @@ const subscriptionItemSchema = z
     quantities: z.record(z.string(), z.number()),
     limits: z.record(z.string(), z.number()),
     amount: z.number().optional(),
+    // Trial state for the product line (from the self-serve trial work).
+    status: z.string().optional(),
+    isTrialing: z.boolean().default(false),
+    trialEndsAt: z.number().nullish(),
     dimensions: z.array(subscriptionItemDimensionSchema).default([])
   })
   .passthrough();
@@ -118,9 +134,11 @@ const subscriptionItemSchema = z
 export const subscriptionResponseSchema = z
   .object({
     status: z.string(),
+    // Top-level cadence is a summary only; per-product cadence lives on each dimension.
     cadence: z.string(),
     currentPeriodEnd: z.number().nullable(),
     recurringTotal: z.number().nullable(),
+    tier: z.string().optional(),
     items: z.array(subscriptionItemSchema)
   })
   .passthrough();
@@ -152,20 +170,6 @@ const subscriptionPreviewLineSchema = z
   })
   .passthrough();
 
-// Projected metered cost for the change, computed by the server. estimatedUsageCents is the summed
-// projection; estimatedTotal = nextRecurringTotal + estimatedUsageCents. All additive/nullish so an
-// older server that omits them still parses (the service falls back to nextRecurringTotal).
-const subscriptionPreviewUsageLineSchema = z
-  .object({
-    dimension: z.string(),
-    unit: z.string().optional(),
-    peak: z.number().default(0),
-    freeBand: z.number().default(0),
-    rateCents: z.number().default(0),
-    amountCents: z.number().default(0)
-  })
-  .passthrough();
-
 export const subscriptionPreviewResponseSchema = z
   .object({
     currency: z.string(),
@@ -173,10 +177,7 @@ export const subscriptionPreviewResponseSchema = z
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
     prorationDate: z.number(),
-    lines: z.array(subscriptionPreviewLineSchema).default([]),
-    estimatedUsageCents: z.number().default(0),
-    estimatedUsageLines: z.array(subscriptionPreviewUsageLineSchema).default([]),
-    estimatedTotal: z.number().nullish()
+    lines: z.array(subscriptionPreviewLineSchema).default([])
   })
   .passthrough();
 
@@ -270,12 +271,23 @@ export type TCheckoutLineItem = {
   productId: string;
   plan: string;
   cadence: string;
-  quantities: Record<string, number>;
+  // Legacy per-unit quantities (pre-commitment). Superseded by commitments for an annual per_resource
+  // line; kept optional so the server tolerates either during rollout.
+  quantities?: Record<string, number>;
+  // Per-dimension committed quantity; REQUIRED for an annual per_resource line, omitted for monthly.
+  commitments?: Record<string, number>;
+};
+
+// A single per_resource commitment quantity change (preview) applied post-purchase.
+export type TCommitmentChange = {
+  dimensionKey: string;
+  quantity: number;
 };
 
 export type TSubscriptionPreviewPayload = {
   add?: TCheckoutLineItem[];
   remove?: string[];
+  commitmentChanges?: TCommitmentChange[];
 };
 
 export type TAddSubscriptionItemsPayload = {
@@ -292,6 +304,30 @@ export type TCreatePortalPayload = {
   returnPath?: string;
 };
 
+// Self-serve apply of a previewed commitment change. prorationDate echoes the preview's value so the
+// billed amount matches; omit to prorate at now.
+export type TChangeCommitmentPayload = {
+  dimensionKey: string;
+  quantity: number;
+  prorationDate?: number;
+};
+
+export type TStartTrialPayload = {
+  productKey: string;
+  planKey: string;
+};
+
+// trial_started: attached directly (card on file). collect_payment_method: caller must complete the
+// setup-mode Checkout at checkoutUrl to add a card; the trial then auto-starts via webhook.
+const trialResultSchema = z
+  .object({
+    outcome: z.enum(["trial_started", "collect_payment_method"]),
+    checkout_url: z.string().optional()
+  })
+  .passthrough();
+export type TTrialResult = { outcome: "trial_started" | "collect_payment_method"; checkoutUrl?: string };
+export { trialResultSchema };
+
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
   // Ask the license server to recompute/bust its cached entitlements after a license change.
@@ -304,7 +340,11 @@ export type TLicenseClientBackend = {
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
   addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
-  removeSubscriptionItem: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  removeSubscriptionItem: (orgId: string, productId: string, prorationDate?: number) => Promise<TCheckoutResult>;
+  // Apply a previewed per_resource commitment change (self-serve).
+  changeCommitment: (orgId: string, payload: TChangeCommitmentPayload) => Promise<TCheckoutResult>;
+  // Start a plan-scoped self-serve trial.
+  startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };

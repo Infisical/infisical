@@ -25,7 +25,6 @@ import {
   BillingV2Dim,
   BillingV2Entitlement,
   BillingV2EntitlementDim,
-  BillingV2Model,
   BillingV2Overview,
   BillingV2Plan,
   BillingV2Preview,
@@ -33,12 +32,14 @@ import {
   TAddBillingV2PaymentMethodDTO,
   TAddBillingV2ProductDTO,
   TBillingV2SubscriptionLifecycleDTO,
+  TChangeBillingV2CommitmentDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
   TGetBillingV2CatalogDTO,
   TGetBillingV2OverviewDTO,
   TPreviewBillingV2ChangeDTO,
-  TRemoveBillingV2ProductDTO
+  TRemoveBillingV2ProductDTO,
+  TStartBillingV2TrialDTO
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
@@ -62,6 +63,8 @@ type TLicenseV2ServiceFactoryDep = {
     | "previewSubscriptionChange"
     | "addSubscriptionItems"
     | "removeSubscriptionItem"
+    | "changeCommitment"
+    | "startTrial"
     | "cancelSubscription"
     | "resumeSubscription"
   >;
@@ -78,15 +81,6 @@ const FALLBACK_COLOR = "#6b7280";
 // instead. These keys mirror the v2 keys in dual-read feature-mapping (MaxIdentities.key, member_limit).
 const IDENTITY_LIMIT_FEATURE_KEY = "max_identities";
 const MEMBER_LIMIT_FEATURE_KEY = "member_limit";
-
-const CATALOG_MODELS: BillingV2Model[] = ["seat", "usage", "limit", "flat"];
-
-const toModel = (model: string): BillingV2Model => {
-  if (CATALOG_MODELS.includes(model as BillingV2Model)) {
-    return model as BillingV2Model;
-  }
-  return "usage";
-};
 
 // Price kinds we understand; an unknown kind is treated as non-purchasable, never sold as per_unit.
 const PER_UNIT_KIND = "per_unit";
@@ -214,6 +208,7 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     name: plan.name,
     selfServe: plan.selfServe,
     salesLed: plan.salesLed,
+    trialable: plan.trialable ?? false,
     feature: plan.feature,
     dims
   };
@@ -250,9 +245,7 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     name: product.name,
     icon: product.icon || FALLBACK_ICON,
     color: product.color || FALLBACK_COLOR,
-    model: toModel(product.model),
     addon: product.addon,
-    desc: product.description ?? "",
     tagline: product.tagline,
     plans,
     includes: product.includes,
@@ -260,13 +253,15 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
   };
 };
 
-// Translates a catalog product into the line items the checkout endpoint expects: the chosen plan's
-// per_unit dimensions at quantity 1. Metered and base lines are added server-side, so a metered-only
-// or base-only plan (e.g. the NHI add-on) checks out with no quantities.
+// Translates a catalog product into the line item the checkout endpoint expects. Monthly is
+// usage-based (no commitment); an annual per_resource line carries the caller-chosen per-dimension
+// commitments. Metered and base lines are added server-side. Returns null when the plan is not
+// purchasable for the cadence (no priced line and no base fee).
 const buildCheckoutItems = (
   product: TCatalogProduct,
   cadence: "monthly" | "annual",
-  planTier?: string
+  planTier?: string,
+  commitments?: Record<string, number>
 ): TCheckoutLineItem[] | null => {
   // A requested tier must resolve to a self-serve plan; with none requested, fall back to the first
   // paid self-serve plan (the legacy single-"pro" behaviour).
@@ -277,29 +272,20 @@ const buildCheckoutItems = (
     return null;
   }
 
-  const quantities: Record<string, number> = {};
-  const perUnitPrice = plan.prices.find(
-    (candidate) => candidate.cadence === cadence && candidate.kind === PER_UNIT_KIND && candidate.unitAmountCents > 0
+  const hasPriceForCadence = plan.prices.some(
+    (candidate) => candidate.cadence === cadence && isKnownPriceKind(candidate.kind)
   );
-  if (perUnitPrice) {
-    quantities[perUnitPrice.dimensionKey] = 1;
-  }
-
-  const hasMetered = plan.prices.some((candidate) => candidate.cadence === cadence && candidate.kind === METERED_KIND);
   const baseForCadence = cadence === "annual" ? plan.basePriceAnnualCents : plan.basePriceMonthlyCents;
   const hasBase = baseForCadence !== null && baseForCadence !== undefined;
-  if (!perUnitPrice && !hasMetered && !hasBase) {
+  if (!hasPriceForCadence && !hasBase) {
     return null;
   }
 
-  return [
-    {
-      productId: product.id,
-      plan: plan.tier,
-      cadence,
-      quantities
-    }
-  ];
+  const item: TCheckoutLineItem = { productId: product.id, plan: plan.tier, cadence };
+  if (commitments && Object.keys(commitments).length > 0) {
+    item.commitments = commitments;
+  }
+  return [item];
 };
 
 export const licenseV2ServiceFactory = ({
@@ -361,13 +347,11 @@ export const licenseV2ServiceFactory = ({
     const featureKeys = new Set<string>();
     subscription.items.forEach((item) => {
       item.dimensions.forEach((dimension) => {
-        if (
-          !dimension.metered &&
-          dimension.featureKey &&
-          !usage.has(dimension.featureKey) &&
-          counterByFeatureKey.has(dimension.featureKey)
-        ) {
-          featureKeys.add(dimension.featureKey);
+        // The stable key the dimension caps against is limitKey (contract); older servers send it as
+        // featureKey. Overlay live counts for non-metered dims we have a counter for.
+        const overlayKey = dimension.limitKey ?? dimension.featureKey;
+        if (!dimension.metered && overlayKey && !usage.has(overlayKey) && counterByFeatureKey.has(overlayKey)) {
+          featureKeys.add(overlayKey);
         }
       });
     });
@@ -427,40 +411,52 @@ export const licenseV2ServiceFactory = ({
     if (subscription) {
       subscription.items.forEach((item) => {
         // Resolve the pinned per-dimension contract into a display-ready list: label/noun from the
-        // catalog, metered/used/limit/rate/freeBand from the org's pinned subscription version. Money
-        // is converted to dollars here so *Cents fields never reach the client. rate/freeBand are set
-        // only for metered dimensions; per-unit dimensions get their rate from the catalog client-side.
+        // catalog, everything else from the org's version-pinned subscription. Money is converted to
+        // dollars here so *Cents fields never reach the client. per_resource dims carry committedRate
+        // (annual) + onDemandRate (monthly overage); metered dims carry rate + freeBand.
         const dimensions: BillingV2EntitlementDim[] = item.dimensions.map((dimension) => {
           const catalogKey = `${item.productId}:${dimension.key}`;
           const metered = dimension.metered ?? false;
+          // eslint-disable-next-line no-nested-ternary
+          const cadence = dimension.cadence === "annual" ? "annual" : dimension.cadence === "monthly" ? "monthly" : null;
+          const committed = dimension.committed ?? null;
+          const hasCommittedRate =
+            dimension.committedRateCents !== null && dimension.committedRateCents !== undefined;
+          const hasOnDemandRate = dimension.onDemandRateCents !== null && dimension.onDemandRateCents !== undefined;
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
+
+          // Overlay live per-org usage for non-metered dims (the server reports 0 for them); metered
+          // dims keep the server's period reading. Matched on the stable limit/feature key.
           let used = dimension.used ?? 0;
-          const liveUsed = dimension.featureKey ? liveUsageByFeatureKey.get(dimension.featureKey) : undefined;
+          const overlayKey = dimension.limitKey ?? dimension.featureKey;
+          const liveUsed = overlayKey ? liveUsageByFeatureKey.get(overlayKey) : undefined;
           if (!metered && liveUsed !== undefined) {
             used = liveUsed;
           }
+
+          const onDemandRate = hasOnDemandRate ? centsToDollars(dimension.onDemandRateCents) : undefined;
+          // Monthly overage cost: usage above the prepaid commitment at the on-demand rate.
+          const onDemandAmount =
+            committed !== null && onDemandRate !== undefined ? Math.max(0, used - committed) * onDemandRate : 0;
+
           return {
             key: dimension.key,
             label: labelByDimension.get(catalogKey) ?? dimension.key,
             noun: nounByDimension.get(catalogKey) ?? dimension.unit ?? dimension.key,
             unit: dimension.unit ?? nounByDimension.get(catalogKey) ?? dimension.key,
             metered,
+            cadence,
             used,
             limit: dimension.limit ?? null,
-            ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
-            ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {})
+            committed,
+            onDemandAmount,
+            ...(hasCommittedRate ? { committedRate: centsToDollars(dimension.committedRateCents) } : {}),
+            ...(onDemandRate !== undefined ? { onDemandRate } : {}),
+            ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {}),
+            ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {})
           };
         });
-
-        // Estimated metered usage cost for the period: sum of max(0, used - freeBand) * rate over the
-        // metered dimensions. Fixed recurring (item.amount) excludes this per the contract.
-        const estimatedUsageAmount = dimensions.reduce((sum, dimension) => {
-          if (!dimension.metered || dimension.rate === undefined) {
-            return sum;
-          }
-          return sum + Math.max(0, dimension.used - (dimension.freeBand ?? 0)) * dimension.rate;
-        }, 0);
 
         // Collapsed "most constraining" summary retained for callers that render a single limit line
         // (the product sheet). Derived from the resolved dimensions when present, else from the legacy
@@ -501,12 +497,26 @@ export const licenseV2ServiceFactory = ({
 
         const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
 
+        // Product cadence is annual when any dimension is annually committed, else monthly; drives the
+        // YEARLY/MONTHLY badge and the headline period.
+        // eslint-disable-next-line no-nested-ternary
+        const cadence = dimensions.some((dimension) => dimension.cadence === "annual")
+          ? "annual"
+          : dimensions.length > 0
+            ? "monthly"
+            : null;
+        const onDemandAmount = dimensions.reduce((sum, dimension) => sum + dimension.onDemandAmount, 0);
+
         entitlements[item.productId] = {
           entitled: true,
           planTier: item.plan,
+          cadence,
           amount: item.amount !== undefined ? centsToDollars(item.amount) : undefined,
-          estimatedUsageAmount,
+          onDemandAmount,
           dimensions: dimensions.length > 0 ? dimensions : undefined,
+          status: item.status,
+          isTrialing: item.isTrialing ?? false,
+          trialEndsAt: item.trialEndsAt ? formatDate(item.trialEndsAt) : null,
           used,
           limit,
           unit
@@ -649,10 +659,9 @@ export const licenseV2ServiceFactory = ({
       subscription,
       new Map([[IDENTITY_LIMIT_FEATURE_KEY, members + identities]])
     );
-    // Org-wide projected metered usage (dollars): the summary adds this to recurringAmount for the
-    // next-month total, so every product's estimate is summed once here.
-    const estimatedUsageAmount = Object.values(entitlements).reduce(
-      (sum, entitlement) => sum + (entitlement.estimatedUsageAmount ?? 0),
+    // Org-wide monthly on-demand overage (dollars), summed once for the summary's on-demand note.
+    const onDemandAmount = Object.values(entitlements).reduce(
+      (sum, entitlement) => sum + (entitlement.onDemandAmount ?? 0),
       0
     );
 
@@ -676,7 +685,7 @@ export const licenseV2ServiceFactory = ({
       billingDetails,
       invoices,
       entitlements,
-      estimatedUsageAmount
+      onDemandAmount
     };
 
     return { overview };
@@ -711,6 +720,7 @@ export const licenseV2ServiceFactory = ({
     productId,
     plan,
     cadence,
+    commitments,
     email,
     returnPath
   }: TCreateBillingV2CheckoutSessionDTO) => {
@@ -722,7 +732,7 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
     }
 
-    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan);
+    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan, commitments);
     if (!items) {
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
@@ -749,14 +759,15 @@ export const licenseV2ServiceFactory = ({
   const resolveAddItems = async (
     productId: string,
     cadence?: "monthly" | "annual",
-    plan?: string
+    plan?: string,
+    commitments?: Record<string, number>
   ): Promise<TCheckoutLineItem[]> => {
     const catalog = await licenseClient.getCatalog();
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     if (!product) {
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
     }
-    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan);
+    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan, commitments);
     if (!items) {
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
@@ -771,23 +782,27 @@ export const licenseV2ServiceFactory = ({
     addProductId,
     plan,
     cadence,
-    removeProductId
+    commitments,
+    removeProductId,
+    commitmentChanges
   }: TPreviewBillingV2ChangeDTO): Promise<{ preview: BillingV2Preview }> => {
     await ensureManageBilling(orgId, actor);
-    if (!addProductId && !removeProductId) {
-      throw new BadRequestError({ message: "Provide a product to add or remove" });
+    if (!addProductId && !removeProductId && !(commitmentChanges && commitmentChanges.length > 0)) {
+      throw new BadRequestError({ message: "Provide a product to add or remove, or a commitment change" });
     }
 
     const payload: TSubscriptionPreviewPayload = {};
     if (addProductId) {
-      payload.add = await resolveAddItems(addProductId, cadence, plan);
+      payload.add = await resolveAddItems(addProductId, cadence, plan, commitments);
     }
     if (removeProductId) {
       payload.remove = [removeProductId];
     }
+    if (commitmentChanges && commitmentChanges.length > 0) {
+      payload.commitmentChanges = commitmentChanges;
+    }
 
     const preview = await licenseClient.previewSubscriptionChange(orgId, payload);
-    const estimatedUsage = centsToDollars(preview.estimatedUsageCents);
     return {
       preview: {
         currency: preview.currency,
@@ -799,33 +814,52 @@ export const licenseV2ServiceFactory = ({
           description: line.description,
           amount: centsToDollars(line.amount),
           proration: line.proration
-        })),
-        estimatedUsage,
-        estimatedUsageLines: preview.estimatedUsageLines.map((line) => ({
-          dimension: line.dimension,
-          unit: line.unit ?? line.dimension,
-          peak: line.peak,
-          freeBand: line.freeBand,
-          rate: centsToDollars(line.rateCents),
-          amount: centsToDollars(line.amountCents)
-        })),
-        // Fall back to nextRecurringTotal + estimatedUsage when an older server omits estimatedTotal.
-        estimatedTotal:
-          preview.estimatedTotal !== null && preview.estimatedTotal !== undefined
-            ? centsToDollars(preview.estimatedTotal)
-            : centsToDollars(preview.nextRecurringTotal) + estimatedUsage
+        }))
       }
     };
   };
 
   // Add a product to an existing active subscription (clears any scheduled cancel server-side). The
   // first-purchase / no-subscription path stays on checkoutSession, which opens Stripe Checkout.
-  const addProduct = async ({ orgId, actor, productId, plan, cadence }: TAddBillingV2ProductDTO) => {
+  const addProduct = async ({ orgId, actor, productId, plan, cadence, commitments }: TAddBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
-    const items = await resolveAddItems(productId, cadence, plan);
+    const items = await resolveAddItems(productId, cadence, plan, commitments);
     const result = await licenseClient.addSubscriptionItems(orgId, { items });
     await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
+  };
+
+  // Apply one or more previewed per_resource commitment changes. The License Server's apply endpoint
+  // is single-dimension, so loop per change reusing the previewed prorationDate (assumption C): the
+  // per-dimension prorations, pinned to the same instant, sum to the "charged today" the user saw. A
+  // mid-loop failure leaves earlier changes applied and surfaces the error to retry the rest.
+  const changeCommitment = async ({ orgId, actor, changes, prorationDate }: TChangeBillingV2CommitmentDTO) => {
+    await ensureManageBilling(orgId, actor);
+    if (!changes.length) {
+      throw new BadRequestError({ message: "Provide at least one commitment change" });
+    }
+
+    let subscriptionId: string | undefined;
+    for (const change of changes) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await licenseClient.changeCommitment(orgId, {
+        dimensionKey: change.dimensionKey,
+        quantity: change.quantity,
+        prorationDate
+      });
+      subscriptionId = result.subscriptionId ?? subscriptionId;
+    }
+    await licenseClient.invalidateEntitlements(orgId);
+    return { subscriptionId };
+  };
+
+  // Start a plan-scoped self-serve trial. trial_started attaches directly; collect_payment_method
+  // returns a setup-mode checkout URL to add a card (the trial then auto-starts via webhook).
+  const startTrial = async ({ orgId, actor, productId, plan }: TStartBillingV2TrialDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.startTrial(orgId, { productKey: productId, planKey: plan });
+    await licenseClient.invalidateEntitlements(orgId);
+    return { outcome: result.outcome, checkoutUrl: result.checkoutUrl };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer
@@ -862,6 +896,8 @@ export const licenseV2ServiceFactory = ({
     previewChange,
     addProduct,
     removeProduct,
+    changeCommitment,
+    startTrial,
     cancelSubscription,
     resumeSubscription
   };

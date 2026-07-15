@@ -78,41 +78,28 @@ export const isMeteredCadence = (dim: BillingV2Dim, cad: BillingV2Cadence): bool
   return dim.meteredMonthly ?? false;
 };
 
-// Fixed recurring + estimated metered usage for a product (dollars). This is the product card
-// headline; the metered portion is a projection, so callers show an "est." qualifier when it's > 0.
-export const productTotal = (entitlement?: BillingV2Entitlement): number =>
-  (entitlement?.amount ?? 0) + (entitlement?.estimatedUsageAmount ?? 0);
+// "/ year" or "/ month" for a product's cadence.
+export const cadencePeriod = (cadence: BillingV2Cadence | null | undefined): string =>
+  cadence === "annual" ? "year" : "month";
 
-// The per-unit rate to display for a dimension (dollars): the pinned metered rate when the backend
-// sent one, otherwise the catalog's per-unit price for the active cadence. null when neither exists.
-export const dimRate = (
-  dim: BillingV2EntitlementDim,
-  product: BillingV2CatalogProduct | undefined,
-  planTier: string | undefined,
-  cadence: BillingV2Cadence
-): number | null => {
-  if (dim.rate !== undefined && dim.rate !== null) {
-    return dim.rate;
-  }
-  const plan = product?.plans.find((candidate) => candidate.tier === planTier) ?? product?.plans[0];
-  const catalogDim = plan?.dims.find((candidate) => candidate.key === dim.key);
-  if (!catalogDim) {
-    return null;
-  }
-  return unitPrice(catalogDim, cadence);
-};
+// An annually-committed per_resource dimension: usage above `committed` is billed monthly on-demand.
+export const dimAnnualCommitted = (dim: BillingV2EntitlementDim): boolean =>
+  dim.cadence === "annual" && dim.committed !== null;
 
-// The billed quantity for a dimension: for a metered dimension it's the overage above the included
-// free band; for a per-unit dimension it's the used count.
-export const dimBilledQuantity = (dim: BillingV2EntitlementDim): number => {
+// Per-unit monthly rate for a dimension (dollars): metered uses its per-unit rate; a monthly
+// per_resource (and an annual dimension's overage) uses the on-demand rate.
+export const dimMonthlyRate = (dim: BillingV2EntitlementDim): number => {
   if (dim.metered) {
-    return Math.max(0, dim.used - (dim.freeBand ?? 0));
+    return dim.rate ?? 0;
   }
-  return dim.used;
+  return dim.onDemandRate ?? dim.rate ?? 0;
 };
 
-// Fill percentage (0-100) for a dimension's usage bar, or null when there's no finite cap to fill
-// against (unlimited or usage-based). Mirrors the utilization semantics used server-side.
+// On-demand overflow quantity for an annually-committed dimension (0 otherwise).
+export const dimOnDemandQuantity = (dim: BillingV2EntitlementDim): number =>
+  dimAnnualCommitted(dim) ? Math.max(0, dim.used - (dim.committed ?? 0)) : 0;
+
+// Fill percentage (0-100) for a simple usage bar, or null when there's no finite cap to fill against.
 export const usagePct = (used: number, limit: number | null): number | null => {
   if (limit === null || limit <= 0) {
     return null;
@@ -120,15 +107,28 @@ export const usagePct = (used: number, limit: number | null): number | null => {
   return Math.min(100, (used / limit) * 100);
 };
 
-// Human-readable price breakdown for a product card, e.g. "1 CA × $500 + 84 certificates × $3" or
-// "Flat · up to 10 resources". Priced/metered dimensions read as "{qty} {units} × ${rate}"; flat
-// dimensions (a cap with no per-unit rate) read as "up to {limit} {units}". Returns null when nothing
-// is priced. Illustrative only: the authoritative total is the product headline (amount + usage).
-export const productBreakdown = (
-  entitlement: BillingV2Entitlement | undefined,
-  product: BillingV2CatalogProduct | undefined,
-  cadence: BillingV2Cadence
-): string | null => {
+// Segments for a dimension's usage bar. Annual committed: the bar spans the greater of committed and
+// used; the committed portion is blue and any overflow orange. Monthly: a single blue used/limit fill.
+export const dimBarSegments = (
+  dim: BillingV2EntitlementDim
+): { committedPct: number; onDemandPct: number } => {
+  if (dimAnnualCommitted(dim)) {
+    const committed = dim.committed ?? 0;
+    const denominator = Math.max(committed, dim.used, 1);
+    const committedFill = Math.min(committed, dim.used);
+    return {
+      committedPct: (committedFill / denominator) * 100,
+      onDemandPct: (Math.max(0, dim.used - committed) / denominator) * 100
+    };
+  }
+  return { committedPct: usagePct(dim.used, dim.limit) ?? 0, onDemandPct: 0 };
+};
+
+// Headline price breakdown for a product card, e.g. "55 seats committed × $20",
+// "1 CA committed × $435 + 100 certificates committed × $3", "140 active contributors × $7", or
+// "Flat · up to 10 resources". Annual committed dims read as "{committed} {units} committed × $rate";
+// monthly priced dims as "{used} {units} × $rate"; a capped flat dim as "up to {limit} {units}".
+export const productBreakdown = (entitlement?: BillingV2Entitlement): string | null => {
   const dims = entitlement?.dimensions ?? [];
   if (dims.length === 0) {
     return null;
@@ -137,11 +137,20 @@ export const productBreakdown = (
   const pricedTerms: string[] = [];
   const flatTerms: string[] = [];
   dims.forEach((dim) => {
-    const rate = dimRate(dim, product, entitlement?.planTier, cadence);
-    if (rate !== null && rate > 0) {
-      const qty = dimBilledQuantity(dim);
+    if (dimAnnualCommitted(dim) && dim.committedRate) {
+      const committed = dim.committed ?? 0;
+      pricedTerms.push(
+        `${committed.toLocaleString()} ${pluralizeUnit(dim.noun)} committed × ${fmtMoney(dim.committedRate)}`
+      );
+      return;
+    }
+    const rate = dimMonthlyRate(dim);
+    if (rate > 0) {
+      const qty = dim.metered ? Math.max(0, dim.used - (dim.freeBand ?? 0)) : dim.used;
       pricedTerms.push(`${qty.toLocaleString()} ${pluralizeUnit(dim.noun)} × ${fmtMoney(rate)}`);
-    } else if (dim.limit !== null) {
+      return;
+    }
+    if (dim.limit !== null) {
       flatTerms.push(`up to ${dim.limit.toLocaleString()} ${pluralizeUnit(dim.noun)}`);
     }
   });
