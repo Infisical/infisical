@@ -604,6 +604,15 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "group": "Agent Proxy",
+                    "pages": [
+                      "documentation/platform/agent-proxy/overview",
+                      "documentation/platform/agent-proxy/quickstart",
+                      "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/security"
+                    ]
                   }
                 ]
               },
@@ -1072,6 +1081,7 @@
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
+                      "documentation/platform/pam/accounts/azure-cli",
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
@@ -1130,6 +1140,7 @@
                   "cli/commands/init",
                   "cli/commands/run",
                   "cli/commands/secrets",
+                  "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
                   "cli/commands/pam",
                   "cli/commands/gateway",
@@ -2513,6 +2524,17 @@
                   "api-reference/endpoints/dynamic-secrets/delete-lease",
                   "api-reference/endpoints/dynamic-secrets/renew-lease",
                   "api-reference/endpoints/dynamic-secrets/get-lease"
+                ]
+              },
+              {
+                "group": "Proxied Services",
+                "pages": [
+                  "api-reference/endpoints/proxied-services/create",
+                  "api-reference/endpoints/proxied-services/update",
+                  "api-reference/endpoints/proxied-services/delete",
+                  "api-reference/endpoints/proxied-services/get-by-id",
+                  "api-reference/endpoints/proxied-services/get-by-name",
+                  "api-reference/endpoints/proxied-services/list"
                 ]
               },
               {

@@ -62,6 +62,12 @@ the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, 
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
 `extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
 
+Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
+`requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
+metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the
+gateway and injects a backend-minted short-lived token so no credential reaches the client. See
+`access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),

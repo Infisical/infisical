@@ -16,6 +16,8 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
+  agentPermissions,
+  agentProxyPermissions,
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
@@ -137,6 +139,10 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
             return sshHostBootstrapPermissions;
           case ProjectMembershipRole.KmsCryptographicOperator:
             return cryptographicOperatorPermissions;
+          case ProjectMembershipRole.Agent:
+            return agentPermissions;
+          case ProjectMembershipRole.AgentProxy:
+            return agentProxyPermissions;
           case ProjectMembershipRole.Custom: {
             return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
               permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]

@@ -67,6 +67,24 @@ Lockout is a feature that prevents brute-force attacks on identity login endpoin
 
 Supported auth methods have lockout enabled by default. If triggered, lockout temporarily disables the login endpoint for 5 minutes after 3 consecutive failed login attempts within a 30-second window. Lockout can be configured and disabled in the identity auth method settings.
 
+## Access Token Revocation
+
+Machine identity access tokens can be invalidated before their natural expiry. An access token is revoked when you:
+
+- Call the token revoke endpoint for that token (for example, `POST /api/v1/auth/token/revoke` for Universal Auth).
+- Delete the identity, which revokes all of its active access tokens.
+- Remove the credential the token was issued from, such as deleting a Universal Auth client secret or removing an authentication method from the identity.
+
+Once revoked, the token is rejected on subsequent authenticated requests and can no longer be renewed. The revocation is persisted in Infisical's database, which is the source of truth consulted on every authentication check.
+
+<Note>
+  To keep authentication fast under high request volume, Infisical caches the result of each revocation check in Redis for a short period. Under normal operation a revocation takes effect immediately, because revoking a token also invalidates any cached decision for that identity.
+
+  In the rare case where this cache invalidation cannot be performed (for example, a transient Redis disruption during the revoke), the database still records the revocation, but Infisical may continue to accept that exact token until its cached result expires, which takes at most 12 minutes. After that, the check is re-evaluated against the database and the token is rejected.
+
+  If you need a revocation to take effect with no propagation delay even under those conditions, rotate the underlying credential (delete the Universal Auth client secret) or delete the identity, both of which invalidate the affected tokens regardless of cache state.
+</Note>
+
 ## FAQ
 
 <AccordionGroup>

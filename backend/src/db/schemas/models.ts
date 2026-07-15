@@ -61,6 +61,7 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ProjectSshConfig = "project_ssh_configs",
@@ -174,6 +175,7 @@ export enum TableName {
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
   WebAuthnCredential = "webauthn_credentials",
+  UserMfaRecoveryCode = "user_mfa_recovery_codes",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -320,6 +322,11 @@ export enum TableName {
   // Audit Reports (exportable compliance reports)
   AuditReport = "audit_reports",
 
+  // Secrets Brokering (Agent Proxy)
+  OrgAgentProxyConfig = "org_agent_proxy_config",
+  ProxiedService = "proxied_services",
+  ProxiedServiceCredential = "proxied_service_credentials",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
@@ -367,7 +374,10 @@ export enum ProjectMembershipRole {
   // ssh
   SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
-  KmsCryptographicOperator = "cryptographic-operator"
+  KmsCryptographicOperator = "cryptographic-operator",
+  // secrets brokering (agent proxy)
+  Agent = "agent",
+  AgentProxy = "agent-proxy"
 }
 
 export enum ResourceMembershipRole {

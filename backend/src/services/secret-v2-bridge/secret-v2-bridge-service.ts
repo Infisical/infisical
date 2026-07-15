@@ -41,7 +41,9 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   recordSecretCacheAccessMetric,
   recordSecretCacheWriteMetric,
+  recordSecretOperationDuration,
   recordSecretReadMetric,
+  recordSecretWriteMetric,
   SecretCacheAccessResult
 } from "@app/lib/telemetry/metrics";
 
@@ -110,6 +112,28 @@ import {
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
+
+type SecretMetricOp = {
+  duration: "read" | "write" | "delete";
+  write?: "create" | "update" | "delete";
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const withSecretMetrics = <T extends (...args: any[]) => Promise<any>>(fn: T, op: SecretMetricOp): T =>
+  (async (...args: Parameters<T>) => {
+    const startTime = performance.now();
+    let success = false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const result = await fn(...args);
+      success = true;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return result;
+    } finally {
+      recordSecretOperationDuration({ startTime, operation: op.duration, outcome: success ? "success" : "failure" });
+      if (success && op.write) recordSecretWriteMetric({ operation: op.write });
+    }
+  }) as T;
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
@@ -3831,14 +3855,14 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   return {
-    createSecret,
-    deleteSecret,
-    updateSecret,
-    createManySecret,
-    updateManySecret,
-    deleteManySecret,
+    createSecret: withSecretMetrics(createSecret, { duration: "write", write: "create" }),
+    deleteSecret: withSecretMetrics(deleteSecret, { duration: "delete", write: "delete" }),
+    updateSecret: withSecretMetrics(updateSecret, { duration: "write", write: "update" }),
+    createManySecret: withSecretMetrics(createManySecret, { duration: "write", write: "create" }),
+    updateManySecret: withSecretMetrics(updateManySecret, { duration: "write", write: "update" }),
+    deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "delete", write: "delete" }),
+    getSecrets: withSecretMetrics(getSecrets, { duration: "read" }),
     getSecretByName,
-    getSecrets,
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,

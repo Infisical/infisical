@@ -326,6 +326,9 @@ import {
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
+  TOrgAgentProxyConfig,
+  TOrgAgentProxyConfigInsert,
+  TOrgAgentProxyConfigUpdate,
   TOrganizationAssets,
   TOrganizationAssetsInsert,
   TOrganizationAssetsUpdate,
@@ -485,6 +488,12 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
+  TProxiedServiceCredentials,
+  TProxiedServiceCredentialsInsert,
+  TProxiedServiceCredentialsUpdate,
+  TProxiedServices,
+  TProxiedServicesInsert,
+  TProxiedServicesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -686,7 +695,13 @@ import {
   TUserGroupMembership,
   TUserGroupMembershipInsert,
   TUserGroupMembershipUpdate,
+  TUserMfaRecoveryCodes,
+  TUserMfaRecoveryCodesInsert,
+  TUserMfaRecoveryCodesUpdate,
   TUsers,
+  TUserSecretActivation,
+  TUserSecretActivationInsert,
+  TUserSecretActivationUpdate,
   TUsersInsert,
   TUsersUpdate,
   TVaultExternalMigrationConfigs,
@@ -842,6 +857,11 @@ declare module "knex" {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.UserSecretActivation]: KnexOriginal.CompositeTableType<
+      TUserSecretActivation,
+      TUserSecretActivationInsert,
+      TUserSecretActivationUpdate
+    >;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
     [TableName.SshHostGroup]: KnexOriginal.CompositeTableType<
       TSshHostGroups,
@@ -1578,6 +1598,21 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigInsert,
       TOrgGatewayConfigUpdate
     >;
+    [TableName.OrgAgentProxyConfig]: KnexOriginal.CompositeTableType<
+      TOrgAgentProxyConfig,
+      TOrgAgentProxyConfigInsert,
+      TOrgAgentProxyConfigUpdate
+    >;
+    [TableName.ProxiedService]: KnexOriginal.CompositeTableType<
+      TProxiedServices,
+      TProxiedServicesInsert,
+      TProxiedServicesUpdate
+    >;
+    [TableName.ProxiedServiceCredential]: KnexOriginal.CompositeTableType<
+      TProxiedServiceCredentials,
+      TProxiedServiceCredentialsInsert,
+      TProxiedServiceCredentialsUpdate
+    >;
     [TableName.SecretRotationV2]: KnexOriginal.CompositeTableType<
       TSecretRotationsV2,
       TSecretRotationsV2Insert,
@@ -1826,6 +1861,11 @@ declare module "knex/types/tables" {
       TWebauthnCredentials,
       TWebauthnCredentialsInsert,
       TWebauthnCredentialsUpdate
+    >;
+    [TableName.UserMfaRecoveryCode]: KnexOriginal.CompositeTableType<
+      TUserMfaRecoveryCodes,
+      TUserMfaRecoveryCodesInsert,
+      TUserMfaRecoveryCodesUpdate
     >;
     [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
     [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<

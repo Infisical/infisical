@@ -66,6 +66,7 @@ import {
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials
 } from "./aws-iam/aws-iam-federation";
+import { getAzureAccessTokens } from "./azure/azure-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -307,6 +308,15 @@ export const pamSessionServiceFactory = ({
 
       credentials.token = tokenResponse.token;
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (account.accountType === PamAccountType.AzureCli) {
+      credentials.tokens = await getAzureAccessTokens({
+        tenantId: connectionDetails.tenantId as string,
+        clientId: credentials.clientId as string,
+        clientSecret: credentials.clientSecret as string
+      });
+      delete credentials.clientSecret;
     }
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
@@ -692,6 +702,12 @@ export const pamSessionServiceFactory = ({
     if (account.accountType === PamAccountType.GcpServiceAccount) {
       metadata.serviceAccountEmail = rawConnectionDetails.serviceAccountEmail as string;
       metadata.authMethod = rawCredentials.authMethod as string;
+    } else if (account.accountType === PamAccountType.AzureCli) {
+      metadata.tenantId = rawConnectionDetails.tenantId as string;
+      metadata.clientId = rawCredentials.clientId as string;
+      if (rawConnectionDetails.subscriptionId) {
+        metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
+      }
     } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {
