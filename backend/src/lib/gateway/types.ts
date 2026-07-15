@@ -14,7 +14,8 @@ export enum GatewayProxyProtocol {
   PamSessionCancellation = "pam-session-cancellation",
   Pkcs11 = "pkcs11",
   Adcs = "adcs",
-  Discovery = "discovery"
+  Discovery = "discovery",
+  WinRm = "winrm"
 }
 
 export enum GatewayHttpProxyActions {

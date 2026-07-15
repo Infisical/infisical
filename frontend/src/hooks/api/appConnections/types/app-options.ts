@@ -224,6 +224,10 @@ export type TSmbConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SMB;
 };
 
+export type TWinRMConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.WinRM;
+};
+
 export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OpenRouter;
 };
@@ -380,6 +384,7 @@ export type TAppConnectionOption =
   | TSshConnectionOption
   | TDbtConnectionOption
   | TSmbConnectionOption
+  | TWinRMConnectionOption
   | TAzureEntraIdConnectionOption
   | TVenafiConnectionOption
   | TVenafiTppConnectionOption
@@ -458,6 +463,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
+  [AppConnection.WinRM]: TWinRMConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
   [AppConnection.Cloud66]: TCloud66ConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;

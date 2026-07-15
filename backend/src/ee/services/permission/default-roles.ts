@@ -813,25 +813,6 @@ const buildCryptographicOperatorPermissionRules = () => {
   return rules;
 };
 
-const buildAgentPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can(ProjectPermissionProxiedServiceActions.Proxy, ProjectPermissionSub.ProxiedServices);
-
-  return rules;
-};
-
-const buildAgentProxyPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can(
-    [ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue],
-    ProjectPermissionSub.Secrets
-  );
-
-  return rules;
-};
-
 // General
 export const projectAdminPermissions = buildAdminPermissionRules();
 export const projectMemberPermissions = buildMemberPermissionRules();
@@ -843,10 +824,6 @@ export const sshHostBootstrapPermissions = buildSshHostBootstrapPermissionRules(
 
 // KMS
 export const cryptographicOperatorPermissions = buildCryptographicOperatorPermissionRules();
-
-// Secrets Brokering (Agent Proxy)
-export const agentPermissions = buildAgentPermissionRules();
-export const agentProxyPermissions = buildAgentProxyPermissionRules();
 
 const buildApplicationAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);

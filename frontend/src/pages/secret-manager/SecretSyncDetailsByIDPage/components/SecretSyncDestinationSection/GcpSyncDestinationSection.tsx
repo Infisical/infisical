@@ -18,7 +18,8 @@ export const GcpSyncDestinationSection = ({ secretSync }: Props) => {
         <DetailLabel>Scope</DetailLabel>
         <DetailValue>{destinationConfig.scope}</DetailValue>
       </Detail>
-      {destinationConfig.scope === GcpSyncScope.Region && (
+      {(destinationConfig.scope === GcpSyncScope.Region ||
+        (destinationConfig.scope === GcpSyncScope.Global && destinationConfig.locationId)) && (
         <Detail>
           <DetailLabel>Region</DetailLabel>
           <DetailValue>{destinationConfig.locationId}</DetailValue>

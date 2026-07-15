@@ -1,0 +1,87 @@
+---
+title: "Windows (WinRM) Connection"
+description: "Learn how to configure a Windows (WinRM) Connection for Infisical."
+---
+
+Infisical supports connecting to Windows hosts over WinRM to deliver certificates. The connection always routes through an [Infisical Gateway](/documentation/platform/gateways/overview) inside your network, which reaches the host and runs the WinRM session on Infisical's behalf. By default it uses HTTP with NTLM message encryption, which keeps the certificate and key confidential without a server certificate. HTTPS is also supported.
+
+## Setup
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Gather WinRM Details">
+        You will need the following for the target Windows host:
+
+        - **Host**: The DNS name (FQDN) or IP address of the Windows host.
+        - **Port**: The WinRM port. `5985` for HTTP with NTLM message encryption, `5986` for HTTPS.
+        - **Username**: A Windows login, either `DOMAIN\user` or `user@domain.com`.
+        - **Password**: The account password.
+
+        <Note>
+          The account must be able to open a WinRM session and write to the destination directory used by the certificate sync. HTTP with NTLM message encryption works against the default WinRM listener with no extra setup. HTTPS additionally requires a WinRM HTTPS listener on the host.
+        </Note>
+      </Step>
+      <Step title="Navigate to App Connections">
+        In the Infisical dashboard, navigate to **Organization Settings** > **App Connections** and click **Add Connection**.
+      </Step>
+      <Step title="Select Windows (WinRM)">
+        Select the **Windows (WinRM)** option from the list of available connections.
+      </Step>
+      <Step title="Fill in Connection Details">
+        Fill in the connection form:
+
+        - **Gateway**: The Gateway that can reach the Windows host. This is required.
+        - **Host** and **Port**: The Windows host and WinRM port (5985 for HTTP, 5986 for HTTPS).
+        - **Username** and **Password**: The Windows account credentials.
+        - **Enable SSL**: Off (default) uses HTTP with NTLM message encryption, which needs no server certificate. On uses HTTPS.
+        - **SSL Certificate** (HTTPS only): Optional CA certificate (PEM). Leave empty to verify the listener against the system trust store, or paste the listener's certificate to verify a self-signed WinRM HTTPS listener.
+        - **Reject Unauthorized** (HTTPS only): When on (default), Infisical only connects if the listener presents a valid, trusted certificate.
+
+        Click **Connect to Windows (WinRM)** to validate and save your connection.
+      </Step>
+      <Step title="Connection Created">
+        Your Windows (WinRM) Connection is now available for use with the [Windows Server Certificate Sync](/documentation/platform/pki/applications/certificate-syncs/windows-server).
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a Windows (WinRM) Connection via API, send a request to the [Create WinRM Connection](/api-reference/endpoints/app-connections/winrm/create) endpoint.
+
+    The connection must be attached to a Gateway that can reach the Windows host, so `gatewayId` is required.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/winrm \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+          "name": "my-winrm-connection",
+          "method": "username-password",
+          "gatewayId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+          "credentials": {
+              "host": "win01.corp.example.com",
+              "port": 5985,
+              "username": "DOMAIN\\svc-infisical",
+              "password": "[PASSWORD]",
+              "sslEnabled": false,
+              "sslRejectUnauthorized": true
+          }
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+## Transport
+
+By default (SSL disabled) the connection uses HTTP with NTLM message encryption on port 5985, which keeps the certificate and key confidential without a server certificate. This is the zero-configuration posture most Windows hosts already ship with.
+
+Enable SSL to use HTTPS on port 5986. For a self-signed HTTPS listener, paste its certificate as the SSL certificate so it can be authenticated. For a host on an untrusted network, prefer HTTPS.
+
+## FAQ
+
+<Accordion title="Why does this connection require a Gateway?">
+  The Gateway runs the WinRM session on Infisical's behalf, so a Gateway with access to the Windows host is always required.
+</Accordion>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+
 import {
   AwsCertificateManagerPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema
@@ -29,9 +31,17 @@ import {
   UpdateF5BigIpPkiSyncDestinationSchema
 } from "./f5-big-ip-pki-sync-destination-schema";
 import {
+  LinuxServerPkiSyncDestinationSchema,
+  UpdateLinuxServerPkiSyncDestinationSchema
+} from "./linux-server-pki-sync-destination-schema";
+import {
   NetScalerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema
 } from "./netscaler-pki-sync-destination-schema";
+import {
+  UpdateWindowsServerPkiSyncDestinationSchema,
+  WindowsServerPkiSyncDestinationSchema
+} from "./windows-server-pki-sync-destination-schema";
 
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
@@ -41,7 +51,9 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema,
   NetScalerPkiSyncDestinationSchema,
-  F5BigIpPkiSyncDestinationSchema
+  F5BigIpPkiSyncDestinationSchema,
+  LinuxServerPkiSyncDestinationSchema,
+  WindowsServerPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
@@ -52,10 +64,24 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema,
-  UpdateF5BigIpPkiSyncDestinationSchema
+  UpdateF5BigIpPkiSyncDestinationSchema,
+  UpdateLinuxServerPkiSyncDestinationSchema,
+  UpdateWindowsServerPkiSyncDestinationSchema
 ]);
 
-export const PkiSyncFormSchema = PkiSyncUnionSchema;
+export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
+  if (
+    (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
+    data.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+    !data.credentials?.exportPassword
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["credentials", "exportPassword"],
+      message: "A password is required for PKCS#12 exports"
+    });
+  }
+});
 
 export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema;
 

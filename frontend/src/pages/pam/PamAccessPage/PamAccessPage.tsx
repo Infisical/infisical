@@ -96,7 +96,12 @@ export const PamAccessPage = () => {
         <title>{t("common.head-title", { title: "My Access" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        <PageHeader scope={ProjectType.PAM} icon={KeyRound} title="My Access" />
+        <PageHeader
+          scope={ProjectType.PAM}
+          icon={KeyRound}
+          title="My Access"
+          description="Connect to or request access to privileged accounts."
+        />
 
         <Card className="mt-4">
           <CardHeader>

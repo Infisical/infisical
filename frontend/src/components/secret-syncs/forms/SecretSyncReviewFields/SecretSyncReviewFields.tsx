@@ -346,14 +346,14 @@ export const SecretSyncReviewFields = () => {
             )}
           </Detail>
           {AdditionalSyncOptionsFieldsComponent}
-          {disableSecretDeletion && (
-            <Detail>
-              <DetailLabel>Secret Deletion</DetailLabel>
-              <DetailValue>
-                <Badge variant="warning">Disabled</Badge>
-              </DetailValue>
-            </Detail>
-          )}
+          <Detail>
+            <DetailLabel>Secret Deletion Protection</DetailLabel>
+            <DetailValue>
+              <Badge variant={disableSecretDeletion ? "success" : "neutral"}>
+                {disableSecretDeletion ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
         </div>
       </DetailGroup>
 
