@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { MultiValue } from "react-select";
-import { useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -25,14 +23,12 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
-import { TProjectFolderGrant } from "@app/hooks/api/projectFolderGrants";
-import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
 import {
-  TCreateProjectFolderGrantDTO,
-  TDeleteProjectFolderGrantDTO
-} from "@app/hooks/api/projectFolderGrants/types";
+  TProjectFolderGrant,
+  useCreateProjectFolderGrant,
+  useDeleteProjectFolderGrant
+} from "@app/hooks/api/projectFolderGrants";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
@@ -197,15 +193,17 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   editData?: ShareSecretsEditData | null;
+  existingGrants?: TProjectFolderGrant[];
 };
 
-export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => {
+export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData, existingGrants = [] }: Props) => {
   const { currentProject } = useProject();
   const [groups, setGroups] = useState<EnvironmentGroup[]>([{ environment: "", secretPaths: [] }]);
   const [targetProjects, setTargetProjects] = useState<Project[]>([]);
 
-  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const createGrant = useCreateProjectFolderGrant();
+  const deleteGrant = useDeleteProjectFolderGrant();
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjectsByType(
     ProjectType.SecretManager
   );
@@ -280,34 +278,17 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
     setGroups((prev) => [...prev, { environment: "", secretPaths: [] }]);
   };
 
-  const postGrant = async (dto: TCreateProjectFolderGrantDTO) => {
-    try {
-      await apiRequest.post("/api/v1/project-folder-grants", dto);
-    } catch (err) {
-      if (
-        axios.isAxiosError(err) &&
-        typeof err.response?.data?.message === "string" &&
-        (err.response.data.message as string).includes("already exists")
-      ) {
-        return;
-      }
-      throw err;
-    }
-  };
-
-  const removeGrant = async (dto: TDeleteProjectFolderGrantDTO) => {
-    await apiRequest.delete(`/api/v1/project-folder-grants/${dto.grantId}`, {
-      params: { sourceProjectId: dto.sourceProjectId }
-    });
-  };
-
   const handleSubmit = async () => {
     const validEntries = flattenGroups(groups).filter((e) => e.environment && e.secretPath);
     if (validEntries.length === 0 || (!isEditMode && targetProjects.length === 0)) return;
 
+    const existingGrantKeys = new Set(
+      existingGrants.map((g) => `${g.targetProjectId}:${g.environmentSlug}:${g.secretPath}`)
+    );
+
     setIsSubmitting(true);
     try {
-      const operations: Promise<void>[] = [];
+      const operations: Promise<unknown>[] = [];
 
       if (editData) {
         const currentKeys = new Set(validEntries.map((e) => entryKey(e.environment, e.secretPath)));
@@ -318,14 +299,16 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
         editData.grants.forEach((g) => {
           const key = entryKey(g.environmentSlug, g.secretPath);
           if (!currentKeys.has(key)) {
-            operations.push(removeGrant({ grantId: g.id, sourceProjectId: currentProject.id }));
+            operations.push(
+              deleteGrant.mutateAsync({ grantId: g.id, sourceProjectId: currentProject.id })
+            );
           }
         });
 
         validEntries.forEach((entry) => {
           if (!originalKeys.has(entryKey(entry.environment, entry.secretPath))) {
             operations.push(
-              postGrant({
+              createGrant.mutateAsync({
                 sourceProjectId: currentProject.id,
                 environment: entry.environment,
                 secretPath: entry.secretPath,
@@ -337,8 +320,11 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
       } else {
         validEntries.forEach((entry) => {
           targetProjects.forEach((project) => {
+            const grantKey = `${project.id}:${entry.environment}:${entry.secretPath}`;
+            if (existingGrantKeys.has(grantKey)) return;
+
             operations.push(
-              postGrant({
+              createGrant.mutateAsync({
                 sourceProjectId: currentProject.id,
                 environment: entry.environment,
                 secretPath: entry.secretPath,
@@ -350,20 +336,6 @@ export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData }: Props) => 
       }
 
       await Promise.all(operations);
-
-      await queryClient.invalidateQueries({
-        queryKey: projectFolderGrantKeys.listByProject(currentProject.id)
-      });
-      const targetProjectIds = isEditMode
-        ? [editData!.targetProjectId]
-        : targetProjects.map((p) => p.id);
-      await Promise.all(
-        targetProjectIds.map((id) =>
-          queryClient.invalidateQueries({
-            queryKey: projectFolderGrantKeys.listReceived(id)
-          })
-        )
-      );
 
       createNotification({
         text: isEditMode ? "Grants updated successfully" : "Access granted successfully",

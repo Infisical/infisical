@@ -239,6 +239,7 @@ export const CrossProjectSharingSection = () => {
             isOpen={isShareSheetOpen}
             onOpenChange={handleSheetOpenChange}
             editData={editData}
+            existingGrants={grants}
           />
         </div>
         <p className="max-w-2xl text-sm text-accent">
@@ -309,42 +310,55 @@ export const CrossProjectSharingSection = () => {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Folder</TableHead>
-                        {currentProject.environments.map((env) => (
-                          <TableHead key={env.slug} className="text-center">
-                            {env.name}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {projectGroup.folders.map((folder) => (
-                        <TableRow key={folder}>
-                          <TableCell>
-                            <div className="flex items-center gap-1.5">
-                              <FolderIcon className="size-3.5 text-muted" />
-                              <span className="text-sm">{folder}</span>
-                            </div>
-                          </TableCell>
-                          {currentProject.environments.map((env) => {
-                            const grant = projectGroup.grantMatrix.get(`${folder}:${env.slug}`);
-                            return (
-                              <TableCell key={env.slug} className="text-center">
-                                {grant ? (
-                                  <Check className="mx-auto size-4 text-success" />
-                                ) : (
-                                  <Minus className="mx-auto size-4 text-muted" />
-                                )}
+                  {(() => {
+                    const grantedSlugs = new Set(
+                      projectGroup.grants.map((g) => g.environmentSlug)
+                    );
+                    const visibleEnvs = currentProject.environments.filter((env) =>
+                      grantedSlugs.has(env.slug)
+                    );
+
+                    return (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Folder</TableHead>
+                            {visibleEnvs.map((env) => (
+                              <TableHead key={env.slug} className="text-center">
+                                {env.name}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {projectGroup.folders.map((folder) => (
+                            <TableRow key={folder}>
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <FolderIcon className="size-3.5 text-muted" />
+                                  <span className="text-sm">{folder}</span>
+                                </div>
                               </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              {visibleEnvs.map((env) => {
+                                const grant = projectGroup.grantMatrix.get(
+                                  `${folder}:${env.slug}`
+                                );
+                                return (
+                                  <TableCell key={env.slug} className="text-center">
+                                    {grant ? (
+                                      <Check className="mx-auto size-4 text-success" />
+                                    ) : (
+                                      <Minus className="mx-auto size-4 text-muted" />
+                                    )}
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    );
+                  })()}
                 </AccordionContent>
               </AccordionItem>
             ))}
