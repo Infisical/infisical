@@ -128,7 +128,7 @@ Either way, the value is fully resolved before the proxy applies it.
 
 A credential can reference a [dynamic secret](/documentation/platform/dynamic-secrets/overview) instead of a static secret. Instead of injecting a fixed value, the agent proxy mints a short-lived lease and injects one of its output fields (for example a database password, a GitHub App token, or a Kubernetes service-account token). Because the value rotates on its own at the lease TTL, a credential that leaks is worthless shortly after.
 
-In the credential form, choose a dynamic secret from the **Dynamic Secrets** group of the secret picker, then pick which **Output Field** of the lease to inject. Each provider exposes different fields (SQL databases give `DB_USERNAME` / `DB_PASSWORD`, GitHub gives a `TOKEN`, and so on); the dropdown only lists fields that can be placed into an HTTP request. Basic auth works by pointing the username and password at two fields of the same dynamic secret. Some providers accept a per-lease input, such as a **Namespace** for Kubernetes, which you set on the credential.
+In the credential form, choose a dynamic secret from the **Dynamic Secrets** group of the secret picker, then pick which **Output Field** of the lease to inject. Each provider exposes different fields (SQL databases give `DB_USERNAME` / `DB_PASSWORD`, GitHub gives a `TOKEN`, and so on); pick the field you want to inject. Basic auth works by pointing the username and password at two fields of the same dynamic secret. Some providers accept a per-lease input, such as a **Namespace** for Kubernetes, which you set on the credential.
 
 How the agent proxy handles the lease:
 
@@ -141,7 +141,7 @@ How the agent proxy handles the lease:
 </Warning>
 
 <Note>
-  Only the agent proxy's machine identity mints leases, and only it needs the **Lease** permission on the referenced dynamic secrets (the built-in **Agent Proxy** role includes it). The agent identity must **not** hold Lease on a brokered dynamic secret; if it does, it could mint the credential itself and bypass the proxy, and `infisical secrets agent-proxy connect` prints a warning. Creating or updating a proxied service that references a dynamic secret requires that you hold Lease on it, and requires a plan that includes dynamic secrets.
+  Only the agent proxy's machine identity mints leases, and only it needs the **Lease** permission on the referenced dynamic secrets (the built-in **Agent Proxy** role includes it). The agent identity must **not** hold Lease on a brokered dynamic secret; if it does, it could mint the credential itself and bypass the proxy, so `infisical secrets agent-proxy connect` refuses to start (pass `--allow-readable-brokered-secrets` to override). Creating or updating a proxied service that references a dynamic secret requires that you hold Lease on it, and requires a plan that includes dynamic secrets.
 </Note>
 
 ## Example: API Request
