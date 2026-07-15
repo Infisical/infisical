@@ -139,7 +139,14 @@ export const GcpSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <Select value={value} onValueChange={(val) => onChange(val)} disabled={!projectId}>
+              <Select
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  setValue("destinationConfig.locationId", "");
+                }}
+                disabled={!projectId}
+              >
                 <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
                   <SelectValue placeholder="Select a scope..." />
                 </SelectTrigger>
