@@ -32,8 +32,8 @@ This guide walks through brokering a credential end to end: you will create a pr
   <Step title="Create two machine identities">
     Create two [machine identities](/documentation/platform/identities/machine-identities) with [Universal Auth](/documentation/platform/identities/universal-auth) and add both to your project:
 
-    1. **Agent proxy identity**: it fetches the real credential values, so give it read access (describe and read value) to the referenced secrets.
-    2. **Agent identity**: it routes traffic through proxied services but should not read any secret values, so give it only the proxy permission on proxied services.
+    1. **Agent proxy identity**: it fetches the real credential values, so grant it `Read Value` and `Describe Secret` on the **Secrets** its services reference.
+    2. **Agent identity**: it routes traffic through proxied services but should not read any secret values, so grant it only `Proxy` on **Proxied Services**.
 
     <Note>
       Grant these permissions with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or an [additional privilege](/documentation/platform/access-controls/additional-privileges) on each identity, scoped to the specific environments and paths you need. Running more than one agent? See [how many machine identities you need](/documentation/platform/agent-proxy/security#how-many-machine-identities-do-you-need).
