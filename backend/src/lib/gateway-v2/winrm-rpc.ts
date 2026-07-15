@@ -3,9 +3,9 @@ import http from "node:http";
 import { logger } from "@app/lib/logger";
 
 export enum WinRmRpcEndpoint {
-  Test = "/v1/test",
-  DeliverFiles = "/v1/deliver",
-  RemoveFiles = "/v1/remove"
+  Test = "/v1/test-connection",
+  DeliverFiles = "/v1/deliver-files",
+  RemoveFiles = "/v1/remove-files"
 }
 
 export type WinRmTransportParams = {
