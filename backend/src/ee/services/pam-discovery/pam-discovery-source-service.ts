@@ -72,6 +72,28 @@ type TPamDiscoverySourceServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
+// hard ceiling on how long a single scan may run
+const MAX_SCAN_DURATION_MS = 45 * 60 * 1000;
+
+const withScanTimeout = async <T>(scan: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new BadRequestError({
+          message: `Scan exceeded the maximum duration of ${Math.round(timeoutMs / 60000)} minutes`
+        })
+      );
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([scan, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    scan.catch(() => {}); // swallow late rejection if the scan settles after the timeout fires
+  }
+};
+
 export type TPamDiscoverySourceServiceFactory = ReturnType<typeof pamDiscoverySourceServiceFactory>;
 
 export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServiceFactoryDep) => {
@@ -399,7 +421,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         gatewayV2Service
       });
 
-      const { accounts, machineErrors } = await provider.scan();
+      const { accounts, machineErrors } = await withScanTimeout(provider.scan(), MAX_SCAN_DURATION_MS);
       const results = await Promise.all(
         accounts.map((d) =>
           pamDiscoveredAccountDAL.upsertByFingerprint(sourceId, d.fingerprint, {
