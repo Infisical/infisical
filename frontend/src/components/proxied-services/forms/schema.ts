@@ -61,7 +61,6 @@ const headerCredentialSchema = z.object({
 
 const basicAuthSchema = z.object({
   usernameSecretKey: z.string().trim(),
-  // Optional: username-only basic auth is valid (yields `base64(username:)`).
   passwordSecretKey: z.string().trim().optional()
 });
 
@@ -132,7 +131,6 @@ export const proxiedServiceFormSchema = z
           path: ["headers"]
         });
       }
-      // Password is optional — username-only basic auth is allowed, so only the username is required.
     } else if (!form.basicAuth?.usernameSecretKey) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
