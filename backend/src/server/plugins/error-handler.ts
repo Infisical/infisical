@@ -25,7 +25,7 @@ import {
 import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { coreHttpErrorCounter, rateLimitExceededCounter } from "@app/lib/telemetry/metrics";
-import { getTelemetryDistinctId } from "../lib/telemetry";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
