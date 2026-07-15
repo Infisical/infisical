@@ -206,6 +206,13 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
       (host) => accounts.some((a) => a.host === host) || usablePorts.some((port) => open.has(`${host}:${port}`))
     );
 
+    if (!hostsToScan.length) {
+      throw new BadRequestError({
+        message:
+          "No hosts were reachable on the credential ports in the target range. Check the targets, that the gateway can reach them, and that SSH is listening."
+      });
+    }
+
     const limit = pLimit(SCAN_CONCURRENCY);
     const results = await Promise.all(hostsToScan.map((host) => limit(() => scanHost(host, open))));
 
