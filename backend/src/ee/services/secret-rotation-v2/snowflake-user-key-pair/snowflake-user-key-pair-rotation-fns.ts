@@ -25,11 +25,15 @@ import {
 
 const RSA_MODULUS_LENGTH = 2048;
 
+const RSA_PUBLIC_KEY_FIRST_SLOT = "RSA_PUBLIC_KEY";
+const RSA_PUBLIC_KEY_SECOND_SLOT = "RSA_PUBLIC_KEY_2";
+
 // Snowflake exposes two public-key slots per user. index 0 -> RSA_PUBLIC_KEY, index 1 -> RSA_PUBLIC_KEY_2.
-const RSA_PUBLIC_KEY_SLOTS = ["RSA_PUBLIC_KEY", "RSA_PUBLIC_KEY_2"] as const;
+const RSA_PUBLIC_KEY_SLOTS = [RSA_PUBLIC_KEY_FIRST_SLOT, RSA_PUBLIC_KEY_SECOND_SLOT] as const;
 type TSnowflakePublicKeySlot = (typeof RSA_PUBLIC_KEY_SLOTS)[number];
 
-const slotForIndex = (index: number): TSnowflakePublicKeySlot => (index === 0 ? "RSA_PUBLIC_KEY" : "RSA_PUBLIC_KEY_2");
+const slotForIndex = (index: number): TSnowflakePublicKeySlot =>
+  index === 0 ? RSA_PUBLIC_KEY_FIRST_SLOT : RSA_PUBLIC_KEY_SECOND_SLOT;
 
 const generateRsaKeyPair = () =>
   new Promise<{ privateKey: string; publicKey: string }>((resolve, reject) => {
