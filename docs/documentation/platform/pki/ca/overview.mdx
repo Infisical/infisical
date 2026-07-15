@@ -17,7 +17,7 @@ Certificate Manager supports two types of CAs:
   <Card title="External CA" icon="building-columns" href="/documentation/platform/pki/ca/external-ca">
     **Integrated with Infisical**
     
-    Connect to public CAs (Let's Encrypt, DigiCert) or enterprise PKI (AWS PCA, Azure ADCS, Venafi). Use existing infrastructure or issue publicly trusted certificates.
+    Connect to public CAs (Let's Encrypt, DigiCert) or enterprise PKI (AWS PCA, Microsoft ADCS, Venafi). Use existing infrastructure or issue publicly trusted certificates.
   </Card>
 </CardGroup>
 
@@ -27,7 +27,7 @@ Certificate Manager supports two types of CAs:
 |----------|----------------|
 | Internal services, mTLS between microservices | Private CA |
 | Public-facing websites needing browser trust | External CA (Let's Encrypt, DigiCert) |
-| Enterprise with existing PKI infrastructure | External CA (AWS PCA, Azure ADCS, Venafi) |
+| Enterprise with existing PKI infrastructure | External CA (AWS PCA, Microsoft ADCS, Venafi) |
 | IoT devices, internal device fleet | Private CA |
 | Regulated environments with specific CA requirements | External CA (your approved provider) |
 
@@ -59,8 +59,8 @@ Infisical integrates with major public and private CA providers:
   <Card title="AWS PCA" icon="aws" href="/documentation/platform/pki/ca/aws-pca">
     Private CA managed in AWS.
   </Card>
-  <Card title="Azure ADCS" icon="microsoft" href="/documentation/platform/pki/ca/azure-adcs">
-    Active Directory Certificate Services.
+  <Card title="Microsoft ADCS" icon="microsoft" href="/documentation/platform/pki/ca/adcs">
+    Active Directory Certificate Services over the Gateway.
   </Card>
   <Card title="Venafi" icon="building" href="/documentation/platform/pki/ca/venafi">
     Enterprise certificate lifecycle management.

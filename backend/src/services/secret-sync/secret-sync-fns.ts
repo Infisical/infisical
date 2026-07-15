@@ -51,6 +51,7 @@ import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
+import { CLOUD66_SYNC_LIST_OPTION, Cloud66SyncFns } from "./cloud66";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
@@ -64,6 +65,8 @@ import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
+import { HASURA_CLOUD_SYNC_LIST_OPTION } from "./hasura-cloud/hasura-cloud-sync-constants";
+import { HasuraCloudSyncFns } from "./hasura-cloud/hasura-cloud-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
@@ -74,9 +77,11 @@ import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
 import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
+import { QOVERY_SYNC_LIST_OPTION, QoverySyncFns } from "./qovery";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
+import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -114,6 +119,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
   [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
+  [SecretSync.Rundeck]: RUNDECK_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
@@ -131,7 +137,10 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
   [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
-  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
+  [SecretSync.HasuraCloud]: HASURA_CLOUD_SYNC_LIST_OPTION,
+  [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION,
+  [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -393,10 +402,14 @@ export const SecretSyncFns = {
         return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.HasuraCloud:
+        return HasuraCloudSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Checkly:
         return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Rundeck:
+        return RundeckSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:
@@ -429,6 +442,10 @@ export const SecretSyncFns = {
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Qovery:
+        return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Cloud66:
+        return Cloud66SyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -539,11 +556,17 @@ export const SecretSyncFns = {
       case SecretSync.Railway:
         secretMap = await RailwaySyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.HasuraCloud:
+        secretMap = await HasuraCloudSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Checkly:
         secretMap = await ChecklySyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Supabase:
         secretMap = await SupabaseSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Rundeck:
+        secretMap = await RundeckSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
@@ -589,6 +612,12 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Snowflake:
         secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Qovery:
+        secretMap = await QoverySyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Cloud66:
+        secretMap = await Cloud66SyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -698,10 +727,14 @@ export const SecretSyncFns = {
         return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.HasuraCloud:
+        return HasuraCloudSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Checkly:
         return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Rundeck:
+        return RundeckSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:
@@ -734,6 +767,10 @@ export const SecretSyncFns = {
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Snowflake:
         return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Qovery:
+        return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Cloud66:
+        return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

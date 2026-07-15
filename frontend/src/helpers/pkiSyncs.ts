@@ -39,6 +39,14 @@ export const PKI_SYNC_MAP: Record<
   [PkiSync.F5BigIp]: {
     name: "F5 BIG-IP",
     image: "F5 BIG-IP.png"
+  },
+  [PkiSync.LinuxServer]: {
+    name: "Linux Server",
+    image: "SSH.png"
+  },
+  [PkiSync.WindowsServer]: {
+    name: "Windows Server",
+    image: "Windows.png"
   }
 };
 
@@ -50,5 +58,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.Chef]: AppConnection.Chef,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
-  [PkiSync.F5BigIp]: AppConnection.F5BigIp
+  [PkiSync.F5BigIp]: AppConnection.F5BigIp,
+  [PkiSync.LinuxServer]: AppConnection.SSH,
+  [PkiSync.WindowsServer]: AppConnection.WinRM
 };

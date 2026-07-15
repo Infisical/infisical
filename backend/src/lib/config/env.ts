@@ -238,6 +238,10 @@ const envSchema = z
     CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
+    // Secrets activation nudge tuning. Controls the org size/age window in which the
+    // member-invite activation banner appears.
+    SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
+    SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
@@ -321,6 +325,8 @@ const envSchema = z
     LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
     LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
+    // CROSS-PROJECT SECRET SHARING
+    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -386,6 +392,7 @@ const envSchema = z
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -400,6 +407,11 @@ const envSchema = z
 
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
+
+    // Forces outbound requests made through the SSRF-safe HTTP client to use
+    // direct egress (axios `proxy: false`), so the resolved-and-pinned target
+    // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
 
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
@@ -521,7 +533,7 @@ const envSchema = z
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
     // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
-    isCloud: Boolean(data.LICENSE_SERVER_KEY),
+    isCloud: Boolean(data.LICENSE_SERVER_KEY || data.LICENSE_SERVER_V2_SERVICE_KEY),
     isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
@@ -570,6 +582,7 @@ const envSchema = z
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
+    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: data.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST?.split(",") ?? [],
     PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0,
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,

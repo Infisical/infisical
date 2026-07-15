@@ -1,10 +1,11 @@
-import { Dispatch, SetStateAction, useState } from "react";
+import { useState } from "react";
+import { ArrowLeftIcon } from "lucide-react";
 
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
-import { TAuditLogStream } from "@app/hooks/api/types";
 
 import { AuditLogStreamForm } from "../AuditLogStreamForm/AuditLogStreamForm";
+import { AuditLogStreamHeader } from "./AuditLogStreamHeader";
 import { LogStreamProviderSelect } from "./LogStreamProviderSelect";
 
 type Props = {
@@ -12,58 +13,71 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
-type ContentProps = {
-  onComplete: (auditLogStream: TAuditLogStream) => void;
-  selectedProvider: LogProvider | null;
-  setSelectedProvider: Dispatch<SetStateAction<LogProvider | null>>;
-};
-
-const Content = ({ onComplete, selectedProvider, setSelectedProvider }: ContentProps) => {
-  if (selectedProvider) {
-    return (
-      <AuditLogStreamForm
-        onComplete={onComplete}
-        onBack={() => setSelectedProvider(null)}
-        provider={selectedProvider}
-      />
-    );
-  }
-
-  return <LogStreamProviderSelect onSelect={setSelectedProvider} />;
-};
-
 export const AddAuditLogStreamModal = ({ isOpen, onOpenChange }: Props) => {
   const [selectedProvider, setSelectedProvider] = useState<LogProvider | null>(null);
 
+  const closeSheet = () => {
+    setSelectedProvider(null);
+    onOpenChange(false);
+  };
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={(e) => {
-        onOpenChange(e);
-        if (!e) setSelectedProvider(null);
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) setSelectedProvider(null);
+        onOpenChange(open);
       }}
     >
-      <ModalContent
-        className="max-w-2xl"
-        title="Log Provider"
-        subTitle=<>
-          Select a log provider or{" "}
-          <button
-            type="button"
-            className="underline"
-            onClick={() => setSelectedProvider(LogProvider.Custom)}
-          >
-            input a custom URL
-          </button>{" "}
-          to stream logs to.
-        </>
-      >
-        <Content
-          onComplete={() => onOpenChange(false)}
-          selectedProvider={selectedProvider}
-          setSelectedProvider={setSelectedProvider}
-        />
-      </ModalContent>
-    </Modal>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+        <SheetHeader className="border-b">
+          {selectedProvider ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setSelectedProvider(null)}
+                className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
+              >
+                <ArrowLeftIcon className="size-3" />
+                Select another provider
+              </button>
+              <SheetTitle>
+                <AuditLogStreamHeader provider={selectedProvider} logStreamExists={false} />
+              </SheetTitle>
+            </>
+          ) : (
+            <>
+              <SheetTitle>Add Log Stream</SheetTitle>
+              <SheetDescription asChild>
+                <div>
+                  Select a log provider or{" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2 hover:text-foreground"
+                    onClick={() => setSelectedProvider(LogProvider.Custom)}
+                  >
+                    input a custom URL
+                  </button>{" "}
+                  to stream logs to.
+                </div>
+              </SheetDescription>
+            </>
+          )}
+        </SheetHeader>
+        {selectedProvider ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <AuditLogStreamForm
+              provider={selectedProvider}
+              onComplete={closeSheet}
+              onCancel={closeSheet}
+            />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+            <LogStreamProviderSelect onSelect={setSelectedProvider} />
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };

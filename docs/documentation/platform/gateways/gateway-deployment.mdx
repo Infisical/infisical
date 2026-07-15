@@ -6,6 +6,10 @@ description: "Complete guide to deploying Infisical Gateways including network c
 Infisical Gateways enables secure communication between your private resources and the Infisical platform without exposing inbound ports in your network.
 This guide covers everything you need to deploy and configure Infisical Gateways.
 
+<Tip>
+  For a complete Helm chart reference for Kubernetes deployments, see the [Gateway Helm chart documentation](/self-hosting/helm-charts/gateway).
+</Tip>
+
 ## Deployment Steps
 
 <Steps>
@@ -258,6 +262,8 @@ The gateway is designed to handle network interruptions gracefully:
 
 - **Automatic reconnection**: The gateway will automatically attempt to reconnect to relay servers if the SSH connection is lost
 - **Connection retry logic**: Built-in retry mechanisms handle temporary network outages without manual intervention
+- **Automatic failover**: Gateways configured with automatic relay selection will switch to a different healthy relay if the current one becomes unreachable
+- **Gateway Pools**: If the gateway itself becomes unavailable, a [Gateway Pool](/documentation/platform/gateways/gateway-pools) will automatically route through a healthy member
 - **Persistent SSH tunnels**: SSH connections are automatically re-established when connectivity is restored
 - **Certificate rotation**: The gateway handles certificate renewal automatically during reconnection
 - **Graceful degradation**: The gateway logs connection issues and continues attempting to restore connectivity

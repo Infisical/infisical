@@ -28,6 +28,8 @@ const catalogPlanPriceSchema = z
   .object({
     dimensionKey: z.string(),
     cadence: z.string(),
+    // Permissive (like model/tier/cadence) so a new License Server kind can't break parsing; normalized in code.
+    kind: z.string().default("per_unit"),
     unitAmountCents: z.number(),
     includedQuantity: z.number().nullish()
   })
@@ -49,7 +51,7 @@ const catalogPlanSchema = z
 const catalogComparisonCellSchema = z
   .object({
     tier: z.string(),
-    value: z.union([z.string(), z.boolean()])
+    value: z.union([z.string(), z.number(), z.boolean()])
   })
   .passthrough();
 
@@ -83,13 +85,33 @@ export const catalogResponseSchema = z
   })
   .passthrough();
 
+// Per-dimension metered usage on a subscription item. metered/aggregation/freeBand/rateCents come
+// from the org's pinned plan version (not the global feature flag); freeBand/rateCents are only
+// meaningful for metered dimensions. Additive + permissive so an older server (no dimensions) parses.
+const subscriptionItemDimensionSchema = z
+  .object({
+    key: z.string(),
+    // Stable feature key the dimension caps against; used to overlay live per-org usage. Dimension
+    // keys drift (e.g. a display rename), so usage is matched on this, not on key.
+    featureKey: z.string().nullish(),
+    unit: z.string().optional(),
+    metered: z.boolean().default(false),
+    aggregation: z.string().optional(),
+    used: z.number().default(0),
+    limit: z.number().nullish(),
+    freeBand: z.number().nullish(),
+    rateCents: z.number().nullish()
+  })
+  .passthrough();
+
 const subscriptionItemSchema = z
   .object({
     productId: z.string(),
     plan: z.string(),
     quantities: z.record(z.string(), z.number()),
     limits: z.record(z.string(), z.number()),
-    amount: z.number().optional()
+    amount: z.number().optional(),
+    dimensions: z.array(subscriptionItemDimensionSchema).default([])
   })
   .passthrough();
 
@@ -119,6 +141,45 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
+// Proration preview for an add/remove against an existing subscription. prorationAmount is signed:
+// positive is charged now (an add), negative is a credit toward the next invoice (a removal).
+// prorationDate is the timestamp the preview was computed at.
+const subscriptionPreviewLineSchema = z
+  .object({
+    description: z.string(),
+    amount: z.number(),
+    proration: z.boolean()
+  })
+  .passthrough();
+
+// Projected metered cost for the change, computed by the server. estimatedUsageCents is the summed
+// projection; estimatedTotal = nextRecurringTotal + estimatedUsageCents. All additive/nullish so an
+// older server that omits them still parses (the service falls back to nextRecurringTotal).
+const subscriptionPreviewUsageLineSchema = z
+  .object({
+    dimension: z.string(),
+    unit: z.string().optional(),
+    peak: z.number().default(0),
+    freeBand: z.number().default(0),
+    rateCents: z.number().default(0),
+    amountCents: z.number().default(0)
+  })
+  .passthrough();
+
+export const subscriptionPreviewResponseSchema = z
+  .object({
+    currency: z.string(),
+    prorationAmount: z.number(),
+    nextInvoiceTotal: z.number(),
+    nextRecurringTotal: z.number(),
+    prorationDate: z.number(),
+    lines: z.array(subscriptionPreviewLineSchema).default([]),
+    estimatedUsageCents: z.number().default(0),
+    estimatedUsageLines: z.array(subscriptionPreviewUsageLineSchema).default([]),
+    estimatedTotal: z.number().nullish()
+  })
+  .passthrough();
+
 // The cloud-plan FeatureSet carries plan caps; the server nulls a limit when it is effectively
 // unlimited. Used counts come back zeroed and are overlaid by this app, so we ignore them.
 export const cloudPlanResponseSchema = z
@@ -144,10 +205,31 @@ const billingProfilePaymentSchema = z
   })
   .passthrough();
 
+// Stripe leaves any unfilled field null (line2/state are absent for most customers) and older
+// license servers may omit them, so every sub-field is nullish. A strict z.string() would throw on
+// a partial address; because the whole profile is parsed in one shot, that failure silently drops
+// the customer's payment method and invoices too, not just the address.
+const billingProfileAddressSchema = z
+  .object({
+    line1: z.string().nullish(),
+    line2: z.string().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    postalCode: z.string().nullish(),
+    country: z.string().nullish()
+  })
+  .passthrough();
+
+const billingProfileTaxIdSchema = z.object({ type: z.string(), value: z.string() }).passthrough();
+
 const billingProfileDetailsSchema = z
   .object({
     name: z.string(),
-    email: z.string()
+    email: z.string(),
+    // Absent on older license servers that predate these fields; address is null when the customer
+    // has none, taxIds defaults to [] so callers can map it without a null check.
+    address: billingProfileAddressSchema.nullish(),
+    taxIds: z.array(billingProfileTaxIdSchema).default([])
   })
   .passthrough();
 
@@ -182,12 +264,22 @@ export type TSessionResponse = z.infer<typeof sessionResponseSchema>;
 export type TCheckoutResult = z.infer<typeof checkoutResultSchema>;
 export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
 export type TBillingProfileResponse = z.infer<typeof billingProfileResponseSchema>;
+export type TSubscriptionPreview = z.infer<typeof subscriptionPreviewResponseSchema>;
 
 export type TCheckoutLineItem = {
   productId: string;
   plan: string;
   cadence: string;
   quantities: Record<string, number>;
+};
+
+export type TSubscriptionPreviewPayload = {
+  add?: TCheckoutLineItem[];
+  remove?: string[];
+};
+
+export type TAddSubscriptionItemsPayload = {
+  items: TCheckoutLineItem[];
 };
 
 export type TCreateCheckoutPayload = {
@@ -202,10 +294,17 @@ export type TCreatePortalPayload = {
 
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
+  // Ask the license server to recompute/bust its cached entitlements after a license change.
+  refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
   fetchCatalog: () => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
   createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TCheckoutResult>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
+  previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
+  addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
+  removeSubscriptionItem: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };

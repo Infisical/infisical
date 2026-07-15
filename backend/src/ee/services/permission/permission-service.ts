@@ -14,11 +14,17 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
+  agentPermissions,
+  agentProxyPermissions,
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
   cryptographicOperatorPermissions,
+  pamResourceAdminPermissions,
+  pamResourceAuditorPermissions,
+  pamResourceConnectorPermissions,
   projectAdminApplicationFallbackPermissions,
   projectAdminPermissions,
   projectAdminSignerFallbackPermissions,
@@ -133,6 +139,10 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
             return sshHostBootstrapPermissions;
           case ProjectMembershipRole.KmsCryptographicOperator:
             return cryptographicOperatorPermissions;
+          case ProjectMembershipRole.Agent:
+            return agentPermissions;
+          case ProjectMembershipRole.AgentProxy:
+            return agentProxyPermissions;
           case ProjectMembershipRole.Custom: {
             return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
               permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
@@ -151,7 +161,7 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
   return rules;
 };
 
-const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
+export const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
   if (resourceType === ResourceType.Signer) {
     switch (role) {
       case ResourceMembershipRole.Admin:
@@ -164,6 +174,19 @@ const resolveResourceRoleRules = (resourceType: ResourceType, role: string) => {
         throw new BadRequestError({ message: "Custom resource-level roles are not supported yet" });
       default:
         throw new NotFoundError({ name: "SignerRoleInvalid", message: `Signer role '${role}' not found` });
+    }
+  }
+
+  if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) {
+    switch (role) {
+      case PamResourceRole.Admin:
+        return pamResourceAdminPermissions;
+      case PamResourceRole.Connector:
+        return pamResourceConnectorPermissions;
+      case PamResourceRole.Auditor:
+        return pamResourceAuditorPermissions;
+      default:
+        throw new NotFoundError({ name: "PamRoleInvalid", message: `PAM role '${role}' not found` });
     }
   }
 
@@ -195,6 +218,7 @@ const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, 
 
 const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
   if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
+  if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) return [];
   return projectAdminApplicationFallbackPermissions;
 };
 
@@ -746,7 +770,10 @@ export const permissionServiceFactory = ({
           projectId,
           actorAuthMethod,
           actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
+          actionProjectType:
+            resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount
+              ? ActionProjectType.PAM
+              : ActionProjectType.CertificateManager
         });
         isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
         isProjectMember = true;

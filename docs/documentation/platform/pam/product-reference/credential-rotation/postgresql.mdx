@@ -1,0 +1,42 @@
+---
+title: "PostgreSQL Credential Rotation"
+sidebarTitle: "PostgreSQL"
+description: "Rotate PostgreSQL account passwords with Infisical PAM."
+---
+
+This page covers what is specific to rotating a [PostgreSQL account](/documentation/platform/pam/accounts/postgresql). For how rotation is configured and scheduled, see the [overview](/documentation/platform/pam/product-reference/credential-rotation/overview).
+
+## How the password is changed
+
+When a PostgreSQL account rotates, the rotation account connects to the target database and runs:
+
+```sql
+ALTER USER "<target_role>" WITH PASSWORD '<generated_password>';
+```
+
+The connection uses the account's existing connection details, including the SSL settings, so no extra configuration is needed for TLS-enabled databases.
+
+## Rotation account requirements
+
+The rotation account is the role that runs the statement above, so it must be allowed to set the target role's password.
+
+- **Self-rotation**: a role can always change its own password, so no extra privileges are needed.
+- **Delegated rotation**: the rotation account must be able to alter the target role. Grant it `CREATEROLE`, or use a superuser.
+
+An example setup for a dedicated delegated rotation role:
+
+```sql
+-- the role Infisical connects as to perform rotations
+CREATE ROLE infisical_rotator WITH LOGIN PASSWORD 'temporary_password' CREATEROLE;
+
+-- the account whose password gets rotated
+CREATE ROLE app_user WITH LOGIN PASSWORD 'temporary_password';
+```
+
+<Tip>
+  On PostgreSQL 16 and later, a `CREATEROLE` role can only alter roles it has `ADMIN OPTION` on. Grant it with `GRANT app_user TO infisical_rotator WITH ADMIN OPTION;`, or use a superuser as the rotation account.
+</Tip>
+
+<Note>
+  Create the rotation account and the target account in Infisical PAM as separate PostgreSQL accounts on the same resource, then select the rotation account on the target account's **Rotation** tab.
+</Note>

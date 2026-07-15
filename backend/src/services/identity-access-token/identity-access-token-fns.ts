@@ -1,5 +1,6 @@
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
 
@@ -11,6 +12,8 @@ import {
   TMinimalRenewClaims,
   TRenewableClaims,
   TRevocableClaims,
+  TRevocationDenyReason,
+  TRevocationMarker,
   TSignIdentityAccessTokenInput,
   TSignIdentityAccessTokenOutput
 } from "./identity-access-token-types";
@@ -138,6 +141,178 @@ export const computeIssuedTtl = ({
   //  - The remaining time that the token as a whole can be renewed for
   //  - The maximum TTL for any single token issuance (defined by env var)
   return Math.min(requestedCap, remainingBudget, ceiling);
+};
+
+// Extra 5 minutes added to when a revocation record expires. Guards against
+// small clock differences between servers and a slightly stale database replica
+// so a revoked token can't slip through by dropping the record too early.
+export const IDENTITY_REVOCATION_MARKER_SKEW_SECONDS = 300;
+
+// Longest lifetime (seconds) a single token can be handed out with the
+// requested lifetime, but never above the configured maximum. Periodic tokens
+// use their period as the lifetime.
+export const computeSingleIssuanceTtlCap = ({
+  requestedTTL,
+  accessTokenPeriod
+}: {
+  requestedTTL: number;
+  accessTokenPeriod: number;
+}): number => {
+  const { MAX_MACHINE_IDENTITY_TOKEN_AGE: ceiling } = getConfig();
+  const effectiveRequested = accessTokenPeriod > 0 ? accessTokenPeriod : requestedTTL;
+  if (effectiveRequested > 0) {
+    return Math.min(effectiveRequested, ceiling);
+  }
+  return ceiling;
+};
+
+// Latest time an old-style token (one with no built-in expiry) could still be
+// accepted. Used as the fallback record expiry when the token carries no expiry.
+const computeLegacyMarkerUpperSeconds = ({
+  accessTokenMaxTTL,
+  creationEpoch,
+  nowSeconds
+}: {
+  accessTokenMaxTTL: number;
+  creationEpoch: number;
+  nowSeconds: number;
+}): number => {
+  const { MAX_MACHINE_IDENTITY_TOKEN_AGE: ceiling } = getConfig();
+  return accessTokenMaxTTL > 0 ? creationEpoch + accessTokenMaxTTL : nowSeconds + ceiling;
+};
+
+// When a token revokes itself, decide how long to keep its revocation record.
+// Keep it until just after the token would have expired on its own, plus one
+// extra lifetime to catch a renewal that slips in during replica lag, plus the
+// skew buffer. If the token has no expiry, fall back to the old-style
+// latest-valid time.
+export const computePerTokenMarkerExpiry = ({
+  exp,
+  requestedTTL,
+  accessTokenMaxTTL,
+  accessTokenPeriod,
+  creationEpoch,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}: {
+  exp?: number;
+  requestedTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenPeriod: number;
+  creationEpoch: number;
+  nowSeconds?: number;
+}): Date => {
+  const legacyUpperSeconds = computeLegacyMarkerUpperSeconds({ accessTokenMaxTTL, creationEpoch, nowSeconds });
+
+  if (typeof exp !== "number") {
+    return new Date(legacyUpperSeconds * 1000);
+  }
+
+  const singleIssuanceTtlCap = computeSingleIssuanceTtlCap({ requestedTTL, accessTokenPeriod });
+  const tightenedSeconds = Math.min(exp + singleIssuanceTtlCap, legacyUpperSeconds);
+  return new Date((tightenedSeconds + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS) * 1000);
+};
+
+// Same idea, but for an admin revoking a token by id with no token in hand.
+// Since we can't read the token's own expiry, keep the record for one full
+// token lifetime from now, capped at the token's overall lifetime limit, plus
+// the skew buffer. The stored token lifetime never changes, so it safely covers
+// any future renewal.
+export const computeTokenAuthRevokeMarkerExpiry = ({
+  accessTokenTTL,
+  accessTokenMaxTTL,
+  accessTokenPeriod,
+  createdAtMs,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}: {
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenPeriod: number;
+  createdAtMs: number;
+  nowSeconds?: number;
+}): Date => {
+  const createdAtSeconds = Math.floor(createdAtMs / 1000);
+  const singleIssuanceTtlCap = computeSingleIssuanceTtlCap({ requestedTTL: accessTokenTTL, accessTokenPeriod });
+  const nowPlusCap = nowSeconds + singleIssuanceTtlCap;
+  const tightenedSeconds =
+    accessTokenMaxTTL > 0 ? Math.min(createdAtSeconds + accessTokenMaxTTL, nowPlusCap) : nowPlusCap;
+  return new Date((tightenedSeconds + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS) * 1000);
+};
+
+export const computeRevocationVerdictFingerprint = ({
+  tokenId,
+  issuedAtMs,
+  clientSecretId,
+  authMethod
+}: {
+  tokenId: string;
+  issuedAtMs: number;
+  clientSecretId?: string;
+  authMethod?: string;
+}): string => generateCacheKeyFromData([tokenId, issuedAtMs, clientSecretId ?? "", authMethod ?? ""]);
+
+// Checks a token against its revocation records and returns why it's blocked,
+// or null if it's still valid. Has no side effects, so the cached path and the
+// direct-database path always agree.
+export const evaluateRevocationMarkers = ({
+  markers,
+  tokenId,
+  identityId,
+  issuedAtMs,
+  clientSecretId,
+  authMethod
+}: {
+  markers: TRevocationMarker[];
+  tokenId: string;
+  identityId: string;
+  issuedAtMs: number;
+  clientSecretId?: string;
+  authMethod?: string;
+}): TRevocationDenyReason | null => {
+  for (const revocation of markers) {
+    // A record with no scope either targets this exact token, or (when the whole
+    // identity was revoked) blocks every token issued before the revocation.
+    if (revocation.scope === null || revocation.scope === undefined) {
+      if (revocation.id === tokenId) {
+        return "token";
+      }
+      if (revocation.id === identityId) {
+        const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
+        if (issuedAtMs < revokedAtMs) {
+          return "identity";
+        }
+      }
+    } else {
+      // A scoped record blocks every token issued before the revocation whose
+      // client secret or login method matches the scope.
+      const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
+      if (issuedAtMs < revokedAtMs) {
+        if (clientSecretId && revocation.scope === clientSecretId) {
+          return "client-secret";
+        }
+        if (authMethod && revocation.scope === authMethod) {
+          return "auth-method";
+        }
+      }
+    }
+  }
+  return null;
+};
+
+export const revocationDenyReasonToMessage = (
+  reason: TRevocationDenyReason,
+  messagePrefix: "Failed to authorize" | "Cannot renew"
+): string => {
+  switch (reason) {
+    case "token":
+      return `${messagePrefix}: token has been revoked`;
+    case "identity":
+      return `${messagePrefix}: identity tokens have been revoked`;
+    case "client-secret":
+      return `${messagePrefix}: client secret has been revoked`;
+    case "auth-method":
+    default:
+      return `${messagePrefix}: auth method has been revoked`;
+  }
 };
 
 export const signIdentityAccessToken = (input: TSignIdentityAccessTokenInput): TSignIdentityAccessTokenOutput => {

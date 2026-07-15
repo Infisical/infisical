@@ -91,7 +91,7 @@ const getOrCreateClient = async (
     kmsService: deps.kmsService
   })) as TDigiCertConnection["credentials"];
 
-  const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials.region));
+  const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials));
   clientCache?.set(request.caId, client);
   return client;
 };

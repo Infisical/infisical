@@ -21,7 +21,8 @@ export const GcpSyncReviewFields = () => {
         <DetailLabel>Scope</DetailLabel>
         <DetailValue className="capitalize">{destinationConfig.scope}</DetailValue>
       </Detail>
-      {destinationConfig.scope === GcpSyncScope.Region && (
+      {(destinationConfig.scope === GcpSyncScope.Region ||
+        (destinationConfig.scope === GcpSyncScope.Global && destinationConfig.locationId)) && (
         <Detail>
           <DetailLabel>Region</DetailLabel>
           <DetailValue>{destinationConfig.locationId}</DetailValue>

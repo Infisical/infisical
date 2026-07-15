@@ -1,79 +1,58 @@
 import { z } from "zod";
 
-import {
-  PamDiscoverySourceAccountsSchema,
-  PamDiscoverySourceResourcesSchema,
-  PamDiscoverySourceRunsSchema,
-  PamDiscoverySourcesSchema
-} from "@app/db/schemas";
-import { slugSchema } from "@app/server/lib/schemas";
+import { PamAccountType } from "../pam/pam-enums";
+import { ActiveDirectoryDiscoveryConfigSchema } from "./active-directory/active-directory-discovery-schemas";
+import { PamDiscoveryType } from "./pam-discovery-enums";
 
-import { ActiveDirectoryAccountMetadataSchema } from "../pam-domain/active-directory/active-directory-domain-schemas";
-import { PamDomainType } from "../pam-domain/pam-domain-enums";
-import { PamResource } from "../pam-resource/pam-resource-enums";
-import { SanitizedSSHResourceInternalMetadataSchema } from "../pam-resource/ssh/ssh-resource-schemas";
-import {
-  SanitizedWindowsResourceInternalMetadataSchema,
-  WindowsAccountMetadataSchema
-} from "../pam-resource/windows-server/windows-server-resource-schemas";
-import {
-  PamDiscoverySchedule,
-  PamDiscoverySourceRunStatus,
-  PamDiscoverySourceRunTrigger,
-  PamDiscoverySourceStatus
-} from "./pam-discovery-enums";
+export const DISCOVERY_TYPE_CONFIGS = {
+  [PamDiscoveryType.ActiveDirectory]: {
+    name: "Active Directory",
+    icon: "ActiveDirectory.png",
+    credentialAccountType: PamAccountType.WindowsAd,
+    configuration: ActiveDirectoryDiscoveryConfigSchema
+  }
+} as const satisfies Partial<
+  Record<
+    PamDiscoveryType,
+    {
+      name: string;
+      icon: string;
+      credentialAccountType: PamAccountType;
+      configuration: z.ZodTypeAny;
+    }
+  >
+>;
 
-// Discovery Sources
-export const BasePamDiscoverySourceSchema = PamDiscoverySourcesSchema.omit({
-  discoveryType: true,
-  discoveryConfiguration: true,
-  encryptedDiscoveryCredentials: true
-}).extend({
-  schedule: z.nativeEnum(PamDiscoverySchedule),
-  status: z.nativeEnum(PamDiscoverySourceStatus)
+type TSupportedDiscoveryType = keyof typeof DISCOVERY_TYPE_CONFIGS;
+
+export const getDiscoveryTypeConfig = (discoveryType: PamDiscoveryType | string) => {
+  const config = DISCOVERY_TYPE_CONFIGS[discoveryType as TSupportedDiscoveryType];
+  if (!config) throw new Error(`Discovery type '${discoveryType}' is not supported`);
+  return config;
+};
+
+export const validateDiscoveryConfiguration = (discoveryType: PamDiscoveryType, data: unknown) =>
+  getDiscoveryTypeConfig(discoveryType).configuration.parse(data ?? {}) as Record<string, unknown>;
+
+export const getCredentialAccountType = (discoveryType: PamDiscoveryType): PamAccountType =>
+  getDiscoveryTypeConfig(discoveryType).credentialAccountType;
+
+export const PamDiscoveryTypeMetadataSchema = z.object({
+  type: z.nativeEnum(PamDiscoveryType),
+  name: z.string(),
+  icon: z.string(),
+  credentialAccountType: z.nativeEnum(PamAccountType)
 });
 
-// No .superRefine — would turn into ZodEffects and break .extend() in per-type schemas.
-export const BaseCreatePamDiscoverySourceSchema = z.object({
-  projectId: z.string().uuid(),
-  name: slugSchema({ field: "name" }),
-  gatewayId: z.string().uuid().optional(),
-  gatewayPoolId: z.string().uuid().optional(),
-  schedule: z.nativeEnum(PamDiscoverySchedule)
-});
-
-export const BaseUpdatePamDiscoverySourceSchema = z.object({
-  name: slugSchema({ field: "name" }).optional(),
-  gatewayId: z.string().uuid().optional(),
-  gatewayPoolId: z.string().uuid().optional(),
-  schedule: z.nativeEnum(PamDiscoverySchedule).optional()
-});
-
-// Discovery Runs
-export const BasePamDiscoverySourceRunSchema = PamDiscoverySourceRunsSchema.omit({
-  progress: true
-}).extend({
-  status: z.nativeEnum(PamDiscoverySourceRunStatus),
-  triggeredBy: z.nativeEnum(PamDiscoverySourceRunTrigger)
-});
-
-export const DiscoveredResourceSchema = PamDiscoverySourceResourcesSchema.extend({
-  resourceName: z.string(),
-  resourceType: z.nativeEnum(PamResource),
-  resourceInternalMetadata: z
-    .union([SanitizedSSHResourceInternalMetadataSchema, SanitizedWindowsResourceInternalMetadataSchema])
-    .optional(),
-  dependencyCount: z.number().default(0)
-});
-
-export const DiscoveredAccountSchema = PamDiscoverySourceAccountsSchema.extend({
-  resourceType: z.nativeEnum(PamResource).nullable().optional(),
-  resourceName: z.string().nullable().optional(),
-  resourceId: z.string().uuid().nullable().optional(),
-  domainType: z.nativeEnum(PamDomainType).nullable().optional(),
-  domainName: z.string().nullable().optional(),
-  domainId: z.string().uuid().nullable().optional(),
-  accountName: z.string(),
-  internalMetadata: z.union([ActiveDirectoryAccountMetadataSchema, WindowsAccountMetadataSchema]),
-  dependencyCount: z.number().default(0)
-});
+export const buildPamDiscoveryTypeMetadata = () =>
+  (
+    Object.entries(DISCOVERY_TYPE_CONFIGS) as [
+      TSupportedDiscoveryType,
+      (typeof DISCOVERY_TYPE_CONFIGS)[TSupportedDiscoveryType]
+    ][]
+  ).map(([type, config]) => ({
+    type,
+    name: config.name,
+    icon: config.icon,
+    credentialAccountType: config.credentialAccountType
+  }));

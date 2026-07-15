@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, linkOptions, useParams } from "@tanstack/react-router";
+import { Link, linkOptions, useLocation, useParams } from "@tanstack/react-router";
 import { Check, ChevronsUpDown, Plus, Star } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -100,7 +100,10 @@ const ProjectSelectInner = () => {
     window.location.assign(urlInstance);
   };
 
-  if (currentWorkspace.type === ProjectType.CertificateManager) {
+  if (
+    currentWorkspace.type === ProjectType.CertificateManager ||
+    currentWorkspace.type === ProjectType.PAM
+  ) {
     return null;
   }
 
@@ -215,6 +218,7 @@ const ProjectSelectInner = () => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+        projectType={currentWorkspace.type}
       />
     </div>
   );
@@ -222,9 +226,11 @@ const ProjectSelectInner = () => {
 
 export const ProjectSelect = () => {
   const params = useParams({ strict: false });
+  const { pathname } = useLocation();
 
-  // Return null during navigation when projectId is not available
-  if (!params.projectId) {
+  const isPamRoute = pathname.includes("/pam/");
+
+  if (!params.projectId && !isPamRoute) {
     return null;
   }
 

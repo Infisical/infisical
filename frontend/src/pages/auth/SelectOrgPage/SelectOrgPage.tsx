@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
-import { jwtDecode } from "jwt-decode";
 import { ChevronRight, LogIn, Search } from "lucide-react";
 
 import { Mfa } from "@app/components/auth/Mfa";
@@ -21,10 +20,10 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
-import { getAuthToken, setAuthToken } from "@app/hooks/api/reactQuery";
-import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
+import { setAuthToken } from "@app/hooks/api/reactQuery";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
+import { getSsoEnforcementError } from "./SelectOrg.utils";
 
 const OrgRow = ({
   name,
@@ -71,6 +70,7 @@ export const SelectOrgPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
+  const { autoSelectErrorMessage } = useRouteContext({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
 
   const {
     org_id: orgId,
@@ -145,34 +145,10 @@ export const SelectOrgPage = () => {
       return;
     }
 
-    if ((org.authEnforced || org.googleSsoAuthEnforced) && !canBypassOrgAuth) {
-      const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
-
-      let ssoRequired = false;
-      let ssoType = "";
-
-      if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
-        ssoRequired = true;
-        ssoType = "Google SSO";
-      } else if (
-        org.orgAuthMethod === AuthMethod.OIDC &&
-        authToken.authMethod !== AuthMethod.OIDC
-      ) {
-        ssoRequired = true;
-        ssoType = "OIDC SSO";
-      } else if (
-        org.orgAuthMethod === AuthMethod.SAML &&
-        !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
-      ) {
-        ssoRequired = true;
-        ssoType = "SAML SSO";
-      }
-
-      if (ssoRequired) {
-        createNotification({
-          text: `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`,
-          type: "error"
-        });
+    if (!canBypassOrgAuth) {
+      const ssoEnforcementError = getSsoEnforcementError(org);
+      if (ssoEnforcementError) {
+        createNotification({ text: ssoEnforcementError, type: "error" });
         return;
       }
     }
@@ -245,16 +221,30 @@ export const SelectOrgPage = () => {
     }
   };
 
-  // MFA pending from IdP redirect
+  // beforeLoad can't toast on cold loads (Toaster not yet mounted) so it hands failures here;
+  // the ref dedupes StrictMode's double effect run
+  const autoSelectErrorToasted = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoSelectErrorMessage && autoSelectErrorToasted.current !== autoSelectErrorMessage) {
+      autoSelectErrorToasted.current = autoSelectErrorMessage;
+      createNotification({ text: autoSelectErrorMessage, type: "error" });
+    }
+  }, [autoSelectErrorMessage]);
+
+  // MFA challenge handed off by beforeLoad's auto-select
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const defaultOrg = orgs?.find((o) => o.id === orgId);
+    const rootOrg = orgs?.find((o) => o.id === orgId);
+    const subOrgParent = rootOrg
+      ? undefined
+      : orgs?.find((o) => o.subOrganizations.some((sub) => sub.id === orgId));
+    const mfaOrg = rootOrg ?? subOrgParent;
     const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
-    if (mfaMethodFromSearch && storedMfaToken && defaultOrg) {
+    if (mfaMethodFromSearch && storedMfaToken && mfaOrg) {
       sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
       SecurityClient.setMfaToken(storedMfaToken);
       toggleShowMfa.on();
-      mfaOrgInfo.current = { rootOrg: defaultOrg };
+      mfaOrgInfo.current = { rootOrg: mfaOrg, subOrgId: rootOrg ? undefined : orgId };
     }
   }, [mfaMethodFromSearch, orgs?.length, orgId]);
 

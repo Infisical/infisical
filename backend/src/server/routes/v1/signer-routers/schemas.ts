@@ -1,8 +1,36 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+
+const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
 export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
+
+export const SignerExternalConfigurationSchema = z.discriminatedUnion("caType", [
+  z.object({
+    caType: z.literal(CaType.DIGICERT),
+    reissueFromExternalOrderId: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .describe(
+        "Reissue into this existing DigiCert order instead of placing a new order (reuses the subscription slot)."
+      )
+  }),
+  z.object({
+    caType: z.literal(CaType.ADCS),
+    template: z
+      .string()
+      .trim()
+      .min(1)
+      .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters")
+      .optional()
+      .describe("The AD CS certificate template this signer requests when issuing (e.g. a code-signing template).")
+  })
+]);
 
 export const SignerKeyAlgorithm = {
   values: [

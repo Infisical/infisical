@@ -1,9 +1,19 @@
+import { SparklesIcon } from "lucide-react";
+
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Separator
+} from "@app/components/v3";
 import { INFISICAL_SCHEDULE_DEMO_LINK } from "@app/const/links";
 import { useOrganization, useSubscription } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
-
-import { Button } from "../../v2/Button";
-import { Modal, ModalContent } from "../../v2/Modal";
 
 type Props = {
   isOpen?: boolean;
@@ -21,6 +31,7 @@ export const UpgradePlanModal = ({
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { mutateAsync, isPending } = useGetOrgTrialUrl();
+  const scopeVariant = useScopeVariant();
 
   const getLink = () => {
     // self-hosting
@@ -72,30 +83,35 @@ export const UpgradePlanModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Unleash Infisical's Full Power">
-        <p className="mb-2 text-bunker-300">{text}</p>
-        <p className="text-bunker-300">
-          Upgrade and get access to this, as well as to other powerful enhancements.
-        </p>
-        <div className="mt-8 flex items-center">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      {/* z-[70] keeps this above legacy v2 modals (z-[60]) that open it, e.g. RoleModal */}
+      <DialogContent className="z-[70] sm:max-w-xl" overlayClassName="z-[70]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2.5">
+            <SparklesIcon className="size-5 text-muted" />
+            Unleash Infisical&apos;s Full Power
+          </DialogTitle>
+          <DialogDescription>
+            Upgrade and get access to this, as well as to other powerful enhancements.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Separator />
+        <p className="text-sm leading-relaxed text-foreground">{text}</p>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange?.(false)}>
+            Cancel
+          </Button>
           <Button
-            isLoading={isPending}
-            colorSchema="primary"
+            variant={scopeVariant}
+            isPending={isPending}
+            isDisabled={isPending}
             onClick={handleUpgradeBtnClick}
-            className="mr-4"
           >
             {getUpgradePlanLabel()}
           </Button>
-          <Button
-            colorSchema="secondary"
-            variant="plain"
-            onClick={() => onOpenChange && onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-        </div>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

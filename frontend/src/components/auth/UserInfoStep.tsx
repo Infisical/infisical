@@ -19,6 +19,7 @@ import {
   InputGroupInput,
   TextArea
 } from "@app/components/v3";
+import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
@@ -148,7 +149,7 @@ export default function UserInfoStep({
 
     if (!isInvite) {
       await initProjectHelper({
-        projectName: "Example Project"
+        projectName: EXAMPLE_PROJECT_NAME
       });
     }
 

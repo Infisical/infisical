@@ -52,7 +52,12 @@ export const telemetryQueueServiceFactory = ({
           10
         );
         const numberOfSecretProcessed = parseInt((await keyStore.getItem(TELEMETRY_SECRET_PROCESSED_KEY)) || "0", 10);
-        const stats = { ...telemetryStats, numberOfSecretProcessed, numberOfSecretOperationsMade };
+        const stats = {
+          ...telemetryStats,
+          numberOfSecretProcessed,
+          numberOfSecretOperationsMade,
+          ...(appCfg.INFISICAL_PLATFORM_VERSION ? { infisicalVersion: appCfg.INFISICAL_PLATFORM_VERSION } : {})
+        };
 
         postHog.capture({
           event: PostHogEventTypes.TelemetryInstanceStats,

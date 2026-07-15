@@ -31,6 +31,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   maxSharedSecretLifetime: true,
   maxSharedSecretViewLimit: true,
   blockDuplicateSecretSyncDestinations: true,
+  allowCrossProjectSecretSharing: true,
   rootOrgId: true,
   parentOrgId: true,
   secretShareBrandConfig: true
@@ -38,6 +39,8 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
 
 /** Zod schema for API response: root org (full info) with sub-orgs (basic info) */
 export const OrgWithSubOrgsSchema = sanitizedOrganizationSchema.extend({
+  // derived from the active SAML/OIDC config, not a column
+  orgAuthMethod: z.string(),
   userJoinedAt: z.date().optional().nullable(),
   subOrganizations: OrganizationsSchema.pick({
     id: true,

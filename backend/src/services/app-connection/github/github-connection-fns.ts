@@ -13,7 +13,7 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -198,12 +198,18 @@ export const requestWithGitHubGateway = async <T>(
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
-  // If gateway isn't set up, don't proxy request
-  if (!gatewayId) {
-    return httpRequest.request(requestConfig);
+  if (!requestConfig.url) {
+    throw new BadRequestError({ message: "GitHub connection request is missing a target URL" });
   }
 
-  const url = new URL(requestConfig.url as string);
+  // If no gateway is configured, issue the request directly through safeRequest, which validates
+  // the target host (including server-provided pagination URLs), pins the connection to the
+  // validated IPs, and disables redirect following.
+  if (!gatewayId) {
+    return safeRequest.request<T>({ ...requestConfig, url: requestConfig.url });
+  }
+
+  const url = new URL(requestConfig.url);
 
   await blockLocalAndPrivateIpAddresses(url.toString());
 

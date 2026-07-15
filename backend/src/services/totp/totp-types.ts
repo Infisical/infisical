@@ -16,15 +16,6 @@ export type TVerifyUserTotpDTO = {
   totp: string;
 };
 
-export type TVerifyWithUserRecoveryCodeDTO = {
-  userId: string;
-  recoveryCode: string;
-};
-
 export type TDeleteUserTotpConfigDTO = {
-  userId: string;
-};
-
-export type TCreateUserTotpRecoveryCodesDTO = {
   userId: string;
 };

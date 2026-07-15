@@ -1,0 +1,91 @@
+---
+title: "Agent Injector"
+sidebarTitle: "Agent Injector"
+description: "Deploy the Infisical Agent Injector on Kubernetes using the official Helm chart."
+---
+
+The Infisical Agent Injector automatically injects [Infisical Agent](/integrations/platforms/infisical-agent) sidecar or init containers into your Kubernetes pods via a mutating admission webhook. Pods with the `org.infisical.com/inject: "true"` annotation are patched to include an agent that fetches secrets from Infisical and renders them into a shared volume.
+
+For usage details including annotations reference, injection modes, and agent configuration, see the [Agent Injector documentation](/integrations/platforms/kubernetes-injector).
+
+## Installation
+
+<Steps>
+  <Step title="Add the Helm repository">
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm repo update
+    ```
+  </Step>
+
+  <Step title="Install the chart">
+    ```bash
+    helm install infisical-agent-injector infisical-helm-charts/infisical-agent-injector \
+      --namespace infisical \
+      --create-namespace
+    ```
+  </Step>
+
+  <Step title="Verify the deployment">
+    ```bash
+    kubectl get pods -n infisical
+    kubectl logs -n infisical deployment/infisical-agent-injector
+    ```
+  </Step>
+</Steps>
+
+## Uninstall
+
+```bash
+helm uninstall infisical-agent-injector --namespace infisical
+```
+
+## Configuration Reference
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `replicaCount` | `1` | Number of injector replicas. |
+| `image.repository` | `infisical/infisical-agent-injector` | Container image. |
+| `image.tag` | `v0.1.12` | Image tag. |
+| `failurePolicy` | `Ignore` | Webhook failure policy. `Ignore` means pods still deploy if the webhook is unavailable. |
+| `resources.requests.cpu` | `100m` | CPU request. |
+| `resources.requests.memory` | `128Mi` | Memory request. |
+| `resources.limits.cpu` | `200m` | CPU limit. |
+| `resources.limits.memory` | `256Mi` | Memory limit. |
+
+## Default Helm Values
+
+```yaml
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+failurePolicy: Ignore
+
+image:
+  repository: infisical/infisical-agent-injector
+  tag: v0.1.12
+
+livenessProbe:
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 2
+  successThreshold: 1
+  timeoutSeconds: 5
+
+readinessProbe:
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 2
+  successThreshold: 1
+  timeoutSeconds: 5
+
+# nodeSelector:
+  # kubernetes.io/os: windows
+```

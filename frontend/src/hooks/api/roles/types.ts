@@ -5,7 +5,9 @@ export enum ProjectMembershipRole {
   Viewer = "viewer",
   NoAccess = "no-access",
   SshHostBootstrapper = "ssh-host-bootstrapper",
-  KmsCryptographicOperator = "cryptographic-operator"
+  KmsCryptographicOperator = "cryptographic-operator",
+  Agent = "agent",
+  AgentProxy = "agent-proxy"
 }
 
 export type TGetProjectRolesDTO = {

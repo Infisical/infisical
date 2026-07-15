@@ -1,0 +1,800 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Controller,
+  useFieldArray,
+  useForm,
+  UseFormReturn,
+  useFormState,
+  useWatch
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  BanIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  EyeIcon,
+  FingerprintIcon,
+  FolderIcon,
+  HexagonIcon,
+  ImportIcon,
+  KeyIcon,
+  KeyRoundIcon,
+  type LucideIcon,
+  PencilIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  RotateCcwIcon,
+  TimerIcon,
+  Trash2Icon,
+  XIcon
+} from "lucide-react";
+import ms from "ms";
+import { z } from "zod";
+
+import { TtlFormLabel } from "@app/components/features";
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub,
+  useProject,
+  useSubscription
+} from "@app/context";
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSecretRotationActions
+} from "@app/context/ProjectPermissionContext/types";
+import { useCreateAccessRequest } from "@app/hooks/api";
+import { TAccessApprovalPolicy } from "@app/hooks/api/types";
+
+import { getAccessDurationLabel, parseAccessDurationMs } from "../AccessApprovalRequest.utils";
+
+const INVALID_DURATION_MESSAGE = "Invalid duration. Use formats like 30m, 2h, 1d.";
+const policyMaxDurationMessage = (maxTimePeriod: string) =>
+  `Requested access duration is limited to ${maxTimePeriod} by policy`;
+
+type TResourceAction = {
+  value: string;
+  label: string;
+  description: string;
+  Icon: LucideIcon;
+};
+
+type TResourceConfig = {
+  subject: ProjectPermissionSub;
+  label: string;
+  Icon: LucideIcon;
+  // Tailwind extracts classes statically, so every tint must be a full literal string
+  iconTileClassName: string;
+  actions: TResourceAction[];
+};
+
+const RESOURCE_CONFIGS: TResourceConfig[] = [
+  {
+    subject: ProjectPermissionSub.Secrets,
+    label: "Secrets",
+    Icon: KeyIcon,
+    iconTileClassName: "border-accent/10 bg-accent/15 text-accent",
+    actions: [
+      {
+        value: ProjectPermissionActions.Read,
+        label: "View",
+        description: "Read secret values",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionActions.Create,
+        label: "Create",
+        description: "Create new secrets",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionActions.Edit,
+        label: "Modify",
+        description: "Update existing secrets",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionActions.Delete,
+        label: "Delete",
+        description: "Delete existing secrets",
+        Icon: Trash2Icon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.SecretFolders,
+    label: "Folders",
+    Icon: FolderIcon,
+    iconTileClassName: "border-folder/10 bg-folder/15 text-folder",
+    actions: [
+      {
+        value: ProjectPermissionActions.Create,
+        label: "Create",
+        description: "Create new folders to organize secrets",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionActions.Edit,
+        label: "Modify",
+        description: "Rename or modify folder properties",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionActions.Delete,
+        label: "Delete",
+        description: "Delete folders and their contents",
+        Icon: Trash2Icon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.DynamicSecrets,
+    label: "Dynamic Secrets",
+    Icon: FingerprintIcon,
+    iconTileClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret",
+    actions: [
+      {
+        value: ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        label: "View",
+        description: "View the root credentials used for dynamic secret generation",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.CreateRootCredential,
+        label: "Create",
+        description: "Configure new root credentials for dynamic secrets",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.EditRootCredential,
+        label: "Modify",
+        description: "Update existing root credentials configuration",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+        label: "Delete",
+        description: "Delete root credentials configuration",
+        Icon: Trash2Icon
+      },
+      {
+        value: ProjectPermissionDynamicSecretActions.Lease,
+        label: "Lease",
+        description: "Create and revoke dynamic secret leases",
+        Icon: TimerIcon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.SecretRotation,
+    label: "Secret Rotation",
+    Icon: RefreshCwIcon,
+    iconTileClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation",
+    actions: [
+      {
+        value: ProjectPermissionSecretRotationActions.Read,
+        label: "View",
+        description: "View secret rotation configurations",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+        label: "Read Credentials",
+        description: "Access rotated credential values",
+        Icon: KeyRoundIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.Create,
+        label: "Create",
+        description: "Create new secret rotation configuration",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.Edit,
+        label: "Modify",
+        description: "Update rotation configuration",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.Delete,
+        label: "Delete",
+        description: "Delete rotation configurations",
+        Icon: Trash2Icon
+      },
+      {
+        value: ProjectPermissionSecretRotationActions.RotateSecrets,
+        label: "Rotate",
+        description: "Manually trigger secret rotation",
+        Icon: RefreshCwIcon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.SecretImports,
+    label: "Secret Imports",
+    Icon: ImportIcon,
+    iconTileClassName: "border-import/10 bg-import/15 text-import",
+    actions: [
+      {
+        value: ProjectPermissionActions.Read,
+        label: "View",
+        description: "View imported secrets from other projects",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionActions.Create,
+        label: "Create",
+        description: "Set up new secret imports",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionActions.Edit,
+        label: "Modify",
+        description: "Change import configuration",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionActions.Delete,
+        label: "Delete",
+        description: "Remove secret imports",
+        Icon: Trash2Icon
+      }
+    ]
+  },
+  {
+    subject: ProjectPermissionSub.HoneyTokens,
+    label: "Honey Tokens",
+    Icon: HexagonIcon,
+    iconTileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
+    actions: [
+      {
+        value: ProjectPermissionHoneyTokenActions.Read,
+        label: "View",
+        description: "View honey tokens and events",
+        Icon: EyeIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.ReadCredentials,
+        label: "Read Credentials",
+        description: "Reveal honey token credentials",
+        Icon: KeyRoundIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Create,
+        label: "Create",
+        description: "Create honey tokens",
+        Icon: PlusIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Edit,
+        label: "Modify",
+        description: "Update honey token metadata and mappings",
+        Icon: PencilIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Reset,
+        label: "Reset",
+        description: "Reset triggered honey tokens",
+        Icon: RotateCcwIcon
+      },
+      {
+        value: ProjectPermissionHoneyTokenActions.Revoke,
+        label: "Revoke",
+        description: "Revoke honey tokens and credentials",
+        Icon: BanIcon
+      }
+    ]
+  }
+];
+
+const requestAccessSchema = z.object({
+  environmentSlug: z.string().min(1),
+  secretPath: z.string().min(1, "Please select a secret path"),
+  resources: z
+    .object({
+      subject: z.nativeEnum(ProjectPermissionSub),
+      actions: z.string().array()
+    })
+    .array()
+    .refine((resources) => resources.some((resource) => resource.actions.length > 0), {
+      message: "Select at least one permission"
+    }),
+  duration: z
+    .object({
+      isTemporary: z.boolean(),
+      temporaryRange: z.string().optional()
+    })
+    .superRefine((val, ctx) => {
+      if (!val.isTemporary) return;
+      if (!parseAccessDurationMs(val.temporaryRange)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["temporaryRange"],
+          message: INVALID_DURATION_MESSAGE
+        });
+      }
+    }),
+  note: z.string().max(255).optional()
+});
+
+type TRequestAccessForm = z.infer<typeof requestAccessSchema>;
+
+// Self-contained so keystrokes in the Validity input only re-render this field,
+// not the whole form (resource cards, selects, note) above it.
+const DurationField = ({
+  form,
+  matchedPolicy,
+  maxDurationMs
+}: {
+  form: UseFormReturn<TRequestAccessForm>;
+  matchedPolicy?: TAccessApprovalPolicy;
+  maxDurationMs: number | null;
+}) => {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const duration = useWatch({ control: form.control, name: "duration" });
+  const { errors } = useFormState({ control: form.control, name: "duration" });
+
+  const handleGrantTemporaryAccess = () => {
+    const rangeMs = parseAccessDurationMs(form.getValues("duration.temporaryRange"));
+    if (!rangeMs) {
+      form.setError(
+        "duration.temporaryRange",
+        { type: "custom", message: INVALID_DURATION_MESSAGE },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    if (maxDurationMs && matchedPolicy?.maxTimePeriod && rangeMs > maxDurationMs) {
+      form.setError(
+        "duration.temporaryRange",
+        { type: "custom", message: policyMaxDurationMessage(matchedPolicy.maxTimePeriod) },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    form.clearErrors("duration.temporaryRange");
+    form.setValue("duration.isTemporary", true, { shouldDirty: true });
+    setIsPopoverOpen(false);
+  };
+
+  const handleCancelTemporaryAccess = () => {
+    form.clearErrors("duration.temporaryRange");
+    form.setValue("duration.isTemporary", false, { shouldDirty: true });
+    setIsPopoverOpen(false);
+  };
+
+  return (
+    <Field>
+      <FieldLabel>Duration</FieldLabel>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-full justify-between">
+            <span className="flex items-center gap-2">
+              {duration.isTemporary && <ClockIcon className="size-3.5" />}
+              {getAccessDurationLabel(duration.isTemporary, duration.temporaryRange)}
+            </span>
+            <ChevronDownIcon className="size-3.5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="flex flex-col gap-4">
+          <div className="text-sm text-foreground">Configure timed access</div>
+          <Controller
+            control={form.control}
+            name="duration.temporaryRange"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="temporaryRange">
+                  <TtlFormLabel label="Validity" />
+                </FieldLabel>
+                <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <div className="flex items-center gap-2">
+            <Button size="xs" variant="project" onClick={handleGrantTemporaryAccess}>
+              Grant
+            </Button>
+            {duration.isTemporary && !maxDurationMs && (
+              <Button size="xs" variant="danger" onClick={handleCancelTemporaryAccess}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+      {!isPopoverOpen && <FieldError errors={[errors.duration?.temporaryRange]} />}
+      {matchedPolicy?.maxTimePeriod && (
+        <FieldDescription>
+          Maximum duration allowed by policy: {matchedPolicy.maxTimePeriod}
+        </FieldDescription>
+      )}
+    </Field>
+  );
+};
+
+export const RequestAccessForm = ({
+  policies,
+  onClose,
+  onSuccess,
+  onDirtyChange,
+  selectedActions = [],
+  secretPath: initialSecretPath
+}: {
+  policies: TAccessApprovalPolicy[];
+  selectedActions?: ProjectPermissionActions[];
+  secretPath?: string;
+  onClose?: () => void;
+  onSuccess?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+}) => {
+  const { currentProject } = useProject();
+  const { subscription } = useSubscription();
+  const requestAccess = useCreateAccessRequest();
+
+  const form = useForm<TRequestAccessForm>({
+    resolver: zodResolver(requestAccessSchema),
+    defaultValues: {
+      environmentSlug: currentProject.environments?.[0]?.slug,
+      secretPath: initialSecretPath ?? "",
+      resources: [{ subject: ProjectPermissionSub.Secrets, actions: selectedActions }],
+      duration: { isTemporary: false, temporaryRange: "1h" },
+      note: ""
+    }
+  });
+
+  useEffect(() => {
+    onDirtyChange?.(form.formState.isDirty);
+  }, [form.formState.isDirty, onDirtyChange]);
+
+  const {
+    fields: resourceFields,
+    append: appendResource,
+    remove: removeResource
+  } = useFieldArray({ control: form.control, name: "resources" });
+
+  const selectedEnvironment = form.watch("environmentSlug");
+  const secretPath = form.watch("secretPath");
+  const resources = form.watch("resources");
+
+  const selectablePaths = useMemo(
+    () =>
+      policies
+        .filter((policy) => policy.environments.some((env) => env.slug === selectedEnvironment))
+        .map((policy) => policy.secretPath),
+    [policies, selectedEnvironment]
+  );
+
+  const matchedPolicy = useMemo(
+    () =>
+      policies.find(
+        (policy) =>
+          policy.environments.some((env) => env.slug === selectedEnvironment) &&
+          policy.secretPath === secretPath
+      ),
+    [policies, selectedEnvironment, secretPath]
+  );
+
+  const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
+
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    form.setValue("secretPath", "", { shouldValidate: form.formState.isSubmitted });
+  }, [selectedEnvironment]);
+
+  // policies with a max time period forbid permanent access and cap the range
+  useEffect(() => {
+    if (!maxDurationMs || !matchedPolicy?.maxTimePeriod) return;
+    const { isTemporary, temporaryRange } = form.getValues("duration");
+    const rangeMs = parseAccessDurationMs(temporaryRange);
+    if (isTemporary && rangeMs && rangeMs <= maxDurationMs) return;
+    form.setValue(
+      "duration",
+      { isTemporary: true, temporaryRange: matchedPolicy.maxTimePeriod },
+      { shouldValidate: true }
+    );
+  }, [matchedPolicy]);
+
+  const addedSubjects = new Set(resources.map((resource) => resource.subject));
+  const availableResources = RESOURCE_CONFIGS.filter(
+    (config) =>
+      !addedSubjects.has(config.subject) &&
+      (config.subject !== ProjectPermissionSub.HoneyTokens || subscription?.honeyTokens)
+  );
+
+  // The "select at least one permission" refine reports on the resources array itself,
+  // which per-field revalidation never reaches, so it's cleared manually in toggleAction.
+  const resourcesFieldError = form.formState.errors.resources;
+  const resourcesError = resourcesFieldError?.root ?? resourcesFieldError;
+
+  const toggleAction = (index: number, actionValue: string) => {
+    const current = form.getValues(`resources.${index}.actions`);
+    const next = current.includes(actionValue)
+      ? current.filter((value) => value !== actionValue)
+      : [...current, actionValue];
+    form.setValue(`resources.${index}.actions`, next, { shouldDirty: true });
+    if (form.getValues("resources").some((resource) => resource.actions.length > 0)) {
+      form.clearErrors("resources");
+    }
+  };
+
+  const handleRequestAccess = async (data: TRequestAccessForm) => {
+    if (!currentProject) {
+      createNotification({
+        type: "error",
+        text: "No workspace found.",
+        title: "Error"
+      });
+      return;
+    }
+
+    const { isTemporary, temporaryRange } = data.duration;
+
+    if (
+      matchedPolicy?.maxTimePeriod &&
+      (!isTemporary || !temporaryRange || ms(temporaryRange) > ms(matchedPolicy.maxTimePeriod))
+    ) {
+      createNotification({
+        type: "error",
+        text: policyMaxDurationMessage(matchedPolicy.maxTimePeriod),
+        title: "Error"
+      });
+      return;
+    }
+
+    const conditions = {
+      environment: data.environmentSlug,
+      secretPath: { $glob: data.secretPath }
+    };
+    const permissions = data.resources.flatMap(({ subject, actions }) =>
+      actions.map((action) => ({ action, subject: [subject], conditions }))
+    );
+
+    await requestAccess.mutateAsync({
+      projectSlug: currentProject.slug,
+      isTemporary,
+      ...(isTemporary && temporaryRange && { temporaryRange }),
+      permissions,
+      note: data.note || undefined
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully requested access"
+    });
+    form.reset();
+    onSuccess?.();
+  };
+
+  return (
+    <form
+      onSubmit={form.handleSubmit(handleRequestAccess)}
+      className="flex flex-1 flex-col gap-4 overflow-hidden"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Controller
+            control={form.control}
+            name="environmentSlug"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="environmentSlug" className="w-full">
+                    <SelectValue placeholder="Select an environment" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {currentProject?.environments?.map(({ slug, id, name }) => (
+                      <SelectItem value={slug} key={id}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+          />
+          <Controller
+            control={form.control}
+            name="secretPath"
+            render={({ field, fieldState: { error } }) => {
+              const secretPathField = (
+                <Field>
+                  <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    disabled={!selectablePaths.length}
+                  >
+                    <SelectTrigger id="secretPath" className="w-full" isError={Boolean(error)}>
+                      <SelectValue placeholder="Select a secret path" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {selectablePaths.map((path) => (
+                        <SelectItem value={path} key={path}>
+                          {path}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={[error]} />
+                </Field>
+              );
+
+              if (selectablePaths.length) return secretPathField;
+
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="w-full">{secretPathField}</div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    The selected environment doesn&apos;t have any policies.
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }}
+          />
+        </div>
+        <Field>
+          <FieldLabel>Resources & Permissions</FieldLabel>
+          {resourceFields.map((resourceField, index) => {
+            const config = RESOURCE_CONFIGS.find((c) => c.subject === resourceField.subject);
+            if (!config) return null;
+            const selectedValues = resources[index]?.actions ?? [];
+
+            return (
+              <div
+                key={resourceField.id}
+                className="overflow-hidden rounded-lg border border-border bg-card"
+              >
+                <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                  <div
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-md border",
+                      config.iconTileClassName
+                    )}
+                  >
+                    <config.Icon className="size-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{config.label}</span>
+                  <IconButton
+                    size="xs"
+                    variant="ghost-muted"
+                    className="ml-auto"
+                    aria-label={`Remove ${config.label}`}
+                    onClick={() => removeResource(index)}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+                <div className="flex flex-wrap gap-2 p-3">
+                  {config.actions.map((action) => {
+                    const isSelected = selectedValues.includes(action.value);
+
+                    return (
+                      <Tooltip key={action.value}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="xs"
+                            variant={isSelected ? "project" : "outline"}
+                            aria-pressed={isSelected}
+                            onClick={() => toggleAction(index, action.value)}
+                            className={cn(
+                              "rounded-md",
+                              !isSelected && "text-muted hover:text-foreground"
+                            )}
+                          >
+                            <action.Icon />
+                            {action.label}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{action.description}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {availableResources.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  isFullWidth
+                  className="border-dashed text-label hover:text-foreground"
+                >
+                  <PlusIcon />
+                  Add resource type
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-(--radix-dropdown-menu-trigger-width)"
+              >
+                {availableResources.map((config) => (
+                  <DropdownMenuItem
+                    key={config.subject}
+                    onSelect={() => appendResource({ subject: config.subject, actions: [] })}
+                  >
+                    <div
+                      className={cn(
+                        "flex size-6 items-center justify-center rounded-sm border",
+                        config.iconTileClassName
+                      )}
+                    >
+                      <config.Icon className="size-3.5" />
+                    </div>
+                    {config.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <FieldError errors={[resourcesError]} />
+        </Field>
+        <DurationField form={form} matchedPolicy={matchedPolicy} maxDurationMs={maxDurationMs} />
+        <Controller
+          control={form.control}
+          name="note"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel htmlFor="note">Note</FieldLabel>
+              <TextArea
+                id="note"
+                {...field}
+                maxLength={255}
+                placeholder="Add the reason for this access request..."
+              />
+            </Field>
+          )}
+        />
+      </div>
+      <SheetFooter className="border-t">
+        <Button
+          type="submit"
+          variant="project"
+          isPending={form.formState.isSubmitting || requestAccess.isPending}
+        >
+          Request Access
+        </Button>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+      </SheetFooter>
+    </form>
+  );
+};

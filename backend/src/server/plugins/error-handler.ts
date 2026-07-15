@@ -173,8 +173,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         "http.route": route ?? "unknown",
         "error.type": classifyError(error)
       };
-      if (orgId) coreAttrs["infisical.organization.id"] = orgId;
-      if (projectDetails?.id) coreAttrs["infisical.project.id"] = projectDetails.id;
       coreHttpErrorCounter.add(1, coreAttrs);
     }
 

@@ -1,8 +1,17 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { CircleHelp } from "lucide-react";
+import { AlertTriangleIcon, CircleHelp } from "lucide-react";
 
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -31,7 +40,9 @@ import { InitialSyncAlerts } from "../SecretSyncInitialSyncBehaviorFields";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
 import { AzureKeyVaultSyncOptionsFields } from "./AzureKeyVaultSyncOptionsFields";
+import { CloudflareWorkersSyncOptionsFields } from "./CloudflareWorkersSyncOptionsFields";
 import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
+import { QoverySyncOptionsFields } from "./QoverySyncOptionsFields";
 import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
 import { SecretSyncKeySchemaField } from "./SecretSyncKeySchemaField";
 import { TriggerDevSyncOptionsFields } from "./TriggerDevSyncOptionsFields";
@@ -42,6 +53,7 @@ type Props = {
 };
 
 export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) => {
+  const [showDisableDeletionConfirm, setShowDisableDeletionConfirm] = useState(false);
   const { control, watch, setValue } = useFormContext<TSecretSyncForm>();
 
   const destination = watch("destination");
@@ -95,6 +107,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.TriggerDev:
       AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsFields />;
       break;
+    case SecretSync.Qovery:
+      AdditionalSyncOptionsFieldsComponent = <QoverySyncOptionsFields />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureAppConfiguration:
@@ -111,8 +126,10 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.OCIVault:
     case SecretSync.Heroku:
     case SecretSync.GitLab:
-    case SecretSync.CloudflarePages:
     case SecretSync.CloudflareWorkers:
+      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
+      break;
+    case SecretSync.CloudflarePages:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Checkly:
@@ -132,6 +149,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Ona:
     case SecretSync.TravisCI:
     case SecretSync.Snowflake:
+    case SecretSync.Rundeck:
+    case SecretSync.HasuraCloud:
+    case SecretSync.Cloud66:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
@@ -222,10 +242,40 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                   id="disable-secret-deletion"
                   variant="project"
                   checked={value}
-                  onCheckedChange={onChange}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      onChange(true);
+                    } else {
+                      setShowDisableDeletionConfirm(true);
+                    }
+                  }}
                 />
               </Field>
               <FieldError errors={[error]} />
+              <AlertDialog
+                open={showDisableDeletionConfirm}
+                onOpenChange={setShowDisableDeletionConfirm}
+              >
+                <AlertDialogContent className="sm:max-w-lg!">
+                  <AlertDialogHeader>
+                    <AlertDialogMedia>
+                      <AlertTriangleIcon className="text-warning" />
+                    </AlertDialogMedia>
+                    <AlertDialogTitle>Disable Secret Deletion Protection</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to disable secret deletion protection? This can lead to
+                      secrets being deleted from {destinationName} if they are not managed by
+                      Infisical.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep it enabled</AlertDialogCancel>
+                    <AlertDialogAction variant="project" onClick={() => onChange(false)}>
+                      Disable
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </Field>
           )}
         />

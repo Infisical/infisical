@@ -8,7 +8,7 @@ import {
   FileText,
   HardDrive,
   IdCardLanyard,
-  Key,
+  Layers,
   Lock,
   MapPin,
   Plug,
@@ -16,9 +16,9 @@ import {
   Search,
   Server,
   Shield,
+  Tag,
   User,
   Users,
-  Video,
   Webhook
 } from "lucide-react";
 
@@ -67,7 +67,9 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
   defaultTab: "tab-project-general",
   items: [
     { label: "General", icon: Cog, tab: "tab-project-general" },
-    { label: "Secrets Management", icon: FileKey, tab: "tab-secret-general" },
+    { label: "Environments", icon: Layers, tab: "tab-secret-environments" },
+    { label: "Tags", icon: Tag, tab: "tab-secret-tags" },
+    { label: "Policies", icon: Shield, tab: "tab-secret-policies" },
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
     { label: "Webhooks", icon: Webhook, tab: "tab-project-webhooks" }
@@ -127,29 +129,6 @@ export const SECRET_SCANNING_SETTINGS_SUBMENU: Submenu = {
   items: [
     { label: "General", icon: Cog, tab: "general" },
     { label: "Scanning Settings", icon: ScanSearch, tab: "scanning-settings" }
-  ]
-};
-
-// --- PAM submenus ---
-
-export const PAM_APPROVALS_SUBMENU: Submenu = {
-  title: "Approvals",
-  pathSuffix: "approvals",
-  defaultTab: "requests",
-  items: [
-    { label: "Requests", icon: FileCheck, tab: "requests" },
-    { label: "Policies", icon: Shield, tab: "policies" },
-    { label: "Grants", icon: Key, tab: "grants" }
-  ]
-};
-
-export const PAM_SETTINGS_SUBMENU: Submenu = {
-  title: "Settings",
-  pathSuffix: "settings",
-  defaultTab: "tab-project-general",
-  items: [
-    { label: "General", icon: Cog, tab: "tab-project-general" },
-    { label: "Session Recording", icon: Video, tab: "tab-pam-session-recording" }
   ]
 };
 

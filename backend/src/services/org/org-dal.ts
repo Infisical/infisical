@@ -255,10 +255,31 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(`${TableName.Membership}.actorUserId`, db.raw("?", [dto.actorId]));
         })
         .whereNull(`${TableName.Organization}.rootOrgId`)
+        .leftJoin(TableName.SamlConfig, (qb) => {
+          qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.SamlConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .leftJoin(TableName.OidcConfig, (qb) => {
+          qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.OidcConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
         .select(
           selectAllTableCols(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
-        )) as (TOrganizations & { userJoinedAt: Date | null })[];
+          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.raw(`
+            CASE
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN 'oidc'
+              ELSE ''
+            END as "orgAuthMethod"
+        `)
+        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null })[];
 
       if (rootOrgs.length === 0) return [];
 

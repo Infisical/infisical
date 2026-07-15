@@ -5,6 +5,7 @@ description: "How to use Infisical to inject, push, and manage secrets within Ku
 ---
 
 import KubernetesOperatorTemplating from "/snippets/kubernetes-operator-v1beta1-templating.mdx";
+import KubernetesOperatorInstall from "/snippets/kubernetes-operator-install.mdx";
 
 The Infisical Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Infisical and your Kubernetes cluster.
 It provides multiple Custom Resource Definitions (CRDs) which enable you to:
@@ -65,137 +66,11 @@ The short video below walks through how the Infisical Operator syncs secrets int
   </Tab>
 </Tabs>
 
-## Install 
+## Install
 
-The operator can be installed via [Helm](https://helm.sh). Helm is a package manager for Kubernetes that allows you to define, install, and upgrade Kubernetes applications.
+The operator is installed via [Helm](/self-hosting/helm-charts/secrets-operator).
 
-**Install the latest Helm repository**
-```bash
-helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
-```
-
-```bash  
-helm repo update
-```
-
-The operator can be installed either cluster-wide or restricted to a specific namespace. 
-If you require stronger isolation and stricter access controls, a namespace-scoped installation may make more sense.
-
-<Tabs>
-  <Tab title="Cluster Wide Installation">
-    When installing the operator cluster-wide, the operator will watch and manage CRDs across all namespaces in the cluster.
-    This is the default installation method and the quickest way to get started with using the operator. Cluster-wide installations are useful for:
-    - **Simplified Management**: A single operator instance manages secrets across all namespaces
-    - **Centralized Operations**: One deployment to monitor, update, and maintain
-    - **Cross-Namespace Flexibility**: Easily manage secrets for applications spanning multiple namespaces
-    - **Quick Setup**: Works out of the box with no additional RBAC configuration required
-
-    ```bash
-    helm install --generate-name infisical-helm-charts/secrets-operator
-    ```
-  </Tab>
-  <Tab title="Namespace Scoped Installation">
-    The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access. This is useful for:
-
-    - **Enhanced Security**: Limit the operator's permissions to only specific namespaces instead of cluster-wide access
-    - **Multi-tenant Clusters**: Run separate operator instances for different teams or applications
-    - **Resource Isolation**: Ensure operators in different namespaces don't interfere with each other
-    - **Development & Testing**: Run development and production operators side by side in isolated namespaces
-
-    <Note>
-      For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts as CRDs are cluster-wide resources.
-    </Note>
-
-    ### Single Namespace
-    ```bash
-    # First namespace installation (with CRDs)
-    helm install operator-namespaced infisical-helm-charts/secrets-operator \
-      --namespace single-namespace \
-      --set scopedNamespaces=single-namespace \
-      --set scopedRBAC=true
-    ```
-
-    <Accordion title="Using values.yaml file">
-    ```yaml values-operator1.yaml
-      scopedNamespaces: single-namespace
-      scopedRBAC: true
-      installCRDs: true
-    ```
-    </Accordion>
-
-
-    ### Multiple Namespaces
-    ```bash
-     helm install operator-1 infisical-helm-charts/secrets-operator \
-      --namespace ns1 \
-      --set scopedNamespaces=ns1 \
-      --set scopedRBAC=true \
-      --set installCRDs=true # Only install CRDs once in the cluster (default is true)
-
-    helm install operator-namespace2 infisical-helm-charts/secrets-operator \
-      --namespace ns2 \
-      --set scopedNamespaces=ns2 \
-      --set scopedRBAC=true \
-      --set installCRDs=false # Do not install CRDs in subsequent namespace installations
-    ```
-
-    <Accordion title="Using values.yaml file">
-    ```yaml values-operator1.yaml
-      scopedNamespaces: ns1
-      scopedRBAC: true
-      installCRDs: false
-    ```
-
-    ```yaml values-operator2.yaml
-      scopedNamespaces: ns2
-      scopedRBAC: true
-      installCRDs: false
-    ```
-    </Accordion>
-
-
-    ### Multiple namespaces with one operator installation
-    ```bash
-      helm install operator infisical-helm-charts/secrets-operator \
-      --namespace operator-namespace \
-      --set "scopedNamespaces={ns1,ns2,ns3}" \
-      --set scopedRBAC=true
-    ```
-    <Accordion title="Using values.yaml file">
-    ```yaml values.yaml
-      scopedNamespaces:
-        - ns1
-        - ns2
-        - ns3
-      scopedRBAC: true
-    ```
-
-    </Accordion>
-
-  </Tab>
-</Tabs>
-
-### Using your own service account
-By default a service account is created for the operator based on the operator release name.
-You can bring your own service account by setting `controllerManager.serviceAccount.create` to `false` and setting `controllerManager.serviceAccount.name` to the name of the service account you want to use in your values.yaml file.
-
-Example values.yaml file:
-
-```yaml values.yaml
-controllerManager:
-  serviceAccount:
-    create: false
-    name: my-service-account
-# other values...
-```
-
-<Note>
-  Please note that if you set `controllerManager.serviceAccount.create` to `false`, the service account needs to already exist in the namespace you are installing the operator in.
-</Note>
-
-<Tip>
-  Custom service accounts are supported in chart version `0.10.11` and above. Please upgrade your helm chart to `0.10.11` or above before attempting to use custom service accounts.
-</Tip>
+<KubernetesOperatorInstall />
 
 ## Custom Resource Definitions
 

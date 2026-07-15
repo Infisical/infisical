@@ -19,6 +19,7 @@ export type TPkiSync = {
   syncOptions: Record<string, unknown>;
   projectId: string;
   applicationId?: string | null;
+  applicationName?: string | null;
   subscriberId?: string;
   connectionId: string;
   createdAt: Date;
@@ -65,10 +66,12 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     name: string;
     app: string;
     credentials: Record<string, unknown>;
+    method?: string;
     orgId: string;
     gatewayId?: string;
     gatewayPoolId?: string | null;
   };
+  syncCredentials?: { exportPassword?: string };
 };
 
 export type TPkiSyncListItem = TPkiSync & {
@@ -90,6 +93,19 @@ export type TCertificateMap = Record<
   }
 >;
 
+export type TPkiSyncSyncResult = {
+  uploaded: number;
+  removed?: number;
+  failedRemovals?: number;
+  skipped: number;
+  details?: {
+    failedUploads?: Array<{ name: string; error: string }>;
+    failedRemovals?: Array<{ name: string; error: string }>;
+    skippedCertificates?: Array<{ name: string; reason: string }>;
+    validationErrors?: Array<{ name: string; error: string }>;
+  };
+};
+
 export type TCreatePkiSyncDTO = {
   name: string;
   description?: string;
@@ -102,6 +118,7 @@ export type TCreatePkiSyncDTO = {
   projectId: string;
   applicationId?: string;
   certificateIds?: string[];
+  credentials?: { exportPassword?: string };
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
 };
@@ -118,6 +135,7 @@ export type TUpdatePkiSyncDTO = {
   subscriberId?: string | null;
   connectionId?: string;
   certificateIds?: string[];
+  credentials?: { exportPassword?: string };
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
 };
@@ -210,6 +228,7 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  externalIdentifier?: string;
   syncMetadata?: TSyncMetadata;
 };
 
@@ -230,6 +249,7 @@ export type TQueuePkiSyncRemoveCertificatesByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
   deleteSyncOnComplete?: boolean;
+  certificateIds?: string[];
 };
 
 export type TPkiSyncSyncCertificatesDTO = Job<

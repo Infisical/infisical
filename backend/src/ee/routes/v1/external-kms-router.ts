@@ -3,10 +3,10 @@ import { z } from "zod";
 import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
   ExternalKmsInputSchema,
-  ExternalKmsInputUpdateSchema
+  ExternalKmsInputUpdateSchema,
+  SanitizedExternalKmsAwsSchema
 } from "@app/ee/services/external-kms/providers/model";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -45,8 +45,11 @@ const sanitizedExternalSchemaForGetById = KmsKeysSchema.extend({
     statusDetails: true,
     provider: true
   }).extend({
-    // for GCP, we don't return the credential object as it is sensitive data that should not be exposed
-    providerInput: z.union([ExternalKmsAwsSchema, ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })])
+    // neither provider returns sensitive credential material in read responses: AWS via the sanitized schema (access key only, no secret key), GCP via the picked fields only
+    providerInput: z.union([
+      SanitizedExternalKmsAwsSchema,
+      ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })
+    ])
   })
 });
 

@@ -220,9 +220,9 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     await queue.handleUsageEvent(ORG_ID, MaxIdentities.key);
 
     expect(reportSnapshots).toHaveBeenCalledTimes(1);
-    const [snapshots] = reportSnapshots.mock.calls[0] as unknown as [TUsageSnapshot[]];
+    const [orgId, snapshots] = reportSnapshots.mock.calls[0] as unknown as [string, TUsageSnapshot[]];
+    expect(orgId).toBe(ORG_ID);
     expect(snapshots[0]).toMatchObject({
-      org_id: ORG_ID,
       feature_key: MaxIdentities.key,
       value: 42,
       source: "test-region"

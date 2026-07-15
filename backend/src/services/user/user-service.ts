@@ -14,12 +14,23 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "../auth/auth-type";
+import { getRequiredMfaMethod } from "../auth/auth-fns";
+import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
+import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { TWebAuthnCredentialDALFactory } from "../webauthn/webauthn-credential-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO, TVerifyCurrentEmailOTPDTO } from "./user-types";
+import {
+  TActivateUserMfaDTO,
+  TDeactivateUserMfaDTO,
+  TListUserGroupsDTO,
+  TSetSelectedMfaMethodDTO,
+  TUpdateUserEmailDTO,
+  TVerifyCurrentEmailOTPDTO
+} from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -44,6 +55,9 @@ type TUserServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
+  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -56,7 +70,10 @@ export const userServiceFactory = ({
   tokenService,
   smtpService,
   permissionService,
-  userAliasDAL
+  userAliasDAL,
+  totpConfigDAL,
+  webAuthnCredentialDAL,
+  mfaRecoveryCodeService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -95,25 +112,114 @@ export const userServiceFactory = ({
     });
   };
 
-  const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
-    const user = await userDAL.findById(userId);
-
-    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
-
-    let mfaMethods;
-    if (isMfaEnabled === undefined) {
-      mfaMethods = undefined;
-    } else {
-      mfaMethods = isMfaEnabled ? ["email"] : [];
+  // A method can only be selected/activated once the user has actually configured
+  // that factor. EMAIL uses the account email, so it needs no enrollment, but it
+  // delivers codes over SMTP — which self-hosted instances may not have configured.
+  const assertMfaMethodConfigured = async (userId: string, method: MfaMethod) => {
+    if (method === MfaMethod.EMAIL) {
+      if (!getConfig().isSmtpConfigured) {
+        throw new BadRequestError({
+          message: "Cannot use email two-factor authentication because SMTP is not configured for this instance"
+        });
+      }
+    } else if (method === MfaMethod.TOTP) {
+      const totpConfig = await totpConfigDAL.findOne({ userId, isVerified: true });
+      if (!totpConfig) {
+        throw new BadRequestError({
+          message: "Cannot select an authenticator app without a verified authenticator configured"
+        });
+      }
+    } else if (method === MfaMethod.WEBAUTHN) {
+      const credentials = await webAuthnCredentialDAL.find({ userId });
+      if (credentials.length === 0) {
+        throw new BadRequestError({
+          message: "Cannot select a passkey without a registered passkey"
+        });
+      }
     }
+  };
 
-    const updatedUser = await userDAL.updateById(userId, {
-      isMfaEnabled,
-      mfaMethods,
-      selectedMfaMethod
+  // Enables MFA for the account. Enabling always issues a fresh recovery-code pool
+  // (invalidating any prior codes) and returns it so the caller can surface the
+  // codes to the user once. EMAIL requires no prior enrollment, so this doubles as
+  // first-time setup; other methods must already be configured (asserted below).
+  const activateMfa = async ({ userId, selectedMfaMethod }: TActivateUserMfaDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user || !user.email || user.isMfaEnabled) throw new BadRequestError({ name: "Failed to enable MFA" });
+
+    const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+    await assertMfaMethodConfigured(userId, method);
+
+    const { recoveryCodes, updatedUser } = await userDAL.transaction(async (tx) => {
+      const codes = await mfaRecoveryCodeService.rotateRecoveryCodes({
+        userId,
+        skipMfaEnabledCheck: true,
+        tx
+      });
+
+      const updated = await userDAL.updateById(
+        userId,
+        {
+          isMfaEnabled: true,
+          selectedMfaMethod: method
+        },
+        tx
+      );
+
+      return { recoveryCodes: codes, updatedUser: updated };
+    });
+
+    return { user: updatedUser, recoveryCodes };
+  };
+
+  // MFA cannot be turned off while any organization the user belongs to enforces it,
+  // since doing so would lock them out of that org on the next login. This is the
+  // authoritative backend rule (the UI only greys out the button as a hint) and is
+  // enforced both up front in the disable route — so the user isn't put through a
+  // step-up challenge only to be rejected — and again here in deactivateMfa as the
+  // single source of truth that actually gates the state change.
+  const assertMfaDisableAllowed = async (userId: string) => {
+    const userOrgMemberships = await membershipUserDAL.find({
+      actorUserId: userId,
+      scope: AccessScope.Organization
+    });
+    if (!userOrgMemberships.length) return;
+
+    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
+    const organizations = await orgDAL.find({ $in: { id: orgIds } });
+    if (organizations.some((org) => org.enforceMfa)) {
+      throw new ForbiddenRequestError({
+        message: "Two-factor authentication is required by your organization and cannot be disabled"
+      });
+    }
+  };
+
+  // Disables MFA. Enrolled factors are preserved so re-enabling does not require
+  // re-enrollment, but the recovery-code pool is wiped so codes never outlive the
+  // enabled state; a fresh pool is issued on the next enable.
+  const deactivateMfa = async ({ userId }: TDeactivateUserMfaDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to disable MFA" });
+
+    await assertMfaDisableAllowed(userId);
+
+    const updatedUser = await userDAL.transaction(async (tx) => {
+      const updated = await userDAL.updateById(userId, { isMfaEnabled: false }, tx);
+      await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
+      return updated;
     });
 
     return updatedUser;
+  };
+
+  // Updates only the preferred challenge method among already-configured factors.
+  const setSelectedMfaMethod = async ({ userId, selectedMfaMethod }: TSetSelectedMfaMethodDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to update MFA method" });
+
+    await assertMfaMethodConfigured(userId, selectedMfaMethod);
+
+    return userDAL.updateById(userId, { selectedMfaMethod });
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
@@ -389,6 +495,19 @@ export const userServiceFactory = ({
     };
   };
 
+  // Resolves the MFA method a step-up challenge must use, from the current org
+  // context. Recovery codes bypass the org-required method at login, so the step-up
+  // that gates them must challenge that same method rather than the user's personal
+  // preference (which could be weaker, e.g. email while the org enforces passkeys).
+  // Mirrors login via the shared getRequiredMfaMethod: an org enforcing MFA dictates
+  // the method, otherwise the user's own preference applies. Reaching a step-up-gated
+  // route already proves membership of this org, so no permission check is needed.
+  const getStepUpMfaMethod = async (userId: string, orgId: string): Promise<MfaMethod> => {
+    const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
+    return requiredMfaMethod;
+  };
+
   const deleteUser = async (userId: string) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
@@ -542,7 +661,10 @@ export const userServiceFactory = ({
 
   return {
     sendEmailVerificationCode,
-    updateUserMfa,
+    activateMfa,
+    deactivateMfa,
+    assertMfaDisableAllowed,
+    setSelectedMfaMethod,
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,
@@ -550,6 +672,7 @@ export const userServiceFactory = ({
     updateUserEmail,
     deleteUser,
     getMe,
+    getStepUpMfaMethod,
     createUserAction,
     listUserGroups,
     getUserAction,

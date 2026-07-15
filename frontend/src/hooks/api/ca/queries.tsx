@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { CaRenewalStatus, CaSigningConfigType, CaType } from "./enums";
 import {
+  TAdcsTemplate,
   TAzureAdCsTemplate,
   TInternalCertificateAuthority,
   TUnifiedCertificateAuthority
@@ -18,12 +19,13 @@ export const caKeys = {
   listExternalCasByProjectId: () => ["external-cas"] as const,
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
-  getCaCert: (caId: string) => [{ caId }, "ca-cert"],
+  getCaCert: (caId: string) => [{ caId }, "ca-certificate"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
   getCaCertTemplates: (caId: string) => [{ caId }, "ca-cert-templates"],
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"],
   getAzureAdcsTemplates: (caId: string) => [{ caId }, "azure-adcs-templates"],
+  getAdcsTemplates: (caId: string) => [{ caId }, "adcs-templates"],
   getCaSigningConfig: (caId: string) => [{ caId }, "ca-signing-config"],
   getCaAutoRenewal: (caId: string) => [{ caId }, "ca-auto-renewal"]
 };
@@ -82,6 +84,7 @@ export const useListExternalCasByProjectId = () => {
       const [
         acmeResponse,
         azureAdCsResponse,
+        adcsResponse,
         awsPcaResponse,
         digicertResponse,
         awsAcmPublicCaResponse,
@@ -92,6 +95,7 @@ export const useListExternalCasByProjectId = () => {
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.AZURE_AD_CS}`
         ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(`/api/v1/cert-manager/ca/${CaType.ADCS}`),
         apiRequest.get<TUnifiedCertificateAuthority[]>(`/api/v1/cert-manager/ca/${CaType.AWS_PCA}`),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.DIGICERT}`
@@ -113,6 +117,10 @@ export const useListExternalCasByProjectId = () => {
 
       if (azureAdCsResponse.status === "fulfilled") {
         allCas.push(...azureAdCsResponse.value.data);
+      }
+
+      if (adcsResponse.status === "fulfilled") {
+        allCas.push(...adcsResponse.value.data);
       }
 
       if (awsPcaResponse.status === "fulfilled") {
@@ -298,5 +306,18 @@ export const useGetAzureAdcsTemplates = ({
       return data;
     },
     enabled: Boolean(caId && isAzureAdcsCa)
+  });
+};
+
+export const useGetAdcsTemplates = ({ caId, isAdcsCa }: { caId: string; isAdcsCa: boolean }) => {
+  return useQuery({
+    queryKey: caKeys.getAdcsTemplates(caId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        templates: TAdcsTemplate[];
+      }>(`/api/v1/cert-manager/ca/adcs/${caId}/templates`);
+      return data;
+    },
+    enabled: Boolean(caId && isAdcsCa)
   });
 };

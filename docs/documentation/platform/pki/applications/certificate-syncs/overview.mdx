@@ -80,6 +80,12 @@ flowchart LR
   <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
     Deploy certificates to Citrix NetScaler ADC.
   </Card>
+  <Card title="Linux Server" icon="linux" href="/documentation/platform/pki/applications/certificate-syncs/linux-server">
+    Deploy certificates to Linux servers over SSH.
+  </Card>
+  <Card title="Windows Server" icon="windows" href="/documentation/platform/pki/applications/certificate-syncs/windows-server">
+    Deploy certificates to Windows servers over WinRM.
+  </Card>
 </CardGroup>
 
 <Note>
@@ -122,20 +128,22 @@ flowchart LR
 The **Certificate Name Schema** controls the name each certificate is given in the destination. It is a template that supports the following placeholders, which are resolved per certificate at sync time:
 
 <Note>
-  - `{{certificateId}}` - The unique ID of the certificate. **Required** so that each synced certificate resolves to a unique, stable name.
+  - `{{certificateId}}` - The unique ID of the certificate (32 characters). **Required** (or `{{shortCertificateId}}`) so that each synced certificate resolves to a unique, stable name.
+  - `{{shortCertificateId}}` - A shorter (22-character) form of the certificate ID. Use it in place of `{{certificateId}}` when the destination's name limit is tight (e.g. NetScaler). It guarantees the same per-certificate uniqueness.
   - `{{commonName}}` - The certificate's common name (its FQDN), e.g. `app.example.com`.
   - `{{profileId}}` - The certificate profile ID. Falls back to the certificate ID when the certificate has no profile.
   - `{{applicationId}}` - The ID of the application the sync belongs to.
+  - `{{applicationName}}` - The name of the application the sync belongs to.
 </Note>
 
 For example, `myapp-{{commonName}}-{{certificateId}}` produces a name like `myapp-app.example.com-1a2b3c...`.
 
 Each destination enforces its own character and length rules for resource names:
 
-- **Characters**: `{{commonName}}` is sanitized to the destination's allowed character set. For destinations that don't allow dots (e.g. Azure Key Vault, Chef), `app.example.com` becomes `app-example-com`; destinations that allow dots (e.g. NetScaler, F5 BIG-IP) keep it as-is.
-- **Length**: schemas that would compile to a name longer than the destination's limit are rejected when you save the sync. UUID placeholders (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) each count as 32 characters.
+- **Characters**: `{{commonName}}` and `{{applicationName}}` are sanitized to the destination's allowed character set. For destinations that don't allow dots (e.g. Azure Key Vault, Chef), `app.example.com` becomes `app-example-com`; destinations that allow dots (e.g. NetScaler, F5 BIG-IP) keep it as-is.
+- **Length**: schemas that would compile to a name longer than the destination's limit are rejected when you save the sync. Full UUID placeholders (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) each count as 32 characters; `{{shortCertificateId}}` counts as 22. For tight limits, prefer `{{shortCertificateId}}`.
 
-Keep `{{certificateId}}` in the schema to guarantee a unique, stable name per certificate.
+Keep `{{certificateId}}` or `{{shortCertificateId}}` in the schema to guarantee a unique, stable name per certificate.
 
 ## What's Next?
 
