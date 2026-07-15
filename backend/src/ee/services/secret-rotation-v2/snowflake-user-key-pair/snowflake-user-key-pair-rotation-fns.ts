@@ -179,7 +179,7 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
       return readFingerprints(client, resolvedUsername);
     }, `Failed to read existing RSA public keys for Snowflake user "${username}"`);
 
-    if (fingerprints.RSA_PUBLIC_KEY) {
+    if (fingerprints.RSA_PUBLIC_KEY || fingerprints.RSA_PUBLIC_KEY_2) {
       throw new BadRequestError({
         message: `Snowflake user "${username}" already has a key set in the RSA_PUBLIC_KEY slot. Remove it before creating this rotation so an existing key is not overwritten.`
       });
