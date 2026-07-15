@@ -15,10 +15,9 @@ describe("NetScaler certificateNameSchema validation", () => {
     expect(parseSchema("{{applicationId}}-{{shortCertificateId}}")).toBe(true);
   });
 
-  test("requires the {{certificateId}} or {{shortCertificateId}} placeholder", () => {
-    expect(parseSchema("{{commonName}}")).toBe(false);
-    expect(parseSchema("static-name")).toBe(false);
-    expect(parseSchema("{{profileId}}-{{applicationId}}")).toBe(false);
+  test("accepts a schema with no certificate-id placeholder (single-certificate sync)", () => {
+    expect(parseSchema("static-name")).toBe(true);
+    expect(parseSchema("{{profileId}}")).toBe(true);
   });
 
   test("rejects the removed placeholders", () => {

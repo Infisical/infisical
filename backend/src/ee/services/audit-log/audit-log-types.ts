@@ -4776,6 +4776,8 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    connectionId?: string;
+    hasCredentials?: boolean;
   };
 }
 

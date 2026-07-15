@@ -1,4 +1,5 @@
-import { hostPatternSchema } from "./proxied-service-schemas";
+import { ProxiedServiceCredentialRole, ProxiedServiceHeaderPurpose } from "./proxied-service-enums";
+import { CredentialsArraySchema, hostPatternSchema } from "./proxied-service-schemas";
 
 // The host-pattern grammar mirrors the agent-proxy CLI matcher (packages/agentproxy/match.go);
 // keep these cases in sync with that matcher's expectations.
@@ -118,5 +119,42 @@ describe("hostPatternSchema", () => {
     it("invalid IPv6 address", () => {
       expect(firstError("[not-an-ip]")).toContain("is not a valid IPv6 address");
     });
+  });
+});
+
+describe("CredentialsArraySchema basic auth", () => {
+  const username = {
+    secretKey: "API_KEY",
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerPurpose: ProxiedServiceHeaderPurpose.Username
+  };
+  const password = {
+    secretKey: "API_SECRET",
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerPurpose: ProxiedServiceHeaderPurpose.Password
+  };
+
+  it("accepts a username without a password (username-only basic auth)", () => {
+    expect(CredentialsArraySchema.safeParse([username]).success).toBe(true);
+  });
+
+  it("accepts a username with a password", () => {
+    expect(CredentialsArraySchema.safeParse([username, password]).success).toBe(true);
+  });
+
+  it("rejects a password without a username", () => {
+    const result = CredentialsArraySchema.safeParse([password]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes("requires a username"))).toBe(true);
+    }
+  });
+
+  it("rejects two username credentials", () => {
+    const result = CredentialsArraySchema.safeParse([username, { ...username, secretKey: "OTHER" }]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes("at most one"))).toBe(true);
+    }
   });
 });

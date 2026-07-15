@@ -97,7 +97,9 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.PamRdpBrowser]: ["infisical-pam-rdp-browser"],
     [GatewayProxyProtocol.PamSessionCancellation]: ["infisical-pam-session-cancellation"],
     [GatewayProxyProtocol.Pkcs11]: ["infisical-pkcs11"],
-    [GatewayProxyProtocol.Adcs]: ["infisical-adcs"]
+    [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
+    [GatewayProxyProtocol.Discovery]: ["infisical-discovery"],
+    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"]
   };
 
   const tlsOptions: tls.ConnectionOptions = {
@@ -242,7 +244,8 @@ export const setupRelayServer = async ({
       reject(err);
     });
 
-    server.listen(0, () => {
+    // bind to loopback only so the ephemeral relay port is not reachable from other hosts/interfaces
+    server.listen(0, "127.0.0.1", () => {
       const address = server.address();
       if (!address || typeof address === "string") {
         server.close();
@@ -271,16 +274,19 @@ export const withGatewayV2Proxy = async <T>(
   options: {
     protocol: GatewayProxyProtocol;
     httpsAgent?: https.Agent;
+    // keeps the relay connection alive through long idle stretches (e.g. a port sweep dialing many hosts)
+    longLived?: boolean;
   } & TGatewayV2ConnectionDetails
 ): Promise<T> => {
-  const { protocol, relayHost, gateway, relay, httpsAgent } = options;
+  const { protocol, relayHost, gateway, relay, httpsAgent, longLived } = options;
 
   const { port, cleanup, getRelayError } = await setupRelayServer({
     protocol,
     relayHost,
     gateway,
     relay,
-    httpsAgent
+    httpsAgent,
+    longLived
   });
 
   try {

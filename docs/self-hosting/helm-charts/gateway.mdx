@@ -1,0 +1,196 @@
+---
+title: "Infisical Gateway"
+sidebarTitle: "Gateway"
+description: "Deploy the Infisical Gateway on Kubernetes using the official Helm chart."
+---
+
+The Infisical Gateway enables secure outbound-only communication between your private resources and the Infisical platform, without exposing inbound ports in your network.
+
+For a full overview of how gateways work, see the [Gateway documentation](/documentation/platform/gateways/overview).
+
+## Installation
+
+<Steps>
+  <Step title="Add the Helm repository">
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm repo update
+    ```
+  </Step>
+
+  <Step title="Install the chart">
+    <Tabs>
+      <Tab title="Token Auth">
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+          --namespace infisical-gateway \
+          --create-namespace \
+          --set gateway.name=<gateway-name> \
+          --set gateway.enrollment.method=token \
+          --set gateway.enrollment.token.value=<enrollment-token> \
+          --set gateway.domain=https://app.infisical.com
+        ```
+
+        <Warning>
+          The enrollment token is single-use and expires in 1 hour. Persistent storage (enabled by default) is required so credentials survive pod restarts.
+        </Warning>
+      </Tab>
+
+      <Tab title="AWS Auth">
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+          --namespace infisical-gateway \
+          --create-namespace \
+          --set gateway.name=<gateway-name> \
+          --set gateway.enrollment.method=aws \
+          --set gateway.enrollment.aws.gatewayId=<gateway-id> \
+          --set gateway.domain=https://app.infisical.com \
+          --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::<account-id>:role/<role-name>
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify the deployment">
+    ```bash
+    kubectl get pods -n infisical-gateway
+    ```
+  </Step>
+</Steps>
+
+## Uninstall
+
+```bash
+helm uninstall infisical-gateway --namespace infisical-gateway
+```
+
+## Configuration Reference
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `gateway.name` | `""` | Name of the gateway as created in the Infisical UI. |
+| `gateway.domain` | `""` | Infisical instance URL (e.g., `https://app.infisical.com`). |
+| `gateway.enrollment.method` | `""` | Enrollment method: `token` or `aws`. |
+| `gateway.enrollment.token.value` | `""` | Inline enrollment token. Mutually exclusive with `existingSecretRef`. |
+| `gateway.enrollment.token.existingSecretRef` | `""` | Kubernetes secret containing the enrollment token. |
+| `gateway.enrollment.token.secretKey` | `"enrollment-token"` | Key in the secret that holds the token. |
+| `gateway.enrollment.aws.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for AWS auth. |
+| `gateway.enrollment.credentialsSecretRef` | `""` | Kubernetes secret with credentials injected as env vars. |
+| `gateway.relayName` | `""` | Specific relay to connect to. Empty for automatic selection. |
+| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth. |
+| `persistence.storageClass` | `""` | Storage class for the PVC. |
+| `persistence.size` | `5Gi` | PVC size. |
+| `persistence.existingClaim` | `""` | Use an existing PVC. |
+| `image.repository` | `infisical/cli` | Container image. |
+| `image.tag` | `"0.43.84"` | Image tag. |
+| `resources.requests.cpu` | `100m` | CPU request. |
+| `resources.requests.memory` | `128Mi` | Memory request. |
+| `resources.limits.cpu` | `500m` | CPU limit. |
+| `resources.limits.memory` | `128Mi` | Memory limit. |
+| `serviceAccount.create` | `true` | Create a service account. |
+| `serviceAccount.annotations` | `{}` | Service account annotations (e.g., IRSA role ARN). |
+| `nodeSelector` | `{}` | Node selector. |
+| `tolerations` | `{}` | Pod tolerations. |
+| `affinity` | `{}` | Pod affinity rules. |
+
+## Default Helm Values
+
+```yaml
+image:
+  repository: infisical/cli
+  tag: "0.43.84"
+  pullPolicy: IfNotPresent
+
+# Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
+# Only used when gateway.enrollment.method is unset.
+secret:
+  name: "infisical-gateway-environment"
+
+gateway:
+  # Name of the gateway created in the Infisical UI. Required when enrollment.method is set.
+  name: ""
+
+  # Infisical instance URL (e.g. https://app.infisical.com). Required when enrollment.method is set.
+  domain: ""
+
+  enrollment:
+    # Enrollment method: "token" or "aws".
+    # Leave empty to use the legacy machine identity flow (env vars from secret.name).
+    method: ""
+
+    # Token enrollment settings (method=token)
+    token:
+      # Inline enrollment token value. Mutually exclusive with existingSecretRef.
+      value: ""
+      # Name of an existing K8s Secret containing the enrollment token.
+      existingSecretRef: ""
+      # Key within the secret that holds the enrollment token.
+      secretKey: "enrollment-token"
+
+    # AWS enrollment settings (method=aws)
+    aws:
+      # Required when method=aws. Gateway ID from the Infisical UI.
+      gatewayId: ""
+
+    # Name of a K8s Secret whose key-value pairs are injected as env vars.
+    # Use this to provide credentials for the enrollment method (e.g. AWS keys, GCP credentials).
+    # Not needed when credentials are provided via workload identity (IRSA, GCP Workload Identity, etc.).
+    credentialsSecretRef: ""
+
+  # Specific relay to connect to. Leave empty for automatic selection.
+  relayName: ""
+
+  pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
+
+# Persistent storage for the gateway (credentials and session recordings).
+# Required when enrollment.method=token so credentials survive pod restarts.
+# Optional when enrollment.method=aws since it re-authenticates via STS on every start.
+# For legacy machine-identity installs (no enrollment.method), persistence only takes effect
+# when existingClaim is provided.
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  existingClaim: ""
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  createAsAuthDelegator: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+affinity: {}
+tolerations: {}
+nodeSelector: {}
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+```
