@@ -132,15 +132,13 @@ export const proxiedServiceFormSchema = z
           path: ["headers"]
         });
       }
-    } else {
-      if (!form.basicAuth?.usernameSecretKey) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Select a secret",
-          path: ["basicAuth", "usernameSecretKey"]
-        });
-      }
-      // Password is optional — username-only basic auth is allowed.
+      // Password is optional — username-only basic auth is allowed, so only the username is required.
+    } else if (!form.basicAuth?.usernameSecretKey) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select a secret",
+        path: ["basicAuth", "usernameSecretKey"]
+      });
     }
 
     const seenPlaceholderKeys = new Map<string, number>();
