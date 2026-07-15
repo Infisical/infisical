@@ -18,6 +18,12 @@ type TGcpIamProviderDTO = {
 };
 
 export const GcpIamProvider = ({ projectDAL }: TGcpIamProviderDTO): TDynamicProviderFns => {
+  // used to keep backwards compatibility with existing provider inputs that didn't enforce the org id suffix
+  const validateExistingProviderInputs = async (inputs: unknown) => {
+    const providerInputs = await DynamicSecretGcpIamSchema.parseAsync(inputs);
+    return providerInputs;
+  };
+
   const validateProviderInputs = async (inputs: unknown, metadata: { projectId: string }) => {
     const providerInputs = await DynamicSecretGcpIamSchema.parseAsync(inputs);
 
@@ -98,9 +104,9 @@ export const GcpIamProvider = ({ projectDAL }: TGcpIamProviderDTO): TDynamicProv
   };
 
   const create = async (data: { inputs: unknown; expireAt: number; metadata: { projectId: string } }) => {
-    const { inputs, expireAt, metadata } = data;
+    const { inputs, expireAt } = data;
 
-    const providerInputs = await validateProviderInputs(inputs, metadata);
+    const providerInputs = await validateExistingProviderInputs(inputs);
 
     try {
       const now = Math.floor(Date.now() / 1000);
@@ -133,7 +139,7 @@ export const GcpIamProvider = ({ projectDAL }: TGcpIamProviderDTO): TDynamicProv
 
       return { ...data, entityId };
     } catch (err) {
-      const providerInputs = await validateProviderInputs(inputs, metadata);
+      const providerInputs = await validateExistingProviderInputs(inputs);
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
         tokens: [providerInputs.serviceAccountEmail]
