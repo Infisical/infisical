@@ -170,8 +170,8 @@ export const GcpSyncFields = () => {
                       <Info />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-md">
-                      Optionally specify a region for user-managed replication. If not set, automatic
-                      replication will be used.
+                      Optionally specify a region for user-managed replication. If not set,
+                      automatic replication will be used.
                     </TooltipContent>
                   </Tooltip>
                 )}
