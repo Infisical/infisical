@@ -141,6 +141,17 @@ export const ProjectCategoryOverview = () => {
   const isCertManagerAccessBlocked =
     cmInstances.length > 0 && !isOrgAdmin && !canRequestAccess && !isCertManagerMember;
 
+  const isPamMember = useMemo(
+    () =>
+      Boolean(
+        currentOrg?.pamProjectId &&
+          projects.some((project) => project.id === currentOrg.pamProjectId)
+      ),
+    [currentOrg?.pamProjectId, projects]
+  );
+  const isPamAccessBlocked =
+    Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
+
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
     if (cookieValue && cmInstances.some((p) => p.id === cookieValue)) return cookieValue;
@@ -410,7 +421,11 @@ export const ProjectCategoryOverview = () => {
             </>
           );
 
-          if (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) {
+          const isAccessBlocked =
+            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
+            (type === ProjectType.PAM && isPamAccessBlocked);
+
+          if (isAccessBlocked) {
             return (
               <Tooltip key={type}>
                 <TooltipTrigger asChild>
@@ -419,8 +434,8 @@ export const ProjectCategoryOverview = () => {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  You don&apos;t have access to Certificate Manager. Ask an organization admin for
-                  access.
+                  You don&apos;t have access to {getProjectTitle(type)}. Ask an organization admin
+                  for access.
                 </TooltipContent>
               </Tooltip>
             );
@@ -452,7 +467,10 @@ export const ProjectCategoryOverview = () => {
 
       <RequestProjectAccessModal
         isOpen={isPamRequestAccessOpen}
-        onOpenChange={setIsPamRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsPamRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingPamProjectId(null);
+        }}
         project={pamRequestAccessProject}
         subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
       />
