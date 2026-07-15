@@ -32,11 +32,11 @@ This guide walks through brokering a credential end to end: you will create a pr
   <Step title="Create two machine identities">
     Create two [machine identities](/documentation/platform/identities/machine-identities) with [Universal Auth](/documentation/platform/identities/universal-auth) and add both to your project:
 
-    1. **Agent proxy identity**: assign it the built-in **Agent Proxy** role. It fetches the real credential values, so it needs read access to the referenced secrets.
-    2. **Agent identity**: assign it the built-in **Agent** role. It can route traffic through proxied services but cannot read any secret values.
+    1. **Agent proxy identity**: it fetches the real credential values, so give it read access (describe and read value) to the referenced secrets.
+    2. **Agent identity**: it routes traffic through proxied services but should not read any secret values, so give it only the proxy permission on proxied services.
 
     <Note>
-      The built-in roles grant broad access across all environments and paths for a quick start. For production, consider [custom roles](/documentation/platform/access-controls/role-based-access-controls) scoped to specific environments and paths. Running more than one agent? See [how many machine identities you need](/documentation/platform/agent-proxy/security#how-many-machine-identities-do-you-need).
+      Grant these permissions with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or an [additional privilege](/documentation/platform/access-controls/additional-privileges) on each identity, scoped to the specific environments and paths you need. Running more than one agent? See [how many machine identities you need](/documentation/platform/agent-proxy/security#how-many-machine-identities-do-you-need).
     </Note>
   </Step>
   <Step title="Start the agent proxy">
@@ -92,7 +92,7 @@ This guide walks through brokering a credential end to end: you will create a pr
     - Sets environment variables with real values for regular secrets the agent identity has **Read Value** on in the folder (including secrets imported into it), similar to `infisical run`.
 
     <Note>
-      Real values in the agent's environment are deliberate and opt-in. The built-in Agent role grants no secret read access, so nothing real lands in the environment unless an admin explicitly grants **Read Value** on specific secrets. Brokered credentials never appear in the agent's environment; the proxy only attaches them on the wire.
+      Real values in the agent's environment are deliberate and opt-in. When the agent identity has only the proxy permission and no secret read access, nothing real lands in the environment unless an admin explicitly grants **Read Value** on specific secrets. Brokered credentials never appear in the agent's environment; the proxy only attaches them on the wire.
     </Note>
 
     The project can also be set via `INFISICAL_PROJECT_ID` or an `.infisical.json` file (created by `infisical init`) instead of `--projectId`.
