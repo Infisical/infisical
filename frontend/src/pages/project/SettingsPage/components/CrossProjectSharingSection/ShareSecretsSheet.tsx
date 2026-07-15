@@ -196,7 +196,12 @@ type Props = {
   existingGrants?: TProjectFolderGrant[];
 };
 
-export const ShareSecretsSheet = ({ isOpen, onOpenChange, editData, existingGrants = [] }: Props) => {
+export const ShareSecretsSheet = ({
+  isOpen,
+  onOpenChange,
+  editData,
+  existingGrants = []
+}: Props) => {
   const { currentProject } = useProject();
   const [groups, setGroups] = useState<EnvironmentGroup[]>([{ environment: "", secretPaths: [] }]);
   const [targetProjects, setTargetProjects] = useState<Project[]>([]);

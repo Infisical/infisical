@@ -311,9 +311,7 @@ export const CrossProjectSharingSection = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   {(() => {
-                    const grantedSlugs = new Set(
-                      projectGroup.grants.map((g) => g.environmentSlug)
-                    );
+                    const grantedSlugs = new Set(projectGroup.grants.map((g) => g.environmentSlug));
                     const visibleEnvs = currentProject.environments.filter((env) =>
                       grantedSlugs.has(env.slug)
                     );
@@ -340,9 +338,7 @@ export const CrossProjectSharingSection = () => {
                                 </div>
                               </TableCell>
                               {visibleEnvs.map((env) => {
-                                const grant = projectGroup.grantMatrix.get(
-                                  `${folder}:${env.slug}`
-                                );
+                                const grant = projectGroup.grantMatrix.get(`${folder}:${env.slug}`);
                                 return (
                                   <TableCell key={env.slug} className="text-center">
                                     {grant ? (
