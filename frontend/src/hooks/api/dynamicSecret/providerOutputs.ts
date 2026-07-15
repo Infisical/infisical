@@ -1,13 +1,8 @@
 import { DynamicSecretProviders } from "./types";
 
-// Frontend mirror of the backend registry at
-// backend/src/ee/services/dynamic-secret/providers/dynamic-secret-provider-outputs.ts
-// KEEP THE FIELD NAMES IN SYNC with that file (the backend validates against them). Every field a
-// provider's lease can return is listed and selectable. This mirror adds display labels (reused by the
-// lease-output modal) and per-lease inputs.
+// keep field names in sync with the backend registry at backend/src/ee/services/dynamic-secret/providers/dynamic-secret-provider-outputs.ts
 
 export type TProviderOutputField = {
-  // must match the backend registry / provider create() output key verbatim
   name: string;
   label: string;
 };
@@ -19,7 +14,6 @@ export type TProviderLeaseInput =
 export type TProviderOutputEntry = {
   outputFields: TProviderOutputField[];
   leaseInputs: TProviderLeaseInput[];
-  // appended to the last output field's "copy now" helper in the lease-output modal (e.g. elasticache)
   extraNote?: string;
 };
 

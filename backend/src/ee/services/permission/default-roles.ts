@@ -829,7 +829,6 @@ const buildAgentProxyPermissionRules = () => {
     ProjectPermissionSub.Secrets
   );
 
-  // so the agent proxy can mint leases for dynamic-secret-backed proxied service credentials
   can(ProjectPermissionDynamicSecretActions.Lease, ProjectPermissionSub.DynamicSecrets);
 
   return rules;

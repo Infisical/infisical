@@ -68,7 +68,6 @@ const toCredentialRow = (serviceId: string, credential: TProxiedServiceCredentia
   dynamicSecretConfig: credential.dynamicSecretConfig ?? null
 });
 
-// credential shape that can carry either a static or dynamic reference (used by the assert/decorate helpers)
 type TCredentialRef = {
   secretKey?: string | null;
   dynamicSecretName?: string | null;
@@ -76,9 +75,6 @@ type TCredentialRef = {
   dynamicSecretConfig?: unknown;
 };
 
-// Stable string form of a lease config for equality comparison. Object keys are sorted; array values keep
-// their order (the agent proxy hashes the config verbatim, so principal order is significant to lease identity).
-// null / undefined / {} all normalize to "".
 const canonicalizeLeaseConfig = (config: unknown): string => {
   if (!config || typeof config !== "object") return "";
   const obj = config as Record<string, unknown>;
@@ -173,8 +169,6 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
-  // Fetches the dynamic secrets referenced by the given credentials from the service's own folder.
-  // Returns a map keyed by dynamic secret name (missing names are absent from the map).
   const $findReferencedDynamicSecrets = async (folderId: string, credentials: TCredentialRef[]) => {
     const names = [...new Set(credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))];
     if (!names.length) return { names, byName: new Map<string, TDynamicSecretWithMetadata>() };
@@ -182,9 +176,6 @@ export const proxiedServiceServiceFactory = ({
     return { names, byName: new Map(found.map((ds) => [ds.name, ds])) };
   };
 
-  // A dynamic credential lets the agent proxy mint a lease on the caller's behalf, so the caller must be
-  // able to lease the referenced dynamic secret (mirrors the ReadValue requirement for static secrets).
-  // Also validates that the chosen output field is real for the provider and the per-lease config is valid.
   const $assertReferencedDynamicSecretsLeasable = async (
     permission: MongoAbility<ProjectPermissionSet>,
     orgId: string,
@@ -197,9 +188,6 @@ export const proxiedServiceServiceFactory = ({
     const dynamicCreds = credentials.filter((c) => Boolean(c.dynamicSecretName));
     if (!dynamicCreds.length) return;
 
-    // Every credential referencing the same dynamic secret must carry an identical lease config: the agent
-    // proxy keys leases by (secret, config), so divergent configs would mint separate leases (e.g. basic-auth
-    // username/password from different accounts). The UI collects config once per secret; this guards the API.
     const configByName = new Map<string, string>();
     dynamicCreds.forEach((cred) => {
       const name = cred.dynamicSecretName as string;
@@ -262,9 +250,6 @@ export const proxiedServiceServiceFactory = ({
       }
     });
 
-    // SSH leases require at least one principal, and each must be in the dynamic secret's allowed list — the
-    // provider enforces this at mint time, so validate it here too (decrypting the secret) to fail the save
-    // immediately rather than saving a config that can never mint. Only SSH constrains its input this way.
     const sshCreds = dynamicCreds.filter(
       (c) => byName.get(c.dynamicSecretName as string)?.type === DynamicSecretProviders.Ssh
     );
@@ -302,8 +287,6 @@ export const proxiedServiceServiceFactory = ({
     }
   };
 
-  // Stamps callerCanLease on each dynamic-secret credential so the CLI connect wrapper can warn when the
-  // agent identity itself could mint the brokered lease (defeating the point of brokering).
   const $decorateCredentialsWithLeaseAccess = async <T extends TCredentialRef>(
     permission: MongoAbility<ProjectPermissionSet>,
     environment: string,
@@ -317,7 +300,6 @@ export const proxiedServiceServiceFactory = ({
     const { byName } = await $findReferencedDynamicSecrets(folderId, dynamicCreds);
     return credentials.map((cred) => {
       if (!cred.dynamicSecretName) return cred;
-      // a stale (deleted) dynamic secret has no metadata row; the guardrail cares about the role grant, not the row
       const metadata = byName.get(cred.dynamicSecretName)?.metadata ?? [];
       const callerCanLease = permission.can(
         ProjectPermissionDynamicSecretActions.Lease,
@@ -416,8 +398,6 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
-    // resolve before the folder check so the response always carries projectSlug (the CLI proxy needs it
-    // to call the projectSlug-based lease API), even for an empty/nonexistent folder
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({ message: `Project with ID "${projectId}" not found` });

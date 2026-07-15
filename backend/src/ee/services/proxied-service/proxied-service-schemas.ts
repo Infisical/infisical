@@ -73,8 +73,6 @@ export const hostPatternSchema = z
     });
   });
 
-// structural check only; the provider-specific config shape is validated in the service where the
-// referenced dynamic secret's provider type is known
 const DynamicSecretConfigSchema = z
   .object({
     namespace: z.string().trim().min(1).optional(),
@@ -122,7 +120,6 @@ const CredentialInputSchema = z
       .describe(PROXIED_SERVICES.CREDENTIAL.substitutionSurfaces)
   })
   .superRefine((cred, ctx) => {
-    // exactly one credential source: static secretKey XOR dynamicSecretName
     if (Boolean(cred.secretKey) === Boolean(cred.dynamicSecretName)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -251,8 +248,6 @@ export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentials
   dynamicSecretConfig: true
 });
 
-// callerCanLease is present only on dynamic-secret credentials; the connect wrapper (CLI) reads it to
-// warn when the agent identity itself holds Lease on a brokered dynamic secret.
 export const SanitizedProxiedServiceCredentialWithLeaseAccessSchema = SanitizedProxiedServiceCredentialSchema.extend({
   callerCanLease: z.boolean().optional()
 });
@@ -275,7 +270,6 @@ export const ProxiedServiceWithCanProxySchema = ProxiedServiceWithCredentialsSch
   canProxy: z.boolean()
 });
 
-// used by the list/get responses so callerCanLease survives Fastify's Zod response serialization
 export const ProxiedServiceWithCanProxyAndLeaseAccessSchema = SanitizedProxiedServiceBaseSchema.extend({
   credentials: SanitizedProxiedServiceCredentialWithLeaseAccessSchema.array(),
   canProxy: z.boolean()

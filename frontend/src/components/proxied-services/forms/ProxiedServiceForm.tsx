@@ -69,8 +69,6 @@ const emptySource = (): TCredentialSourceForm => ({
   dynamicSecretField: ""
 });
 
-// map a persisted credential to the form's source shape (static secretKey OR dynamic name+field).
-// The lease config is not carried per credential; it's rebuilt into dynamicSecretConfigs (see toDefaultValues).
 const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredentialSourceForm =>
   c.dynamicSecretName
     ? {
@@ -86,7 +84,6 @@ const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredenti
 
 const hasSource = (src: TCredentialSourceForm) => Boolean(src.secretKey || src.dynamicSecretName);
 
-// build the API lease config from a form entry, omitting empty values (so an empty object isn't sent)
 const toLeaseConfig = (leaseConfig?: TLeaseConfig): TProxiedServiceLeaseConfig | undefined => {
   if (!leaseConfig) return undefined;
   const cfg: TProxiedServiceLeaseConfig = {};
@@ -95,9 +92,6 @@ const toLeaseConfig = (leaseConfig?: TLeaseConfig): TProxiedServiceLeaseConfig |
   return Object.keys(cfg).length ? cfg : undefined;
 };
 
-// map a form source back to the credential-input source fields (omit null so the API accepts it). A dynamic
-// credential pulls its lease config from the shared per-secret map, so every credential referencing the same
-// dynamic secret ends up with an identical config (one config => one minted lease in the proxy).
 const sourceToInput = (
   src: TCredentialSourceForm,
   configs: Record<string, TLeaseConfig>
@@ -113,8 +107,6 @@ const sourceToInput = (
       }
     : { secretKey: src.secretKey };
 
-// rebuild the shared per-secret lease config map from persisted credentials (they all carry the same config
-// for a given dynamic secret, so the first non-empty one wins)
 const toDynamicSecretConfigs = (svc: TDashboardProxiedService): Record<string, TLeaseConfig> => {
   const configs: Record<string, TLeaseConfig> = {};
   svc.credentials.forEach((c) => {
@@ -274,10 +266,7 @@ export const ProxiedServiceForm = ({
     setValue(`basicAuth.${which}.dynamicSecretField`, v.dynamicSecretField ?? "");
   };
 
-  // unique dynamic secret names referenced by the ACTIVE credentials (matches toCredentials' mode gating),
-  // so the settings section only asks for inputs that will actually be sent. Computed inline (not memoized):
-  // react-hook-form mutates the watched objects in place, so their references are stable across renders and a
-  // useMemo keyed on them would never recompute after a nested setValue.
+  // computed inline, not memoized: react-hook-form mutates watched objects in place so a useMemo would never recompute
   const referencedDynamicSecretNames = (() => {
     const names = new Set<string>();
     const add = (name?: string) => {

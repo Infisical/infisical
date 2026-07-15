@@ -41,8 +41,6 @@ type Props = {
   isFieldError?: boolean;
 };
 
-// One picker with two levels: level 0 lists secrets + dynamic secrets; selecting a dynamic secret drills
-// into its output fields (with a Back row) — all in a single dropdown, no second control.
 type SourceOption =
   | {
       kind: "secret";
@@ -62,7 +60,6 @@ type SourceOption =
       provider?: DynamicSecretProviders;
       isSelectable: boolean;
       disabledReason?: string;
-      // set only on the committed selection: the chosen output field's label, shown after the secret name
       fieldLabel?: string;
     }
   | { kind: "back"; value: string; label: string }
@@ -72,20 +69,13 @@ const SECRETS_GROUP = "Secrets";
 const DYNAMIC_GROUP = "Dynamic Secrets";
 const BACK_VALUE = "__back__";
 
-// The default v3 Option wraps the label in a content-width <p>, so a right-aligned chevron inside
-// formatOptionLabel only reaches the end of the (variable-length) name, not the row's edge. This override
-// gives the label a full-width flex-1 wrapper so `ml-auto` reaches the true right edge, and keeps the
-// selected tick in the same trailing slot the chevrons line up against.
 const AlignedOption = <T,>({ isSelected, children, ...props }: OptionProps<T>) => {
   const data = props.data as unknown as SourceOption;
-  // a drill-able dynamic secret shows a chevron — but not when it's the selected row, where the tick wins
   const showChevron = !isSelected && data.kind === "dynamic-parent" && data.isSelectable;
   return (
     <reactSelectComponents.Option isSelected={isSelected} {...props}>
       <div className="flex w-full items-center">
         <div className="min-w-0 flex-1">{children}</div>
-        {/* One fixed trailing slot at the far right holding the tick OR the chevron (mutually exclusive),
-            so every row's trailing indicator lines up regardless of name length or selection. */}
         <span className="ml-2 flex size-4 shrink-0 items-center justify-center">
           {isSelected && <CheckIcon className="size-4" />}
           {showChevron && <ChevronRightIcon className="size-4 text-bunker-300" />}
@@ -118,7 +108,6 @@ export const CredentialSourceFields = ({
   const hasDynamicSecretPlan = Boolean(subscription?.dynamicSecret);
 
   const [menuOpen, setMenuOpen] = useState(false);
-  // when set, the dropdown is showing the output fields of this dynamic secret
   const [drill, setDrill] = useState<{ name: string; provider?: DynamicSecretProviders } | null>(
     null
   );
@@ -165,12 +154,7 @@ export const CredentialSourceFields = ({
     [permission, environment, secretPath]
   );
 
-  // NB: use isFetching, not isPending — a disabled react-query stays "pending" forever, which would
-  // otherwise pin the select in a loading state and hide the options.
-  // viewSecretValue: true — the v4 secrets endpoint returns nothing at the root path when it's false
-  // (a describe-only-at-root quirk); the dashboard lists with true for the same reason. Readability for
-  // the lock state is computed from CASL below, not from the returned values, so this only affects which
-  // rows come back, not what we expose.
+  // isFetching, not isPending: a disabled query stays pending forever and would pin the select loading
   const { data: secretOptions = [], isFetching: isSecretsFetching } = useQuery({
     enabled: Boolean(projectId && environment),
     staleTime: 0,
@@ -192,7 +176,6 @@ export const CredentialSourceFields = ({
   });
 
   const dynamicParentOptions = useMemo<SourceOption[]>(() => {
-    // Every dynamic secret is selectable; lock only for a concrete access reason (no plan / no Lease).
     return dynamicSecrets.map((ds) => {
       const canLease = permission.can(
         ProjectPermissionDynamicSecretActions.Lease,
@@ -225,7 +208,6 @@ export const CredentialSourceFields = ({
     return dynamicSecrets.find((ds) => ds.name === value.dynamicSecretName)?.type;
   }, [value.dynamicSecretName, dynamicSecrets]);
 
-  // options shown depend on the drill level
   const options = useMemo<SourceOption[]>(() => {
     if (!drill) return [...secretOptions, ...dynamicParentOptions];
     const fieldOptions: SourceOption[] = (
@@ -239,7 +221,6 @@ export const CredentialSourceFields = ({
     return [{ kind: "back", value: BACK_VALUE, label: "Back to secrets" }, ...fieldOptions];
   }, [drill, secretOptions, dynamicParentOptions]);
 
-  // the committed selection shown when the menu is closed
   const selectedValue = useMemo<SourceOption | null>(() => {
     if (value.dynamicSecretName) {
       return {
@@ -290,7 +271,6 @@ export const CredentialSourceFields = ({
         const fields = option.provider
           ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[option.provider].outputFields
           : [];
-        // a single-field provider (e.g. kubernetes) needs no drill step
         if (fields.length === 1) {
           commit({ dynamicSecretName: option.name, dynamicSecretField: fields[0].name });
         } else {
@@ -331,7 +311,6 @@ export const CredentialSourceFields = ({
           <LockIcon className="size-4 shrink-0 text-bunker-300" />
         )}
         <span className="truncate">{option.label}</span>
-        {/* committed dynamic selection: secret name › chosen field (shown on the selected value) */}
         {committedField && (
           <span className="flex min-w-0 items-center gap-1 text-muted">
             <ChevronRightIcon className="size-3.5 shrink-0" />
@@ -358,14 +337,10 @@ export const CredentialSourceFields = ({
         options={options}
         groupBy={drill ? null : "group"}
         placeholder="Select a secret"
-        // menuPosition="fixed" detaches the menu from the sheet's scroll container so overflow can't clip
-        // it, while react-select positions it against the control — no portal, no misalignment. auto flips
-        // it up near the bottom.
         menuPosition="fixed"
         menuPlacement="auto"
         menuIsOpen={menuOpen}
         onMenuOpen={() => {
-          // when editing a dynamic credential, open straight into its fields
           if (value.dynamicSecretName)
             setDrill({ name: value.dynamicSecretName, provider: selectedProvider });
           else setDrill(null);

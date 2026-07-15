@@ -134,9 +134,6 @@ const TotpOutputDisplay = ({
 const COPY_NOTE =
   "Important: Copy these credentials now. You will not be able to see them again after you close the modal.";
 
-// Registry-driven output renderer (shared field map in providerOutputs.ts). Renders every field the
-// lease returned. Providers with bespoke output UIs are handled by their own components before this
-// runs: totp (below) and ssh (CreateSshDynamicSecretLease).
 const renderOutputForm = (
   provider: DynamicSecretProviders,
   data: unknown,

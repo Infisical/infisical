@@ -52,9 +52,6 @@ const hostPatternField = z
       });
   });
 
-// Per-lease inputs a provider needs when the proxy mints a lease (kubernetes namespace, ssh principals).
-// Collected ONCE per dynamic secret in dynamicSecretConfigs below — not per credential — so every credential
-// referencing the same dynamic secret shares one config (and therefore one minted lease).
 const leaseConfigSchema = z.object({
   namespace: z.string().trim().optional(),
   principals: z.array(z.string().trim().min(1)).optional()
@@ -62,9 +59,6 @@ const leaseConfigSchema = z.object({
 
 export type TLeaseConfig = z.infer<typeof leaseConfigSchema>;
 
-// A credential row references either a static secret (secretKey) or a dynamic secret
-// (dynamicSecretName + dynamicSecretField). Required-ness / XOR is enforced conditionally in the
-// top-level superRefine (via refineCredentialSource) so fields of the inactive header mode don't block submission.
 const credentialSourceSchema = z.object({
   secretKey: z.string().trim().default(""),
   dynamicSecretName: z.string().trim().default(""),
@@ -93,7 +87,6 @@ const substitutionSchema = credentialSourceSchema.extend({
   surfaces: z.array(z.nativeEnum(ProxiedServiceSubstitutionSurface)).min(1, "Select at least one")
 });
 
-// mirrors the backend XOR rule (proxied-service-schemas.ts): exactly one source, dynamic requires a field
 const refineCredentialSource = (
   row: TCredentialSourceForm,
   ctx: z.RefinementCtx,
@@ -137,8 +130,6 @@ export const proxiedServiceFormSchema = z
     headers: z.array(headerCredentialSchema).default([]),
     basicAuth: basicAuthSchema.optional(),
     substitutions: z.array(substitutionSchema).default([]),
-    // lease inputs keyed by dynamic secret name; collected once per secret and fanned out to every
-    // credential that references it in toCredentials()
     dynamicSecretConfigs: z.record(z.string(), leaseConfigSchema).default({})
   })
   .superRefine((form, ctx) => {

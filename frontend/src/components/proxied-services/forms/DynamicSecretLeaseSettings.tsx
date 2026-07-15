@@ -20,7 +20,6 @@ import { TLeaseConfig } from "./schema";
 type Props = {
   environment: string;
   secretPath: string;
-  // unique dynamic secret names referenced by the form's active credentials
   referencedNames: string[];
   configs: Record<string, TLeaseConfig>;
   onChange: (name: string, config: TLeaseConfig) => void;
@@ -97,7 +96,6 @@ export const DynamicSecretLeaseSettings = ({
 
   const providerByName = new Map(dynamicSecrets.map((ds) => [ds.name, ds.type]));
 
-  // only dynamic secrets whose provider actually takes a lease input (kubernetes, ssh) get a row
   const entries = referencedNames
     .map((name) => {
       const provider = providerByName.get(name);
