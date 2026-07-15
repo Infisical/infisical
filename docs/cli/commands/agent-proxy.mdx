@@ -113,6 +113,50 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
     infisical secrets agent-proxy start --client-id=<client-id> --client-secret=<client-secret>
     ```
   </Accordion>
+
+  <Accordion title="--activity-log">
+    Write one [activity record](/documentation/platform/agent-proxy/activity-logs) per brokered request. Set to `false` to disable logging entirely (no records, no overhead).
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --activity-log=false
+    ```
+
+    Default value: `true`
+  </Accordion>
+
+  <Accordion title="--activity-log-file">
+    Append [activity records](/documentation/platform/agent-proxy/activity-logs) to this file instead of stdout. The file is opened append-only; on `SIGHUP` it is reopened, so `logrotate` can rotate it with a `postrotate` hook.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --activity-log-file=/var/log/infisical/activity.log
+    ```
+
+    Default value: stdout
+  </Accordion>
+
+  <Accordion title="--activity-log-format">
+    Output format for [activity records](/documentation/platform/agent-proxy/activity-logs): `json` (ECS with OpenTelemetry field names, for shipping to a SIEM) or `pretty` (a compact, colorized line for reading in a terminal).
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --activity-log-format=json
+    ```
+
+    Default value: `pretty` when writing to a terminal, `json` otherwise
+  </Accordion>
+
+  <Accordion title="--activity-log-filter">
+    Which decisions to record: `all` logs every request; `brokered` logs `brokered`, `blocked`, and `error` (dropping `passthrough` noise); `errors` logs only `blocked` and `error`.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --activity-log-filter=brokered
+    ```
+
+    Default value: `all`
+  </Accordion>
 </Accordion>
 
 <Accordion title="infisical secrets agent-proxy connect">
