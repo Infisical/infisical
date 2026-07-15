@@ -112,6 +112,15 @@ When syncing certificates, Infisical asks the Gateway to open a WinRM session to
 
 When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
 
+## Security
+
+Delivery runs over the Gateway inside your network, so traffic never crosses the public internet, and the certificate stays encrypted in transit in both connection modes:
+
+<Note>
+  - **HTTP mode (default)** encrypts the certificate on the wire with NTLM message sealing and needs no server certificate to manage. This is the zero-configuration posture most Windows hosts already ship with.
+  - **HTTPS mode** adds TLS, so the Gateway also verifies the host's identity and encrypts the full session. Keep certificate verification enabled so it only connects to a host presenting a valid, trusted certificate.
+</Note>
+
 ## Using Synced Certificates with IIS Centralized Certificate Store
 
 IIS can serve a synced PKCS#12 certificate directly from a local folder through the Centralized Certificate Store (CCS). To wire this up, set the sync to deliver into the CCS folder and make the two sides agree:
