@@ -35,7 +35,6 @@ import {
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
 import { CredentialsForm } from "./CredentialsForm";
-import { SshCaSetupCallout } from "./SshCaSetupCallout";
 
 function filterUnchangedCredentials(
   credentials: Record<string, unknown>
@@ -301,9 +300,8 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
             <CardTitle className="text-base">Credentials</CardTitle>
             <CardDescription>Authentication used to connect to this account.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent>
             <CredentialsForm control={control} />
-            <SshCaSetupCallout control={control} accountId={accountId} />
           </CardContent>
         </Card>
       )}

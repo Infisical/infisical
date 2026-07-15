@@ -476,7 +476,10 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                     <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
                     <div className="flex flex-col gap-4">
                       <CredentialsForm control={control} />
-                      <SshCaSetupCallout control={control} />
+                      <SshCaSetupCallout
+                        accountType={watch("accountType")}
+                        authMethod={watch("credentials")?.authMethod as string | undefined}
+                      />
                     </div>
                   </div>
                 )}

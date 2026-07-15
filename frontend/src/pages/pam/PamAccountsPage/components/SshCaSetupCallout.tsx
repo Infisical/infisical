@@ -1,4 +1,3 @@
-import { Control, useWatch } from "react-hook-form";
 import { AlertTriangle, Copy } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -7,28 +6,20 @@ import { PamAccountType } from "@app/hooks/api/pam";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { PamDocsUrls } from "@app/pages/pam/pam-docs-urls";
 
-import { TAccountFormValues } from "./accountFormSchema";
-
 const SSH_CERTIFICATE_AUTH_METHOD = "certificate";
 
 const buildInstallCommand = (accountId: string) =>
   `curl -sSf -H "Authorization: Bearer ${getAuthToken()}" "${window.location.origin}/api/v1/pam/accounts/${accountId}/ssh-ca-setup" | sudo bash`;
 
 type Props = {
-  control: Control<TAccountFormValues>;
-  accountId?: string; // present only when editing an existing account
+  accountType?: string;
+  authMethod?: string;
+  // present only for an existing account; the CA is per-account and can't be provisioned until it exists
+  accountId?: string;
 };
 
-export const SshCaSetupCallout = ({ control, accountId }: Props) => {
-  const accountType = useWatch({ control, name: "accountType" });
-  const credentials = useWatch({ control, name: "credentials" }) as
-    | Record<string, unknown>
-    | undefined;
-
-  if (
-    accountType !== PamAccountType.SSH ||
-    credentials?.authMethod !== SSH_CERTIFICATE_AUTH_METHOD
-  ) {
+export const SshCaSetupCallout = ({ accountType, authMethod, accountId }: Props) => {
+  if (accountType !== PamAccountType.SSH || authMethod !== SSH_CERTIFICATE_AUTH_METHOD) {
     return null;
   }
 
@@ -43,7 +34,7 @@ export const SshCaSetupCallout = ({ control, accountId }: Props) => {
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
         <div className="min-w-0 flex-1 text-sm">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium text-warning">SSH CA setup required</p>
             <DocumentationLinkBadge href={PamDocsUrls.guides.sshCertificateAuth} />
           </div>
