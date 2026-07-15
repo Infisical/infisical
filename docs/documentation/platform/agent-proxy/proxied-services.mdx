@@ -144,10 +144,6 @@ How the agent proxy handles the lease:
   Only the agent proxy's machine identity mints leases, and only it needs the **Lease** permission on the referenced dynamic secrets (the built-in **Agent Proxy** role includes it). The agent identity must **not** hold Lease on a brokered dynamic secret; if it does, it could mint the credential itself and bypass the proxy, and `infisical secrets agent-proxy connect` prints a warning. Creating or updating a proxied service that references a dynamic secret requires that you hold Lease on it, and requires a plan that includes dynamic secrets.
 </Note>
 
-<Note>
-  Not every provider's output makes a working HTTP credential. Providers whose secret authenticates by presence work well (a database password, a GitHub or bearer token, etc.). AWS IAM leases return access keys that AWS expects you to SigV4-sign each request with, which the proxy does not do, so injecting them as a header will not authenticate. Pick fields accordingly.
-</Note>
-
 ## Example: API Request
 
 Proxied services can also be managed via the [API](/api-reference/endpoints/proxied-services/create). For example, creating the Telegram service described above:

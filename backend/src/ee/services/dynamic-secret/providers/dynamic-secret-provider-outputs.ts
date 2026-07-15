@@ -4,8 +4,8 @@ import { DynamicSecretProviders } from "./models";
 
 // Canonical map of dynamic secret provider -> every field its lease output can contain, plus the
 // per-lease config a proxied service may set. This drives proxied-service field validation: any listed
-// field may be injected. The frontend mirror additionally marks which fields are "recommended" (the
-// credential-bearing ones) versus lease metadata, but the backend accepts any listed field.
+// field may be injected. We deliberately don't distinguish "credential" fields from lease metadata or
+// recommend any — which field to reference is entirely the user's choice.
 //
 // KEEP IN SYNC with the frontend mirror at
 // frontend/src/hooks/api/dynamicSecret/providerOutputs.ts
