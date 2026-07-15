@@ -43,6 +43,11 @@ Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair
         If the user is created by Infisical, in case the credentials are revoked the user continue to exists.
     </Note>
 
+    <Warning>
+        If the target user already has a key set in the `RSA_PUBLIC_KEY` slot, creating the rotation is
+        blocked so an existing key is never overwritten. Remove that key (or choose a user without one)
+        before creating the rotation.
+    </Warning>
 
 3. Ensure your network security policies allow incoming requests from Infisical to your Snowflake account, if network restrictions apply.
 

@@ -170,6 +170,21 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     // On creation the first credential always occupies slot 0 (activeIndex defaults to 0).
     const keyPair = await generateRsaKeyPair();
     await ensureUserExists();
+
+    // Block creation if the RSA_PUBLIC_KEY slot already holds a key, so we never overwrite a
+    // pre-existing key that was set outside this rotation. We resolve the slot occupancy outside
+    // runSnowflake so the BadRequestError isn't re-wrapped by sanitizeSnowflakeError.
+    const fingerprints = await runSnowflake(async (client) => {
+      const resolvedUsername = (await resolveSnowflakeUsername(client)) ?? username;
+      return readFingerprints(client, resolvedUsername);
+    }, `Failed to read existing RSA public keys for Snowflake user "${username}"`);
+
+    if (fingerprints.RSA_PUBLIC_KEY) {
+      throw new BadRequestError({
+        message: `Snowflake user "${username}" already has a key set in the RSA_PUBLIC_KEY slot. Remove it before creating this rotation so an existing key is not overwritten.`
+      });
+    }
+
     await setPublicKeyForSlot(slotForIndex(0), keyPair);
     return callback(keyPair);
   };
