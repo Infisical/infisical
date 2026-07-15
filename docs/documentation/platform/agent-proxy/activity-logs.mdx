@@ -90,27 +90,15 @@ Activity records go to **stdout**; the proxy's operational logs go to **stderr**
 
 ```bash
 # Records to a file, operational logs still on the terminal
-infisical secrets agent-proxy start > activity.log 2>/dev/null
+infisical secrets agent-proxy start > activity.log
 ```
 
 <Tabs>
   <Tab title="Containers">
-    Log to stdout (the default) and let your platform collect and rotate it. `kubectl logs`, the Docker json-file driver, and journald all pick it up, and a Fluent Bit or OTel Collector sidecar can tail and forward it. Our [Fluent Bit audit-log streaming guide](/documentation/platform/audit-log-streaming/overview) applies directly.
+    Log to stdout (the default) and let your platform collect and rotate it. `kubectl logs`, the Docker json-file driver, and journald all pick it up, and a Fluent Bit or OTel Collector sidecar can tail and forward it. Our [Fluent Bit audit-log streaming guide](/documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit) applies directly.
   </Tab>
   <Tab title="A file on disk">
-    Write to a file with [`--activity-log-file`](/cli/commands/agent-proxy) and rotate it the standard Unix way. The proxy reopens its log file on `SIGHUP`, so `logrotate` can rename the file and signal the proxy from a `postrotate` hook:
-
-    ```
-    /var/log/infisical/activity.log {
-      daily
-      rotate 14
-      compress
-      missingok
-      postrotate
-        pkill -HUP -f 'agent-proxy start'
-      endscript
-    }
-    ```
+    Write to a file with [`--activity-log-file`](/cli/commands/agent-proxy). The proxy reopens the file on `SIGHUP`, so rotate it with any standard tool (such as `logrotate`) and send the proxy a `SIGHUP` after rotating.
   </Tab>
 </Tabs>
 
