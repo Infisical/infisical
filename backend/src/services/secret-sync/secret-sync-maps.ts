@@ -1,6 +1,7 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -158,7 +159,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.AWSParameterStore]: [],
   [SecretSync.AWSSecretsManager]: ["mappingBehavior"],
   [SecretSync.GitHub]: [],
-  [SecretSync.GCPSecretManager]: ["locationId"],
+  [SecretSync.GCPSecretManager]: ["scope", "locationId"],
   [SecretSync.AzureKeyVault]: [],
   [SecretSync.AzureAppConfiguration]: ["label"],
   [SecretSync.AzureDevOps]: ["devopsProjectName"],
@@ -241,11 +242,24 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   return existingAccountId === newAccountId;
 };
 
+const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
+  const existingConfig = existingSync.destinationConfig;
+  const newConfig = newSync.destinationConfig;
+
+  if (existingConfig.projectId !== newConfig.projectId) return false;
+
+  if (newConfig.scope === GcpSyncScope.Region) {
+    return existingConfig.scope === GcpSyncScope.Region && existingConfig.locationId === newConfig.locationId;
+  }
+
+  return existingConfig.scope === GcpSyncScope.Global;
+};
+
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
   [SecretSync.AWSParameterStore]: awsDuplicateCheck,
   [SecretSync.AWSSecretsManager]: awsDuplicateCheck,
   [SecretSync.GitHub]: defaultDuplicateCheck,
-  [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
+  [SecretSync.GCPSecretManager]: gcpDuplicateCheck,
   [SecretSync.AzureKeyVault]: defaultDuplicateCheck,
   [SecretSync.AzureAppConfiguration]: defaultDuplicateCheck,
   [SecretSync.AzureDevOps]: defaultDuplicateCheck,
