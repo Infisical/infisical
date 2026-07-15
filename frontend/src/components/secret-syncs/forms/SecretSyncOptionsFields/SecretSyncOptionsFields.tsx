@@ -270,10 +270,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Keep it enabled</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="project"
-                      onClick={() => onChange(false)}
-                    >
+                    <AlertDialogAction variant="project" onClick={() => onChange(false)}>
                       Disable
                     </AlertDialogAction>
                   </AlertDialogFooter>
