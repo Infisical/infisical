@@ -123,9 +123,15 @@ export const GcpSyncFns = {
             {
               replication:
                 destinationConfig.scope === GcpSyncScope.Global
-                  ? {
-                      automatic: {}
-                    }
+                  ? destinationConfig.locationId
+                    ? {
+                        userManaged: {
+                          replicas: [{ location: destinationConfig.locationId }]
+                        }
+                      }
+                    : {
+                        automatic: {}
+                      }
                   : undefined
             },
             {

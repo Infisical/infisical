@@ -156,23 +156,41 @@ export const GcpSyncFields = () => {
           </Field>
         )}
       />
-      {selectedScope === GcpSyncScope.Region && (
+      {(selectedScope === GcpSyncScope.Region || selectedScope === GcpSyncScope.Global) && (
         <Controller
           name="destinationConfig.locationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Region</FieldLabel>
+              <FieldLabel>
+                Region
+                {selectedScope === GcpSyncScope.Global && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      Optionally specify a region for user-managed replication. If not set, automatic
+                      replication will be used.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </FieldLabel>
               <FieldContent>
                 <FilterableSelect
                   isLoading={areLocationsPending && Boolean(projectId)}
                   isDisabled={!projectId}
+                  isClearable={selectedScope === GcpSyncScope.Global}
                   value={locations?.find((option) => option.locationId === value) ?? null}
                   onChange={(option) =>
-                    onChange((option as SingleValue<TGcpLocation>)?.locationId ?? null)
+                    onChange((option as SingleValue<TGcpLocation>)?.locationId ?? "")
                   }
                   options={locations}
-                  placeholder="Select a region..."
+                  placeholder={
+                    selectedScope === GcpSyncScope.Global
+                      ? "Automatic replication"
+                      : "Select a region..."
+                  }
                   getOptionValue={(option) => option.locationId}
                   formatOptionLabel={formatOptionLabel}
                 />
