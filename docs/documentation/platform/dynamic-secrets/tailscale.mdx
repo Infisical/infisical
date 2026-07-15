@@ -91,6 +91,10 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
       How Infisical authenticates to the Tailscale API. Choose **API Key** to use a Tailscale API access token, or **OAuth** to use an OAuth client's credentials.
     </ParamField>
 
+    <ParamField path="Key Type" type="string" required>
+      The type of credential to mint on each lease. Choose **Auth Key** to generate a device auth key, **OAuth Client** to generate a tailnet OAuth client, or **Federated Identity** to create a workload identity federation trust. A federated identity returns an identifier and audience rather than a secret. The additional parameters below depend on the key type you select.
+    </ParamField>
+
     <ParamField path="API Key" type="string" required>
       Required when the authentication method is **API Key**. The Tailscale API access token with permission to create and revoke keys.
     </ParamField>
@@ -103,9 +107,6 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
       Required when the authentication method is **OAuth**. The Tailscale OAuth client secret with permission to create and revoke keys.
     </ParamField>
 
-    <ParamField path="Key Type" type="string" required>
-      The type of credential to mint on each lease. Choose **Auth Key** to generate a device auth key, **OAuth Client** to generate a tailnet OAuth client, or **Federated Identity** to create a workload identity federation trust. A federated identity returns an identifier and audience rather than a secret.
-    </ParamField>
 
     <ParamField path="Tailnet" type="string" required default="-">
       The tailnet identifier. Use `-` for the token owner's default tailnet, or provide a tailnet name (e.g. `example.com`).
@@ -119,33 +120,51 @@ Infisical needs a credential that is allowed to create and revoke keys in your t
       Comma-separated ACL tags to attach (e.g. `tag:ci, tag:prod`). **Required** when the key type is **Auth Key** and the authentication method is **OAuth**; optional otherwise.
     </ParamField>
 
-    <ParamField path="Scopes" type="string" required>
-      Comma-separated OAuth scopes granted to the credential (e.g. `devices:core, auth_keys`). Shown and required when the key type is **OAuth Client** or **Federated Identity**.
-    </ParamField>
+    <Tabs>
+      <Tab title="Auth Key">
+        <ParamField path="Reusable" type="boolean" default="false">
+          Whether the auth key can register multiple devices.
+        </ParamField>
 
-    <ParamField path="Issuer" type="string" required>
-      HTTPS URL of the OIDC issuer trusted for token exchange (e.g. `https://token.actions.githubusercontent.com`). Shown and required only when the key type is **Federated Identity**.
-    </ParamField>
+        <ParamField path="Pre-authorized" type="boolean" default="false">
+          Whether devices registered with the key are pre-authorized.
+        </ParamField>
 
-    <ParamField path="Subject" type="string" required>
-      Pattern matched against the `sub` claim of the OIDC identity token; supports wildcards (e.g. `repo:my-org/my-repo:*`). Shown and required only when the key type is **Federated Identity**.
-    </ParamField>
+        <Note>
+        Auth keys are always created as `ephemeral`. Revoking a lease deletes the corresponding credential in your tailnet, but Tailscale does not remove the devices that already registered with it. Marking the devices ephemeral ensures Tailscale automatically removes them from the tailnet shortly after they go offline, so devices provisioned through a lease are cleaned up without manual intervention.
+        </Note>
+      </Tab>
+      <Tab title="OAuth Client">
+        <ParamField path="Scopes" type="string" required>
+          Comma-separated OAuth scopes granted to the credential (e.g. `devices:core, auth_keys`).
+        </ParamField>
 
-    <ParamField path="Audience" type="string">
-      Audience for the OIDC token exchange. Leave blank to let Tailscale auto-generate one, which is then returned in the lease output. Shown only when the key type is **Federated Identity**.
-    </ParamField>
+        <Note>
+          OAuth clients cannot be created with the `auth-keys` or `oauth` scopes. Those scopes can create or modify other credentials in your tailnet, so Infisical blocks them to prevent leases from changing existing Tailscale credentials.
+        </Note>
+      </Tab>
+      <Tab title="Federated Identity">
+        <ParamField path="Scopes" type="string" required>
+          Comma-separated OAuth scopes granted to the credential (e.g. `devices:core, auth_keys`).
+        </ParamField>
 
-    <ParamField path="Reusable" type="boolean" default="false">
-      Whether the auth key can register multiple devices. Available only when the key type is **Auth Key**.
-    </ParamField>
+        <ParamField path="Issuer" type="string" required>
+          HTTPS URL of the OIDC issuer trusted for token exchange (e.g. `https://token.actions.githubusercontent.com`).
+        </ParamField>
 
-    <ParamField path="Pre-authorized" type="boolean" default="false">
-      Whether devices registered with the key are pre-authorized. Available only when the key type is **Auth Key**.
-    </ParamField>
+        <ParamField path="Subject" type="string" required>
+          Pattern matched against the `sub` claim of the OIDC identity token; supports wildcards (e.g. `repo:my-org/my-repo:*`).
+        </ParamField>
 
-    <Note>
-    Auth keys are always created as `ephemeral`. Revoking a lease deletes the corresponding credential in your tailnet, but Tailscale does not remove the devices that already registered with it. Marking the devices ephemeral ensures Tailscale automatically removes them from the tailnet shortly after they go offline, so devices provisioned through a lease are cleaned up without manual intervention.
-    </Note>
+        <ParamField path="Audience" type="string">
+          Audience for the OIDC token exchange. Leave blank to let Tailscale auto-generate one, which is then returned in the lease output.
+        </ParamField>
+
+        <Note>
+          OAuth clients cannot be created with the `auth-keys` or `oauth` scopes. Those scopes can create or modify other credentials in your tailnet, so Infisical blocks them to prevent leases from changing existing Tailscale credentials.
+        </Note>
+      </Tab>
+    </Tabs>
   </Step>
   <Step title="Click `Submit`">
     After submitting the form, you will see a dynamic secret created in the dashboard.
