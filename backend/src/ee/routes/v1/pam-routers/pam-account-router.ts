@@ -696,7 +696,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
             metadata: {
               accountId: req.params.accountId,
-              keyAlgorithm: result.keyAlgorithm!
+              keyAlgorithm: result.keyAlgorithm || "unknown"
             }
           }
         });
@@ -766,7 +766,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
             metadata: {
               accountId: req.params.accountId,
-              keyAlgorithm: result.keyAlgorithm!
+              keyAlgorithm: result.keyAlgorithm || "unknown"
             }
           }
         });
