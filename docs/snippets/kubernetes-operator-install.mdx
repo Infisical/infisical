@@ -93,9 +93,15 @@
   </Step>
 
   <Step title="Verify the deployment">
+    Check the pods in the namespace you installed the operator into:
+
     ```bash
-    kubectl get pods -n infisical
+    kubectl get pods --namespace <namespace>
     ```
+
+    <Note>
+      If you installed cluster-wide without a `--namespace` flag, the operator is deployed into your current namespace (typically `default`), so run `kubectl get pods` without the flag.
+    </Note>
   </Step>
 </Steps>
 
