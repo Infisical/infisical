@@ -1,0 +1,45 @@
+version: v0.162.4
+releasedAt: 2026-07-13T08:33:49-07:00
+sourceTag: v0.162.4
+previousTag: v0.162.3
+impactLevel: low
+summary: Adds one startup-run database migration for secrets activation
+  tracking. New tuning variables are optional and default-safe for existing
+  self-hosted deployments.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Secrets activation table
+    description: Adds a new user_secret_activation table for activation tracking.
+      The migration is additive and keeps existing data paths unchanged.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260702120000_create-user-secret-activation.ts
+        path: backend/src/db/migrations/20260702120000_create-user-secret-activation.ts
+        description: Creates user_secret_activation table and indexes
+configChanges:
+  - title: Secrets activation settings
+    description: Adds SECRETS_ACTIVATION_ENABLED,
+      SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS, and
+      SECRETS_ACTIVATION_ORG_MAX_MEMBERS. Defaults keep the feature off unless
+      you opt in.
+    action: Set these variables only if you want to enable or tune the activation
+      banner.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: Adds secrets activation environment variables
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-13T18:49:26.548Z
+  sourceRange:
+    from: v0.162.3
+    to: v0.162.4
