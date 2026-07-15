@@ -63,6 +63,13 @@ export const webAuthnServiceFactory = ({
   const RP_NAME = "Infisical";
   const RP_ID = new URL(appCfg.SITE_URL || "http://localhost:8080").hostname;
   const ORIGIN = appCfg.SITE_URL || "http://localhost:8080";
+  // ES256/RS256 only. The library default also offers/accepts EdDSA (-8), which
+  // Ed25519-capable authenticators (e.g. modern YubiKeys) pick first, but Ed25519
+  // cannot be verified under FIPS mode (the OpenSSL FIPS provider rejects the key
+  // import with "Invalid keyData"), so such a credential enrolls and then always
+  // fails MFA. ES256 is mandatory for FIDO2 authenticators, so nothing is excluded
+  // in practice.
+  const SUPPORTED_COSE_ALGORITHM_IDS = [-7, -257];
   /**
    * Generate registration options for a new passkey
    * This is the first step in passkey registration
@@ -86,13 +93,7 @@ export const webAuthnServiceFactory = ({
       userName: user.email || "",
       userDisplayName: user.email || "",
       attestationType: "none",
-      // ES256/RS256 only. The library default also offers EdDSA (-8) first, which
-      // Ed25519-capable authenticators (e.g. modern YubiKeys) will pick, but Ed25519
-      // cannot be verified under FIPS mode (OpenSSL FIPS provider rejects the key
-      // import with "Invalid keyData"), so the credential enrolls and then always
-      // fails MFA. ES256 is mandatory for FIDO2 authenticators, so nothing is
-      // excluded in practice
-      supportedAlgorithmIDs: [-7, -257],
+      supportedAlgorithmIDs: SUPPORTED_COSE_ALGORITHM_IDS,
       excludeCredentials: existingCredentials.map((cred) => ({
         id: cred.credentialId,
         transports: cred.transports as AuthenticatorTransportFuture[]
@@ -142,7 +143,8 @@ export const webAuthnServiceFactory = ({
         expectedChallenge,
         expectedOrigin: ORIGIN,
         expectedRPID: RP_ID,
-        requireUserVerification: true
+        requireUserVerification: true,
+        supportedAlgorithmIDs: SUPPORTED_COSE_ALGORITHM_IDS
       });
     } catch (error: unknown) {
       await clearChallenge(userId);
