@@ -85,6 +85,39 @@ The CLI is designed for a variety of secret management applications ranging from
 
   </Tab>
 
+  <Tab title="Docker containers">
+    Install the Infisical CLI into your Docker image and start your application with it to inject secrets at runtime.
+
+    <Steps>
+      <Step title="Install the Infisical CLI in your Dockerfile">
+        Install the CLI with the package manager of your base image. The example below targets Alpine; find the commands for other distributions [here](/cli/overview).
+
+        ```dockerfile
+        RUN apk add --no-cache bash wget && \
+            wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sh && \
+            apk update && apk add infisical
+        ```
+      </Step>
+      <Step title="Start your application with the CLI">
+        Set your container start command to run your application through `infisical run`. The CLI fetches your secrets from Infisical and injects them as environment variables.
+
+        ```dockerfile
+        CMD ["infisical", "run", "--projectId", "<your-project-id>", "--env", "prod", "--", "npm", "run", "start"]
+        ```
+      </Step>
+      <Step title="Authenticate the container">
+        Create a [machine identity](/documentation/platform/identities/machine-identities) and pass its access token to the container through the `INFISICAL_TOKEN` environment variable.
+
+        ```bash
+        docker run --env INFISICAL_TOKEN=$INFISICAL_TOKEN <your-image>
+        ```
+      </Step>
+    </Steps>
+
+    For Docker Compose and `--env-file` workflows, see the [Docker guides](/integrations/platforms/docker-intro).
+
+  </Tab>
+
   <Tab title="Staging, production & all other use cases">
     In the following steps, we explore how to use the Infisical CLI in a non-local development scenario
     to fetch back environment variables and export them to a file.
