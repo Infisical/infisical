@@ -102,6 +102,14 @@ const validateTemplateByExternalCaType = (
         });
       }
       break;
+    case CaType.ADCS:
+      if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
+        throw new ForbiddenRequestError({
+          message:
+            "Active Directory Certificate Service Certificate Authority requires a template to be specified in external configs"
+        });
+      }
+      break;
     default:
       break;
   }
@@ -321,6 +329,19 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
   } as TCertificateProfile;
 };
 
+const requiresIssueCertForEnrollmentConfig = (data: {
+  enrollmentType?: EnrollmentType;
+  estConfig?: unknown;
+  acmeConfig?: unknown;
+  scepConfig?: unknown;
+}): boolean =>
+  data.enrollmentType === EnrollmentType.EST ||
+  data.enrollmentType === EnrollmentType.ACME ||
+  data.enrollmentType === EnrollmentType.SCEP ||
+  data.estConfig !== undefined ||
+  data.acmeConfig !== undefined ||
+  data.scepConfig !== undefined;
+
 export const certificateProfileServiceFactory = ({
   certificateProfileDAL,
   certificatePolicyDAL,
@@ -369,6 +390,15 @@ export const certificateProfileServiceFactory = ({
         slug: data.slug
       })
     );
+
+    if (requiresIssueCertForEnrollmentConfig(data)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        subject(ProjectPermissionSub.CertificateProfiles, {
+          slug: data.slug
+        })
+      );
+    }
 
     const enrollmentType = data.enrollmentType ?? EnrollmentType.API;
 
@@ -619,6 +649,15 @@ export const certificateProfileServiceFactory = ({
         slug: existingProfile.slug
       })
     );
+
+    if (requiresIssueCertForEnrollmentConfig(data)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        subject(ProjectPermissionSub.CertificateProfiles, {
+          slug: existingProfile.slug
+        })
+      );
+    }
 
     if (data.certificatePolicyId) {
       const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
@@ -964,6 +1003,7 @@ export const certificateProfileServiceFactory = ({
         profile.estConfig.caChain = "";
       }
     }
+
     if (profile.enrollmentType === EnrollmentType.ACME && profile.acmeConfig) {
       profile.acmeConfig.directoryUrl = buildUrl(profile.id, "/directory");
       if (profile.acmeConfig.encryptedEabSecret) {

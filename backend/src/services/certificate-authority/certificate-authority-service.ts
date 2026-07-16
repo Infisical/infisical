@@ -12,6 +12,7 @@ import {
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -21,8 +22,15 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { CrlReason } from "../certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
-import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import {
+  CertificateRequestStatus,
+  TAttachCertificateToRequestDTO,
+  TUpdateCertificateRequestStatusDTO
+} from "../certificate-request/certificate-request-types";
+import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { MaxInternalCas } from "../license-client";
+import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -36,6 +44,14 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme/acme-certificate-authority-types";
+import {
+  ADCSCertificateAuthorityFns,
+  castDbEntryToADCSCertificateAuthority
+} from "./adcs/adcs-certificate-authority-fns";
+import {
+  TCreateADCSCertificateAuthorityDTO,
+  TUpdateADCSCertificateAuthorityDTO
+} from "./adcs/adcs-certificate-authority-types";
 import {
   AwsAcmPublicCaCertificateAuthorityFns,
   castDbEntryToAwsAcmPublicCaCertificateAuthority
@@ -56,12 +72,10 @@ import {
   AzureAdCsCertificateAuthorityFns,
   castDbEntryToAzureAdCsCertificateAuthority
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
-import {
-  TCreateAzureAdCsCertificateAuthorityDTO,
-  TUpdateAzureAdCsCertificateAuthorityDTO
-} from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
+import { TUpdateAzureAdCsCertificateAuthorityDTO } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
   TCreateCertificateAuthorityDTO,
@@ -78,6 +92,15 @@ import {
   TUpdateDigiCertCertificateAuthorityDTO
 } from "./digicert/digicert-certificate-authority-types";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import {
+  castDbEntryToGoDaddyCertificateAuthority,
+  GoDaddyCertificateAuthorityFns
+} from "./godaddy/godaddy-certificate-authority-fns";
+import { processGoDaddyPendingValidationRequest } from "./godaddy/godaddy-certificate-authority-processor";
+import {
+  TCreateGoDaddyCertificateAuthorityDTO,
+  TUpdateGoDaddyCertificateAuthorityDTO
+} from "./godaddy/godaddy-certificate-authority-types";
 import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal-certificate-authority-service";
 import { TCreateInternalCertificateAuthorityDTO } from "./internal/internal-certificate-authority-types";
 import {
@@ -104,7 +127,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -126,6 +149,9 @@ type TCertificateAuthorityServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -149,7 +175,10 @@ export const certificateAuthorityServiceFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  usageMeteringService,
+  hsmConnectorService,
+  certificateAuthoritySecretDAL
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -183,6 +212,21 @@ export const certificateAuthorityServiceFactory = ({
     certificateProfileDAL
   });
 
+  const adcsFns = ADCSCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
   const venafiTppFns = VenafiTppCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
@@ -212,6 +256,17 @@ export const certificateAuthorityServiceFactory = ({
   });
 
   const digicertFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+  const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -254,8 +309,21 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     if (type === CaType.INTERNAL) {
+      const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
+
+      if (internalConfig.keySource === CertKeySource.Hsm) {
+        if (!internalConfig.hsmConnectorId) {
+          throw new BadRequestError({ message: "An HSM Connector is required when the key source is HSM." });
+        }
+        await hsmConnectorService.assertAttachPermission(
+          { type: actor.type, id: actor.id, authMethod: actor.authMethod, orgId: actor.orgId },
+          internalConfig.hsmConnectorId,
+          projectId
+        );
+      }
+
       const ca = await internalCertificateAuthorityService.createCa({
-        ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
+        ...internalConfig,
         isInternal: true,
         projectId,
         name
@@ -266,6 +334,8 @@ export const certificateAuthorityServiceFactory = ({
           message: "Failed to create internal certificate authority"
         });
       }
+
+      usageMeteringService.emitForProject(projectId, MaxInternalCas.key);
 
       return {
         id: ca.id,
@@ -289,10 +359,17 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (type === CaType.AZURE_AD_CS) {
-      return azureAdCsFns.createCertificateAuthority({
+      throw new BadRequestError({
+        message:
+          "Creating new Azure ADCS (Web Enrollment) certificate authorities is no longer supported. Use the Microsoft ADCS connection instead."
+      });
+    }
+
+    if (type === CaType.ADCS) {
+      return adcsFns.createCertificateAuthority({
         name,
         projectId,
-        configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
+        configuration: configuration as TCreateADCSCertificateAuthorityDTO["configuration"],
         status,
         actor
       });
@@ -313,6 +390,15 @@ export const certificateAuthorityServiceFactory = ({
         name,
         projectId,
         configuration: configuration as TCreateDigiCertCertificateAuthorityDTO["configuration"],
+        status,
+        actor
+      });
+    }
+    if (type === CaType.GODADDY) {
+      return godaddyFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateGoDaddyCertificateAuthorityDTO["configuration"],
         status,
         actor
       });
@@ -368,6 +454,8 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: id });
+
       return {
         id: certificateAuthority.id,
         type,
@@ -375,7 +463,12 @@ export const certificateAuthorityServiceFactory = ({
         subject: ProjectPermissionSub.CertificateAuthorities,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: {
+          ...certificateAuthority.internalCa,
+          keySource: (caSecret?.keySource as CertKeySource | undefined) ?? CertKeySource.Infisical,
+          hsmConnectorId: caSecret?.hsmConnectorId ?? undefined,
+          hsmKeyLabel: caSecret?.hsmKeyLabel ?? undefined
+        },
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }
@@ -394,12 +487,20 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
+    }
+
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.DIGICERT) {
       return castDbEntryToDigiCertCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.GODADDY) {
+      return castDbEntryToGoDaddyCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_ACM_PUBLIC_CA) {
@@ -473,12 +574,20 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
+    }
+
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.DIGICERT) {
       return castDbEntryToDigiCertCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.GODADDY) {
+      return castDbEntryToGoDaddyCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_ACM_PUBLIC_CA) {
@@ -547,12 +656,20 @@ export const certificateAuthorityServiceFactory = ({
       return azureAdCsFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
+    if (type === CaType.ADCS) {
+      return adcsFns.listCertificateAuthorities({ projectId, permissionFilters });
+    }
+
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     if (type === CaType.DIGICERT) {
       return digicertFns.listCertificateAuthorities({ projectId, permissionFilters });
+    }
+
+    if (type === CaType.GODADDY) {
+      return godaddyFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     if (type === CaType.AWS_ACM_PUBLIC_CA) {
@@ -648,6 +765,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.ADCS) {
+      return adcsFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateADCSCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
@@ -662,6 +789,16 @@ export const certificateAuthorityServiceFactory = ({
       return digicertFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateDigiCertCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
+    if (type === CaType.GODADDY) {
+      return godaddyFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateGoDaddyCertificateAuthorityDTO["configuration"],
         actor,
         status,
         name
@@ -728,6 +865,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
+      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -747,12 +885,20 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
+    }
+
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.DIGICERT) {
       return castDbEntryToDigiCertCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.GODADDY) {
+      return castDbEntryToGoDaddyCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_ACM_PUBLIC_CA) {
@@ -845,6 +991,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.ADCS) {
+      return adcsFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateADCSCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
@@ -859,6 +1015,16 @@ export const certificateAuthorityServiceFactory = ({
       return digicertFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateDigiCertCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
+    if (type === CaType.GODADDY) {
+      return godaddyFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateGoDaddyCertificateAuthorityDTO["configuration"],
         actor,
         status,
         name
@@ -931,6 +1097,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
+      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -950,12 +1117,20 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.ADCS) {
+      return castDbEntryToADCSCertificateAuthority(certificateAuthority);
+    }
+
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.DIGICERT) {
       return castDbEntryToDigiCertCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.GODADDY) {
+      return castDbEntryToGoDaddyCertificateAuthority(certificateAuthority);
     }
 
     if (type === CaType.AWS_ACM_PUBLIC_CA) {
@@ -1008,6 +1183,50 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     return azureAdCsFns.getTemplates({
+      caId,
+      projectId
+    });
+  };
+
+  const getADCSTemplates = async ({
+    caId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    caId: string;
+    projectId: string;
+    actor: OrgServiceActor["type"];
+    actorId: string;
+    actorAuthMethod: OrgServiceActor["authMethod"];
+    actorOrgId?: string;
+  }) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+    if (!certificateAuthority)
+      throw new NotFoundError({
+        message: `Could not find certificate authority with id "${caId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, {
+        name: certificateAuthority.name
+      })
+    );
+
+    return adcsFns.getCertificateTemplates({
       caId,
       projectId
     });
@@ -1080,8 +1299,18 @@ export const certificateAuthorityServiceFactory = ({
       return;
     }
 
+    if (caType === CaType.GODADDY) {
+      await godaddyFns.revokeCertificate({ caId, serialNumber, reason });
+      return;
+    }
+
     if (caType === CaType.AWS_ACM_PUBLIC_CA) {
       await awsAcmPublicCaFns.revokeCertificate({ caId, serialNumber, reason });
+      return;
+    }
+
+    if (caType === CaType.ADCS) {
+      await adcsFns.revokeCertificate({ caId, serialNumber, reason });
       return;
     }
 
@@ -1137,29 +1366,48 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateRequest.caId);
-    if (ca.externalCa?.type !== CaType.DIGICERT) {
+    if (ca.externalCa?.type !== CaType.DIGICERT && ca.externalCa?.type !== CaType.GODADDY) {
       throw new BadRequestError({
-        message: `Manual validation is only supported for DigiCert certificate authorities [caType=${ca.externalCa?.type}]`
+        message: `Manual validation is only supported for DigiCert and GoDaddy certificate authorities [caType=${ca.externalCa?.type}]`
       });
     }
 
-    const result = await processDigiCertPendingValidationRequest(
-      {
-        certificateAuthorityDAL,
-        appConnectionDAL,
-        kmsService,
-        certificateRequestDAL,
-        certificateRequestService: {
-          updateCertificateRequestStatus: async ({ certificateRequestId: id, status, errorMessage }) =>
-            certificateRequestDAL.transitionFromPending(id, status, errorMessage),
-          attachCertificateToRequest: async ({ certificateRequestId: id, certificateId }) =>
-            certificateRequestDAL.attachCertificate(id, certificateId)
-        },
-        resourceMetadataDAL,
-        digicertFns
-      },
-      certificateRequest
-    );
+    const certificateRequestService = {
+      updateCertificateRequestStatus: async ({
+        certificateRequestId: id,
+        status,
+        errorMessage
+      }: TUpdateCertificateRequestStatusDTO) => certificateRequestDAL.transitionFromPending(id, status, errorMessage),
+      attachCertificateToRequest: async ({ certificateRequestId: id, certificateId }: TAttachCertificateToRequestDTO) =>
+        certificateRequestDAL.attachCertificate(id, certificateId)
+    };
+
+    const result =
+      ca.externalCa.type === CaType.GODADDY
+        ? await processGoDaddyPendingValidationRequest(
+            {
+              certificateAuthorityDAL,
+              appConnectionDAL,
+              kmsService,
+              certificateRequestDAL,
+              certificateRequestService,
+              resourceMetadataDAL,
+              godaddyFns
+            },
+            certificateRequest
+          )
+        : await processDigiCertPendingValidationRequest(
+            {
+              certificateAuthorityDAL,
+              appConnectionDAL,
+              kmsService,
+              certificateRequestDAL,
+              certificateRequestService,
+              resourceMetadataDAL,
+              digicertFns
+            },
+            certificateRequest
+          );
 
     return { ...result, projectId: certificateRequest.projectId };
   };
@@ -1172,6 +1420,7 @@ export const certificateAuthorityServiceFactory = ({
     updateCertificateAuthority,
     deleteCertificateAuthority,
     getAzureAdcsTemplates,
+    getADCSTemplates,
     getCaById,
     deprecatedUpdateCertificateAuthority,
     deprecatedDeleteCertificateAuthority,

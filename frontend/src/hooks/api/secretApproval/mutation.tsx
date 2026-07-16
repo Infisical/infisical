@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretApprovalKeys } from "./queries";
 import { TCreateSecretPolicyDTO, TDeleteSecretPolicyDTO, TUpdateSecretPolicyDTO } from "./types";
 
@@ -36,6 +37,15 @@ export const useCreateSecretApprovalPolicy = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[1] === "secret-approval-request-detail"
       });
     }
   });
@@ -72,6 +82,15 @@ export const useUpdateSecretApprovalPolicy = () => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
       });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[1] === "secret-approval-request-detail"
+      });
     }
   });
 };
@@ -87,6 +106,15 @@ export const useDeleteSecretApprovalPolicy = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[1] === "secret-approval-request-detail"
       });
     }
   });

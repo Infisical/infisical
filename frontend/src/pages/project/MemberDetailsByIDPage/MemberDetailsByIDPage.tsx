@@ -6,24 +6,21 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
+import { AssumePrivilegesModal } from "@app/components/assume-privileges";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  ConfirmActionModal,
-  DeleteActionModal,
-  EmptyState,
-  PageHeader,
-  Spinner,
-  Tooltip
-} from "@app/components/v2";
+import { DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import {
   Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -33,13 +30,9 @@ import {
   useProject,
   useUser
 } from "@app/context";
-import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import {
-  useAssumeProjectPrivileges,
-  useDeleteUserFromWorkspace,
-  useGetWorkspaceUserDetails
-} from "@app/hooks/api";
+import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -65,7 +58,6 @@ export const Page = () => {
     useGetWorkspaceUserDetails(projectId, membershipId, currentProject?.type);
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
-  const assumePrivileges = useAssumeProjectPrivileges();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeMember",
@@ -74,30 +66,6 @@ export const Page = () => {
   ] as const);
 
   const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
-
-  const handleAssumePrivileges = async () => {
-    const { userId } = popUp?.assumePrivileges?.data as { userId: string };
-    assumePrivileges.mutate(
-      {
-        actorId: userId,
-        actorType: ActorType.USER,
-        projectId
-      },
-      {
-        onSuccess: () => {
-          createNotification({
-            type: "success",
-            text: "User privilege assumption has started"
-          });
-
-          const url = getProjectHomePage(currentProject.type, currentProject.environments);
-          window.location.assign(
-            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
-          );
-        }
-      }
-    );
-  };
 
   const handleRemoveUser = async () => {
     if (!currentOrg?.id || !currentProject?.id || !membershipDetails?.user?.username) return;
@@ -175,17 +143,17 @@ export const Page = () => {
                 </Button>
               )}
               {isOwnProjectMembershipDetails ? (
-                <Tooltip
-                  side="right"
-                  content={
-                    isCertManager
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="info" className="ml-2">
+                      <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {isCertManager
                       ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
-                      : "You cannot modify your own membership. Ask a project admin to make changes to your membership."
-                  }
-                >
-                  <Badge variant="info" className="ml-2">
-                    <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
-                  </Badge>
+                      : "You cannot modify your own membership. Ask a project admin to make changes to your membership."}
+                  </TooltipContent>
                 </Tooltip>
               ) : (
                 <DropdownMenu>
@@ -213,24 +181,27 @@ export const Page = () => {
                         a={ProjectPermissionSub.Member}
                       >
                         {(isAllowed) => (
-                          <DropdownMenuItem
-                            isDisabled={!isAllowed}
-                            onClick={() =>
-                              handlePopUpOpen("assumePrivileges", {
-                                userId: membershipDetails.user.id
-                              })
-                            }
-                          >
-                            Assume Privileges
-                            <Tooltip
-                              side="bottom"
-                              content="Assume the privileges of this user, allowing you to replicate their access behavior."
-                            >
-                              <div>
-                                <InfoIcon className="text-muted" />
-                              </div>
-                            </Tooltip>
-                          </DropdownMenuItem>
+                          <Tooltip>
+                            <TooltipTrigger className="block w-full">
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() =>
+                                  handlePopUpOpen("assumePrivileges", {
+                                    userId: membershipDetails.user.id
+                                  })
+                                }
+                              >
+                                Assume Privileges
+                                {isAllowed && <InfoIcon className="text-muted" />}
+                              </DropdownMenuItem>
+                            </TooltipTrigger>
+                            {isAllowed && (
+                              <TooltipContent className="max-w-80" side="left">
+                                Assume the privileges of this user, allowing you to replicate their
+                                access behavior.
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
                         )}
                       </ProjectPermissionCan>
                     )}
@@ -280,14 +251,11 @@ export const Page = () => {
             onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
             onDeleteApproved={handleRemoveUser}
           />
-          <ConfirmActionModal
+          <AssumePrivilegesModal
             isOpen={popUp.assumePrivileges.isOpen}
-            confirmKey="assume"
-            title="Do you want to assume privileges of this user?"
-            subTitle="This will set your privileges to those of the user for the next hour."
-            onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
-            onConfirmed={handleAssumePrivileges}
-            buttonText="Confirm"
+            onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+            actorType={ActorType.USER}
+            actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}

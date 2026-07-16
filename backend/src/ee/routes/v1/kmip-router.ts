@@ -287,16 +287,21 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         id: z.string()
       }),
-      body: z.object({
-        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
-      }),
+      body: z
+        .object({
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096).optional()
+        })
+        .refine((data) => data.csr || data.keyAlgorithm, {
+          message: "Either csr or keyAlgorithm must be provided"
+        }),
       response: {
         200: z.object({
           serialNumber: z.string(),
           certificateChain: z.string(),
           certificate: z.string(),
-          privateKey: z.string()
+          privateKey: z.string().optional()
         })
       }
     },
@@ -321,7 +326,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
             clientId: req.params.id,
             serialNumber: certificate.serialNumber,
             ttl: req.body.ttl,
-            keyAlgorithm: req.body.keyAlgorithm
+            keyAlgorithm: req.body.keyAlgorithm,
+            isFromCsr: Boolean(req.body.csr)
           }
         }
       });
@@ -352,8 +358,12 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Legacy machine-identity servers only. Enrollment-based servers use POST /kmip/servers/connect,
+    // which reads the cert config from the stored server entity instead of the request body.
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { hostnamesOrIps } = req.body;
+
       const configs = await server.services.kmip.registerServer({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -369,7 +379,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           type: EventType.REGISTER_KMIP_SERVER,
           metadata: {
             serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
-            hostnamesOrIps: req.body.hostnamesOrIps,
+            hostnamesOrIps,
             commonName: req.body.commonName ?? "kmip-server",
             keyAlgorithm: req.body.keyAlgorithm,
             ttl: req.body.ttl

@@ -40,9 +40,15 @@ linters:
 
     errcheck:
       check-type-assertions: true
+      check-blank: true
       exclude-functions:
         - os.Setenv
         - fmt.Sscanf
+        - io.Closer.Close
+        - (net/http.ResponseWriter).Write
+        - (*os.File).Write
+        - (*encoding/json.Encoder).Encode
+        - (github.com/jackc/pgx/v5.Tx).Rollback
 
     exhaustive:
       default-signifies-exhaustive: true
@@ -107,12 +113,16 @@ linters:
         linters:
           - sloglint
 
-      # Test files can be more relaxed.
+      # Test files and utilities can be more relaxed.
       - path: _test\.go
         linters:
           - errcheck
           - unparam
           - prealloc
+          - sloglint
+      - path: internal/testutil/
+        linters:
+          - errcheck
           - sloglint
 
 formatters:

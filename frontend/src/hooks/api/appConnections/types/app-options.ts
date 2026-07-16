@@ -102,6 +102,10 @@ export type TOctopusDeployConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OctopusDeploy;
 };
 
+export type TQoveryConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Qovery;
+};
+
 export type TLdapConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.LDAP;
 };
@@ -188,6 +192,10 @@ export type TAzureAdCsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureADCS;
 };
 
+export type TAdcsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ADCS;
+};
+
 export type TRedisConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Redis;
 };
@@ -220,8 +228,16 @@ export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OpenRouter;
 };
 
+export type TOpenAIConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OpenAI;
+};
+
 export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
+};
+
+export type TCloud66ConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Cloud66;
 };
 
 export type TVenafiConnectionOption = TAppConnectionOptionBase & {
@@ -247,6 +263,13 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TLiteLLMConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.LiteLLM;
+};
+export type TFireworksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Fireworks;
+};
+
 export type TOvhConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OVH;
 };
@@ -262,6 +285,10 @@ export type TDigiCertConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigiCert;
 };
 
+export type TGoDaddyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.GoDaddy;
+};
+
 export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TravisCI;
 };
@@ -269,12 +296,33 @@ export type TTravisCIConnectionOption = TAppConnectionOptionBase & {
 export type TSalesforceConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Salesforce;
 };
+
 export type TSnowflakeConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Snowflake;
 };
 
 export type TDatadogConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Datadog;
+};
+
+export type TF5BigIpConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.F5BigIp;
+};
+
+export type TConvexConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Convex;
+};
+
+export type TRundeckConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Rundeck;
+};
+
+export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TriggerDev;
+};
+
+export type THasuraCloudConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.HasuraCloud;
 };
 
 export type TAppConnectionOption =
@@ -317,8 +365,11 @@ export type TAppConnectionOption =
   | TNorthflankConnectionOption
   | TOktaConnectionOption
   | TOpenRouterConnectionOption
+  | TOpenAIConnectionOption
   | TCircleCISyncConnectionOption
+  | TCloud66ConnectionOption
   | TAzureAdCsConnectionOption
+  | TAdcsConnectionOption
   | TLaravelForgeConnectionOption
   | TRedisConnectionOption
   | TMongoDBConnectionOption
@@ -340,10 +391,19 @@ export type TAppConnectionOption =
   | TDevinConnectionOption
   | TOnaConnectionOption
   | TDigiCertConnectionOption
+  | TGoDaddyConnectionOption
   | TTravisCIConnectionOption
   | TSalesforceConnectionOption
   | TSnowflakeConnectionOption
-  | TDatadogConnectionOption;
+  | TDatadogConnectionOption
+  | TF5BigIpConnectionOption
+  | TConvexConnectionOption
+  | TTriggerDevConnectionOption
+  | TRundeckConnectionOption
+  | THasuraCloudConnectionOption
+  | TQoveryConnectionOption
+  | TLiteLLMConnectionOption
+  | TFireworksConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -386,7 +446,9 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.OpenRouter]: TOpenRouterConnectionOption;
+  [AppConnection.OpenAI]: TOpenAIConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
+  [AppConnection.ADCS]: TAdcsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
@@ -397,6 +459,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
+  [AppConnection.Cloud66]: TCloud66ConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.VenafiTpp]: TVenafiTppConnectionOption;
@@ -408,8 +471,17 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Devin]: TDevinConnectionOption;
   [AppConnection.Ona]: TOnaConnectionOption;
   [AppConnection.DigiCert]: TDigiCertConnectionOption;
+  [AppConnection.GoDaddy]: TGoDaddyConnectionOption;
   [AppConnection.TravisCI]: TTravisCIConnectionOption;
   [AppConnection.Salesforce]: TSalesforceConnectionOption;
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
+  [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
+  [AppConnection.Convex]: TConvexConnectionOption;
+  [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
+  [AppConnection.Rundeck]: TRundeckConnectionOption;
+  [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
+  [AppConnection.Qovery]: TQoveryConnectionOption;
+  [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
+  [AppConnection.Fireworks]: TFireworksConnectionOption;
 };

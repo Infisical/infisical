@@ -84,6 +84,6 @@ AccessApprovalRequestTemplate.PreviewProps = {
   siteUrl: "https://infisical.com",
   projectName: "Example Project",
   expiresIn: "1 day",
-  permissions: ["Read Secret", "Delete Project", "Create Dynamic Secret"],
+  permissions: ["Secrets (Read, Create, Edit, Delete)", "Dynamic Secrets (Lease, Read Root Credential)"],
   note: "I need access to these permissions for the new initiative for HR."
 } as AccessApprovalRequestTemplateProps;

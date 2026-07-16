@@ -1,4 +1,6 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -23,10 +25,12 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Heroku]: "Heroku",
   [SecretSync.Render]: "Render",
   [SecretSync.Flyio]: "Fly.io",
+  [SecretSync.TriggerDev]: "Trigger.dev",
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
   [SecretSync.Supabase]: "Supabase",
+  [SecretSync.Rundeck]: "Rundeck",
   [SecretSync.Zabbix]: "Zabbix",
   [SecretSync.Railway]: "Railway",
   [SecretSync.Checkly]: "Checkly",
@@ -44,7 +48,10 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Devin]: "Devin",
   [SecretSync.Ona]: "Ona",
   [SecretSync.TravisCI]: "Travis CI",
-  [SecretSync.Snowflake]: "Snowflake"
+  [SecretSync.Snowflake]: "Snowflake",
+  [SecretSync.HasuraCloud]: "Hasura Cloud",
+  [SecretSync.Qovery]: "Qovery",
+  [SecretSync.Cloud66]: "Cloud 66"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -68,10 +75,12 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
+  [SecretSync.TriggerDev]: AppConnection.TriggerDev,
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
+  [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -89,7 +98,10 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Devin]: AppConnection.Devin,
   [SecretSync.Ona]: AppConnection.Ona,
   [SecretSync.TravisCI]: AppConnection.TravisCI,
-  [SecretSync.Snowflake]: AppConnection.Snowflake
+  [SecretSync.Snowflake]: AppConnection.Snowflake,
+  [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
+  [SecretSync.Qovery]: AppConnection.Qovery,
+  [SecretSync.Cloud66]: AppConnection.Cloud66
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -113,10 +125,12 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Heroku]: SecretSyncPlanType.Regular,
   [SecretSync.Render]: SecretSyncPlanType.Regular,
   [SecretSync.Flyio]: SecretSyncPlanType.Regular,
+  [SecretSync.TriggerDev]: SecretSyncPlanType.Regular,
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
   [SecretSync.Supabase]: SecretSyncPlanType.Regular,
+  [SecretSync.Rundeck]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
   [SecretSync.Railway]: SecretSyncPlanType.Regular,
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
@@ -134,7 +148,10 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Devin]: SecretSyncPlanType.Regular,
   [SecretSync.Ona]: SecretSyncPlanType.Regular,
   [SecretSync.TravisCI]: SecretSyncPlanType.Regular,
-  [SecretSync.Snowflake]: SecretSyncPlanType.Regular
+  [SecretSync.Snowflake]: SecretSyncPlanType.Regular,
+  [SecretSync.HasuraCloud]: SecretSyncPlanType.Regular,
+  [SecretSync.Qovery]: SecretSyncPlanType.Regular,
+  [SecretSync.Cloud66]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -158,6 +175,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Heroku]: ["appName"],
   [SecretSync.Render]: [],
   [SecretSync.Flyio]: [],
+  [SecretSync.TriggerDev]: [],
   [SecretSync.GitLab]: [
     "projectName",
     "shouldProtectSecrets",
@@ -171,6 +189,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.CloudflarePages]: [],
   [SecretSync.CloudflareWorkers]: [],
   [SecretSync.Supabase]: ["projectName"],
+  [SecretSync.Rundeck]: [],
   [SecretSync.Zabbix]: ["hostName", "macroType"],
   [SecretSync.Railway]: ["projectName", "environmentName", "serviceName"],
   [SecretSync.Checkly]: ["groupName", "accountName"],
@@ -188,14 +207,43 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Devin]: [],
   [SecretSync.Ona]: ["projectName"],
   [SecretSync.TravisCI]: ["repositorySlug"],
-  [SecretSync.Snowflake]: []
+  [SecretSync.Snowflake]: [],
+  [SecretSync.HasuraCloud]: ["projectName"],
+  [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
+  [SecretSync.Cloud66]: ["stackName"]
 };
 
-const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
+const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return true;
+  }
+
+  if (!existingSync.connectionId) return false;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  const existingAwsConn = existingConn as TAwsConnection;
+  const newAwsConn = newConn as TAwsConnection;
+
+  const [existingAccountId, newAccountId] = await Promise.all([
+    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials)),
+    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
+  ]);
+
+  if (!existingAccountId || !newAccountId) return false;
+
+  return existingAccountId === newAccountId;
+};
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
-  [SecretSync.AWSParameterStore]: defaultDuplicateCheck,
-  [SecretSync.AWSSecretsManager]: defaultDuplicateCheck,
+  [SecretSync.AWSParameterStore]: awsDuplicateCheck,
+  [SecretSync.AWSSecretsManager]: awsDuplicateCheck,
   [SecretSync.GitHub]: defaultDuplicateCheck,
   [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
   [SecretSync.AzureKeyVault]: defaultDuplicateCheck,
@@ -214,7 +262,11 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Heroku]: defaultDuplicateCheck,
   [SecretSync.Render]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
-  [SecretSync.GitLab]: (existingConfig, newConfig) => {
+  [SecretSync.TriggerDev]: defaultDuplicateCheck,
+  [SecretSync.GitLab]: async ({ existingSync, newSync }) => {
+    const existingConfig = existingSync.destinationConfig;
+    const newConfig = newSync.destinationConfig;
+
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
 
@@ -242,6 +294,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.CloudflarePages]: defaultDuplicateCheck,
   [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
+  [SecretSync.Rundeck]: defaultDuplicateCheck,
   [SecretSync.Zabbix]: defaultDuplicateCheck,
   [SecretSync.Railway]: defaultDuplicateCheck,
   [SecretSync.Checkly]: defaultDuplicateCheck,
@@ -259,7 +312,10 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Devin]: defaultDuplicateCheck,
   [SecretSync.Ona]: defaultDuplicateCheck,
   [SecretSync.TravisCI]: defaultDuplicateCheck,
-  [SecretSync.Snowflake]: defaultDuplicateCheck
+  [SecretSync.Snowflake]: defaultDuplicateCheck,
+  [SecretSync.HasuraCloud]: defaultDuplicateCheck,
+  [SecretSync.Qovery]: defaultDuplicateCheck,
+  [SecretSync.Cloud66]: defaultDuplicateCheck
 };
 
 /**

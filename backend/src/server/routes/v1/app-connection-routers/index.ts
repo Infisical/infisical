@@ -4,6 +4,7 @@ import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connecti
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
+import { registerADCSConnectionRouter } from "./adcs-connection-router";
 import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
@@ -18,7 +19,9 @@ import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
+import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
+import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
@@ -28,16 +31,21 @@ import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
 import { registerDopplerConnectionRouter } from "./doppler-connection-router";
 import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
+import { registerF5BigIpConnectionRouter } from "./f5-big-ip-connection-router";
+import { registerFireworksConnectionRouter } from "./fireworks-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
+import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
+import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
+import { registerLiteLLMConnectionRouter } from "./litellm-connection-router";
 import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
@@ -48,11 +56,14 @@ import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connecti
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
+import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
+import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
@@ -61,6 +72,7 @@ import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
+import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -80,6 +92,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
     [AppConnection.AzureADCS]: registerAzureADCSConnectionRouter,
+    [AppConnection.ADCS]: registerADCSConnectionRouter,
     [AppConnection.AzureDNS]: registerAzureDnsConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
@@ -101,6 +114,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Render]: registerRenderConnectionRouter,
     [AppConnection.LaravelForge]: registerLaravelForgeConnectionRouter,
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
+    [AppConnection.TriggerDev]: registerTriggerDevConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
@@ -121,7 +135,9 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
+    [AppConnection.OpenAI]: registerOpenAIConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
+    [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.VenafiTpp]: registerVenafiTppConnectionRouter,
@@ -133,8 +149,16 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Devin]: registerDevinConnectionRouter,
     [AppConnection.Ona]: registerOnaConnectionRouter,
     [AppConnection.DigiCert]: registerDigiCertConnectionRouter,
+    [AppConnection.GoDaddy]: registerGoDaddyConnectionRouter,
     [AppConnection.TravisCI]: registerTravisCIConnectionRouter,
     [AppConnection.Salesforce]: registerSalesforceConnectionRouter,
     [AppConnection.Snowflake]: registerSnowflakeConnectionRouter,
-    [AppConnection.Datadog]: registerDatadogConnectionRouter
+    [AppConnection.Datadog]: registerDatadogConnectionRouter,
+    [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
+    [AppConnection.Convex]: registerConvexConnectionRouter,
+    [AppConnection.Rundeck]: registerRundeckConnectionRouter,
+    [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
+    [AppConnection.Qovery]: registerQoveryConnectionRouter,
+    [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
+    [AppConnection.Fireworks]: registerFireworksConnectionRouter
   };

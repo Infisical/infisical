@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -64,22 +70,15 @@ export const newProjectMembershipUserFactory = ({
     newUsers
   ) => {
     const scope = getScopeField(dto.scopeData);
-    let permission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"] | null = null;
-    if (!dto.bootstrapForApplication) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actor: dto.permission.type,
-        actorId: dto.permission.id,
-        actionProjectType: ActionProjectType.Any,
-        actorAuthMethod: dto.permission.authMethod,
-        projectId: scope.value,
-        actorOrgId: dto.permission.orgId
-      });
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionMemberActions.Create,
-        ProjectPermissionSub.Member
-      );
-      permission = projectPermission;
-    }
+    const { permission } = await permissionService.getProjectPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      actionProjectType: ActionProjectType.Any,
+      actorAuthMethod: dto.permission.authMethod,
+      projectId: scope.value,
+      actorOrgId: dto.permission.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
     // TODO(namespace): this becomes tricky in namespace due to group flow
     const orgMemberships = await membershipUserDAL.find({
@@ -96,8 +95,18 @@ export const newProjectMembershipUserFactory = ({
       throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
     }
 
-    if (dto.bootstrapForApplication) {
-      return;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    if (project?.type === ProjectType.CertificateManager) {
+      const invalidRoles = dto.data.roles.filter(
+        (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+      );
+      if (invalidRoles.length > 0) {
+        throw new BadRequestError({
+          message: "Certificate Manager only supports Admin and Member roles."
+        });
+      }
     }
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
@@ -116,7 +125,7 @@ export const newProjectMembershipUserFactory = ({
           shouldUseNewPrivilegeSystem,
           [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
           ProjectPermissionSub.Member,
-          permission as NonNullable<typeof permission>,
+          permission,
           permissionRole.permission,
           {
             userEmail: newUser.email ?? undefined,
@@ -197,6 +206,20 @@ export const newProjectMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    if (project?.type === ProjectType.CertificateManager) {
+      const invalidRoles = dto.data.roles.filter(
+        (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+      );
+      if (invalidRoles.length > 0) {
+        throw new BadRequestError({
+          message: "Certificate Manager only supports Admin and Member roles."
+        });
+      }
+    }
 
     const targetUser = await requestMemoize(requestMemoKeys.userFindById(dto.selector.userId), () =>
       userDAL.findById(dto.selector.userId)

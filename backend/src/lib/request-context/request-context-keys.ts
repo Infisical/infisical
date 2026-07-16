@@ -8,6 +8,7 @@ export enum RequestContextKey {
   IdentityPermissionMetadata = "identityPermissionMetadata",
   Ip = "ip",
   Memoizer = "memoizer",
+  OauthScopes = "oauthScopes",
   OrgId = "orgId",
   OrgName = "orgName",
   ProjectDetails = "projectDetails",

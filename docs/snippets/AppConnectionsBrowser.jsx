@@ -494,7 +494,139 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Datadog to pull secrets from Infisical.",
       category: "Monitoring",
-    }
+    },
+    {
+      name: "Convex",
+      slug: "convex",
+      path: "/integrations/app-connections/convex",
+      description:
+        "Learn how to connect Convex to manage and rotate access keys with Infisical.",
+      category: "SaaS",
+    },
+    {
+      name: "Trigger.dev",
+      slug: "trigger-dev",
+      path: "/integrations/app-connections/trigger-dev",
+      description:
+        "Learn how to connect your Trigger.dev account to sync secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Anthropic",
+      slug: "anthropic",
+      path: "/integrations/app-connections/anthropic",
+      description:
+        "Learn how to connect Anthropic to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "Devin",
+      slug: "devin",
+      path: "/integrations/app-connections/devin",
+      description:
+        "Learn how to connect Devin to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "Fireworks",
+      slug: "fireworks",
+      path: "/integrations/app-connections/fireworks",
+      description:
+        "Learn how to connect Fireworks AI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "DigiCert",
+      slug: "digicert",
+      path: "/integrations/app-connections/digicert",
+      description:
+        "Learn how to connect DigiCert to issue and manage certificates with Infisical.",
+      category: "Security",
+    },
+    {
+      name: "Venafi",
+      slug: "venafi",
+      path: "/integrations/app-connections/venafi",
+      description:
+        "Learn how to connect Venafi TLS Protect Cloud to manage certificates with Infisical.",
+      category: "Security",
+    },
+    {
+      name: "Venafi TPP",
+      slug: "venafi-tpp",
+      path: "/integrations/app-connections/venafi-tpp",
+      description:
+        "Learn how to connect Venafi Trust Protection Platform (TPP) to manage certificates with Infisical.",
+      category: "Security",
+    },
+    {
+      name: "F5 BIG-IP",
+      slug: "f5-big-ip",
+      path: "/integrations/app-connections/f5-big-ip",
+      description:
+        "Learn how to connect F5 BIG-IP to deploy and manage certificates with Infisical.",
+      category: "Networking & DNS",
+    },
+    {
+      name: "NetScaler",
+      slug: "netscaler",
+      path: "/integrations/app-connections/netscaler",
+      description:
+        "Learn how to connect NetScaler to deploy and manage certificates with Infisical.",
+      category: "Networking & DNS",
+    },
+    {
+      name: "GoDaddy",
+      slug: "godaddy",
+      path: "/integrations/app-connections/godaddy",
+      description:
+        "Learn how to connect GoDaddy to Infisical for ACME DNS validation.",
+      category: "Networking & DNS",
+    }, 
+    {
+      name: "Rundeck",
+      slug: "rundeck",
+      path: "/integrations/app-connections/rundeck",
+      description:
+        "Learn how to connect Rundeck to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Qovery",
+      slug: "qovery",
+      path: "/integrations/app-connections/qovery",
+      description:
+        "Learn how to connect Qovery to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Cloud 66",
+      slug: "cloud-66",
+      path: "/integrations/app-connections/cloud-66",
+      description: "Learn how to connect Cloud66 to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
+      name: "Hasura Cloud",
+      slug: "hasura-cloud",
+      path: "/integrations/app-connections/hasura-cloud",
+      description: "Learn how to connect Hasura Cloud to pull secrets from Infisical.",
+      category: "Platform",
+    },
+    {
+      name: "LiteLLM",
+      slug: "litellm",
+      path: "/integrations/app-connections/litellm",
+      description: "Learn how to connect LiteLLM to pull secrets from Infisical.",
+      category: "AI & LLM",
+    },
+    {
+      name: "OpenAI",
+      slug: "openai",
+      path: "/integrations/app-connections/openai",
+      description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

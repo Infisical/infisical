@@ -20,7 +20,10 @@ type ctxKey struct{}
 
 // FromContext returns the request ID stored in ctx, or "" if none.
 func FromContext(ctx context.Context) string {
-	v, _ := ctx.Value(ctxKey{}).(string)
+	v, ok := ctx.Value(ctxKey{}).(string)
+	if !ok {
+		return ""
+	}
 	return v
 }
 

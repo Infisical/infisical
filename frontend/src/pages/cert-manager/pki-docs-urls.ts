@@ -21,11 +21,12 @@ export const PkiDocsUrls = {
     pqcAlgorithms: `${PKI_DOCS_BASE_URL}/reference/pqc-algorithms`
   },
 
-  // Settings (policies, profiles, cleanup)
+  // Settings (policies, profiles, cleanup, HSM connectors)
   settings: {
     policies: `${PKI_DOCS_BASE_URL}/settings/policies`,
     profiles: `${PKI_DOCS_BASE_URL}/settings/profiles`,
-    certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`
+    certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`,
+    hsmConnectors: `${PKI_DOCS_BASE_URL}/settings/hsm-connectors`
   },
 
   // Applications
@@ -81,11 +82,28 @@ export const PkiDocsUrls = {
   // Code Signing
   codeSigning: {
     overview: `${PKI_DOCS_BASE_URL}/code-signing/overview`,
-    signers: `${PKI_DOCS_BASE_URL}/code-signing/signers`,
-    signingPolicies: `${PKI_DOCS_BASE_URL}/code-signing/signing-policies`,
-    grants: `${PKI_DOCS_BASE_URL}/code-signing/grants`,
-    signingRequests: `${PKI_DOCS_BASE_URL}/code-signing/signing-requests`,
-    pkcs11Module: `${PKI_DOCS_BASE_URL}/code-signing/pkcs11-module`
+    signers: {
+      overview: `${PKI_DOCS_BASE_URL}/code-signing/signers`,
+      create: `${PKI_DOCS_BASE_URL}/code-signing/signers#create-a-signer`,
+      basics: `${PKI_DOCS_BASE_URL}/code-signing/signers#basics`,
+      certificate: `${PKI_DOCS_BASE_URL}/code-signing/signers#certificate`,
+      members: `${PKI_DOCS_BASE_URL}/code-signing/signers#members`,
+      edit: `${PKI_DOCS_BASE_URL}/code-signing/signers#edit-a-signer`,
+      editBasics: `${PKI_DOCS_BASE_URL}/code-signing/signers#edit-basics`,
+      editCertificate: `${PKI_DOCS_BASE_URL}/code-signing/signers#edit-certificate`
+    },
+    approvals: {
+      overview: `${PKI_DOCS_BASE_URL}/code-signing/approvals`,
+      policy: `${PKI_DOCS_BASE_URL}/code-signing/approvals#configure-the-approval-policy`,
+      approvers: `${PKI_DOCS_BASE_URL}/code-signing/approvals#approvers`,
+      limits: `${PKI_DOCS_BASE_URL}/code-signing/approvals#approval-limits`,
+      preApprove: `${PKI_DOCS_BASE_URL}/code-signing/approvals#pre-approve-signing`,
+      requestToSign: `${PKI_DOCS_BASE_URL}/code-signing/approvals#request-to-sign`,
+      grantLifecycle: `${PKI_DOCS_BASE_URL}/code-signing/approvals#access-lifecycle`
+    },
+    pkcs11Module: `${PKI_DOCS_BASE_URL}/code-signing/pkcs11-module`,
+    windowsKsp: `${PKI_DOCS_BASE_URL}/code-signing/windows-ksp`,
+    connect: `${PKI_DOCS_BASE_URL}/code-signing/overview`
   },
 
   // Discovery

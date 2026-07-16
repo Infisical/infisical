@@ -73,7 +73,8 @@ export const main = async ({
   const appCfg = getConfig();
 
   const server = fastify({
-    logger: appCfg.NODE_ENV === "test" ? false : logger,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(appCfg.NODE_ENV === "test" ? { logger: false } : { loggerInstance: logger }),
     genReqId: () => `req-${alphaNumericNanoId(14)}`,
     // When TRUSTED_PROXY_CIDRS is configured, only requests from those sources have their
     // forwarded-IP headers honored. Unset preserves legacy behavior (trust all) for backcompat.
@@ -89,7 +90,7 @@ export const main = async ({
 
   // @ts-expect-error akhilmhdh: even on setting it fastify as Redis | Cluster it's throwing error
   server.decorate("redis", redis);
-  server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
+  server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body: string | Buffer, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
       if (!strBody) {

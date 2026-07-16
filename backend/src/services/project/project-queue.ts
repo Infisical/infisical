@@ -20,6 +20,7 @@ import {
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   decryptIntegrationAuths,
   decryptSecretApprovals,
@@ -30,8 +31,11 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
+import { JobState } from "@app/queue/queue-service";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -42,6 +46,7 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
@@ -50,9 +55,12 @@ export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
 type TProjectQueueFactoryDep = {
   queueService: TQueueServiceFactory;
+  keyStore: Pick<TKeyStoreFactory, "deleteItems">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement" | "delete">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findProjectSecretsWithNullBlindIndex" | "batchSetBlindIndexes">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "find" | "create" | "delete" | "insertMany">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "find">;
   secretApprovalSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
@@ -69,7 +77,10 @@ type TProjectQueueFactoryDep = {
 
 export const projectQueueFactory = ({
   queueService,
+  keyStore,
   secretDAL,
+  secretV2BridgeDAL,
+  kmsService,
   folderDAL,
   userDAL,
   secretVersionDAL,
@@ -639,7 +650,122 @@ export const projectQueueFactory = ({
     logger.error(err, "Upgrade project failed", job?.data);
   });
 
+  const startSecretBlindIndexMigration = async (projectId: string) => {
+    const jobId = `enable-blind-index-project-${projectId}`;
+
+    const existingJob = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
+    if (existingJob) {
+      const state = await existingJob.getState();
+      if (state === "completed" || state === "failed") {
+        await existingJob.remove();
+      } else {
+        logger.info(`Job for project ${projectId} already exists, skipping`);
+        return;
+      }
+    }
+
+    await queueService.queue(
+      QueueName.SecretBlindIndexMigration,
+      QueueJobs.SecretBlindIndexMigration,
+      { projectId },
+      {
+        // 1 minute, we don't use it after it's complete, just making sure any race condition can still fetch the job
+        removeOnComplete: { age: 60 },
+        // 1 day, this gives us time to display the error to the customer
+        removeOnFail: { age: 24 * 3600 },
+        jobId
+      }
+    );
+  };
+
+  queueService.start(QueueName.SecretBlindIndexMigration, async (job) => {
+    const { projectId } = job.data;
+    const BATCH_SIZE = 1000;
+
+    logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
+
+    const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    let totalProcessed = 0;
+
+    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
+    while (true) {
+      const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
+
+      if (secrets.length === 0) break;
+
+      const updates: { id: string; secretValueBlindIndex: string }[] = [];
+      for (const secret of secrets) {
+        if (secret.encryptedValue) {
+          const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
+          const blindIndex = await generateSecretBlindIndex(decryptedValue);
+          updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+        }
+      }
+
+      if (updates.length > 0) {
+        await secretV2BridgeDAL.batchSetBlindIndexes(updates);
+      }
+
+      totalProcessed += updates.length;
+      logger.info(
+        `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
+      );
+
+      // Prevents job from being marked as stalled
+      await job.updateProgress(totalProcessed);
+
+      if (secrets.length < BATCH_SIZE) break;
+
+      // pause between batches to avoid saturating the CPU
+      const jitter = 100 + Math.floor(Math.random() * 100);
+      await new Promise((resolve) => {
+        setTimeout(resolve, jitter);
+      });
+    }
+
+    await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+
+    await keyStore.deleteItems({
+      pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
+    });
+
+    logger.info(
+      `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
+    );
+  });
+
+  queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
+    logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
+  });
+
+  const getJobState = async (projectId: string): Promise<{ status: JobState; message?: string }> => {
+    const jobId = `enable-blind-index-project-${projectId}`;
+    const job = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
+
+    if (!job) {
+      return { status: JobState.NotFound };
+    }
+
+    const state = await job.getState();
+
+    if (state === JobState.Failed) {
+      return { status: JobState.Failed, message: job.failedReason ?? "Unknown error" };
+    }
+
+    if (state === JobState.Completed) {
+      return { status: JobState.Completed };
+    }
+
+    return { status: JobState.Pending };
+  };
+
   return {
-    upgradeProject
+    upgradeProject,
+    startSecretBlindIndexMigration,
+    getJobState
   };
 };

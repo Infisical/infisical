@@ -18,6 +18,7 @@ export type TAwsConnection = TRootAppConnection & { app: AppConnection.AWS } & (
         method: AwsConnectionMethod.AssumeRole;
         credentials: {
           roleArn: string;
+          stsEndpoint?: string;
         };
       }
   );

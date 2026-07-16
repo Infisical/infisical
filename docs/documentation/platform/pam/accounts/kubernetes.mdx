@@ -1,0 +1,75 @@
+---
+title: "Kubernetes Accounts"
+sidebarTitle: "Kubernetes"
+description: "Add and connect to Kubernetes clusters."
+---
+
+Kubernetes accounts let you manage access to your Kubernetes clusters. Users connect through the CLI to get a kubeconfig, and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+
+## Creating an Account
+
+<Steps>
+  <Step title="Start adding an account">
+    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+  </Step>
+  <Step title="Select a folder and template">
+    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Kubernetes [template](/documentation/platform/pam/templates/overview).
+  </Step>
+  <Step title="Enter connection details">
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (e.g., `prod-cluster`) |
+    | **Kubernetes API URL** | The cluster API server URL |
+    | **Reject Unauthorized** | Reject connections with invalid certificates |
+    | **SSL Certificate** | Custom CA certificate (optional) |
+  </Step>
+  <Step title="Choose authentication method">
+    <Tabs>
+      <Tab title="Service Account Token">
+        Use an existing service account token.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Service Account Token** | The token for authentication |
+      </Tab>
+      <Tab title="Gateway Kubernetes Auth">
+        Let the Gateway authenticate using its own service account.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Namespace** | The namespace of the service account |
+        | **Service Account Name** | The name of the service account |
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Save">
+    Click **Create**.
+  </Step>
+</Steps>
+
+## Connecting
+
+The CLI retrieves credentials and outputs a kubeconfig you can use with `kubectl`.
+
+```bash
+infisical pam access my-folder/prod-cluster
+```
+
+Then use `kubectl` as normal:
+```bash
+kubectl get pods
+```
+
+**Flags:**
+- `--reason <reason>` — provide an access reason (if required by template)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
+    Add SSH server accounts.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+</CardGroup>

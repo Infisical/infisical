@@ -1,0 +1,55 @@
+---
+title: "Session Recording"
+sidebarTitle: "Session Recording"
+description: "How PAM captures and stores session activity."
+---
+
+PAM captures everything that happens during a session — every query, command, and response. This gives you a complete record for compliance audits and incident investigation.
+
+## What Gets Recorded
+
+The content depends on the account type:
+
+**PostgreSQL sessions:**
+- All SQL queries executed
+- Query responses and result summaries (not full result data)
+- Timestamps for each action
+
+**SSH sessions:**
+- All commands entered
+- Command output
+- Timestamps for each action
+
+Both Web Access and CLI sessions are recorded the same way.
+
+Recording happens at the [Gateway](/documentation/platform/gateways/overview) level — events are captured, encrypted, and uploaded in real-time. See [Architecture](/documentation/platform/pam/architecture) for details on how this works.
+
+## Storage Options
+
+Recording is always enabled. You can configure where recordings are stored at the **[template](/documentation/platform/pam/templates/overview) level** — all accounts using a template inherit its storage settings.
+
+| Backend | Description |
+|---------|-------------|
+| **Internal** | Stored in Infisical's managed database |
+| **External S3** | Stored in your own S3 bucket |
+
+For most cases, internal storage works fine. Use [External Storage](/documentation/platform/pam/sessions/external-storage) if you need control over data residency or retention.
+
+## Viewing Recordings
+
+1. Go to **Sessions** and click on a session
+2. The session detail page shows the full log of activity
+3. Use the search bar to find specific content
+
+Recordings are available in real-time for both active and completed sessions.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="External Storage" icon="cloud" href="/documentation/platform/pam/sessions/external-storage">
+    Store recordings in your own S3 bucket.
+  </Card>
+  <Card title="Auditing" icon="clipboard-list" href="/documentation/platform/pam/auditing">
+    View the complete audit trail.
+  </Card>
+</CardGroup>

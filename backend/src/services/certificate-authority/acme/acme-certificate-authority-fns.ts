@@ -25,6 +25,7 @@ import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/c
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -58,6 +59,8 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+
+const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
 const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
@@ -134,7 +137,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     TCertificateAuthorityDALFactory,
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -283,7 +286,7 @@ const getAcmeChallengeRecord = async (
   return { recordName, recordValue };
 };
 
-export const orderCertificate = async (
+export const executeAcmeOrder = async (
   {
     caId,
     profileId,
@@ -329,7 +332,7 @@ export const orderCertificate = async (
     try {
       await onProgress(message);
     } catch (err) {
-      logger.warn(err, `ACME orderCertificate onProgress callback failed [caId=${caId}]`);
+      logger.warn(err, `ACME executeAcmeOrder onProgress callback failed [caId=${caId}]`);
     }
   };
   const {
@@ -551,14 +554,14 @@ export const orderCertificate = async (
   }
   throwIfAcmeOrderAborted(abortSignal);
 
-  const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
+  const [leafCert, ...intermediates] = acme.crypto.splitPemChain(pem);
   const certObj = new x509.X509Certificate(leafCert);
 
   const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
     plainText: Buffer.from(new Uint8Array(certObj.rawData))
   });
 
-  const certificateChainPem = parentCert.trim();
+  const certificateChainPem = intermediates.join("\n").trim();
 
   const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
     plainText: Buffer.from(certificateChainPem)
@@ -569,6 +572,8 @@ export const orderCertificate = async (
         plainText: Buffer.from(csrPrivateKey)
       })
     : { cipherTextBlob: undefined };
+
+  const parsedFields = extractCertificateFields(Buffer.from(leafCert));
 
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
@@ -588,7 +593,8 @@ export const orderCertificate = async (
         keyAlgorithm,
         signatureAlgorithm,
         projectId: ca.projectId,
-        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
+        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
+        ...parsedFields
       },
       innerTx
     );
@@ -837,6 +843,15 @@ export const AcmeCertificateAuthorityFns = ({
           actor
         );
 
+        let resolvedEabHmacKey = eabHmacKey;
+        if (eabHmacKey === UNCHANGED_CREDENTIAL_SENTINEL || eabHmacKey === undefined) {
+          const existingExternalCa = await externalCertificateAuthorityDAL.findOne({ caId: id, type: CaType.ACME }, tx);
+          const existingConfig = existingExternalCa?.configuration as DBConfigurationColumn | undefined;
+          resolvedEabHmacKey = existingConfig?.eabHmacKey;
+        } else if (eabHmacKey === "") {
+          resolvedEabHmacKey = undefined;
+        }
+
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -850,7 +865,7 @@ export const AcmeCertificateAuthorityFns = ({
               dnsProvider: dnsProviderConfig.provider,
               hostedZoneId: dnsProviderConfig.hostedZoneId,
               eabKid,
-              eabHmacKey,
+              eabHmacKey: resolvedEabHmacKey,
               dnsResolver
             }
           },
@@ -917,7 +932,7 @@ export const AcmeCertificateAuthorityFns = ({
       skLeaf
     );
 
-    await orderCertificate(
+    await executeAcmeOrder(
       {
         caId: subscriber.caId,
         subscriberId: subscriber.id,
@@ -942,7 +957,7 @@ export const AcmeCertificateAuthorityFns = ({
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -977,7 +992,7 @@ export const AcmeCertificateAuthorityFns = ({
     isCancelled?: () => Promise<boolean>;
     abortSignal?: AbortSignal;
   }) => {
-    return orderCertificate(
+    return executeAcmeOrder(
       {
         caId,
         profileId,
@@ -1016,6 +1031,6 @@ export const AcmeCertificateAuthorityFns = ({
     updateCertificateAuthority,
     listCertificateAuthorities,
     orderSubscriberCertificate,
-    orderCertificateFromProfile
+    orderCertificate
   };
 };

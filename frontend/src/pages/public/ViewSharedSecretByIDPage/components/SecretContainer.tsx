@@ -45,15 +45,15 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
   return (
     <div style={panelStyle}>
       <div
-        className={`flex items-center justify-between rounded-md border p-2 pl-3 text-base ${
+        className={`flex items-start justify-between rounded-md border p-2 pl-3 text-base ${
           brandingTheme ? "" : "border-border bg-container text-label"
         }`}
         style={secretDisplayStyle}
       >
-        <p className="break-all whitespace-pre-wrap">
+        <p className="min-w-0 break-all whitespace-pre-wrap">
           {isVisible ? secret.secretValue : hiddenSecret}
         </p>
-        <div className="ml-1 flex">
+        <div className="ml-1 flex shrink-0 items-start gap-2 self-start">
           <IconButton
             aria-label="copy icon"
             variant="ghost"
@@ -74,7 +74,6 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
             aria-label="toggle visibility"
             variant="ghost"
             size="sm"
-            className="ml-2"
             onClick={() => setIsVisible.toggle()}
             style={iconButtonStyle}
           >

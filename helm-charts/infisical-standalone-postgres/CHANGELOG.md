@@ -1,3 +1,17 @@
+## 1.10.0 (July 3, 2026)
+Changes:
+* Added configurable `securityContext` via `infisical.podSecurityContext` and `infisical.containerSecurityContext`, with secure defaults so the Infisical Deployment and the auto-bootstrap Job run under the Kubernetes Pod Security "restricted" standard out of the box.
+* All hardening required by `restricted` lives in `containerSecurityContext`, so it applies only to Infisical's own containers. `podSecurityContext` sets just `fsGroup: 1001`, so your `extraContainers` and `extraInitContainers` keep their original user and are not forced to UID 1001.
+* `readOnlyRootFilesystem` stays `false` by default since the app writes temporary files. To enable it, mount `emptyDir` volumes for writable paths like `/tmp` via `infisical.extraVolumes` and `infisical.extraVolumeMounts`.
+* The bundled `ingress-nginx` subchart is not `restricted`-compliant by default. To run the whole release under `restricted`, disable it, move it to another namespace, or add your own restricted-safe controller overrides.
+* Backwards compatible. Upgrading triggers a one-time pod rollout. Set either key to `null` to omit its security context block.
+
+## 1.9.0 (May 28, 2026)
+Changes:
+* Added support for sidecar containers via `infisical.extraContainers`, enabling use cases like HSM PKCS#11 client sidecars (e.g., Entrust nShield).
+* Added support for init containers via `infisical.extraInitContainers`.
+* Documented `infisical.extraVolumes` and `infisical.extraVolumeMounts` in `values.yaml` with usage examples.
+
 ## 1.8.0 (April 6, 2026)
 Changes:
 * The bundled ingress-nginx controller now uses a dedicated IngressClass name (`infisical-nginx`) instead of the common `nginx` class. This prevents the bundled controller from unintentionally picking up other Ingress resources in your cluster, and avoids conflicts with existing ingress controllers.

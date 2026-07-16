@@ -18,8 +18,7 @@ import {
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { IdentityAuthMethod, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-
-import { ViewIdentityAuth } from "../ViewIdentityAuth";
+import { IdentityAuthMethodsTable } from "@app/views/IdentityAuthMethods";
 
 type Props = {
   identityId: string;
@@ -74,11 +73,12 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
       </CardHeader>
       <CardContent>
         {data.identity.authMethods.length > 0 ? (
-          <ViewIdentityAuth
-            activeLockoutAuthMethods={data.identity.activeLockoutAuthMethods}
+          <IdentityAuthMethodsTable
             identityId={identityId}
+            identityName={data.identity.name}
             authMethods={data.identity.authMethods}
-            onResetAllLockouts={refetch}
+            activeLockoutAuthMethods={data.identity.activeLockoutAuthMethods}
+            onMutated={refetch}
           />
         ) : (
           <Empty className="border">

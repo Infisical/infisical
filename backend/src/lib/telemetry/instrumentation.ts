@@ -3,13 +3,22 @@ import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
-import { Resource } from "@opentelemetry/resources";
-import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import { RuntimeNodeInstrumentation } from "@opentelemetry/instrumentation-runtime-node";
+import { defaultResource, resourceFromAttributes } from "@opentelemetry/resources";
+import {
+  AggregationTemporality,
+  AggregationType,
+  createAllowListAttributesProcessor,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+  type ViewOptions
+} from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import tracer from "dd-trace";
 import dotenv from "dotenv";
 
 import { getTelemetryConfig } from "../config/env";
+import { HIGH_CARDINALITY_METER_NAMES, INFISICAL_CORE_METER_ATTRIBUTES } from "./telemetry-attributes";
 
 dotenv.config();
 
@@ -18,20 +27,25 @@ const initTelemetryInstrumentation = ({
   otlpURL,
   otlpUser,
   otlpPassword,
-  otlpPushInterval
+  otlpPushInterval,
+  dropHighCardinalityMeters
 }: {
   exportType?: string;
   otlpURL?: string;
   otlpUser?: string;
   otlpPassword?: string;
   otlpPushInterval?: number;
+  dropHighCardinalityMeters?: boolean;
 }) => {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
-  const resource = Resource.default().merge(
-    new Resource({
+  const serviceVersion = process.env.INFISICAL_PLATFORM_VERSION || "unknown";
+
+  const resource = defaultResource().merge(
+    resourceFromAttributes({
       [ATTR_SERVICE_NAME]: "infisical-core",
-      [ATTR_SERVICE_VERSION]: "0.1.0"
+      [ATTR_SERVICE_VERSION]: serviceVersion,
+      "git.commit.sha": process.env.DD_GIT_COMMIT_SHA || "unknown"
     })
   );
 
@@ -62,15 +76,29 @@ const initTelemetryInstrumentation = ({
       throw new Error("Invalid OTEL export type");
   }
 
+  const views: ViewOptions[] = [
+    {
+      meterName: "InfisicalCore",
+      attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
+    }
+  ];
+
+  if (dropHighCardinalityMeters) {
+    HIGH_CARDINALITY_METER_NAMES.forEach((meterName) => {
+      views.push({ meterName, aggregation: { type: AggregationType.DROP } });
+    });
+  }
+
   const meterProvider = new MeterProvider({
     resource,
-    readers: metricReaders
+    readers: metricReaders,
+    views
   });
 
   opentelemetry.metrics.setGlobalMeterProvider(meterProvider);
 
   registerInstrumentations({
-    instrumentations: [new HttpInstrumentation()]
+    instrumentations: [new HttpInstrumentation(), new RuntimeNodeInstrumentation()]
   });
 };
 
@@ -80,7 +108,10 @@ const setupTelemetry = () => {
   if (appCfg.useOtel) {
     // eslint-disable-next-line no-console
     console.log("Initializing telemetry instrumentation");
-    initTelemetryInstrumentation({ ...appCfg.OTEL });
+    initTelemetryInstrumentation({
+      ...appCfg.OTEL,
+      dropHighCardinalityMeters: Boolean(appCfg.dropHighCardinalityMeters)
+    });
   }
 
   if (appCfg.useDataDogTracer) {

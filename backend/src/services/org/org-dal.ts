@@ -255,10 +255,31 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(`${TableName.Membership}.actorUserId`, db.raw("?", [dto.actorId]));
         })
         .whereNull(`${TableName.Organization}.rootOrgId`)
+        .leftJoin(TableName.SamlConfig, (qb) => {
+          qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.SamlConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .leftJoin(TableName.OidcConfig, (qb) => {
+          qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.OidcConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
         .select(
           selectAllTableCols(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
-        )) as (TOrganizations & { userJoinedAt: Date | null })[];
+          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.raw(`
+            CASE
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN 'oidc'
+              ELSE ''
+            END as "orgAuthMethod"
+        `)
+        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null })[];
 
       if (rootOrgs.length === 0) return [];
 
@@ -829,22 +850,57 @@ export const orgDALFactory = (db: TDbClient) => {
   const findMembershipWithScimFilter = async (
     orgId: string,
     scimFilter: string | undefined,
-    { offset, limit, sort, tx }: TFindOpt<TMemberships> = {}
-  ) => {
+    orgAuthMethod: string | undefined,
+    { offset, limit, sort, tx, membershipId }: TFindOpt<TMemberships> & { membershipId?: string } = {}
+  ): Promise<
+    (TMemberships & {
+      email: string | null;
+      isEmailVerified: boolean | null;
+      username: string;
+      firstName: string | null;
+      lastName: string | null;
+      scimEnabled: boolean | null;
+      defaultMembershipRole: string;
+      externalId: string | null;
+    })[]
+  > => {
     try {
+      // Determine alias type from org auth method (default to saml for backwards compatibility)
+      const aliasType = orgAuthMethod === OrgAuthMethod.OIDC ? OrgAuthMethod.OIDC : OrgAuthMethod.SAML;
+
+      // Subquery to get only the latest alias per user for the org's auth method
+      const latestAliasSubquery = (tx || db.replicaNode())(TableName.UserAliases)
+        .select(
+          `${TableName.UserAliases}.userId`,
+          `${TableName.UserAliases}.externalId`,
+          db.raw(
+            `ROW_NUMBER() OVER (PARTITION BY "${TableName.UserAliases}"."userId" ORDER BY "${TableName.UserAliases}"."createdAt" DESC) as rn`
+          )
+        )
+        .where(`${TableName.UserAliases}.orgId`, orgId)
+        .where(`${TableName.UserAliases}.aliasType`, aliasType)
+        .as("latest_alias");
+
       const query = (tx || db.replicaNode())(TableName.Membership)
         // eslint-disable-next-line
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where((qb) => {
+          // Direct membership ID filter (safe, parameterized)
+          if (membershipId) {
+            void qb.where(`${TableName.Membership}.id`, membershipId);
+          }
+          // SCIM filter parsing (for list queries from external IdPs)
           if (scimFilter) {
             void generateKnexQueryFromScim(qb, scimFilter, (attrPath) => {
               switch (attrPath) {
+                case "id":
+                  return `${TableName.Membership}.id`;
                 case "active":
                   return `${TableName.Membership}.isActive`;
                 case "userName":
-                  return `${TableName.UserAliases}.externalId`;
+                  return "latest_alias.externalId";
                 case "name.givenName":
                   return `${TableName.Users}.firstName`;
                 case "name.familyName":
@@ -860,10 +916,12 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .whereNull(`${TableName.Organization}.rootOrgId`)
-        .leftJoin(TableName.UserAliases, function joinUserAlias() {
-          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
-            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
-            .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
+        .leftJoin(latestAliasSubquery, function joinLatestAlias() {
+          this.on("latest_alias.userId", "=", `${TableName.Membership}.actorUserId`).andOn(
+            "latest_alias.rn",
+            "=",
+            db.raw("1")
+          );
         })
         .select(
           selectAllTableCols(TableName.Membership),
@@ -874,7 +932,7 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("scimEnabled").withSchema(TableName.Organization),
           db.ref("defaultMembershipRole").withSchema(TableName.Organization),
-          db.ref("externalId").withSchema(TableName.UserAliases)
+          db.ref("externalId").withSchema("latest_alias")
         )
         .where({ isGhost: false });
 
@@ -884,6 +942,8 @@ export const orgDALFactory = (db: TDbClient) => {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
       const res = await query;
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });

@@ -1,77 +1,85 @@
 ---
 title: "Architecture"
 sidebarTitle: "Architecture"
-description: "Learn about the architecture, components, and security model of Infisical PAM."
+description: "How PAM connects users to your infrastructure securely."
 ---
 
-Infisical PAM utilizes a secure, proxy-based architecture designed to provide access to private resources without exposing them directly to the internet. This system relies on a combination of the Infisical CLI, a Relay server, and a self-hosted Gateway. For more information on Gateways, refer to the [Gateway Overview](/documentation/platform/gateways/overview).
+PAM uses a proxy-based architecture. Users never connect directly to your databases or servers — everything goes through the [Gateway](/documentation/platform/gateways/overview). This keeps your infrastructure isolated while providing secure, auditable access.
 
-## Core Components
+## Components
 
-The architecture consists of three main components working in unison:
+**Infisical Platform** — the control plane. Stores account credentials, manages permissions, and hosts the web interface.
 
-<Steps>
-  <Step title="Infisical CLI">
-    The client-side interface used to initiate access requests. It creates a local listener that forwards traffic securely to the Gateway.
-  </Step>
-  <Step title="Infisical Gateway">
-    A lightweight service deployed within your private network (e.g., VPC, on-prem). It acts as a proxy, intercepting traffic to enforce policies and record sessions before forwarding requests to the target resource.
-  </Step>
-  <Step title="Target Resource">
-    The actual infrastructure being accessed, such as a PostgreSQL database, a Linux server, or a web application.
-  </Step>
-</Steps>
+**Gateway** — a lightweight service you deploy in your private network. It proxies connections to your databases and servers, injects credentials, and records sessions.
 
-## Access Flow
+**Client** — the user's browser (Web Access) or CLI. Connects to the Gateway through an encrypted tunnel.
 
-```mermaid
-graph LR
-    subgraph Client ["User Environment"]
-        CLI["Infisical CLI"]
-    end
+## How a Connection Works
 
-    Relay["Relay Server"]
+When a user connects to an [account](/documentation/platform/pam/accounts/overview):
 
-    subgraph Network ["Private Network (VPC)"]
-        Gateway["Infisical Gateway"]
-        DB[("Target Resource (Database/Server)")]
-    end
+1. **User requests access** — clicks Launch in the browser or runs the CLI command
+2. **Infisical checks permissions** — verifies the user has a [membership](/documentation/platform/pam/concepts/access-control) with the right role
+3. **[Template](/documentation/platform/pam/templates/overview) rules are enforced** — MFA, reason requirement, etc.
+4. **Connection is established** — an encrypted tunnel is created between the client and Gateway
+5. **Gateway fetches credentials** — retrieves them from Infisical
+6. **Gateway connects to the target** — using the credentials
+7. **Traffic flows through the Gateway** — user interacts with the database/server
+8. **Session is recorded** — Gateway captures and uploads session activity
 
-    CLI <-->|Encrypted Tunnel| Relay
-    Relay <-->|Reverse Tunnel| Gateway
-    Gateway <-->|Native Protocol| DB
-```
+The user never sees the credentials. The database/server never sees the user directly.
 
-When a user accesses a resource (e.g., via `infisical access`), the following workflow occurs:
+## Network Security
 
-1. **Connection Initiation**: The Infisical CLI initiates a connection to the Relay server.
-2. **Tunnel Establishment**: The Relay facilitates an end-to-end encrypted tunnel between the CLI and the Gateway.
-3. **Proxy & Credential Injection**: The Gateway authenticates the request and connects to the target resource on the user's behalf. It automatically injects the necessary credentials (e.g., database passwords, SSH keys), ensuring the user never directly handles sensitive secrets.
-4. **Traffic Forwarding**: Traffic flows securely from the user's machine, through the Relay, to the Gateway, and finally to the resource.
+The Gateway uses outbound connections only:
 
-## Session Recording & Auditing
+- **No inbound ports** — your firewall doesn't need to allow any inbound traffic
+- **Outbound to Infisical** — for credential retrieval and session uploads
+- **Outbound to your infrastructure** — to connect to databases and servers
 
-![Session Logging](/images/pam/architecture/session-logging.png)
+<Tip>
+Your databases and servers stay completely isolated from the internet. The Gateway sits inside your network and reaches out; nothing reaches in.
+</Tip>
 
-A key feature of the Gateway is its ability to act as a "middleman" for all session traffic.
+## Encryption
 
-- **Interception**: Because the Gateway sits between the secure tunnel and the target resource, it intercepts all data flowing through the connection.
-- **Logging**: This traffic is logged as part of [Session Recording](/documentation/platform/pam/product-reference/session-recording). The Gateway temporarily stores encrypted session logs locally.
-- **Upload**: Every 10 seconds, the Gateway incrementally uploads new session events to the Infisical platform, enabling near real-time monitoring. The upload offset is persisted locally so that uploads resume correctly if the Gateway restarts mid-session.
+All connections are encrypted:
 
-## Security Architecture
+- **Client to Gateway** — end-to-end encrypted tunnel
+- **Gateway to Infisical** — TLS
+- **Session recordings** — encrypted before upload
 
-The PAM security model allows you to maintain a zero-trust environment while enabling convenient access.
+The Relay server (which routes traffic between clients and Gateways) cannot decrypt or inspect the traffic passing through it.
 
-### End-to-End Encryption
-The connection between the Infisical CLI (client) and the Gateway is end-to-end encrypted. The Relay server acts solely as a router for encrypted packets and **cannot decrypt or inspect** the traffic passing through it.
+## Recording Architecture
 
-### Network Security
-The Gateway uses **SSH reverse tunnels** to connect to the Relay. This design offers significant security benefits:
-- **No Inbound Ports**: You do not need to open any inbound firewall ports (like 22 or 5432) to the internet.
-- **Outbound-Only**: The Gateway only requires outbound connectivity to the Relay server and Infisical API.
+Recording happens at the Gateway:
 
-For a deep dive into the underlying cryptography, certificate management, and isolation guarantees, refer to the [Gateway Security Architecture](/documentation/platform/gateways/security).
+1. Traffic flows through the Gateway
+2. Gateway captures session events
+3. Events are encrypted and cached locally
+4. Events upload to Infisical in real-time
+5. If connectivity drops, recording continues locally and syncs when restored
 
-### Deployment
-For instructions on setting up the necessary infrastructure, see the [Gateway Deployment Guide](/documentation/platform/gateways/gateway-deployment).
+This ensures no data is lost, even during network issues.
+
+## Deployment Options
+
+| Setup | Use case |
+|-------|----------|
+| **Single Gateway** | Small environments, single network |
+| **Gateway per network** | Multiple VPCs or on-prem segments |
+| **Gateway Pool** | High availability, load balancing |
+
+For deployment instructions, see [Deploy a Gateway](/documentation/platform/gateways/gateway-deployment).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deploy a Gateway" icon="server" href="/documentation/platform/gateways/gateway-deployment">
+    Deploy a Gateway in your network.
+  </Card>
+  <Card title="Launch Your First Session" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
+    Connect to a database in under 10 minutes.
+  </Card>
+</CardGroup>

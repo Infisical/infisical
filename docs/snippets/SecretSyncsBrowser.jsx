@@ -48,7 +48,11 @@ export const SecretSyncsBrowser = () => {
     {"name": "OVH", "slug": "ovh", "path": "/integrations/secret-syncs/ovh", "description": "Learn how to sync secrets from Infisical to OVH Secret Manager.", "category": "Cloud Providers"},
     {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
     {"name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases"},
-
+    {"name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools"},
+    {"name": "Rundeck", "slug": "rundeck", "path": "/integrations/secret-syncs/rundeck", "description": "Learn how to sync secrets from Infisical to Rundeck.", "category": "DevOps Tools"},
+    {"name": "Qovery", "slug": "qovery", "path": "/integrations/secret-syncs/qovery", "description": "Learn how to sync secrets from Infisical to Qovery.", "category": "DevOps Tools"},
+    {"name": "Cloud 66", "slug": "cloud-66", "path": "/integrations/secret-syncs/cloud-66", "description": "Learn how to sync secrets from Infisical to Cloud66.", "category": "DevOps Tools"},
+    {"name": "Hasura Cloud", "slug": "hasura-cloud", "path": "/integrations/secret-syncs/hasura-cloud", "description": "Learn how to sync secrets from Infisical to Hasura Cloud.", "category": "Platform"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

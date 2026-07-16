@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  ChevronsLeftRightEllipsisIcon,
   ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
@@ -17,6 +18,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Tooltip,
@@ -24,6 +27,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
 type Props = {
   onAddSecret: () => void;
@@ -31,6 +35,7 @@ type Props = {
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
   onAddHoneyToken: () => void;
+  onAddProxiedService: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
   onReplicateSecrets: () => void;
@@ -52,6 +57,7 @@ export function AddResourceButtons({
   onAddDyanamicSecret,
   onAddSecretRotation,
   onAddHoneyToken,
+  onAddProxiedService,
   onAddSecretImport,
   onImportSecrets,
   onReplicateSecrets,
@@ -93,6 +99,7 @@ export function AddResourceButtons({
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuLabel>New</DropdownMenuLabel>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.SecretFolders}
@@ -133,15 +140,52 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
-          <Tooltip open={!isHoneyTokenAvailable ? undefined : false}>
-            <TooltipTrigger className="block w-full">
-              <DropdownMenuItem onClick={onAddHoneyToken} isDisabled={!isHoneyTokenAvailable}>
-                <HexagonIcon className="text-yellow" />
-                Add Honey Token
-              </DropdownMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="left">Access restricted</TooltipContent>
-          </Tooltip>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.HoneyTokens}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isHoneyTokenAvailable || !isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    onClick={onAddHoneyToken}
+                    isDisabled={!isHoneyTokenAvailable || !isAllowed}
+                  >
+                    <HexagonIcon className="text-yellow" />
+                    Add Honey Token
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isAllowed ? "Access Restricted" : "Access restricted"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionProxiedServiceActions.Create}
+            a={ProjectPermissionSub.ProxiedServices}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isSingleEnvSelected || !isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    onClick={onAddProxiedService}
+                    isDisabled={!isSingleEnvSelected || !isAllowed}
+                  >
+                    <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
+                    Add Proxied Service
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isAllowed
+                    ? "Access Restricted"
+                    : "Select a single environment to add a proxied service"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Bulk</DropdownMenuLabel>
           <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
             <TooltipTrigger className="block w-full">
               <DropdownMenuItem
@@ -197,6 +241,12 @@ export function AddResourceButtons({
               </Tooltip>
             )}
           </ProjectPermissionCan>
+          {(hasVaultConnection || hasDopplerConnection) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>IMPORT FROM</DropdownMenuLabel>
+            </>
+          )}
           {hasVaultConnection && (
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}

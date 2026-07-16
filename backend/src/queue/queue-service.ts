@@ -1,6 +1,8 @@
+import opentelemetry from "@opentelemetry/api";
 import {
   Job,
   JobSchedulerJson,
+  MetricsTime,
   Queue,
   QueueOptions,
   RepeatOptions,
@@ -10,8 +12,7 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
-import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
+import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -28,7 +29,15 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
+import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
+import {
+  queueJobCounter,
+  queueJobDurationHistogram,
+  queueJobFailureCounter,
+  queueJobWaitHistogram,
+  queueStalledCounter
+} from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
@@ -64,7 +73,6 @@ export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
   SecretReminder = "secret-reminder",
-  AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   PkiAlertV2Event = "pki-alert-v2-event",
@@ -87,24 +95,30 @@ export enum QueueName {
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
+  PamCredentialRotation = "pam-credential-rotation",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
   UserNotification = "user-notification",
+  AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
-  PamSessionAiSummary = "pam-session-ai-summary",
+  PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
-  PamDiscoveryScan = "pam-discovery-scan",
-  CaAutoRenewal = "ca-auto-renewal"
+  AuditLogStreamOutbox = "audit-log-stream-outbox",
+  CaAutoRenewal = "ca-auto-renewal",
+  ProjectHardDelete = "project-hard-delete",
+  SignerAutoRenewal = "signer-auto-renewal",
+  SecretBlindIndexMigration = "secret-blind-index-migration",
+  UsageEvent = "usage-event"
 }
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
@@ -139,6 +153,8 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
+  PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
@@ -152,11 +168,11 @@ export enum QueueJobs {
   DailyReminders = "daily-reminders",
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
+  GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
-  PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
-  PamSessionAiSummary = "pam-session-ai-summary-job",
+  PamDiscoverySourceScan = "pam-discovery-source-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -164,20 +180,32 @@ export enum QueueJobs {
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
-  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
-  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
+  AuditLogStreamFlush = "audit-log-stream-flush",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
+  CaNativeAdcsInstall = "ca-native-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
-  DigiCertOrderPolling = "digicert-order-polling-job"
+  DigiCertOrderPolling = "digicert-order-polling-job",
+  GoDaddyOrderPolling = "godaddy-order-polling-job",
+  ProjectHardDelete = "project-hard-delete-job",
+  SignerDailyAutoRenewal = "signer-daily-auto-renewal",
+  SecretBlindIndexMigration = "secret-blind-index-migration",
+  UsageEvent = "usage-event-job"
+}
+
+export enum JobState {
+  NotFound = "not-found",
+  Pending = "pending",
+  Completed = "completed",
+  Failed = "failed"
 }
 
 export type TQueueOptions = {
   jobId: string;
-  removeOnComplete?: boolean | { count: number };
-  removeOnFail?: boolean | { count: number };
+  removeOnComplete?: boolean | { count: number } | { age: number };
+  removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
   delay?: number;
   backoff?: {
@@ -204,10 +232,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.AuditLog]: {
-    name: QueueJobs.AuditLog;
-    payload: TCreateAuditLogDTO;
   };
   [QueueName.PkiAlertV2Event]: {
     name: QueueJobs.PkiAlertV2ProcessEvent;
@@ -365,6 +389,14 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecretRotationV2RotateSecrets;
     payload: TSecretRotationRotateSecretsJobPayload;
   };
+  [QueueName.PamCredentialRotation]: {
+    name: QueueJobs.PamCredentialRotationQueueRotations;
+    payload: undefined;
+  };
+  [QueueName.PamCredentialRotationRotate]: {
+    name: QueueJobs.PamCredentialRotationRotate;
+    payload: { accountId: string };
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
@@ -425,13 +457,17 @@ export type TQueueJobTypes = {
     name: QueueJobs.UserNotification;
     payload: { notifications: TCreateUserNotificationDTO[] };
   };
+  [QueueName.AuditReportGeneration]: {
+    name: QueueJobs.GenerateAuditReport;
+    payload: { auditReportId: string };
+  };
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
   };
-  [QueueName.PamSessionAiSummary]: {
-    name: QueueJobs.PamSessionAiSummary;
-    payload: { sessionId: string; projectId: string };
+  [QueueName.PamDiscoveryScan]: {
+    name: QueueJobs.PamDiscoverySourceScan;
+    payload: { sourceId: string; triggeredBy: string };
   };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
@@ -463,15 +499,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogClickHouseBatch;
     payload: undefined;
   };
-  [QueueName.PamDiscoveryScan]:
-    | {
-        name: QueueJobs.PamDiscoverySourceRunScan;
-        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
-      }
-    | {
-        name: QueueJobs.PamDiscoveryScheduledScan;
-        payload: undefined;
-      };
+  [QueueName.AuditLogStreamOutbox]: {
+    name: QueueJobs.AuditLogStreamFlush;
+    payload: TAuditLogStreamFlushJobData;
+  };
   [QueueName.CaAutoRenewal]:
     | {
         name: QueueJobs.CaDailyAutoRenewal;
@@ -484,7 +515,27 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaNativeAdcsInstall;
+        payload: { caId: string; maxPathLength?: number };
       };
+  [QueueName.ProjectHardDelete]: {
+    name: QueueJobs.ProjectHardDelete;
+    payload: { projectId: string };
+  };
+  [QueueName.SignerAutoRenewal]: {
+    name: QueueJobs.SignerDailyAutoRenewal;
+    payload: undefined;
+  };
+  [QueueName.SecretBlindIndexMigration]: {
+    name: QueueJobs.SecretBlindIndexMigration;
+    payload: { projectId: string };
+  };
+  [QueueName.UsageEvent]: {
+    name: QueueJobs.UsageEvent;
+    payload: { orgId: string; featureKey: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -517,7 +568,7 @@ export type TQueueServiceFactory = {
       token?: string,
       signal?: AbortSignal
     ) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency">
+    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency" | "limiter">
   ) => void;
   listen: <
     T extends QueueName,
@@ -575,6 +626,10 @@ export type TQueueServiceFactory = {
   ) => Promise<void>;
   removeJobScheduler: <T extends QueueName>(name: T, schedulerId: string) => Promise<void>;
   getJobSchedulers: (name: QueueName, start?: number, end?: number) => Promise<JobSchedulerJson[]>;
+  getJob: <T extends QueueName>(
+    name: T,
+    jobId: string
+  ) => Promise<Job<TQueueJobTypes[T]["payload"], void, string> | undefined>;
 };
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {
@@ -586,6 +641,35 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
   > = {};
 
+  // Observable gauge for queue depth. The SDK invokes the callback on each export (every 30s for OTLP
+  // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
+  // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
+  const QUEUE_DEPTH_STATES = ["waiting", "active", "delayed", "failed"] as const;
+  const queueDepthGauge = opentelemetry.metrics
+    .getMeter("InfisicalCore")
+    .createObservableGauge("infisical.queue.depth", {
+      description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
+      unit: "{job}"
+    });
+
+  queueDepthGauge.addCallback(async (observableResult) => {
+    if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+    await Promise.allSettled(
+      Object.entries(queueContainer).map(async ([name, q]) => {
+        if (!q) return;
+        try {
+          const counts = await q.getJobCounts(...QUEUE_DEPTH_STATES);
+          Object.entries(counts).forEach(([state, count]) => {
+            if (typeof count !== "number") return;
+            observableResult.observe(count, { "queue.name": name, "queue.state": state });
+          });
+        } catch (err) {
+          logger.warn({ err, queue: name }, `queue.depth gauge: getJobCounts failed [queue=${name}]`);
+        }
+      })
+    );
+  });
+
   // Remove orphaned job schedulers left in Redis by deleted queues.
   // Queues migrated to the cronJob system (cron-job.ts) are listed here so their
   // BullMQ schedulers and pending jobs are cleaned up on first boot of the new image.
@@ -594,6 +678,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "queue-internal-recovery",
       "queue-internal-reconciliation",
       "secret-rotation",
+      // Legacy per-log audit queue, replaced by the unified Redis ingest stream. The compatibility
+      // shim that re-routed its jobs has been removed; obliterate any residue left in Redis.
+      "audit-log",
       // Queues replaced by cronJobFactory (src/lib/cron/cron-job.ts)
       "daily-resource-cleanup",
       "frequent-resource-cleanup",
@@ -603,6 +690,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "certificate-cleanup",
       "pki-sync-cleanup",
       "pam-account-rotation",
+      "pam-session-ai-summary",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value
@@ -628,7 +716,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     const staleSchedulersInActiveQueues: Array<{ queueName: string; schedulerId: string }> = [
       { queueName: "pki-subscriber", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-subscriber` },
       { queueName: "pki-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-discovery-scheduled-scan` },
-      { queueName: "pam-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pam-discovery-scheduled-scan` },
       { queueName: "secret-rotation-v2", schedulerId: `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron` },
       {
         queueName: "app-connection-credential-rotation",
@@ -688,12 +775,62 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       return;
     }
 
-    workerContainer[name] = new Worker(name, jobFn, {
+    const worker = new Worker(name, jobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...fipsSettings,
       ...queueSettings,
+      // Enable BullMQ's built-in per-minute completion/failure tracking in Redis. Survives pod restarts
+      // (OTel cumulative counters reset), useful as a fallback when Prometheus retention is short.
+      metrics: { maxDataPoints: MetricsTime.ONE_WEEK * 2 },
       connection
     });
+
+    // Cross-cutting metric emission for every queue. Single registration covers all ~30 named queues
+    // since BullMQ Worker is an EventEmitter and we attach the listeners here.
+    worker.on("completed", (job) => {
+      const baseAttrs = { "queue.name": name, "job.name": job.name } as Record<string, string>;
+      queueJobCounter.add(1, { ...baseAttrs, outcome: "completed" });
+
+      if (typeof job.processedOn === "number" && typeof job.timestamp === "number") {
+        const durationMs = Date.now() - job.processedOn;
+        queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "completed" });
+
+        // Wait = (worker pickup) - (enqueue time + intentional delay). Subtracting opts.delay is what
+        // makes this measure queue contention, not scheduling
+        const intentionalDelayMs = job.opts.delay ?? 0;
+        const waitMs = Math.max(0, job.processedOn - job.timestamp - intentionalDelayMs);
+        queueJobWaitHistogram.record(waitMs / 1000, baseAttrs);
+      }
+    });
+
+    worker.on("failed", (job, err) => {
+      const baseAttrs = {
+        "queue.name": name,
+        "job.name": job?.name ?? "unknown"
+      } as Record<string, string>;
+      queueJobCounter.add(1, { ...baseAttrs, outcome: "failed" });
+
+      // Skip duration on framework-level failures (job hydration failed before start). Emitting 0
+      // would pollute the histogram with phantom zero-duration points.
+      if (job && typeof job.processedOn === "number") {
+        const durationMs = Date.now() - job.processedOn;
+        queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "failed" });
+      }
+
+      const errorType = classifyError(err);
+      const attemptsExhausted = !!(job?.opts.attempts && job.attemptsMade && job.attemptsMade >= job.opts.attempts);
+      queueJobFailureCounter.add(1, {
+        ...baseAttrs,
+        "error.type": errorType,
+        "attempts.exhausted": attemptsExhausted ? "true" : "false"
+      });
+    });
+
+    worker.on("stalled", () => {
+      queueStalledCounter.add(1, { "queue.name": name });
+    });
+
+    workerContainer[name] = worker;
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
@@ -878,6 +1015,13 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     return q.getJobSchedulers(startOffset, endOffset);
   };
 
+  const getJob: TQueueServiceFactory["getJob"] = async (name, jobId) => {
+    const q = queueContainer[name];
+    if (!q) return undefined;
+    const job = await q.getJob(jobId);
+    return job ?? undefined;
+  };
+
   return {
     start,
     listen,
@@ -893,6 +1037,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     getDelayedJobs,
     upsertJobScheduler,
     removeJobScheduler,
-    getJobSchedulers
+    getJobSchedulers,
+    getJob
   };
 };

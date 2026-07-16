@@ -12,7 +12,6 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -27,7 +26,12 @@ import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -36,6 +40,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -45,8 +50,9 @@ import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { ensureSsoAccountVerified, isStaleSsoAlias } from "../user-alias/user-alias-fns";
 import { UserAliasType } from "../user-alias/user-alias-types";
-import { enforceUserLockStatus, verifyCaptcha } from "./auth-fns";
+import { enforceUserLockStatus, getRequiredMfaMethod, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -63,6 +69,7 @@ import {
   ProviderAuthResult,
   TProviderAuthCallback
 } from "./auth-type";
+import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
@@ -70,13 +77,17 @@ type TAuthLoginServiceFactoryDep = {
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "verifyAndConsumeRecoveryCode">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  mfaLockoutService: Pick<
+    TMfaLockoutServiceFactory,
+    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth"
+  >;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -87,12 +98,13 @@ export const authLoginServiceFactory = ({
   smtpService,
   orgDAL,
   totpService,
+  mfaRecoveryCodeService,
   auditLogService,
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  keyStore,
-  permissionService
+  permissionService,
+  mfaLockoutService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -154,25 +166,6 @@ export const authLoginServiceFactory = ({
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));
-  };
-
-  /*
-   * Private
-   * Determines the required MFA method based on org enforcement vs user preference.
-   */
-  const getRequiredMfaMethod = (
-    org: { enforceMfa?: boolean | null; selectedMfaMethod?: string | null },
-    user: { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null }
-  ): { isMfaRequired: boolean; requiredMfaMethod: MfaMethod } => {
-    const isOrgMfaEnforced = Boolean(org.enforceMfa);
-    const isUserMfaEnabled = Boolean(user.isMfaEnabled);
-    const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
-
-    const requiredMfaMethod = isOrgMfaEnforced
-      ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
-      : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
-
-    return { isMfaRequired, requiredMfaMethod };
   };
 
   /*
@@ -304,7 +297,7 @@ export const authLoginServiceFactory = ({
       { expiresIn: refreshTokenExpiresIn }
     );
 
-    return { access: accessToken, refresh: refreshToken };
+    return { access: accessToken, refresh: refreshToken, tokenVersionId: tokenSession.id };
   };
 
   const processProviderCallback = async ({
@@ -528,6 +521,7 @@ export const authLoginServiceFactory = ({
     userAgent: string;
     captchaToken?: string;
   }) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const email = sanitizeEmail(unsanitizedEmail);
 
@@ -587,6 +581,12 @@ export const authLoginServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.EMAIL,
+        result: AuthAttemptAuthResult.SUCCESS
+      });
+
       return {
         tokens: {
           accessToken: token.access,
@@ -604,6 +604,13 @@ export const authLoginServiceFactory = ({
           "user_agent.original": userAgent
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.EMAIL,
+        result: AuthAttemptAuthResult.FAILURE,
+        error
+      });
 
       throw error;
     }
@@ -630,54 +637,6 @@ export const authLoginServiceFactory = ({
     });
   };
 
-  const processFailedMfaAttempt = async (userId: string) => {
-    try {
-      const updatedUser = await userDAL.transaction(async (tx) => {
-        const PROGRESSIVE_DELAY_INTERVAL = 3;
-        const user = await userDAL.updateById(userId, { $incr: { consecutiveFailedMfaAttempts: 1 } }, tx);
-
-        if (!user) {
-          throw new Error("User not found");
-        }
-
-        const progressiveDelaysInMins = [5, 30, 60];
-
-        // lock user when failed attempt exceeds threshold
-        if (
-          user.consecutiveFailedMfaAttempts &&
-          user.consecutiveFailedMfaAttempts >= PROGRESSIVE_DELAY_INTERVAL * (progressiveDelaysInMins.length + 1)
-        ) {
-          return userDAL.updateById(
-            userId,
-            {
-              isLocked: true,
-              temporaryLockDateEnd: null
-            },
-            tx
-          );
-        }
-
-        // delay user only when failed MFA attempts is a multiple of configured delay interval
-        if (user.consecutiveFailedMfaAttempts && user.consecutiveFailedMfaAttempts % PROGRESSIVE_DELAY_INTERVAL === 0) {
-          const delayIndex = user.consecutiveFailedMfaAttempts / PROGRESSIVE_DELAY_INTERVAL - 1;
-          return userDAL.updateById(
-            userId,
-            {
-              temporaryLockDateEnd: new Date(new Date().getTime() + progressiveDelaysInMins[delayIndex] * 60 * 1000)
-            },
-            tx
-          );
-        }
-
-        return user;
-      });
-
-      return updatedUser;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Process failed MFA Attempt" });
-    }
-  };
-
   /*
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
@@ -693,40 +652,38 @@ export const authLoginServiceFactory = ({
     orgId,
     isRecoveryCode = false
   }: TVerifyMfaTokenDTO) => {
-    const appCfg = getConfig();
     const user = await userDAL.findById(userId);
 
     try {
-      if (mfaMethod !== requiredMfaMethod) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      // Recovery codes are account-level and bypass the configured second
+      // factor regardless of the required MFA method (email, TOTP or WebAuthn).
+      if (isRecoveryCode) {
+        await mfaRecoveryCodeService.verifyAndConsumeRecoveryCode({
+          userId,
+          recoveryCode: mfaToken
+        });
+      } else if (mfaMethod !== requiredMfaMethod) {
         throw new BadRequestError({
           message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
         });
-      }
-
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-      if (mfaMethod === MfaMethod.EMAIL) {
+      } else if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
           type: TokenType.TOKEN_EMAIL_MFA,
           userId,
           code: mfaToken
         });
       } else if (mfaMethod === MfaMethod.TOTP) {
-        if (isRecoveryCode) {
-          await totpService.verifyWithUserRecoveryCode({
-            userId,
-            recoveryCode: mfaToken
-          });
-        } else {
-          if (mfaToken.length !== 6) {
-            throw new BadRequestError({
-              message: "Please use a valid TOTP code."
-            });
-          }
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
+        if (mfaToken.length !== 6) {
+          throw new BadRequestError({
+            message: "Please use a valid TOTP code."
           });
         }
+        await totpService.verifyUserTotp({
+          userId,
+          totp: mfaToken
+        });
       } else if (mfaMethod === MfaMethod.WEBAUTHN) {
         if (!mfaToken) {
           throw new BadRequestError({
@@ -741,52 +698,13 @@ export const authLoginServiceFactory = ({
         });
       }
     } catch (err) {
-      const updatedUser = await processFailedMfaAttempt(userId);
-      if (updatedUser.isLocked) {
-        if (updatedUser.email) {
-          // Use a keystore lock to prevent sending duplicate unlock emails during concurrent requests
-          let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-          try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.UserMfaLockoutLock(userId)], 3000, {
-              retryCount: 0
-            });
-
-            // Check if an unlock email was already sent recently (within 5 minutes)
-            const emailAlreadySent = await keyStore.getItem(KeyStorePrefixes.UserMfaUnlockEmailSent(userId));
-            if (!emailAlreadySent) {
-              const unlockToken = await tokenService.createTokenForUser({
-                type: TokenType.TOKEN_USER_UNLOCK,
-                userId: updatedUser.id
-              });
-
-              await smtpService.sendMail({
-                template: SmtpTemplates.UnlockAccount,
-                subjectLine: "Unlock your Infisical account",
-                recipients: [updatedUser.email],
-                substitutions: {
-                  token: unlockToken,
-                  callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
-                }
-              });
-
-              // Mark that an unlock email was sent, expires after 5 minutes
-              await keyStore.setItemWithExpiry(
-                KeyStorePrefixes.UserMfaUnlockEmailSent(userId),
-                KeyStoreTtls.UserMfaUnlockEmailSentInSeconds,
-                "1"
-              );
-            }
-          } catch (lockErr) {
-            if (lock) {
-              logger.error(lockErr, "Failed to send unlock email");
-            }
-          } finally {
-            if (lock) {
-              await lock.release();
-            }
-          }
-        }
+      if (isRecoveryCode && err instanceof NotFoundError) {
+        throw new BadRequestError({
+          message: "No recovery codes are configured for this account. Please use another MFA method."
+        });
       }
+
+      await mfaLockoutService.handleFailedMfaAttempt(userId);
 
       throw err;
     }
@@ -796,11 +714,7 @@ export const authLoginServiceFactory = ({
     const userEnc = await userDAL.findById(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
-    // reset lock states
-    await userDAL.updateById(userId, {
-      consecutiveFailedMfaAttempts: 0,
-      temporaryLockDateEnd: null
-    });
+    await mfaLockoutService.resetMfaLockStatus(userId);
 
     const token = await generateUserTokens({
       userId: user.id,
@@ -811,6 +725,28 @@ export const authLoginServiceFactory = ({
       isMfaVerified: true,
       mfaMethod
     });
+
+    // Open the grace window for THIS session only (the one that just proved MFA), so
+    // MFA-management step-up isn't re-prompted right after login - including recovery-code
+    // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
+    // by the new session's tokenVersionId so no other session inherits it.
+    await mfaLockoutService.recordRecentMfaAuth(user.id, token.tokenVersionId);
+
+    if (isRecoveryCode && userEnc.email) {
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.MfaRecoveryCodeUsed,
+          subjectLine: "A recovery code was used to sign in to your Infisical account",
+          recipients: [userEnc.email],
+          substitutions: {
+            email: userEnc.email,
+            timestamp: new Date().toString(),
+            ip,
+            userAgent
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send MFA recovery code used email"));
+    }
 
     return { token, user: { ...userEnc, hashedPassword: null } };
   };
@@ -838,6 +774,7 @@ export const authLoginServiceFactory = ({
     callbackPort,
     orgSlug,
     providerUserId,
+    isEmailVerifiedByProvider,
     ip,
     userAgent
   }: TOauthLoginDTO) => {
@@ -860,6 +797,18 @@ export const authLoginServiceFactory = ({
         isNewAlias = true;
       }
     }
+
+    // Captured before any mutation so we can tell whether this login is what completed the
+    // user's signup (used by the caller to fire signup telemetry exactly once per account).
+    const wasUserAcceptedBeforeLogin = Boolean(user?.isAccepted);
+
+    // Mirror complete-account's invite detection: a not-yet-accepted user who already has an org
+    // membership was invited (the inviter created it), versus an organic signup that has none yet.
+    // Only meaningful when this login completes the signup, so skip the read for accepted users.
+    const wasInvited =
+      !wasUserAcceptedBeforeLogin && user
+        ? (await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })).length > 0
+        : false;
 
     const serverCfg = await getServerCfg();
 
@@ -932,8 +881,13 @@ export const authLoginServiceFactory = ({
           {
             username: sanitizedEmail,
             email: sanitizedEmail,
-            isEmailVerified: false,
-            isAccepted: false,
+            // when the provider already verified the email we skip our own verification step
+            // and complete the signup immediately (same as the SAML/OIDC enforced flow)
+            isEmailVerified: isEmailVerifiedByProvider,
+            isAccepted: isEmailVerifiedByProvider,
+            ...(authMethod === AuthMethod.GOOGLE && { isGoogleVerified: isEmailVerifiedByProvider }),
+            ...(authMethod === AuthMethod.GITHUB && { isGitHubVerified: isEmailVerifiedByProvider }),
+            ...(authMethod === AuthMethod.GITLAB && { isGitLabVerified: isEmailVerifiedByProvider }),
             firstName,
             lastName,
             authMethods: [authMethod],
@@ -990,7 +944,7 @@ export const authLoginServiceFactory = ({
             externalId: providerUserId,
             emails: [sanitizedEmail],
             orgId: orgId || null,
-            isEmailVerified: false
+            isEmailVerified: isEmailVerifiedByProvider
           },
           tx
         );
@@ -998,18 +952,46 @@ export const authLoginServiceFactory = ({
         return newUser;
       });
     } else {
+      // Whether this login is trusted to mutate the matched account (link an auth method, overwrite
+      // profile names, change the email / verified flags). The account was resolved either by a
+      // stable provider alias (isNewAlias === false) or by an unverified email fallback (true):
+      //  - alias match: trusted only when the alias is not stale AND control of the email is proven
+      //    in this login, i.e. the alias is already verified or the provider verified the asserted
+      //    email. A still-unverified alias is NOT trusted on a matching email alone: an attacker can
+      //    plant such an alias (email-fallback backfill) under their own externalId for the victim's
+      //    email, and knowing the email is not proof of owning it. (Stale = still-unverified and the
+      //    asserted email matches none of the account's known emails; even a provider-verified email
+      //    proves only that the caller owns *that* email, not the aliased account, so a stale alias
+      //    must never mutate it.)
+      //  - email-fallback match: the asserted email IS the account's username, so trust it only when
+      //    the provider verified that email; an unverified assertion doesn't prove control of it.
+      const isTrustedForAccount =
+        existingAlias && !isNewAlias
+          ? !isStaleSsoAlias({ user, userAlias: existingAlias, assertedEmail: sanitizedEmail }) &&
+            (existingAlias.isEmailVerified || isEmailVerifiedByProvider)
+          : isEmailVerifiedByProvider;
+
       const isLinkingRequired = !user?.authMethods?.includes(authMethod);
-      if (isLinkingRequired) {
+      if (isLinkingRequired && isTrustedForAccount) {
         // we update the names here because upon org invitation, the names are set to be NULL
         // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
         user = await userDAL.updateById(user.id, {
           authMethods: [...(user.authMethods || []), authMethod],
           firstName,
-          lastName
+          lastName,
+          // trust the provider's verification of the email when linking a new SSO method
+          ...(authMethod === AuthMethod.GOOGLE && { isGoogleVerified: isEmailVerifiedByProvider }),
+          ...(authMethod === AuthMethod.GITHUB && { isGitHubVerified: isEmailVerifiedByProvider }),
+          ...(authMethod === AuthMethod.GITLAB && { isGitLabVerified: isEmailVerifiedByProvider })
         });
       }
 
-      if (existingAlias && user.email !== sanitizedEmail) {
+      // A provider-driven email change renames the account and marks the alias verified, so only do
+      // it for a trusted login (see isTrustedForAccount above). For a stale alias this is skipped,
+      // letting the stale-alias guard below decline promotion and fall through to the email-
+      // verification flow (no session). With existingAlias set, isTrustedForAccount requires the
+      // alias to be non-stale AND already verified or provider-verified in this login.
+      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount) {
         const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
@@ -1025,18 +1007,20 @@ export const authLoginServiceFactory = ({
             {
               username: sanitizedEmail,
               email: sanitizedEmail,
-              // reverify email verification status on login
-              isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
-              isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
-              isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified
+              // the email changed at the provider: trust the provider's verification of the new
+              // email for the current method, and preserve the other providers' statuses
+              isGitHubVerified: authMethod === AuthMethod.GITHUB ? isEmailVerifiedByProvider : user?.isGitHubVerified,
+              isGoogleVerified: authMethod === AuthMethod.GOOGLE ? isEmailVerifiedByProvider : user?.isGoogleVerified,
+              isGitLabVerified: authMethod === AuthMethod.GITLAB ? isEmailVerifiedByProvider : user?.isGitLabVerified
             },
             tx
           );
 
-          await userAliasDAL.updateById(
+          existingAlias = await userAliasDAL.updateById(
             existingAlias.id,
             {
-              emails: [sanitizedEmail]
+              emails: [sanitizedEmail],
+              isEmailVerified: isEmailVerifiedByProvider
             },
             tx
           );
@@ -1065,43 +1049,58 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    // Use user-level provider verification flags
-    let isAliasVerified = false;
-    if (authMethod === AuthMethod.GOOGLE) {
-      isAliasVerified = Boolean(user.isGoogleVerified);
-    } else if (authMethod === AuthMethod.GITHUB) {
-      isAliasVerified = Boolean(user.isGitHubVerified);
-    } else if (authMethod === AuthMethod.GITLAB) {
-      isAliasVerified = Boolean(user.isGitLabVerified);
-    }
+    // Promote an as-yet-unverified alias ONLY when the provider attests the email in THIS login. The
+    // account-level isXVerified flag is per account, not per provider-identity, so it must not promote
+    // an unverified alias: an attacker can plant an unverified alias (email-fallback backfill) for the
+    // victim's email under their own externalId, and inheriting the flag on a later login would mint a
+    // session as the victim. An already-verified alias stays trusted via existingAlias.isEmailVerified.
+    const isAliasVerified = isEmailVerifiedByProvider;
     // Self-healing backfill: create alias for existing users found by email fallback
-    let aliasId = existingAlias?.id;
     if (isNewAlias) {
       try {
-        const newAlias = await userAliasDAL.create({
+        existingAlias = await userAliasDAL.create({
           userId: user.id,
           aliasType,
           externalId: providerUserId,
           emails: [sanitizedEmail],
           isEmailVerified: isAliasVerified
         });
-        aliasId = newAlias.id;
       } catch (err) {
-        // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
+        // Duplicate key error from the unique index (race condition: concurrent login already
+        // created the alias), so recover the existing row instead
         if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
           logger.warn(`OAuth alias backfill for user ${user.id} skipped: alias already exists`);
+          const recoveredAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
+          if (!recoveredAlias || recoveredAlias.userId !== user.id) {
+            throw new BadRequestError({ message: "Unable to complete login; please retry.", name: "Oauth 2 login" });
+          }
+          existingAlias = recoveredAlias;
         } else {
           throw err;
         }
       }
     }
 
+    // Provider attested the email (or it was verified previously): promote the user + alias to
+    // verified/accepted so a real session is issued, exactly like the SAML/OIDC enforced flow.
+    // The alias.isEmailVerified term also heals the legacy "alias verified but user never
+    // accepted" state, which would otherwise dead-end (no code is ever issued for it below).
+    if (existingAlias && (isAliasVerified || existingAlias.isEmailVerified)) {
+      ({ user, userAlias: existingAlias } = await ensureSsoAccountVerified({
+        user,
+        userAlias: existingAlias,
+        assertedEmail: sanitizedEmail,
+        userDAL,
+        userAliasDAL
+      }));
+    }
+
     // Send verification email for OAuth providers that haven't verified the user's email
-    if (!isAliasVerified && user.email && aliasId) {
+    if (user.email && existingAlias && !existingAlias.isEmailVerified) {
       const verificationCode = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,
-        aliasId
+        aliasId: existingAlias.id
       });
 
       await smtpService.sendMail({
@@ -1117,15 +1116,31 @@ export const authLoginServiceFactory = ({
     const callbackResult = await processProviderCallback({
       user,
       authMethod,
-      isEmailVerified: isAliasVerified,
-      aliasId,
+      // alias-based on purpose: if the promotion above was declined (stale alias) we must fall
+      // back to the signup/verification flow rather than mint a session off a user-level flag
+      isEmailVerified: Boolean(existingAlias?.isEmailVerified),
+      aliasId: existingAlias?.id,
       ip,
       userAgent,
       organizationId: orgId || undefined,
       callbackPort
     });
 
-    return { ...callbackResult, user: { ...user, hashedPassword: null }, orgId, orgName };
+    // True when this login is the one that completed the account (fresh provider-verified
+    // signup, resumed signup, or an invited user's first verified OAuth login); the caller
+    // uses it to fire signup telemetry that complete-account would otherwise have sent.
+    const didCompleteSignup = !wasUserAcceptedBeforeLogin && Boolean(user.isAccepted);
+
+    return {
+      ...callbackResult,
+      user: { ...user, hashedPassword: null },
+      didCompleteSignup,
+      // meaningful only alongside didCompleteSignup: tags the completed signup as an invite
+      wasInvited,
+      authMethod,
+      orgId,
+      orgName
+    };
   };
 
   /*

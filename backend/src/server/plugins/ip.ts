@@ -21,7 +21,7 @@ const headersOrder = [
 ];
 
 export const fastifyIp = fp(async (fastify) => {
-  fastify.decorateRequest("realIp", null);
+  fastify.decorateRequest("realIp");
   const { TRUSTED_PROXY_CIDRS } = getConfig();
   fastify.addHook("onRequest", async (req) => {
     // Strict mode: TRUSTED_PROXY_CIDRS configured → delegate to Fastify's proxy-addr-backed

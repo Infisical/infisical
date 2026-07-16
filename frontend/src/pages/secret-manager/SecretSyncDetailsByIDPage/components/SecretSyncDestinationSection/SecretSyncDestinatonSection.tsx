@@ -16,6 +16,7 @@ import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
+import { Cloud66SyncDestinationSection } from "./Cloud66SyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
@@ -26,6 +27,7 @@ import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
+import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
@@ -36,13 +38,16 @@ import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
 import { OnaSyncDestinationSection } from "./OnaSyncDestinationSection";
 import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
+import { QoverySyncDestinationSection } from "./QoverySyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { RundeckSyncDestinationSection } from "./RundeckSyncDestinationSection";
 import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { TravisCISyncDestinationSection } from "./TravisCISyncDestinationSection";
+import { TriggerDevSyncDestinationSection } from "./TriggerDevSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
@@ -135,11 +140,17 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
     case SecretSync.Railway:
       DestinationComponents = <RailwaySyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.HasuraCloud:
+      DestinationComponents = <HasuraCloudSyncDestinationSection secretSync={secretSync} />;
+      break;
     case SecretSync.Checkly:
       DestinationComponents = <ChecklySyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Supabase:
       DestinationComponents = <SupabaseSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationComponents = <RundeckSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationComponents = (
@@ -187,6 +198,15 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Snowflake:
       DestinationComponents = <SnowflakeSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.TriggerDev:
+      DestinationComponents = <TriggerDevSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Qovery:
+      DestinationComponents = <QoverySyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Cloud66:
+      DestinationComponents = <Cloud66SyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

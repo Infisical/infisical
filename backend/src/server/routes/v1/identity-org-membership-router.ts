@@ -317,7 +317,15 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true })
+              identity: IdentitiesSchema.pick({
+                name: true,
+                id: true,
+                orgId: true,
+                projectId: true
+              }).extend({
+                authMethods: z.array(z.string()),
+                activeLockoutAuthMethods: z.array(z.string())
+              })
             })
             .array(),
           totalCount: z.number()

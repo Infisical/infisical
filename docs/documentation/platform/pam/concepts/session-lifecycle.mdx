@@ -1,0 +1,67 @@
+---
+title: "Session Lifecycle"
+sidebarTitle: "Session Lifecycle"
+description: "What happens when you connect to an account."
+---
+
+When you connect to an [account](/documentation/platform/pam/accounts/overview) through PAM, a **session** is created. The session tracks who connected, when, for how long, and what they did. Here's what happens at each stage.
+
+## Requesting Access
+
+When you click **Launch** on an account from the **My Access** page (or run the CLI command), PAM checks:
+
+1. **Do you have permission?** — You need a [membership](/documentation/platform/pam/concepts/access-control) (on the [folder](/documentation/platform/pam/folders/overview) or account) with the Connector or Admin role
+2. **[Template](/documentation/platform/pam/templates/overview) requirements** — If the template requires a reason, you'll be prompted to enter one. If it requires MFA, you'll need to verify your identity.
+
+If everything checks out, the session is approved and you can connect.
+
+## Connecting
+
+Once approved, the connection is established through the [Gateway](/documentation/platform/gateways/overview):
+
+1. Your client (browser or CLI) connects to the Gateway
+2. The Gateway fetches the account credentials from Infisical
+3. The Gateway connects to the actual database or server
+4. Traffic flows through the Gateway — you never see the credentials
+
+For **Web Access**, this all happens in the browser. For **CLI Access**, the CLI starts a local proxy and you connect your preferred client to `localhost`.
+
+## During the Session
+
+While you're connected:
+
+- **Recording** — Every query (database) or command (SSH) is captured
+- **Session timer** — The session has a maximum duration set by the template. When time runs out, you're disconnected.
+- **Logs upload** — Session activity uploads to Infisical in real-time, so admins can monitor active sessions
+
+You can see your active sessions on the **Sessions** page.
+
+## Ending the Session
+
+A session ends when:
+
+- You disconnect (close the browser tab, press Ctrl+C, or type `exit`)
+- The max session duration is reached
+- An admin terminates the session
+
+Recordings are available in real-time — you can review activity even while the session is still active.
+
+## After the Session
+
+Every session is logged:
+
+- **Audit log** — records who accessed what, when, and from where
+- **Session recording** — captures everything that happened during the session
+
+Admins and Auditors can review sessions from the **Sessions** page. See [Session Recording](/documentation/platform/pam/sessions/session-recording) for details on how recordings work.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage sessions.
+  </Card>
+  <Card title="Session Recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
+    How recordings are captured and stored.
+  </Card>
+</CardGroup>

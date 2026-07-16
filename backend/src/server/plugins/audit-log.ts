@@ -32,7 +32,7 @@ export const getUserAgentType = (userAgent: string | undefined) => {
 };
 
 export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
-  server.decorateRequest("auditLogInfo", null);
+  server.decorateRequest("auditLogInfo");
   server.addHook("onRequest", async (req) => {
     const userAgent = req.headers["user-agent"] ?? "";
     const payload = {
@@ -100,6 +100,13 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         type: ActorType.RELAY,
         metadata: {
           relayId: req.permission.id
+        }
+      };
+    } else if (req.auth.actor === ActorType.KMIP_SERVER) {
+      payload.actor = {
+        type: ActorType.KMIP_SERVER,
+        metadata: {
+          kmipServerId: req.permission.id
         }
       };
     } else {

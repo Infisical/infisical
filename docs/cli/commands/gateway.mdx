@@ -22,13 +22,6 @@ The Infisical gateway provides secure access to private resources using modern T
 
 The gateway system uses SSH reverse tunnels over TCP, eliminating firewall complexity and providing excellent performance for enterprise environments.
 
-<Warning>
-**Deprecation and Migration Notice:** The legacy `infisical gateway` command (v1) will be removed in a future release. Please migrate to `infisical gateway start` (Gateway v2).
-
-If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. Gateway v2 creates new gateway instances with new gateway IDs. You must update any existing resources that reference gateway IDs (for example: dynamic secret configs, app connections, or other gateway-bound resources) to point to the new Gateway v2 gateway resource. Until you update those references, traffic will continue to target the old v1 gateway.
-
-</Warning>
-
 ## Subcommands & flags
 
 <AccordionGroup>
@@ -50,7 +43,7 @@ Once started, the gateway component will:
 - Automatically connect to a healthy relay with the lowest latency (unless the `--target-relay-name` flag is specified)
 - Establish outbound SSH reverse tunnel to relay server (no inbound firewall rules needed)
 - Authenticate using SSH certificates issued by Infisical
-- Automatically reconnect if the connection is lost
+- Automatically reconnect if the connection is lost, and fail over to a different healthy relay if the current one becomes unreachable
 - Provide access to private resources within your network
 
 ### Flags
@@ -103,6 +96,17 @@ Once started, the gateway component will:
     infisical gateway start <gateway-name> --domain=https://app.your-domain.com --enroll-method=token --token=<token>
     ```
 
+  </Accordion>
+
+  <Accordion title="--pkcs11-module">
+    Absolute path to the PKCS#11 driver shipped by your HSM vendor. When set, the gateway loads the driver on startup and is reachable by HSM Connectors for signing operations.
+
+    ```bash
+    # Example
+    infisical gateway start <gateway-name> --enroll-method=token --token=<token> --domain=<domain> --pkcs11-module=/opt/fortanix/pkcs11/fortanix_pkcs11.so
+    ```
+
+    See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for the full setup.
   </Accordion>
   </AccordionGroup>
 </Accordion>
@@ -166,6 +170,17 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
   </Accordion>
+
+  <Accordion title="--pkcs11-module">
+    Absolute path to the PKCS#11 driver shipped by your HSM vendor. When set, the systemd unit captures the flag so every restart loads the same driver and the gateway is reachable by HSM Connectors.
+
+    ```bash
+    # Example
+    sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<token> --domain=<domain> --pkcs11-module=/opt/fortanix/pkcs11/fortanix_pkcs11.so
+    ```
+
+    See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for the full setup.
+  </Accordion>
   </AccordionGroup>
 
 ### Service Details
@@ -201,88 +216,7 @@ sudo systemctl disable my-gateway  # Disable auto-start on boot
 sudo infisical gateway systemd uninstall my-gateway
 ```
 
-The gateway name is provided as a positional argument. If no service matching the gateway name is found, it will fall back to removing a legacy `infisical-gateway` service if one exists.
-
-</Accordion>
-</AccordionGroup>
-
-## Legacy Gateway Commands
-
-<AccordionGroup>
-<Accordion title="infisical gateway (deprecated)">
-  <Warning>
-  **This command is deprecated and will be removed in a future release.**
-
-  Please migrate to `infisical gateway start` for the new TCP-based SSH tunnel architecture.
-
-**Migration required:** If you are currently using Gateway v1 (via `infisical gateway`), moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
-
-  </Warning>
-
-Run the legacy Infisical gateway in the foreground. The gateway will connect to the relay service and maintain a persistent connection.
-
-```bash
-infisical gateway --domain=<domain> --auth-method=<auth-method>
-```
-
-### Other Flags
-
-  <AccordionGroup>
-  <Accordion title="--domain">
-    Domain of your self-hosted Infisical instance.
-
-    ```bash
-    # Example
-    infisical gateway --domain=https://app.your-domain.com
-    ```
-
-  </Accordion>
-  </AccordionGroup>
-</Accordion>
-
-<Accordion title="infisical gateway install (deprecated)">
-  <Warning>
-  **This command is deprecated and will be removed in a future release.**
-
-  Please migrate to `infisical gateway systemd install` for the new TCP-based SSH tunnel architecture with enhanced security and better performance.
-
-**Migration required:** If you previously installed Gateway v1 via `infisical gateway install`, moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
-
-  </Warning>
-
-Install and enable the legacy gateway as a systemd service. This command must be run with sudo on Linux.
-
-```bash
-sudo infisical gateway install --token=<token> --domain=<domain>
-```
-
-### Requirements
-
-- Must be run on Linux
-- Must be run with root/sudo privileges
-- Requires systemd
-
-### Service Details
-
-The systemd service is installed with secure defaults:
-
-- Service file: `/etc/systemd/system/infisical-gateway.service`
-- Config file: `/etc/infisical/gateway.conf`
-- Runs with restricted privileges:
-  - InaccessibleDirectories=/home
-  - PrivateTmp=yes
-  - Resource limits configured for stability
-- Automatically restarts on failure
-- Enabled to start on boot
-
-After installation, manage the service with standard systemd commands:
-
-```bash
-sudo systemctl start infisical-gateway    # Start the service
-sudo systemctl stop infisical-gateway     # Stop the service
-sudo systemctl status infisical-gateway   # Check service status
-sudo systemctl disable infisical-gateway  # Disable auto-start on boot
-```
+The gateway name is provided as a positional argument.
 
 </Accordion>
 </AccordionGroup>
@@ -295,6 +229,8 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
   </Accordion>
   <Accordion title="How are relays auto-selected?">
       If the `--target-relay-name` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
+
+      If the selected relay becomes unreachable while the gateway is running, the gateway will automatically switch to a different healthy one. Gateways started with an explicit `--target-relay-name` do not switch and will keep retrying the specified relay.
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.

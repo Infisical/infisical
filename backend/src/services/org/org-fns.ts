@@ -7,9 +7,11 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { APPLICATION_APPROVAL_SCOPES } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { assertWillRetainAdmin } from "../membership-user/membership-user-fns";
+import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 
 type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
@@ -23,6 +25,7 @@ type TDeleteOrgMemberships = {
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -35,11 +38,11 @@ export const deleteOrgMembershipsFn = async ({
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  approvalPolicyDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
-    await assertWillRetainAdmin({
-      scope: AccessScope.Organization,
+    await assertWillRetainOrgAdmin({
       scopeOrgId: orgId,
       excludeMembershipIds: orgMembershipIds,
       dal: membershipUserDAL,
@@ -122,6 +125,15 @@ export const deleteOrgMembershipsFn = async ({
           projectId: projectIds,
           actorUserId: membershipUserIds
         }
+      },
+      tx
+    );
+
+    await approvalPolicyDAL.deleteUserStepApproversInProjects(
+      {
+        projectIds,
+        userIds: membershipUserIds,
+        scopeTypes: APPLICATION_APPROVAL_SCOPES
       },
       tx
     );

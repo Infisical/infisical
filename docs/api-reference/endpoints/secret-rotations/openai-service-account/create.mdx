@@ -1,0 +1,77 @@
+---
+title: "Create"
+openapi: "POST /api/v2/secret-rotations/openai-service-account"
+---
+
+<Note>
+    Check out the configuration docs for [OpenAI Service Account Rotations](/documentation/platform/secret-rotation/openai-service-account) to learn how to obtain the required parameters.
+</Note>
+
+Creates an OpenAI Service Account secret rotation. Infisical will create and rotate project service accounts via your [OpenAI connection](/integrations/app-connections/openai) and write their API keys to the specified secret path.
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique name for the rotation (max 100 characters). |
+| `projectId` | string (UUID) | Yes | The project ID. |
+| `connectionId` | string (UUID) | Yes | ID of the OpenAI app connection (Admin API key). |
+| `environment` | string | Yes | Environment slug (e.g. `dev`, `prod`). |
+| `secretPath` | string | Yes | Path where the generated API key secret will be stored. |
+| `isAutoRotationEnabled` | boolean | Yes | Whether to rotate automatically on the schedule. |
+| `rotationInterval` | number | Yes | Days between rotations (e.g. `30`). |
+| `rotateAtUtc` | object | Yes | Time of day (UTC) to run rotation: `{ "hours", "minutes" }`. |
+| `parameters.projectId` | string | Yes | ID of the OpenAI project to create service accounts in (e.g. `proj_abc123`). Cannot be changed after creation. |
+| `parameters.name` | string | Yes | Name for the generated service account in OpenAI (max 100 characters). |
+| `secretsMapping.apiKey` | string | Yes | Secret key name to store the generated API key (e.g. `OPENAI_API_KEY`). |
+| `description` | string | No | Optional description. |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://us.infisical.com/api/v2/secret-rotations/openai-service-account \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-openai-rotation",
+    "projectId": "<project-id>",
+    "description": "OpenAI service account rotation",
+    "connectionId": "<openai-connection-id>",
+    "environment": "dev",
+    "secretPath": "/",
+    "isAutoRotationEnabled": true,
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "parameters": {
+      "projectId": "proj_abc123",
+      "name": "my-app-service-account"
+    },
+    "secretsMapping": {
+      "apiKey": "OPENAI_API_KEY"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "secretRotation": {
+    "id": "<rotation-id>",
+    "name": "my-openai-rotation",
+    "description": "OpenAI service account rotation",
+    "secretsMapping": { "apiKey": "OPENAI_API_KEY" },
+    "isAutoRotationEnabled": true,
+    "activeIndex": 0,
+    "connectionId": "<openai-connection-id>",
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "type": "openai-service-account",
+    "parameters": {
+      "projectId": "proj_abc123",
+      "name": "my-app-service-account"
+    }
+  }
+}
+```

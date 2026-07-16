@@ -19,6 +19,7 @@ export type TPkiSync = {
   syncOptions: Record<string, unknown>;
   projectId: string;
   applicationId?: string | null;
+  applicationName?: string | null;
   subscriberId?: string;
   connectionId: string;
   createdAt: Date;
@@ -85,6 +86,8 @@ export type TCertificateMap = Record<
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;
+    profileId?: string | null;
+    commonName?: string | null;
   }
 >;
 
@@ -208,6 +211,7 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  externalIdentifier?: string;
   syncMetadata?: TSyncMetadata;
 };
 

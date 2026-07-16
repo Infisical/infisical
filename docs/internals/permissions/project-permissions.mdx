@@ -12,7 +12,7 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `identity`, `app-connections`, `mcp-endpoints`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, `mcp-endpoints`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
 
 ## Available Project Permissions
 
@@ -258,6 +258,19 @@ Supports conditions and permission inversion.
 | `rotate-secrets` | Rotate the generated credentials of a rotation | `environment`, `secretPath`, `connectionId` |
 | `delete` | Remove secret rotation configurations | `environment`, `secretPath`, `connectionId` |
 
+#### Subject: `honey-tokens`
+
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
+| ------------------------------ | ---------------------------------------------- | ----- |
+| `read` | View honey tokens and their status | `environment`, `secretPath` |
+| `read-credentials` | View the decoy credentials of a honey token | `environment`, `secretPath` |
+| `create` | Create honey tokens | `environment`, `secretPath` |
+| `edit` | Modify existing honey tokens | `environment`, `secretPath` |
+| `reset` | Reset a triggered honey token back to active | `environment`, `secretPath` |
+| `revoke` | Revoke a honey token | `environment`, `secretPath` |
+
 #### Subject: `secret-syncs`
 
 Supports conditions and permission inversion.
@@ -310,6 +323,7 @@ Supports conditions and permission inversion.
 | `decrypt`            | Use keys for decryption operations                                          |
 | `sign`               | Use keys for signing operations                                             |
 | `verify`             | Use keys for signature verification operations                              |
+| `rotate`             | Rotate key material for encryption keys                                     |
 | `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
 
 ### Public Key Infrastructure (PKI)

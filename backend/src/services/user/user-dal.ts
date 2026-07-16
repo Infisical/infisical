@@ -248,23 +248,6 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByEmailsOrUsernames = async (
-    { emails, usernames }: { emails: string[]; usernames: string[] },
-    tx?: Knex
-  ) => {
-    if (!emails.length && !usernames.length) return [];
-    try {
-      return await (tx || db.replicaNode())(TableName.Users)
-        .where((qb) => {
-          if (emails.length) void qb.whereIn("email", emails);
-          if (usernames.length) void qb.orWhereIn("username", usernames);
-        })
-        .select(selectAllTableCols(TableName.Users));
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find users by emails or usernames" });
-    }
-  };
-
   return {
     ...userOrm,
     findUserEncKeyByUsername,
@@ -278,7 +261,6 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
-    findAllMyAccounts,
-    findByEmailsOrUsernames
+    findAllMyAccounts
   };
 };

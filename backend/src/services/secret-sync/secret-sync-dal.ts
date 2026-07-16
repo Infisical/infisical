@@ -20,6 +20,8 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       );
     })
     .join(TableName.AppConnection, `${TableName.SecretSync}.connectionId`, `${TableName.AppConnection}.id`)
+    .join(TableName.Project, `${TableName.SecretSync}.projectId`, `${TableName.Project}.id`)
+    .whereNull(`${TableName.Project}.deleteAfter`)
     .select(selectAllTableCols(TableName.SecretSync))
     .select(
       // environment

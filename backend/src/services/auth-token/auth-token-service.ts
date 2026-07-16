@@ -5,6 +5,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn/array";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
@@ -15,6 +16,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import {
   TCreateTokenForUserDTO,
+  TCreateTokensForUsersResult,
   TEmailSignupOtpPayload,
   TIssueAuthTokenDTO,
   TokenType,
@@ -39,6 +41,10 @@ type TAuthTokenServiceFactoryDep = {
 };
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
+
+// Per-chunk size for createTokensForUsers. Each insert row binds ~5 values, so a chunk
+// of this size stays well under Postgres's ~65k bind-parameter limit for a single statement.
+const CREATE_TOKENS_CHUNK_SIZE = 1000;
 
 const generateSixDigitToken = (): string => String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
 
@@ -136,6 +142,63 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return token;
   };
 
+  /**
+   * Batched variant of createTokenForUser: refreshes tokens for many users using
+   * bulk deletes/inserts (one transaction per chunk) instead of one transaction per
+   * user. This avoids exhausting the connection pool when called for a large set of
+   * users (e.g. the daily invited-user reminder job).
+   *
+   * Work is processed in chunks so a single multi-row INSERT / composite IN can't grow
+   * past Postgres's bind-parameter ceiling, and chunks run sequentially so pool usage
+   * stays at one connection at a time. Token hashing is CPU-bound and does not hold a
+   * DB connection, so it runs up front per chunk in parallel. Each entry must include
+   * an orgId.
+   */
+  const createTokensForUsers = async (
+    entries: (TCreateTokenForUserDTO & { orgId: string })[]
+  ): Promise<TCreateTokensForUsersResult> => {
+    if (!entries.length) return [];
+    const appCfg = getConfig();
+
+    const result: TCreateTokensForUsersResult = [];
+
+    for (const chunk of chunkArray(entries, CREATE_TOKENS_CHUNK_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const prepared = await Promise.all(
+        chunk.map(async (entry) => {
+          const { token, ...tkCfg } = getTokenConfig(entry.type);
+          const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
+          return { entry, token, tokenHash, tkCfg };
+        })
+      );
+
+      // eslint-disable-next-line no-await-in-loop
+      await tokenDAL.transaction(async (tx) => {
+        await tokenDAL.deleteTokensForUsers(
+          prepared.map(({ entry }) => ({ type: entry.type, userId: entry.userId, orgId: entry.orgId })),
+          tx
+        );
+        await tokenDAL.insertMany(
+          prepared.map(({ entry, tokenHash, tkCfg }) => ({
+            tokenHash,
+            expiresAt: tkCfg.expiresAt,
+            type: entry.type,
+            userId: entry.userId,
+            orgId: entry.orgId,
+            triesLeft: tkCfg?.triesLeft,
+            aliasId: entry.aliasId,
+            payload: entry.payload
+          })),
+          tx
+        );
+      });
+
+      result.push(...prepared.map(({ entry, token }) => ({ userId: entry.userId, orgId: entry.orgId, token })));
+    }
+
+    return result;
+  };
+
   const DUMMY_HASH = "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
   const validateTokenForUser = async ({
     type,
@@ -196,29 +259,43 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeMySessionById = async (userId: string, sessionId: string) =>
     tokenDAL.deleteTokenSession({ userId, id: sessionId });
 
-  const validateRefreshToken = async (refreshToken?: string) => {
+  // Revokes every token session created under the given userAgent (across all users/IPs). Used to
+  // invalidate all OAuth access/refresh tokens issued for a client when that client is deleted.
+  const revokeSessionsByUserAgent = async (userAgent: string) => tokenDAL.deleteTokenSession({ userAgent });
+
+  const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
-    if (!refreshToken)
+    if (!refreshToken) {
       throw new NotFoundError({
         name: "AuthTokenNotFound",
         message: "Invalid token"
       });
+    }
 
     const decodedToken = crypto.jwt().verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
 
-    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
+    if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN) {
       throw new UnauthorizedError({
         message: "The token provided is not a refresh token",
         name: "InvalidToken"
       });
+    }
+
+    if (decodedToken.oauthClientId && !opts?.allowOauthClientToken) {
+      throw new UnauthorizedError({
+        message: "This refresh token can only be used at the OAuth token endpoint",
+        name: "InvalidToken"
+      });
+    }
 
     const tokenVersion = await getUserTokenSessionById(decodedToken.tokenVersionId, decodedToken.userId);
 
-    if (!tokenVersion)
+    if (!tokenVersion) {
       throw new UnauthorizedError({
         message: "Invalid token",
         name: "InvalidToken"
       });
+    }
 
     if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
       // Check grace period for multi-tab scenarios
@@ -472,12 +549,14 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
   return {
     createTokenForUser,
+    createTokensForUsers,
     validateTokenForUser,
     getUserTokenSession,
     clearTokenSessionById,
     getTokenSessionByUser,
     revokeAllMySessions,
     revokeMySessionById,
+    revokeSessionsByUserAgent,
     validateRefreshToken,
     rotateRefreshToken,
     fnValidateJwtIdentity,

@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
+import { Link } from "@tanstack/react-router";
 import {
-  faCheck,
-  faCircleInfo,
-  faCopy,
-  faEdit,
-  faEllipsis,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  CheckIcon,
+  CopyIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -17,22 +17,23 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
@@ -47,6 +48,7 @@ interface Props {
 
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
@@ -114,34 +116,45 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
           <TableRow key={policy.id}>
             <TableCell>
               <div className="flex items-center gap-2">
-                <div className="text-mineshaft-200">{policy.name}</div>
+                <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id,
+                    policyId: policy.id
+                  }}
+                  className="hover:underline"
+                >
+                  {policy.name}
+                </Link>
                 {policy.description && (
-                  <Tooltip content={policy.description}>
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent>{policy.description}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
             </TableCell>
             <TableCell>
-              <span className="text-sm text-accent">{formatDate(policy.createdAt)}</span>
+              <span className="text-sm">{formatDate(policy.createdAt)}</span>
             </TableCell>
             <TableCell className="text-right">
               <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                    <Tooltip content="More options">
-                      <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                    </Tooltip>
-                  </div>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+                    <MoreHorizontalIcon />
+                  </IconButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
+                <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCopyId(policy.id);
                     }}
-                    icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
                   >
+                    {isIdCopied ? <CheckIcon /> : <CopyIcon />}
                     Copy Policy ID
                   </DropdownMenuItem>
                   <ProjectPermissionCan
@@ -157,8 +170,8 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                             e.stopPropagation();
                             onEditPolicy(policy);
                           }}
-                          icon={<FontAwesomeIcon icon={faEdit} />}
                         >
+                          <PencilIcon />
                           Edit Policy
                         </DropdownMenuItem>
                       )
@@ -173,12 +186,13 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     {(isAllowed) =>
                       isAllowed && (
                         <DropdownMenuItem
+                          variant="danger"
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeletePolicy(policy);
                           }}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
                         >
+                          <Trash2Icon />
                           Delete Policy
                         </DropdownMenuItem>
                       )

@@ -78,9 +78,9 @@ const logUnknownAppliedMigrations = ({
   const dateRange = getMigrationDateRange(unknownAppliedMigrationNames);
 
   const sections = [
-    `Database has migrations newer than this image [database=${databaseName}] [imageVersion=${imageVersion}].`,
-    `Skipping startup migrations.`,
-    `This is expected during rolling deployments when a peer instance on a newer image has already applied them.`
+    `Database has applied migrations that this image does not bundle [database=${databaseName}] [imageVersion=${imageVersion}].`,
+    `This image has nothing pending to apply, so startup migrations are skipped.`,
+    `This is expected during rolling deployments or rollbacks when a peer instance on a different image has already applied them.`
   ];
   if (dateRange) {
     sections.push(

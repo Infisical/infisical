@@ -463,6 +463,7 @@ tables:
       - updatedAt
       - identityId
       - allowedCommonNames
+      - allowedSubjectAltNames
 
   - name: identity_token_auths
     source: public.identity_token_auths
@@ -748,7 +749,6 @@ tables:
       - id
       - projectId
       - accountId
-      - resourceType
       - resourceName
       - accountName
       - userId
@@ -1318,7 +1318,6 @@ tables:
       - lastName
       - isAccepted
       - isMfaEnabled
-      - mfaMethods
       - devices
       - createdAt
       - updatedAt

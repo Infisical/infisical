@@ -142,7 +142,7 @@ export const fetchUserProjectPermissions = async ({ projectId }: TGetUserProject
         actorId: string;
         actorType: ActorType;
         actorEmail: string;
-        actorName: string;
+        actorName: string | null;
       };
     };
   }>(`/api/v1/projects/${projectId}/permissions`, {});

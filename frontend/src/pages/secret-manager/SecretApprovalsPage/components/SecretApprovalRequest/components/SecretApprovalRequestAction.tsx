@@ -1,18 +1,30 @@
 import { useState } from "react";
 import {
-  faCheck,
-  faClose,
-  faLandMineOn,
-  faLockOpen,
-  faTriangleExclamation,
-  faUserLock,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+  CheckIcon,
+  CircleXIcon,
+  GitMergeIcon,
+  GitPullRequestClosedIcon,
+  LockIcon,
+  LockOpenIcon,
+  ShieldAlertIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Checkbox,
+  Field,
+  FieldLabel,
+  Input,
+  Label,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   usePerformSecretApprovalRequestMerge,
@@ -31,6 +43,7 @@ type Props = {
   isBypasser: boolean;
   statusChangeByEmail?: string;
   enforcementLevel: EnforcementLevel;
+  bypassReason?: string | null;
 };
 
 export const SecretApprovalRequestAction = ({
@@ -43,7 +56,8 @@ export const SecretApprovalRequestAction = ({
   enforcementLevel,
   canApprove,
   isCommitter,
-  isBypasser
+  isBypasser,
+  bypassReason
 }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
@@ -53,18 +67,15 @@ export const SecretApprovalRequestAction = ({
     useUpdateSecretApprovalRequestStatus();
 
   const [byPassApproval, setByPassApproval] = useState(false);
-  const [bypassReason, setBypassReason] = useState("");
+  const [bypassReasonInput, setBypassReasonInput] = useState("");
 
-  const isValidBypassReason = (value: string) => {
-    const trimmedValue = value.trim();
-    return trimmedValue.length >= 10;
-  };
+  const isValidBypassReason = (value: string) => value.trim().length >= 10;
 
   const handleSecretApprovalRequestMerge = async () => {
     await performSecretApprovalMerge({
       id: approvalRequestId,
       projectId,
-      bypassReason: byPassApproval ? bypassReason : undefined
+      bypassReason: byPassApproval ? bypassReasonInput : undefined
     });
     createNotification({
       type: "success",
@@ -88,136 +99,148 @@ export const SecretApprovalRequestAction = ({
 
   if (!hasMerged && status === "open") {
     return (
-      <div className="flex w-full flex-col items-start justify-between py-4 text-mineshaft-100 transition-all">
-        <div className="flex w-full flex-col justify-between xl:flex-row xl:items-center">
-          <div className="mr-auto flex items-center space-x-4 px-4">
-            <div
-              className={`flex items-center justify-center rounded-full ${isMergable ? "h-8 w-8 bg-green" : "h-10 w-10 bg-red-600"}`}
-            >
-              <FontAwesomeIcon
-                icon={isMergable ? faCheck : faXmark}
-                className={isMergable ? "text-lg text-white" : "text-2xl text-white"}
+      <div className="flex w-full flex-col gap-3">
+        {isSoftEnforcement && !isMergable && isBypasser && (
+          <div className="flex flex-col gap-2 border-b border-border pb-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="byPassApproval"
+                isChecked={byPassApproval}
+                onCheckedChange={(checked) => setByPassApproval(checked === true)}
+                variant="warning"
               />
+              <Label htmlFor="byPassApproval" className="text-xs font-normal text-warning">
+                Merge without waiting for approval (bypass secret change policy)
+              </Label>
             </div>
-            <span className="flex flex-col">
-              <p className={`text-md font-medium ${isMergable && "text-lg"}`}>
-                {isMergable ? "Good to merge" : "Merging is blocked"}
-              </p>
-              {!isMergable && (
-                <span className="inline-block text-xs text-mineshaft-300">
-                  At least {approvals} approving review{`${approvals > 1 ? "s" : ""}`} required by
-                  eligible reviewers.
-                  {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
-                </span>
-              )}
-            </span>
-          </div>
-          <div className="mt-4 flex items-center justify-end space-x-2 px-4 xl:mt-0">
-            {canApprove || isSoftEnforcement || isCommitter ? (
-              <div className="flex items-center space-x-4">
-                <Button
-                  onClick={() => handleSecretApprovalStatusChange("close")}
-                  isLoading={isStatusChanging}
-                  variant="outline_bg"
-                  colorSchema="primary"
-                  leftIcon={<FontAwesomeIcon icon={faClose} />}
-                  className="hover:border-red/60 hover:bg-red/10"
-                >
-                  Close request
-                </Button>
-                <Button
-                  leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
-                  isDisabled={
-                    !(
-                      (isMergable && canApprove) ||
-                      (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReason))
-                    )
-                  }
-                  isLoading={isMerging}
-                  onClick={handleSecretApprovalRequestMerge}
-                  colorSchema={isSoftEnforcement && !canApprove ? "danger" : "primary"}
-                  variant="outline_bg"
-                >
-                  Merge
-                </Button>
-              </div>
-            ) : (
-              <div className="text-sm text-mineshaft-400">Only approvers can merge</div>
+            {byPassApproval && (
+              <Field>
+                <FieldLabel htmlFor="bypassReason" className="flex items-center gap-1">
+                  Reason for bypass
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TriangleAlertIcon className="size-3.5 text-warning" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Enter a reason for bypassing the secret change policy
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  id="bypassReason"
+                  value={bypassReasonInput}
+                  onChange={(e) => setBypassReasonInput(e.target.value)}
+                  placeholder="Enter reason for bypass (min 10 chars)"
+                />
+              </Field>
             )}
           </div>
-        </div>
-        {isSoftEnforcement && !isMergable && isBypasser && (
-          <div className="mt-4 w-full border-t border-mineshaft-600 px-5">
-            <div className="mt-2 flex flex-col space-y-2 pt-2">
-              <Checkbox
-                onCheckedChange={(checked) => setByPassApproval(checked === true)}
-                isChecked={byPassApproval}
-                id="byPassApproval"
-                checkIndicatorBg="text-white"
-                className={twMerge("mr-2", byPassApproval ? "border-red/50! bg-red/30!" : "")}
-              >
-                <span className="text-sm">
-                  Merge without waiting for approval (bypass secret change policy)
+        )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            {isMergable ? (
+              <CheckIcon className="size-4 shrink-0 text-success" />
+            ) : (
+              <CircleXIcon className="size-4 shrink-0 text-danger" />
+            )}
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-foreground">
+                {isMergable ? "Good to merge" : "Merging is blocked"}
+              </span>
+              {!isMergable && (
+                <span className="text-xs text-muted">
+                  At least {approvals} approving review{approvals > 1 ? "s" : ""} required by
+                  eligible reviewers.
+                  {statusChangeByEmail ? ` Reopened by ${statusChangeByEmail}.` : ""}
                 </span>
-              </Checkbox>
-              {byPassApproval && (
-                <FormControl
-                  label="Reason for bypass"
-                  className="mt-2"
-                  isRequired
-                  tooltipText="Enter a reason for bypassing the secret change policy"
-                >
-                  <Input
-                    value={bypassReason}
-                    onChange={(e) => setBypassReason(e.target.value)}
-                    placeholder="Enter reason for bypass (min 10 chars)"
-                    leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
-                  />
-                </FormControl>
               )}
             </div>
           </div>
-        )}
+          {canApprove || isSoftEnforcement || isCommitter ? (
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => handleSecretApprovalStatusChange("close")}
+                isPending={isStatusChanging}
+                variant="danger"
+                size="sm"
+              >
+                <GitPullRequestClosedIcon />
+                Close Request
+              </Button>
+              <Button
+                isDisabled={
+                  !(
+                    (isMergable && canApprove) ||
+                    (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReasonInput))
+                  )
+                }
+                isPending={isMerging}
+                onClick={handleSecretApprovalRequestMerge}
+                variant={isSoftEnforcement && !canApprove ? "danger" : "project"}
+                size="sm"
+              >
+                {!canApprove ? <ShieldAlertIcon /> : <GitMergeIcon />}
+                Merge
+              </Button>
+            </div>
+          ) : (
+            <span className="text-sm text-muted">Only approvers can merge</span>
+          )}
+        </div>
       </div>
     );
   }
 
-  if (hasMerged && status === "close")
-    return (
-      <div className="flex w-full items-center justify-between rounded-md border border-green/60 bg-green/10">
-        <div className="flex items-start space-x-2 p-4">
-          <FontAwesomeIcon icon={faCheck} className="mt-0.5 text-xl text-green" />
-          <span className="flex flex-col">
-            Change request merged
-            <span className="inline-block text-xs text-mineshaft-300">
-              Merged by {statusChangeByEmail}.
+  if (hasMerged && status === "close") {
+    if (bypassReason)
+      return (
+        <Alert variant="warning">
+          <ShieldAlertIcon />
+          <AlertTitle>Change request merged via bypass</AlertTitle>
+          <AlertDescription>
+            <span>
+              {statusChangeByEmail ? `Merged by ${statusChangeByEmail}` : "Merged"} without the
+              required approvals.
             </span>
-          </span>
-        </div>
-      </div>
+            <span className="break-words">
+              <span className="font-medium text-warning">Reason:</span> {bypassReason}
+            </span>
+          </AlertDescription>
+        </Alert>
+      );
+
+    return (
+      <Alert variant="success">
+        <CheckIcon />
+        <AlertTitle>Change request merged</AlertTitle>
+        {statusChangeByEmail && (
+          <AlertDescription>Merged by {statusChangeByEmail}.</AlertDescription>
+        )}
+      </Alert>
     );
+  }
 
   return (
-    <div className="flex w-full items-center justify-between rounded-md border border-yellow/60 bg-yellow/10">
-      <div className="flex items-start space-x-2 p-4">
-        <FontAwesomeIcon icon={faUserLock} className="mt-0.5 text-xl text-yellow" />
-        <span className="flex flex-col">
-          Secret approval has been closed
-          <span className="inline-block text-xs text-mineshaft-300">
-            Closed by {statusChangeByEmail}
-          </span>
-        </span>
+    <Alert variant="warning">
+      <LockIcon />
+      <div className="col-start-2 flex items-center justify-between gap-3">
+        <div>
+          <AlertTitle>Secret approval has been closed</AlertTitle>
+          {statusChangeByEmail && (
+            <AlertDescription>Closed by {statusChangeByEmail}.</AlertDescription>
+          )}
+        </div>
+        <Button
+          onClick={() => handleSecretApprovalStatusChange("open")}
+          isPending={isStatusChanging}
+          variant="warning"
+          size="sm"
+          className="shrink-0"
+        >
+          <LockOpenIcon />
+          Reopen request
+        </Button>
       </div>
-      <Button
-        onClick={() => handleSecretApprovalStatusChange("open")}
-        isLoading={isStatusChanging}
-        variant="plain"
-        colorSchema="secondary"
-        className="mr-4 text-yellow/60 hover:text-yellow"
-        leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
-      >
-        Reopen request
-      </Button>
-    </div>
+    </Alert>
   );
 };

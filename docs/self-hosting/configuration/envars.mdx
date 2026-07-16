@@ -60,8 +60,63 @@ Example values:
   default="false"
   optional
 >
-  Determines whether App Connections, Dynamic Secrets, and PKI Certificate
-  Discovery jobs are permitted to connect with internal/private IP addresses.
+  Global escape hatch that permits App Connections, Dynamic Secrets, and PKI
+  Certificate Discovery jobs to connect to internal/private IP addresses on the
+  **direct egress** path.
+
+  For reaching private resources, prefer the [Gateway](/documentation/platform/gateways/overview),
+  which tunnels traffic through an agent inside your network and does not require
+  opening any internal IP range on the Infisical instance. Use this flag (or the
+  more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP`
+  flags) only for the features that egress directly, without a Gateway.
+
+  <Warning>
+    Relaxes the SSRF protection. In addition to allowing private IPs, enabling
+    this also disables DNS-rebinding pin protection for the affected direct-egress
+    path (validation and connection may resolve to different IPs). Only enable it
+    if you trust the users who can configure these integrations, and scope it as
+    narrowly as possible using the per-feature flags.
+  </Warning>
+</ParamField>
+
+<ParamField
+  query="DYNAMIC_SECRET_ALLOW_INTERNAL_IP"
+  type="bool"
+  default="false"
+  optional
+>
+  Narrower, per-feature variant of `ALLOW_INTERNAL_IP_CONNECTIONS` that permits
+  only Dynamic Secrets to connect to internal/private IP addresses. Prefer this
+  over the global flag when only Dynamic Secrets need internal access.
+
+  <Warning>
+    Relaxes the SSRF protection for the Dynamic Secrets path, including disabling
+    DNS-rebinding pin protection for that path. Prefer the [Gateway](/documentation/platform/gateways/overview)
+    for private resources.
+  </Warning>
+</ParamField>
+
+<ParamField
+  query="SAFE_REQUEST_FORCE_DIRECT_EGRESS"
+  type="bool"
+  default="false"
+  optional
+>
+  Forces outbound requests made through Infisical's SSRF-safe HTTP client (App
+  Connections, Webhooks, Audit Log Streams, and similar direct-egress features)
+  to bypass any ambient forward proxy (sets axios `proxy: false`). This guarantees
+  the request connects to the exact IP that passed SSRF validation, closing a gap
+  where an `HTTP_PROXY` / `HTTPS_PROXY` would re-resolve the target and defeat the
+  IP pin.
+
+  Defaults to `false` so an operator-configured forward proxy keeps working.
+
+  <Note>
+    Enable this only if your instance does **not** rely on an outbound
+    `HTTP_PROXY` / `HTTPS_PROXY` for egress. When a proxy is in use, the IP pin
+    cannot extend past the proxy (the proxy resolves the target itself), so
+    leaving this off is the correct choice for proxied deployments.
+  </Note>
 </ParamField>
 
 <ParamField
@@ -224,6 +279,14 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 
 <ParamField query="DISABLE_AUDIT_LOG_GENERATION" type="string" default="false">
   Disable audit log generation entirely. When set to `true`, no audit log events are produced — neither PostgreSQL, ClickHouse, nor audit log streams will receive events.
+</ParamField>
+
+<ParamField query="AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP" type="bool" default="false" optional>
+  Determines whether Audit Log Streams are permitted to connect with internal/private IP addresses.
+
+  <Warning>
+    Relaxes the SSRF protection. Only enable it if you trust the users who can configure streams.
+  </Warning>
 </ParamField>
 
 ### Redis
@@ -742,6 +805,10 @@ You can configure third-party app connections for re-use across Infisical Projec
         The private key for the GitHub App
     </ParamField>
 
+    <ParamField query="INF_APP_CONNECTION_GITHUB_APP_HOST" type="string" default="github.com" optional>
+        The hostname of the GitHub instance where the shared GitHub App is registered. Only required when the shared GitHub App is registered on a GitHub Enterprise Server (GHES) instance rather than github.com (e.g. `github.mycompany.com`). Defaults to `github.com` when not set.
+    </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub Radar App Connection">
@@ -868,6 +935,10 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 </ParamField>
 <ParamField query="OTEL_COLLECTOR_BASIC_AUTH_PASSWORD" type="string">
   The password for authenticating with the telemetry collector.
+</ParamField>
+
+<ParamField query="OTEL_DROP_HIGH_CARDINALITY_METERS" type="string" default="false" optional>
+  When set to `true`, the SDK discards all data points from the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only bounded-cardinality `InfisicalCore` metrics are emitted. Useful for large or multi-tenant deployments where per-actor label cardinality is too expensive. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
 </ParamField>
 
 ## Identity Auth Method

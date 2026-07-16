@@ -37,6 +37,7 @@ import { getConfig, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -45,7 +46,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
-import { TableName } from "../src/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "../src/db/schemas";
 import { AuthTokenType } from "../src/services/auth/auth-type";
 
 // Mock IdP hosted in preview-environments. The entryPoint is where gamma
@@ -145,12 +146,14 @@ const main = async () => {
   // even though it's only used on the project-scoped path.
   const kmsDAL = kmskeyDALFactory(knex);
   const internalKmsDAL = internalKmsDALFactory(knex);
+  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(knex);
   const orgDAL = orgDALFactory(knex);
   const projectDAL = projectDALFactory(knex);
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
     kmsDAL,
     internalKmsDAL,
+    internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,
@@ -174,6 +177,60 @@ const main = async () => {
       console.log(`[seed] enabled SCIM on existing org id=${org.id}`);
     }
     console.log(`[seed] org exists id=${org.id} slug=${orgSlug}`);
+  }
+
+  // Standing admin member: deleteOrgMembershipsFn runs an unconditional last-admin
+  // guard, so without one every SCIM DELETE of a test user 400s. Never logs in.
+  const adminUsername = `e2e-admin@${E2E_EMAIL_DOMAIN}`;
+  let adminUser = await knex(TableName.Users).where({ username: adminUsername }).first();
+  if (!adminUser) {
+    [adminUser] = await knex(TableName.Users)
+      .insert({
+        username: adminUsername,
+        email: adminUsername,
+        firstName: "E2E",
+        lastName: "Admin",
+        isAccepted: true,
+        isEmailVerified: true
+      })
+      .returning("*");
+    console.log(`[seed] created e2e admin user id=${adminUser.id} (${adminUsername})`);
+  } else {
+    console.log(`[seed] e2e admin user exists id=${adminUser.id} (${adminUsername})`);
+  }
+
+  let adminMembership = await knex(TableName.Membership)
+    .where({ scopeOrgId: org.id, scope: AccessScope.Organization, actorUserId: adminUser.id })
+    .first();
+  if (!adminMembership) {
+    [adminMembership] = await knex(TableName.Membership)
+      .insert({
+        scopeOrgId: org.id,
+        scope: AccessScope.Organization,
+        actorUserId: adminUser.id,
+        status: OrgMembershipStatus.Accepted,
+        isActive: true
+      })
+      .returning("*");
+    await knex(TableName.MembershipRole).insert({
+      membershipId: adminMembership.id,
+      role: OrgMembershipRole.Admin
+    });
+    console.log(`[seed] created e2e admin membership id=${adminMembership.id} role=admin`);
+  } else {
+    await knex(TableName.Membership).where({ id: adminMembership.id }).update({ isActive: true });
+    const adminRole = await knex(TableName.MembershipRole)
+      .where({ membershipId: adminMembership.id, role: OrgMembershipRole.Admin, isTemporary: false })
+      .first();
+    if (!adminRole) {
+      await knex(TableName.MembershipRole).insert({
+        membershipId: adminMembership.id,
+        role: OrgMembershipRole.Admin
+      });
+      console.log(`[seed] e2e admin membership id=${adminMembership.id} — restored admin role`);
+    } else {
+      console.log(`[seed] e2e admin membership exists id=${adminMembership.id} role=admin`);
+    }
   }
 
   let scimToken = await knex(TableName.ScimToken)

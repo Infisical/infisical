@@ -54,7 +54,7 @@ const handleMfaVerification = async (
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
 
-  server.decorateRequest("mfa", null);
+  server.decorateRequest("mfa");
   server.addHook("preValidation", async (req, res) => {
     const authorizationHeader = req.headers.authorization;
 
@@ -191,7 +191,9 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      return handleMfaVerification(req, res, server, req.body.recoveryCode, MfaMethod.TOTP, true);
+      // Recovery codes are account-level; pass the method the challenge required
+      // so users on any MFA method (email, TOTP or WebAuthn) can fall back to them.
+      return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.requiredMfaMethod, true);
     }
   });
 

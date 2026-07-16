@@ -272,6 +272,11 @@ export const useClearIdentityUniversalAuthLockouts = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.includes("project-identity-memberships")
+      });
     }
   });
 };
@@ -796,6 +801,7 @@ export const useAddIdentityTlsCertAuth = () => {
     mutationFn: async ({
       identityId,
       allowedCommonNames,
+      allowedSubjectAltNames,
       caCertificate,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -808,6 +814,7 @@ export const useAddIdentityTlsCertAuth = () => {
         `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
         {
           allowedCommonNames,
+          allowedSubjectAltNames,
           caCertificate,
           accessTokenTTL,
           accessTokenMaxTTL,
@@ -846,6 +853,7 @@ export const useUpdateIdentityTlsCertAuth = () => {
     mutationFn: async ({
       identityId,
       allowedCommonNames,
+      allowedSubjectAltNames,
       caCertificate,
       accessTokenTTL,
       accessTokenMaxTTL,
@@ -859,6 +867,7 @@ export const useUpdateIdentityTlsCertAuth = () => {
         {
           caCertificate,
           allowedCommonNames,
+          allowedSubjectAltNames,
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
@@ -1999,6 +2008,11 @@ export const useClearIdentityLdapAuthLockouts = () => {
     onSuccess: (_, { identityId }) => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.includes("project-identity-memberships")
       });
     }
   });

@@ -1,6 +1,8 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -13,6 +15,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -29,6 +32,14 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.CmekEncrypt,
   PostHogEventTypes.CmekDecrypt
 ];
+
+// Properties that should be used as additional grouping dimensions during aggregation.
+// Instead of being histogram'd (e.g. {"netscaler": 2}), these properties are included
+// in the grouping key so each unique value produces its own aggregated event with the
+// property as a flat string — enabling clean PostHog breakdowns.
+const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
+  [PostHogEventTypes.PkiSyncExecuted]: ["destination"]
+};
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
@@ -54,6 +65,7 @@ export type TTelemetryServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 const getBucketForDistinctId = (distinctId: string): string => {
@@ -99,8 +111,27 @@ const getDeploymentType = (
   return DeploymentType.SelfHosted;
 };
 
-export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({
+  keyStore,
+  licenseService,
+  orgDAL,
+  emailDomainDAL
+}: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
+
+  let instanceIdPromise: Promise<string | undefined> | undefined;
+  const getInstanceId = (): Promise<string | undefined> => {
+    if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
+    if (!instanceIdPromise) {
+      instanceIdPromise = getServerCfg()
+        .then(({ instanceId }) => instanceId)
+        .catch(() => {
+          instanceIdPromise = undefined;
+          return undefined;
+        });
+    }
+    return instanceIdPromise;
+  };
 
   if (appCfg.isProductionMode && !appCfg.TELEMETRY_ENABLED) {
     // eslint-disable-next-line
@@ -232,6 +263,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
 
+    try {
+      const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+      if (verifiedDomains.length > 0) {
+        properties.domain = verifiedDomains[0].domain;
+      }
+    } catch (error) {
+      logger.error(error, "Failed to fetch org domain for PostHog group properties");
+    }
+
     return properties;
   };
 
@@ -320,7 +360,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // `anonymous-<shareId>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
-      const properties = event.anonymous ? { ...event.properties, $process_person_profile: false } : event.properties;
+      const instanceId = await getInstanceId();
+      const baseProperties = event.anonymous
+        ? { ...event.properties, $process_person_profile: false }
+        : event.properties;
+      const properties = instanceId ? { ...baseProperties, instanceId } : baseProperties;
 
       postHog.capture({
         event: event.event,
@@ -331,7 +375,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const aggregateGroupProperties = (events: SingleEventData[]): AggregatedEventData => {
+  const aggregateGroupProperties = (events: SingleEventData[], excludeKeys: string[] = []): AggregatedEventData => {
     const aggregatedData: AggregatedEventData = {};
 
     // Set the total count
@@ -341,6 +385,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       if (!event.properties) return;
 
       Object.entries(event.properties as Record<string, unknown>).forEach(([key, value]: [string, unknown]) => {
+        // Skip properties that are used as breakdown dimensions (they're set as flat values on the event)
+        if (excludeKeys.includes(key)) return;
         if (Array.isArray(value)) {
           // For arrays, count occurrences of each item
           const existingCounts =
@@ -422,8 +468,19 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       const eventsGrouped = new Map<string, SingleEventData[]>();
 
+      const breakdownDimensions = AGGREGATION_BREAKDOWN_DIMENSIONS[eventType as PostHogEventTypes] || [];
+
       bucketEventsParsed.forEach((event) => {
-        const key = JSON.stringify({ id: event.distinctId, org: event.organizationId });
+        const breakdownValues: Record<string, string> = {};
+        if (breakdownDimensions.length > 0 && event.properties) {
+          const props = event.properties as Record<string, unknown>;
+          for (const dim of breakdownDimensions) {
+            if (props[dim] !== undefined && props[dim] !== null) {
+              breakdownValues[dim] = String(props[dim]);
+            }
+          }
+        }
+        const key = JSON.stringify({ id: event.distinctId, org: event.organizationId, ...breakdownValues });
         if (!eventsGrouped.has(key)) {
           eventsGrouped.set(key, []);
         }
@@ -436,8 +493,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // when multiple users share the same org within a bucket
       const orgPropertiesCache = new Map<string, Record<string, unknown>>();
 
+      const instanceId = await getInstanceId();
+
       for (const [eventsKey, events] of eventsGrouped) {
-        const key = JSON.parse(eventsKey) as { id: string; org?: string };
+        const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
         if (key.org) {
           try {
             // Dedup groupIdentify across all paths: only fire once per org per hour
@@ -467,7 +526,23 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             logger.error(error, "Failed to identify PostHog organization");
           }
         }
-        const properties = aggregateGroupProperties(events);
+        const properties = aggregateGroupProperties(events, breakdownDimensions);
+
+        // Attach breakdown dimension values as flat properties on the aggregated event
+        for (const dim of breakdownDimensions) {
+          if (key[dim] !== undefined) {
+            properties[dim] = key[dim];
+          }
+        }
+
+        // Always attach orgId as a flat property so aggregated events are filterable by organization
+        if (key.org) {
+          properties.orgId = key.org;
+        }
+
+        if (instanceId) {
+          properties.instanceId = instanceId;
+        }
 
         postHog.capture({
           event: `${eventType} aggregated`,
@@ -488,23 +563,20 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const BUCKET_CONCURRENCY = 5;
+
   const processAggregatedEvents = async () => {
     if (!postHog) return;
 
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
-
       logger.info(`Starting bucket processing for ${eventType}`);
 
-      // Process each bucket sequentially to control memory usage
-      for (const bucketId of TELEMETRY_BUCKET_NAMES) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const processed = await processBucketEvents(eventType, bucketId);
-          totalProcessed += processed;
-        } catch (error) {
-          logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
-        }
+      for (let i = 0; i < TELEMETRY_BUCKET_NAMES.length; i += BUCKET_CONCURRENCY) {
+        const batch = TELEMETRY_BUCKET_NAMES.slice(i, i + BUCKET_CONCURRENCY);
+        // eslint-disable-next-line no-await-in-loop
+        const results = await Promise.all(batch.map((bucketId) => processBucketEvents(eventType, bucketId)));
+        totalProcessed += results.reduce((sum, n) => sum + n, 0);
       }
 
       logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);

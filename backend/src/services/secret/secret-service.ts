@@ -18,7 +18,8 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
+  throwIfMissingSecretReadValueOrDescribePermission,
+  validateSecretMovePermissions
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -49,15 +50,20 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
+import { TCheckRevokedGrantsDTO } from "../project-folder-grant/project-folder-grant-types";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
@@ -111,8 +117,8 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById" | "find">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
@@ -145,6 +151,8 @@ type TSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -173,7 +181,9 @@ export const secretServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   userGroupMembershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  orgDAL,
+  projectFolderGrantDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -3064,64 +3074,32 @@ export const secretServiceFactory = ({
       });
     }
 
-    const sourceActions = [
-      ProjectPermissionSecretActions.Delete,
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.ReadValue
-    ] as const;
-    const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
+    // a move is delete-at-source + create/edit-at-destination. this is path-scoped, so it is checked
+    // once for the whole batch rather than per secret.
+    validateSecretMovePermissions(permission, {
+      sourceEnvironment,
+      sourceSecretPath,
+      destinationEnvironment,
+      destinationSecretPath
+    });
 
-    const decryptedSourceSecrets = sourceSecrets.map((secret) => {
-      const secretKey = crypto.encryption().symmetric().decrypt({
+    const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
+      ...secret,
+      secretKey: crypto.encryption().symmetric().decrypt({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
         key: botKey,
         keySize: SymmetricKeySize.Bits128
-      });
-
-      for (const destinationAction of destinationActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          destinationAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationSecretPath
-          })
-        );
-      }
-
-      for (const sourceAction of sourceActions) {
-        if (
-          sourceAction === ProjectPermissionSecretActions.ReadValue ||
-          sourceAction === ProjectPermissionSecretActions.DescribeSecret
-        ) {
-          throwIfMissingSecretReadValueOrDescribePermission(permission, sourceAction, {
-            environment: sourceEnvironment,
-            secretPath: sourceSecretPath
-          });
-        } else {
-          ForbiddenError.from(permission).throwUnlessCan(
-            sourceAction,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: sourceEnvironment,
-              secretPath: sourceSecretPath
-            })
-          );
-        }
-      }
-
-      return {
-        ...secret,
-        secretKey,
-        secretValue: crypto.encryption().symmetric().decrypt({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        })
-      };
-    });
+      }),
+      secretValue: crypto.encryption().symmetric().decrypt({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      })
+    }));
 
     let isSourceUpdated = false;
     let isDestinationUpdated = false;
@@ -3814,6 +3792,95 @@ export const secretServiceFactory = ({
     return secretV2BridgeService.redactSecretVersionValue({ versionId, ...rest });
   };
 
+  const getSecretsWithRevokedProjectFolderGrant = async ({
+    targetProjectId,
+    actorOrgId,
+    secrets
+  }: TCheckRevokedGrantsDTO): Promise<Set<string>> => {
+    const revokedSecretIds = new Set<string>();
+
+    const toRefKey = (ref: { targetProjectSlug: string; environment: string; secretPath: string }) =>
+      `${ref.targetProjectSlug}:${ref.environment}:${ref.secretPath}`;
+
+    type CrossProjectRef = { targetProjectSlug: string; environment: string; secretPath: string };
+    const secretRefMap = new Map<string, CrossProjectRef[]>();
+    for (const secret of secrets) {
+      if (!secret.secretValueHidden && secret.secretValue) {
+        const { nestedReferences } = getAllSecretReferences(secret.secretValue);
+        const crossProjectRefs = nestedReferences.filter((ref): ref is typeof ref & { targetProjectSlug: string } =>
+          Boolean(ref.targetProjectSlug)
+        );
+        if (crossProjectRefs.length > 0) secretRefMap.set(secret.id, crossProjectRefs);
+      }
+    }
+
+    if (secretRefMap.size === 0) return revokedSecretIds;
+
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      return revokedSecretIds;
+    }
+
+    const uniqueRefs = new Map<string, CrossProjectRef>();
+    for (const refs of secretRefMap.values()) {
+      for (const ref of refs) {
+        const key = toRefKey(ref);
+        if (!uniqueRefs.has(key)) uniqueRefs.set(key, ref);
+      }
+    }
+
+    const uniqueSlugs = [...new Set([...uniqueRefs.values()].map((ref) => ref.targetProjectSlug))];
+    const resolvedProjects = await projectDAL.find({ orgId: actorOrgId, $in: { slug: uniqueSlugs } });
+    const slugToProjectId = new Map(resolvedProjects.map((p) => [p.slug, p.id]));
+
+    const resolvedProjectIds = [...new Set(resolvedProjects.map((p) => p.id))];
+    const envs = resolvedProjectIds.length ? await projectEnvDAL.find({ $in: { projectId: resolvedProjectIds } }) : [];
+    const envLookup = new Map(envs.map((e) => [`${e.projectId}:${e.slug}`, e.id]));
+
+    const refEntries = [...uniqueRefs.entries()];
+    const folderQueries: Array<{ envId: string; secretPath: string }> = [];
+    const refToQueryIndex = new Map<string, number>();
+
+    for (const [key, ref] of refEntries) {
+      const sourceProjectId = slugToProjectId.get(ref.targetProjectSlug);
+      if (!sourceProjectId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      const envId = envLookup.get(`${sourceProjectId}:${ref.environment}`);
+      if (!envId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      refToQueryIndex.set(key, folderQueries.length);
+      folderQueries.push({ envId, secretPath: ref.secretPath });
+    }
+
+    const folderResults = folderQueries.length ? await folderDAL.findByManySecretPath(folderQueries) : [];
+
+    const refKeyToFolderId = new Map<string, string | null>();
+    for (const [key] of refEntries) {
+      const idx = refToQueryIndex.get(key);
+      refKeyToFolderId.set(key, idx !== undefined ? (folderResults[idx]?.id ?? null) : null);
+    }
+
+    const folderIds = [...refKeyToFolderId.values()].filter((id): id is string => id !== null);
+    let grantedFolderIds = new Set<string>();
+    if (folderIds.length > 0) {
+      const grants = await projectFolderGrantDAL.find({ $in: { sourceFolderId: folderIds }, targetProjectId });
+      grantedFolderIds = new Set(grants.map((g) => g.sourceFolderId));
+    }
+
+    for (const [secretId, refs] of secretRefMap.entries()) {
+      const hasRevoked = refs.some((ref) => {
+        const folderId = refKeyToFolderId.get(toRefKey(ref));
+        return !folderId || !grantedFolderIds.has(folderId);
+      });
+      if (hasRevoked) revokedSecretIds.add(secretId);
+    }
+
+    return revokedSecretIds;
+  };
+
   return {
     attachTags,
     detachTags,
@@ -3849,6 +3916,7 @@ export const secretServiceFactory = ({
     getSecretVersionsV2ByIds,
     getChangeVersions,
     redactSecretVersionValue,
-    getSecretReferenceDependencyTree
+    getSecretReferenceDependencyTree,
+    getSecretsWithRevokedProjectFolderGrant
   };
 };

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TApprovalPolicies } from "@app/db/schemas";
+import { TApprovalPolicies, TApprovalRequestGrants } from "@app/db/schemas";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -144,7 +144,7 @@ export type TApprovalRequestFactoryCanAccess<I extends TApprovalPolicyInputs> = 
   projectId: string,
   userId: string,
   inputs: I
-) => Promise<boolean>;
+) => Promise<TApprovalRequestGrants | null>;
 export type TApprovalRequestFactoryValidateConstraints<P extends TApprovalPolicy, R extends TApprovalRequestData> = (
   policy: P,
   inputs: R

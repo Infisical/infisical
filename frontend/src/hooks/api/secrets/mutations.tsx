@@ -564,16 +564,6 @@ export const createSecret = async (dto: TCreateSecretsV3DTO) => {
   return data;
 };
 
-export const useBackfillSecretReference = () =>
-  useMutation<{ message: string }, object, { projectId: string }>({
-    mutationFn: async ({ projectId }) => {
-      const { data } = await apiRequest.post("/api/v4/secrets/backfill-secret-references", {
-        projectId
-      });
-      return data.message;
-    }
-  });
-
 export const useCreateCommit = () => {
   const queryClient = useQueryClient();
   return useMutation<

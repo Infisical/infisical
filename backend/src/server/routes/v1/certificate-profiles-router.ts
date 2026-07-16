@@ -429,7 +429,6 @@ export const registerCertificateProfilesRouter = async (
               .object({
                 id: z.string(),
                 disableBootstrapCaValidation: z.boolean(),
-                passphrase: z.string(),
                 caChain: z.string().optional()
               })
               .optional(),

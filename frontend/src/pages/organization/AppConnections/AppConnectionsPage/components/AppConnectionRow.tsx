@@ -1,46 +1,53 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import {
-  faAsterisk,
-  faBuilding,
-  faCheck,
-  faCopy,
-  faEdit,
-  faEllipsisV,
-  faInfoCircle,
-  faPause,
-  faPlay,
-  faRotate,
-  faTable,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { ServerIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import {
+  AsteriskIcon,
+  CheckIcon,
+  CopyIcon,
+  Ellipsis,
+  InfoIcon,
+  PauseIcon,
+  PencilIcon,
+  PlayIcon,
+  RefreshCwIcon,
+  ServerIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { VariablePermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
+  OrgIcon,
+  ProjectIcon,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { OrgPermissionSubjects, ProjectPermissionSub, useOrganization } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  buildGitHubAppUrl,
+  getAppConnectionMethodDetails
+} from "@app/helpers/appConnections";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
-import { TAppConnection } from "@app/hooks/api/appConnections";
+import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
-import { CrededentialRotationStatusBadge } from "./AppConnectionForm/shared/CrededentialRotationBadge";
+import { CredentialRotationStatusBadge } from "./AppConnectionForm/shared/CredentialRotationBadge";
 
 type Props = {
   appConnection: TAppConnection;
@@ -94,12 +101,37 @@ export const AppConnectionRow = ({
 
   const connectionDetails = APP_CONNECTION_MAP[app];
 
+  const isGitHubAppConnection =
+    app === AppConnection.GitHub && method === GitHubConnectionMethod.App;
+
+  const gitHubAppCredentials = isGitHubAppConnection
+    ? (appConnection.credentials as {
+        gitHubAppId?: string | null;
+        host?: string;
+        instanceType?: "cloud" | "server";
+      })
+    : null;
+
+  const { data: gitHubApps } = useListGitHubApps(
+    isGitHubAppConnection ? currentOrg?.id : undefined,
+    appConnection.projectId
+  );
+
+  const linkedGitHubApp = isGitHubAppConnection
+    ? gitHubApps?.find((a) => a.id === (gitHubAppCredentials?.gitHubAppId ?? null))
+    : null;
+
+  const gitHubAppUrl = linkedGitHubApp
+    ? buildGitHubAppUrl(
+        linkedGitHubApp.slug,
+        gitHubAppCredentials?.host,
+        gitHubAppCredentials?.instanceType
+      )
+    : null;
+
   return (
-    <Tr
-      className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
-      key={`app-connection-${id}`}
-    >
-      <Td>
+    <TableRow className="group" key={`app-connection-${id}`}>
+      <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative">
             <img
@@ -117,29 +149,61 @@ export const AppConnectionRow = ({
           </div>
           <span className="hidden lg:inline">{connectionDetails.name}</span>
         </div>
-      </Td>
-      <Td className="max-w-0 min-w-32!">
+      </TableCell>
+      <TableCell className="max-w-0 min-w-32!">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
           {description && (
-            <Tooltip content={description}>
-              <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="ml-1 size-3.5 text-mineshaft-400" />
+              </TooltipTrigger>
+              <TooltipContent>{description}</TooltipContent>
             </Tooltip>
           )}
         </div>
-      </Td>
-      <Td className="max-w-0 min-w-32!">
-        <p className="truncate">
-          <FontAwesomeIcon
-            size="sm"
-            className="mr-1.5 text-mineshaft-300/75"
-            icon={methodDetails.icon}
-          />
-          {methodDetails.name}
-        </p>
-      </Td>
+      </TableCell>
+      <TableCell className="max-w-0 min-w-32!">
+        {gitHubAppUrl && linkedGitHubApp ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href={gitHubAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 text-mineshaft-100 underline-offset-2 hover:text-primary hover:underline"
+              >
+                <FontAwesomeIcon
+                  size="sm"
+                  className="text-mineshaft-300/75"
+                  icon={methodDetails.icon}
+                />
+                <span className="truncate underline">{methodDetails.name}</span>
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] tracking-wider text-mineshaft-400 uppercase">
+                  {methodDetails.name}
+                </span>
+                <span className="font-mono text-sm text-mineshaft-100">{linkedGitHubApp.slug}</span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <p className="truncate">
+            <FontAwesomeIcon
+              size="sm"
+              className="mr-1.5 text-mineshaft-300/75"
+              icon={methodDetails.icon}
+            />
+            {methodDetails.name}
+          </p>
+        )}
+      </TableCell>
       {!isProjectView && (
-        <Td className="max-w-0 min-w-32!">
+        <TableCell className="max-w-0 min-w-32!">
           {project ? (
             <Link
               // @ts-expect-error app-connections aren't in kms/ssh
@@ -150,165 +214,115 @@ export const AppConnectionRow = ({
               }}
               className="underline"
             >
-              <p className="truncate">
-                <FontAwesomeIcon
-                  size="sm"
-                  className="mr-1.5 text-mineshaft-300/75"
-                  icon={faTable}
-                />
+              <p className="flex items-center gap-1.5 truncate">
+                <ProjectIcon className="size-3.5 text-mineshaft-300/75" />
                 {project.name}
               </p>
             </Link>
           ) : (
-            <p className="truncate">
-              <FontAwesomeIcon
-                size="sm"
-                className="mr-1.5 text-mineshaft-300/75"
-                icon={faBuilding}
-              />
+            <p className="flex items-center gap-1.5 truncate">
+              <OrgIcon className="size-3.5 text-mineshaft-300/75" />
               Organization
             </p>
           )}
-        </Td>
+        </TableCell>
       )}
-      <Td>
+      <TableCell>
         <div className="flex items-center justify-end gap-2">
           {isPlatformManagedCredentials && (
-            <Tooltip side="left" content="This connection's credentials are managed by Infisical.">
-              <div>
-                <Badge variant="info">
-                  <ServerIcon />
-                  Platform Managed Credentials
-                </Badge>
-              </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Badge variant="info">
+                    <ServerIcon />
+                    Platform Managed Credentials
+                  </Badge>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                This connection&apos;s credentials are managed by Infisical.
+              </TooltipContent>
             </Tooltip>
           )}
 
           {appConnection.rotation && (
-            <CrededentialRotationStatusBadge appConnection={appConnection} />
+            <CredentialRotationStatusBadge appConnection={appConnection} />
           )}
 
-          <Tooltip className="max-w-sm text-center" content="Options">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Options"
-                  colorSchema="secondary"
-                  className="w-6"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent sideOffset={2} align="end">
-                <DropdownMenuItem
-                  icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                  onClick={() => handleCopyId()}
-                >
-                  Copy Connection ID
-                </DropdownMenuItem>
-                {(isProjectView || !project) && (
-                  <>
-                    <VariablePermissionCan
-                      type={isProjectView ? "project" : "org"}
-                      I={
-                        isProjectView
-                          ? ProjectPermissionAppConnectionActions.Edit
-                          : OrgPermissionAppConnectionActions.Edit
-                      }
-                      a={
-                        isProjectView
-                          ? subject(ProjectPermissionSub.AppConnections, {
-                              connectionId: id
-                            })
-                          : subject(OrgPermissionSubjects.AppConnections, {
-                              connectionId: id
-                            })
-                      }
-                    >
-                      {(isAllowed: boolean) => (
-                        <DropdownMenuItem
-                          isDisabled={!isAllowed}
-                          icon={<FontAwesomeIcon icon={faEdit} />}
-                          onClick={() => onEditDetails(appConnection)}
-                        >
-                          Edit Details
-                        </DropdownMenuItem>
-                      )}
-                    </VariablePermissionCan>
-                    <VariablePermissionCan
-                      type={isProjectView ? "project" : "org"}
-                      I={
-                        isProjectView
-                          ? ProjectPermissionAppConnectionActions.Edit
-                          : OrgPermissionAppConnectionActions.Edit
-                      }
-                      a={
-                        isProjectView
-                          ? subject(ProjectPermissionSub.AppConnections, {
-                              connectionId: id
-                            })
-                          : subject(OrgPermissionSubjects.AppConnections, {
-                              connectionId: id
-                            })
-                      }
-                    >
-                      {(isAllowed: boolean) => (
-                        <DropdownMenuItem
-                          isDisabled={!isAllowed}
-                          icon={<FontAwesomeIcon icon={faAsterisk} />}
-                          onClick={() => onEditCredentials(appConnection)}
-                        >
-                          {isPlatformManagedCredentials ? "View" : "Edit"} Credentials
-                        </DropdownMenuItem>
-                      )}
-                    </VariablePermissionCan>
-                    {appConnection.rotation && (
-                      <VariablePermissionCan
-                        type={isProjectView ? "project" : "org"}
-                        I={
-                          isProjectView
-                            ? ProjectPermissionAppConnectionActions.Edit
-                            : OrgPermissionAppConnectionActions.Edit
-                        }
-                        a={
-                          isProjectView
-                            ? subject(ProjectPermissionSub.AppConnections, {
-                                connectionId: id
-                              })
-                            : subject(OrgPermissionSubjects.AppConnections, {
-                                connectionId: id
-                              })
-                        }
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label="Options" variant="ghost" size="xs">
+                <Ellipsis />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={2} align="end">
+              <DropdownMenuItem onClick={() => handleCopyId()}>
+                {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+                Copy Connection ID
+              </DropdownMenuItem>
+              {(isProjectView || !project) && (
+                <>
+                  <VariablePermissionCan
+                    type={isProjectView ? "project" : "org"}
+                    I={
+                      isProjectView
+                        ? ProjectPermissionAppConnectionActions.Edit
+                        : OrgPermissionAppConnectionActions.Edit
+                    }
+                    a={
+                      isProjectView
+                        ? subject(ProjectPermissionSub.AppConnections, {
+                            connectionId: id
+                          })
+                        : subject(OrgPermissionSubjects.AppConnections, {
+                            connectionId: id
+                          })
+                    }
+                  >
+                    {(isAllowed: boolean) => (
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed}
+                        onClick={() => onEditDetails(appConnection)}
                       >
-                        {(isAllowed: boolean) => (
-                          <>
-                            <DropdownMenuItem
-                              isDisabled={!isAllowed}
-                              icon={<FontAwesomeIcon icon={faRotate} />}
-                              onClick={() => onRotateCredentials(appConnection)}
-                            >
-                              Rotate Credentials
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              isDisabled={!isAllowed}
-                              icon={
-                                <FontAwesomeIcon icon={isAutoRotationEnabled ? faPause : faPlay} />
-                              }
-                              onClick={() => onToggleAutoRotation(appConnection)}
-                            >
-                              {isAutoRotationEnabled ? "Disable" : "Enable"} Auto-Rotation
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </VariablePermissionCan>
+                        <PencilIcon />
+                        Edit Details
+                      </DropdownMenuItem>
                     )}
+                  </VariablePermissionCan>
+                  <VariablePermissionCan
+                    type={isProjectView ? "project" : "org"}
+                    I={
+                      isProjectView
+                        ? ProjectPermissionAppConnectionActions.Edit
+                        : OrgPermissionAppConnectionActions.Edit
+                    }
+                    a={
+                      isProjectView
+                        ? subject(ProjectPermissionSub.AppConnections, {
+                            connectionId: id
+                          })
+                        : subject(OrgPermissionSubjects.AppConnections, {
+                            connectionId: id
+                          })
+                    }
+                  >
+                    {(isAllowed: boolean) => (
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed}
+                        onClick={() => onEditCredentials(appConnection)}
+                      >
+                        <AsteriskIcon />
+                        {isPlatformManagedCredentials ? "View" : "Edit"} Credentials
+                      </DropdownMenuItem>
+                    )}
+                  </VariablePermissionCan>
+                  {appConnection.rotation && (
                     <VariablePermissionCan
                       type={isProjectView ? "project" : "org"}
                       I={
                         isProjectView
-                          ? ProjectPermissionAppConnectionActions.Delete
-                          : OrgPermissionAppConnectionActions.Delete
+                          ? ProjectPermissionAppConnectionActions.Edit
+                          : OrgPermissionAppConnectionActions.Edit
                       }
                       a={
                         isProjectView
@@ -321,22 +335,59 @@ export const AppConnectionRow = ({
                       }
                     >
                       {(isAllowed: boolean) => (
-                        <DropdownMenuItem
-                          isDisabled={!isAllowed}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
-                          onClick={() => onDelete(appConnection)}
-                        >
-                          Delete Connection
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem
+                            isDisabled={!isAllowed}
+                            onClick={() => onRotateCredentials(appConnection)}
+                          >
+                            <RefreshCwIcon />
+                            Rotate Credentials
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            isDisabled={!isAllowed}
+                            onClick={() => onToggleAutoRotation(appConnection)}
+                          >
+                            {isAutoRotationEnabled ? <PauseIcon /> : <PlayIcon />}
+                            {isAutoRotationEnabled ? "Disable" : "Enable"} Auto-Rotation
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </VariablePermissionCan>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Tooltip>
+                  )}
+                  <VariablePermissionCan
+                    type={isProjectView ? "project" : "org"}
+                    I={
+                      isProjectView
+                        ? ProjectPermissionAppConnectionActions.Delete
+                        : OrgPermissionAppConnectionActions.Delete
+                    }
+                    a={
+                      isProjectView
+                        ? subject(ProjectPermissionSub.AppConnections, {
+                            connectionId: id
+                          })
+                        : subject(OrgPermissionSubjects.AppConnections, {
+                            connectionId: id
+                          })
+                    }
+                  >
+                    {(isAllowed: boolean) => (
+                      <DropdownMenuItem
+                        variant="danger"
+                        isDisabled={!isAllowed}
+                        onClick={() => onDelete(appConnection)}
+                      >
+                        <Trash2Icon />
+                        Delete Connection
+                      </DropdownMenuItem>
+                    )}
+                  </VariablePermissionCan>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

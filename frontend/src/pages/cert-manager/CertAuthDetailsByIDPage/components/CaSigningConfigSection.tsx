@@ -47,6 +47,7 @@ import {
   TAvailableAppConnection,
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections";
+import { useAdcsConnectionListCertificateTemplates } from "@app/hooks/api/appConnections/adcs";
 import { useAzureAdcsConnectionListTemplates } from "@app/hooks/api/appConnections/azure-adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -66,7 +67,8 @@ const signingTypeLabels: Record<CaSigningConfigType, string> = {
   [CaSigningConfigType.INTERNAL]: "Internal (Infisical CA)",
   [CaSigningConfigType.MANUAL]: "Manual",
   [CaSigningConfigType.VENAFI]: "Venafi TLS Protect Cloud",
-  [CaSigningConfigType.AZURE_ADCS]: "Azure AD CS"
+  [CaSigningConfigType.AZURE_ADCS]: "Azure AD CS (Web Enrollment)",
+  [CaSigningConfigType.ADCS]: "ADCS"
 };
 
 const getSigningTypeBadgeVariant = (type: CaSigningConfigType) => {
@@ -88,7 +90,7 @@ const editSchema = z.object({
 
 type EditFormData = z.infer<typeof editSchema>;
 
-const adcsEditSchema = z.object({
+const azureAdcsEditSchema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
   template: z.string().min(1, "Certificate template is required"),
   validityPeriod: z.coerce
@@ -99,7 +101,15 @@ const adcsEditSchema = z.object({
     .or(z.literal(""))
 });
 
-type AdcsEditFormData = z.infer<typeof adcsEditSchema>;
+type AzureAdcsEditFormData = z.infer<typeof azureAdcsEditSchema>;
+
+// Native ADCS derives validity from the CA template, so there is no validity period field.
+const nativeAdcsEditSchema = z.object({
+  appConnectionId: z.string().min(1, "App connection is required"),
+  template: z.string().min(1, "Certificate template is required")
+});
+
+type NativeAdcsEditFormData = z.infer<typeof nativeAdcsEditSchema>;
 
 export const CaSigningConfigSection = ({ caId }: Props) => {
   const { currentProject } = useProject();
@@ -157,19 +167,19 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
       }
     );
 
-  const { data: availableAdcsConnections, isPending: isAdcsConnectionsPending } =
+  const { data: availableAzureAdcsConnections, isPending: isAzureAdcsConnectionsPending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: signingConfig?.type === CaSigningConfigType.AZURE_ADCS
     });
 
   const {
-    control: adcsControl,
-    handleSubmit: handleAdcsSubmit,
-    reset: adcsReset,
-    watch: adcsWatch,
-    formState: { isSubmitting: isAdcsSubmitting }
-  } = useForm<AdcsEditFormData>({
-    resolver: zodResolver(adcsEditSchema),
+    control: azureAdcsControl,
+    handleSubmit: handleAzureAdcsSubmit,
+    reset: azureAdcsReset,
+    watch: azureAdcsWatch,
+    formState: { isSubmitting: isAzureAdcsSubmitting }
+  } = useForm<AzureAdcsEditFormData>({
+    resolver: zodResolver(azureAdcsEditSchema),
     values: {
       appConnectionId: signingConfig?.appConnectionId ?? "",
       template: (signingConfig?.destinationConfig?.template as string) ?? "",
@@ -177,11 +187,37 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
     }
   });
 
-  const selectedAdcsConnectionId = adcsWatch("appConnectionId");
+  const selectedAzureAdcsConnectionId = azureAdcsWatch("appConnectionId");
 
-  const { data: adcsTemplates = [], isPending: isAdcsTemplatesLoading } =
-    useAzureAdcsConnectionListTemplates(selectedAdcsConnectionId ?? "", {
-      enabled: !!selectedAdcsConnectionId && popUp.editSigningConfig.isOpen
+  const { data: azureAdcsTemplates = [], isPending: isAzureAdcsTemplatesLoading } =
+    useAzureAdcsConnectionListTemplates(selectedAzureAdcsConnectionId ?? "", {
+      enabled: !!selectedAzureAdcsConnectionId && popUp.editSigningConfig.isOpen
+    });
+
+  const { data: availableNativeAdcsConnections, isPending: isNativeAdcsConnectionsPending } =
+    useListAvailableAppConnections(AppConnection.ADCS, currentProject.id, {
+      enabled: signingConfig?.type === CaSigningConfigType.ADCS
+    });
+
+  const {
+    control: nativeAdcsControl,
+    handleSubmit: handleNativeAdcsSubmit,
+    reset: nativeAdcsReset,
+    watch: nativeAdcsWatch,
+    formState: { isSubmitting: isNativeAdcsSubmitting }
+  } = useForm<NativeAdcsEditFormData>({
+    resolver: zodResolver(nativeAdcsEditSchema),
+    values: {
+      appConnectionId: signingConfig?.appConnectionId ?? "",
+      template: (signingConfig?.destinationConfig?.template as string) ?? ""
+    }
+  });
+
+  const selectedNativeAdcsConnectionId = nativeAdcsWatch("appConnectionId");
+
+  const { data: nativeAdcsTemplates = [], isPending: isNativeAdcsTemplatesLoading } =
+    useAdcsConnectionListCertificateTemplates(selectedNativeAdcsConnectionId ?? "", {
+      enabled: !!selectedNativeAdcsConnectionId && popUp.editSigningConfig.isOpen
     });
 
   if (!ca || ca.status === CaStatus.PENDING_CERTIFICATE || !signingConfig) {
@@ -189,7 +225,8 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
   }
 
   const isVenafi = signingConfig.type === CaSigningConfigType.VENAFI;
-  const isAdcs = signingConfig.type === CaSigningConfigType.AZURE_ADCS;
+  const isAzureAdcs = signingConfig.type === CaSigningConfigType.AZURE_ADCS;
+  const isNativeAdcs = signingConfig.type === CaSigningConfigType.ADCS;
 
   const onEditSubmit = async ({
     appConnectionId,
@@ -226,7 +263,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
         <CardHeader className="border-b">
           <CardTitle>Signing Configuration</CardTitle>
           <CardDescription>How this CA&apos;s certificate is signed</CardDescription>
-          {(isVenafi || isAdcs) && ca?.name && (
+          {(isVenafi || isAzureAdcs || isNativeAdcs) && ca?.name && (
             <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateAuthorityActions.Edit}
@@ -282,7 +319,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
               </>
             )}
 
-            {isAdcs && signingConfig.destinationConfig && (
+            {isAzureAdcs && signingConfig.destinationConfig && (
               <>
                 <Detail>
                   <DetailLabel>Certificate Template</DetailLabel>
@@ -298,22 +335,29 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                 )}
               </>
             )}
+
+            {isNativeAdcs && signingConfig.destinationConfig && (
+              <Detail>
+                <DetailLabel>Certificate Template</DetailLabel>
+                <DetailValue>{signingConfig.destinationConfig.template as string}</DetailValue>
+              </Detail>
+            )}
           </DetailGroup>
         </CardContent>
       </Card>
 
-      {isAdcs && (
+      {isAzureAdcs && (
         <Modal
           isOpen={popUp.editSigningConfig.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("editSigningConfig", isOpen);
-            if (!isOpen) adcsReset();
+            if (!isOpen) azureAdcsReset();
           }}
         >
           <ModalContent title="Edit Signing Configuration" bodyClassName="overflow-visible">
             <form
-              onSubmit={handleAdcsSubmit(
-                async ({ appConnectionId, template, validityPeriod }: AdcsEditFormData) => {
+              onSubmit={handleAzureAdcsSubmit(
+                async ({ appConnectionId, template, validityPeriod }: AzureAdcsEditFormData) => {
                   try {
                     await updateSigningConfig({
                       caId,
@@ -338,7 +382,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
               )}
             >
               <Controller
-                control={adcsControl}
+                control={azureAdcsControl}
                 name="appConnectionId"
                 render={({ field: { onChange, value }, fieldState: { error } }) => (
                   <FormControl
@@ -348,13 +392,15 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                     isRequired
                   >
                     <FilterableSelect
-                      isLoading={isAdcsConnectionsPending}
-                      value={(availableAdcsConnections || []).find((conn) => conn.id === value)}
+                      isLoading={isAzureAdcsConnectionsPending}
+                      value={(availableAzureAdcsConnections || []).find(
+                        (conn) => conn.id === value
+                      )}
                       onChange={(option) => {
                         const selected = option as SingleValue<TAvailableAppConnection>;
                         onChange(selected?.id ?? "");
                       }}
-                      options={availableAdcsConnections || []}
+                      options={availableAzureAdcsConnections || []}
                       placeholder="Select an Azure AD CS connection..."
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
@@ -363,7 +409,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                 )}
               />
               <Controller
-                control={adcsControl}
+                control={azureAdcsControl}
                 name="template"
                 render={({ field: { onChange, value }, fieldState: { error } }) => (
                   <FormControl
@@ -373,18 +419,18 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                     isRequired
                   >
                     <FilterableSelect
-                      isLoading={isAdcsTemplatesLoading && !!selectedAdcsConnectionId}
-                      isDisabled={!selectedAdcsConnectionId}
+                      isLoading={isAzureAdcsTemplatesLoading && !!selectedAzureAdcsConnectionId}
+                      isDisabled={!selectedAzureAdcsConnectionId}
                       value={
-                        adcsTemplates.find((t) => t === value) ? { label: value, value } : null
+                        azureAdcsTemplates.find((t) => t === value) ? { label: value, value } : null
                       }
                       onChange={(option) => {
                         const selected = option as SingleValue<{ label: string; value: string }>;
                         onChange(selected?.value ?? "");
                       }}
-                      options={adcsTemplates.map((t) => ({ label: t, value: t }))}
+                      options={azureAdcsTemplates.map((t) => ({ label: t, value: t }))}
                       placeholder={
-                        selectedAdcsConnectionId
+                        selectedAzureAdcsConnectionId
                           ? "Select a template..."
                           : "Select a connection first"
                       }
@@ -395,7 +441,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                 )}
               />
               <Controller
-                control={adcsControl}
+                control={azureAdcsControl}
                 name="validityPeriod"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
@@ -415,8 +461,123 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                   </ButtonV2>
                 </ModalClose>
                 <ButtonV2
-                  isLoading={isAdcsSubmitting}
-                  isDisabled={isAdcsSubmitting}
+                  isLoading={isAzureAdcsSubmitting}
+                  isDisabled={isAzureAdcsSubmitting}
+                  type="submit"
+                  colorSchema="secondary"
+                >
+                  Save
+                </ButtonV2>
+              </div>
+            </form>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {isNativeAdcs && (
+        <Modal
+          isOpen={popUp.editSigningConfig.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("editSigningConfig", isOpen);
+            if (!isOpen) nativeAdcsReset();
+          }}
+        >
+          <ModalContent title="Edit Signing Configuration" bodyClassName="overflow-visible">
+            <form
+              onSubmit={handleNativeAdcsSubmit(
+                async ({ appConnectionId, template }: NativeAdcsEditFormData) => {
+                  try {
+                    await updateSigningConfig({
+                      caId,
+                      appConnectionId,
+                      destinationConfig: {
+                        template
+                      }
+                    });
+                    createNotification({
+                      text: "Signing configuration updated",
+                      type: "success"
+                    });
+                    handlePopUpToggle("editSigningConfig", false);
+                  } catch {
+                    createNotification({
+                      text: "Failed to update signing configuration",
+                      type: "error"
+                    });
+                  }
+                }
+              )}
+            >
+              <Controller
+                control={nativeAdcsControl}
+                name="appConnectionId"
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                  <FormControl
+                    label="ADCS Connection"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired
+                  >
+                    <FilterableSelect
+                      isLoading={isNativeAdcsConnectionsPending}
+                      value={(availableNativeAdcsConnections || []).find(
+                        (conn) => conn.id === value
+                      )}
+                      onChange={(option) => {
+                        const selected = option as SingleValue<TAvailableAppConnection>;
+                        onChange(selected?.id ?? "");
+                      }}
+                      options={availableNativeAdcsConnections || []}
+                      placeholder="Select an ADCS connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={nativeAdcsControl}
+                name="template"
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Certificate Template"
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    isRequired
+                  >
+                    <FilterableSelect
+                      isLoading={isNativeAdcsTemplatesLoading && !!selectedNativeAdcsConnectionId}
+                      isDisabled={!selectedNativeAdcsConnectionId}
+                      value={
+                        nativeAdcsTemplates.find((t) => t.name === value)
+                          ? { label: value, value }
+                          : null
+                      }
+                      onChange={(option) => {
+                        const selected = option as SingleValue<{ label: string; value: string }>;
+                        onChange(selected?.value ?? "");
+                      }}
+                      options={nativeAdcsTemplates.map((t) => ({ label: t.name, value: t.name }))}
+                      placeholder={
+                        selectedNativeAdcsConnectionId
+                          ? "Select a template..."
+                          : "Select a connection first"
+                      }
+                      getOptionLabel={(option) => option.label}
+                      getOptionValue={(option) => option.value}
+                    />
+                  </FormControl>
+                )}
+              />
+              <div className="flex w-full justify-between gap-4 pt-4">
+                <ModalClose asChild>
+                  <ButtonV2 colorSchema="secondary" variant="plain">
+                    Cancel
+                  </ButtonV2>
+                </ModalClose>
+                <ButtonV2
+                  isLoading={isNativeAdcsSubmitting}
+                  isDisabled={isNativeAdcsSubmitting}
                   type="submit"
                   colorSchema="secondary"
                 >

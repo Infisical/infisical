@@ -39,7 +39,7 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
   server.addHook("preValidation", async (req) => {
     if (!req.permission?.orgId) return;
 
-    const routePath = req.routerPath ?? "";
+    const routePath = req.routeOptions.url ?? "";
     if (!CERT_MANAGER_PREFIXES.some((prefix) => routePath.startsWith(prefix))) return;
 
     if (routePath === "/api/v1/cert-manager/instance" || routePath.startsWith("/api/v1/cert-manager/instance/")) {

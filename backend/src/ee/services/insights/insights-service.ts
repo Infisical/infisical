@@ -4,18 +4,28 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionInsightsActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
+import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -24,20 +34,32 @@ import {
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
-  TGetInsightsSummaryDTO
+  TGetInsightsCountsDTO,
+  TGetInsightsSummaryDTO,
+  TGetSecretsDuplicationDTO
 } from "./insights-types";
 
 type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
-  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
+  secretRotationV2DAL: Pick<
+    TSecretRotationV2DALFactory,
+    "findByProjectAndDateRange" | "findByProject" | "countByProject"
+  >;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "countByProject">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues" | "countByProject"
+  >;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
@@ -74,6 +96,8 @@ const checkInsightsPermission = async (
   });
 
   ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
+
+  return { permission };
 };
 
 export const insightsServiceFactory = ({
@@ -84,8 +108,12 @@ export const insightsServiceFactory = ({
   reminderDAL,
   folderDAL,
   secretV2BridgeDAL,
+  dynamicSecretDAL,
+  honeyTokenDAL,
   projectBotService,
+  projectDAL,
   userDAL,
+  kmsService,
   keyStore
 }: TInsightsServiceFactoryDep) => {
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
@@ -488,11 +516,125 @@ export const insightsServiceFactory = ({
     });
   };
 
+  const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "secrets-duplication");
+
+    const project = await projectDAL.findById(dto.projectId);
+
+    if (!project.secretBlindIndexEnabled) {
+      return {
+        result: {
+          secretBlindIndexEnabled: false,
+          groups: []
+        }
+      };
+    }
+
+    const result = await withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsDuplicationCacheInSeconds,
+      fetcher: async () => {
+        const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId);
+
+        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: dto.projectId
+        });
+
+        const filteredGroups = rawGroups.filter((g) => {
+          if (!g.secrets.length) return false;
+          const firstSecret = g.secrets[0];
+          if (!firstSecret.encryptedValue) return true;
+          const decryptedValue = secretManagerDecryptor({ cipherTextBlob: firstSecret.encryptedValue }).toString();
+          return !containsSecretReference(decryptedValue);
+        });
+
+        const folderIds = [...new Set(filteredGroups.flatMap((g) => g.secrets.map((s) => s.folderId)))];
+        const foldersWithPath = folderIds.length
+          ? await folderDAL.findSecretPathByFolderIds(dto.projectId, folderIds)
+          : [];
+        const folderRecord: Record<string, string> = {};
+        foldersWithPath.forEach((f) => {
+          if (f) folderRecord[f.id] = f.path;
+        });
+
+        const groups = filteredGroups.map((g) => ({
+          secrets: g.secrets.map((s) => ({
+            key: s.key,
+            environment: {
+              name: s.environmentName,
+              slug: s.environment
+            },
+            secretPath: folderRecord[s.folderId] ?? "/"
+          }))
+        }));
+
+        return { secretBlindIndexEnabled: true as const, groups };
+      }
+    });
+
+    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
+
+    return { result, remainingTTL };
+  };
+
+  const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: OrgServiceActor) => {
+    const { permission } = await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "counts");
+    const counts = await withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      fetcher: async () => {
+        const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+        if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
+
+        // Honey tokens are a separately licensed feature; return null when unavailable so the UI hides the stat.
+        const plan = await licenseService.getPlan(actorDto.orgId);
+
+        const [secretCount, folderCount, dynamicSecretCount, secretRotationCount, honeyTokenCount] = await Promise.all([
+          secretV2BridgeDAL.countByProject(dto.projectId),
+          folderDAL.countByProject(dto.projectId),
+          dynamicSecretDAL.countByProject(dto.projectId),
+          secretRotationV2DAL.countByProject(dto.projectId),
+          plan.honeyTokens ? honeyTokenDAL.countByProjectId(dto.projectId) : Promise.resolve(null)
+        ]);
+
+        return {
+          secretCount,
+          folderCount,
+          dynamicSecretCount,
+          secretRotationCount,
+          honeyTokenCount
+        };
+      }
+    });
+
+    // Honey-token presence is sensitive (concealment is the feature) and is gated on HoneyTokens.Read
+    // everywhere else, so strip the count for callers lacking that permission. Applied outside withCache
+    // so the project-scoped cache key stays permission-independent.
+    const canReadHoneyTokens = permission.can(
+      ProjectPermissionHoneyTokenActions.Read,
+      ProjectPermissionSub.HoneyTokens
+    );
+
+    return {
+      ...counts,
+      honeyTokenCount: canReadHoneyTokens ? counts.honeyTokenCount : null
+    };
+  };
+
   return {
     getCalendar,
     getAccessVolume,
     // getAccessLocations,
     getAuthMethodDistribution,
-    getSummary
+    getSummary,
+    getSecretsDuplication,
+    getCounts
   };
 };

@@ -16,6 +16,7 @@ export type TCmek = {
   projectId: string;
   isDisabled: boolean;
   isReserved: boolean;
+  isExportable: boolean;
   orgId: string;
   version: number;
   createdAt: string;
@@ -26,11 +27,13 @@ type ProjectRef = { projectId: string };
 type KeyRef = { keyId: string };
 
 export type TCreateCmek = Pick<TCmek, "name" | "description" | "encryptionAlgorithm" | "keyUsage"> &
+  Partial<Pick<TCmek, "isExportable">> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
   Partial<Pick<TCmek, "name" | "description" | "isDisabled">> &
   ProjectRef;
 export type TDeleteCmek = KeyRef & ProjectRef;
+export type TRotateCmek = KeyRef & ProjectRef;
 
 export type TCmekEncrypt = KeyRef & { plaintext: string; isBase64Encoded?: boolean };
 export type TCmekDecrypt = KeyRef & { ciphertext: string };
@@ -114,6 +117,7 @@ export type TCmekBulkImportKeyEntry = {
   keyUsage: KmsKeyUsage;
   encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
   keyMaterial: string;
+  isExportable?: boolean;
 };
 
 export type TCmekBulkImportKeysDTO = {

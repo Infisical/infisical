@@ -13,7 +13,7 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import { getColumnIndicator } from "../data-explorer-utils";
 import { copyData, exportData } from "../data-export";
-import type { FilterCondition, SortCondition } from "../sql-generation";
+import type { FilterCondition, SortCondition, SqlDialect } from "../sql-generation";
 import {
   buildCountQuery,
   buildDeleteQuery,
@@ -42,6 +42,7 @@ type DataExplorerGridProps = {
   }>;
   isLoading: boolean;
   onRefresh?: () => Promise<void>;
+  dialect: SqlDialect;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -182,8 +183,16 @@ export const DataExplorerGrid = ({
   connectionId,
   executeQuery,
   isLoading,
-  onRefresh
+  onRefresh,
+  dialect
 }: DataExplorerGridProps) => {
+  const executeStatements = useCallback(
+    async (statements: string[]) => {
+      await executeQuery(connectionId, wrapInTransaction(statements));
+    },
+    [executeQuery, connectionId]
+  );
+
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -234,9 +243,10 @@ export const DataExplorerGrid = ({
           sorts: s,
           limit: ps,
           offset: o,
-          primaryKeys
+          primaryKeys,
+          dialect
         });
-        const countSql = buildCountQuery({ schema, table, filters: f });
+        const countSql = buildCountQuery({ schema, table, filters: f, dialect });
 
         // These two queries don't share a database snapshot (the backend processes them
         // sequentially, not in a single transaction), so the count could be off by 1 if
@@ -271,7 +281,7 @@ export const DataExplorerGrid = ({
         setIsDataLoading(false);
       }
     },
-    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId]
+    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId, dialect]
   );
 
   // Fetch data when filters/sorts/pagination change.
@@ -379,7 +389,12 @@ export const DataExplorerGrid = ({
           tempIdsToRemove.push(tempId);
         } else {
           deleteStatements.push(
-            buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+            buildDeleteQuery({
+              schema,
+              table,
+              primaryKeyMatch: getPkMatch(row, primaryKeys),
+              dialect
+            })
           );
         }
       });
@@ -400,8 +415,7 @@ export const DataExplorerGrid = ({
       // Execute DELETE SQL for persisted rows immediately
       if (deleteStatements.length > 0) {
         try {
-          const sql = wrapInTransaction(deleteStatements);
-          await executeQuery(connectionId, sql);
+          await executeStatements(deleteStatements);
           createNotification({
             text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
             type: "success"
@@ -424,8 +438,8 @@ export const DataExplorerGrid = ({
       primaryKeys,
       schema,
       table,
-      connectionId,
-      executeQuery,
+      dialect,
+      executeStatements,
       fetchData,
       offset,
       pageSize,
@@ -458,7 +472,7 @@ export const DataExplorerGrid = ({
             values[col.name] = row[col.name];
           }
         });
-        statements.push(buildInsertQuery({ schema, table, row: values }));
+        statements.push(buildInsertQuery({ schema, table, row: values, dialect }));
       });
 
       // Updates (changed rows) — use PK-based lookup so prepends don't misalign
@@ -480,7 +494,8 @@ export const DataExplorerGrid = ({
               schema,
               table,
               changes,
-              primaryKeyMatch: getPkMatch(original, primaryKeys)
+              primaryKeyMatch: getPkMatch(original, primaryKeys),
+              dialect
             })
           );
         }
@@ -492,12 +507,9 @@ export const DataExplorerGrid = ({
         return;
       }
 
-      const sql = wrapInTransaction(statements);
-
-      // The WebSocket maxPayload is 64 KB. Guard against sending a query
-      // that would exceed the limit and silently kill the connection.
+      const combined = statements.join(";\n");
       const MAX_QUERY_SIZE = 50 * 1024;
-      if (sql.length > MAX_QUERY_SIZE) {
+      if (combined.length > MAX_QUERY_SIZE) {
         createNotification({
           title: "Save failed",
           text: "Changes are too large to save at once. Try saving fewer or smaller changes.",
@@ -507,7 +519,7 @@ export const DataExplorerGrid = ({
         return;
       }
 
-      await executeQuery(connectionId, sql);
+      await executeStatements(statements);
       createNotification({
         text: `Saved ${statements.length} change${statements.length !== 1 ? "s" : ""}`,
         type: "success"
@@ -531,8 +543,8 @@ export const DataExplorerGrid = ({
     primaryKeys,
     schema,
     table,
-    connectionId,
-    executeQuery,
+    dialect,
+    executeStatements,
     fetchData,
     offset,
     pageSize,
@@ -622,7 +634,12 @@ export const DataExplorerGrid = ({
         tempIdsToRemove.push(tempId);
       } else {
         deleteStatements.push(
-          buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+          buildDeleteQuery({
+            schema,
+            table,
+            primaryKeyMatch: getPkMatch(row, primaryKeys),
+            dialect
+          })
         );
       }
     });
@@ -643,8 +660,7 @@ export const DataExplorerGrid = ({
     // Execute DELETE SQL for persisted rows
     if (deleteStatements.length > 0) {
       try {
-        const sql = wrapInTransaction(deleteStatements);
-        await executeQuery(connectionId, sql);
+        await executeStatements(deleteStatements);
         createNotification({
           text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
           type: "success"
@@ -669,8 +685,8 @@ export const DataExplorerGrid = ({
     schema,
     table,
     primaryKeys,
-    connectionId,
-    executeQuery,
+    dialect,
+    executeStatements,
     fetchData,
     offset,
     pageSize,
@@ -729,6 +745,7 @@ export const DataExplorerGrid = ({
           )
         }
         hasData={currentData.length > 0}
+        dialect={dialect}
       />
 
       {!hasPrimaryKey && (
@@ -745,7 +762,7 @@ export const DataExplorerGrid = ({
       )}
 
       {/* Dice UI DataGrid */}
-      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-background">
         {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
         <DataGrid
           {...gridProps}
@@ -753,7 +770,7 @@ export const DataExplorerGrid = ({
           stretchColumns
         />
         {isDataLoading && hasLoaded && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-bunker-800/60">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60">
             <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
           </div>
         )}

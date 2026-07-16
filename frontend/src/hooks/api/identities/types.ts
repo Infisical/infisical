@@ -574,6 +574,7 @@ export type IdentityTlsCertAuth = {
   identityId: string;
   caCertificate: string;
   allowedCommonNames: string;
+  allowedSubjectAltNames: string[] | null;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -586,6 +587,7 @@ export type AddIdentityTlsCertAuthDTO = {
   identityId: string;
   caCertificate: string;
   allowedCommonNames?: string;
+  allowedSubjectAltNames?: string[];
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -600,6 +602,7 @@ export type UpdateIdentityTlsCertAuthDTO = {
   identityId: string;
   caCertificate: string;
   allowedCommonNames?: string | null;
+  allowedSubjectAltNames?: string[] | null;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
@@ -1017,5 +1020,6 @@ export type IdentityMembershipSearchResult = {
   roles: IdentityMembershipSearchRole[];
   identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
     authMethods: IdentityAuthMethod[];
+    activeLockoutAuthMethods: IdentityAuthMethod[];
   };
 };

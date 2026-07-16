@@ -6,6 +6,7 @@ import {
   registerSecretScanningV2Router,
   SECRET_SCANNING_REGISTER_ROUTER_MAP
 } from "@app/ee/routes/v2/secret-scanning-v2-routers";
+import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerGatewayV2Router } from "./gateway-router";
@@ -38,7 +39,7 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
 
       // register service specific secret rotation endpoints (secret-rotations/postgres-credentials, etc.)
       for await (const [type, router] of Object.entries(SECRET_ROTATION_REGISTER_ROUTER_MAP)) {
-        await secretRotationV2Router.register(router, { prefix: `/${type}` });
+        await router(withRoutePrefix(secretRotationV2Router, `/${type}`));
       }
     },
     { prefix: "/secret-rotations" }
@@ -51,7 +52,7 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
 
       // register service-specific secret scanning endpoints (gitlab/github, etc.)
       for await (const [type, router] of Object.entries(SECRET_SCANNING_REGISTER_ROUTER_MAP)) {
-        await secretScanningV2Router.register(router, { prefix: `data-sources/${type}` });
+        await router(withRoutePrefix(secretScanningV2Router, `/data-sources/${type}`));
       }
     },
     { prefix: "/secret-scanning" }

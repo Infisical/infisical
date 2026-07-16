@@ -26,7 +26,12 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -63,7 +68,13 @@ type TIdentityUaServiceFactoryDep = {
   >;
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
+    | "setItemWithExpiry"
+    | "setItemWithExpiryNX"
+    | "getItem"
+    | "deleteItem"
+    | "getKeysByPattern"
+    | "deleteItems"
+    | "acquireLock"
   >;
 };
 
@@ -73,6 +84,9 @@ type LockoutObject = {
   lockedOut: boolean;
   failedAttempts: number;
 };
+
+// debounce per-secret usage writes so login bursts on one unlimited secret don't pile up on its row lock
+const UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS = 10;
 
 export const identityUaServiceFactory = ({
   identityUaDAL,
@@ -86,6 +100,7 @@ export const identityUaServiceFactory = ({
   identityAccessTokenService
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
@@ -299,7 +314,20 @@ export const identityUaServiceFactory = ({
       }
 
       await identityUaDAL.transaction(async (tx) => {
-        await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+        if (clientSecretNumUsesLimit > 0) {
+          // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
+          await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+        } else {
+          // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
+          const isFirstUseInWindow = await keyStore.setItemWithExpiryNX(
+            KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(validClientSecretInfo!.id),
+            UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
+            "1"
+          );
+          if (isFirstUseInWindow) {
+            await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+          }
+        }
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
@@ -356,6 +384,13 @@ export const identityUaServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.UNIVERSAL_AUTH,
+        result: AuthAttemptAuthResult.SUCCESS,
+        orgId: org.id
+      });
+
       return {
         accessToken,
         identityUa,
@@ -378,6 +413,14 @@ export const identityUaServiceFactory = ({
           "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.UNIVERSAL_AUTH,
+        result: AuthAttemptAuthResult.FAILURE,
+        orgId: org.id,
+        error
+      });
       throw error;
     }
   };

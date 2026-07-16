@@ -5,6 +5,7 @@ import { OrderByDirection, OrgServiceActor, TDynamicSecretWithMetadata, TProject
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
+import { TApiConnectApp, TApiConnectResource, TIbmApiConnectBaseCredentials } from "./providers/ibm-api-connect";
 import { DynamicSecretProviderSchema } from "./providers/models";
 
 // various status for dynamic secret that happens in background
@@ -124,6 +125,13 @@ export type TDynamicSecretServiceFactory = {
       email: string;
     }[]
   >;
+  fetchIbmApiConnectOrgs: (arg: TIbmApiConnectBaseCredentials) => Promise<TApiConnectResource[]>;
+  fetchIbmApiConnectOrgCatalogs: (
+    arg: TIbmApiConnectBaseCredentials & { orgId: string }
+  ) => Promise<TApiConnectResource[]>;
+  fetchIbmApiConnectOrgApps: (
+    arg: TIbmApiConnectBaseCredentials & { orgId: string; catalogId: string }
+  ) => Promise<TApiConnectApp[]>;
   listDynamicSecretsByFolderIds: (
     arg: TListDynamicSecretsByFolderMappingsDTO,
     actor: OrgServiceActor

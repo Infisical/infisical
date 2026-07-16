@@ -1,8 +1,8 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
@@ -35,21 +35,15 @@ const ChefPkiSyncOptionsSchema = z.object({
   updateExistingCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
-
-        if (!schema.includes("{{certificateId}}")) {
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
           return false;
         }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "test-cert-id")
-          .replace(new RE2("\\{\\{profileId\\}\\}", "g"), "test-profile-id")
-          .replace(new RE2("\\{\\{commonName\\}\\}", "g"), "test-common-name")
-          .replace(new RE2("\\{\\{friendlyName\\}\\}", "g"), "test-friendly-name")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "test-env");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = CHEF_PKI_SYNC_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -64,7 +58,7 @@ const ChefPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate item name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-255 characters long for Chef data bag items."
+          "Certificate item name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-255 characters long for Chef data bag items."
       }
     ),
   fieldMappings: ChefFieldMappingsSchema.optional().default({
@@ -86,7 +80,7 @@ export const CreateChefPkiSyncSchema = z.object({
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ChefPkiSyncConfigSchema,
-  syncOptions: ChefPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: ChefPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
