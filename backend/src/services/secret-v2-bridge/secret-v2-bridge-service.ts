@@ -876,12 +876,8 @@ export const secretV2BridgeServiceFactory = ({
     const secretToDelete = await secretDAL.findOne({
       key: inputSecret.secretName,
       folderId,
-      ...(inputSecret.type === SecretType.Shared
-        ? {}
-        : {
-            type: SecretType.Personal,
-            userId: actorId
-          })
+      type: inputSecret.type,
+      ...(inputSecret.type === SecretType.Personal ? { userId: actorId } : {})
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
     if (inputSecret.type === SecretType.Shared) {
@@ -889,7 +885,7 @@ export const secretV2BridgeServiceFactory = ({
         throw new BadRequestError({ message: "Cannot delete honey token secrets" });
     }
 
-    if (secretToDelete.type === SecretType.Personal) {
+    if (inputSecret.type === SecretType.Personal) {
       // check the shared secret that this personal secret overrides to get the tags
       const sharedSecretForOverride = await secretDAL.findOne({
         key: inputSecret.secretName,
