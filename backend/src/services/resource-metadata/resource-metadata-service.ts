@@ -83,7 +83,7 @@ export const resourceMetadataServiceFactory = ({
           secretKey: secret.secretKey,
           environment: folder.environmentSlug,
           secretPath: folder.path,
-          metadata: secret.metadata.map(({ key, value }) => ({ key, value }))
+          metadata: secret.metadata
         }
       ];
     });

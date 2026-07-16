@@ -50,13 +50,20 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.ResourceMetadata}.secretId`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
-        .where(`${TableName.SecretV2}.type`, SecretType.Shared)
-        .where(buildMatchesAnyCondition(filters));
+        .where(`${TableName.SecretV2}.type`, SecretType.Shared);
 
-      // and: the secret must additionally satisfy every condition (correlated existence per condition)
       if (operator === SecretMetadataSearchLogicalOperator.And) {
-        filters.forEach(({ key, value }) => {
-          return void matchedSecretIdsQuery.whereExists((subQuery) => {
+        // and: every condition must match a row of the secret. Drive the scan from the first condition
+        // (so the (orgId, key) index narrows candidates) and require the rest via correlated existence.
+        filters.forEach(({ key, value }, index) => {
+          if (index === 0) {
+            void matchedSecretIdsQuery
+              .where(`${TableName.ResourceMetadata}.key`, key)
+              .where(`${TableName.ResourceMetadata}.value`, value);
+            return;
+          }
+
+          void matchedSecretIdsQuery.whereExists((subQuery) => {
             return void subQuery
               .select(db.raw("1"))
               .from({ rm2: TableName.ResourceMetadata })
@@ -65,6 +72,9 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
               .where("rm2.value", value);
           });
         });
+      } else {
+        // or: the joined row must match at least one condition
+        void matchedSecretIdsQuery.where(buildMatchesAnyCondition(filters));
       }
 
       const matchedSecretRows = await matchedSecretIdsQuery
@@ -78,8 +88,6 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       // step 2: hydrate the matched metadata rows + tags + permission context for those secrets, then nest.
       const rows = await knex(TableName.ResourceMetadata)
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
-        .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretV2}.folderId`)
-        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .leftJoin(
           TableName.SecretV2JnTag,
           `${TableName.SecretV2}.id`,
@@ -99,7 +107,6 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
           db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
           db.ref("folderId").withSchema(TableName.SecretV2).as("folderId"),
-          db.ref("projectId").withSchema(TableName.Environment).as("projectId"),
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
         );
@@ -110,15 +117,13 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
         parentMapper: (row) => ({
           secretId: row.secretId as string,
           secretKey: row.secretKey,
-          folderId: row.folderId,
-          projectId: row.projectId
+          folderId: row.folderId
         }),
         childrenMapper: [
           {
             key: "metadataId",
             label: "metadata" as const,
-            mapper: ({ metadataId, metadataKey, metadataValue }) => ({
-              id: metadataId,
+            mapper: ({ metadataKey, metadataValue }) => ({
               key: metadataKey,
               value: metadataValue as string | null
             })
