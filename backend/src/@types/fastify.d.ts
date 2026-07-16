@@ -162,6 +162,7 @@ import { TProjectFolderGrantServiceFactory } from "@app/services/project-folder-
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
+import { TResourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { TRoleServiceFactory } from "@app/services/role/role-service";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
@@ -311,6 +312,7 @@ declare module "fastify" {
       secretTag: TSecretTagServiceFactory;
       secretValidationRule: TSecretValidationRuleServiceFactory;
       secretImport: TSecretImportServiceFactory;
+      resourceMetadata: TResourceMetadataServiceFactory;
       projectFolderGrant: TProjectFolderGrantServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
