@@ -229,6 +229,7 @@ export const sendApprovalEmailsForStep = async (
     substitutions: {
       requesterName: request.requesterName,
       requesterEmail: request.requesterEmail || undefined,
+      title: emailContext.subjectLine,
       requestType: emailContext.requestTypeLabel,
       justification: request.justification || undefined,
       approvalUrl: emailContext.approvalUrl
