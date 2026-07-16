@@ -280,7 +280,7 @@ export const proxiedServiceServiceFactory = ({
         const invalid = requested.filter((p) => !allowed.has(p));
         if (invalid.length) {
           throw new BadRequestError({
-            message: `Principal(s) not allowed for dynamic secret "${name}": ${invalid.join(", ")}. Allowed: ${[...allowed].join(", ") || "none"}`
+            message: `Principal(s) not allowed for dynamic secret "${name}": ${invalid.join(", ")}`
           });
         }
       });
