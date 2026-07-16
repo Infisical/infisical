@@ -764,25 +764,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return { publicKey, created: true, keyAlgorithm };
   };
 
-  const getSshCaPublicKey = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
-    if (!account || account.projectId !== projectId) {
-      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
-    }
-
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
-
-    const metadata = parseInternalMetadata(
-      account.accountType as PamAccountType,
-      await decryptInternalMetadata(projectId, account.encryptedInternalMetadata)
-    );
-
-    if (!metadata?.caPublicKey) {
-      throw new BadRequestError({ message: "SSH CA has not been configured for this account" });
-    }
-    return { publicKey: metadata.caPublicKey };
-  };
-
   const getAccountPermissions = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
     const account = await pamAccountDAL.findById(accountId);
     if (!account || account.projectId !== projectId) {
@@ -853,7 +834,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     update,
     deleteAccount,
     getOrCreateSshCa,
-    getSshCaPublicKey,
     getAccountPermissions
   };
 };

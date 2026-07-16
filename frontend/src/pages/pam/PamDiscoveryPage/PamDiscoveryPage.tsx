@@ -44,7 +44,7 @@ import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PAM_DISCOVERY_TABS } from "../components/pamResourceTabs";
-import { AddDiscoverySourceModal } from "./components/AddDiscoverySourceModal";
+import { AddDiscoverySourceSheet } from "./components/AddDiscoverySourceSheet";
 import { DiscoverySourceDetailSheet } from "./components/DiscoverySourceDetailSheet";
 import { DiscoveryStatusBadge } from "./components/DiscoveryStatusBadge";
 
@@ -252,7 +252,7 @@ export const PamDiscoveryPage = () => {
         </Card>
       </div>
 
-      <AddDiscoverySourceModal
+      <AddDiscoverySourceSheet
         isOpen={popUp.addSource.isOpen}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("addSource");
