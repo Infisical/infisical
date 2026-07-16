@@ -151,6 +151,8 @@ const renderOutputForm = (
   }
 
   const entry = DYNAMIC_SECRET_PROVIDER_OUTPUTS[provider];
+  if (!entry) return null;
+
   const record = (data ?? {}) as Record<string, unknown>;
   const presentFields = entry.outputFields.filter(
     (f) => record[f.name] !== undefined && record[f.name] !== null
