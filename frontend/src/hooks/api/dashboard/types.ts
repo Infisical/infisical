@@ -157,6 +157,41 @@ export type TGetDashboardProjectSecretsQuickSearchDTO = {
   environments: string[];
 };
 
+// per-condition match operator; only exact-match ("is") is supported today (mirrors the backend)
+export enum SecretMetadataSearchOperator {
+  Is = "is"
+}
+
+// combinator applied across all conditions
+export enum SecretMetadataSearchLogicalOperator {
+  And = "and",
+  Or = "or"
+}
+
+export type TSecretMetadataSearchFilter = {
+  key: string;
+  value: string;
+  operator: SecretMetadataSearchOperator;
+};
+
+export type TSearchSecretsByMetadataDTO = {
+  projectId: string;
+  operator: SecretMetadataSearchLogicalOperator;
+  filters: TSecretMetadataSearchFilter[];
+};
+
+export type TMetadataMatchedSecret = {
+  secretId: string;
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  metadata: { key: string; value: string | null }[];
+};
+
+export type TSearchSecretsByMetadataResponse = {
+  secrets: TMetadataMatchedSecret[];
+};
+
 export type TGetDashboardProjectSecretsByKeys = {
   projectId: string;
   secretPath: string;

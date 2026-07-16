@@ -21,7 +21,9 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
-  TGetSecretValueDTO
+  TGetSecretValueDTO,
+  TSearchSecretsByMetadataDTO,
+  TSearchSecretsByMetadataResponse
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -68,6 +70,8 @@ export const dashboardKeys = {
       "quick-search",
       params
     ] as const,
+  searchSecretsByMetadata: ({ projectId, ...params }: TSearchSecretsByMetadataDTO) =>
+    [...dashboardKeys.all(), "secrets-by-metadata", projectId, params] as const,
   getAccessibleSecrets: ({
     projectId,
     secretPath,
@@ -516,6 +520,50 @@ export const useGetProjectSecretsQuickSearch = (
         secretRotations: groupedRotations
       };
     }, []),
+    placeholderData: (previousData) => previousData
+  });
+};
+
+export const fetchSearchSecretsByMetadata = async ({
+  projectId,
+  operator,
+  filters
+}: TSearchSecretsByMetadataDTO) => {
+  // /secrets-by-metadata parses nested `filters[<n>][key|value|operator]` params (qs syntax) from the
+  // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
+  const params = new URLSearchParams();
+  params.append("projectId", projectId);
+  params.append("operator", operator);
+  filters.forEach((filter, index) => {
+    params.append(`filters[${index}][key]`, filter.key);
+    params.append(`filters[${index}][value]`, filter.value);
+    params.append(`filters[${index}][operator]`, filter.operator);
+  });
+
+  const { data } = await apiRequest.get<TSearchSecretsByMetadataResponse>(
+    `/api/v1/dashboard/secrets-by-metadata?${params.toString()}`
+  );
+
+  return data;
+};
+
+export const useSearchSecretsByMetadata = (
+  { projectId, operator, filters }: TSearchSecretsByMetadataDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TSearchSecretsByMetadataResponse,
+      unknown,
+      TSearchSecretsByMetadataResponse,
+      ReturnType<typeof dashboardKeys.searchSecretsByMetadata>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    ...options,
+    enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
+    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters }),
+    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters }),
     placeholderData: (previousData) => previousData
   });
 };

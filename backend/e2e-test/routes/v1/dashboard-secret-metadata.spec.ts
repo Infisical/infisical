@@ -12,6 +12,9 @@ type TRawSecretWithId = {
 
 type TMetadataSearchResult = {
   secretId: string;
+  secretKey: string;
+  environment: string;
+  secretPath: string;
   metadata: { key: string; value: string }[];
 }[];
 
@@ -166,6 +169,11 @@ describe("Dashboard - search secrets by metadata", async () => {
         { key: TEAM_KEY, value: "backend" }
       ])
     );
+
+    // enriched fields used by the dashboard UI to group + render + navigate
+    expect(secretA?.secretKey).toBe(secretKeys.a);
+    expect(secretA?.environment).toBe(seedData1.environment.slug);
+    expect(secretA?.secretPath).toBe(TEST_PATH);
   });
 
   test("single condition returns only exact matches", async () => {

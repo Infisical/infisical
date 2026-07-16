@@ -60,22 +60,33 @@ export const resourceMetadataServiceFactory = ({
       if (folder) folderPathById[folder.id] = { path: folder.path, environmentSlug: folder.environmentSlug };
     });
 
-    const secrets = matchedSecrets
-      .filter((secret) => {
-        const folder = folderPathById[secret.folderId];
-        if (!folder) return false;
+    const secrets = matchedSecrets.flatMap((secret) => {
+      const folder = folderPathById[secret.folderId];
+      if (!folder) return [];
 
-        return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      const canDescribe = hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        {
           environment: folder.environmentSlug,
           secretPath: folder.path,
           secretName: secret.secretKey,
           secretTags: secret.tags.map((tag) => tag.slug)
-        });
-      })
-      .map((secret) => ({
-        secretId: secret.secretId,
-        metadata: secret.metadata.map(({ key, value }) => ({ key, value }))
-      }));
+        }
+      );
+
+      if (!canDescribe) return [];
+
+      return [
+        {
+          secretId: secret.secretId,
+          secretKey: secret.secretKey,
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          metadata: secret.metadata.map(({ key, value }) => ({ key, value }))
+        }
+      ];
+    });
 
     return { secrets };
   };

@@ -112,6 +112,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: z
             .object({
               secretId: z.string(),
+              secretKey: z.string(),
+              environment: z.string(),
+              secretPath: z.string(),
               metadata: z
                 .object({
                   key: z.string(),
