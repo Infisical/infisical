@@ -375,6 +375,7 @@
                 ]
               },
               "self-hosting/guides/replication",
+              "self-hosting/guides/hsm-integration",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -382,7 +383,6 @@
               {
                 "group": "Guides",
                 "pages": [
-                  "self-hosting/guides/hsm-integration",
                   "self-hosting/guides/mongo-to-postgres",
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/automated-bootstrapping",
