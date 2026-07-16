@@ -1754,7 +1754,7 @@ export const secretApprovalRequestServiceFactory = ({
     secretPath,
     environment,
     commitMessage,
-    updateMode,
+    updateMode = SecretUpdateMode.FailOnNotFound,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
     if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
@@ -1875,7 +1875,7 @@ export const secretApprovalRequestServiceFactory = ({
       const missingSecrets = secretsToUpdate.filter((el) => !existingKeys.has(el.secretKey));
 
       if (missingSecrets.length) {
-        if (!updateMode || updateMode === SecretUpdateMode.FailOnNotFound) {
+        if (updateMode === SecretUpdateMode.FailOnNotFound) {
           throw new NotFoundError({
             message: `Secret does not exist: ${missingSecrets.map((el) => el.secretKey).join(", ")}`
           });
