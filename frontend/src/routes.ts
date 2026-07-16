@@ -35,6 +35,7 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
       ])
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
+    route("/alarms", "project/AlarmsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-secret-manager.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
@@ -321,6 +322,7 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
     ]),
     route("/settings", "cert-manager/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-cert-manager.tsx"),
+    route("/alarms", "project/AlarmsPage/route-cert-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-cert-manager.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-cert-manager.tsx"),
@@ -337,6 +339,7 @@ const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
     route("/overview", "ai/MCPPage/route.tsx"),
     route("/settings", "ai/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),
+    route("/alarms", "project/AlarmsPage/route-ai.tsx"),
     route("/access-management", "project/AccessControlPage/route-ai.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ai.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ai.tsx"),
@@ -351,6 +354,7 @@ const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
     route("/kmip", "kms/KmipPage/route.tsx"),
     route("/settings", "kms/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-kms.tsx"),
+    route("/alarms", "project/AlarmsPage/route-kms.tsx"),
     route("/access-management", "project/AccessControlPage/route-kms.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-kms.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-kms.tsx"),
@@ -368,6 +372,7 @@ const sshRoutes = route("/organizations/$orgId/projects/ssh/$projectId", [
     route("/ssh-host-groups/$sshHostGroupId", "ssh/SshHostGroupDetailsByIDPage/route.tsx"),
     route("/settings", "ssh/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-ssh.tsx"),
+    route("/alarms", "project/AlarmsPage/route-ssh.tsx"),
     route("/access-management", "project/AccessControlPage/route-ssh.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ssh.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ssh.tsx"),
@@ -385,6 +390,7 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
     route("/findings", "secret-scanning/SecretScanningFindingsPage/route.tsx"),
     route("/settings", "secret-scanning/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-secret-scanning.tsx"),
+    route("/alarms", "project/AlarmsPage/route-secret-scanning.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-scanning.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-secret-scanning.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-scanning.tsx"),
@@ -403,6 +409,7 @@ const pamRoutes = route("/organizations/$orgId/pam", [
     route("/sessions", "pam/PamSessionsPage/route.tsx"),
     route("/approval-requests", "pam/PamApprovalRequestsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
+    route("/alarms", "project/AlarmsPage/route-pam.tsx"),
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),
@@ -436,6 +443,7 @@ const organizationRoutes = route("/organizations/$orgId", [
     )
   ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
+  route("/alarms", "organization/AlarmsPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
   route("/secret-sharing", "organization/SecretSharingPage/SecretSharingRedirectRoute.tsx"),

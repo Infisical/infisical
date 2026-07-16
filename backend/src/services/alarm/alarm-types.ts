@@ -8,7 +8,6 @@ import { TAlarmPayload } from "./alarm-channel-types";
 export enum AlarmPrincipalType {
   USER = "user",
   GROUP = "group",
-  ROLE = "role",
   EMAIL = "email"
 }
 

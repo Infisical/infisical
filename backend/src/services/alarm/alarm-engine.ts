@@ -119,7 +119,7 @@ export const alarmEngineFactory = ({
     );
     let recipients: TAlarmRecipient[] = [];
     if (hasDirectedChannel) {
-      recipients = await alarmRecipientResolver.resolve(alarm.orgId, await alarmRecipientDAL.findByAlarmId(alarm.id));
+      recipients = await alarmRecipientResolver.resolve(await alarmRecipientDAL.findByAlarmId(alarm.id));
     }
 
     const deps: TAlarmChannelDeps = { smtpService };

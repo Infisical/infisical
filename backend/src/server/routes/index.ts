@@ -1021,7 +1021,7 @@ export const registerRoutes = async (
       permissionService
     })
   );
-  const alarmRecipientResolver = alarmRecipientResolverFactory({ userDAL, orgDAL, userGroupMembershipDAL });
+  const alarmRecipientResolver = alarmRecipientResolverFactory({ userDAL, userGroupMembershipDAL });
   const alarmEngine = alarmEngineFactory({
     alarmChannelDAL,
     alarmRecipientDAL,
@@ -1046,7 +1046,10 @@ export const registerRoutes = async (
     alarmRecipientDAL,
     alarmHistoryDAL,
     alarmProviderRegistry,
-    kmsService
+    kmsService,
+    orgDAL,
+    projectDAL,
+    groupDAL
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({

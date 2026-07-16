@@ -1,7 +1,6 @@
-import { OrgMembershipRole, OrgMembershipStatus, TAlarmRecipients } from "@app/db/schemas";
+import { TAlarmRecipients } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlarmRecipient } from "./alarm-channel-types";
@@ -9,18 +8,13 @@ import { AlarmPrincipalType } from "./alarm-types";
 
 type TAlarmRecipientResolverDep = {
   userDAL: Pick<TUserDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
 };
 
 export type TAlarmRecipientResolver = ReturnType<typeof alarmRecipientResolverFactory>;
 
-export const alarmRecipientResolverFactory = ({
-  userDAL,
-  orgDAL,
-  userGroupMembershipDAL
-}: TAlarmRecipientResolverDep) => {
-  const resolve = async (orgId: string, recipients: TAlarmRecipients[]): Promise<TAlarmRecipient[]> => {
+export const alarmRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL }: TAlarmRecipientResolverDep) => {
+  const resolve = async (recipients: TAlarmRecipients[]): Promise<TAlarmRecipient[]> => {
     const userIds = new Set<string>();
     const rawEmails = new Set<string>();
 
@@ -29,14 +23,6 @@ export const alarmRecipientResolverFactory = ({
         case AlarmPrincipalType.USER:
           userIds.add(recipient.principalId);
           break;
-        case AlarmPrincipalType.ROLE: {
-          // eslint-disable-next-line no-await-in-loop
-          const members = await orgDAL.findOrgMembersByRole(orgId, recipient.principalId as OrgMembershipRole);
-          members
-            .filter((member) => member.status !== OrgMembershipStatus.Invited && member.user?.id)
-            .forEach((member) => userIds.add(member.user.id));
-          break;
-        }
         case AlarmPrincipalType.GROUP: {
           // eslint-disable-next-line no-await-in-loop
           const memberships = await userGroupMembershipDAL.find({ groupId: recipient.principalId });

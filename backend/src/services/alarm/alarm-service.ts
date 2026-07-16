@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { decryptChannelConfig, encryptChannelConfig, getAlarmChannelCipher } from "./alarm-channel-crypto-fns";
 import { TAlarmChannelDALFactory } from "./alarm-channel-dal";
@@ -31,6 +34,9 @@ export type TAlarmServiceFactoryDep = {
   alarmHistoryDAL: Pick<TAlarmHistoryDALFactory, "findLatestByAlarmId">;
   alarmProviderRegistry: TAlarmProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
 };
 
 export type TAlarmServiceFactory = ReturnType<typeof alarmServiceFactory>;
@@ -44,7 +50,10 @@ export const alarmServiceFactory = ({
   alarmRecipientDAL,
   alarmHistoryDAL,
   alarmProviderRegistry,
-  kmsService
+  kmsService,
+  orgDAL,
+  projectDAL,
+  groupDAL
 }: TAlarmServiceFactoryDep) => {
   const $getProvider = (resourceType: string): IResourceAlarmProvider => {
     const provider = alarmProviderRegistry.get(resourceType);
@@ -109,6 +118,75 @@ export const alarmServiceFactory = ({
         if (channel.channelType === AlarmChannelType.SLACK) {
           validateSlackWebhookUrl((channel.config as { webhookUrl: string }).webhookUrl);
         }
+      }
+    }
+  };
+
+  const $validateRecipients = async (
+    orgId: string,
+    projectId: string | null | undefined,
+    recipients: { principalType: string; principalId: string }[]
+  ) => {
+    const userIds = [
+      ...new Set(
+        recipients
+          .filter((recipient) => recipient.principalType === AlarmPrincipalType.USER)
+          .map((recipient) => recipient.principalId)
+      )
+    ];
+    const groupIds = [
+      ...new Set(
+        recipients
+          .filter((recipient) => recipient.principalType === AlarmPrincipalType.GROUP)
+          .map((recipient) => recipient.principalId)
+      )
+    ];
+
+    if (userIds.length === 0 && groupIds.length === 0) return;
+
+    if (projectId) {
+      const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
+        orgId,
+        projectId,
+        userIds,
+        groupIds
+      });
+      const projectUserIds = new Set(effectiveUserIds);
+      const missingUsers = userIds.filter((id) => !projectUserIds.has(id));
+      if (missingUsers.length) {
+        throw new BadRequestError({
+          message: `Some users are not members of the project: ${missingUsers.join(", ")}`
+        });
+      }
+      const projectGroupIds = new Set(effectiveGroupIds);
+      const missingGroups = groupIds.filter((id) => !projectGroupIds.has(id));
+      if (missingGroups.length) {
+        throw new BadRequestError({
+          message: `Some groups are not members of the project: ${missingGroups.join(", ")}`
+        });
+      }
+      return;
+    }
+
+    if (userIds.length) {
+      const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: orgId });
+      const orgUserIds = new Set(memberships.map((membership) => membership.actorUserId));
+      const missingUsers = userIds.filter((id) => !orgUserIds.has(id));
+      if (missingUsers.length) {
+        throw new BadRequestError({
+          message: `Some users are not members of the organization: ${missingUsers.join(", ")}`
+        });
+      }
+    }
+
+    if (groupIds.length) {
+      const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId });
+      const orgGroupIds = new Set(orgGroups.map((group) => group.id));
+      const missingGroups = groupIds.filter((id) => !orgGroupIds.has(id));
+      if (missingGroups.length) {
+        throw new BadRequestError({
+          message: `Some groups are not part of the organization: ${missingGroups.join(", ")}`
+        });
       }
     }
   };
@@ -199,6 +277,8 @@ export const alarmServiceFactory = ({
       projectId: dto.projectId,
       resourceId: dto.resourceId
     });
+
+    await $validateRecipients(dto.actorOrgId, dto.projectId, dto.recipients);
 
     const { encryptor } = await getAlarmChannelCipher(kmsService, {
       orgId: dto.actorOrgId,
@@ -318,6 +398,8 @@ export const alarmServiceFactory = ({
         actorOrgId: dto.actorOrgId
       }
     });
+
+    if (dto.recipients) await $validateRecipients(alarm.orgId, alarm.projectId, dto.recipients);
 
     const { encryptor } = await getAlarmChannelCipher(kmsService, {
       orgId: alarm.orgId,

@@ -1,4 +1,4 @@
-import { FileText, Key, LayoutDashboard, Settings, Shield } from "lucide-react";
+import { BellRing, FileText, Key, LayoutDashboard, Settings, Shield } from "lucide-react";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import { PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
@@ -15,6 +15,7 @@ export const KmsNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
+    { label: "Alarms", icon: BellRing, pathSuffix: "alarms" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];

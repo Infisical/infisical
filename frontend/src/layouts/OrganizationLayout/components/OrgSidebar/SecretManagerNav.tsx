@@ -1,4 +1,12 @@
-import { ActivityIcon, Blocks, BookCheck, FileText, Settings, Shield } from "lucide-react";
+import {
+  ActivityIcon,
+  BellRing,
+  Blocks,
+  BookCheck,
+  FileText,
+  Settings,
+  Shield
+} from "lucide-react";
 
 import { ProjectIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 
@@ -48,6 +56,7 @@ export const SecretManagerNav = ({
       pathSuffix: "access-management",
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
+    { label: "Alarms", icon: BellRing, pathSuffix: "alarms" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings", submenu: SM_SETTINGS_SUBMENU }
   ];

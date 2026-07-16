@@ -19,6 +19,7 @@ const encConfig = (config: unknown) => Buffer.from(JSON.stringify(config));
 const buildService = (opts?: {
   assertPermission?: (input: TAlarmPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
+  rejectRecipients?: boolean;
 }) => {
   const permissionCalls: TAlarmPermissionInput[] = [];
   const provider: IResourceAlarmProvider = {
@@ -92,7 +93,27 @@ const buildService = (opts?: {
     },
     alarmHistoryDAL: { findLatestByAlarmId: async () => undefined },
     alarmProviderRegistry: registry,
-    kmsService: kmsServiceMock
+    kmsService: kmsServiceMock,
+    orgDAL: {
+      findMembership: async (filter: { $in?: { actorUserId?: string[] } }) =>
+        opts?.rejectRecipients ? [] : (filter.$in?.actorUserId ?? []).map((actorUserId) => ({ actorUserId }))
+    },
+    projectDAL: {
+      findEffectiveProjectSubjectsMembership: async ({
+        userIds,
+        groupIds
+      }: {
+        userIds: string[];
+        groupIds: string[];
+      }) =>
+        opts?.rejectRecipients
+          ? { effectiveUserIds: [], effectiveGroupIds: [] }
+          : { effectiveUserIds: userIds, effectiveGroupIds: groupIds }
+    },
+    groupDAL: {
+      find: async (filter: { $in?: { id?: string[] } }) =>
+        opts?.rejectRecipients ? [] : (filter.$in?.id ?? []).map((id) => ({ id }))
+    }
   } as unknown as TAlarmServiceFactoryDep);
 
   return { service, permissionCalls, alarms, channels };
@@ -166,6 +187,22 @@ describe("alarm service", () => {
       }
     });
     await expect(service.createAlarm(validCreate)).rejects.toThrow("forbidden");
+  });
+
+  test("rejects recipients that do not belong to the scope", async () => {
+    const { service } = buildService({ rejectRecipients: true });
+    await expect(service.createAlarm(validCreate)).rejects.toThrow(/not members of the organization/);
+  });
+
+  test("accepts EMAIL recipients without a membership check", async () => {
+    // rejectRecipients makes every user/group lookup come back empty; an email-only alarm must
+    // still succeed because raw addresses are not validated against the org/project.
+    const { service } = buildService({ rejectRecipients: true });
+    const alarm = await service.createAlarm({
+      ...validCreate,
+      recipients: [{ principalType: AlarmPrincipalType.EMAIL, principalId: "ops@example.com" }]
+    });
+    expect(alarm.recipients).toEqual([{ principalType: "email", principalId: "ops@example.com" }]);
   });
 
   test("redacts the webhook signing secret on read", async () => {
