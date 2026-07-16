@@ -1,17 +1,26 @@
-import { useCallback, useMemo, useState } from "react";
-import { components as reactSelectComponents, OptionProps } from "react-select";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
 import {
-  CheckIcon,
-  ChevronLeftIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
   FingerprintIcon,
   KeyIcon,
-  LockIcon
+  LockIcon,
+  SearchIcon
 } from "lucide-react";
 
-import { FilterableSelect, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from "@app/components/v3";
 import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -41,48 +50,17 @@ type Props = {
   isFieldError?: boolean;
 };
 
-type SourceOption =
-  | {
-      kind: "secret";
-      value: string;
-      label: string;
-      name: string;
-      group: string;
-      isSelectable: boolean;
-      disabledReason?: string;
-    }
-  | {
-      kind: "dynamic-parent";
-      value: string;
-      label: string;
-      name: string;
-      group: string;
-      provider?: DynamicSecretProviders;
-      isSelectable: boolean;
-      disabledReason?: string;
-      fieldLabel?: string;
-    }
-  | { kind: "back"; value: string; label: string }
-  | { kind: "field"; value: string; label: string; name: string };
+type SecretOption = {
+  name: string;
+  isSelectable: boolean;
+  disabledReason?: string;
+};
 
-const SECRETS_GROUP = "Secrets";
-const DYNAMIC_GROUP = "Dynamic Secrets";
-const BACK_VALUE = "__back__";
-
-const AlignedOption = <T,>({ isSelected, children, ...props }: OptionProps<T>) => {
-  const data = props.data as unknown as SourceOption;
-  const showChevron = !isSelected && data.kind === "dynamic-parent" && data.isSelectable;
-  return (
-    <reactSelectComponents.Option isSelected={isSelected} {...props}>
-      <div className="flex w-full items-center">
-        <div className="min-w-0 flex-1">{children}</div>
-        <span className="ml-2 flex size-4 shrink-0 items-center justify-center">
-          {isSelected && <CheckIcon className="size-4" />}
-          {showChevron && <ChevronRightIcon className="size-4 text-bunker-300" />}
-        </span>
-      </div>
-    </reactSelectComponents.Option>
-  );
+type DynamicOption = {
+  name: string;
+  provider?: DynamicSecretProviders;
+  isSelectable: boolean;
+  disabledReason?: string;
 };
 
 const fieldLabelFor = (provider: DynamicSecretProviders | undefined, fieldName: string) => {
@@ -107,14 +85,9 @@ export const CredentialSourceFields = ({
   const { subscription } = useSubscription();
   const hasDynamicSecretPlan = Boolean(subscription?.dynamicSecret);
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [drill, setDrill] = useState<{ name: string; provider?: DynamicSecretProviders } | null>(
-    null
-  );
-
   const buildSecretOptions = useCallback(
-    (response: SecretV3RawResponse): SourceOption[] => {
-      const options: SourceOption[] = [];
+    (response: SecretV3RawResponse): SecretOption[] => {
+      const options: SecretOption[] = [];
       const seen = new Set<string>();
       const push = (secretKey: string, env: string, path: string, tags?: { slug: string }[]) => {
         if (seen.has(secretKey)) return;
@@ -130,11 +103,7 @@ export const CredentialSourceFields = ({
           }
         );
         options.push({
-          kind: "secret",
-          label: secretKey,
-          value: `secret:${secretKey}`,
           name: secretKey,
-          group: SECRETS_GROUP,
           isSelectable: isReadable,
           disabledReason: isReadable
             ? undefined
@@ -175,7 +144,7 @@ export const CredentialSourceFields = ({
     path: secretPath
   });
 
-  const dynamicParentOptions = useMemo<SourceOption[]>(() => {
+  const dynamicOptions = useMemo<DynamicOption[]>(() => {
     return dynamicSecrets.map((ds) => {
       const canLease = permission.can(
         ProjectPermissionDynamicSecretActions.Lease,
@@ -191,11 +160,7 @@ export const CredentialSourceFields = ({
         disabledReason =
           "You need permission to lease this dynamic secret to use it in a proxied service.";
       return {
-        kind: "dynamic-parent" as const,
-        label: ds.name,
-        value: `dynamic:${ds.name}`,
         name: ds.name,
-        group: DYNAMIC_GROUP,
         provider: ds.type,
         isSelectable: hasDynamicSecretPlan && canLease,
         disabledReason
@@ -208,160 +173,200 @@ export const CredentialSourceFields = ({
     return dynamicSecrets.find((ds) => ds.name === value.dynamicSecretName)?.type;
   }, [value.dynamicSecretName, dynamicSecrets]);
 
-  const options = useMemo<SourceOption[]>(() => {
-    if (!drill) return [...secretOptions, ...dynamicParentOptions];
-    const fieldOptions: SourceOption[] = (
-      drill.provider ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[drill.provider].outputFields : []
-    ).map((f) => ({
-      kind: "field" as const,
-      value: `field:${f.name}`,
-      label: f.label,
-      name: f.name
-    }));
-    return [{ kind: "back", value: BACK_VALUE, label: "Back to secrets" }, ...fieldOptions];
-  }, [drill, secretOptions, dynamicParentOptions]);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const query = search.trim().toLowerCase();
 
-  const selectedValue = useMemo<SourceOption | null>(() => {
+  // Radix focuses the first menu item on open, not the search box; move focus to search after it settles.
+  useEffect(() => {
+    if (!open) return undefined;
+    const id = window.setTimeout(() => searchRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [open]);
+  const filteredSecrets = useMemo(
+    () =>
+      query ? secretOptions.filter((s) => s.name.toLowerCase().includes(query)) : secretOptions,
+    [secretOptions, query]
+  );
+  const filteredDynamic = useMemo(
+    () =>
+      query ? dynamicOptions.filter((d) => d.name.toLowerCase().includes(query)) : dynamicOptions,
+    [dynamicOptions, query]
+  );
+
+  const isLoading = isSecretsFetching || isDynamicFetching;
+  const hasSelection = Boolean(value.secretKey || value.dynamicSecretName);
+  const hasResults = filteredSecrets.length > 0 || filteredDynamic.length > 0;
+  const commit = (next: TCredentialSource) => onChange(next);
+
+  const renderTriggerContent = () => {
     if (value.dynamicSecretName) {
-      return {
-        kind: "dynamic-parent",
-        value: `dynamic:${value.dynamicSecretName}`,
-        label: value.dynamicSecretName,
-        name: value.dynamicSecretName,
-        group: DYNAMIC_GROUP,
-        provider: selectedProvider,
-        isSelectable: true,
-        fieldLabel: value.dynamicSecretField
-          ? fieldLabelFor(selectedProvider, value.dynamicSecretField)
-          : undefined
-      };
-    }
-    if (value.secretKey) {
-      return {
-        kind: "secret",
-        value: `secret:${value.secretKey}`,
-        label: value.secretKey,
-        name: value.secretKey,
-        group: SECRETS_GROUP,
-        isSelectable: true
-      };
-    }
-    return null;
-  }, [value.secretKey, value.dynamicSecretName, value.dynamicSecretField, selectedProvider]);
-
-  const commit = (next: TCredentialSource) => {
-    onChange(next);
-    setDrill(null);
-    setMenuOpen(false);
-  };
-
-  const handleChange = (option: SourceOption | null) => {
-    if (!option) {
-      commit({});
-      return;
-    }
-    switch (option.kind) {
-      case "back":
-        setDrill(null);
-        break;
-      case "secret":
-        commit({ secretKey: option.name });
-        break;
-      case "dynamic-parent": {
-        const fields = option.provider
-          ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[option.provider].outputFields
-          : [];
-        if (fields.length === 1) {
-          commit({ dynamicSecretName: option.name, dynamicSecretField: fields[0].name });
-        } else {
-          setDrill({ name: option.name, provider: option.provider });
-        }
-        break;
-      }
-      case "field": {
-        commit({ dynamicSecretName: drill?.name ?? "", dynamicSecretField: option.name });
-        break;
-      }
-      default:
-        break;
-    }
-  };
-
-  const formatOptionLabel = (option: SourceOption) => {
-    if (option.kind === "back") {
       return (
-        <div className="flex items-center gap-2 text-bunker-300">
-          <ChevronLeftIcon className="size-4 shrink-0" />
-          <span>{option.label}</span>
-        </div>
+        <span className="flex min-w-0 items-center gap-2">
+          <FingerprintIcon className="size-4 shrink-0 text-dynamic-secret" />
+          <span className="truncate">{value.dynamicSecretName}</span>
+          {value.dynamicSecretField && (
+            <span className="flex min-w-0 items-center gap-1 text-muted">
+              <ChevronRightIcon className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {fieldLabelFor(selectedProvider, value.dynamicSecretField)}
+              </span>
+            </span>
+          )}
+        </span>
       );
     }
-    if (option.kind === "field") {
-      return <span className="truncate">{option.label}</span>;
+    if (value.secretKey) {
+      return (
+        <span className="flex min-w-0 items-center gap-2">
+          <KeyIcon className="size-4 shrink-0 text-secret" />
+          <span className="truncate">{value.secretKey}</span>
+        </span>
+      );
     }
-
-    const Icon = option.kind === "dynamic-parent" ? FingerprintIcon : KeyIcon;
-    const iconColor = option.kind === "dynamic-parent" ? "text-dynamic-secret" : "text-secret";
-    const committedField = option.kind === "dynamic-parent" ? option.fieldLabel : undefined;
-    const row = (
-      <div className="flex items-center gap-2">
-        {option.isSelectable ? (
-          <Icon className={`size-4 shrink-0 ${iconColor}`} />
-        ) : (
-          <LockIcon className="size-4 shrink-0 text-bunker-300" />
-        )}
-        <span className="truncate">{option.label}</span>
-        {committedField && (
-          <span className="flex min-w-0 items-center gap-1 text-muted">
-            <ChevronRightIcon className="size-3.5 shrink-0" />
-            <span className="truncate">{committedField}</span>
-          </span>
-        )}
-      </div>
-    );
-    if (option.isSelectable || !option.disabledReason) return row;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{row}</TooltipTrigger>
-        <TooltipContent className="max-w-xs">{option.disabledReason}</TooltipContent>
-      </Tooltip>
-    );
+    return <span className="text-muted">Select a secret</span>;
   };
 
   return (
     <div className="flex flex-col gap-2">
-      <FilterableSelect
-        isLoading={isSecretsFetching || isDynamicFetching}
-        isError={isSecretError || isFieldError}
-        value={selectedValue}
-        options={options}
-        groupBy={drill ? null : "group"}
-        placeholder="Select a secret"
-        menuPosition="fixed"
-        menuPlacement="auto"
-        menuIsOpen={menuOpen}
-        onMenuOpen={() => {
-          if (value.dynamicSecretName)
-            setDrill({ name: value.dynamicSecretName, provider: selectedProvider });
-          else setDrill(null);
-          setMenuOpen(true);
+      <DropdownMenu
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setSearch("");
         }}
-        onMenuClose={() => {
-          setMenuOpen(false);
-          setDrill(null);
-        }}
-        closeMenuOnSelect={false}
-        blurInputOnSelect={false}
-        components={{ Option: AlignedOption }}
-        isOptionDisabled={(option) => {
-          const o = option as SourceOption;
-          return (o.kind === "secret" || o.kind === "dynamic-parent") && !o.isSelectable;
-        }}
-        onChange={(newValue) => handleChange(newValue as SourceOption | null)}
-        getOptionLabel={(option) => (option as SourceOption).label}
-        getOptionValue={(option) => (option as SourceOption).value}
-        formatOptionLabel={(option) => formatOptionLabel(option as SourceOption)}
-      />
+      >
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={`flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-1 text-sm text-foreground transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+              isSecretError || isFieldError ? "border-danger" : "border-border"
+            }`}
+          >
+            {renderTriggerContent()}
+            <ChevronDownIcon className="size-4 shrink-0 text-muted" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="max-h-80 w-(--radix-dropdown-menu-trigger-width) p-0"
+        >
+          <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-popover px-2.5 py-2.5">
+            <SearchIcon className="size-3.5 shrink-0 text-muted" />
+            <input
+              ref={searchRef}
+              className="w-full bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
+              placeholder="Search secrets..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          <div className="p-1">
+            {hasSelection && !query && (
+              <>
+                <DropdownMenuItem className="text-muted" onSelect={() => commit({})}>
+                  Clear selection
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+
+            {isLoading && <DropdownMenuItem isDisabled>Loading…</DropdownMenuItem>}
+
+            {!isLoading && !hasResults && (
+              <DropdownMenuItem isDisabled>
+                {secretOptions.length || dynamicOptions.length
+                  ? "No matches"
+                  : "No secrets available"}
+              </DropdownMenuItem>
+            )}
+
+            {filteredSecrets.length > 0 && <DropdownMenuLabel>Secrets</DropdownMenuLabel>}
+            {filteredSecrets.map((s) =>
+              s.isSelectable ? (
+                <DropdownMenuItem key={s.name} onSelect={() => commit({ secretKey: s.name })}>
+                  <KeyIcon className="size-4 shrink-0 text-secret" />
+                  <span className="truncate">{s.name}</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem key={s.name} isDisabled className="flex-col items-start gap-0.5">
+                  <span className="flex items-center gap-2">
+                    <LockIcon className="size-4 shrink-0 text-bunker-300" />
+                    <span className="truncate">{s.name}</span>
+                  </span>
+                  {s.disabledReason && (
+                    <span className="pl-6 text-xs text-muted">{s.disabledReason}</span>
+                  )}
+                </DropdownMenuItem>
+              )
+            )}
+
+            {filteredDynamic.length > 0 && <DropdownMenuLabel>Dynamic Secrets</DropdownMenuLabel>}
+            {filteredDynamic.map((ds) => {
+              const fields = ds.provider
+                ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[ds.provider].outputFields
+                : [];
+
+              if (!ds.isSelectable) {
+                return (
+                  <DropdownMenuItem
+                    key={ds.name}
+                    isDisabled
+                    className="flex-col items-start gap-0.5"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LockIcon className="size-4 shrink-0 text-bunker-300" />
+                      <span className="truncate">{ds.name}</span>
+                    </span>
+                    {ds.disabledReason && (
+                      <span className="pl-6 text-xs text-muted">{ds.disabledReason}</span>
+                    )}
+                  </DropdownMenuItem>
+                );
+              }
+
+              if (fields.length <= 1) {
+                const field = fields[0];
+                return (
+                  <DropdownMenuItem
+                    key={ds.name}
+                    onSelect={() =>
+                      commit({ dynamicSecretName: ds.name, dynamicSecretField: field?.name ?? "" })
+                    }
+                  >
+                    <FingerprintIcon className="size-4 shrink-0 text-dynamic-secret" />
+                    <span className="truncate">{ds.name}</span>
+                  </DropdownMenuItem>
+                );
+              }
+
+              return (
+                <DropdownMenuSub key={ds.name}>
+                  <DropdownMenuSubTrigger>
+                    <FingerprintIcon className="size-4 shrink-0 text-dynamic-secret" />
+                    <span className="truncate">{ds.name}</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent hideWhenDetached className="max-h-72 overflow-y-auto">
+                    {fields.map((f) => (
+                      <DropdownMenuItem
+                        key={f.name}
+                        onSelect={() =>
+                          commit({ dynamicSecretName: ds.name, dynamicSecretField: f.name })
+                        }
+                      >
+                        <span className="truncate">{f.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              );
+            })}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };
