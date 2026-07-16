@@ -26,11 +26,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  Table,
-  TableBody,
   TableHead,
-  TableHeader,
-  TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -55,6 +51,7 @@ import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/Overvie
 import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
 import { QuickSearchDynamicSecretItem } from "./QuickSearchDynamicSecretItem";
+import { QuickSearchEnvTable } from "./QuickSearchEnvTable";
 import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
 import { QuickSearchMetadataSecretItem } from "./QuickSearchMetadataSecretItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
@@ -240,9 +237,9 @@ const Content = ({
   }, [metadataData, environments, debouncedSearch]);
 
   // count the secrets actually shown (after env + text filtering) so the builder's tally matches the rows
-  const metadataResultCount = useMemo(
-    () => metadataResultsByEnv.reduce((total, group) => total + group.secrets.length, 0),
-    [metadataResultsByEnv]
+  const metadataResultCount = metadataResultsByEnv.reduce(
+    (total, group) => total + group.secrets.length,
+    0
   );
 
   const handleToggleTag = (tag: string) => {
@@ -338,29 +335,20 @@ const Content = ({
       resultsContent = (
         <div className="flex flex-col gap-6">
           {metadataResultsByEnv.map(({ env, secrets: envSecrets }) => (
-            <div key={env.slug}>
-              <h3 className="mb-2 text-sm font-medium text-foreground">{env.name}</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8" />
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Metadata</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {envSecrets.map((secret) => (
-                    <QuickSearchMetadataSecretItem
-                      key={secret.secretId}
-                      secret={secret}
-                      envSlug={env.slug}
-                      onClose={onClose}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <QuickSearchEnvTable
+              key={env.slug}
+              envName={env.name}
+              trailingHead={<TableHead>Metadata</TableHead>}
+            >
+              {envSecrets.map((secret) => (
+                <QuickSearchMetadataSecretItem
+                  key={secret.secretId}
+                  secret={secret}
+                  envSlug={env.slug}
+                  onClose={onClose}
+                />
+              ))}
+            </QuickSearchEnvTable>
           ))}
         </div>
       );
@@ -381,55 +369,42 @@ const Content = ({
               dynamicSecrets: envDynamic,
               secretRotations: envRotations
             }) => (
-              <div key={env.slug}>
-                <h3 className="mb-2 text-sm font-medium text-foreground">{env.name}</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-8" />
-                      <TableHead>Name</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead className="w-24" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {envFolders.map((folder) => (
-                      <QuickSearchFolderItem
-                        key={folder.id}
-                        folder={folder}
-                        envSlug={env.slug}
-                        onClose={onClose}
-                      />
-                    ))}
-                    {envDynamic.map((ds) => (
-                      <QuickSearchDynamicSecretItem
-                        key={ds.id}
-                        dynamicSecret={ds}
-                        envSlug={env.slug}
-                        onClose={onClose}
-                      />
-                    ))}
-                    {envRotations.map((rotation) => (
-                      <QuickSearchSecretRotationItem
-                        key={rotation.id}
-                        secretRotation={rotation}
-                        envSlug={env.slug}
-                        onClose={onClose}
-                      />
-                    ))}
-                    {envSecrets.map((secret) => (
-                      <QuickSearchSecretItem
-                        key={secret.id}
-                        secret={secret}
-                        envSlug={env.slug}
-                        search={debouncedSearch}
-                        tags={Object.keys(filterTags)}
-                        onClose={onClose}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <QuickSearchEnvTable key={env.slug} envName={env.name}>
+                {envFolders.map((folder) => (
+                  <QuickSearchFolderItem
+                    key={folder.id}
+                    folder={folder}
+                    envSlug={env.slug}
+                    onClose={onClose}
+                  />
+                ))}
+                {envDynamic.map((ds) => (
+                  <QuickSearchDynamicSecretItem
+                    key={ds.id}
+                    dynamicSecret={ds}
+                    envSlug={env.slug}
+                    onClose={onClose}
+                  />
+                ))}
+                {envRotations.map((rotation) => (
+                  <QuickSearchSecretRotationItem
+                    key={rotation.id}
+                    secretRotation={rotation}
+                    envSlug={env.slug}
+                    onClose={onClose}
+                  />
+                ))}
+                {envSecrets.map((secret) => (
+                  <QuickSearchSecretItem
+                    key={secret.id}
+                    secret={secret}
+                    envSlug={env.slug}
+                    search={debouncedSearch}
+                    tags={Object.keys(filterTags)}
+                    onClose={onClose}
+                  />
+                ))}
+              </QuickSearchEnvTable>
             )
           )}
         </div>
@@ -489,14 +464,12 @@ const Content = ({
         </InputGroup>
       </div>
 
-      {isBuilderOpen && (
-        <SecretMetadataFilterChips
-          conditions={activeConditions}
-          match={metadataMatch}
-          onRemoveCondition={handleRemoveCondition}
-          onClear={handleClearMetadata}
-        />
-      )}
+      <SecretMetadataFilterChips
+        conditions={activeConditions}
+        match={metadataMatch}
+        onRemoveCondition={handleRemoveCondition}
+        onClear={handleClearMetadata}
+      />
 
       <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto pt-4">
         {isBuilderOpen && (
