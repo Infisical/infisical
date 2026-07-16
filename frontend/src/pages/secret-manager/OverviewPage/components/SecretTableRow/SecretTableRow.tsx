@@ -307,7 +307,9 @@ export const SecretTableRow = ({
             secretPath={secretPath}
             isVisible={isSecretVisible || isSingleEnvSecretsVisible}
             secretName={secretKey}
-            isEmpty={singleEnvSecret?.isEmpty || singleEnvImportedSecret?.secret?.isEmpty}
+            isEmpty={
+              singleEnvSecret ? singleEnvSecret.isEmpty : singleEnvImportedSecret?.secret?.isEmpty
+            }
             secretValueHidden={singleEnvSecret?.secretValueHidden || false}
             defaultValue={getDefaultValue(singleEnvSecret, singleEnvImportedSecret)}
             secretId={singleEnvSecret?.id}
@@ -583,7 +585,7 @@ export const SecretTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
-                              isEmpty={secret?.isEmpty || importedSecret?.secret?.isEmpty}
+                              isEmpty={secret ? secret.isEmpty : importedSecret?.secret?.isEmpty}
                               secretValueHidden={secret?.secretValueHidden || false}
                               defaultValue={getDefaultValue(secret, importedSecret)}
                               secretId={secret?.id}

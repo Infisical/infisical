@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 
 export enum KmsDataKey {
@@ -16,7 +17,8 @@ export enum KmsType {
 
 export enum KmsKeyUsage {
   ENCRYPT_DECRYPT = "encrypt-decrypt",
-  SIGN_VERIFY = "sign-verify"
+  SIGN_VERIFY = "sign-verify",
+  GENERATE_VERIFY_MAC = "generate-verify-mac"
 }
 
 export type TEncryptWithKmsDataKeyDTO =
@@ -31,7 +33,7 @@ export type TEncryptWithKmsDataKeyDTO =
 export type TGenerateKMSDTO = {
   orgId: string;
   projectId?: string;
-  encryptionAlgorithm?: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+  encryptionAlgorithm?: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
   keyUsage?: KmsKeyUsage;
   isReserved?: boolean;
   isExportable?: boolean;
@@ -62,6 +64,17 @@ export type TVerifyWithKmsDTO = {
   signature: Buffer;
   signingAlgorithm: SigningAlgorithm;
   isDigest: boolean;
+};
+
+export type TGenerateMacDTO = {
+  kmsId: string;
+  data: Buffer;
+};
+
+export type TVerifyMacDTO = {
+  kmsId: string;
+  data: Buffer;
+  mac: Buffer;
 };
 
 export type TEncryptionWithKeyDTO = {
@@ -98,7 +111,7 @@ export type TGetBulkKeyMaterialDTO = {
 
 export type TImportKeyMaterialDTO = {
   key: Buffer;
-  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
   name?: string;
   isReserved: boolean;
   isExportable?: boolean;

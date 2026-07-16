@@ -1,4 +1,6 @@
 import { TAuditLogs, TAuditLogStreams } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -11,6 +13,9 @@ import { getCustomProviderListItem } from "./custom/custom-provider-fns";
 import { getDatadogProviderListItem } from "./datadog/datadog-provider-fns";
 import { getSplunkProviderListItem } from "./splunk/splunk-provider-fns";
 import { getSumoLogicProviderListItem } from "./sumo-logic/sumo-logic-provider-fns";
+
+export const blockAuditLogStreamInternalIps = (url: string) =>
+  blockLocalAndPrivateIpAddresses(url, false, getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP);
 
 export const listProviderOptions = () => {
   return [

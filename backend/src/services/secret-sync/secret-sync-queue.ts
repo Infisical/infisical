@@ -1,5 +1,5 @@
 import opentelemetry from "@opentelemetry/api";
-import { AxiosError } from "axios";
+import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
@@ -13,6 +13,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -603,8 +604,10 @@ export const secretSyncQueueFactory = ({
 
       isSynced = true;
     } catch (err) {
+      const axiosError = err instanceof SecretSyncError && isAxiosError(err.error) ? err.error : err;
+
       logger.error(
-        err,
+        isAxiosError(axiosError) ? axiosError.response?.data : err,
         `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
@@ -631,6 +634,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const syncStatus = isSynced ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "sync",
+        outcome: isSynced ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
@@ -760,6 +770,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const importStatus = isSuccess ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "import",
+        outcome: isSuccess ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
@@ -891,6 +908,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const removeStatus = isSuccess ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "remove",
+        outcome: isSuccess ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
@@ -1102,6 +1126,13 @@ export const secretSyncQueueFactory = ({
           lastSyncJobId: job.id
         });
 
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "sync",
+          outcome: "failure",
+          attemptsExhausted: true
+        });
+
         await $queueSendSecretSyncFailedNotifications({
           secretSync,
           action: SecretSyncAction.SyncSecrets,
@@ -1119,6 +1150,13 @@ export const secretSyncQueueFactory = ({
           lastImportJobId: job.id
         });
 
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "import",
+          outcome: "failure",
+          attemptsExhausted: true
+        });
+
         await $queueSendSecretSyncFailedNotifications({
           secretSync,
           action: SecretSyncAction.ImportSecrets,
@@ -1133,6 +1171,13 @@ export const secretSyncQueueFactory = ({
           lastRemoveMessage:
             "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastRemoveJobId: job.id
+        });
+
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "remove",
+          outcome: "failure",
+          attemptsExhausted: true
         });
 
         await $queueSendSecretSyncFailedNotifications({

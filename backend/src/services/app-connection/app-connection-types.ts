@@ -197,6 +197,12 @@ import {
   TValidateF5BigIpConnectionCredentialsSchema
 } from "./f5-big-ip";
 import {
+  TFireworksConnection,
+  TFireworksConnectionConfig,
+  TFireworksConnectionInput,
+  TValidateFireworksConnectionCredentialsSchema
+} from "./fireworks";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -269,6 +275,12 @@ import {
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
 import {
+  TLiteLLMConnection,
+  TLiteLLMConnectionConfig,
+  TLiteLLMConnectionInput,
+  TValidateLiteLLMConnectionCredentialsSchema
+} from "./litellm";
+import {
   TMongoDBConnection,
   TMongoDBConnectionConfig,
   TMongoDBConnectionInput,
@@ -319,6 +331,12 @@ import {
   TValidateOpenRouterConnectionCredentialsSchema
 } from "./open-router";
 import {
+  TOpenAIConnection,
+  TOpenAIConnectionConfig,
+  TOpenAIConnectionInput,
+  TValidateOpenAIConnectionCredentialsSchema
+} from "./openai";
+import {
   TOvhConnection,
   TOvhConnectionConfig,
   TOvhConnectionInput,
@@ -353,6 +371,12 @@ import {
   TRenderConnectionInput,
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
+import {
+  TRundeckConnection,
+  TRundeckConnectionConfig,
+  TRundeckConnectionInput,
+  TValidateRundeckConnectionCredentialsSchema
+} from "./rundeck";
 import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
@@ -432,6 +456,12 @@ import {
   TWindmillConnectionInput
 } from "./windmill";
 import {
+  TValidateWinRMConnectionCredentialsSchema,
+  TWinRMConnection,
+  TWinRMConnectionConfig,
+  TWinRMConnectionInput
+} from "./winrm/winrm-connection-types";
+import {
   TValidateZabbixConnectionCredentialsSchema,
   TZabbixConnection,
   TZabbixConnectionConfig,
@@ -450,6 +480,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TAzureDevOpsConnection
   | TAzureADCSConnection
   | TADCSConnection
+  | TWinRMConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -493,6 +524,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
+  | TOpenAIConnection
   | TCircleCIConnection
   | TCloud66Connection
   | TAzureEntraIdConnection
@@ -513,8 +545,11 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDatadogConnection
   | TF5BigIpConnection
   | TConvexConnection
+  | TRundeckConnection
   | THasuraCloudConnection
   | TQoveryConnection
+  | TLiteLLMConnection
+  | TFireworksConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -535,6 +570,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureDevOpsConnectionInput
   | TAzureADCSConnectionInput
   | TADCSConnectionInput
+  | TWinRMConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TTerraformCloudConnectionInput
@@ -578,6 +614,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDbtConnectionInput
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
+  | TOpenAIConnectionInput
   | TCircleCIConnectionInput
   | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
@@ -598,8 +635,11 @@ export type TAppConnectionInput = { id: string } & (
   | TDatadogConnectionInput
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
+  | TRundeckConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
+  | TLiteLLMConnectionInput
+  | TFireworksConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -655,6 +695,7 @@ export type TAppConnectionConfig =
   | TAzureDevOpsConnectionConfig
   | TAzureADCSConnectionConfig
   | TADCSConnectionConfig
+  | TWinRMConnectionConfig
   | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
@@ -695,6 +736,7 @@ export type TAppConnectionConfig =
   | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
+  | TOpenAIConnectionConfig
   | TCircleCIConnectionConfig
   | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
@@ -715,8 +757,11 @@ export type TAppConnectionConfig =
   | TDatadogConnectionConfig
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
+  | TRundeckConnectionConfig
   | THasuraCloudConnectionConfig
-  | TQoveryConnectionConfig;
+  | TQoveryConnectionConfig
+  | TLiteLLMConnectionConfig
+  | TFireworksConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -729,6 +774,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureDevOpsConnectionCredentialsSchema
   | TValidateAzureADCSConnectionCredentialsSchema
   | TValidateADCSConnectionCredentialsSchema
+  | TValidateWinRMConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
@@ -771,6 +817,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
+  | TValidateOpenAIConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
@@ -791,8 +838,11 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDatadogConnectionCredentialsSchema
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
+  | TValidateRundeckConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
-  | TValidateQoveryConnectionCredentialsSchema;
+  | TValidateQoveryConnectionCredentialsSchema
+  | TValidateLiteLLMConnectionCredentialsSchema
+  | TValidateFireworksConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

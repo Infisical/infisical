@@ -441,14 +441,51 @@ describe("Identity Access Token — redesigned JWT flow", () => {
 
       const revocation = await waitForRevocationRow(decoded!.identityAccessTokenId);
       const expectedExpiresAtMs = decoded!.exp * 1000;
+      // maxTTL=0/TTL=0 keeps a ~90d marker; it must cover the JWT exp and lands at
+      // exp plus the skew buffer.
+      const markerSkewMs = 300 * 1000;
       expect(revocation.expiresAt.getTime()).toBeGreaterThan(Date.now());
-      expect(Math.abs(revocation.expiresAt.getTime() - expectedExpiresAtMs)).toBeLessThanOrEqual(2_000);
+      expect(revocation.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedExpiresAtMs - 2_000);
+      expect(revocation.expiresAt.getTime()).toBeLessThanOrEqual(expectedExpiresAtMs + markerSkewMs + 2_000);
 
       await testRedis.flushdb("SYNC");
 
       expect((await callDetailsEndpoint(accessToken)).statusCode).toBe(401);
     } finally {
       await cleanupIdentityDirect(identityId);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 9. Version-counter churn from revokes doesn't wedge freshly issued tokens
+  // -------------------------------------------------------------------------
+  test("revoking a token invalidates it but a re-login still authenticates", async () => {
+    const { identityId, clientId, clientSecret } = await createUaIdentity("test-version-churn");
+
+    try {
+      const tokenA = await loginWithUa(clientId, clientSecret);
+
+      // Two calls: the second exercises a warmed verdict cache for tokenA.
+      expect((await callDetailsEndpoint(tokenA)).statusCode).toBe(200);
+      expect((await callDetailsEndpoint(tokenA)).statusCode).toBe(200);
+
+      // Revoke bumps the per-identity version, so the cached allow for tokenA
+      // no longer matches and it is rejected.
+      const revokeRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/auth/token/revoke",
+        body: { accessToken: tokenA }
+      });
+      expect(revokeRes.statusCode).toBe(200);
+      expect((await callDetailsEndpoint(tokenA)).statusCode).toBe(401);
+
+      // A freshly issued token for the same identity is a new tuple, so the
+      // version churn must not wedge it.
+      const tokenB = await loginWithUa(clientId, clientSecret);
+      expect((await callDetailsEndpoint(tokenB)).statusCode).toBe(200);
+      expect((await callDetailsEndpoint(tokenB)).statusCode).toBe(200);
+    } finally {
+      await deleteIdentity(identityId);
     }
   });
 });

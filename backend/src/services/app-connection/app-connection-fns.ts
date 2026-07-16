@@ -149,6 +149,11 @@ import {
   getF5BigIpConnectionListItem,
   validateF5BigIpConnectionCredentials
 } from "./f5-big-ip";
+import {
+  FireworksConnectionMethod,
+  getFireworksConnectionListItem,
+  validateFireworksConnectionCredentials
+} from "./fireworks";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import {
@@ -188,6 +193,7 @@ import {
   validateLaravelForgeConnectionCredentials
 } from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
+import { getLiteLLMConnectionListItem, LiteLLMConnectionMethod, validateLiteLLMConnectionCredentials } from "./litellm";
 import { getMongoDBConnectionListItem, MongoDBConnectionMethod, validateMongoDBConnectionCredentials } from "./mongodb";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
@@ -215,6 +221,7 @@ import {
   OpenRouterConnectionMethod,
   validateOpenRouterConnectionCredentials
 } from "./open-router";
+import { getOpenAIConnectionListItem, OpenAIConnectionMethod, validateOpenAIConnectionCredentials } from "./openai";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
@@ -222,6 +229,7 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
   getSalesforceConnectionListItem,
   SalesforceConnectionMethod,
@@ -273,6 +281,7 @@ import {
   validateWindmillConnectionCredentials,
   WindmillConnectionMethod
 } from "./windmill";
+import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
@@ -302,7 +311,9 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.NetScaler,
   AppConnection.DigiCert,
   AppConnection.F5BigIp,
-  AppConnection.GoDaddy
+  AppConnection.GoDaddy,
+  AppConnection.SSH,
+  AppConnection.WinRM
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -316,6 +327,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAzureDevopsConnectionListItem(),
     getAzureADCSConnectionListItem(),
     getADCSConnectionListItem(),
+    getWinRMConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getTerraformCloudConnectionListItem(),
@@ -360,6 +372,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDbtConnectionListItem(),
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
+    getOpenAIConnectionListItem(),
     getAnthropicConnectionListItem(),
     getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
@@ -380,7 +393,10 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDatadogConnectionListItem(),
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
-    getQoveryConnectionListItem()
+    getRundeckConnectionListItem(),
+    getQoveryConnectionListItem(),
+    getLiteLLMConnectionListItem(),
+    getFireworksConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -555,6 +571,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ADCS]: validateADCSConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.WinRM]: validateWinRMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -597,6 +614,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OpenAI]: validateOpenAIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -625,7 +643,10 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Datadog]: validateDatadogConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -677,6 +698,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
+    case RundeckConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -689,6 +711,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
     case ADCSConnectionMethod.UsernamePassword:
+    case WinRMConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
@@ -719,7 +742,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case OpenAIConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case LiteLLMConnectionMethod.ApiKey:
+    case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
@@ -813,6 +839,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureDevOps]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureADCS]: platformManagedCredentialsNotSupported,
   [AppConnection.ADCS]: platformManagedCredentialsNotSupported,
+  [AppConnection.WinRM]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
@@ -856,6 +883,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
+  [AppConnection.OpenAI]: platformManagedCredentialsNotSupported,
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
   [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
@@ -876,7 +904,10 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.F5BigIp]: platformManagedCredentialsNotSupported,
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
-  [AppConnection.Qovery]: platformManagedCredentialsNotSupported
+  [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
+  [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
+  [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
+  [AppConnection.Fireworks]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

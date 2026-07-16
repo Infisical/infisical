@@ -65,7 +65,7 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
       Component = <PkiSyncDestinationFields />;
       break;
     case PkiSyncEditFields.Options:
-      Component = <PkiSyncOptionsFields destination={pkiSync.destination} />;
+      Component = <PkiSyncOptionsFields destination={pkiSync.destination} isUpdate />;
       break;
     case PkiSyncEditFields.Mappings:
       Component = <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;

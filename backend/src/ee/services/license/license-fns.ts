@@ -118,6 +118,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   kmip: false,
   gateway: false,
   gatewayPool: false,
+  pamSlackNotifications: false,
   sshHostGroups: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,
@@ -129,7 +130,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
   honeyTokens: false,
-  honeyTokenLimit: 0
+  honeyTokenLimit: 0,
+  secretsBrokering: true
 });
 
 export const setupLicenseRequestWithStore = (

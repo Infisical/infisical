@@ -26,7 +26,11 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractIssuedCertificateFields, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import {
+  createDistinguishedName,
+  extractIssuedCertificateFields,
+  keyAlgorithmToAlgCfg
+} from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import {
@@ -370,7 +374,7 @@ export const DigiCertCertificateAuthorityFns = ({
       privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
       const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-        name: `CN=${effectiveCommonName}`,
+        name: createDistinguishedName({ commonName: effectiveCommonName }),
         keys: leafKeys,
         signingAlgorithm: alg,
         ...(altNames.length > 0 && {

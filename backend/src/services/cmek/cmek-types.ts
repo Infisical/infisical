@@ -1,10 +1,11 @@
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 
 import { KmsKeyUsage } from "../kms/kms-types";
 
-export type TCmekKeyEncryptionAlgorithm = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+export type TCmekKeyEncryptionAlgorithm = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
 
 export type TCreateCmekDTO = {
   orgId: string;
@@ -94,4 +95,15 @@ export type TCmekVerifyDTO = {
   signature: string;
   signingAlgorithm: SigningAlgorithm;
   isDigest: boolean;
+};
+
+export type TCmekGenerateMacDTO = {
+  keyId: string;
+  data: string;
+};
+
+export type TCmekVerifyMacDTO = {
+  keyId: string;
+  data: string;
+  mac: string;
 };

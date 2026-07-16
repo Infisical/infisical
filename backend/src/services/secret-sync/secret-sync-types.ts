@@ -49,6 +49,7 @@ import {
 } from "@app/services/secret-sync/windmill";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TAppConnection } from "../app-connection/app-connection-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -187,6 +188,12 @@ import {
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
 import {
+  TRundeckSync,
+  TRundeckSyncInput,
+  TRundeckSyncListItem,
+  TRundeckSyncWithCredentials
+} from "./rundeck/rundeck-sync-types";
+import {
   TSnowflakeSync,
   TSnowflakeSyncInput,
   TSnowflakeSyncListItem,
@@ -252,6 +259,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -298,6 +306,7 @@ export type TSecretSyncWithCredentials =
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
+  | TRundeckSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -346,6 +355,7 @@ export type TSecretSyncInput =
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
+  | TRundeckSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -395,6 +405,7 @@ export type TSecretSyncListItem =
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
+  | TRundeckSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -463,6 +474,7 @@ export type TDeleteSecretSyncDTO = {
 export type TCheckDuplicateDestinationDTO = {
   destination: SecretSync;
   destinationConfig: Record<string, unknown>;
+  connectionId?: string | null;
   excludeSyncId?: string;
   projectId: string;
 };
@@ -559,10 +571,16 @@ export type TSecretMap = Record<
   }
 >;
 
-export type DestinationDuplicateCheckFn = (
-  existingConfig: Record<string, unknown>,
-  newConfig: Record<string, unknown>
-) => boolean;
+export type DuplicateCheckSyncFields = {
+  connectionId: string | null;
+  destinationConfig: Record<string, unknown>;
+};
+
+export type DestinationDuplicateCheckFn = (opts: {
+  existingSync: DuplicateCheckSyncFields;
+  newSync: DuplicateCheckSyncFields;
+  decryptConnection: (connectionId: string) => Promise<TAppConnection>;
+}) => Promise<boolean>;
 
 export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;

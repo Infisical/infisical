@@ -10,7 +10,7 @@ Infisical can be used as a Key Management System (KMS), referred to as Infisical
 
 By default your Infisical data such as projects and the data within them are encrypted at rest using Infisical's own KMS. This ensures that your data is secure and protected from unauthorized access.
 
-If you are on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/documentation/platform/kms/hsm-integration). 
+If you are on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/self-hosting/guides/hsm-integration). 
 
 <Note>
   Keys managed in KMS are not extractable from the platform. Additionally, data
@@ -46,7 +46,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
                 Specify your key details. Here's some guidance on each field:
 
                 - Name: A slug-friendly name for the key.
-                - Key Usage: The type of key to create (e.g `Encrypt/Decrypt` for encryption, and `Sign/Verify` for signing).
+                - Key Usage: The type of key to create (e.g `Encrypt/Decrypt` for encryption, `Sign/Verify` for signing, and `Generate/Verify MAC` for message authentication codes).
                 - Algorithm: The encryption algorithm associated with the key (e.g. `AES-GCM-256`).
                 - Description: An optional description of what the intended usage is for the key.
                 - Allow Export: Whether the raw key material can be exported later. When disabled, the key material can never leave Infisical, regardless of permissions. This cannot be changed after the key is created.
@@ -86,7 +86,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
                     "projectId": "<project-id>",
                     "name": "my-secret-key",
                     "description": "...",
-                    "encryptionAlgorithm": "aes-256-gcm"
+                    "algorithm": "aes-256-gcm"
                 }'
                 ```
 
@@ -213,7 +213,7 @@ In the following steps, we explore how to generate a key and use it to sign data
                 Specify your key details. Here's some guidance on each field:
 
                 - Name: A slug-friendly name for the key.
-                - Key Usage: The type of key to create (e.g `Encrypt/Decrypt` for encryption, and `Sign/Verify` for signing).
+                - Key Usage: The type of key to create (e.g `Encrypt/Decrypt` for encryption, `Sign/Verify` for signing, and `Generate/Verify MAC` for message authentication codes).
                 - Algorithm: The signing algorithm associated with the key (e.g. `RSA_4096`).
                 - Description: An optional description of what the intended usage is for the key.
 
@@ -366,6 +366,126 @@ In the following steps, we explore how to verify data using an existing key in I
     </Tab>
 </Tabs>
 
+## Message Authentication (MAC)
+
+HMAC keys generate and verify hash-based message authentication codes, which confirm the integrity and authenticity of data using a shared secret key. The algorithm you choose at key creation determines both the key length and the hash function, so every generate and verify operation on that key uses the same MAC algorithm.
+
+### Guide to Generating a MAC
+
+In the following steps, we explore how to generate a key and use it to produce a MAC.
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Creating a KMS key">
+                Navigate to Project > Key Management and tap on the **Add Key** button.
+                ![kms add key button](/images/platform/kms/infisical-kms/kms-add-key.png)
+
+                Specify your key details. Here's some guidance on each field:
+
+                - Name: A slug-friendly name for the key.
+                - Key Usage: Select `Generate/Verify MAC`.
+                - Algorithm: The HMAC algorithm associated with the key (e.g. `HMAC_SHA_256`). Supported algorithms are `HMAC_SHA_1`, `HMAC_SHA_224`, `HMAC_SHA_256`, `HMAC_SHA_384`, and `HMAC_SHA_512`.
+                - Description: An optional description of what the intended usage is for the key.
+                - Allow Export: Whether the raw key material can be exported later. When disabled, the key material can never leave Infisical, regardless of permissions. This cannot be changed after the key is created.
+            </Step>
+            <Step title="Generating a MAC with the KMS key">
+                Once your key is generated, open the options menu for the newly created key and select generate MAC.
+
+                Populate the text area with your data and tap on the Generate MAC button. The MAC algorithm is determined by the key.
+
+                <Note>
+                    If your data is already Base64 encoded make sure to toggle the respective switch on to avoid
+                    redundant encoding.
+                </Note>
+
+                Copy and store the MAC of your data.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        <Steps>
+            <Step title="Generating a MAC">
+                To generate a MAC, make an API request to the [Generate
+                MAC](/api-reference/endpoints/kms/mac/generate-mac) API endpoint,
+                specifying the key to use.
+
+                ### Sample request
+
+                ```bash Request
+                curl --request POST \
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/generate-mac \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "data": "SGVsbG8sIFdvcmxkIQ==" // base64 encoded data
+                }'
+                ```
+
+                ### Sample response
+
+                ```bash Response
+                {
+                    "mac": "5Vki892/TV/exl2K+mgAJyRblgCdLQpL//rr/rmT5rY=", // base64 encoded MAC
+                    "keyId": "62b2c14e-58af-4199-9842-02995c63edf9",
+                    "macAlgorithm": "HMAC_SHA_256"
+                }
+                ```
+            </Step>
+        </Steps>
+    </Tab>
+</Tabs>
+
+### Guide to Verifying a MAC
+
+In the following steps, we explore how to verify a MAC using an existing key in Infisical KMS.
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Accessing your key">
+                Navigate to Project > Key Management and open the options menu for the key used to generate the MAC
+                you want to verify.
+            </Step>
+            <Step title="Verifying a MAC with the KMS key">
+                Select verify MAC, paste your MAC and data into the text areas, and tap on the Verify MAC button.
+
+                Your verification result will be displayed. If the MAC is invalid, the "MAC Status" field will be `Invalid`.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        <Steps>
+            <Step title="Verifying a MAC">
+                To verify a MAC, make an API request to the [Verify
+                MAC](/api-reference/endpoints/kms/mac/verify-mac) API endpoint,
+                specifying the key to use.
+
+                ### Sample request
+
+                ```bash Request
+                curl --request POST \
+                --url https://app.infisical.com/api/v1/kms/keys/<key-id>/verify-mac \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "data": "SGVsbG8sIFdvcmxkIQ==", // base64 encoded data
+                    "mac": "5Vki892/TV/exl2K+mgAJyRblgCdLQpL//rr/rmT5rY=" // base64 encoded MAC
+                }'
+                ```
+
+                ### Sample response
+
+                ```bash Response
+                {
+                    "macValid": true,
+                    "keyId": "62b2c14e-58af-4199-9842-02995c63edf9",
+                    "macAlgorithm": "HMAC_SHA_256"
+                }
+                ```
+            </Step>
+        </Steps>
+    </Tab>
+</Tabs>
+
 ## Key Rotation
 
 Every KMS key tracks a version, starting at 1. Rotating a key generates new cryptographic key material for it and increments the version. The key keeps the same ID and name, so applications referencing the key do not need any changes.
@@ -385,8 +505,9 @@ To rotate a key:
 Keys can also be rotated programmatically via the [rotate key API endpoint](/api-reference/endpoints/kms/keys/rotate).
 
 <Note>
-  Rotation is supported for encrypt-decrypt keys with Infisical-managed key material. Sign-verify keys
-  should be rotated manually by creating a new key and updating your applications to use it.
+  Rotation is supported for encrypt-decrypt keys with Infisical-managed key material. Sign-verify and
+  generate-verify-MAC keys should be rotated manually by creating a new key and updating your applications
+  to use it.
 </Note>
 
 <Warning>
@@ -427,6 +548,14 @@ The exported file is a JSON array where each entry is one of the following shape
   "algorithm": "RSA_4096",
   "privateKey": "<base64-encoded private key>",
   "publicKey": "<base64-encoded public key>"
+}
+
+// Generate/Verify MAC key
+{
+  "name": "my-hmac-key",
+  "keyType": "generate-verify-mac",
+  "algorithm": "HMAC_SHA_256",
+  "keyMaterial": "<base64-encoded key material>"
 }
 ```
 
@@ -478,6 +607,13 @@ The exported file is a JSON array where each entry is one of the following shape
     **Encryption and decryption:**
     - `AES-256-GCM`
     - `AES-128-GCM`
+
+    **Message authentication (MAC):**
+    - `HMAC_SHA_1`
+    - `HMAC_SHA_224`
+    - `HMAC_SHA_256`
+    - `HMAC_SHA_384`
+    - `HMAC_SHA_512`
 
     <Info>
       ML-DSA algorithms are an enterprise feature. Self-hosted users can contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.

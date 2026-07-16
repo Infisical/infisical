@@ -238,6 +238,10 @@ const envSchema = z
     CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
+    // Secrets activation nudge tuning. Controls the org size/age window in which the
+    // member-invite activation banner appears.
+    SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
+    SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
@@ -388,6 +392,7 @@ const envSchema = z
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -402,6 +407,11 @@ const envSchema = z
 
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
+
+    // Forces outbound requests made through the SSRF-safe HTTP client to use
+    // direct egress (axios `proxy: false`), so the resolved-and-pinned target
+    // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
 
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),

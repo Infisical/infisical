@@ -18,6 +18,7 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -28,6 +29,8 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
   KMS_ROOT_CONFIG_UUID,
+  MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
+  MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
   verifyKeyTypeAndAlgorithm
 } from "@app/services/kms/kms-fns";
 
@@ -48,12 +51,14 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGenerateMacDTO,
   TGetBulkKeyMaterialDTO,
   TGetKeyMaterialDTO,
   TGetPublicKeyDTO,
   TImportKeyMaterialDTO,
   TSignWithKmsDTO,
   TUpdateProjectSecretManagerKmsKeyDTO,
+  TVerifyMacDTO,
   TVerifyWithKmsDTO
 } from "./kms-types";
 
@@ -143,6 +148,8 @@ export const kmsServiceFactory = ({
 
       // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
       await getPublicKeyFromPrivateKey(kmsKeyMaterial);
+    } else if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      kmsKeyMaterial = hmacService(encryptionAlgorithm as HmacAlgorithm).generateKeyMaterial();
     }
 
     if (!kmsKeyMaterial) {
@@ -216,7 +223,7 @@ export const kmsServiceFactory = ({
       if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
         throw new BadRequestError({
           message:
-            "Only encrypt-decrypt keys support rotation. Rotate sign-verify keys manually by creating a new key and updating your applications to use it."
+            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify or MAC key, create a new key and update your applications to use it."
         });
       }
 
@@ -646,6 +653,14 @@ export const kmsServiceFactory = ({
       }
     }
 
+    if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      if (key.length < MIN_HMAC_IMPORT_KEY_BYTE_LENGTH || key.length > MAX_HMAC_IMPORT_KEY_BYTE_LENGTH) {
+        throw new BadRequestError({
+          message: `Invalid HMAC key material length. Expected between ${MIN_HMAC_IMPORT_KEY_BYTE_LENGTH} and ${MAX_HMAC_IMPORT_KEY_BYTE_LENGTH} bytes, got ${key.length}.`
+        });
+      }
+    }
+
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
     const encryptedKeyMaterial = cipher.encrypt(key, ROOT_ENCRYPTION_KEY);
@@ -745,6 +760,46 @@ export const kmsServiceFactory = ({
       const publicKey = await getPublicKeyFromPrivateKey(kmsKey);
       const signatureValid = await verify(data, signature, publicKey, signingAlgorithm, isDigest);
       return Promise.resolve({ signatureValid, algorithm: signingAlgorithm });
+    };
+  };
+
+  const generateMac = async ({ kmsId }: Pick<TGenerateMacDTO, "kmsId">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const macAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as HmacAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, macAlgorithm, {
+      forceType: KmsKeyUsage.GENERATE_VERIFY_MAC
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const { generateMac: generate } = hmacService(macAlgorithm);
+    return ({ data }: Pick<TGenerateMacDTO, "data">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const mac = generate(data, kmsKey);
+      return { mac, algorithm: macAlgorithm };
+    };
+  };
+
+  const verifyMac = async ({ kmsId }: Pick<TVerifyMacDTO, "kmsId">) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+
+    const macAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as HmacAlgorithm;
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, macAlgorithm, {
+      forceType: KmsKeyUsage.GENERATE_VERIFY_MAC
+    });
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const { verifyMac: verify } = hmacService(macAlgorithm);
+    return ({ data, mac }: Pick<TVerifyMacDTO, "data" | "mac">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+      const macValid = verify(data, mac, kmsKey);
+      return { macValid, algorithm: macAlgorithm };
     };
   };
 
@@ -1358,6 +1413,8 @@ export const kmsServiceFactory = ({
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,
+    generateMac,
+    verifyMac,
     getPublicKey
   };
 };
