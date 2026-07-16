@@ -209,6 +209,9 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                       .map(([_, value]) => {
                         const isPqc = value.startsWith("ML_DSA");
                         const isDisabled = isPqc && !subscription?.kmsPqc;
+                        const isLegacyHmac =
+                          value === HmacAlgorithm.HMAC_SHA_1 ||
+                          value === HmacAlgorithm.HMAC_SHA_224;
                         return (
                           <SelectItem
                             value={value}
@@ -218,6 +221,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                             <div className="flex items-center gap-2">
                               <span className="uppercase">{value.replaceAll("-", " ")}</span>
                               {isDisabled && <Badge variant="info">Enterprise</Badge>}
+                              {isLegacyHmac && <Badge variant="warning">Legacy</Badge>}
                             </div>
                           </SelectItem>
                         );

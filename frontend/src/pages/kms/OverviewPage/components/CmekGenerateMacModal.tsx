@@ -19,7 +19,7 @@ import { useTimedReset } from "@app/hooks";
 import { TCmek, useCmekGenerateMac } from "@app/hooks/api/cmeks";
 
 const formSchema = z.object({
-  data: z.string(),
+  data: z.string().min(1, { message: "Data cannot be empty" }),
   isBase64Encoded: z.boolean()
 });
 

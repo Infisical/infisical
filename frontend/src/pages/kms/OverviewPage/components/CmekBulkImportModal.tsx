@@ -53,8 +53,7 @@ type ParsedKey = {
   isExportable?: boolean;
 };
 
-// Imported HMAC keys may be any reasonable length per RFC 2104; mirrors the backend bounds.
-const MIN_HMAC_KEY_BYTE_LENGTH = 1;
+const MIN_HMAC_KEY_BYTE_LENGTH = 16;
 const MAX_HMAC_KEY_BYTE_LENGTH = 1024;
 
 type ValidationError = {

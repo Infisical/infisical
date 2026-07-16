@@ -5,7 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { KmsKeyUsage } from "./kms-types";
 
-export const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 1;
+export const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 16;
 export const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
 
 export const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
