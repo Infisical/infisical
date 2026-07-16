@@ -236,6 +236,17 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { alarmChannelDALFactory } from "@app/services/alarm/alarm-channel-dal";
+import { alarmDALFactory } from "@app/services/alarm/alarm-dal";
+import { alarmEngineFactory } from "@app/services/alarm/alarm-engine";
+import { alarmHistoryDALFactory } from "@app/services/alarm/alarm-history-dal";
+import { alarmProviderRegistryFactory } from "@app/services/alarm/alarm-provider-registry";
+import { alarmQueueServiceFactory } from "@app/services/alarm/alarm-queue";
+import { alarmRecipientDALFactory } from "@app/services/alarm/alarm-recipient-dal";
+import { alarmRecipientResolverFactory } from "@app/services/alarm/alarm-recipient-resolver";
+import { alarmServiceFactory } from "@app/services/alarm/alarm-service";
+import { identityCredentialAlarmDALFactory } from "@app/services/alarm/providers/identity-credential-alarm-dal";
+import { identityCredentialAlarmProviderFactory } from "@app/services/alarm/providers/identity-credential-alarm-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -998,6 +1009,45 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const alarmDAL = alarmDALFactory(db);
+  const alarmChannelDAL = alarmChannelDALFactory(db);
+  const alarmRecipientDAL = alarmRecipientDALFactory(db);
+  const alarmHistoryDAL = alarmHistoryDALFactory(db);
+  const alarmProviderRegistry = alarmProviderRegistryFactory();
+  alarmProviderRegistry.register(
+    identityCredentialAlarmProviderFactory({
+      identityCredentialAlarmDAL: identityCredentialAlarmDALFactory(db),
+      permissionService
+    })
+  );
+  const alarmRecipientResolver = alarmRecipientResolverFactory({ userDAL, orgDAL, userGroupMembershipDAL });
+  const alarmEngine = alarmEngineFactory({
+    alarmChannelDAL,
+    alarmRecipientDAL,
+    alarmHistoryDAL,
+    alarmProviderRegistry,
+    alarmRecipientResolver,
+    kmsService,
+    orgDAL,
+    notificationService,
+    smtpService
+  });
+  const alarmQueue = alarmQueueServiceFactory({
+    cronJob,
+    queueService,
+    alarmDAL,
+    alarmProviderRegistry,
+    alarmEngine
+  });
+  const alarmService = alarmServiceFactory({
+    alarmDAL,
+    alarmChannelDAL,
+    alarmRecipientDAL,
+    alarmHistoryDAL,
+    alarmProviderRegistry,
+    kmsService
+  });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
@@ -3848,6 +3898,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
+  alarmQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pamDiscoveryService.init();
@@ -4035,6 +4086,7 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
+    alarm: alarmService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

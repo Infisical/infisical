@@ -13,6 +13,7 @@ import {
   AccessPamRequestBypassedTemplate,
   AccessPamRequestTemplate,
   AccountDeletionConfirmationTemplate,
+  AlarmNotificationTemplate,
   AuditLogMigrationAlertTemplate,
   AuditReportTemplate,
   CredentialRotationFailedTemplate,
@@ -122,7 +123,8 @@ export enum SmtpTemplates {
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
   HoneyTokenTriggered = "honeyTokenTriggered",
-  AuditReport = "auditReport"
+  AuditReport = "auditReport",
+  AlarmNotification = "alarmNotification"
 }
 
 export enum SmtpHost {
@@ -183,7 +185,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
   [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
-  [SmtpTemplates.AuditReport]: AuditReportTemplate
+  [SmtpTemplates.AuditReport]: AuditReportTemplate,
+  [SmtpTemplates.AlarmNotification]: AlarmNotificationTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

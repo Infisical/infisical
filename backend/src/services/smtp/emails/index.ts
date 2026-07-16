@@ -3,6 +3,7 @@ export * from "./AccessApprovalRequestUpdatedTemplate";
 export * from "./AccessPamRequestBypassedTemplate";
 export * from "./AccessPamRequestTemplate";
 export * from "./AccountDeletionConfirmationTemplate";
+export * from "./AlarmNotificationTemplate";
 export * from "./AuditLogMigrationAlertTemplate";
 export * from "./AuditReportTemplate";
 export * from "./CredentialRotationFailedTemplate";

@@ -41,6 +41,21 @@ import {
   TAiMcpServerUserCredentials,
   TAiMcpServerUserCredentialsInsert,
   TAiMcpServerUserCredentialsUpdate,
+  TAlarmChannels,
+  TAlarmChannelsInsert,
+  TAlarmChannelsUpdate,
+  TAlarmHistory,
+  TAlarmHistoryInsert,
+  TAlarmHistoryTarget,
+  TAlarmHistoryTargetInsert,
+  TAlarmHistoryTargetUpdate,
+  TAlarmHistoryUpdate,
+  TAlarmRecipients,
+  TAlarmRecipientsInsert,
+  TAlarmRecipientsUpdate,
+  TAlarms,
+  TAlarmsInsert,
+  TAlarmsUpdate,
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
@@ -1558,6 +1573,23 @@ declare module "knex/types/tables" {
       TResourceMetadata,
       TResourceMetadataInsert,
       TResourceMetadataUpdate
+    >;
+    [TableName.Alarm]: KnexOriginal.CompositeTableType<TAlarms, TAlarmsInsert, TAlarmsUpdate>;
+    [TableName.AlarmRecipient]: KnexOriginal.CompositeTableType<
+      TAlarmRecipients,
+      TAlarmRecipientsInsert,
+      TAlarmRecipientsUpdate
+    >;
+    [TableName.AlarmChannel]: KnexOriginal.CompositeTableType<
+      TAlarmChannels,
+      TAlarmChannelsInsert,
+      TAlarmChannelsUpdate
+    >;
+    [TableName.AlarmHistory]: KnexOriginal.CompositeTableType<TAlarmHistory, TAlarmHistoryInsert, TAlarmHistoryUpdate>;
+    [TableName.AlarmHistoryTarget]: KnexOriginal.CompositeTableType<
+      TAlarmHistoryTarget,
+      TAlarmHistoryTargetInsert,
+      TAlarmHistoryTargetUpdate
     >;
     [TableName.AppConnection]: KnexOriginal.CompositeTableType<
       TAppConnections,
