@@ -174,7 +174,7 @@ curl -X POST https://app.infisical.com/api/v1/proxied-services \
 
 Header-rewrite credentials use `"role": "header-rewrite"` with `headerName` and an optional `headerPrefix`, or `headerPurpose` (`username`/`password`) for basic auth.
 
-To reference a dynamic secret, replace `secretKey` on a credential with `dynamicSecretName` and `dynamicSecretField` (and an optional `dynamicSecretConfig`, e.g. `{ "namespace": "prod" }` for Kubernetes):
+To reference a dynamic secret, replace `secretKey` on a credential with `dynamicSecretName` and `dynamicSecretField`:
 
 ```json
 {

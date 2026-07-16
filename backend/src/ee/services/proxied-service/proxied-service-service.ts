@@ -10,15 +10,12 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor, TDynamicSecretWithMetadata } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { PersonalOverridesBehavior, SecretImportReferencesBehavior } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
-import { DYNAMIC_SECRET_PROVIDER_OUTPUTS } from "../dynamic-secret/providers/dynamic-secret-provider-outputs";
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -51,7 +48,6 @@ type TProxiedServiceServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 const toCredentialRow = (serviceId: string, credential: TProxiedServiceCredentialInput) => ({
@@ -65,23 +61,13 @@ const toCredentialRow = (serviceId: string, credential: TProxiedServiceCredentia
   placeholderValue: credential.placeholderValue ?? null,
   substitutionSurfaces: credential.substitutionSurfaces ?? null,
   dynamicSecretName: credential.dynamicSecretName ?? null,
-  dynamicSecretField: credential.dynamicSecretField ?? null,
-  dynamicSecretConfig: credential.dynamicSecretConfig ?? null
+  dynamicSecretField: credential.dynamicSecretField ?? null
 });
 
 type TCredentialRef = {
   secretKey?: string | null;
   dynamicSecretName?: string | null;
   dynamicSecretField?: string | null;
-  dynamicSecretConfig?: unknown;
-};
-
-const canonicalizeLeaseConfig = (config: unknown): string => {
-  if (!config || typeof config !== "object") return "";
-  const obj = config as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
-  if (!keys.length) return "";
-  return JSON.stringify(keys.map((k) => [k, obj[k]]));
 };
 
 export const proxiedServiceServiceFactory = ({
@@ -92,8 +78,7 @@ export const proxiedServiceServiceFactory = ({
   permissionService,
   licenseService,
   dynamicSecretDAL,
-  projectDAL,
-  kmsService
+  projectDAL
 }: TProxiedServiceServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
@@ -189,19 +174,6 @@ export const proxiedServiceServiceFactory = ({
     const dynamicCreds = credentials.filter((c) => Boolean(c.dynamicSecretName));
     if (!dynamicCreds.length) return;
 
-    const configByName = new Map<string, string>();
-    dynamicCreds.forEach((cred) => {
-      const name = cred.dynamicSecretName as string;
-      const canonical = canonicalizeLeaseConfig(cred.dynamicSecretConfig);
-      const seen = configByName.get(name);
-      if (seen !== undefined && seen !== canonical) {
-        throw new BadRequestError({
-          message: `Conflicting lease config for dynamic secret "${name}": all credentials referencing it must use the same config`
-        });
-      }
-      configByName.set(name, canonical);
-    });
-
     const plan = await licenseService.getPlan(orgId);
     if (!plan.dynamicSecret) {
       throw new BadRequestError({
@@ -226,10 +198,6 @@ export const proxiedServiceServiceFactory = ({
         subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata: ds.metadata })
       );
 
-      const registry = DYNAMIC_SECRET_PROVIDER_OUTPUTS[ds.type as DynamicSecretProviders];
-      if (!registry) {
-        throw new BadRequestError({ message: `Dynamic secret "${ds.name}" has an unsupported provider type` });
-      }
       const brokerableFields = BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.type as DynamicSecretProviders];
       if (!brokerableFields) {
         throw new BadRequestError({
@@ -241,57 +209,7 @@ export const proxiedServiceServiceFactory = ({
           message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${brokerableFields.join(", ") || "none"}`
         });
       }
-
-      if (cred.dynamicSecretConfig && Object.keys(cred.dynamicSecretConfig as object).length) {
-        if (!registry.leaseConfigSchema) {
-          throw new BadRequestError({
-            message: `Dynamic secret "${ds.name}" (${ds.type}) does not accept a lease config`
-          });
-        }
-        const parsed = registry.leaseConfigSchema.safeParse(cred.dynamicSecretConfig);
-        if (!parsed.success) {
-          throw new BadRequestError({
-            message: `Invalid lease config for dynamic secret "${ds.name}": ${parsed.error.issues.map((i) => i.message).join(", ")}`
-          });
-        }
-      }
     });
-
-    const sshCreds = dynamicCreds.filter(
-      (c) => byName.get(c.dynamicSecretName as string)?.type === DynamicSecretProviders.Ssh
-    );
-    if (sshCreds.length) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-      const allowedByName = new Map<string, Set<string>>();
-      const allowedPrincipals = (name: string) => {
-        if (!allowedByName.has(name)) {
-          const ds = byName.get(name) as TDynamicSecretWithMetadata;
-          const decrypted = JSON.parse(decryptor({ cipherTextBlob: Buffer.from(ds.encryptedInput) }).toString()) as {
-            principals?: string[];
-          };
-          allowedByName.set(name, new Set(decrypted.principals ?? []));
-        }
-        return allowedByName.get(name) as Set<string>;
-      };
-
-      sshCreds.forEach((cred) => {
-        const name = cred.dynamicSecretName as string;
-        const requested = (cred.dynamicSecretConfig as { principals?: string[] } | undefined)?.principals ?? [];
-        if (!requested.length) {
-          throw new BadRequestError({ message: `SSH dynamic secret "${name}" requires at least one principal` });
-        }
-        const allowed = allowedPrincipals(name);
-        const invalid = requested.filter((p) => !allowed.has(p));
-        if (invalid.length) {
-          throw new BadRequestError({
-            message: `Principal(s) not allowed for dynamic secret "${name}": ${invalid.join(", ")}`
-          });
-        }
-      });
-    }
   };
 
   const $decorateCredentialsWithLeaseAccess = async <T extends TCredentialRef>(
