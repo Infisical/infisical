@@ -64,6 +64,7 @@ import {
   fnUpdateMovedSecretReferences,
   fnUpdateSecretLinkedReferences
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
@@ -1753,6 +1754,7 @@ export const secretApprovalRequestServiceFactory = ({
     secretPath,
     environment,
     commitMessage,
+    updateMode,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
     if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
@@ -1855,7 +1857,6 @@ export const secretApprovalRequestServiceFactory = ({
         if (tagIds?.length) commitTagIds[secretKey] = tagIds;
       });
     }
-    // not secret approval for update operations
     const secretsToUpdate = data[SecretOperations.Update];
     if (secretsToUpdate && secretsToUpdate?.length) {
       const secretsToUpdateStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
@@ -1870,14 +1871,51 @@ export const secretApprovalRequestServiceFactory = ({
         if (el.tags?.length) existingTagIds[el.key] = el.tags.map((i) => i.id);
       });
 
-      if (secretsToUpdateStoredInDB.length !== secretsToUpdate.length)
-        throw new NotFoundError({
-          message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
-        });
+      const existingKeys = new Set(secretsToUpdateStoredInDB.map((el) => el.key));
+      const missingSecrets = secretsToUpdate.filter((el) => !existingKeys.has(el.secretKey));
 
-      // now find any secret that needs to update its name
-      // same process as above
-      const secretsWithNewName = secretsToUpdate.filter(({ newSecretName }) => Boolean(newSecretName));
+      if (missingSecrets.length) {
+        if (!updateMode || updateMode === SecretUpdateMode.FailOnNotFound) {
+          throw new NotFoundError({
+            message: `Secret does not exist: ${missingSecrets.map((el) => el.secretKey).join(", ")}`
+          });
+        }
+
+        if (updateMode === SecretUpdateMode.Upsert) {
+          commits.push(
+            ...missingSecrets.map((secret) => ({
+              op: SecretOperations.Create as const,
+              version: 1,
+              encryptedComment: setKnexStringValue(
+                secret.secretComment,
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              ),
+              encryptedValue: setKnexStringValue(
+                secret.secretValue,
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+              ),
+              skipMultilineEncoding: secret.skipMultilineEncoding,
+              key: secret.secretKey,
+              secretMetadata: JSON.stringify(
+                (secret.secretMetadata || [])?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("base64")
+                    : meta.value
+                }))
+              ),
+              type: SecretType.Shared
+            }))
+          );
+          missingSecrets.forEach(({ tagIds, secretKey }) => {
+            if (tagIds?.length) commitTagIds[secretKey] = tagIds;
+          });
+        }
+      }
+
+      const actualSecretsToUpdate = secretsToUpdate.filter((el) => existingKeys.has(el.secretKey));
+
+      const secretsWithNewName = actualSecretsToUpdate.filter(({ newSecretName }) => Boolean(newSecretName));
       if (secretsWithNewName.length) {
         const secrets = await secretV2BridgeDAL.findBySecretKeys(
           folderId,
@@ -1899,7 +1937,7 @@ export const secretApprovalRequestServiceFactory = ({
         secretsToUpdateStoredInDB.map(({ id }) => id)
       );
       commits.push(
-        ...secretsToUpdate.map(
+        ...actualSecretsToUpdate.map(
           ({
             newSecretName,
             secretKey,

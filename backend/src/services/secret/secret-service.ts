@@ -2400,6 +2400,7 @@ export const secretServiceFactory = ({
           actorId,
           actorOrgId,
           actorAuthMethod,
+          updateMode: mode,
           data: {
             [SecretOperations.Update]: inputSecrets.map((el) => ({
               tagIds: el.tagIds,
