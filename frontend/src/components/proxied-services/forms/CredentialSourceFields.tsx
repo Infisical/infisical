@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -6,7 +6,6 @@ import {
   ChevronRightIcon,
   FingerprintIcon,
   KeyIcon,
-  LockIcon,
   SearchIcon
 } from "lucide-react";
 
@@ -19,7 +18,10 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
@@ -33,6 +35,8 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawResponse } from "@app/hooks/api/secrets/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+
+import { BROKERABLE_DYNAMIC_SECRET_OUTPUTS } from "./brokerableDynamicSecrets";
 
 export type TCredentialSource = {
   secretKey?: string;
@@ -70,6 +74,30 @@ const fieldLabelFor = (provider: DynamicSecretProviders | undefined, fieldName: 
       ?.label ?? fieldName
   );
 };
+
+// not `disabled`: Radix disables pointer events, which would kill the hover tooltip
+const GreyedRow = ({
+  icon,
+  label,
+  reason
+}: {
+  icon: ReactNode;
+  label: string;
+  reason?: string;
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <DropdownMenuItem
+        className="cursor-not-allowed opacity-50"
+        onSelect={(e) => e.preventDefault()}
+      >
+        {icon}
+        <span className="truncate">{label}</span>
+      </DropdownMenuItem>
+    </TooltipTrigger>
+    {reason && <TooltipContent className="max-w-xs">{reason}</TooltipContent>}
+  </Tooltip>
+);
 
 export const CredentialSourceFields = ({
   projectId,
@@ -146,6 +174,7 @@ export const CredentialSourceFields = ({
 
   const dynamicOptions = useMemo<DynamicOption[]>(() => {
     return dynamicSecrets.map((ds) => {
+      const isBrokerable = Boolean(ds.type && BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.type]);
       const canLease = permission.can(
         ProjectPermissionDynamicSecretActions.Lease,
         subject(ProjectPermissionSub.DynamicSecrets, {
@@ -155,14 +184,15 @@ export const CredentialSourceFields = ({
         })
       );
       let disabledReason: string | undefined;
-      if (!hasDynamicSecretPlan) disabledReason = "Upgrade your plan to use dynamic secrets.";
+      if (!isBrokerable) disabledReason = "This dynamic secret type can't be brokered over HTTP.";
+      else if (!hasDynamicSecretPlan) disabledReason = "Upgrade your plan to use dynamic secrets.";
       else if (!canLease)
         disabledReason =
           "You need permission to lease this dynamic secret to use it in a proxied service.";
       return {
         name: ds.name,
         provider: ds.type,
-        isSelectable: hasDynamicSecretPlan && canLease,
+        isSelectable: isBrokerable && hasDynamicSecretPlan && canLease,
         disabledReason
       };
     });
@@ -292,56 +322,36 @@ export const CredentialSourceFields = ({
                   <span className="truncate">{s.name}</span>
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem key={s.name} isDisabled className="flex-col items-start gap-0.5">
-                  <span className="flex items-center gap-2">
-                    <LockIcon className="size-4 shrink-0 text-bunker-300" />
-                    <span className="truncate">{s.name}</span>
-                  </span>
-                  {s.disabledReason && (
-                    <span className="pl-6 text-xs text-muted">{s.disabledReason}</span>
-                  )}
-                </DropdownMenuItem>
+                <GreyedRow
+                  key={s.name}
+                  icon={<KeyIcon className="size-4 shrink-0 text-secret" />}
+                  label={s.name}
+                  reason={s.disabledReason}
+                />
               )
             )}
 
             {filteredDynamic.length > 0 && <DropdownMenuLabel>Dynamic Secrets</DropdownMenuLabel>}
             {filteredDynamic.map((ds) => {
-              const fields = ds.provider
-                ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[ds.provider].outputFields
-                : [];
-
               if (!ds.isSelectable) {
                 return (
-                  <DropdownMenuItem
+                  <GreyedRow
                     key={ds.name}
-                    isDisabled
-                    className="flex-col items-start gap-0.5"
-                  >
-                    <span className="flex items-center gap-2">
-                      <LockIcon className="size-4 shrink-0 text-bunker-300" />
-                      <span className="truncate">{ds.name}</span>
-                    </span>
-                    {ds.disabledReason && (
-                      <span className="pl-6 text-xs text-muted">{ds.disabledReason}</span>
-                    )}
-                  </DropdownMenuItem>
+                    icon={<FingerprintIcon className="size-4 shrink-0 text-dynamic-secret" />}
+                    label={ds.name}
+                    reason={ds.disabledReason}
+                  />
                 );
               }
 
-              if (fields.length <= 1) {
-                const field = fields[0];
-                return (
-                  <DropdownMenuItem
-                    key={ds.name}
-                    onSelect={() =>
-                      commit({ dynamicSecretName: ds.name, dynamicSecretField: field?.name ?? "" })
-                    }
-                  >
-                    <FingerprintIcon className="size-4 shrink-0 text-dynamic-secret" />
-                    <span className="truncate">{ds.name}</span>
-                  </DropdownMenuItem>
-                );
-              }
+              const fieldNames = ds.provider
+                ? (BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.provider] ?? [])
+                : [];
+              const fields = fieldNames.map((name) => ({
+                name,
+                label: fieldLabelFor(ds.provider, name)
+              }));
+              if (!fields.length) return null;
 
               return (
                 <DropdownMenuSub key={ds.name}>

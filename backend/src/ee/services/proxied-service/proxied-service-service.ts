@@ -22,6 +22,7 @@ import { DYNAMIC_SECRET_PROVIDER_OUTPUTS } from "../dynamic-secret/providers/dyn
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { BROKERABLE_DYNAMIC_SECRET_OUTPUTS } from "./proxied-service-brokerable-outputs";
 import { TProxiedServiceCredentialDALFactory } from "./proxied-service-credential-dal";
 import { TProxiedServiceDALFactory } from "./proxied-service-dal";
 import {
@@ -229,9 +230,15 @@ export const proxiedServiceServiceFactory = ({
       if (!registry) {
         throw new BadRequestError({ message: `Dynamic secret "${ds.name}" has an unsupported provider type` });
       }
-      if (!cred.dynamicSecretField || !registry.outputFields.includes(cred.dynamicSecretField)) {
+      const brokerableFields = BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.type as DynamicSecretProviders];
+      if (!brokerableFields) {
         throw new BadRequestError({
-          message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${registry.outputFields.join(", ") || "none"}`
+          message: `Dynamic secret "${ds.name}" (${ds.type}) can't be brokered over HTTP`
+        });
+      }
+      if (!cred.dynamicSecretField || !brokerableFields.includes(cred.dynamicSecretField)) {
+        throw new BadRequestError({
+          message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${brokerableFields.join(", ") || "none"}`
         });
       }
 
