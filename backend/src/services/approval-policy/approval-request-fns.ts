@@ -201,6 +201,7 @@ export const sendApprovalEmailsForStep = async (
   step: ApprovalPolicyStep,
   request: TApprovalRequests,
   emailContext: {
+    subjectLine: string;
     requestTypeLabel: string;
     projectName: string;
     approvalUrl: string;
@@ -225,7 +226,7 @@ export const sendApprovalEmailsForStep = async (
 
   await smtpService.sendMail({
     recipients,
-    subjectLine: "Approval Request",
+    subjectLine: emailContext.subjectLine,
     template: SmtpTemplates.PkiApprovalRequestNeedsReview,
     substitutions: {
       requesterName: request.requesterName,
@@ -263,6 +264,8 @@ export const notifyStepApprovers = async (
   // skip email when SITE_URL is unset, the review link would dead-link
   if (!cfg.SITE_URL) return;
 
+  const isCodeSigning = request.type === ApprovalPolicyType.CertCodeSigning;
+
   try {
     const project = await projectDAL.findById(request.projectId);
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}`;
@@ -271,8 +274,8 @@ export const notifyStepApprovers = async (
       step,
       request,
       {
-        requestTypeLabel:
-          request.type === ApprovalPolicyType.CertCodeSigning ? "code signing request" : "certificate request",
+        subjectLine: isCodeSigning ? "Code Signing Approval Request" : "Certificate Approval Request",
+        requestTypeLabel: isCodeSigning ? "code signing request" : "certificate request",
         projectName: project?.name ?? "Unknown project",
         approvalUrl
       },
