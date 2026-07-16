@@ -872,6 +872,7 @@ export const certificateApprovalServiceFactory = (
       country?: string;
       state?: string;
       locality?: string;
+      domainComponents?: string[];
       basicConstraints?: { isCA: boolean; pathLength?: number };
     },
     certificateRequestId: string,
@@ -929,6 +930,7 @@ export const certificateApprovalServiceFactory = (
           state: certificateRequestInput.state,
           locality: certificateRequestInput.locality,
           ou: certificateRequestInput.organizationalUnit,
+          domainComponents: certificateRequestInput.domainComponents,
           basicConstraints: certificateRequestInput.basicConstraints,
           pathLength: certificateRequestInput.basicConstraints?.pathLength,
           tx

@@ -889,13 +889,14 @@ export const certificateV3ServiceFactory = ({
       }
     )) as TCertRequestPolicy | null;
 
+    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
 
-      const withDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
       const mappedCertificateRequestForValidation = mapEnumsForValidation({
-        ...withDefaults,
-        subjectAlternativeNames: withDefaults.altNames
+        ...certificateRequestWithDefaults,
+        subjectAlternativeNames: certificateRequestWithDefaults.altNames
       });
 
       const policy = await certificatePolicyService.getPolicyById({
@@ -940,27 +941,30 @@ export const certificateV3ServiceFactory = ({
             projectId: profile.projectId,
             profileId: profile.id,
             applicationId: applicationId ?? null,
-            commonName: certificateRequest.commonName || null,
-            altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || null,
-            notBefore: certificateRequest.notBefore || null,
-            notAfter: certificateRequest.notAfter || null,
-            keyAlgorithm: certificateRequest.keyAlgorithm || null,
-            signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
+            commonName: certificateRequestWithDefaults.commonName || null,
+            altNames: certificateRequestWithDefaults.altNames
+              ? JSON.stringify(certificateRequestWithDefaults.altNames)
+              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || null,
+            extendedKeyUsages:
+              convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || null,
+            notBefore: certificateRequestWithDefaults.notBefore || null,
+            notAfter: certificateRequestWithDefaults.notAfter || null,
+            keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm || null,
+            signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm || null,
             ttl: resolvedTtl,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            organization: certificateRequest.organization || null,
-            organizationalUnit: certificateRequest.organizationalUnit || null,
-            country: certificateRequest.country || null,
-            state: certificateRequest.state || null,
-            locality: certificateRequest.locality || null,
-            domainComponents: certificateRequest.domainComponents
-              ? certificateRequest.domainComponents.join(",")
+            organization: certificateRequestWithDefaults.organization || null,
+            organizationalUnit: certificateRequestWithDefaults.organizationalUnit || null,
+            country: certificateRequestWithDefaults.country || null,
+            state: certificateRequestWithDefaults.state || null,
+            locality: certificateRequestWithDefaults.locality || null,
+            domainComponents: certificateRequestWithDefaults.domainComponents
+              ? certificateRequestWithDefaults.domainComponents.join(",")
               : null,
-            basicConstraints: certificateRequest.basicConstraints
-              ? JSON.stringify(certificateRequest.basicConstraints)
+            basicConstraints: certificateRequestWithDefaults.basicConstraints
+              ? JSON.stringify(certificateRequestWithDefaults.basicConstraints)
               : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
@@ -981,22 +985,22 @@ export const certificateV3ServiceFactory = ({
           profileId,
           profileName: profile.slug,
           certificateRequest: {
-            commonName: certificateRequest.commonName,
-            organization: certificateRequest.organization,
-            organizationalUnit: certificateRequest.organizationalUnit,
-            country: certificateRequest.country,
-            state: certificateRequest.state,
-            locality: certificateRequest.locality,
-            domainComponents: certificateRequest.domainComponents,
-            keyUsages: certificateRequest.keyUsages,
-            extendedKeyUsages: certificateRequest.extendedKeyUsages,
-            altNames: certificateRequest.altNames,
-            validity: certificateRequest.validity,
-            notBefore: certificateRequest.notBefore?.toISOString(),
-            notAfter: certificateRequest.notAfter?.toISOString(),
-            signatureAlgorithm: certificateRequest.signatureAlgorithm,
-            keyAlgorithm: certificateRequest.keyAlgorithm,
-            basicConstraints: certificateRequest.basicConstraints
+            commonName: certificateRequestWithDefaults.commonName,
+            organization: certificateRequestWithDefaults.organization,
+            organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+            country: certificateRequestWithDefaults.country,
+            state: certificateRequestWithDefaults.state,
+            locality: certificateRequestWithDefaults.locality,
+            domainComponents: certificateRequestWithDefaults.domainComponents,
+            keyUsages: certificateRequestWithDefaults.keyUsages,
+            extendedKeyUsages: certificateRequestWithDefaults.extendedKeyUsages,
+            altNames: certificateRequestWithDefaults.altNames,
+            validity: certificateRequestWithDefaults.validity,
+            notBefore: certificateRequestWithDefaults.notBefore?.toISOString(),
+            notAfter: certificateRequestWithDefaults.notAfter?.toISOString(),
+            signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm,
+            keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm,
+            basicConstraints: certificateRequestWithDefaults.basicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -1054,7 +1058,6 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation({
       ...certificateRequestWithDefaults,
       subjectAlternativeNames: certificateRequestWithDefaults.altNames
