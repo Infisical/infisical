@@ -554,7 +554,12 @@ export const secretV2BridgeServiceFactory = ({
     let secret;
     let secretId: string;
     if (inputSecret.type === SecretType.Personal) {
-      // Ther personal override rule was not added here to avoid regression with existing personal overrides
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Edit, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName
+      });
+
       const personalSecretToModify = await secretDAL.findOne({
         key: inputSecret.secretName,
         type: SecretType.Personal,
@@ -877,16 +882,23 @@ export const secretV2BridgeServiceFactory = ({
         throw new BadRequestError({ message: "Cannot delete honey token secrets" });
     }
 
-    if (secretToDelete.type !== SecretType.Personal)
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Delete,
-        subject(ProjectPermissionSub.Secrets, {
-          environment,
-          secretPath,
-          secretName: secretToDelete.key,
-          secretTags: secretToDelete.tags?.map((el) => el.slug)
-        })
-      );
+    if (secretToDelete.type === SecretType.Personal) {
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Delete, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName
+      });
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.Delete,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: secretToDelete.key,
+        secretTags: secretToDelete.tags?.map((el) => el.slug)
+      })
+    );
 
     try {
       const deletedSecret = await secretDAL.transaction(async (tx) => {
