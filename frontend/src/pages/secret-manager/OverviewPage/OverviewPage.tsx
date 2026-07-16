@@ -36,6 +36,11 @@ import {
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  CreateProxiedServiceModal,
+  DeleteProxiedServiceModal,
+  EditProxiedServiceModal
+} from "@app/components/proxied-services";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
@@ -122,6 +127,7 @@ import {
   usePagination,
   usePopUp,
   useResetPageHelper,
+  useSecretsActivationNudge,
   useToggle
 } from "@app/hooks";
 import {
@@ -157,6 +163,7 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/migration";
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests
@@ -186,6 +193,7 @@ import {
   useDynamicSecretOverview,
   useFolderOverview,
   useHoneyTokenOverview,
+  useProxiedServiceOverview,
   useSecretImportOverview,
   useSecretOverview,
   useSecretRotationOverview
@@ -216,6 +224,7 @@ import {
 } from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { InviteMembersModal } from "./components/InviteMembersModal";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -228,6 +237,7 @@ import {
   FolderBreadcrumb,
   FolderTableRow,
   HoneyTokenTableRow,
+  ProxiedServiceTableRow,
   ResourceCount,
   ResourceFilter,
   ResourceSearchInput,
@@ -258,7 +268,8 @@ export enum RowType {
   Secret = "secret",
   SecretRotation = "rotation",
   SecretImport = "import",
-  HoneyToken = "honeyToken"
+  HoneyToken = "honeyToken",
+  ProxiedService = "proxiedService"
 }
 
 type Filter = {
@@ -271,7 +282,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.Secret]: false,
   [RowType.SecretRotation]: false,
   [RowType.SecretImport]: false,
-  [RowType.HoneyToken]: false
+  [RowType.HoneyToken]: false,
+  [RowType.ProxiedService]: false
 };
 
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -661,6 +673,9 @@ const OverviewPageContent = () => {
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
+      includeProxiedServices: isFilteredByResources
+        ? (filter[RowType.ProxiedService] ?? true)
+        : true,
       search: searchFilter,
       tags: tagFilter,
       limit,
@@ -675,10 +690,12 @@ const OverviewPageContent = () => {
     dynamicSecrets,
     secretRotations,
     honeyTokens,
+    proxiedServices,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
     totalSecretRotationCount,
+    totalProxiedServiceCount,
     totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
@@ -687,9 +704,19 @@ const OverviewPageContent = () => {
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
     totalUniqueHoneyTokensInPage,
+    totalUniqueProxiedServicesInPage,
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
+
+  // Growth nudge: when the user creates a secret, ask the backend whether to surface the
+  // "Invite your team" modal. The check runs at most once per session, opens the modal only if
+  // the backend says so, and is a no-op on failure.
+  const {
+    popUp: invitePopUp,
+    handlePopUpToggle: handleInvitePopUpToggle,
+    checkActivation: checkSecretsActivation
+  } = useSecretsActivationNudge();
 
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
@@ -731,6 +758,9 @@ const OverviewPageContent = () => {
 
   const { honeyTokenNames, isHoneyTokenPresentInEnv, getHoneyTokenByName } =
     useHoneyTokenOverview(honeyTokens);
+
+  const { proxiedServiceNames, isProxiedServicePresentInEnv, getProxiedServiceByName } =
+    useProxiedServiceOverview(proxiedServices);
 
   const { secretImportNames, isSecretImportInEnv, getSecretImportByEnv, getSecretImportsForEnv } =
     useSecretImportOverview(overview?.imports);
@@ -857,6 +887,9 @@ const OverviewPageContent = () => {
     "addDynamicSecret",
     "addSecretRotation",
     "addHoneyToken",
+    "addProxiedService",
+    "editProxiedService",
+    "deleteProxiedService",
     "editSecretRotation",
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
@@ -1656,6 +1689,9 @@ const OverviewPageContent = () => {
         type: "success",
         text: "Successfully created secret"
       });
+
+      // The user just created a secret: check whether to surface the activation nudge.
+      checkSecretsActivation();
     }
   };
 
@@ -2108,8 +2144,23 @@ const OverviewPageContent = () => {
           : "Changes saved successfully",
         type: requiresApproval ? "info" : "success"
       });
+
+      // If the commit actually created secrets (not just an approval request), check whether to
+      // surface the activation nudge.
+      const createdSecret = changes.secrets.some((s) => s.type === PendingAction.Create);
+      if (createdSecret && !requiresApproval) {
+        checkSecretsActivation();
+      }
     },
-    [singleVisibleEnv, projectId, secretPath, isProtectedBranch, queryClient, createCommit]
+    [
+      singleVisibleEnv,
+      projectId,
+      secretPath,
+      isProtectedBranch,
+      queryClient,
+      createCommit,
+      checkSecretsActivation
+    ]
   );
 
   // Batch mode: toggle
@@ -2360,16 +2411,17 @@ const OverviewPageContent = () => {
     if (environments.length === 0) return [];
 
     const allImportedBy = environments.flatMap((env) => env.importedBy);
-    const groupedBySlug: Record<string, ProjectSecretsImportedBy[]> = {};
+    // Group by (projectId, envSlug) so cross-project items with the same env name stay separate
+    const groupedByKey: Record<string, ProjectSecretsImportedBy[]> = {};
 
     allImportedBy.forEach((item) => {
-      const { slug } = item.environment;
-      if (!groupedBySlug[slug]) groupedBySlug[slug] = [];
-      groupedBySlug[slug].push(item);
+      const key = `${item.project?.id ?? ""}::${item.environment.slug}`;
+      if (!groupedByKey[key]) groupedByKey[key] = [];
+      groupedByKey[key].push(item);
     });
 
-    const mergedImportedBy = Object.values(groupedBySlug).map((group) => {
-      const { environment } = group[0];
+    const mergedImportedBy = Object.values(groupedByKey).map((group) => {
+      const { environment, project } = group[0];
       const allFolders = group.flatMap((item) => item.folders);
 
       const foldersByName: Record<string, (typeof allFolders)[number][]> = {};
@@ -2412,6 +2464,7 @@ const OverviewPageContent = () => {
 
       return {
         environment,
+        ...(project ? { project } : {}),
         folders: mergedFolders.filter(
           (folder) => folder.isImported || (folder.secrets && folder.secrets.length > 0)
         )
@@ -2463,6 +2516,7 @@ const OverviewPageContent = () => {
     dynamicSecretNames.length === 0 &&
     secretRotationNames.length === 0 &&
     honeyTokenNames.length === 0 &&
+    proxiedServiceNames.length === 0 &&
     secretImportNames.length === 0 &&
     !isOverviewLoading;
 
@@ -2679,6 +2733,16 @@ const OverviewPageContent = () => {
                       }
                       handlePopUpOpen("upgradePlan", {
                         text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
+                      });
+                    }}
+                    onAddProxiedService={() => {
+                      if (subscription?.secretsBrokering) {
+                        handlePopUpOpen("addProxiedService");
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        isEnterpriseFeature: true,
+                        text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
                       });
                     }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
@@ -3315,6 +3379,22 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
+                          {proxiedServiceNames.map((proxiedServiceName, index) => (
+                            <ProxiedServiceTableRow
+                              key={`overview-ps-${proxiedServiceName}-${index + 1}`}
+                              proxiedServiceName={proxiedServiceName}
+                              environments={visibleEnvs}
+                              isProxiedServiceInEnv={isProxiedServicePresentInEnv}
+                              getProxiedServiceByName={getProxiedServiceByName}
+                              tableWidth={tableWidth}
+                              onEdit={(proxiedService) =>
+                                handlePopUpOpen("editProxiedService", proxiedService)
+                              }
+                              onDelete={(proxiedService) =>
+                                handlePopUpOpen("deleteProxiedService", proxiedService)
+                              }
+                            />
+                          ))}
                           {mergedSecKeys.map((key, index) => (
                             <SecretTableRow
                               isSelected={
@@ -3351,7 +3431,8 @@ const OverviewPageContent = () => {
                                 (totalUniqueSecretsInPage || 0) -
                                 (totalUniqueSecretImportsInPage || 0) -
                                 (totalUniqueSecretRotationsInPage || 0) -
-                                (totalUniqueHoneyTokensInPage || 0),
+                                (totalUniqueHoneyTokensInPage || 0) -
+                                (totalUniqueProxiedServicesInPage || 0),
                               0
                             )}
                           />
@@ -3375,6 +3456,7 @@ const OverviewPageContent = () => {
                       folderCount={totalFolderCount}
                       importCount={totalImportCount}
                       secretRotationCount={totalSecretRotationCount}
+                      proxiedServiceCount={totalProxiedServiceCount}
                     />
                   }
                   count={totalCount}
@@ -3403,6 +3485,7 @@ const OverviewPageContent = () => {
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
+            onSecretCreated={checkSecretsActivation}
             onBatchSecretCreate={(params) => {
               addPendingChange(
                 {
@@ -3621,6 +3704,24 @@ const OverviewPageContent = () => {
         environments={userAvailableEnvs}
         isOpen={popUp.addHoneyToken.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addHoneyToken", isOpen)}
+      />
+      <CreateProxiedServiceModal
+        isOpen={popUp.addProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addProxiedService", isOpen)}
+        projectId={projectId}
+        environment={singleEnvSlug}
+        secretPath={secretPath}
+      />
+      <EditProxiedServiceModal
+        isOpen={popUp.editProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editProxiedService", isOpen)}
+        proxiedService={popUp.editProxiedService.data as TDashboardProxiedService}
+        projectId={projectId}
+      />
+      <DeleteProxiedServiceModal
+        isOpen={popUp.deleteProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteProxiedService", isOpen)}
+        proxiedService={popUp.deleteProxiedService.data as TDashboardProxiedService}
       />
       <EditSecretRotationV2Modal
         isOpen={popUp.editSecretRotation.isOpen}
@@ -3860,6 +3961,9 @@ const OverviewPageContent = () => {
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
           secretPath={pathPolicies[0].secretPath}
         />
+      )}
+      {invitePopUp.inviteMembers.isOpen && (
+        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
       )}
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm

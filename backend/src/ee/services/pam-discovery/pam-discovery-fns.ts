@@ -1,70 +1,110 @@
-import { TPamDiscoverySources } from "@app/db/schemas";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { BadRequestError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
 
-import { getActiveDirectorySourceListItem } from "./active-directory/active-directory-discovery-fns";
-import { TPamDiscoveryConfiguration, TPamDiscoveryCredentials, TPamDiscoverySource } from "./pam-discovery-types";
+import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 
-export const listDiscoverySourceOptions = () => {
-  return [getActiveDirectorySourceListItem()].sort((a, b) => a.name.localeCompare(b.name));
+type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+
+const SWEEP_RESPONSE_TIMEOUT_MS = 10 * 60 * 1000;
+
+// runs a command on the target via the gateway's ssh-exec handler; the gateway performs the ssh login (any auth
+// method, including certificates), so the backend never needs an ssh client of its own
+export const sshExecWithGateway = async (
+  targetHost: string,
+  targetPort: number,
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep,
+  command: string,
+  credentials: SshExecCredentials,
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<string> => {
+  const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
+  const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost: host,
+    targetPort
+  });
+  if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
+
+  return withGatewayV2Proxy(
+    async (proxyPort) => {
+      const response = await callSshExec({ port: proxyPort, command, credentials, timeoutMs, signal });
+      if (!response.ok) throw new Error(response.errorMessage);
+      return response.result.stdout;
+    },
+    {
+      protocol: GatewayProxyProtocol.Discovery,
+      relayHost: platform.relayHost,
+      gateway: platform.gateway,
+      relay: platform.relay
+    }
+  );
 };
 
-export const encryptDiscoveryCredentials = async ({
-  projectId,
-  credentials,
-  kmsService
-}: {
-  projectId: string;
-  credentials: TPamDiscoveryCredentials;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.SecretManager,
-    projectId
+// opens a gateway TCP proxy to targetHost:targetPort and runs the operation against the local proxy port
+export const executeWithGateway = async <T>(
+  targetHost: string,
+  targetPort: number,
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep,
+  operation: (proxyPort: number) => Promise<T>
+): Promise<T> => {
+  const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
+  const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost: host,
+    targetPort
   });
+  if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
 
-  const { cipherTextBlob } = encryptor({
-    plainText: Buffer.from(JSON.stringify(credentials))
+  return withGatewayV2Proxy((proxyPort) => operation(proxyPort), {
+    protocol: GatewayProxyProtocol.Tcp,
+    relayHost: platform.relayHost,
+    gateway: platform.gateway,
+    relay: platform.relay
   });
-
-  return cipherTextBlob;
 };
 
-export const decryptDiscoveryCredentials = async ({
-  projectId,
-  encryptedCredentials,
-  kmsService
-}: {
-  projectId: string;
-  encryptedCredentials: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.SecretManager,
-    projectId
+// one gateway round-trip that TCP-probes every target and returns the reachable "host:port" set,
+// so a scan can filter a whole CIDR to live hosts
+export const sweepReachableTargets = async (
+  targets: { host: string; port: number }[],
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep,
+  dialTimeoutMs: number,
+  signal?: AbortSignal
+): Promise<Set<string>> => {
+  if (!targets.length) return new Set();
+
+  const [host] = await verifyHostInputValidity({ host: targets[0].host, isGateway: true, isDynamicSecret: false });
+  const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost: host,
+    targetPort: targets[0].port
   });
+  if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
 
-  const decryptedPlainTextBlob = decryptor({
-    cipherTextBlob: encryptedCredentials
-  });
+  const hostPorts = targets.map((t) => `${t.host}:${t.port}`);
 
-  return JSON.parse(decryptedPlainTextBlob.toString()) as TPamDiscoveryCredentials;
-};
-
-export const decryptDiscoverySource = async (
-  source: TPamDiscoverySources,
-  projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-) => {
-  return {
-    ...source,
-    discoveryConfiguration: source.discoveryConfiguration as TPamDiscoveryConfiguration,
-    discoveryCredentials: source.encryptedDiscoveryCredentials
-      ? await decryptDiscoveryCredentials({
-          encryptedCredentials: source.encryptedDiscoveryCredentials,
-          projectId,
-          kmsService
-        })
-      : null
-  } as TPamDiscoverySource;
+  return withGatewayV2Proxy(
+    (proxyPort) =>
+      callPortSweep({
+        port: proxyPort,
+        targets: hostPorts,
+        dialTimeoutMs,
+        responseTimeoutMs: SWEEP_RESPONSE_TIMEOUT_MS,
+        signal
+      }),
+    {
+      protocol: GatewayProxyProtocol.Discovery,
+      relayHost: platform.relayHost,
+      gateway: platform.gateway,
+      relay: platform.relay,
+      longLived: true
+    }
+  );
 };

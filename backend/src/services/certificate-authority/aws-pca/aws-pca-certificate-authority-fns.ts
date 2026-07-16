@@ -48,7 +48,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { createDistinguishedName, extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   API_CSR_PASSTHROUGH_TEMPLATE_ARN,
@@ -663,14 +663,17 @@ export const AwsPcaCertificateAuthorityFns = ({
         );
       }
 
-      const dnParts: string[] = [];
-      if (commonName) dnParts.push(`CN=${commonName}`);
-      if (organization) dnParts.push(`O=${organization}`);
-      if (organizationalUnit) dnParts.push(`OU=${organizationalUnit}`);
-      if (locality) dnParts.push(`L=${locality}`);
-      if (state) dnParts.push(`ST=${state}`);
-      if (country) dnParts.push(`C=${country}`);
-      const subjectDn = dnParts.join(", ") || `CN=${commonName}`;
+      // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
+      // special characters in the attributes cannot inject additional RDNs.
+      const subjectDn =
+        createDistinguishedName({
+          commonName,
+          organization,
+          ou: organizationalUnit,
+          locality,
+          province: state,
+          country
+        }) || `CN=${commonName}`;
 
       const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
         name: subjectDn,

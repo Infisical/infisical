@@ -135,7 +135,7 @@ export const ChangeEmailSection = () => {
     setOtpStep("newEmail");
 
     createNotification({
-      text: "Confirmed. A second verification code has been sent to your new email address.",
+      text: "Confirmed. Check the inbox of your new email address to continue.",
       type: "success"
     });
   };
@@ -248,6 +248,13 @@ export const ChangeEmailSection = () => {
                 className="mb-4"
               />
             </div>
+            {otpStep === "newEmail" && (
+              <p className="text-center text-xs text-mineshaft-400">
+                Didn&apos;t get a code? If the new address already belongs to another Infisical
+                account, we&apos;ve sent it an email explaining why the change can&apos;t be
+                completed.
+              </p>
+            )}
             <div className="flex gap-2">
               <Button colorSchema="secondary" variant="outline" onClick={closeOtpModal}>
                 Cancel

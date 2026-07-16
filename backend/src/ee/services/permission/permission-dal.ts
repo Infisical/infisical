@@ -429,6 +429,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.scopeResourceType`, resourceType)
         .where(`${TableName.Membership}.scopeResourceId`, resourceId)
+        .where(`${TableName.Membership}.isActive`, true)
         .where((qb) => {
           if (actorType === ActorType.USER) {
             void qb

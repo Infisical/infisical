@@ -1,395 +1,362 @@
 import { Knex } from "knex";
-import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
-import { OrderByDirection } from "@app/lib/types";
-import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
+import { TableName, TPamAccounts } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
+import { ormify } from "@app/lib/knex";
 
-import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
+import { PamAccountType } from "../pam/pam-enums";
+import {
+  ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL,
+  ACCOUNT_WILL_ROTATE_SQL,
+  computeNextRotationAt,
+  getRotationReadiness,
+  ROTATABLE_ACCOUNT_TYPES,
+  rotationJitterCapSeconds
+} from "../pam-account-rotation/pam-rotation-fns";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { ACCOUNT_TYPE_CONFIGS } from "./pam-account-schemas";
+
+const ROTATABLE_TYPE_VALUES = ROTATABLE_ACCOUNT_TYPES as readonly string[];
+
+export type TPamRotationCandidate = {
+  id: string;
+  name: string;
+  folderId: string | null;
+  folderName: string | null;
+  accountType: string;
+  encryptedConnectionDetails: Buffer;
+};
+
+const recordingRequiredAccountTypes = [PamAccountType.Windows, PamAccountType.WindowsAd]
+  .map((type) => `'${type}'`)
+  .join(", ");
+
+const gatewayExemptAccountTypes = (Object.entries(ACCOUNT_TYPE_CONFIGS) as [string, { requiresGateway?: boolean }][])
+  .filter(([, config]) => config.requiresGateway === false)
+  .map(([type]) => `'${type}'`)
+  .join(", ");
+
+export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
+  `(
+    ("${templateTable}"."type" in (${gatewayExemptAccountTypes})
+      or "${accountTable}"."gatewayId" is not null or "${accountTable}"."gatewayPoolId" is not null
+      or "${templateTable}"."gatewayId" is not null or "${templateTable}"."gatewayPoolId" is not null)
+    and "${accountTable}"."credentialConfigured" = true
+    and ("${templateTable}"."type" not in (${recordingRequiredAccountTypes})
+      or (
+        "${templateTable}"."settings"->>'recordingStorageBackend' = '${PamRecordingStorageBackend.AwsS3}'
+        and ("${accountTable}"."recordingConnectionId" is not null
+          or "${templateTable}"."recordingConnectionId" is not null)
+        and coalesce(
+          "${accountTable}"."settingsOverrides"->'recordingS3Config',
+          "${templateTable}"."settings"->'recordingS3Config'
+        ) is not null
+      ))
+  )`;
+
+type TPamAccountTemplateInheritedFields = {
+  credentialConfigured: boolean;
+  templateGatewayId: string | null;
+  templateGatewayPoolId: string | null;
+  templateRecordingConnectionId: string | null;
+  templateSettings: unknown;
+  templatePolicies: unknown;
+};
+
+export type TPamAccountListItem = Pick<
+  TPamAccounts,
+  | "id"
+  | "name"
+  | "description"
+  | "folderId"
+  | "projectId"
+  | "templateId"
+  | "gatewayId"
+  | "gatewayPoolId"
+  | "recordingConnectionId"
+  | "settingsOverrides"
+  | "createdAt"
+  | "updatedAt"
+> &
+  TPamAccountTemplateInheritedFields & {
+    accountType: string;
+    templateName: string;
+    folderName: string | null;
+  };
+
+export type TPamAccountDetail = TPamAccounts &
+  TPamAccountTemplateInheritedFields & {
+    accountType: string;
+    templateName: string;
+    templatePolicies: unknown;
+    templateSettings: unknown;
+    folderName: string | null;
+  };
 
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
 export const pamAccountDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamAccount);
 
-  const findByProjectIdWithParentDetails = async (
-    {
-      projectId,
-      folderId,
-      accountView = PamAccountView.Nested,
-      search,
-      limit,
-      offset = 0,
-      orderBy = PamAccountOrderBy.Name,
-      orderDirection = OrderByDirection.ASC,
-      filterResourceIds,
-      filterDomainIds,
-      metadataFilter
-    }: {
-      projectId: string;
-      folderId?: string | null;
-      accountView?: PamAccountView;
+  const findAccessible = async (
+    projectId: string,
+    accessibleFolderIds: string[],
+    accessibleAccountIds: string[],
+    filters?: {
+      folderId?: string;
+      templateId?: string;
+      accountType?: string;
       search?: string;
-      limit?: number;
+      onlyAccessible?: boolean;
       offset?: number;
-      orderBy?: PamAccountOrderBy;
-      orderDirection?: OrderByDirection;
-      filterResourceIds?: string[];
-      filterDomainIds?: string[];
-      metadataFilter?: Array<{ key: string; value?: string }>;
+      limit?: number;
     },
     tx?: Knex
   ) => {
-    try {
-      const dbInstance = tx || db.replicaNode();
-      const query = dbInstance(TableName.PamAccount)
-        .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-        .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
-        .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
-        .where(`${TableName.PamAccount}.projectId`, projectId);
-
-      if (accountView === PamAccountView.Nested) {
-        if (folderId) {
-          void query.where(`${TableName.PamAccount}.folderId`, folderId);
-        } else {
-          void query.whereNull(`${TableName.PamAccount}.folderId`);
+    const baseQuery = (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .where(`${TableName.PamAccount}.projectId`, projectId)
+      .where((builder) => {
+        if (accessibleFolderIds.length > 0) {
+          void builder.whereIn(`${TableName.PamAccount}.folderId`, accessibleFolderIds);
         }
-      }
-
-      if (search) {
-        // escape special characters (`%`, `_`) and the escape character itself (`\`)
-        const escapedSearch = search
-          .replace(new RE2(/\\/g), "\\\\")
-          .replace(new RE2(/%/g), "\\%")
-          .replace(new RE2(/_/g), "\\_");
-        const pattern = `%${escapedSearch}%`;
-        void query.where((q) => {
-          void q
-            .whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "name", pattern])
-            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamResource, "name", pattern])
-            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamDomain, "name", pattern])
-            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "description", pattern]);
-        });
-      }
-
-      const hasResourceFilter = filterResourceIds && filterResourceIds.length > 0;
-      const hasDomainFilter = filterDomainIds && filterDomainIds.length > 0;
-
-      if (hasResourceFilter && hasDomainFilter) {
-        void query.where((qb) => {
-          void qb
-            .whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds)
-            .orWhereIn(`${TableName.PamAccount}.domainId`, filterDomainIds);
-        });
-      } else if (hasResourceFilter) {
-        void query.whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds);
-      } else if (hasDomainFilter) {
-        void query.whereIn(`${TableName.PamAccount}.domainId`, filterDomainIds);
-      }
-
-      if (metadataFilter && metadataFilter.length > 0) {
-        void applyMetadataFilter(query, metadataFilter, "pamAccountId", TableName.PamAccount);
-      }
-
-      const countQuery = query.clone().count("*", { as: "count" }).first();
-
-      void query.select(selectAllTableCols(TableName.PamAccount)).select(
-        // resource (may be null for domain accounts)
-        db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
-        db.ref("resourceType").withSchema(TableName.PamResource),
-        db
-          .ref("encryptedRotationAccountCredentials")
-          .withSchema(TableName.PamResource)
-          .as("resourceEncryptedRotationAccountCredentials"),
-        // domain (may be null for resource accounts)
-        db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
-        db.ref("domainType").withSchema(TableName.PamDomain),
-        // policy
-        db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
-      );
-
-      const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
-
-      void query.orderByRaw(`${TableName.PamAccount}.?? COLLATE "en-x-icu" ${direction}`, [orderBy]);
-
-      if (typeof limit === "number") {
-        void query.limit(limit).offset(offset);
-      }
-
-      const [results, countResult] = await Promise.all([query, countQuery]);
-      const totalCount = Number(countResult?.count || 0);
-
-      const accounts = results.map((row) => {
-        const r = row as Record<string, unknown>;
-        const rId = row.resourceId as string | null;
-        const dId = row.domainId as string | null;
-
-        return {
-          ...row,
-          resourceId: rId,
-          domainId: dId,
-          policyName: (r.policyName as string) || null,
-          resource: rId
-            ? {
-                id: rId,
-                name: r.resourceName as string,
-                resourceType: r.resourceType as string,
-                encryptedRotationAccountCredentials: r.resourceEncryptedRotationAccountCredentials as Buffer | null
-              }
-            : null,
-          domain: dId
-            ? {
-                id: dId,
-                name: r.domainName as string,
-                domainType: r.domainType as string
-              }
-            : null
-        };
+        if (accessibleAccountIds.length > 0) {
+          void builder.orWhereIn(`${TableName.PamAccount}.id`, accessibleAccountIds);
+        }
       });
 
-      return { accounts, totalCount };
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PAM accounts with parent details" });
+    if (filters?.folderId) {
+      void baseQuery.where(`${TableName.PamAccount}.folderId`, filters.folderId);
     }
+    if (filters?.templateId) {
+      void baseQuery.where(`${TableName.PamAccount}.templateId`, filters.templateId);
+    }
+    if (filters?.accountType) {
+      void baseQuery.where(`${TableName.PamAccountTemplate}.type`, filters.accountType);
+    }
+    if (filters?.search) {
+      const pattern = `%${sanitizeSqlLikeString(filters.search)}%`;
+      void baseQuery.whereILike(`${TableName.PamAccount}.name`, pattern);
+    }
+    if (filters?.onlyAccessible) {
+      void baseQuery.whereRaw(accountAccessibilitySql(TableName.PamAccount, TableName.PamAccountTemplate));
+    }
+
+    const countQuery = baseQuery
+      .clone()
+      .clearSelect()
+      .count(`${TableName.PamAccount}.id as count`)
+      .first<{ count: string }>();
+
+    const dataQuery = baseQuery
+      .clone()
+      .select(
+        `${TableName.PamAccount}.id`,
+        `${TableName.PamAccount}.name`,
+        `${TableName.PamAccount}.description`,
+        `${TableName.PamAccount}.folderId`,
+        `${TableName.PamAccount}.projectId`,
+        `${TableName.PamAccount}.templateId`,
+        `${TableName.PamAccount}.gatewayId`,
+        `${TableName.PamAccount}.gatewayPoolId`,
+        `${TableName.PamAccount}.recordingConnectionId`,
+        `${TableName.PamAccount}.settingsOverrides`,
+        `${TableName.PamAccount}.credentialConfigured`,
+        `${TableName.PamAccount}.createdAt`,
+        `${TableName.PamAccount}.updatedAt`,
+        `${TableName.PamAccountTemplate}.type as accountType`,
+        `${TableName.PamAccountTemplate}.name as templateName`,
+        `${TableName.PamAccountTemplate}.settings as templateSettings`,
+        `${TableName.PamAccountTemplate}.policies as templatePolicies`,
+        `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
+        `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
+        `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
+        `${TableName.PamFolder}.name as folderName`
+      )
+      .orderBy(`${TableName.PamFolder}.name`, "asc")
+      .orderBy(`${TableName.PamAccount}.name`, "asc");
+
+    if (filters?.limit) void dataQuery.limit(filters.limit);
+    if (filters?.offset) void dataQuery.offset(filters.offset);
+
+    const [countResult, accounts] = await Promise.all([countQuery, dataQuery]);
+
+    return {
+      accounts: accounts as unknown as TPamAccountListItem[],
+      totalCount: Number(countResult?.count ?? 0)
+    };
   };
 
-  const findByIdWithParentDetails = async (accountId: string, tx?: Knex) => {
-    try {
-      const dbInstance = tx || db.replicaNode();
-      const result = await dbInstance(TableName.PamAccount)
-        .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-        .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
-        .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
-        .where(`${TableName.PamAccount}.id`, accountId)
-        .select(selectAllTableCols(TableName.PamAccount))
-        .select(
-          // resource (may be null for domain accounts)
-          db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
-          db.ref("resourceType").withSchema(TableName.PamResource),
-          db
-            .ref("encryptedRotationAccountCredentials")
-            .withSchema(TableName.PamResource)
-            .as("resourceEncryptedRotationAccountCredentials"),
-          // domain (may be null for resource accounts)
-          db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
-          db.ref("domainType").withSchema(TableName.PamDomain),
-          db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
-        )
-        .first();
+  const detailSelect = [
+    `${TableName.PamAccount}.*`,
+    `${TableName.PamAccountTemplate}.type as accountType`,
+    `${TableName.PamAccountTemplate}.name as templateName`,
+    `${TableName.PamAccountTemplate}.policies as templatePolicies`,
+    `${TableName.PamAccountTemplate}.settings as templateSettings`,
+    `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
+    `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
+    `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
+    `${TableName.PamFolder}.name as folderName`
+  ];
 
-      if (!result) return null;
+  const findByIdWithDetails = async (accountId: string, tx?: Knex): Promise<TPamAccountDetail | null> => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .where(`${TableName.PamAccount}.id`, accountId)
+      .select(detailSelect)) as unknown as TPamAccountDetail[];
 
-      const {
-        resourceId,
-        domainId,
-        resourceName,
-        resourceType,
-        resourceEncryptedRotationAccountCredentials,
-        domainName,
-        domainType,
-        policyName,
-        ...account
-      } = result as {
-        resourceId: string | null;
-        domainId: string | null;
-        resourceName: string | null;
-        resourceType: string | null;
-        resourceEncryptedRotationAccountCredentials: Buffer | null;
-        domainName: string | null;
-        domainType: string | null;
-        policyName: string | null;
-      } & typeof result;
-
-      return {
-        ...account,
-        resourceId,
-        domainId,
-        policyName: policyName || null,
-        resource: resourceId
-          ? {
-              id: resourceId,
-              name: resourceName,
-              resourceType,
-              encryptedRotationAccountCredentials: resourceEncryptedRotationAccountCredentials
-            }
-          : null,
-        domain: domainId
-          ? {
-              id: domainId,
-              name: domainName,
-              domainType
-            }
-          : null
-      };
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PAM account by ID with parent details" });
-    }
+    return rows[0] || null;
   };
 
-  const findMetadataByAccountIds = async (accountIds: string[], tx?: Knex) => {
-    if (!accountIds.length) return {};
-    const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
-      .select("id", "key", "value", "pamAccountId")
-      .whereIn("pamAccountId", accountIds);
-    const byAccountId: Record<string, Array<{ id: string; key: string; value: string }>> = {};
-    for (const row of rows) {
-      if (row.pamAccountId) {
-        if (!byAccountId[row.pamAccountId]) byAccountId[row.pamAccountId] = [];
-        byAccountId[row.pamAccountId].push({ id: row.id, key: row.key, value: row.value || "" });
-      }
-    }
-    return byAccountId;
+  // Due, rotatable, enabled; excludes soft-deleted projects (rotating their accounts is a side effect during cleanup).
+  const dueRotationQuery = (now: Date, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .join(TableName.Project, `${TableName.PamAccount}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .whereNotNull(`${TableName.PamAccount}.nextRotationAt`)
+      .where(`${TableName.PamAccount}.nextRotationAt`, "<=", now)
+      .whereIn(`${TableName.PamAccountTemplate}.type`, ROTATABLE_TYPE_VALUES)
+      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'rotation'->>'enabled' = 'true'`);
+
+  // Only ready accounts get a nextRotationAt, so every due row here is already rotation-ready.
+  const findAccountsToRotate = async (now: Date, limit: number, tx?: Knex): Promise<TPamAccountDetail[]> => {
+    const rows = (await dueRotationQuery(now, tx)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .orderBy(`${TableName.PamAccount}.nextRotationAt`, "asc")
+      .limit(limit)
+      .select(detailSelect)) as unknown as TPamAccountDetail[];
+    return rows;
+  };
+
+  const countAccountsToRotate = async (now: Date, tx?: Knex): Promise<number> => {
+    const result = await dueRotationQuery(now, tx).count<[{ count: string }]>(`${TableName.PamAccount}.id`);
+    return Number(result[0]?.count ?? 0);
   };
 
   const findRotationCandidates = async (
-    {
-      resourceIds,
-      domainIds,
-      minIntervalSeconds
-    }: {
-      resourceIds?: string[];
-      domainIds?: string[];
-      minIntervalSeconds: number;
-    },
+    projectId: string,
+    accessibleFolderIds: string[],
+    accessibleAccountIds: string[],
+    accountType: string,
     tx?: Knex
-  ) => {
-    const hasResourceIds = resourceIds && resourceIds.length > 0;
-    const hasDomainIds = domainIds && domainIds.length > 0;
-    if (!hasResourceIds && !hasDomainIds) return [];
+  ): Promise<TPamRotationCandidate[]> => {
+    if (accessibleFolderIds.length === 0 && accessibleAccountIds.length === 0) return [];
 
-    try {
-      const cutoff = new Date(Date.now() - minIntervalSeconds * 1000);
+    const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .where(`${TableName.PamAccount}.projectId`, projectId)
+      .where(`${TableName.PamAccountTemplate}.type`, accountType)
+      // A delegated rotator authenticates with its own stored password, so exclude accounts without one.
+      .where(`${TableName.PamAccount}.credentialConfigured`, true)
+      .where((builder) => {
+        if (accessibleFolderIds.length > 0) {
+          void builder.whereIn(`${TableName.PamAccount}.folderId`, accessibleFolderIds);
+        }
+        if (accessibleAccountIds.length > 0) {
+          void builder.orWhereIn(`${TableName.PamAccount}.id`, accessibleAccountIds);
+        }
+      })
+      .select(
+        `${TableName.PamAccount}.id`,
+        `${TableName.PamAccount}.name`,
+        `${TableName.PamAccount}.folderId`,
+        `${TableName.PamAccount}.encryptedConnectionDetails`,
+        `${TableName.PamAccountTemplate}.type as accountType`,
+        `${TableName.PamFolder}.name as folderName`
+      )
+      .orderBy(`${TableName.PamFolder}.name`, "asc")
+      .orderBy(`${TableName.PamAccount}.name`, "asc")) as unknown as TPamRotationCandidate[];
+    return rows;
+  };
 
-      return await (tx || db.replicaNode())(TableName.PamAccount)
-        .where((qb) => {
-          if (hasResourceIds) {
-            void qb.whereIn("resourceId", resourceIds);
-          }
-          if (hasDomainIds) {
-            void qb.orWhereIn("domainId", domainIds);
-          }
-        })
-        .where((qb) => {
-          void qb.whereNot("rotationStatus", "rotating").orWhereNull("rotationStatus");
-        })
-        .where((qb) => {
-          void qb.where("lastRotatedAt", "<", cutoff).orWhere((inner) => {
-            void inner.whereNull("lastRotatedAt").andWhere("createdAt", "<", cutoff);
-          });
-        })
-        .select(selectAllTableCols(TableName.PamAccount));
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find rotation candidates" });
+  // Bulk set-based reschedule of a template's accounts; rescheduleReady also recomputes already-scheduled ones.
+  const reconcileRotationScheduleForTemplate = async (
+    templateId: string,
+    opts?: { rescheduleReady?: boolean },
+    tx?: Knex
+  ): Promise<void> => {
+    const dbClient = tx || db;
+    const template = await dbClient(TableName.PamAccountTemplate)
+      .where({ id: templateId })
+      .first<{ type: string; settings: unknown } | undefined>("type", "settings");
+    if (!template) return;
+
+    const parsed = PamTemplateSettingsSchema.safeParse(template.settings);
+    const rotation = parsed.success ? parsed.data.rotation : undefined;
+    const enabled = rotation?.enabled === true && ROTATABLE_TYPE_VALUES.includes(template.type);
+
+    if (!enabled || !rotation || rotation.intervalSeconds == null) {
+      await dbClient(TableName.PamAccount)
+        .where({ templateId })
+        .whereNotNull("nextRotationAt")
+        .update({ nextRotationAt: null });
+      return;
     }
+
+    const { intervalSeconds } = rotation;
+    const jitterCapSeconds = rotationJitterCapSeconds(intervalSeconds);
+
+    await dbClient(TableName.PamAccount)
+      .where({ templateId })
+      .whereNotNull("nextRotationAt")
+      .whereRaw(`(${ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL})`)
+      .update({ nextRotationAt: null });
+
+    const readyUpdate = dbClient(TableName.PamAccount).where({ templateId }).whereRaw(`(${ACCOUNT_WILL_ROTATE_SQL})`);
+    if (!opts?.rescheduleReady) {
+      void readyUpdate.whereNull("nextRotationAt");
+    }
+    await readyUpdate.update({
+      nextRotationAt: dbClient.raw(
+        `GREATEST(COALESCE(??, now()) + make_interval(secs => ?), now()) + make_interval(secs => floor(random() * ?)::int)`,
+        ["lastRotatedAt", intervalSeconds, jitterCapSeconds]
+      ) as unknown as Date
+    });
   };
 
-  const countByProject = async (projectId: string, tx?: Knex): Promise<number> => {
-    const result = await (tx || db.replicaNode())(TableName.PamAccount)
-      .where("projectId", projectId)
-      .count("id as count")
-      .first();
-    return Number((result as { count?: string | number })?.count ?? 0);
-  };
+  const reconcileRotationScheduleForAccount = async (accountId: string, tx?: Knex): Promise<void> => {
+    const account = await findByIdWithDetails(accountId, tx ?? db);
+    if (!account) return;
 
-  const countFailedRotationsByProject = async (projectId: string, tx?: Knex): Promise<number> => {
-    const result = await (tx || db.replicaNode())(TableName.PamAccount)
-      .where("projectId", projectId)
-      .where("rotationStatus", "failed")
-      .count("id as count")
-      .first();
-    return Number((result as { count?: string | number })?.count ?? 0);
-  };
+    const readiness = getRotationReadiness({
+      accountId: account.id,
+      accountType: account.accountType,
+      rotationAccountId: account.rotationAccountId,
+      credentialConfigured: account.credentialConfigured
+    });
+    const rotation = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.rotation;
+    const current = account.nextRotationAt ?? null;
 
-  const findFailedRotationsByProject = async (
-    projectId: string,
-    limit: number,
-    tx?: Knex
-  ): Promise<
-    {
-      id: string;
-      name: string;
-      resourceId: string;
-      resourceName: string;
-      resourceType: string;
-      lastRotatedAt: Date | null;
-    }[]
-  > => {
-    const rows = await (tx || db.replicaNode())(TableName.PamAccount)
-      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .select(
-        `${TableName.PamAccount}.id as id`,
-        `${TableName.PamAccount}.name as name`,
-        `${TableName.PamAccount}.resourceId as resourceId`,
-        `${TableName.PamAccount}.lastRotatedAt as lastRotatedAt`,
-        `${TableName.PamResource}.name as resourceName`,
-        `${TableName.PamResource}.resourceType as resourceType`
-      )
-      .where(`${TableName.PamAccount}.projectId`, projectId)
-      .where(`${TableName.PamAccount}.rotationStatus`, "failed")
-      .orderBy(`${TableName.PamAccount}.lastRotatedAt`, "desc")
-      .limit(limit);
+    let nextRotationAt: Date | null = current;
+    if (!readiness.ready || !rotation?.enabled || rotation.intervalSeconds == null) {
+      nextRotationAt = null;
+    } else if (!current) {
+      nextRotationAt = computeNextRotationAt({
+        anchor: account.lastRotatedAt ?? null,
+        intervalSeconds: rotation.intervalSeconds,
+        now: new Date()
+      });
+    }
 
-    return rows as {
-      id: string;
-      name: string;
-      resourceId: string;
-      resourceName: string;
-      resourceType: string;
-      lastRotatedAt: Date | null;
-    }[];
-  };
-
-  const findRotationCandidatesByProject = async (
-    projectId: string,
-    tx?: Knex
-  ): Promise<
-    {
-      id: string;
-      name: string;
-      resourceId: string;
-      resourceName: string;
-      resourceType: string;
-      lastRotatedAt: Date | null;
-      createdAt: Date;
-    }[]
-  > => {
-    const rows = await (tx || db.replicaNode())(TableName.PamAccount)
-      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .select(
-        `${TableName.PamAccount}.id as id`,
-        `${TableName.PamAccount}.name as name`,
-        `${TableName.PamAccount}.resourceId as resourceId`,
-        `${TableName.PamAccount}.lastRotatedAt as lastRotatedAt`,
-        `${TableName.PamAccount}.createdAt as createdAt`,
-        `${TableName.PamResource}.name as resourceName`,
-        `${TableName.PamResource}.resourceType as resourceType`
-      )
-      .where(`${TableName.PamAccount}.projectId`, projectId)
-      .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`);
-
-    return rows as {
-      id: string;
-      name: string;
-      resourceId: string;
-      resourceName: string;
-      resourceType: string;
-      lastRotatedAt: Date | null;
-      createdAt: Date;
-    }[];
+    if ((nextRotationAt?.getTime() ?? null) !== (current?.getTime() ?? null)) {
+      await (tx || db)(TableName.PamAccount).where({ id: accountId }).update({ nextRotationAt });
+    }
   };
 
   return {
     ...orm,
-    findByProjectIdWithParentDetails,
-    findByIdWithParentDetails,
-    findMetadataByAccountIds,
+    findAccessible,
+    findByIdWithDetails,
+    findAccountsToRotate,
+    countAccountsToRotate,
     findRotationCandidates,
-    findRotationCandidatesByProject,
-    countByProject,
-    countFailedRotationsByProject,
-    findFailedRotationsByProject
+    reconcileRotationScheduleForTemplate,
+    reconcileRotationScheduleForAccount
   };
 };

@@ -93,28 +93,20 @@ export const orgAdminServiceFactory = ({
     const project = await projectDAL.findOne({ id: projectId, orgId: actorOrgId });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    // check already there exist a membership if there return it
-    const projectMembership = await membershipUserDAL.findOne({
-      scopeProjectId: projectId,
-      scope: AccessScope.Project,
-      actorUserId: actorId
-    });
-    if (projectMembership) {
-      // reset and make the user admin
-      await membershipUserDAL.transaction(async (tx) => {
-        await membershipRoleDAL.delete({ membershipId: projectMembership.id }, tx);
-        await membershipRoleDAL.create(
-          {
-            membershipId: projectMembership.id,
-            role: ProjectMembershipRole.Admin
-          },
-          tx
-        );
-      });
-      return { isExistingMember: true, membership: projectMembership };
-    }
+    // Reads inside this transaction so it sees the primary, not a possibly-lagging replica, in
+    // case a caller (e.g. PAM's bootstrap) just wrote this actor's membership moments earlier.
+    const { isExistingMember, membership: updatedMembership } = await membershipUserDAL.transaction(async (tx) => {
+      const projectMembership = await membershipUserDAL.findOne(
+        { scopeProjectId: projectId, scope: AccessScope.Project, actorUserId: actorId },
+        tx
+      );
 
-    const updatedMembership = await membershipUserDAL.transaction(async (tx) => {
+      if (projectMembership) {
+        await membershipRoleDAL.delete({ membershipId: projectMembership.id }, tx);
+        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Admin }, tx);
+        return { isExistingMember: true, membership: projectMembership };
+      }
+
       const newProjectMembership = await membershipUserDAL.create(
         {
           scopeProjectId: projectId,
@@ -126,8 +118,12 @@ export const orgAdminServiceFactory = ({
       );
       await membershipRoleDAL.create({ membershipId: newProjectMembership.id, role: ProjectMembershipRole.Admin }, tx);
 
-      return newProjectMembership;
+      return { isExistingMember: false, membership: newProjectMembership };
     });
+
+    if (isExistingMember) {
+      return { isExistingMember: true, membership: updatedMembership };
+    }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
     const projectAdmins = projectMembers.filter(

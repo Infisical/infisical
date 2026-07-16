@@ -17,7 +17,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { DeleteHsmConnectorDialog } from "../SettingsPage/components/HsmConnectorsTab/DeleteHsmConnectorDialog";
 import { EditHsmConnectorSheet } from "../SettingsPage/components/HsmConnectorsTab/EditHsmConnectorSheet";
-import { HsmConnectorLinkedCertsSection, HsmConnectorOverviewSection } from "./components";
+import { HsmConnectorLinkedResourcesSection, HsmConnectorOverviewSection } from "./components";
 
 const Page = () => {
   const { currentProject } = useProject();
@@ -105,7 +105,7 @@ const Page = () => {
                     />
                   </div>
                   <div className="flex flex-1 flex-col gap-y-5">
-                    <HsmConnectorLinkedCertsSection connectorId={connector.id} />
+                    <HsmConnectorLinkedResourcesSection connectorId={connector.id} />
                   </div>
                 </div>
 

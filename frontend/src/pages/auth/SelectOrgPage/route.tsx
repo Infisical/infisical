@@ -11,11 +11,13 @@ import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
   fetchOrganizationsWithSubOrgs,
-  organizationKeys
+  organizationKeys,
+  TOrgWithSubOrgs
 } from "@app/hooks/api/organization/queries";
 import { onRequestError, setAuthToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
 
+import { getSsoEnforcementError } from "./SelectOrg.utils";
 import { SelectOrgPage } from "./SelectOrgPage";
 
 export const SelectOrganizationPageQueryParams = z.object({
@@ -60,8 +62,14 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       });
     }
 
-    // Skip auto-select for MFA pending or force flag
-    if (search.mfa_method || search.force) return;
+    // Breakglass, MFA continuation, and ?force=true all need the user to act on this page
+    if (search.mfa_method || search.force || search.is_admin_login) {
+      return { autoSelectErrorMessage: undefined };
+    }
+
+    // Failures are handed to the component via route context; toasts fired here would be
+    // dropped on cold loads (Toaster not yet mounted)
+    let autoSelectErrorMessage: string | undefined;
 
     try {
       const orgsWithSubOrgs = await context.queryClient.ensureQueryData({
@@ -73,18 +81,40 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         throw redirect({ to: "/organizations/none" });
       }
 
-      // Auto-select only when exactly 1 root org with no sub-orgs
-      const hasSingleOrgWithNoSubOrgs =
-        orgsWithSubOrgs.length === 1 && orgsWithSubOrgs[0].subOrganizations.length === 0;
+      // Auto-select target: explicit org_id or the instance default org, membership required
+      const autoSelectOrgId = search.org_id || context.serverConfig?.defaultAuthOrgId;
+      let target: { org: TOrgWithSubOrgs; subOrgId?: string } | undefined;
 
-      if (hasSingleOrgWithNoSubOrgs) {
-        const orgId = orgsWithSubOrgs[0].id;
+      if (autoSelectOrgId) {
+        const rootOrg = orgsWithSubOrgs.find((org) => org.id === autoSelectOrgId);
+        const subOrgParent = rootOrg
+          ? undefined
+          : orgsWithSubOrgs.find((org) =>
+              org.subOrganizations.some((sub) => sub.id === autoSelectOrgId)
+            );
+        if (rootOrg) target = { org: rootOrg };
+        else if (subOrgParent) target = { org: subOrgParent, subOrgId: autoSelectOrgId };
+      }
 
-        // If org_id is specified and doesn't match the only org, let the page handle it
-        if (search.org_id && search.org_id !== orgId) return;
+      // Sole-org fallback, including when the requested org isn't one the user can enter
+      // (e.g. a default org they aren't a member of)
+      if (
+        !target &&
+        orgsWithSubOrgs.length === 1 &&
+        orgsWithSubOrgs[0].subOrganizations.length === 0
+      ) {
+        target = { org: orgsWithSubOrgs[0] };
+      }
+
+      // Pre-empt the server-side SSO-enforcement rejection so the picker shows with guidance
+      const ssoEnforcementError = target && getSsoEnforcementError(target.org);
+      if (ssoEnforcementError) {
+        autoSelectErrorMessage = ssoEnforcementError;
+      } else if (target) {
+        const targetOrgId = target.subOrgId || target.org.id;
 
         const result = await selectOrganization({
-          organizationId: orgId,
+          organizationId: targetOrgId,
           userAgent: search.callback_port ? UserAgentType.CLI : undefined
         });
 
@@ -95,7 +125,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
             to: "/login/select-organization",
             search: {
               mfa_method: result.mfaMethod,
-              org_id: orgId,
+              org_id: targetOrgId,
               callback_port: search.callback_port
             }
           });
@@ -129,22 +159,23 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
 
         throw redirect({
           to: "/organizations/$orgId/projects",
-          params: { orgId }
+          params: { orgId: targetOrgId }
         });
       }
     } catch (error) {
-      console.error(error);
       // If it's a redirect, re-throw it
       if (error instanceof Error && error.message === "REDIRECT") throw error;
       // For redirect objects from TanStack Router
       if (typeof error === "object" && error !== null && "to" in error) throw error;
       // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
-      // never fires for it — surface SMTP errors manually and log the user out.
+      // never fires for it — surface SMTP and lockout errors manually and log the user out.
       if (typeof error === "object" && error !== null && "response" in error) {
         const { response } = error as {
-          response?: { data?: { error?: string; message?: string } };
+          response?: { status?: number; data?: { error?: string; message?: string } };
         };
-        if (response?.data?.error === "SmtpError") {
+        const isLockError =
+          response?.data?.error === "UserLocked" || response?.data?.message === "Account is locked";
+        if (response?.data?.error === "SmtpError" || isLockError) {
           onRequestError(error);
           // We can't use the useLogoutUser hook here (beforeLoad runs outside React),
           // so we replicate its mutationFn manually:
@@ -157,7 +188,14 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
           await logoutUser().catch(() => {}); // best-effort — redirect must always fire
           throw redirect({ to: "/login" });
         }
+        // Surface user-actionable select failures on the picker; 401s are session-expiry
+        // noise the axios interceptor already handles
+        if (response?.status !== 401 && response?.data?.message) {
+          autoSelectErrorMessage = response.data.message;
+        }
       }
     }
+
+    return { autoSelectErrorMessage };
   }
 });

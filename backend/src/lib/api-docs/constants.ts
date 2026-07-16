@@ -54,6 +54,7 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
@@ -93,6 +94,13 @@ export enum ApiDocsTags {
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
+  PamAccounts = "PAM Accounts",
+  PamFolders = "PAM Folders",
+  PamAccountTemplates = "PAM Account Templates",
+  PamSessions = "PAM Sessions",
+  PamMemberships = "PAM Memberships",
+  PamRoles = "PAM Roles",
+  PamDiscovery = "PAM Discovery",
   KmipServers = "KMIP Servers"
 }
 
@@ -1422,6 +1430,7 @@ export const SECRET_IMPORTS = {
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
+      projectId: "The ID of the project to import from.",
       environment: "The slug of the environment to import from.",
       path: "The path to import from."
     }
@@ -1461,6 +1470,7 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
+    includeProxiedServices: "Whether to include proxied services in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1479,7 +1489,8 @@ export const DASHBOARD = {
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeSecretRotations: "Whether to include secret rotations in the response.",
-    includeHoneyTokens: "Whether to include honey tokens in the response."
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
+    includeProxiedServices: "Whether to include proxied services in the response."
   }
 } as const;
 
@@ -1593,6 +1604,63 @@ export const DYNAMIC_SECRET_LEASES = {
     }
   }
 } as const;
+
+export const PROXIED_SERVICES = {
+  CREATE: {
+    projectId: "The ID of the project to create the proxied service in.",
+    environment: "The slug of the environment to create the proxied service in.",
+    secretPath: "The secret path (folder) to create the proxied service in.",
+    name: "The name of the proxied service.",
+    hostPattern:
+      "One or more comma-separated host patterns the service applies to, e.g. 'api.stripe.com, *.stripe.com'. Each pattern is host[:port][/path]; a '*.' wildcard matches exactly one label.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials: "The credentials the agent proxy applies to requests matching the host pattern."
+  },
+  LIST: {
+    projectId: "The ID of the project to list proxied services from.",
+    environment: "The slug of the environment to list proxied services from.",
+    secretPath: "The secret path (folder) to list proxied services from."
+  },
+  GET: {
+    serviceId: "The ID of the proxied service.",
+    name: "The name of the proxied service.",
+    projectId: "The ID of the project the proxied service is in.",
+    environment: "The slug of the environment the proxied service is in.",
+    secretPath: "The secret path (folder) the proxied service is in."
+  },
+  UPDATE: {
+    serviceId: "The ID of the proxied service to update.",
+    name: "The new name of the proxied service.",
+    hostPattern: "The new comma-separated host patterns.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials:
+      "The new credentials. When provided, the entire credentials collection is replaced; when omitted, existing credentials are left unchanged."
+  },
+  DELETE: {
+    serviceId: "The ID of the proxied service to delete."
+  },
+  CREDENTIAL: {
+    secretKey:
+      "The key name of the referenced static secret. The secret must live in the same folder as the service. Provide exactly one of secretKey or dynamicSecretName.",
+    dynamicSecretName:
+      "The name of the referenced dynamic secret. The dynamic secret must live in the same folder as the service; the agent proxy mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
+    dynamicSecretField:
+      "For a dynamic secret credential: which lease output field to inject (e.g. 'DB_PASSWORD', 'TOKEN'). Must be a valid output field for the dynamic secret's provider type.",
+    dynamicSecretConfig:
+      "For a dynamic secret credential: optional per-lease config passed when minting (e.g. { namespace } for kubernetes, { principals } for ssh).",
+    role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",
+    headerName: "For header rewriting: the header to set, e.g. 'Authorization' or 'x-api-key'.",
+    headerPrefix: "For header rewriting: an optional prefix joined to the secret value with a space, e.g. 'Bearer'.",
+    headerPurpose:
+      "For HTTP basic auth: 'username' or 'password'. The agent proxy combines the pair into a single 'Authorization: Basic' header. Cannot be combined with headerName or headerPrefix.",
+    placeholderKey: "For credential substitution: the environment variable name the agent receives.",
+    placeholderValue:
+      "For credential substitution: the placeholder value the agent proxy swaps for the real secret value on the wire.",
+    substitutionSurfaces:
+      "For credential substitution: which request surfaces are scanned for the placeholder. Allowed values: 'header', 'path', 'query', 'body'."
+  }
+} as const;
+
 export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."
@@ -2198,6 +2266,9 @@ export const CERTIFICATE_AUTHORITIES = {
   INSTALL_CERT_ADCS: {
     caId: "The ID of the CA to install the certificate for via Azure AD CS."
   },
+  INSTALL_CERT_ADCS_NATIVE: {
+    caId: "The ID of the CA to install the certificate for via ADCS."
+  },
   CREATE_SIGNING_CONFIG: {
     caId: "The ID of the CA to create a signing configuration for."
   },
@@ -2497,7 +2568,8 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    algorithm: "The cryptographic algorithm of the key (e.g. aes-256-gcm, RSA_4096, HMAC_SHA_256).",
+    encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
@@ -2566,6 +2638,15 @@ export const KMS = {
     data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
+  },
+  GENERATE_MAC: {
+    keyId: "The ID of the key to generate the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format to generate the MAC for (base64 encoded)."
+  },
+  VERIFY_MAC: {
+    keyId: "The ID of the key to verify the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format the MAC was generated for (base64 encoded).",
+    mac: "The MAC to be verified (base64 encoded)."
   }
 };
 
@@ -2659,6 +2740,12 @@ export const CertificateAuthorities = {
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      keySource:
+        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
+      hsmConnectorId:
+        "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
+      hsmKeyLabel:
+        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a per-CA label built from the CA name and a random 5-character suffix (ca-<name>-<slug>).",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
@@ -2881,6 +2968,10 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    RUNDECK: {
+      instanceUrl: "The Rundeck instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Rundeck."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -2915,8 +3006,19 @@ export const AppConnections = {
     OPEN_ROUTER: {
       apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     },
+    OPENAI: {
+      apiKey: "The OpenAI Admin API key used to manage project service accounts."
+    },
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
+    },
+    LITELLM: {
+      apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
+      instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    FIREWORKS: {
+      apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
+      accountId: "The Fireworks account ID used to identify the Fireworks account."
     },
     CLOUD66: {
       accessToken: "The Personal Access Token used to authenticate with the Cloud 66 API."
@@ -2924,6 +3026,9 @@ export const AppConnections = {
     CONVEX: {
       accessToken: "The Convex deploy key or access token used to authenticate with the Convex API.",
       instanceUrl: "The Convex API instance URL. Defaults to 'https://api.convex.dev' if not provided."
+    },
+    HASURA_CLOUD: {
+      accessToken: "The Hasura Cloud access token used to authenticate with the Hasura Cloud GraphQL API."
     },
     OVH: {
       privateKey:
@@ -3041,6 +3146,10 @@ export const SecretSyncs = {
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
+    },
+    CLOUDFLARE_WORKERS: {
+      syncNonSecretBindings:
+        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
     }
   },
   DESTINATION_CONFIG: {
@@ -3232,6 +3341,10 @@ export const SecretSyncs = {
       environmentName: "The Railway environment to sync secrets to.",
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
+    },
+    HASURA_CLOUD: {
+      projectId: "The ID of the Hasura Cloud project to sync secrets to.",
+      projectName: "The name of the Hasura Cloud project to sync secrets to."
     },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."
@@ -3440,6 +3553,18 @@ export const SecretRotations = {
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     },
+    LITELLM_API_KEY: {
+      name: "The name for the generated LiteLLM API key. Infisical appends a timestamp to keep each rotated key unique and record its creation time.",
+      userId: "The ID of the LiteLLM user to associate the generated key with.",
+      teamId: "The ID of the LiteLLM team to associate the generated key with.",
+      models: "The list of model names the generated key is allowed to access. An empty list allows all models.",
+      additionalOptions:
+        "A JSON object of additional LiteLLM /key/generate options (e.g. max_budget, tpm_limit, metadata). Reserved fields (key_alias, auto_rotate, rotation_interval, duration, send_invite_email, key_type, user_id, team_id, models) are managed by Infisical or set via dedicated fields and cannot be set here."
+    },
+    OPENAI_SERVICE_ACCOUNT: {
+      projectId: "The ID of the OpenAI project to create service accounts in.",
+      name: "The name for the generated OpenAI service account."
+    },
     SUPABASE_API_KEY: {
       projectRef: "The reference ID of the Supabase project to rotate the API key for.",
       keyType: "The type of the API key to rotate (e.g. publishable, secret)."
@@ -3453,6 +3578,9 @@ export const SecretRotations = {
     },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
+    },
+    FIREWORKS_API_KEY: {
+      serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
     }
   },
   SECRETS_MAPPING: {
@@ -3514,6 +3642,12 @@ export const SecretRotations = {
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     },
+    LITELLM_API_KEY: {
+      apiKey: "The name of the secret that the rotated LiteLLM API key will be mapped to."
+    },
+    OPENAI_SERVICE_ACCOUNT: {
+      apiKey: "The name of the secret that the rotated OpenAI service account API key will be mapped to."
+    },
     SUPABASE_API_KEY: {
       apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
     },
@@ -3527,6 +3661,9 @@ export const SecretRotations = {
     },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."
+    },
+    FIREWORKS_API_KEY: {
+      apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
     }
   }
 };

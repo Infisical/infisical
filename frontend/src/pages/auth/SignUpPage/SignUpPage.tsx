@@ -71,7 +71,16 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       const orgId = userOrgs[0]?.id;
 
       if (orgId) {
-        await selectOrganization({ organizationId: orgId });
+        const { isMfaEnabled } = await selectOrganization({ organizationId: orgId });
+
+        if (isMfaEnabled) {
+          navigate({
+            to: "/login/select-organization",
+            search: { org_id: orgId }
+          });
+          return;
+        }
+
         navigate({
           to: "/organizations/$orgId/projects",
           params: { orgId }
@@ -116,7 +125,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4 py-4">
       <AuthPageBackground />
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>

@@ -8,6 +8,7 @@ export enum AppConnection {
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
+  ADCS = "adcs",
   AzureDNS = "azure-dns",
   Databricks = "databricks",
   Humanitec = "humanitec",
@@ -48,7 +49,9 @@ export enum AppConnection {
   SSH = "ssh",
   Dbt = "dbt",
   SMB = "smb",
+  WinRM = "winrm",
   OpenRouter = "open-router",
+  OpenAI = "openai",
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
@@ -69,6 +72,10 @@ export enum AppConnection {
   GoDaddy = "godaddy",
   Convex = "convex",
   TriggerDev = "trigger-dev",
+  Rundeck = "rundeck",
+  HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
-  Cloud66 = "cloud-66"
+  Cloud66 = "cloud-66",
+  LiteLLM = "litellm",
+  Fireworks = "fireworks"
 }

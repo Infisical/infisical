@@ -5,7 +5,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { GroupDetailsByIDPage } from "./GroupDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId"
 )({
   component: GroupDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -15,10 +15,9 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/pam/$projectId/access-management",
+            to: "/organizations/$orgId/pam/access-management",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             },
             search: {
               selectedTab: ProjectAccessControlTabs.Groups

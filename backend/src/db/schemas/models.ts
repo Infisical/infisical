@@ -61,6 +61,7 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ProjectSshConfig = "project_ssh_configs",
@@ -85,6 +86,7 @@ export enum TableName {
   SecretFolder = "secret_folders",
   SecretFolderVersion = "secret_folder_versions",
   SecretImport = "secret_imports",
+  ProjectFolderGrant = "project_folder_grants",
   Snapshot = "secret_snapshots",
   SnapshotSecret = "secret_snapshot_secrets",
   SnapshotFolder = "secret_snapshot_folders",
@@ -173,6 +175,7 @@ export enum TableName {
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
   WebAuthnCredential = "webauthn_credentials",
+  UserMfaRecoveryCode = "user_mfa_recovery_codes",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -235,7 +238,9 @@ export enum TableName {
   KeyValueStore = "key_value_store",
 
   // PAM
+  PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
+  PamFolderNotificationConfig = "pam_folder_notification_configs",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
@@ -244,6 +249,7 @@ export enum TableName {
   PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoveredAccount = "pam_discovered_accounts",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
@@ -316,6 +322,11 @@ export enum TableName {
   // Audit Reports (exportable compliance reports)
   AuditReport = "audit_reports",
 
+  // Secrets Brokering (Agent Proxy)
+  OrgAgentProxyConfig = "org_agent_proxy_config",
+  ProxiedService = "proxied_services",
+  ProxiedServiceCredential = "proxied_service_credentials",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
@@ -375,7 +386,9 @@ export enum ResourceMembershipRole {
 
 export enum ResourceType {
   CertificateApplication = "certificate-application",
-  Signer = "pki-signer"
+  Signer = "pki-signer",
+  PamFolder = "pam-folder",
+  PamAccount = "pam-account"
 }
 
 export enum SecretEncryptionAlgo {

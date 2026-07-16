@@ -11,8 +11,10 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
+import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -49,6 +51,8 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
+      keySource?: CertKeySource;
+      hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
     }
@@ -69,6 +73,8 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
+      keySource?: CertKeySource;
+      hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
     } & Omit<TProjectPermission, "projectId">);
@@ -317,6 +323,16 @@ export type TGetCaCredentialsDTO = {
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
 };
 
+export type TGetCaSignerDTO = {
+  caId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
+};
+
 export type TGetCaCertChainsDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
@@ -341,6 +357,7 @@ export type TRebuildCaCrlDTO = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateDAL: Pick<TCertificateDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
 
 export type TRotateCaCrlTriggerDTO = {

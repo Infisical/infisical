@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
+  BanIcon,
   BellIcon,
   ClipboardCheckIcon,
   CodeXmlIcon,
@@ -90,7 +91,10 @@ import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
-import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import {
+  hasSecretPersonalOverridePermission,
+  hasSecretReadValueOrDescribePermission
+} from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -151,6 +155,7 @@ type Props = {
     | undefined;
   importedBy?: {
     environment: { name: string; slug: string };
+    project?: { name: string; slug: string; id: string };
     folders: {
       name: string;
       secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
@@ -167,6 +172,7 @@ type Props = {
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -203,7 +209,8 @@ export const SecretEditTableRow = ({
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
-  pendingKeyName
+  pendingKeyName,
+  revokedProjectFolderGrant
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -877,6 +884,11 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
+  const canCreatePersonalOverride = hasSecretPersonalOverridePermission(
+    permission,
+    ProjectPermissionSecretActions.Create,
+    { environment, secretPath, secretName, secretTags: ["*"] }
+  );
 
   const isReadOnly =
     isPendingDelete ||
@@ -1108,6 +1120,20 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               )}
             </div>
+          </div>
+        )}
+        {revokedProjectFolderGrant && !isDirtyState && (
+          <div
+            className={twMerge(
+              "ml-auto flex shrink-0 items-center",
+              isSingleEnvView && "transition-[margin] duration-300 group-hover:mr-16",
+              isSingleEnvView && isFieldActive && "mr-8"
+            )}
+          >
+            <Badge variant="danger">
+              <BanIcon className="size-3.5" />
+              Secret share revoked
+            </Badge>
           </div>
         )}
       </div>
@@ -1655,60 +1681,48 @@ export const SecretEditTableRow = ({
                         : ""}
                 </TooltipContent>
               </Tooltip>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Create}
-                a={subject(ProjectPermissionSub.Secrets, {
-                  environment,
-                  secretPath,
-                  secretName,
-                  secretTags: ["*"]
-                })}
+              <Tooltip
+                open={
+                  isPendingBatchChange ||
+                  isCreatable ||
+                  isImportedSecret ||
+                  isOverride ||
+                  !canCreatePersonalOverride
+                    ? undefined
+                    : false
+                }
+                disableHoverableContent
               >
-                {(isAllowed) => (
-                  <Tooltip
-                    open={
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5 text-xs"
+                    onClick={() => onAddOverride?.()}
+                    isDisabled={
                       isPendingBatchChange ||
                       isCreatable ||
                       isImportedSecret ||
                       isOverride ||
-                      !isAllowed
-                        ? undefined
-                        : false
+                      !canCreatePersonalOverride
                     }
-                    disableHoverableContent
                   >
-                    <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
-                        onClick={() => onAddOverride?.()}
-                        isDisabled={
-                          isPendingBatchChange ||
-                          isCreatable ||
-                          isImportedSecret ||
-                          isOverride ||
-                          !isAllowed
-                        }
-                      >
-                        <GitBranchIcon />
-                        Add Override
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      {isPendingBatchChange
-                        ? "Discard Pending Changes First"
-                        : !isAllowed
-                          ? "Access Denied"
-                          : isOverride
-                            ? "Override Already Exists"
-                            : isImportedSecret
-                              ? "Cannot Override Imported Secret"
-                              : isCreatable
-                                ? "Create Secret First"
-                                : "Add Personal Override"}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </ProjectPermissionCan>
+                    <GitBranchIcon />
+                    Add Override
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {isPendingBatchChange
+                    ? "Discard Pending Changes First"
+                    : !canCreatePersonalOverride
+                      ? "Access Denied"
+                      : isOverride
+                        ? "Override Already Exists"
+                        : isImportedSecret
+                          ? "Cannot Override Imported Secret"
+                          : isCreatable
+                            ? "Create Secret First"
+                            : "Add Personal Override"}
+                </TooltipContent>
+              </Tooltip>
               <Tooltip
                 open={
                   isPendingBatchChange ||

@@ -2,18 +2,34 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { MfaMethod } from "@app/services/auth/auth-type";
+import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 
-import { MfaSessionStatus, TGetMfaSessionStatusDTO, TMfaSession, TVerifyMfaSessionDTO } from "./mfa-session-types";
+import {
+  MfaSessionStatus,
+  MfaStepUpResource,
+  TGetMfaSessionStatusDTO,
+  TIsMfaSessionActiveDTO,
+  TMfaSession,
+  TVerifyMfaSessionDTO
+} from "./mfa-session-types";
 
 type TMfaSessionServiceFactoryDep = {
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
+  mfaLockoutService: Pick<
+    TMfaLockoutServiceFactory,
+    | "enforceStepUpMfaLockStatus"
+    | "reserveStepUpMfaAttempt"
+    | "resetStepUpMfaLockStatus"
+    | "hasRecentMfaAuth"
+    | "recordRecentMfaAuth"
+  >;
 };
 
 export type TMfaSessionServiceFactory = ReturnType<typeof mfaSessionServiceFactory>;
@@ -22,7 +38,8 @@ export const mfaSessionServiceFactory = ({
   keyStore,
   tokenService,
   smtpService,
-  totpService
+  totpService,
+  mfaLockoutService
 }: TMfaSessionServiceFactoryDep) => {
   // Helper function to get MFA session from Redis
   const getMfaSession = async (mfaSessionId: string): Promise<TMfaSession | null> => {
@@ -36,14 +53,57 @@ export const mfaSessionServiceFactory = ({
     return JSON.parse(mfaSessionData) as TMfaSession;
   };
 
+  // Centralized guard that a step-up MFA session is authorized for a specific
+  // resource: it must exist, belong to the given user, target the given
+  // resourceId, and be ACTIVE. Every consumer MUST gate on this rather than
+  // re-implementing the checks, so a session minted for one resource (e.g. a
+  // low-value PAM account) can never be replayed against another (e.g. recovery
+  // codes). verifyMfaSession only flips PENDING -> ACTIVE; the resource binding
+  // is enforced here at the point of use.
+  const isMfaSessionActive = async ({
+    mfaSessionId,
+    userId,
+    resourceId,
+    tokenVersionId
+  }: TIsMfaSessionActiveDTO): Promise<boolean> => {
+    const mfaSession = await getMfaSession(mfaSessionId);
+    if (
+      !mfaSession ||
+      mfaSession.userId !== userId ||
+      mfaSession.resourceId !== resourceId ||
+      mfaSession.status !== MfaSessionStatus.ACTIVE
+    ) {
+      return false;
+    }
+
+    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+      return false;
+    }
+
+    return true;
+  };
+
   // Helper function to update MFA session in Redis
   const updateMfaSession = async (mfaSession: TMfaSession, ttlSeconds: number): Promise<void> => {
     const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSession.sessionId);
     await keyStore.setItemWithExpiry(mfaSessionKey, ttlSeconds, JSON.stringify(mfaSession));
   };
 
-  // Helper function to send MFA code via email
+  // Sends an MFA code via email, throttled per user (mirrors the signup resend
+  // cooldown) so a caller that repeatedly triggers a send - e.g. re-hitting a
+  // step-up-gated endpoint - can't be used to flood the account inbox. SET NX is
+  // atomic, so concurrent sends collapse onto a single slot. The already-emailed
+  // code stays valid for its full TTL and is validated by userId (not by session),
+  // so skipping a send inside the window doesn't break verification of a freshly
+  // minted step-up session.
   const sendMfaCode = async (userId: string, email: string) => {
+    const cooldownAcquired = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.MfaCodeResendCooldown(userId),
+      KeyStoreTtls.MfaCodeResendCooldownInSeconds,
+      "1"
+    );
+    if (!cooldownAcquired) return;
+
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId
@@ -59,7 +119,13 @@ export const mfaSessionServiceFactory = ({
     });
   };
 
-  const verifyMfaSession = async ({ mfaSessionId, userId, mfaToken, mfaMethod }: TVerifyMfaSessionDTO) => {
+  const verifyMfaSession = async ({
+    mfaSessionId,
+    userId,
+    tokenVersionId,
+    mfaToken,
+    mfaMethod
+  }: TVerifyMfaSessionDTO) => {
     const mfaSession = await getMfaSession(mfaSessionId);
 
     if (!mfaSession) {
@@ -80,6 +146,16 @@ export const mfaSessionServiceFactory = ({
         message: "MFA session does not belong to current user"
       });
     }
+
+    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+      throw new ForbiddenRequestError({
+        message: "MFA session does not belong to current session"
+      });
+    }
+
+    await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
+
+    await mfaLockoutService.reserveStepUpMfaAttempt(userId);
 
     try {
       if (mfaMethod === MfaMethod.EMAIL) {
@@ -111,8 +187,18 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
+    await mfaLockoutService.resetStepUpMfaLockStatus(userId);
+
+    if (mfaMethod === MfaMethod.EMAIL) {
+      await keyStore.deleteItem(KeyStorePrefixes.MfaCodeResendCooldown(userId));
+    }
+
     mfaSession.status = MfaSessionStatus.ACTIVE;
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
+
+    if (mfaSession.resourceId === MfaStepUpResource.MfaManagement) {
+      await mfaLockoutService.recordRecentMfaAuth(userId, tokenVersionId);
+    }
 
     return {
       success: true,
@@ -120,7 +206,7 @@ export const mfaSessionServiceFactory = ({
     };
   };
 
-  const getMfaSessionStatus = async ({ mfaSessionId, userId }: TGetMfaSessionStatusDTO) => {
+  const getMfaSessionStatus = async ({ mfaSessionId, userId, tokenVersionId }: TGetMfaSessionStatusDTO) => {
     const mfaSession = await getMfaSession(mfaSessionId);
 
     if (!mfaSession) {
@@ -135,20 +221,32 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
+    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+      throw new ForbiddenRequestError({
+        message: "MFA session does not belong to current session"
+      });
+    }
+
     return {
       status: mfaSession.status,
       mfaMethod: mfaSession.mfaMethod
     };
   };
 
-  const createMfaSession = async (userId: string, resourceId: string, mfaMethod: MfaMethod): Promise<string> => {
+  const createMfaSession = async (
+    userId: string,
+    resourceId: string,
+    mfaMethod: MfaMethod,
+    initiatingTokenVersionId?: string
+  ): Promise<string> => {
     const mfaSessionId = crypto.randomBytes(32).toString("hex");
     const mfaSession: TMfaSession = {
       sessionId: mfaSessionId,
       userId,
       resourceId,
       status: MfaSessionStatus.PENDING,
-      mfaMethod
+      mfaMethod,
+      initiatingTokenVersionId
     };
 
     await keyStore.setItemWithExpiry(
@@ -164,12 +262,29 @@ export const mfaSessionServiceFactory = ({
     await keyStore.deleteItem(KeyStorePrefixes.MfaSession(mfaSessionId));
   };
 
+  // Gate step-up challenge creation on the same Redis-backed lockout that verify
+  // enforces, so a locked-out user is rejected before a new session (and the client
+  // popup) is minted rather than only after entering another code.
+  const enforceStepUpMfaLockout = async (userId: string) => {
+    await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
+  };
+
+  // True when THIS session (tokenVersionId) completed a full MFA login or management
+  // step-up recently, so an MFA-management step-up can be skipped within the grace
+  // window (see recordRecentMfaAuth). Session-scoped, never user-scoped.
+  const hasRecentMfaAuth = async (userId: string, tokenVersionId: string): Promise<boolean> => {
+    return mfaLockoutService.hasRecentMfaAuth(userId, tokenVersionId);
+  };
+
   return {
     createMfaSession,
     verifyMfaSession,
     getMfaSessionStatus,
     sendMfaCode,
     getMfaSession,
-    deleteMfaSession
+    isMfaSessionActive,
+    deleteMfaSession,
+    enforceStepUpMfaLockout,
+    hasRecentMfaAuth
   };
 };

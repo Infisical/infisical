@@ -52,11 +52,6 @@ export const accessMappings: TFeatureMapping[] = [
     extractV1: (p) => p.githubOrgSync
   },
   {
-    v2Key: "enforce_identity_limit",
-    v1Field: "enforceIdentityLimit",
-    extractV1: (p) => Boolean(p.enforceIdentityLimit)
-  },
-  {
     v2Key: "audit_logs",
     v1Field: "auditLogs",
     extractV1: (p) => p.auditLogs

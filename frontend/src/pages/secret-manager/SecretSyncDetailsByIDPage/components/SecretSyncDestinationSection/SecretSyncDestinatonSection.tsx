@@ -27,6 +27,7 @@ import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
+import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
@@ -40,6 +41,7 @@ import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
 import { QoverySyncDestinationSection } from "./QoverySyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { RundeckSyncDestinationSection } from "./RundeckSyncDestinationSection";
 import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
@@ -138,11 +140,17 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
     case SecretSync.Railway:
       DestinationComponents = <RailwaySyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.HasuraCloud:
+      DestinationComponents = <HasuraCloudSyncDestinationSection secretSync={secretSync} />;
+      break;
     case SecretSync.Checkly:
       DestinationComponents = <ChecklySyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Supabase:
       DestinationComponents = <SupabaseSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationComponents = <RundeckSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationComponents = (
