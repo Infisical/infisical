@@ -7,8 +7,8 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable(TableName.ProxiedServiceCredential, (t) => {
     if (!hasDynamicSecretName) {
-      t.text("dynamicSecretName");
-      t.text("dynamicSecretField");
+      t.string("dynamicSecretName");
+      t.string("dynamicSecretField");
       t.jsonb("dynamicSecretConfig");
     }
 
