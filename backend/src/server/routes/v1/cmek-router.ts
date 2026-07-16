@@ -9,7 +9,7 @@ import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -30,7 +30,7 @@ const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, e
   .omit({
     isReserved: true
   })
-  .extend({ algorithm: z.string() });
+  .extend({ algorithm: z.string(), encryptionAlgorithm: z.string().describe(openApiHidden()) });
 
 const withAlgorithmAlias = <T extends { encryptionAlgorithm: string }>(key: T) => ({
   ...key,
@@ -93,7 +93,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             .describe(KMS.CREATE_KEY.type),
           algorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(KMS.CREATE_KEY.algorithm),
           // Deprecated alias for `algorithm`, retained for backwards compatibility.
-          encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(KMS.CREATE_KEY.encryptionAlgorithm),
+          encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(openApiHidden()),
           isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
         })
         .superRefine((data, ctx) => {
@@ -655,7 +655,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                 keyUsage: z.nativeEnum(KmsKeyUsage),
                 algorithm: z.enum(AllowedKmsKeyAlgorithms).optional(),
                 // Deprecated alias for `algorithm`, retained for backwards compatibility.
-                encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional(),
+                encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(openApiHidden()),
                 keyMaterial: z.string().min(1),
                 isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
               })
