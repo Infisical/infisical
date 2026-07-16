@@ -579,6 +579,11 @@ const processSelfSignedCertificate = async ({
 }: {
   certificateRequest: {
     commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
     domainComponents?: string[];
     keyUsages?: CertKeyUsageType[];
     extendedKeyUsages?: CertExtendedKeyUsageType[];
@@ -1116,8 +1121,7 @@ export const certificateV3ServiceFactory = ({
 
         const processResult = await processSelfSignedCertificate({
           certificateRequest: {
-            ...certificateRequest,
-            domainComponents: certificateRequestWithDefaults.domainComponents,
+            ...certificateRequestWithDefaults,
             validity: { ttl: resolvedTtl }
           },
           policy,

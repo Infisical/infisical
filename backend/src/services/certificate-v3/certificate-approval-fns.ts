@@ -346,6 +346,11 @@ export const certificateApprovalServiceFactory = (
   }: {
     certificateRequest: {
       commonName?: string;
+      organization?: string;
+      organizationalUnit?: string;
+      country?: string;
+      state?: string;
+      locality?: string;
       domainComponents?: string[];
       keyUsages?: CertKeyUsageType[];
       extendedKeyUsages?: CertExtendedKeyUsageType[];
