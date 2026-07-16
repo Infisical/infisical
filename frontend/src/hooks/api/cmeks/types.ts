@@ -4,7 +4,8 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 export enum KmsKeyUsage {
   ENCRYPT_DECRYPT = "encrypt-decrypt",
-  SIGN_VERIFY = "sign-verify"
+  SIGN_VERIFY = "sign-verify",
+  GENERATE_VERIFY_MAC = "generate-verify-mac"
 }
 
 export type TCmek = {
@@ -12,7 +13,7 @@ export type TCmek = {
   keyUsage: KmsKeyUsage;
   name: string;
   description?: string;
-  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
+  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   projectId: string;
   isDisabled: boolean;
   isReserved: boolean;
@@ -45,6 +46,9 @@ export type TCmekVerify = KeyRef & {
   signingAlgorithm: SigningAlgorithm;
 };
 
+export type TCmekGenerateMac = KeyRef & { data: string };
+export type TCmekVerifyMac = KeyRef & { data: string; mac: string };
+
 export type TProjectCmeksList = {
   keys: TCmek[];
   totalCount: number;
@@ -75,6 +79,18 @@ export type TCmekVerifyResponse = {
   signingAlgorithm: SigningAlgorithm;
 };
 
+export type TCmekGenerateMacResponse = {
+  mac: string;
+  keyId: string;
+  macAlgorithm: HmacAlgorithm;
+};
+
+export type TCmekVerifyMacResponse = {
+  macValid: boolean;
+  keyId: string;
+  macAlgorithm: HmacAlgorithm;
+};
+
 export type TCmekDecryptResponse = {
   plaintext: string;
 };
@@ -103,7 +119,7 @@ export type TCmekBulkExportedKey = {
   keyId: string;
   name: string;
   keyUsage: KmsKeyUsage;
-  algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
+  algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   privateKey: string;
   publicKey?: string;
 };
@@ -115,7 +131,7 @@ export type TCmekBulkExportPrivateKeysResponse = {
 export type TCmekBulkImportKeyEntry = {
   name: string;
   keyUsage: KmsKeyUsage;
-  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
+  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   keyMaterial: string;
   isExportable?: boolean;
 };
@@ -148,9 +164,18 @@ export enum SymmetricKeyAlgorithm {
   AES_GCM_128 = "aes-128-gcm"
 }
 
+export enum HmacAlgorithm {
+  HMAC_SHA_1 = "HMAC_SHA_1",
+  HMAC_SHA_224 = "HMAC_SHA_224",
+  HMAC_SHA_256 = "HMAC_SHA_256",
+  HMAC_SHA_384 = "HMAC_SHA_384",
+  HMAC_SHA_512 = "HMAC_SHA_512"
+}
+
 export const AllowedEncryptionKeyAlgorithms = z.enum([
   ...Object.values(SymmetricKeyAlgorithm),
-  ...Object.values(AsymmetricKeyAlgorithm)
+  ...Object.values(AsymmetricKeyAlgorithm),
+  ...Object.values(HmacAlgorithm)
 ] as [string, ...string[]]).options;
 
 export enum SigningAlgorithm {

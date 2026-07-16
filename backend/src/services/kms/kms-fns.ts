@@ -1,8 +1,12 @@
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign";
 import { BadRequestError } from "@app/lib/errors";
 
 import { KmsKeyUsage } from "./kms-types";
+
+export const MIN_HMAC_IMPORT_KEY_BYTE_LENGTH = 1;
+export const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
 
 export const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";
 
@@ -18,7 +22,7 @@ export const getByteLengthForSymmetricEncryptionAlgorithm = (encryptionAlgorithm
 
 export const verifyKeyTypeAndAlgorithm = (
   keyUsage: KmsKeyUsage,
-  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm,
+  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm,
   extra?: {
     forceType?: KmsKeyUsage;
   }
@@ -43,6 +47,16 @@ export const verifyKeyTypeAndAlgorithm = (
     if (!Object.values(AsymmetricKeyAlgorithm).includes(algorithm as AsymmetricKeyAlgorithm)) {
       throw new BadRequestError({
         message: `Unsupported sign/verify algorithm for sign/verify key: ${algorithm as string}`
+      });
+    }
+
+    return true;
+  }
+
+  if (keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+    if (!Object.values(HmacAlgorithm).includes(algorithm as HmacAlgorithm)) {
+      throw new BadRequestError({
+        message: `Unsupported HMAC algorithm for generate/verify MAC key: ${algorithm as string}`
       });
     }
 

@@ -92,8 +92,10 @@ import { CmekBulkImportModal } from "./CmekBulkImportModal";
 import { CmekDecryptModal } from "./CmekDecryptModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekExportKeyModal } from "./CmekExportKeyModal";
+import { CmekGenerateMacModal } from "./CmekGenerateMacModal";
 import { CmekModal } from "./CmekModal";
 import { CmekSignModal } from "./CmekSignModal";
+import { CmekVerifyMacModal } from "./CmekVerifyMacModal";
 import { CmekVerifyModal } from "./CmekVerifyModal";
 import { DeleteCmekModal } from "./DeleteCmekModal";
 import { cmekKeysToExportJSON, downloadJSON } from "./jsonExport";
@@ -173,6 +175,8 @@ export const CmekTable = () => {
     "decryptData",
     "signData",
     "verifyData",
+    "generateMac",
+    "verifyMac",
     "exportKey",
     "importKeys"
   ] as const);
@@ -242,6 +246,14 @@ export const CmekTable = () => {
   );
   const cannotVerifyData = permission.cannot(
     ProjectPermissionCmekActions.Verify,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotGenerateMac = permission.cannot(
+    ProjectPermissionCmekActions.GenerateMac,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotVerifyMac = permission.cannot(
+    ProjectPermissionCmekActions.VerifyMac,
     ProjectPermissionSub.Cmek
   );
   const cannotRotateKey = permission.cannot(
@@ -642,6 +654,24 @@ export const CmekTable = () => {
                                     </DropdownMenuItem>
                                   </>
                                 )}
+                                {keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("generateMac", cmek)}
+                                      isDisabled={cannotGenerateMac || isDisabled}
+                                    >
+                                      <FileSignatureIcon className="mr-2 size-4" />
+                                      Generate MAC
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("verifyMac", cmek)}
+                                      isDisabled={cannotVerifyMac || isDisabled}
+                                    >
+                                      <CircleCheckIcon className="mr-2 size-4" />
+                                      Verify MAC
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("exportKey", cmek)}
                                   isDisabled={cannotExportKey || isDisabled}
@@ -745,6 +775,16 @@ export const CmekTable = () => {
         isOpen={popUp.verifyData.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("verifyData", isOpen)}
         cmek={popUp.verifyData.data as TCmek}
+      />
+      <CmekGenerateMacModal
+        isOpen={popUp.generateMac.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("generateMac", isOpen)}
+        cmek={popUp.generateMac.data as TCmek}
+      />
+      <CmekVerifyMacModal
+        isOpen={popUp.verifyMac.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("verifyMac", isOpen)}
+        cmek={popUp.verifyMac.data as TCmek}
       />
       <CmekExportKeyModal
         isOpen={popUp.exportKey.isOpen}

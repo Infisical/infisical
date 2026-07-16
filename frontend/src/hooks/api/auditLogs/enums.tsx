@@ -162,6 +162,8 @@ export enum EventType {
   CMEK_DECRYPT = "cmek-decrypt",
   CMEK_SIGN = "cmek-sign",
   CMEK_VERIFY = "cmek-verify",
+  CMEK_GENERATE_MAC = "cmek-generate-mac",
+  CMEK_VERIFY_MAC = "cmek-verify-mac",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",

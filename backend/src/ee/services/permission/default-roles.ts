@@ -279,6 +279,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
       ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.GenerateMac,
+      ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate,
       ProjectPermissionCmekActions.ExportPrivateKey
     ],
@@ -643,6 +645,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
       ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.GenerateMac,
+      ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate
     ],
     ProjectPermissionSub.Cmek
@@ -805,7 +809,9 @@ const buildCryptographicOperatorPermissionRules = () => {
       ProjectPermissionCmekActions.Encrypt,
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
+      ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.GenerateMac,
+      ProjectPermissionCmekActions.VerifyMac
     ],
     ProjectPermissionSub.Cmek
   );

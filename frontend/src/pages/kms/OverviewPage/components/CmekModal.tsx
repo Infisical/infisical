@@ -27,6 +27,7 @@ import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
   AsymmetricKeyAlgorithm,
+  HmacAlgorithm,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
   TCmek,
@@ -194,6 +195,11 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                         if (selectedKeyUsage === KmsKeyUsage.SIGN_VERIFY) {
                           return Object.values(AsymmetricKeyAlgorithm).includes(
                             value as unknown as AsymmetricKeyAlgorithm
+                          );
+                        }
+                        if (selectedKeyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+                          return Object.values(HmacAlgorithm).includes(
+                            value as unknown as HmacAlgorithm
                           );
                         }
 
