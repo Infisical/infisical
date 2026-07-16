@@ -388,6 +388,39 @@ export function hasSecretReadValueOrDescribePermission(
   return canNewPermission || canOldPermission;
 }
 
+// Personal secret overrides can be managed either by the dedicated PersonalOverride action or by
+// whoever already holds the matching shared-secret action (Create/Edit/Delete). This mirrors the
+// backend throwIfMissingSecretPersonalOverridePermission check so the UI shows the same controls.
+export function hasSecretPersonalOverridePermission(
+  permission: MongoAbility<ProjectPermissionSet>,
+  action: Extract<
+    ProjectPermissionSecretActions,
+    | ProjectPermissionSecretActions.Create
+    | ProjectPermissionSecretActions.Edit
+    | ProjectPermissionSecretActions.Delete
+  >,
+  subjectFields?: SecretSubjectFields
+) {
+  let canPersonalOverride = false;
+  let canFallback = false;
+
+  if (subjectFields) {
+    canPersonalOverride = permission.can(
+      ProjectPermissionSecretActions.PersonalOverride,
+      subject(ProjectPermissionSub.Secrets, subjectFields)
+    );
+    canFallback = permission.can(action, subject(ProjectPermissionSub.Secrets, subjectFields));
+  } else {
+    canPersonalOverride = permission.can(
+      ProjectPermissionSecretActions.PersonalOverride,
+      ProjectPermissionSub.Secrets
+    );
+    canFallback = permission.can(action, ProjectPermissionSub.Secrets);
+  }
+
+  return canPersonalOverride || canFallback;
+}
+
 // ─── Grant condition extractors ─────────────────────────────────────
 
 // Member extractors
