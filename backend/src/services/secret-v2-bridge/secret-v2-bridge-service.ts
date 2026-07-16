@@ -877,7 +877,7 @@ export const secretV2BridgeServiceFactory = ({
       key: inputSecret.secretName,
       folderId,
       type: inputSecret.type,
-      ...(inputSecret.type === SecretType.Personal ? { userId: actorId } : {})
+      ...(inputSecret.type === SecretType.Personal && { userId: actorId })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
     if (inputSecret.type === SecretType.Shared) {
@@ -901,7 +901,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    if (secretToDelete.type !== SecretType.Personal)
+    if (inputSecret.type === SecretType.Shared)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
         subject(ProjectPermissionSub.Secrets, {
