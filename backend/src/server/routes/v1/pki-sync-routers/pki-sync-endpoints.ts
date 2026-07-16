@@ -29,6 +29,7 @@ export const registerSyncPkiEndpoints = ({
     connectionId: string;
     destinationConfig: Record<string, unknown>;
     syncOptions?: Record<string, unknown>;
+    credentials?: { exportPassword?: string };
     description?: string;
     isAutoSyncEnabled?: boolean;
     subscriberId?: string | null;
@@ -167,6 +168,8 @@ export const registerSyncPkiEndpoints = ({
             pkiSyncId: pkiSync.id,
             name: pkiSync.name,
             destination,
+            connectionId: pkiSync.connectionId,
+            hasCredentials: Boolean(req.body.credentials?.exportPassword),
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }

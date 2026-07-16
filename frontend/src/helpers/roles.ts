@@ -33,10 +33,6 @@ export const formatProjectRoleName = (role: string, customRoleName?: string) => 
       return "SSH Host Bootstrapper";
     case ProjectMembershipRole.KmsCryptographicOperator:
       return "Cryptographic Operator";
-    case ProjectMembershipRole.Agent:
-      return "Agent";
-    case ProjectMembershipRole.AgentProxy:
-      return "Agent Proxy";
     default:
       return role;
   }

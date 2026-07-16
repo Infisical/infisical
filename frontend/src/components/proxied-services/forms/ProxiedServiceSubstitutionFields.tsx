@@ -14,8 +14,8 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 
+import { CredentialSourceFields, TCredentialSource } from "./CredentialSourceFields";
 import { TProxiedServiceForm } from "./schema";
-import { SecretSelect } from "./SecretSelect";
 import { SurfaceSelect } from "./SurfaceSelect";
 import { genPlaceholder } from "./utils";
 
@@ -37,10 +37,19 @@ export const ProxiedServiceSubstitutionFields = ({
   const {
     control,
     register,
+    watch,
+    setValue,
     formState: { errors }
   } = useFormContext<TProxiedServiceForm>();
 
   const substitutionFields = useFieldArray({ control, name: "substitutions" });
+  const watchedSubstitutions = watch("substitutions");
+
+  const setSubstitutionSource = (i: number, v: TCredentialSource) => {
+    setValue(`substitutions.${i}.secretKey`, v.secretKey ?? "");
+    setValue(`substitutions.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
+    setValue(`substitutions.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -134,21 +143,25 @@ export const ProxiedServiceSubstitutionFields = ({
             <div className="flex items-center gap-2">
               <span className="shrink-0 text-muted">with value of</span>
               <div className="flex-1">
-                <Controller
-                  control={control}
-                  name={`substitutions.${i}.secretKey`}
-                  render={({ field }) => (
-                    <SecretSelect
-                      projectId={projectId}
-                      environment={environment}
-                      secretPath={secretPath}
-                      value={field.value}
-                      onChange={field.onChange}
-                      isError={Boolean(errors.substitutions?.[i]?.secretKey)}
-                    />
-                  )}
+                <CredentialSourceFields
+                  projectId={projectId}
+                  environment={environment}
+                  secretPath={secretPath}
+                  value={{
+                    secretKey: watchedSubstitutions?.[i]?.secretKey,
+                    dynamicSecretName: watchedSubstitutions?.[i]?.dynamicSecretName,
+                    dynamicSecretField: watchedSubstitutions?.[i]?.dynamicSecretField
+                  }}
+                  onChange={(v) => setSubstitutionSource(i, v)}
+                  isSecretError={Boolean(errors.substitutions?.[i]?.secretKey)}
+                  isFieldError={Boolean(errors.substitutions?.[i]?.dynamicSecretField)}
                 />
-                <FieldError errors={[errors.substitutions?.[i]?.secretKey]} />
+                <FieldError
+                  errors={[
+                    errors.substitutions?.[i]?.secretKey,
+                    errors.substitutions?.[i]?.dynamicSecretField
+                  ]}
+                />
               </div>
             </div>
           </div>
@@ -161,9 +174,11 @@ export const ProxiedServiceSubstitutionFields = ({
           type="button"
           onClick={() => {
             substitutionFields.append({
+              secretKey: "",
+              dynamicSecretName: "",
+              dynamicSecretField: "",
               placeholderKey: "",
               placeholderValue: genPlaceholder(),
-              secretKey: "",
               surfaces: []
             });
             onClearCredentialError?.();

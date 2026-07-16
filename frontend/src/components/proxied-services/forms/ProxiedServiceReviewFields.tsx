@@ -9,16 +9,31 @@ import {
   DetailValue
 } from "@app/components/v3";
 
-import { HeaderRewritingMode, TProxiedServiceForm } from "./schema";
+import { HeaderRewritingMode, TCredentialSourceForm, TProxiedServiceForm } from "./schema";
 
 const NONE = <span className="text-muted italic">None</span>;
+
+const hasSource = (src?: TCredentialSourceForm) =>
+  Boolean(src?.secretKey || src?.dynamicSecretName);
+
+const SourceValue = ({ src }: { src?: TCredentialSourceForm }) => {
+  if (src?.dynamicSecretName) {
+    return (
+      <DetailValue className="font-mono">
+        {src.dynamicSecretName}
+        {src.dynamicSecretField ? ` → ${src.dynamicSecretField}` : ""}
+      </DetailValue>
+    );
+  }
+  return <DetailValue className="font-mono">{src?.secretKey || NONE}</DetailValue>;
+};
 
 export const ProxiedServiceReviewFields = () => {
   const { watch } = useFormContext<TProxiedServiceForm>();
   const { name, hostPattern, isEnabled, headerMode, headers, basicAuth, substitutions } = watch();
 
   const isBasicAuth = headerMode === HeaderRewritingMode.BasicAuth;
-  const activeHeaders = headers.filter((h) => h.headerName && h.secretKey);
+  const activeHeaders = headers.filter((h) => h.headerName && hasSource(h));
 
   return (
     <div className="mb-4 flex flex-col gap-y-8">
@@ -55,16 +70,16 @@ export const ProxiedServiceReviewFields = () => {
               <DetailValue>Basic Auth</DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>Username Secret</DetailLabel>
-              <DetailValue className="font-mono">
-                {basicAuth?.usernameSecretKey || NONE}
-              </DetailValue>
+              <DetailLabel>Username</DetailLabel>
+              <SourceValue src={basicAuth?.username} />
             </Detail>
             <Detail>
-              <DetailLabel>Password Secret</DetailLabel>
-              <DetailValue className="font-mono">
-                {basicAuth?.passwordSecretKey || NONE}
-              </DetailValue>
+              <DetailLabel>Password</DetailLabel>
+              {hasSource(basicAuth?.password) ? (
+                <SourceValue src={basicAuth?.password} />
+              ) : (
+                <DetailValue>{NONE}</DetailValue>
+              )}
             </Detail>
           </div>
         ) : (
@@ -73,7 +88,7 @@ export const ProxiedServiceReviewFields = () => {
               ? NONE
               : activeHeaders.map((h) => (
                   <div
-                    key={`${h.headerName}-${h.secretKey}`}
+                    key={`${h.headerName}-${h.secretKey}-${h.dynamicSecretName}`}
                     className="flex flex-wrap gap-x-8 gap-y-4"
                   >
                     <Detail>
@@ -84,8 +99,8 @@ export const ProxiedServiceReviewFields = () => {
                       </DetailValue>
                     </Detail>
                     <Detail>
-                      <DetailLabel>Secret</DetailLabel>
-                      <DetailValue className="font-mono">{h.secretKey}</DetailValue>
+                      <DetailLabel>Value</DetailLabel>
+                      <SourceValue src={h} />
                     </Detail>
                   </div>
                 ))}
@@ -100,7 +115,7 @@ export const ProxiedServiceReviewFields = () => {
             ? NONE
             : substitutions.map((s) => (
                 <div
-                  key={`${s.placeholderKey}-${s.secretKey}`}
+                  key={`${s.placeholderKey}-${s.secretKey}-${s.dynamicSecretName}`}
                   className="flex flex-wrap gap-x-8 gap-y-4"
                 >
                   <Detail>
@@ -114,8 +129,8 @@ export const ProxiedServiceReviewFields = () => {
                     </DetailValue>
                   </Detail>
                   <Detail>
-                    <DetailLabel>Secret</DetailLabel>
-                    <DetailValue className="font-mono">{s.secretKey}</DetailValue>
+                    <DetailLabel>Value</DetailLabel>
+                    <SourceValue src={s} />
                   </Detail>
                 </div>
               ))}

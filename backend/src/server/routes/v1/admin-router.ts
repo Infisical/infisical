@@ -44,6 +44,7 @@ const SanitizedSuperAdminSchema = z.object({
   pageFrameContent: z.string().nullable().optional(),
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId: z.string().uuid().optional(),
+  createdAt: z.date().optional(),
   trustSamlEmails: z.boolean().nullish(),
   trustLdapEmails: z.boolean().nullish(),
   trustOidcEmails: z.boolean().nullish(),

@@ -2125,6 +2125,7 @@ export const registerRoutes = async (
 
   const projectEnvQueue = projectEnvQueueFactory({
     cronJob,
+    queueService,
     projectEnvDAL,
     keyStore,
     auditLogService
@@ -2960,7 +2961,10 @@ export const registerRoutes = async (
     folderDAL,
     secretV2BridgeService,
     permissionService,
-    licenseService
+    licenseService,
+    dynamicSecretDAL,
+    projectDAL,
+    kmsService
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({
@@ -3546,7 +3550,8 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     licenseService,
-    pkiSyncQueue
+    pkiSyncQueue,
+    kmsService
   });
 
   const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({
@@ -3641,7 +3646,9 @@ export const registerRoutes = async (
     identityGroupMembershipDAL,
     userDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    notificationService,
+    smtpService
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({

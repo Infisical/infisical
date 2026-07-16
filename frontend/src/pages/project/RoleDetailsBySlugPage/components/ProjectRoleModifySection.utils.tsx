@@ -108,7 +108,8 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.PersonalOverride]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -127,6 +128,8 @@ const CmekPolicyActionSchema = z.object({
   [ProjectPermissionCmekActions.Decrypt]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Sign]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Verify]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.GenerateMac]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.VerifyMac]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Rotate]: z.boolean().optional(),
   [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
 });
@@ -1204,6 +1207,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
+          const canPersonalOverride = action.includes(
+            ProjectPermissionSecretActions.PersonalOverride
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1214,6 +1220,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
+            [ProjectPermissionSecretActions.PersonalOverride]: canPersonalOverride,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1646,6 +1653,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
       const canSign = action.includes(ProjectPermissionCmekActions.Sign);
       const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
+      const canGenerateMac = action.includes(ProjectPermissionCmekActions.GenerateMac);
+      const canVerifyMac = action.includes(ProjectPermissionCmekActions.VerifyMac);
       const canRotate = action.includes(ProjectPermissionCmekActions.Rotate);
       const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
 
@@ -1660,6 +1669,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDecrypt) formVal[subject]![0][ProjectPermissionCmekActions.Decrypt] = true;
       if (canSign) formVal[subject]![0][ProjectPermissionCmekActions.Sign] = true;
       if (canVerify) formVal[subject]![0][ProjectPermissionCmekActions.Verify] = true;
+      if (canGenerateMac) formVal[subject]![0][ProjectPermissionCmekActions.GenerateMac] = true;
+      if (canVerifyMac) formVal[subject]![0][ProjectPermissionCmekActions.VerifyMac] = true;
       if (canRotate) formVal[subject]![0][ProjectPermissionCmekActions.Rotate] = true;
       if (canExportPrivateKey)
         formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
@@ -2117,6 +2128,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         description: "Create new secrets in the project",
         value: ProjectPermissionSecretActions.Create
+      },
+      {
+        label: "Personal Override",
+        description:
+          "Create, modify, and delete personal secret overrides. Does not grant access to shared secrets.",
+        value: ProjectPermissionSecretActions.PersonalOverride
       }
     ]
   },
@@ -2213,6 +2230,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Verify",
         value: ProjectPermissionCmekActions.Verify,
         description: "Verify signatures using KMS keys"
+      },
+      {
+        label: "Generate MAC",
+        value: ProjectPermissionCmekActions.GenerateMac,
+        description: "Generate MACs using KMS keys"
+      },
+      {
+        label: "Verify MAC",
+        value: ProjectPermissionCmekActions.VerifyMac,
+        description: "Verify MACs using KMS keys"
       },
       {
         label: "Rotate",

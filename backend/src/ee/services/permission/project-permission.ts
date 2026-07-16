@@ -48,7 +48,8 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  PersonalOverride = "personal-override"
 }
 
 export enum ProjectPermissionCmekActions {
@@ -60,6 +61,8 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  GenerateMac = "generate-mac",
+  VerifyMac = "verify-mac",
   Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }

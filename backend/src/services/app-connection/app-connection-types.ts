@@ -456,6 +456,12 @@ import {
   TWindmillConnectionInput
 } from "./windmill";
 import {
+  TValidateWinRMConnectionCredentialsSchema,
+  TWinRMConnection,
+  TWinRMConnectionConfig,
+  TWinRMConnectionInput
+} from "./winrm/winrm-connection-types";
+import {
   TValidateZabbixConnectionCredentialsSchema,
   TZabbixConnection,
   TZabbixConnectionConfig,
@@ -474,6 +480,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TAzureDevOpsConnection
   | TAzureADCSConnection
   | TADCSConnection
+  | TWinRMConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -563,6 +570,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureDevOpsConnectionInput
   | TAzureADCSConnectionInput
   | TADCSConnectionInput
+  | TWinRMConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TTerraformCloudConnectionInput
@@ -687,6 +695,7 @@ export type TAppConnectionConfig =
   | TAzureDevOpsConnectionConfig
   | TAzureADCSConnectionConfig
   | TADCSConnectionConfig
+  | TWinRMConnectionConfig
   | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
@@ -765,6 +774,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureDevOpsConnectionCredentialsSchema
   | TValidateAzureADCSConnectionCredentialsSchema
   | TValidateADCSConnectionCredentialsSchema
+  | TValidateWinRMConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema

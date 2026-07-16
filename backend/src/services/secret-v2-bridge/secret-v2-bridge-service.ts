@@ -13,6 +13,7 @@ import {
 import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretPersonalOverridePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -372,15 +373,24 @@ export const secretV2BridgeServiceFactory = ({
 
     const { secretName, type, ...inputSecretData } = inputSecret;
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Create,
-      subject(ProjectPermissionSub.Secrets, {
+    if (type === SecretType.Personal) {
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Create, {
         environment,
         secretPath,
         secretName,
-        secretTags: tags?.map((el) => el.slug)
-      })
-    );
+        secretTags: doesSecretExist?.tags?.map((el) => el.slug)
+      });
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.Create,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName,
+          secretTags: tags?.map((el) => el.slug)
+        })
+      );
+    }
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -568,6 +578,19 @@ export const secretV2BridgeServiceFactory = ({
     let secret;
     let secretId: string;
     if (inputSecret.type === SecretType.Personal) {
+      const sharedSecretForOverride = await secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      });
+
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Edit, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName,
+        secretTags: sharedSecretForOverride?.tags?.map((el) => el.slug)
+      });
+
       const personalSecretToModify = await secretDAL.findOne({
         key: inputSecret.secretName,
         type: SecretType.Personal,
@@ -877,12 +900,8 @@ export const secretV2BridgeServiceFactory = ({
     const secretToDelete = await secretDAL.findOne({
       key: inputSecret.secretName,
       folderId,
-      ...(inputSecret.type === SecretType.Shared
-        ? {}
-        : {
-            type: SecretType.Personal,
-            userId: actorId
-          })
+      type: inputSecret.type,
+      ...(inputSecret.type === SecretType.Personal && { userId: actorId })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
     if (inputSecret.type === SecretType.Shared) {
@@ -890,7 +909,23 @@ export const secretV2BridgeServiceFactory = ({
         throw new BadRequestError({ message: "Cannot delete honey token secrets" });
     }
 
-    if (secretToDelete.type !== SecretType.Personal)
+    if (inputSecret.type === SecretType.Personal) {
+      // check the shared secret that this personal secret overrides to get the tags
+      const sharedSecretForOverride = await secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      });
+
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Delete, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName,
+        secretTags: sharedSecretForOverride?.tags?.map((el) => el.slug)
+      });
+    }
+
+    if (inputSecret.type === SecretType.Shared)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
         subject(ProjectPermissionSub.Secrets, {

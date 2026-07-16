@@ -71,7 +71,7 @@ For example, an operator of Infisical may define the following constraints to re
 
 ### Overview
 
-All symmetric encryption operations in Infisical, with the exception of those proxied through [External KMS](/documentation/platform/kms-configuration/overview#external-kms) and [HSM](/documentation/platform/kms/hsm-integration) systems, use a software-backed 256-bit Advanced Encryption Standard (AES) cipher in Galois Counter Mode (GCM) with 96-bit nonces, **AES-256-GCM**. This authenticated encryption scheme provides both confidentiality and integrity guarantees for all encrypted data.
+All symmetric encryption operations in Infisical, with the exception of those proxied through [External KMS](/documentation/platform/kms-configuration/overview#external-kms) and [HSM](/self-hosting/guides/hsm-integration) systems, use a software-backed 256-bit Advanced Encryption Standard (AES) cipher in Galois Counter Mode (GCM) with 96-bit nonces, **AES-256-GCM**. This authenticated encryption scheme provides both confidentiality and integrity guarantees for all encrypted data.
 
 Infisical employs a multilayer encryption architecture where keys are organized hierarchically. Each layer encrypts the layer below it, ensuring that accessing any sensitive data requires both server configuration (the root encryption key) and data from the storage backend. This defense-in-depth approach means that compromising the database alone is insufficient to decrypt sensitive data.
 

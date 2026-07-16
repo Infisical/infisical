@@ -182,6 +182,7 @@
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
+                      "integrations/app-connections/winrm",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -215,6 +216,7 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
+                  "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-pools",
                   "documentation/platform/gateways/gateway-deployment",
                   {
@@ -349,7 +351,6 @@
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
                   "self-hosting/deployment-options/gcp-native"
                 ]
@@ -362,7 +363,20 @@
                   "self-hosting/deployment-options/linux-upgrade"
                 ]
               },
+              {
+                "group": "Helm Charts",
+                "pages": [
+                  "self-hosting/helm-charts/overview",
+                  "self-hosting/deployment-options/kubernetes-helm",
+                  "self-hosting/helm-charts/secrets-operator",
+                  "self-hosting/helm-charts/gateway",
+                  "self-hosting/helm-charts/pki-issuer",
+                  "self-hosting/helm-charts/csi-provider",
+                  "self-hosting/helm-charts/agent-injector"
+                ]
+              },
               "self-hosting/guides/replication",
+              "self-hosting/guides/hsm-integration",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -934,7 +948,9 @@
                           "documentation/platform/pki/applications/certificate-syncs/chef",
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
-                          "documentation/platform/pki/applications/certificate-syncs/netscaler"
+                          "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/linux-server",
+                          "documentation/platform/pki/applications/certificate-syncs/windows-server"
                         ]
                       }
                     ]
@@ -1020,7 +1036,6 @@
                 "group": "Infisical KMS",
                 "pages": [
                   "documentation/platform/kms/overview",
-                  "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
                   {
                     "group": "KMIP Integration",
@@ -1100,7 +1115,8 @@
                     "group": "Discovery",
                     "pages": [
                       "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory"
+                      "documentation/platform/pam/discovery/active-directory",
+                      "documentation/platform/pam/discovery/unix"
                     ]
                   },
                   {
@@ -2234,6 +2250,18 @@
                       "api-reference/endpoints/app-connections/smb/create",
                       "api-reference/endpoints/app-connections/smb/update",
                       "api-reference/endpoints/app-connections/smb/delete"
+                    ]
+                  },
+                  {
+                    "group": "Windows (WinRM)",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/winrm/list",
+                      "api-reference/endpoints/app-connections/winrm/available",
+                      "api-reference/endpoints/app-connections/winrm/get-by-id",
+                      "api-reference/endpoints/app-connections/winrm/get-by-name",
+                      "api-reference/endpoints/app-connections/winrm/create",
+                      "api-reference/endpoints/app-connections/winrm/update",
+                      "api-reference/endpoints/app-connections/winrm/delete"
                     ]
                   },
                   {
@@ -3630,6 +3658,30 @@
                           "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
                           "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
                         ]
+                      },
+                      {
+                        "group": "Linux Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/linux-server/list",
+                          "api-reference/endpoints/pki/syncs/linux-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/linux-server/create",
+                          "api-reference/endpoints/pki/syncs/linux-server/update",
+                          "api-reference/endpoints/pki/syncs/linux-server/delete",
+                          "api-reference/endpoints/pki/syncs/linux-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/linux-server/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Windows Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/windows-server/list",
+                          "api-reference/endpoints/pki/syncs/windows-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/windows-server/create",
+                          "api-reference/endpoints/pki/syncs/windows-server/update",
+                          "api-reference/endpoints/pki/syncs/windows-server/delete",
+                          "api-reference/endpoints/pki/syncs/windows-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/windows-server/remove-certificates"
+                        ]
                       }
                     ]
                   }
@@ -3932,6 +3984,13 @@
                   "api-reference/endpoints/kms/signing/verify",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
+              },
+              {
+                "group": "Message Authentication",
+                "pages": [
+                  "api-reference/endpoints/kms/mac/generate-mac",
+                  "api-reference/endpoints/kms/mac/verify-mac"
+                ]
               }
             ]
           },
@@ -4227,6 +4286,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/kms/hsm-integration",
+      "destination": "/self-hosting/guides/hsm-integration"
+    },
     {
       "source": "/documentation/guides/introduction",
       "destination": "/documentation/platform/secrets-mgmt/overview"

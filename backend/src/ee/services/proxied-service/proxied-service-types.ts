@@ -1,3 +1,4 @@
+import { TDynamicSecretLeaseConfig } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
 import { OrderByDirection } from "@app/lib/types";
 
 import {
@@ -7,7 +8,10 @@ import {
 } from "./proxied-service-enums";
 
 export type TProxiedServiceCredentialInput = {
-  secretKey: string;
+  secretKey?: string | null;
+  dynamicSecretName?: string | null;
+  dynamicSecretField?: string | null;
+  dynamicSecretConfig?: TDynamicSecretLeaseConfig | null;
   role: ProxiedServiceCredentialRole;
   headerName?: string | null;
   headerPrefix?: string | null;

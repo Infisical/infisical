@@ -52,7 +52,8 @@ const MethodRow = ({ icon: Icon, title, description, badge, action }: MethodRowP
 export const MfaMethodsCard = () => {
   const queryClient = useQueryClient();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
-  const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
+  const { data: webAuthnData } = useGetWebAuthnCredentials();
+  const webAuthnCredentials = webAuthnData?.credentials ?? [];
   const { data: serverDetails } = useFetchServerStatus();
   const { removeTotp, isBusy: isRemovingTotp } = useRemoveTotp();
 

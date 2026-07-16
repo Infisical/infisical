@@ -53,8 +53,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.GCPSecretManager:
       primaryText = destinationConfig.projectId;
-      secondaryText =
-        destinationConfig.scope === GcpSyncScope.Global ? "Global" : destinationConfig.locationId;
+      if (destinationConfig.scope === GcpSyncScope.Global) {
+        secondaryText = destinationConfig.locationId
+          ? `Global - ${destinationConfig.locationId}`
+          : "Global";
+      } else {
+        secondaryText = destinationConfig.locationId;
+      }
       break;
     case SecretSync.AzureKeyVault:
       primaryText = destinationConfig.vaultBaseUrl;

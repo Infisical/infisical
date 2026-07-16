@@ -9,7 +9,7 @@ import {
   TProxiedServiceCredentialInput
 } from "@app/hooks/api/proxiedServices/types";
 
-import { HeaderRewritingMode, TProxiedServiceForm } from "./schema";
+import { HeaderRewritingMode, TCredentialSourceForm, TProxiedServiceForm } from "./schema";
 
 export const genPlaceholder = () =>
   `placeholder_${Array.from(
@@ -17,13 +17,43 @@ export const genPlaceholder = () =>
     () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]
   ).join("")}`;
 
+const emptySource = (): TCredentialSourceForm => ({
+  secretKey: "",
+  dynamicSecretName: "",
+  dynamicSecretField: ""
+});
+
+const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredentialSourceForm =>
+  c.dynamicSecretName
+    ? {
+        secretKey: "",
+        dynamicSecretName: c.dynamicSecretName,
+        dynamicSecretField: c.dynamicSecretField ?? ""
+      }
+    : { secretKey: c.secretKey ?? "", dynamicSecretName: "", dynamicSecretField: "" };
+
+const hasSource = (src: TCredentialSourceForm) => Boolean(src.secretKey || src.dynamicSecretName);
+
+// Emits the source half of a credential input: either a static secretKey or a dynamic
+// secret + output field. (Lease config, e.g. k8s namespace, is intentionally not collected.)
+const sourceToInput = (
+  src: TCredentialSourceForm
+): Pick<
+  TProxiedServiceCredentialInput,
+  "secretKey" | "dynamicSecretName" | "dynamicSecretField"
+> =>
+  src.dynamicSecretName
+    ? { dynamicSecretName: src.dynamicSecretName, dynamicSecretField: src.dynamicSecretField }
+    : { secretKey: src.secretKey };
+
 // The legacy blank-slate defaults, used for "Custom" and as the base for new services.
 export const emptyFormValues = (): TProxiedServiceForm => ({
   name: "",
   hostPattern: "",
   isEnabled: true,
   headerMode: HeaderRewritingMode.Headers,
-  headers: [{ secretKey: "", headerName: "Authorization", headerPrefix: "Bearer" }],
+  headers: [{ ...emptySource(), headerName: "Authorization", headerPrefix: "Bearer" }],
+  basicAuth: { username: emptySource(), password: emptySource() },
   substitutions: []
 });
 
@@ -52,20 +82,18 @@ export const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedService
     headers: isBasicAuth
       ? []
       : headerCreds.map((c) => ({
-          secretKey: c.secretKey,
+          ...toSource(c),
           headerName: c.headerName ?? "",
           headerPrefix: c.headerPrefix ?? ""
         })),
-    basicAuth: isBasicAuth
-      ? {
-          usernameSecretKey: username?.secretKey ?? "",
-          passwordSecretKey: password?.secretKey ?? ""
-        }
-      : undefined,
+    basicAuth: {
+      username: username ? toSource(username) : emptySource(),
+      password: password ? toSource(password) : emptySource()
+    },
     substitutions: subs.map((c) => ({
+      ...toSource(c),
       placeholderKey: c.placeholderKey ?? "",
       placeholderValue: c.placeholderValue ?? genPlaceholder(),
-      secretKey: c.secretKey,
       surfaces: (c.substitutionSurfaces ?? []) as ProxiedServiceSubstitutionSurface[]
     }))
   };
@@ -75,16 +103,16 @@ export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredent
   const credentials: TProxiedServiceCredentialInput[] = [];
 
   if (form.headerMode === HeaderRewritingMode.BasicAuth) {
-    if (form.basicAuth?.usernameSecretKey) {
+    if (form.basicAuth && hasSource(form.basicAuth.username)) {
       credentials.push({
-        secretKey: form.basicAuth.usernameSecretKey,
+        ...sourceToInput(form.basicAuth.username),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Username
       });
     }
-    if (form.basicAuth?.passwordSecretKey) {
+    if (form.basicAuth && hasSource(form.basicAuth.password)) {
       credentials.push({
-        secretKey: form.basicAuth.passwordSecretKey,
+        ...sourceToInput(form.basicAuth.password),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Password
       });
@@ -92,7 +120,7 @@ export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredent
   } else {
     form.headers.forEach((h) => {
       credentials.push({
-        secretKey: h.secretKey,
+        ...sourceToInput(h),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerName: h.headerName,
         // omit rather than send null: the API field is optional and rejects null
@@ -103,7 +131,7 @@ export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredent
 
   form.substitutions.forEach((s) => {
     credentials.push({
-      secretKey: s.secretKey,
+      ...sourceToInput(s),
       role: ProxiedServiceCredentialRole.CredentialSubstitution,
       placeholderKey: s.placeholderKey,
       placeholderValue: s.placeholderValue,
@@ -123,7 +151,7 @@ export const uniqueServiceName = (base: string, existingNames: string[]) => {
   return `${base}-${i}`;
 };
 
-// Seeds the form from a template. Every secretKey is left blank — the one thing the user picks.
+// Seeds the form from a template. Every source is left blank — the one thing the user picks.
 // Placeholders are generated once here so re-renders don't churn the value.
 export const buildTemplateFormValues = (
   template: ProxiedServiceTemplate,
@@ -141,15 +169,15 @@ export const buildTemplateFormValues = (
     headers: isBasicAuth
       ? []
       : (template.seed.headers ?? []).map((h) => ({
-          secretKey: "",
+          ...emptySource(),
           headerName: h.headerName,
           headerPrefix: h.headerPrefix ?? ""
         })),
-    basicAuth: isBasicAuth ? { usernameSecretKey: "", passwordSecretKey: "" } : undefined,
+    basicAuth: { username: emptySource(), password: emptySource() },
     substitutions: (template.seed.substitutions ?? []).map((s) => ({
+      ...emptySource(),
       placeholderKey: s.placeholderKey,
       placeholderValue: s.generatePlaceholder(),
-      secretKey: "",
       surfaces: s.surfaces
     }))
   };

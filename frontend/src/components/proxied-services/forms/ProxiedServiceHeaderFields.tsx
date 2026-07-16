@@ -1,4 +1,4 @@
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -16,8 +16,8 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 
+import { CredentialSourceFields, TCredentialSource } from "./CredentialSourceFields";
 import { HeaderRewritingMode, TProxiedServiceForm } from "./schema";
-import { SecretSelect } from "./SecretSelect";
 
 type Props = {
   projectId: string;
@@ -36,7 +36,21 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
   } = useFormContext<TProxiedServiceForm>();
 
   const headerMode = watch("headerMode");
+  const watchedHeaders = watch("headers");
+  const watchedBasicAuth = watch("basicAuth");
   const headerFields = useFieldArray({ control, name: "headers" });
+
+  const setHeaderSource = (i: number, v: TCredentialSource) => {
+    setValue(`headers.${i}.secretKey`, v.secretKey ?? "");
+    setValue(`headers.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
+    setValue(`headers.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
+  };
+
+  const setBasicAuthSource = (which: "username" | "password", v: TCredentialSource) => {
+    setValue(`basicAuth.${which}.secretKey`, v.secretKey ?? "");
+    setValue(`basicAuth.${which}.dynamicSecretName`, v.dynamicSecretName ?? "");
+    setValue(`basicAuth.${which}.dynamicSecretField`, v.dynamicSecretField ?? "");
+  };
 
   const handleModeChange = (value: string) => {
     setValue("headerMode", value as HeaderRewritingMode);
@@ -88,21 +102,25 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
                 <Field className="flex-1">
                   {i === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
                   <FieldContent>
-                    <Controller
-                      control={control}
-                      name={`headers.${i}.secretKey`}
-                      render={({ field }) => (
-                        <SecretSelect
-                          projectId={projectId}
-                          environment={environment}
-                          secretPath={secretPath}
-                          value={field.value}
-                          onChange={field.onChange}
-                          isError={Boolean(errors.headers?.[i]?.secretKey)}
-                        />
-                      )}
+                    <CredentialSourceFields
+                      projectId={projectId}
+                      environment={environment}
+                      secretPath={secretPath}
+                      value={{
+                        secretKey: watchedHeaders?.[i]?.secretKey,
+                        dynamicSecretName: watchedHeaders?.[i]?.dynamicSecretName,
+                        dynamicSecretField: watchedHeaders?.[i]?.dynamicSecretField
+                      }}
+                      onChange={(v) => setHeaderSource(i, v)}
+                      isSecretError={Boolean(errors.headers?.[i]?.secretKey)}
+                      isFieldError={Boolean(errors.headers?.[i]?.dynamicSecretField)}
                     />
-                    <FieldError errors={[errors.headers?.[i]?.secretKey]} />
+                    <FieldError
+                      errors={[
+                        errors.headers?.[i]?.secretKey,
+                        errors.headers?.[i]?.dynamicSecretField
+                      ]}
+                    />
                   </FieldContent>
                 </Field>
                 <IconButton
@@ -127,7 +145,13 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
               size="xs"
               type="button"
               onClick={() =>
-                headerFields.append({ secretKey: "", headerName: "", headerPrefix: "" })
+                headerFields.append({
+                  secretKey: "",
+                  dynamicSecretName: "",
+                  dynamicSecretField: "",
+                  headerName: "",
+                  headerPrefix: ""
+                })
               }
             >
               <PlusIcon className="mr-1 size-4" />
@@ -141,21 +165,25 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
             <Field className="flex-1">
               <FieldLabel>Username</FieldLabel>
               <FieldContent>
-                <Controller
-                  control={control}
-                  name="basicAuth.usernameSecretKey"
-                  render={({ field }) => (
-                    <SecretSelect
-                      projectId={projectId}
-                      environment={environment}
-                      secretPath={secretPath}
-                      value={field.value}
-                      onChange={field.onChange}
-                      isError={Boolean(errors.basicAuth?.usernameSecretKey)}
-                    />
-                  )}
+                <CredentialSourceFields
+                  projectId={projectId}
+                  environment={environment}
+                  secretPath={secretPath}
+                  value={{
+                    secretKey: watchedBasicAuth?.username?.secretKey,
+                    dynamicSecretName: watchedBasicAuth?.username?.dynamicSecretName,
+                    dynamicSecretField: watchedBasicAuth?.username?.dynamicSecretField
+                  }}
+                  onChange={(v) => setBasicAuthSource("username", v)}
+                  isSecretError={Boolean(errors.basicAuth?.username?.secretKey)}
+                  isFieldError={Boolean(errors.basicAuth?.username?.dynamicSecretField)}
                 />
-                <FieldError errors={[errors.basicAuth?.usernameSecretKey]} />
+                <FieldError
+                  errors={[
+                    errors.basicAuth?.username?.secretKey,
+                    errors.basicAuth?.username?.dynamicSecretField
+                  ]}
+                />
               </FieldContent>
             </Field>
             <Field className="flex-1">
@@ -164,21 +192,25 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
                 <span className="ml-1 font-normal text-muted">(optional)</span>
               </FieldLabel>
               <FieldContent>
-                <Controller
-                  control={control}
-                  name="basicAuth.passwordSecretKey"
-                  render={({ field }) => (
-                    <SecretSelect
-                      projectId={projectId}
-                      environment={environment}
-                      secretPath={secretPath}
-                      value={field.value}
-                      onChange={field.onChange}
-                      isError={Boolean(errors.basicAuth?.passwordSecretKey)}
-                    />
-                  )}
+                <CredentialSourceFields
+                  projectId={projectId}
+                  environment={environment}
+                  secretPath={secretPath}
+                  value={{
+                    secretKey: watchedBasicAuth?.password?.secretKey,
+                    dynamicSecretName: watchedBasicAuth?.password?.dynamicSecretName,
+                    dynamicSecretField: watchedBasicAuth?.password?.dynamicSecretField
+                  }}
+                  onChange={(v) => setBasicAuthSource("password", v)}
+                  isSecretError={Boolean(errors.basicAuth?.password?.secretKey)}
+                  isFieldError={Boolean(errors.basicAuth?.password?.dynamicSecretField)}
                 />
-                <FieldError errors={[errors.basicAuth?.passwordSecretKey]} />
+                <FieldError
+                  errors={[
+                    errors.basicAuth?.password?.secretKey,
+                    errors.basicAuth?.password?.dynamicSecretField
+                  ]}
+                />
               </FieldContent>
             </Field>
           </div>
