@@ -42,7 +42,7 @@ dbSchemaChanges:
       - type: file
         ref: backend/src/db/migrations/20260710162607_create-proxied-services.ts
         path: backend/src/db/migrations/20260710162607_create-proxied-services.ts
-        description: Creates org_agent_proxy_config table
+        description: Creates org_agent_proxy_config, proxied_services, and proxied_service_credentials tables
   - title: Users MFA methods column
     description: Infisical drops the unused users.mfaMethods text[] column. Current
       MFA logic does not read this column.
