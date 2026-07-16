@@ -554,10 +554,17 @@ export const secretV2BridgeServiceFactory = ({
     let secret;
     let secretId: string;
     if (inputSecret.type === SecretType.Personal) {
+      const sharedSecretForOverride = await secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      });
+
       throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Edit, {
         environment,
         secretPath,
-        secretName: inputSecret.secretName
+        secretName: inputSecret.secretName,
+        secretTags: sharedSecretForOverride?.tags?.map((el) => el.slug)
       });
 
       const personalSecretToModify = await secretDAL.findOne({
@@ -882,13 +889,25 @@ export const secretV2BridgeServiceFactory = ({
         throw new BadRequestError({ message: "Cannot delete honey token secrets" });
     }
 
+    let sharedSecretForOverride;
     if (secretToDelete.type === SecretType.Personal) {
+      sharedSecretForOverride = await secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      });
+
       throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Delete, {
         environment,
         secretPath,
-        secretName: inputSecret.secretName
+        secretName: inputSecret.secretName,
+        secretTags: sharedSecretForOverride?.tags?.map((el) => el.slug)
       });
     }
+
+    const secretTagsForPermissionCheck = (
+      secretToDelete.type === SecretType.Personal ? sharedSecretForOverride : secretToDelete
+    )?.tags?.map((el) => el.slug);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretActions.Delete,
@@ -896,7 +915,7 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         secretPath,
         secretName: secretToDelete.key,
-        secretTags: secretToDelete.tags?.map((el) => el.slug)
+        secretTags: secretTagsForPermissionCheck
       })
     );
 
@@ -957,7 +976,7 @@ export const secretV2BridgeServiceFactory = ({
           environment,
           secretPath,
           secretName: secretToDelete.key,
-          secretTags: secretToDelete.tags?.map((el) => el.slug)
+          secretTags: secretTagsForPermissionCheck
         }
       );
 
