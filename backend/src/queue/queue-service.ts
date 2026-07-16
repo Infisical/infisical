@@ -112,6 +112,7 @@ export enum QueueName {
   AuditLogStreamOutbox = "audit-log-stream-outbox",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
+  ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event"
@@ -190,6 +191,7 @@ export enum QueueJobs {
   DigiCertOrderPolling = "digicert-order-polling-job",
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
+  ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job"
@@ -523,6 +525,10 @@ export type TQueueJobTypes = {
   [QueueName.ProjectHardDelete]: {
     name: QueueJobs.ProjectHardDelete;
     payload: { projectId: string };
+  };
+  [QueueName.ProjectEnvHardDelete]: {
+    name: QueueJobs.ProjectEnvHardDelete;
+    payload: { envId: string; projectId: string };
   };
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;

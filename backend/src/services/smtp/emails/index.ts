@@ -15,6 +15,7 @@ export * from "./ExternalImportSucceededTemplate";
 export * from "./HealthAlertTemplate";
 export * from "./HoneyTokenTriggeredTemplate";
 export * from "./IntegrationSyncFailedTemplate";
+export * from "./MfaRecoveryCodeUsedTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OAuthPasswordResetTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";

@@ -20,6 +20,11 @@ import { useTimedReset } from "@app/hooks";
 
 import { ProjectAccessError } from "./components";
 
+const isProjectAccessDeniedError = (error: unknown): error is AxiosError =>
+  error instanceof AxiosError &&
+  error.status === 403 &&
+  error.response?.data?.error === "ProjectMembershipNotFound";
+
 const STATUS_LABELS: Record<number, string> = {
   400: "Bad Request",
   401: "Unauthorized",
@@ -57,11 +62,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
     setIsFullScreen(rect.top < 2 && rect.left < 2 && window.innerWidth - rect.width < 4);
   }, []);
 
-  if (
-    error instanceof AxiosError &&
-    error.status === 403 &&
-    error.response?.data?.error === "User not a part of the specified project"
-  ) {
+  if (isProjectAccessDeniedError(error)) {
     return <ProjectAccessError />;
   }
 

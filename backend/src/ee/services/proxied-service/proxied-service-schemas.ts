@@ -218,10 +218,10 @@ export const CredentialsArraySchema = CredentialInputSchema.array()
         message: "Basic auth allows at most one username and one password credential"
       });
     }
-    if (usernameCount !== passwordCount) {
+    if (passwordCount > 0 && usernameCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Basic auth requires both a username and a password credential"
+        message: "Basic auth password requires a username credential"
       });
     }
     if (usernameCount + passwordCount > 0 && headerNameCounts.size > 0) {

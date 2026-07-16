@@ -206,3 +206,40 @@ describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
     ).toBe(true);
   });
 });
+
+describe("CredentialsArraySchema basic auth", () => {
+  const username = {
+    secretKey: "API_KEY",
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerPurpose: ProxiedServiceHeaderPurpose.Username
+  };
+  const password = {
+    secretKey: "API_SECRET",
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerPurpose: ProxiedServiceHeaderPurpose.Password
+  };
+
+  it("accepts a username without a password (username-only basic auth)", () => {
+    expect(CredentialsArraySchema.safeParse([username]).success).toBe(true);
+  });
+
+  it("accepts a username with a password", () => {
+    expect(CredentialsArraySchema.safeParse([username, password]).success).toBe(true);
+  });
+
+  it("rejects a password without a username", () => {
+    const result = CredentialsArraySchema.safeParse([password]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes("requires a username"))).toBe(true);
+    }
+  });
+
+  it("rejects two username credentials", () => {
+    const result = CredentialsArraySchema.safeParse([username, { ...username, secretKey: "OTHER" }]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes("at most one"))).toBe(true);
+    }
+  });
+});

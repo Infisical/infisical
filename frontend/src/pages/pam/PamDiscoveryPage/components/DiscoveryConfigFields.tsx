@@ -1,7 +1,10 @@
 import { Control, Controller, useWatch } from "react-hook-form";
+import { AlertTriangle } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
   Field,
   FieldContent,
   FieldDescription,
@@ -143,6 +146,110 @@ export const DiscoveryConfigFields = ({
     </>
   );
 };
+
+export const unixDiscoveryConfigFormShape = {
+  cidrRanges: z.string().min(1, "At least one target is required"),
+  credentialAccountIds: z.array(z.string()).min(1, "Select at least one account")
+};
+
+export type TUnixDiscoveryConfigFields = z.infer<z.ZodObject<typeof unixDiscoveryConfigFormShape>>;
+
+export const UNIX_DISCOVERY_CONFIG_DEFAULTS: TUnixDiscoveryConfigFields = {
+  cidrRanges: "",
+  credentialAccountIds: []
+};
+
+const parseCidrRanges = (value: string): string[] =>
+  value
+    .split(/[\n,]/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+export const unixDiscoveryConfigFromSource = (
+  config: Record<string, unknown>
+): TUnixDiscoveryConfigFields => ({
+  cidrRanges: Array.isArray(config.cidrRanges) ? (config.cidrRanges as string[]).join("\n") : "",
+  credentialAccountIds: Array.isArray(config.credentialAccountIds)
+    ? (config.credentialAccountIds as string[])
+    : []
+});
+
+export const buildUnixDiscoveryConfiguration = (
+  data: TUnixDiscoveryConfigFields
+): Record<string, unknown> => ({
+  cidrRanges: parseCidrRanges(data.cidrRanges),
+  credentialAccountIds: data.credentialAccountIds
+});
+
+export const SshCredentialAccountsField = ({
+  control
+}: {
+  control: Control<{ credentialAccountIds: string[] }>;
+}) => {
+  const { data: accounts = [] } = useListPamAccountsAdmin();
+  const sshAccounts = accounts.filter((a) => a.accountType === PamAccountType.SSH);
+
+  return (
+    <Controller
+      control={control}
+      name="credentialAccountIds"
+      render={({ field, fieldState }) => (
+        <Field>
+          <FieldLabel>Credential Accounts</FieldLabel>
+          <FieldContent>
+            <FilterableSelect
+              isMulti
+              value={sshAccounts.filter((a) => field.value?.includes(a.id))}
+              onChange={(val) =>
+                field.onChange(((val as typeof sshAccounts | null) ?? []).map((a) => a.id))
+              }
+              options={sshAccounts}
+              getOptionValue={(a) => a.id}
+              getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}
+              placeholder="Select SSH accounts"
+            />
+            <FieldDescription>
+              A target is matched to an account by host, otherwise each account is tried until one
+              connects.
+            </FieldDescription>
+            <FieldError>{fieldState.error?.message}</FieldError>
+            <Alert variant="warning" className="mt-1">
+              <AlertTriangle />
+              <AlertDescription>
+                Password accounts send their password to every host scanned in the range, including
+                hosts you don&apos;t control. We recommend a key or certificate account for
+                scanning.
+              </AlertDescription>
+            </Alert>
+          </FieldContent>
+        </Field>
+      )}
+    />
+  );
+};
+
+export const UnixDiscoveryConfigFields = ({
+  control
+}: {
+  control: Control<TUnixDiscoveryConfigFields>;
+}) => (
+  <Controller
+    control={control}
+    name="cidrRanges"
+    render={({ field, fieldState }) => (
+      <Field>
+        <FieldLabel>Targets</FieldLabel>
+        <FieldContent>
+          <TextArea {...field} rows={3} placeholder="10.0.0.0/24, 192.168.1.10, host.internal" />
+          <FieldDescription>
+            IP addresses, IPv4 CIDR ranges, or hostnames, one per line or comma-separated.
+          </FieldDescription>
+          <FieldError>{fieldState.error?.message}</FieldError>
+        </FieldContent>
+      </Field>
+    )}
+  />
+);
 
 // Shared credential-account + schedule fields, used by both the create modal and the edit tab.
 export const CredentialAccountField = ({

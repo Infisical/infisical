@@ -124,18 +124,6 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Count of projects awaiting hard delete (deleteAfter set). Backs the observability gauge — if this
-  // climbs and stays high, the async worker's drain rate (concurrency + rate limiter) isn't keeping up
-  // and needs tuning, or a mass-delete event is in progress. Uses the partial idx_projects_delete_after.
-  const countPendingHardDelete = async (tx?: Knex) => {
-    try {
-      const doc = await (tx || db.replicaNode())(TableName.Project).whereNotNull("deleteAfter").count();
-      return Number(doc?.[0]?.count ?? 0);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count pending hard delete" });
-    }
-  };
-
   const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
     try {
       const rows = await (tx || db.replicaNode())(TableName.Project)
@@ -151,8 +139,8 @@ export const projectDALFactory = (db: TDbClient) => {
   };
 
   // Chunked delete of a project's secret_versions_v2 rows ahead of the final cascade. This table
-  // is the largest project-scoped table and has NO FK on folderId/secretId (only a mostly-NULL
-  // envId cascade), so the project-delete cascade otherwise orphans ~all of its version rows.
+  // is the largest project-scoped table and has NO FK on folderId/secretId nor any other FK back to
+  // the project tree, so the project-delete cascade otherwise orphans ALL of its version rows.
   // Deleting by folderId is FK-safe (no inbound RESTRICT FK; snapshot_secrets_v2.secretVersionId
   // is ON DELETE CASCADE). Each batch is its own transaction so a crash just leaves fewer rows for
   // the next run (idempotent/resumable). statement_timeout is SET LOCAL so it can't leak to pooled
@@ -971,7 +959,6 @@ export const projectDALFactory = (db: TDbClient) => {
     findByIdIncludingExpired,
     findIncludingExpired,
     softDeleteById,
-    countPendingHardDelete,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
     findUserProjects,

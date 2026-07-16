@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
+import RE2 from "re2";
 
 import { TCertificates } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -17,6 +18,8 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+// eslint-disable-next-line import/order
+import { decryptPkiSyncCredentials } from "@app/services/pki-sync/pki-sync-credentials-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -82,6 +85,9 @@ type PkiSyncActionJob = Job<
 const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 30;
+
+const DASH_REGEX = new RE2("-", "g");
+const NON_ALPHANUMERIC_REGEX = new RE2("[^a-zA-Z0-9]", "g");
 const CONNECTION_CONCURRENCY_LIMIT = 3;
 
 const getRequeueDelay = (failureCount?: number) => {
@@ -302,20 +308,20 @@ export const pkiSyncQueueFactory = ({
               );
             } else {
               const stableId = cert.profileId
-                ? `${cert.profileId.replace(/-/g, "")}-${(cert.commonName || "").replace(/[^a-zA-Z0-9]/g, "")}`
-                : certificate.id.replace(/-/g, "");
+                ? `${cert.profileId.replace(DASH_REGEX, "")}-${(cert.commonName || "").replace(NON_ALPHANUMERIC_REGEX, "")}`
+                : certificate.id.replace(DASH_REGEX, "");
               certificateName = `Infisical-${stableId}`;
             }
 
             const alternativeNames: string[] = [];
 
-            const legacyName = `Infisical-${certificate.id.replace(/-/g, "")}`;
+            const legacyName = `Infisical-${certificate.id.replace(DASH_REGEX, "")}`;
             if (legacyName !== certificateName) {
               alternativeNames.push(legacyName);
             }
 
             if (cert.renewedFromCertificateId) {
-              const originalLegacyName = `Infisical-${cert.renewedFromCertificateId.replace(/-/g, "")}`;
+              const originalLegacyName = `Infisical-${cert.renewedFromCertificateId.replace(DASH_REGEX, "")}`;
               alternativeNames.push(originalLegacyName);
             }
 
@@ -426,6 +432,7 @@ export const pkiSyncQueueFactory = ({
     );
 
     let isSynced = false;
+    let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
@@ -448,13 +455,23 @@ export const pkiSyncQueueFactory = ({
         projectId: appConnectionProjectId
       });
 
+      const syncCredentials = pkiSync.encryptedCredentials
+        ? await decryptPkiSyncCredentials({
+            orgId,
+            projectId: pkiSync.projectId,
+            encryptedCredentials: pkiSync.encryptedCredentials,
+            kmsService
+          })
+        : undefined;
+
       const pkiSyncWithCredentials = {
         ...pkiSync,
         connection: {
           ...pkiSync.connection,
           credentials,
           projectType: project?.type
-        }
+        },
+        syncCredentials
       } as TPkiSyncWithCredentials;
 
       const { certificateMap, certificateMetadata } = await $getInfisicalCertificates(pkiSync);
@@ -561,6 +578,49 @@ export const pkiSyncQueueFactory = ({
         await certificateSyncDAL.bulkUpdateSyncStatus(postSyncUpdates);
       }
 
+      const failedCertificateCount = postSyncUpdates.filter(
+        (update) => update.status === CertificateSyncStatus.Failed
+      ).length;
+      certSyncFailureCount = failedCertificateCount + (syncResult.failedRemovals ?? 0);
+
+      const processedCertificateIds = new Set(Array.from(certificateMetadata.values()).map((meta) => meta.id));
+      const nonTerminalStatuses = new Set<string>([
+        CertificateSyncStatus.Pending,
+        CertificateSyncStatus.Running,
+        CertificateSyncStatus.Syncing
+      ]);
+      const trackedRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+      const strandedCertificateIds = trackedRecords
+        .filter(
+          (record) =>
+            record.certificateId &&
+            !processedCertificateIds.has(record.certificateId) &&
+            nonTerminalStatuses.has(record.syncStatus ?? "")
+        )
+        .map((record) => record.certificateId)
+        .filter((id): id is string => typeof id === "string");
+      if (strandedCertificateIds.length > 0) {
+        const stillEligible = (await certificateDAL.findActiveCertificatesByIds(strandedCertificateIds)).filter(
+          (cert) => !cert.renewedByCertificateId
+        );
+        if (stillEligible.length > 0) {
+          await certificateSyncDAL.bulkUpdateSyncStatus(
+            stillEligible.map((cert) => ({
+              pkiSyncId: pkiSync.id,
+              certificateId: cert.id,
+              status: CertificateSyncStatus.Failed,
+              message:
+                "Certificate could not be prepared for syncing (its data could not be loaded, or it resolved to the same file name as another certificate)"
+            }))
+          );
+          certSyncFailureCount += stillEligible.length;
+        }
+      }
+
+      if (certSyncFailureCount > 0) {
+        syncMessage = `${certSyncFailureCount} certificate(s) failed to sync to the destination`;
+      }
+
       isSynced = true;
     } catch (err) {
       logger.error(
@@ -589,7 +649,8 @@ export const pkiSyncQueueFactory = ({
       }
     } finally {
       const ranAt = new Date();
-      const syncStatus = isSynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
+      const fullySynced = isSynced && certSyncFailureCount === 0;
+      const syncStatus = fullySynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
 
       await auditLogService.createAuditLog({
         projectId: pkiSync.projectId,
@@ -615,7 +676,7 @@ export const pkiSyncQueueFactory = ({
           syncStatus,
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
-          lastSyncedAt: isSynced ? ranAt : undefined
+          lastSyncedAt: fullySynced ? ranAt : undefined
         });
 
         await telemetryService.sendPostHogEvents({
@@ -625,7 +686,7 @@ export const pkiSyncQueueFactory = ({
           properties: {
             orgId: pkiSync.connection.orgId,
             destination: pkiSync.destination,
-            success: isSynced
+            success: fullySynced
           }
         });
       }
@@ -714,7 +775,7 @@ export const pkiSyncQueueFactory = ({
 
   const $handleRemoveCertificatesJob = async (job: TPkiSyncRemoveCertificatesDTO, pkiSync: TPkiSyncRaw) => {
     const {
-      data: { syncId, auditLogInfo, deleteSyncOnComplete }
+      data: { syncId, auditLogInfo, deleteSyncOnComplete, certificateIds: certificateIdsToRemove }
     } = job;
 
     await enterprisePkiSyncCheck(
@@ -755,7 +816,14 @@ export const pkiSyncQueueFactory = ({
         projectId: appConnectionProjectId
       });
 
-      const { certificateMap } = await $getInfisicalCertificates(pkiSync);
+      const certificateMap: TCertificateMap = certificateIdsToRemove?.length
+        ? Object.fromEntries(
+            certificateIdsToRemove.map((certId, index) => [
+              `certificate-${index}`,
+              { cert: "", privateKey: "", certificateId: certId }
+            ])
+          )
+        : (await $getInfisicalCertificates(pkiSync)).certificateMap;
 
       await PkiSyncFns.removeCertificates(
         {

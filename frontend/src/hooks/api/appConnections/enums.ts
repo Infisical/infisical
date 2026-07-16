@@ -49,6 +49,7 @@ export enum AppConnection {
   SSH = "ssh",
   Dbt = "dbt",
   SMB = "smb",
+  WinRM = "winrm",
   OpenRouter = "open-router",
   OpenAI = "openai",
   CircleCI = "circleci",

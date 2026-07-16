@@ -164,7 +164,9 @@ export const proxiedServiceFormSchema = z
       }
     } else if (form.basicAuth) {
       refineCredentialSource(form.basicAuth.username, ctx, ["basicAuth", "username"]);
-      refineCredentialSource(form.basicAuth.password, ctx, ["basicAuth", "password"]);
+      if (form.basicAuth.password.secretKey || form.basicAuth.password.dynamicSecretName) {
+        refineCredentialSource(form.basicAuth.password, ctx, ["basicAuth", "password"]);
+      }
     }
 
     form.substitutions.forEach((row, i) => {

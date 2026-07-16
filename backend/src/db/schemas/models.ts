@@ -175,6 +175,7 @@ export enum TableName {
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
   WebAuthnCredential = "webauthn_credentials",
+  UserMfaRecoveryCode = "user_mfa_recovery_codes",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -373,10 +374,7 @@ export enum ProjectMembershipRole {
   // ssh
   SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
-  KmsCryptographicOperator = "cryptographic-operator",
-  // secrets brokering (agent proxy)
-  Agent = "agent",
-  AgentProxy = "agent-proxy"
+  KmsCryptographicOperator = "cryptographic-operator"
 }
 
 export enum ResourceMembershipRole {

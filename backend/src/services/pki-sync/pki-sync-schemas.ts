@@ -26,18 +26,11 @@ export const PkiSyncOptionsSchema = z.object({
           .join("|");
 
         const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
-        const contentIsValid = allowedContentRegex.test(val);
-
-        if (val.trim()) {
-          const certificateIdIsPresent = val.includes("{{certificateId}}") || val.includes("{{shortCertificateId}}");
-          return contentIsValid && certificateIdIsPresent;
-        }
-
-        return contentIsValid;
+        return allowedContentRegex.test(val);
       },
       {
         message:
-          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+          "Certificate name schema may include the {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders. A schema with no placeholder can be linked to only one certificate."
       }
     )
 });

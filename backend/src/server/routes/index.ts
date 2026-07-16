@@ -262,6 +262,7 @@ import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
+import { mfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
@@ -400,6 +401,8 @@ import { membershipIdentityDALFactory } from "@app/services/membership-identity/
 import { membershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { mfaRecoveryCodeDALFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-dal";
+import { mfaRecoveryCodeServiceFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-service";
 import { mfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -733,6 +736,7 @@ export const registerRoutes = async (
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
   const totpConfigDAL = totpConfigDALFactory(db);
   const webAuthnCredentialDAL = webAuthnCredentialDALFactory(db);
+  const mfaRecoveryCodeDAL = mfaRecoveryCodeDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
@@ -1168,6 +1172,12 @@ export const registerRoutes = async (
     queueService
   });
 
+  const mfaRecoveryCodeService = mfaRecoveryCodeServiceFactory({
+    mfaRecoveryCodeDAL,
+    userDAL,
+    kmsService
+  });
+
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
@@ -1176,7 +1186,10 @@ export const registerRoutes = async (
     groupProjectDAL,
     smtpService,
     userAliasDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    totpConfigDAL,
+    webAuthnCredentialDAL,
+    mfaRecoveryCodeService
   });
 
   const totpService = totpServiceFactory({
@@ -1193,11 +1206,19 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const mfaLockoutService = mfaLockoutServiceFactory({
+    userDAL,
+    tokenService,
+    smtpService,
+    keyStore
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
     smtpService,
-    totpService
+    totpService,
+    mfaLockoutService
   });
 
   const loginService = authLoginServiceFactory({
@@ -1207,12 +1228,13 @@ export const registerRoutes = async (
     tokenService,
     orgDAL,
     totpService,
+    mfaRecoveryCodeService,
     auditLogService,
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore,
-    permissionService
+    permissionService,
+    mfaLockoutService
   });
 
   const samlService = samlConfigServiceFactory({
@@ -1684,6 +1706,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     approvalPolicyDAL,
+    projectAccessRequestDAL,
     pamFolderDAL,
     pamAccountDAL,
     userDAL,
@@ -2102,6 +2125,7 @@ export const registerRoutes = async (
 
   const projectEnvQueue = projectEnvQueueFactory({
     cronJob,
+    queueService,
     projectEnvDAL,
     keyStore,
     auditLogService
@@ -3526,7 +3550,8 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     licenseService,
-    pkiSyncQueue
+    pkiSyncQueue,
+    kmsService
   });
 
   const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({
@@ -3944,6 +3969,7 @@ export const registerRoutes = async (
     projectTemplate: projectTemplateService,
     totp: totpService,
     webAuthn: webAuthnService,
+    mfaRecoveryCode: mfaRecoveryCodeService,
     appConnection: appConnectionService,
     hsmConnector: hsmConnectorService,
     secretSync: secretSyncService,

@@ -1,0 +1,132 @@
+---
+title: "Linux Server"
+sidebarTitle: "Linux Server"
+description: "Deploy certificates to Linux servers over SSH."
+---
+
+Deploy certificates from Infisical to a directory on a Linux server over SSH. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificates to sync, then configure the Linux Server destination.
+</Info>
+
+## Prerequisites
+
+- An [SSH Connection](/integrations/app-connections/ssh) with access to the target server
+- The destination directory must already exist on the server and the connection user must be able to write to it
+- The server must be reachable from Infisical, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
+
+## Create a Linux Server Sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+        2. Select the **Linux Server** option.
+
+        3. Configure the **Destination**:
+            - **SSH Connection**: The SSH Connection used to reach the server.
+            - **Destination Directory**: The absolute path to the directory where certificate files are written, for example `/etc/ssl/certs`.
+
+        4. Configure the **Sync Options**:
+            - **Export Format**: Choose **PEM** to write separate certificate, chain, and key files, or **PKCS#12** to write a single password-protected `.pfx` bundle.
+            - **Certificate File Extension**: For PEM, choose `.pem` (default) or `.crt` for the certificate and chain files. Both hold the same PEM-encoded content, so pick the one the consuming service expects.
+            - **Combine Certificate and Chain**: For PEM, write the leaf certificate followed by the chain in a single file (a full-chain file, as nginx expects) and skip the separate chain file.
+            - **File Permissions** and **Private Key Permissions**: Octal modes for the delivered certificate and chain files (default `644`) and for the private key file (default `600`).
+            - **Owner** and **Group**: Optionally set the owner and group on the delivered files. Changing ownership requires the connection user to be root or to have passwordless sudo.
+            - **PKCS#12 Password**: Required when the export format is PKCS#12. It protects the delivered bundle.
+            - **Include Private Key**: For PEM, controls whether the private key is written alongside the certificate. The sync fails for a certificate whose key is not available, for example one issued from an external CSR.
+            - **Include Root CA in Certificate Chain**: Include the root CA in the delivered chain. Leave it off when the consuming service only needs the intermediates.
+            - **Enable Removal of Certificates**: Delete the delivered files from the server when a certificate is removed from the sync, revoked, or expired.
+            - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
+
+        5. Configure the **Details**:
+            - **Name**: The name of your sync.
+            - **Description**: Optional description.
+
+        6. Select which certificates should be synced.
+
+        7. Review and click **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create a **Linux Server Certificate Sync**, make an API request to the [Create Linux Server PKI Sync](/api-reference/endpoints/pki/syncs/linux-server/create) endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/linux-server \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-linux-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "isAutoSyncEnabled": true,
+            "certificateIds": ["550e8400-e29b-41d4-a716-446655440000"],
+            "syncOptions": {
+                "exportFormat": "pem",
+                "includePrivateKey": true,
+                "canRemoveCertificates": true,
+                "certificateNameSchema": "{{commonName}}"
+            },
+            "destinationConfig": {
+                "destinationPath": "/etc/ssl/certs"
+            }
+        }'
+        ```
+    </Tab>
+</Tabs>
+
+## Export Formats
+
+The file extension is set by the export format, not by the name schema. The name schema only provides the base file name.
+
+**PEM** writes the certificate, chain, and private key (when included) as separate files. The certificate and chain files use the extension you select, either `.pem` (default) or `.crt`.
+
+**PKCS#12** writes a single password-protected `.pfx` bundle that contains the certificate, chain, and private key.
+
+For a certificate whose common name is `app.example.com`, synced to `/etc/ssl/certs` with the default `{{commonName}}` name schema, the delivered files are:
+
+```text
+PEM (.pem extension)
+  /etc/ssl/certs/app.example.com.pem        certificate
+  /etc/ssl/certs/app.example.com.chain.pem  chain
+  /etc/ssl/certs/app.example.com.key        private key (when included)
+
+PKCS#12
+  /etc/ssl/certs/app.example.com.pfx
+```
+
+## How It Works
+
+When syncing certificates, Infisical opens an SSH session to the server and, for each certificate, packages it in the chosen export format and writes the resulting files to the destination directory. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
+
+## Removing Certificates
+
+When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
+
+## FAQ
+
+<Accordion title="Can I import certificates from a Linux server back into Infisical?">
+  No. The Linux Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+</Accordion>
+
+<Accordion title="What happens if the destination directory does not exist?">
+  The sync fails with a clear error. Create the directory and grant the connection user write access, then run the sync again.
+</Accordion>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Windows Server" icon="windows" href="/documentation/platform/pki/applications/certificate-syncs/windows-server">
+    Deploy certificates to Windows servers over WinRM.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>
