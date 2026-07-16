@@ -30,6 +30,10 @@ const SECRET_VERSION_DELETE_BATCH = 5000;
 const BATCH_STATEMENT_TIMEOUT_MS = 30 * 1000;
 const INTER_BATCH_SLEEP_MS = 10;
 
+// per-project chunked environment delete tuning. Smaller than the version batch because each row is a
+// whole cascade subtree (folders → secrets_v2 → ...), so a batch does far more work per deleted row.
+const ENVIRONMENT_DELETE_BATCH = 100;
+
 // Generous so a large project's chunked delete won't see the lock expire mid-flight and let a
 // second worker start; crash recovery happens on the next cron tick after expiry.
 const PROJECT_DELETE_LOCK_TTL_MS = 30 * 60 * 1000;
@@ -43,6 +47,7 @@ type TProjectCleanupQueueFactoryDep = {
     | "findIncludingExpired"
     | "findProjectGhostUser"
     | "hardDeleteProjectSecretVersionsInBatches"
+    | "hardDeleteProjectEnvironmentsInBatches"
     | "deleteById"
     | "transaction"
   >;
@@ -117,7 +122,16 @@ export const projectCleanupQueueFactory = ({
         INTER_BATCH_SLEEP_MS
       );
 
-      // 2) Final cascade in one transaction — handles the remaining (smaller) child tables, including
+      // 2) Chunk-delete environments ahead of the final cascade. A project with thousands of
+      // environments would otherwise make the single-transaction cascade below enormous.
+      const deletedEnvironments = await projectDAL.hardDeleteProjectEnvironmentsInBatches(
+        projectId,
+        ENVIRONMENT_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS
+      );
+
+      // 3) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
       const deleted = await projectDAL.transaction(async (tx) => {
@@ -171,8 +185,8 @@ export const projectCleanupQueueFactory = ({
       });
 
       logger.info(
-        { projectId, deletedVersions },
-        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}]`
+        { projectId, deletedVersions, deletedEnvironments },
+        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}] [environmentsPruned=${deletedEnvironments}]`
       );
     } catch (err) {
       logger.error({ err, projectId }, `project-hard-delete: failed [projectId=${projectId}]`);

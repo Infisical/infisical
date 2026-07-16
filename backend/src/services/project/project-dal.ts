@@ -177,6 +177,33 @@ export const projectDALFactory = (db: TDbClient) => {
     return totalDeleted;
   };
 
+  // Chunk-delete a project's environments ahead of the final cascade. Each env is a self-contained
+  // cascade subtree. Runs after hardDeleteProjectSecretVersionsInBatches (which needs the folder/env tree).
+  const hardDeleteProjectEnvironmentsInBatches = async (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number
+  ) => {
+    let totalDeleted = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      const deletedCount = await db.transaction(async (tx): Promise<number> => {
+        await tx.raw(`SET LOCAL statement_timeout = ${statementTimeoutMs}`);
+        const idsToDelete = tx(TableName.Environment).where("projectId", projectId).select("id").limit(batchSize);
+        const deleted = await tx(TableName.Environment).whereIn("id", idsToDelete).delete();
+        return deleted;
+      });
+      totalDeleted += deletedCount;
+      if (deletedCount < batchSize) break;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => {
+        setTimeout(resolve, interBatchSleepMs + Math.floor(Math.random() * interBatchSleepMs));
+      });
+    }
+    return totalDeleted;
+  };
+
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
       const identityGroupSubquery = db
@@ -961,6 +988,7 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
+    hardDeleteProjectEnvironmentsInBatches,
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
