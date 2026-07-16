@@ -36,6 +36,11 @@ import {
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  CreateProxiedServiceModal,
+  DeleteProxiedServiceModal,
+  EditProxiedServiceModal
+} from "@app/components/proxied-services";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
@@ -158,6 +163,7 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/migration";
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests
@@ -187,6 +193,7 @@ import {
   useDynamicSecretOverview,
   useFolderOverview,
   useHoneyTokenOverview,
+  useProxiedServiceOverview,
   useSecretImportOverview,
   useSecretOverview,
   useSecretRotationOverview
@@ -230,6 +237,7 @@ import {
   FolderBreadcrumb,
   FolderTableRow,
   HoneyTokenTableRow,
+  ProxiedServiceTableRow,
   ResourceCount,
   ResourceFilter,
   ResourceSearchInput,
@@ -260,7 +268,8 @@ export enum RowType {
   Secret = "secret",
   SecretRotation = "rotation",
   SecretImport = "import",
-  HoneyToken = "honeyToken"
+  HoneyToken = "honeyToken",
+  ProxiedService = "proxiedService"
 }
 
 type Filter = {
@@ -273,7 +282,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.Secret]: false,
   [RowType.SecretRotation]: false,
   [RowType.SecretImport]: false,
-  [RowType.HoneyToken]: false
+  [RowType.HoneyToken]: false,
+  [RowType.ProxiedService]: false
 };
 
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -663,6 +673,9 @@ const OverviewPageContent = () => {
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
+      includeProxiedServices: isFilteredByResources
+        ? (filter[RowType.ProxiedService] ?? true)
+        : true,
       search: searchFilter,
       tags: tagFilter,
       limit,
@@ -677,10 +690,12 @@ const OverviewPageContent = () => {
     dynamicSecrets,
     secretRotations,
     honeyTokens,
+    proxiedServices,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
     totalSecretRotationCount,
+    totalProxiedServiceCount,
     totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
@@ -689,6 +704,7 @@ const OverviewPageContent = () => {
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
     totalUniqueHoneyTokensInPage,
+    totalUniqueProxiedServicesInPage,
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
@@ -742,6 +758,9 @@ const OverviewPageContent = () => {
 
   const { honeyTokenNames, isHoneyTokenPresentInEnv, getHoneyTokenByName } =
     useHoneyTokenOverview(honeyTokens);
+
+  const { proxiedServiceNames, isProxiedServicePresentInEnv, getProxiedServiceByName } =
+    useProxiedServiceOverview(proxiedServices);
 
   const { secretImportNames, isSecretImportInEnv, getSecretImportByEnv, getSecretImportsForEnv } =
     useSecretImportOverview(overview?.imports);
@@ -868,6 +887,9 @@ const OverviewPageContent = () => {
     "addDynamicSecret",
     "addSecretRotation",
     "addHoneyToken",
+    "addProxiedService",
+    "editProxiedService",
+    "deleteProxiedService",
     "editSecretRotation",
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
@@ -2494,6 +2516,7 @@ const OverviewPageContent = () => {
     dynamicSecretNames.length === 0 &&
     secretRotationNames.length === 0 &&
     honeyTokenNames.length === 0 &&
+    proxiedServiceNames.length === 0 &&
     secretImportNames.length === 0 &&
     !isOverviewLoading;
 
@@ -2710,6 +2733,16 @@ const OverviewPageContent = () => {
                       }
                       handlePopUpOpen("upgradePlan", {
                         text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
+                      });
+                    }}
+                    onAddProxiedService={() => {
+                      if (subscription?.secretsBrokering) {
+                        handlePopUpOpen("addProxiedService");
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        isEnterpriseFeature: true,
+                        text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
                       });
                     }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
@@ -3346,6 +3379,22 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
+                          {proxiedServiceNames.map((proxiedServiceName, index) => (
+                            <ProxiedServiceTableRow
+                              key={`overview-ps-${proxiedServiceName}-${index + 1}`}
+                              proxiedServiceName={proxiedServiceName}
+                              environments={visibleEnvs}
+                              isProxiedServiceInEnv={isProxiedServicePresentInEnv}
+                              getProxiedServiceByName={getProxiedServiceByName}
+                              tableWidth={tableWidth}
+                              onEdit={(proxiedService) =>
+                                handlePopUpOpen("editProxiedService", proxiedService)
+                              }
+                              onDelete={(proxiedService) =>
+                                handlePopUpOpen("deleteProxiedService", proxiedService)
+                              }
+                            />
+                          ))}
                           {mergedSecKeys.map((key, index) => (
                             <SecretTableRow
                               isSelected={
@@ -3382,7 +3431,8 @@ const OverviewPageContent = () => {
                                 (totalUniqueSecretsInPage || 0) -
                                 (totalUniqueSecretImportsInPage || 0) -
                                 (totalUniqueSecretRotationsInPage || 0) -
-                                (totalUniqueHoneyTokensInPage || 0),
+                                (totalUniqueHoneyTokensInPage || 0) -
+                                (totalUniqueProxiedServicesInPage || 0),
                               0
                             )}
                           />
@@ -3406,6 +3456,7 @@ const OverviewPageContent = () => {
                       folderCount={totalFolderCount}
                       importCount={totalImportCount}
                       secretRotationCount={totalSecretRotationCount}
+                      proxiedServiceCount={totalProxiedServiceCount}
                     />
                   }
                   count={totalCount}
@@ -3653,6 +3704,24 @@ const OverviewPageContent = () => {
         environments={userAvailableEnvs}
         isOpen={popUp.addHoneyToken.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addHoneyToken", isOpen)}
+      />
+      <CreateProxiedServiceModal
+        isOpen={popUp.addProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addProxiedService", isOpen)}
+        projectId={projectId}
+        environment={singleEnvSlug}
+        secretPath={secretPath}
+      />
+      <EditProxiedServiceModal
+        isOpen={popUp.editProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editProxiedService", isOpen)}
+        proxiedService={popUp.editProxiedService.data as TDashboardProxiedService}
+        projectId={projectId}
+      />
+      <DeleteProxiedServiceModal
+        isOpen={popUp.deleteProxiedService.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteProxiedService", isOpen)}
+        proxiedService={popUp.deleteProxiedService.data as TDashboardProxiedService}
       />
       <EditSecretRotationV2Modal
         isOpen={popUp.editSecretRotation.isOpen}

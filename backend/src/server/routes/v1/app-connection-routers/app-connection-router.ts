@@ -238,6 +238,10 @@ import {
   SanitizedWindmillConnectionSchema,
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
+import {
+  SanitizedWinRMConnectionSchema,
+  WinRMConnectionListItemSchema
+} from "@app/services/app-connection/winrm/winrm-connection-schemas";
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -287,6 +291,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedADCSConnectionSchema.options,
+  ...SanitizedWinRMConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
@@ -368,6 +373,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   ADCSConnectionListItemSchema,
+  WinRMConnectionListItemSchema,
   RedisConnectionListItemSchema,
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,

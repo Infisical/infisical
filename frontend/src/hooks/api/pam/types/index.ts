@@ -554,6 +554,31 @@ export type TRemovePamProductIdentityMemberDTO = {
   projectId: string;
 };
 
+export type TAddPamProductUserMemberDTO = {
+  userIds?: string[];
+  emails?: string[];
+  role: string;
+  projectId: string;
+};
+
+export type TAddPamProductGroupMemberDTO = {
+  groupId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductUserMemberDTO = {
+  userId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductGroupMemberDTO = {
+  groupId: string;
+  role: string;
+  projectId: string;
+};
+
 // Credential rotation
 
 export type TPamPasswordRequirements = {

@@ -127,14 +127,14 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
                 )}
               </Detail>
               {AdditionalSyncOptionsComponent}
-              {disableSecretDeletion && (
-                <Detail>
-                  <DetailLabel>Secret Deletion</DetailLabel>
-                  <DetailValue>
-                    <Badge variant="neutral">Disabled</Badge>
-                  </DetailValue>
-                </Detail>
-              )}
+              <Detail>
+                <DetailLabel>Secret Deletion Protection</DetailLabel>
+                <DetailValue>
+                  <Badge variant={disableSecretDeletion ? "success" : "neutral"}>
+                    {disableSecretDeletion ? "Enabled" : "Disabled"}
+                  </Badge>
+                </DetailValue>
+              </Detail>
             </DetailGroup>
           </AccordionContent>
         </AccordionItem>

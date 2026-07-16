@@ -72,6 +72,11 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     extractV1: (p) => p.honeyTokens
   },
   {
+    v2Key: "secrets_brokering",
+    v1Field: "secretsBrokering",
+    extractV1: (p) => p.secretsBrokering
+  },
+  {
     v2Key: "custom_rate_limits",
     v1Field: "customRateLimits",
     extractV1: (p) => p.customRateLimits

@@ -54,6 +54,7 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
@@ -1469,6 +1470,7 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
+    includeProxiedServices: "Whether to include proxied services in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1487,7 +1489,8 @@ export const DASHBOARD = {
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeSecretRotations: "Whether to include secret rotations in the response.",
-    includeHoneyTokens: "Whether to include honey tokens in the response."
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
+    includeProxiedServices: "Whether to include proxied services in the response."
   }
 } as const;
 
@@ -1601,6 +1604,63 @@ export const DYNAMIC_SECRET_LEASES = {
     }
   }
 } as const;
+
+export const PROXIED_SERVICES = {
+  CREATE: {
+    projectId: "The ID of the project to create the proxied service in.",
+    environment: "The slug of the environment to create the proxied service in.",
+    secretPath: "The secret path (folder) to create the proxied service in.",
+    name: "The name of the proxied service.",
+    hostPattern:
+      "One or more comma-separated host patterns the service applies to, e.g. 'api.stripe.com, *.stripe.com'. Each pattern is host[:port][/path]; a '*.' wildcard matches exactly one label.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials: "The credentials the agent proxy applies to requests matching the host pattern."
+  },
+  LIST: {
+    projectId: "The ID of the project to list proxied services from.",
+    environment: "The slug of the environment to list proxied services from.",
+    secretPath: "The secret path (folder) to list proxied services from."
+  },
+  GET: {
+    serviceId: "The ID of the proxied service.",
+    name: "The name of the proxied service.",
+    projectId: "The ID of the project the proxied service is in.",
+    environment: "The slug of the environment the proxied service is in.",
+    secretPath: "The secret path (folder) the proxied service is in."
+  },
+  UPDATE: {
+    serviceId: "The ID of the proxied service to update.",
+    name: "The new name of the proxied service.",
+    hostPattern: "The new comma-separated host patterns.",
+    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    credentials:
+      "The new credentials. When provided, the entire credentials collection is replaced; when omitted, existing credentials are left unchanged."
+  },
+  DELETE: {
+    serviceId: "The ID of the proxied service to delete."
+  },
+  CREDENTIAL: {
+    secretKey:
+      "The key name of the referenced static secret. The secret must live in the same folder as the service. Provide exactly one of secretKey or dynamicSecretName.",
+    dynamicSecretName:
+      "The name of the referenced dynamic secret. The dynamic secret must live in the same folder as the service; the agent proxy mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
+    dynamicSecretField:
+      "For a dynamic secret credential: which lease output field to inject (e.g. 'DB_PASSWORD', 'TOKEN'). Must be a valid output field for the dynamic secret's provider type.",
+    dynamicSecretConfig:
+      "For a dynamic secret credential: optional per-lease config passed when minting (e.g. { namespace } for kubernetes, { principals } for ssh).",
+    role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",
+    headerName: "For header rewriting: the header to set, e.g. 'Authorization' or 'x-api-key'.",
+    headerPrefix: "For header rewriting: an optional prefix joined to the secret value with a space, e.g. 'Bearer'.",
+    headerPurpose:
+      "For HTTP basic auth: 'username' or 'password'. The agent proxy combines the pair into a single 'Authorization: Basic' header. Cannot be combined with headerName or headerPrefix.",
+    placeholderKey: "For credential substitution: the environment variable name the agent receives.",
+    placeholderValue:
+      "For credential substitution: the placeholder value the agent proxy swaps for the real secret value on the wire.",
+    substitutionSurfaces:
+      "For credential substitution: which request surfaces are scanned for the placeholder. Allowed values: 'header', 'path', 'query', 'body'."
+  }
+} as const;
+
 export const SECRET_TAGS = {
   LIST: {
     projectId: "The ID of the project to list tags from."
@@ -2508,7 +2568,8 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    algorithm: "The cryptographic algorithm of the key (e.g. aes-256-gcm, RSA_4096, HMAC_SHA_256).",
+    encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
@@ -2577,6 +2638,15 @@ export const KMS = {
     data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
+  },
+  GENERATE_MAC: {
+    keyId: "The ID of the key to generate the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format to generate the MAC for (base64 encoded)."
+  },
+  VERIFY_MAC: {
+    keyId: "The ID of the key to verify the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format the MAC was generated for (base64 encoded).",
+    mac: "The MAC to be verified (base64 encoded)."
   }
 };
 

@@ -4,6 +4,7 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
+import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
 import { registerAiMcpActivityLogRouter } from "./ai-mcp-activity-log-router";
 import { registerAiMcpEndpointRouter } from "./ai-mcp-endpoint-router";
 import { registerAiMcpServerRouter } from "./ai-mcp-server-router";
@@ -42,6 +43,7 @@ import { registerPkiDiscoveryRouter } from "./pki-discovery-router";
 import { registerPkiInstallationRouter } from "./pki-installation-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
+import { registerProxiedServiceRouter } from "./proxied-service-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
@@ -112,6 +114,9 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
   await server.register(registerHoneyTokenRouter, { prefix: "/honey-tokens" });
+
+  await server.register(registerProxiedServiceRouter, { prefix: "/proxied-services" });
+  await server.register(registerAgentProxyCaRouter, { prefix: "/organization/agent-proxy-ca" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
 

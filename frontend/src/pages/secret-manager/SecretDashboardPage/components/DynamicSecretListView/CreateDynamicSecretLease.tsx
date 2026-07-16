@@ -23,6 +23,7 @@ import {
 } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
+import { DYNAMIC_SECRET_PROVIDER_OUTPUTS } from "@app/hooks/api/dynamicSecret/providerOutputs";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 const OutputDisplay = ({
@@ -130,228 +131,16 @@ const TotpOutputDisplay = ({
   );
 };
 
+const COPY_NOTE =
+  "Important: Copy these credentials now. You will not be able to see them again after you close the modal.";
+
 const renderOutputForm = (
   provider: DynamicSecretProviders,
   data: unknown,
   triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>
 ) => {
-  if (
-    provider === DynamicSecretProviders.SqlDatabase ||
-    provider === DynamicSecretProviders.Cassandra ||
-    provider === DynamicSecretProviders.MongoAtlas ||
-    provider === DynamicSecretProviders.MongoDB ||
-    provider === DynamicSecretProviders.Vertica ||
-    provider === DynamicSecretProviders.SapAse ||
-    provider === DynamicSecretProviders.AzureSqlDatabase ||
-    provider === DynamicSecretProviders.Clickhouse ||
-    provider === DynamicSecretProviders.Milvus
-  ) {
-    const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
-    return (
-      <div>
-        <OutputDisplay label="Database User" value={DB_USERNAME} />
-        <OutputDisplay
-          label="Database Password"
-          value={DB_PASSWORD}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.AwsIam) {
-    const { USERNAME, ACCESS_KEY, SECRET_ACCESS_KEY, SESSION_TOKEN } = data as {
-      ACCESS_KEY: string;
-      SECRET_ACCESS_KEY: string;
-      USERNAME?: string;
-      SESSION_TOKEN?: string;
-    };
-    return (
-      <div>
-        {USERNAME && <OutputDisplay label="AWS IAM Username" value={USERNAME} />}
-        <OutputDisplay label="AWS IAM Access Key" value={ACCESS_KEY} />
-        <OutputDisplay label="AWS IAM Secret Key" value={SECRET_ACCESS_KEY} />
-        {SESSION_TOKEN && <OutputDisplay label="AWS IAM Session Token" value={SESSION_TOKEN} />}
-        <div className="mt-2 text-xs text-mineshaft-300">
-          Important: Copy these credentials now. You will not be able to see them again after you
-          close the modal.
-        </div>
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.Redis) {
-    const { DB_USERNAME, DB_PASSWORD } = data as {
-      DB_USERNAME: string;
-      DB_PASSWORD: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Redis Username" value={DB_USERNAME} />
-        <OutputDisplay
-          label="Redis Password"
-          value={DB_PASSWORD}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (
-    provider === DynamicSecretProviders.AwsElastiCache ||
-    provider === DynamicSecretProviders.AwsMemoryDb
-  ) {
-    const { DB_USERNAME, DB_PASSWORD } = data as {
-      DB_USERNAME: string;
-      DB_PASSWORD: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Cluster Username" value={DB_USERNAME} />
-        <OutputDisplay
-          label="Cluster Password"
-          value={DB_PASSWORD}
-          helperText={
-            <div className="space-y-4">
-              <p>
-                Important: Copy these credentials now. You will not be able to see them again after
-                you close the modal.
-              </p>
-              <p className="font-medium">
-                Please note that it may take a few minutes before the credentials are available for
-                use.
-              </p>
-            </div>
-          }
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.RabbitMq) {
-    const { DB_USERNAME, DB_PASSWORD } = data as {
-      DB_USERNAME: string;
-      DB_PASSWORD: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Username" value={DB_USERNAME} />
-        <OutputDisplay
-          label="Password"
-          value={DB_PASSWORD}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.ElasticSearch) {
-    const { DB_USERNAME, DB_PASSWORD } = data as {
-      DB_USERNAME: string;
-      DB_PASSWORD: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Username" value={DB_USERNAME} />
-        <OutputDisplay
-          label="Password"
-          value={DB_PASSWORD}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.AzureEntraId) {
-    const { email, password } = data as {
-      email: string;
-      password: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Email" value={email} />
-        <OutputDisplay
-          label="Password"
-          value={password}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.Ldap) {
-    const { USERNAME, PASSWORD, DN_ARRAY } = data as {
-      USERNAME: string;
-      PASSWORD: string;
-      DN_ARRAY: string[];
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Username" value={USERNAME} />
-        <OutputDisplay
-          label="Password"
-          value={PASSWORD}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-        <FormControl label="DNs" className="grow">
-          <SecretInput
-            isReadOnly
-            isVisible
-            value={JSON.stringify(DN_ARRAY)}
-            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
-          />
-        </FormControl>
-      </div>
-    );
-  }
-
-  if (
-    provider === DynamicSecretProviders.SapHana ||
-    provider === DynamicSecretProviders.Snowflake
-  ) {
-    const { DB_USERNAME, DB_PASSWORD } = data as {
-      DB_USERNAME: string;
-      DB_PASSWORD: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Username" value={DB_USERNAME} />
-        <OutputDisplay
-          label="Password"
-          value={DB_PASSWORD}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.Kubernetes) {
-    const { TOKEN } = data as { TOKEN: string };
-
-    return (
-      <div>
-        <OutputDisplay
-          label="Service Account JWT"
-          value={TOKEN}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
   if (provider === DynamicSecretProviders.Totp) {
-    const { TOTP, TIME_REMAINING } = data as {
-      TOTP: string;
-      TIME_REMAINING: number;
-    };
-
+    const { TOTP, TIME_REMAINING } = data as { TOTP: string; TIME_REMAINING: number };
     return (
       <TotpOutputDisplay
         totp={TOTP}
@@ -361,125 +150,35 @@ const renderOutputForm = (
     );
   }
 
-  if (provider === DynamicSecretProviders.GcpIam) {
-    const { TOKEN, SERVICE_ACCOUNT_EMAIL } = data as {
-      SERVICE_ACCOUNT_EMAIL: string;
-      TOKEN: string;
-    };
+  const entry = DYNAMIC_SECRET_PROVIDER_OUTPUTS[provider];
+  const record = (data ?? {}) as Record<string, unknown>;
+  const presentFields = entry.outputFields.filter(
+    (f) => record[f.name] !== undefined && record[f.name] !== null
+  );
 
-    return (
-      <div>
-        <OutputDisplay label="Service Account Email" value={SERVICE_ACCOUNT_EMAIL} />
-        <OutputDisplay
-          label="Token"
-          value={TOKEN}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
+  if (!presentFields.length) return null;
 
-  if (provider === DynamicSecretProviders.Github) {
-    const { TOKEN } = data as {
-      TOKEN: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay
-          label="Token"
-          value={TOKEN}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.Couchbase) {
-    const { username, password } = data as {
-      username: string;
-      password: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Username" value={username} />
-        <OutputDisplay
-          label="Password"
-          value={password}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.IbmApiConnect) {
-    const { CLIENT_ID, CLIENT_SECRET } = data as {
-      CLIENT_ID: string;
-      CLIENT_SECRET: string;
-    };
-
-    return (
-      <div>
-        <OutputDisplay label="Client ID" value={CLIENT_ID} />
-        <OutputDisplay
-          label="Client Secret"
-          value={CLIENT_SECRET}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  if (provider === DynamicSecretProviders.Tailscale) {
-    const { AUTH_KEY, CLIENT_ID, CLIENT_SECRET, FEDERATED_CREDENTIAL_ID, AUDIENCE } = data as {
-      AUTH_KEY?: string;
-      CLIENT_ID?: string;
-      CLIENT_SECRET?: string;
-      FEDERATED_CREDENTIAL_ID?: string;
-      AUDIENCE?: string;
-    };
-
-    if (AUTH_KEY) {
-      return (
-        <div>
-          <OutputDisplay
-            label="Auth Key"
-            value={AUTH_KEY}
-            helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-          />
-        </div>
-      );
-    }
-
-    if (FEDERATED_CREDENTIAL_ID) {
-      return (
-        <div>
-          <OutputDisplay label="Federated Credential ID" value={FEDERATED_CREDENTIAL_ID} />
-          {AUDIENCE && (
-            <OutputDisplay
-              label="Audience"
-              value={AUDIENCE}
-              helperText="Use this audience value when configuring your workload's OIDC token exchange."
-            />
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <OutputDisplay label="Client ID" value={CLIENT_ID ?? ""} />
-        <OutputDisplay
-          label="Client Secret"
-          value={CLIENT_SECRET ?? ""}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div>
+      {presentFields.map((f, idx) => {
+        const isLast = idx === presentFields.length - 1;
+        let helperText: ReactNode;
+        if (isLast) {
+          helperText = entry.extraNote ? (
+            <div className="space-y-4">
+              <p>{COPY_NOTE}</p>
+              <p className="font-medium">{entry.extraNote}</p>
+            </div>
+          ) : (
+            COPY_NOTE
+          );
+        }
+        const raw = record[f.name];
+        const value = typeof raw === "string" ? raw : JSON.stringify(raw);
+        return <OutputDisplay key={f.name} label={f.label} value={value} helperText={helperText} />;
+      })}
+    </div>
+  );
 };
 
 const kubernetesFormSchema = z.object({

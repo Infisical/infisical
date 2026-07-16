@@ -275,7 +275,12 @@ export async function up(knex: Knex): Promise<void> {
   const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
   const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const { kmsService } = await getMigrationEncryptionServices({
+    envConfig,
+    keyStore,
+    db: knex,
+    skipHsmLicenseCheck: true
+  });
 
   const getProjectCipher = async (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);

@@ -42,6 +42,12 @@ export enum PamAccessMethod {
   Cli = "cli"
 }
 
+export enum PamSshAuthMethod {
+  Password = "password",
+  PublicKey = "public-key",
+  Certificate = "certificate"
+}
+
 // The caller's just-in-time approval state for an account gated behind an access request flow
 export enum PamAccessStatus {
   None = "none",

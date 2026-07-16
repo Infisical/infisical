@@ -34,6 +34,7 @@ import {
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
+import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 type ActiveProducts = Exclude<ProjectType, ProjectType.AI | ProjectType.SSH>;
@@ -120,6 +121,8 @@ export const ProjectCategoryOverview = () => {
   const [pendingCertManagerProjectId, setPendingCertManagerProjectId] = useState<string | null>(
     null
   );
+  const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
+  const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -137,6 +140,17 @@ export const ProjectCategoryOverview = () => {
   );
   const isCertManagerAccessBlocked =
     cmInstances.length > 0 && !isOrgAdmin && !canRequestAccess && !isCertManagerMember;
+
+  const isPamMember = useMemo(
+    () =>
+      Boolean(
+        currentOrg?.pamProjectId &&
+          projects.some((project) => project.id === currentOrg.pamProjectId)
+      ),
+    [currentOrg?.pamProjectId, projects]
+  );
+  const isPamAccessBlocked =
+    Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -232,6 +246,60 @@ export const ProjectCategoryOverview = () => {
     await enterCertManagerProject(projectId);
   };
 
+  const navigateToPam = () => {
+    navigate({
+      to: "/organizations/$orgId/pam/access",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
+
+  const enterPamProject = async () => {
+    // Also lazily bootstraps the PAM project for orgs that don't have one yet.
+    let pamProjectId: string;
+    try {
+      pamProjectId = await resolvePamProjectId(currentOrg?.pamProjectId);
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text:
+          err instanceof Error
+            ? err.message
+            : "Failed to resolve the Privileged Access Manager project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === pamProjectId);
+    if (isMember) {
+      navigateToPam();
+      return;
+    }
+
+    setPendingPamProjectId(pamProjectId);
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: pamProjectId });
+        navigateToPam();
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text:
+            err instanceof Error
+              ? err.message
+              : "Failed to join the Privileged Access Manager project."
+        });
+      }
+    } else if (canRequestAccess) {
+      setIsPamRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to Privileged Access Manager."
+      });
+    }
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -250,10 +318,7 @@ export const ProjectCategoryOverview = () => {
     }
 
     if (type === ProjectType.PAM) {
-      navigate({
-        to: "/organizations/$orgId/pam/access",
-        params: { orgId }
-      });
+      await enterPamProject();
       return;
     }
 
@@ -294,6 +359,13 @@ export const ProjectCategoryOverview = () => {
     ? ({
         id: requestAccessTarget.id,
         name: requestAccessTarget.name
+      } as Project)
+    : undefined;
+
+  const pamRequestAccessProject: Project | undefined = pendingPamProjectId
+    ? ({
+        id: pendingPamProjectId,
+        name: "Privileged Access Manager"
       } as Project)
     : undefined;
 
@@ -349,7 +421,11 @@ export const ProjectCategoryOverview = () => {
             </>
           );
 
-          if (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) {
+          const isAccessBlocked =
+            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
+            (type === ProjectType.PAM && isPamAccessBlocked);
+
+          if (isAccessBlocked) {
             return (
               <Tooltip key={type}>
                 <TooltipTrigger asChild>
@@ -358,8 +434,8 @@ export const ProjectCategoryOverview = () => {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  You don&apos;t have access to Certificate Manager. Ask an organization admin for
-                  access.
+                  You don&apos;t have access to {getProjectTitle(type)}. Ask an organization admin
+                  for access.
                 </TooltipContent>
               </Tooltip>
             );
@@ -387,6 +463,16 @@ export const ProjectCategoryOverview = () => {
         onOpenChange={setIsRequestAccessOpen}
         project={requestAccessProject}
         subTitle="Requesting access to Certificate Manager. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isPamRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsPamRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingPamProjectId(null);
+        }}
+        project={pamRequestAccessProject}
+        subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
       />
 
       <CertManagerNotConfiguredModal
