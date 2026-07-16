@@ -375,6 +375,7 @@
                 ]
               },
               "self-hosting/guides/replication",
+              "self-hosting/guides/hsm-integration",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -1034,7 +1035,6 @@
                 "group": "Infisical KMS",
                 "pages": [
                   "documentation/platform/kms/overview",
-                  "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
                   {
                     "group": "KMIP Integration",
@@ -4278,6 +4278,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/kms/hsm-integration",
+      "destination": "/self-hosting/guides/hsm-integration"
+    },
     {
       "source": "/documentation/guides/introduction",
       "destination": "/documentation/platform/secrets-mgmt/overview"
