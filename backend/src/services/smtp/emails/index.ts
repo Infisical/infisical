@@ -6,6 +6,7 @@ export * from "./AccountDeletionConfirmationTemplate";
 export * from "./AuditLogMigrationAlertTemplate";
 export * from "./AuditReportTemplate";
 export * from "./CredentialRotationFailedTemplate";
+export * from "./EmailChangeExistingAccountTemplate";
 export * from "./EmailChangeRequestNotificationTemplate";
 export * from "./EmailMfaTemplate";
 export * from "./EmailVerificationTemplate";
