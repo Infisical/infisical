@@ -1,25 +1,17 @@
 import {
   AlarmChannelType,
   EmailChannelConfigSchema,
-  InAppChannelConfigSchema,
   PagerDutyChannelConfigSchema,
   SlackChannelConfigSchema,
   TAlarmChannelDefinition,
   WebhookChannelConfigSchema
 } from "../alarm-channel-types";
 import { sendEmailNotification } from "./alarm-channel-email-fns";
-import { sendInAppNotification } from "./alarm-channel-inapp-fns";
 import { sendPagerDutyNotification } from "./alarm-channel-pagerduty-fns";
 import { sendSlackNotification } from "./alarm-channel-slack-fns";
 import { sendWebhookNotification } from "./alarm-channel-webhook-fns";
 
 export const ALARM_CHANNEL_REGISTRY: Record<AlarmChannelType, TAlarmChannelDefinition> = {
-  [AlarmChannelType.IN_APP]: {
-    type: AlarmChannelType.IN_APP,
-    directed: true,
-    configSchema: InAppChannelConfigSchema,
-    send: sendInAppNotification
-  },
   [AlarmChannelType.EMAIL]: {
     type: AlarmChannelType.EMAIL,
     directed: true,

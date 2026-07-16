@@ -91,7 +91,7 @@ export const alarmServiceFactory = ({
 
       const hasDirected = input.channels.some((channel) => ALARM_CHANNEL_REGISTRY[channel.channelType]?.directed);
       if (hasDirected && (input.recipients ?? []).length === 0) {
-        throw new BadRequestError({ message: "At least one recipient is required for in-app or email channels" });
+        throw new BadRequestError({ message: "At least one recipient is required for email channels" });
       }
 
       for (const channel of input.channels) {

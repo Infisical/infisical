@@ -122,7 +122,7 @@ export const alarmEngineFactory = ({
       recipients = await alarmRecipientResolver.resolve(alarm.orgId, await alarmRecipientDAL.findByAlarmId(alarm.id));
     }
 
-    const deps: TAlarmChannelDeps = { smtpService, notificationService };
+    const deps: TAlarmChannelDeps = { smtpService };
 
     const channelResults = await Promise.all(
       channels.map(async (channel) => {

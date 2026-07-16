@@ -8,7 +8,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { NotFoundError } from "@app/lib/errors";
-import { NotificationType } from "@app/services/notification/notification-types";
 
 import { TAlarmPayload, TAlarmSeverity } from "../alarm-channel-types";
 import {
@@ -107,7 +106,6 @@ export const identityCredentialAlarmProviderFactory = ({
       summary: alertBefore
         ? `${targets.length} identity credential(s) expiring within ${alertBefore}`
         : `${targets.length} identity credential(s) expiring`,
-      notificationType: NotificationType.IDENTITY_CREDENTIAL_EXPIRY,
       items: targets.map((target) => ({
         id: `${target.credentialType}:${target.id}`,
         title: `${CREDENTIAL_TYPE_LABEL[target.credentialType]} — ${target.identityName}`,

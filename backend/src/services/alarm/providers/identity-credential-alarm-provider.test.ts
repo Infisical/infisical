@@ -102,14 +102,13 @@ describe("identity credential alarm provider", () => {
     expect(provider.targetId(targets[0])).toBe("ua-client-secret:sec-1");
   });
 
-  test("buildPayload produces neutral items, severity, and an in-app notification type", () => {
+  test("buildPayload produces neutral items and severity", () => {
     const provider = buildProvider();
     const target = { credentialType: "ua-client-secret" as const, ...sampleSecret({ expiresAt: futureDate(3) }) };
     const payload = provider.buildPayload(alarmContext(), [target]);
 
     expect(payload.eventKey).toBe(IDENTITY_CREDENTIAL_EXPIRY_EVENT);
     expect(payload.severity).toBe("critical"); // 3 days out
-    expect(payload.notificationType).toBe("identity-credential-expiry");
     expect(payload.items[0].fields?.some((f) => f.label === "Days Until Expiry")).toBe(true);
     expect(payload.alarm.viewUrl).toContain("/organizations/org-1/identities");
   });

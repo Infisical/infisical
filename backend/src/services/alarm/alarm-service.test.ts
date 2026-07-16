@@ -113,7 +113,7 @@ const validCreate = {
   recipients: [{ principalType: AlarmPrincipalType.USER, principalId: "user-1" }],
   channels: [
     { channelType: AlarmChannelType.EMAIL, config: {} },
-    { channelType: AlarmChannelType.IN_APP, config: {} }
+    { channelType: AlarmChannelType.WEBHOOK, config: { url: "https://example.com/hook" } }
   ],
   ...actor
 };

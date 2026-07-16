@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { NotificationType } from "@app/services/notification/notification-types";
-
 import { TAlarmPayload } from "./alarm-channel-types";
 import { alarmEngineFactory, TAlarmEngineDep } from "./alarm-engine";
 import { alarmProviderRegistryFactory } from "./alarm-provider-registry";
@@ -50,7 +48,6 @@ const makeProvider = (targets: TTarget[]): IResourceAlarmProvider<TTarget> => ({
     resourceKind: "Test Resource",
     severity: "warning",
     summary: `${matched.length} expiring`,
-    notificationType: NotificationType.ALARM_CHANNEL_FAILED,
     items: matched.map((target) => ({ id: target.id, title: target.id }))
   })
 });
@@ -121,20 +118,17 @@ const buildEngine = (opts: {
 };
 
 describe("alarm engine", () => {
-  test("dispatches email + in-app to resolved recipients and records history", async () => {
+  test("dispatches email to resolved recipients and records history", async () => {
     const { engine, sentMail, createdNotifications, historyWrites } = buildEngine({
       targets: [{ id: "t1" }, { id: "t2" }],
-      channels: [
-        { id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
-        { id: "c-inapp", channelType: "in-app", encryptedConfig: encConfig({}), enabled: true }
-      ]
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
 
     await engine.runAlarm(makeAlarm());
 
     expect(sentMail).toHaveLength(1);
     expect(sentMail[0].recipients).toEqual(["user@example.com"]);
-    expect(createdNotifications).toHaveLength(1); // in-app delivery, not a failure fallback
+    expect(createdNotifications).toHaveLength(0); // no failure fallback on success
     expect(historyWrites).toHaveLength(1);
     expect(historyWrites[0].targetIds).toEqual(["t1", "t2"]);
     expect(historyWrites[0].status).toBe(AlarmRunStatus.SUCCESS);

@@ -23,8 +23,7 @@ export enum NotificationType {
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
   CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
   AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
-  ALARM_CHANNEL_FAILED = "alarm-channel-failed",
-  IDENTITY_CREDENTIAL_EXPIRY = "identity-credential-expiry"
+  ALARM_CHANNEL_FAILED = "alarm-channel-failed"
 }
 
 export interface TCreateUserNotificationDTO {

@@ -1,8 +1,5 @@
-import { NotificationType } from "@app/services/notification/notification-types";
-
 import { AlarmChannelType, TAlarmPayload } from "../alarm-channel-types";
 import { sendEmailNotification } from "./alarm-channel-email-fns";
-import { sendInAppNotification } from "./alarm-channel-inapp-fns";
 import { buildPagerDutyPayload } from "./alarm-channel-pagerduty-fns";
 import { ALARM_CHANNEL_REGISTRY } from "./alarm-channel-registry";
 import { buildSlackPayload, validateSlackWebhookUrl } from "./alarm-channel-slack-fns";
@@ -24,7 +21,6 @@ const samplePayload = (): TAlarmPayload => ({
   resourceKind: "Certificate",
   severity: "warning",
   summary: "2 certificates expiring within 30d",
-  notificationType: NotificationType.PKI_ALERT_CHANNEL_FAILED,
   items: [
     {
       id: "cert-a",
@@ -48,14 +44,12 @@ const baseCtx = () => ({
   channelId: "chan-1",
   payload: samplePayload(),
   deps: {
-    smtpService: { sendMail: async () => undefined },
-    notificationService: { createUserNotifications: async () => undefined }
+    smtpService: { sendMail: async () => undefined }
   }
 });
 
 describe("alarm channel registry", () => {
-  test("exposes all five channels with correct directed flags", () => {
-    expect(ALARM_CHANNEL_REGISTRY[AlarmChannelType.IN_APP].directed).toBe(true);
+  test("exposes all four channels with correct directed flags", () => {
     expect(ALARM_CHANNEL_REGISTRY[AlarmChannelType.EMAIL].directed).toBe(true);
     expect(ALARM_CHANNEL_REGISTRY[AlarmChannelType.SLACK].directed).toBe(false);
     expect(ALARM_CHANNEL_REGISTRY[AlarmChannelType.WEBHOOK].directed).toBe(false);
@@ -171,47 +165,5 @@ describe("sendEmailNotification (directed)", () => {
   test("fails when there is no recipient", async () => {
     const result = await sendEmailNotification({ ...baseCtx(), config: {} });
     expect(result.success).toBe(false);
-  });
-});
-
-describe("sendInAppNotification (directed)", () => {
-  test("creates a notification for the recipient", async () => {
-    let created: unknown[] | undefined;
-    const ctx = {
-      ...baseCtx(),
-      config: {},
-      recipient: { userId: "u1", email: "user@example.com" },
-      deps: {
-        ...baseCtx().deps,
-        notificationService: {
-          createUserNotifications: async (data: unknown[]) => {
-            created = data;
-          }
-        }
-      }
-    };
-    const result = await sendInAppNotification(ctx);
-    expect(result.success).toBe(true);
-    expect(created).toHaveLength(1);
-  });
-
-  test("skips (success no-op) a raw EMAIL-address recipient with no user id", async () => {
-    let created: unknown[] | undefined;
-    const ctx = {
-      ...baseCtx(),
-      config: {},
-      recipient: { email: "external@example.com" },
-      deps: {
-        ...baseCtx().deps,
-        notificationService: {
-          createUserNotifications: async (data: unknown[]) => {
-            created = data;
-          }
-        }
-      }
-    };
-    const result = await sendInAppNotification(ctx);
-    expect(result.success).toBe(true);
-    expect(created).toBeUndefined();
   });
 });

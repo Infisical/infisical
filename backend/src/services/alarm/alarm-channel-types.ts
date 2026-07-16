@@ -1,12 +1,9 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { NotificationType } from "@app/services/notification/notification-types";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 export enum AlarmChannelType {
-  IN_APP = "in-app",
   EMAIL = "email",
   SLACK = "slack",
   WEBHOOK = "webhook",
@@ -39,9 +36,6 @@ export type TAlarmPayload = {
   severity: TAlarmSeverity;
   summary: string; // one-line human summary
   items: TAlarmItem[];
-  // Required by the in-app channel; ignored by the others. Kept optional so endpoint-only alarms
-  // need not supply it.
-  notificationType?: NotificationType;
 };
 
 export type TChannelResult = { success: boolean; error?: string };
@@ -54,7 +48,6 @@ export type TAlarmRecipient = {
 
 export type TAlarmChannelDeps = {
   smtpService: Pick<TSmtpService, "sendMail">;
-  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TAlarmChannelSendContext = {
@@ -73,8 +66,6 @@ export type TAlarmChannelDefinition = {
 };
 
 export const EmailChannelConfigSchema = z.object({}).strip();
-
-export const InAppChannelConfigSchema = z.object({}).strip();
 
 export const WebhookChannelConfigSchema = z.object({
   url: z
@@ -107,7 +98,6 @@ export const PagerDutyChannelConfigSchema = z.object({
 });
 
 export type TEmailChannelConfig = z.infer<typeof EmailChannelConfigSchema>;
-export type TInAppChannelConfig = z.infer<typeof InAppChannelConfigSchema>;
 export type TWebhookChannelConfig = z.infer<typeof WebhookChannelConfigSchema>;
 export type TSlackChannelConfig = z.infer<typeof SlackChannelConfigSchema>;
 export type TPagerDutyChannelConfig = z.infer<typeof PagerDutyChannelConfigSchema>;
