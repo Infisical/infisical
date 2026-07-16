@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TWebAuthnCredential } from "./types";
+import { TGetWebAuthnCredentialsResponse } from "./types";
 
 export const webAuthnKeys = {
   credentials: ["webauthn-credentials"] as const,
@@ -14,9 +14,9 @@ export const useGetWebAuthnCredentials = () =>
   useQuery({
     queryKey: webAuthnKeys.credentials,
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ credentials: TWebAuthnCredential[] }>(
+      const { data } = await apiRequest.get<TGetWebAuthnCredentialsResponse>(
         "/api/v1/user/me/webauthn"
       );
-      return data.credentials;
+      return data;
     }
   });

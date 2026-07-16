@@ -214,7 +214,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       try {
-        const credentials = await server.services.webAuthn.getUserWebAuthnCredentials({
+        const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
           userId: req.mfa.userId
         });
 

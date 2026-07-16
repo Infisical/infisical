@@ -47,7 +47,8 @@ export const MFASection = () => {
   const { isBusy: isEnabling, enableMfa } = useEnableMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
-  const { data: webAuthnCredentials = [] } = useGetWebAuthnCredentials();
+  const { data: webAuthnData } = useGetWebAuthnCredentials();
+  const webAuthnCredentials = webAuthnData?.credentials ?? [];
   const { data: organizations = [] } = useGetOrganizations();
   const { data: serverDetails } = useFetchServerStatus();
 

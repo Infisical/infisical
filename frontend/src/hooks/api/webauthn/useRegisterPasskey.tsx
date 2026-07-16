@@ -21,21 +21,8 @@ export const useRegisterPasskey = () => {
   const [isRegistering, setIsRegistering] = useState(false);
 
   const registerPasskey = async (name?: string, verify?: VerifyAttestation): Promise<boolean> => {
-    if (
-      !window.PublicKeyCredential ||
-      !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-    ) {
+    if (!window.PublicKeyCredential) {
       createNotification({ text: "WebAuthn is not supported on this browser", type: "error" });
-      return false;
-    }
-
-    const isAuthenticatorAvailable =
-      await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!isAuthenticatorAvailable) {
-      createNotification({
-        text: "No passkey-compatible authenticator found on this device",
-        type: "error"
-      });
       return false;
     }
 
