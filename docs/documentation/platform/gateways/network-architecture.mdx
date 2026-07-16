@@ -39,10 +39,6 @@ flowchart LR
 | Platform ↔ relay | Infisical Platform | Relay server | 8443 | TCP + TLS | Platform connects to the relay; traffic is then routed over the gateway's existing tunnel |
 | Resource access | Gateway | Private resource | the resource's own port (e.g. 5432) | TCP | Gateway proxies platform requests to the internal service — **local** |
 
-<Note>
-  The Gateway requires no inbound ports — the platform reaches it back over the gateway's own outbound SSH tunnel via the relay.
-</Note>
-
 ## Firewall / egress allowlist
 
 On the Gateway host, allow **outbound** access only:
@@ -52,9 +48,7 @@ On the Gateway host, allow **outbound** access only:
 
 No inbound rules are required.
 
-With the default **Auto Select Relay** option (no relay pinned at enrollment), the gateway picks a healthy managed relay and will switch to another one if the current relay becomes unreachable — so there is no single relay address to allowlist. In a strict-egress environment your **TCP 2222** allowlist must therefore include *every* managed relay endpoint Infisical operates for your region, since the gateway may connect to or fail over to any of them. Obtain the full list from **Organization Settings → Networking**, or from Infisical support. Do not hardcode a single relay IP and assume it is stable.
-
-Alternatively, pin the gateway to one relay at enrollment by selecting a specific relay (the CLI `--target-relay-name` flag). The gateway then uses only that relay, so you only need to allowlist that single address — at the cost of losing automatic failover to other relays.
+With the default **Auto Select Relay** option there is no single relay address to allowlist, since the gateway may fail over between managed relays — see [Which relay address do I need to allowlist?](#frequently-asked-questions) below for the endpoints to include and how to pin to a single relay.
 
 ## Self-hosted relay (optional)
 
@@ -64,11 +58,23 @@ If you run a self-hosted relay, that host needs:
 - **Inbound TCP 8443** from the Infisical instance host (platform ↔ relay)
 - **Outbound TCP 443** to the Infisical instance host (relay API + certificates)
 
-## Can Gateway traffic egress through an HTTP forward proxy (e.g. Squid)?
+## Frequently asked questions
 
-Not currently. The Gateway's connection to the relay is a raw **SSH tunnel over TCP** (port 2222), and its connection to the Infisical API is **TLS over TCP** (port 443). Neither is HTTP, so an HTTP forward proxy such as Squid cannot transparently carry this traffic.
+<AccordionGroup>
+  <Accordion title="Does the Gateway require any inbound ports?">
+    No. The Gateway makes only outbound connections (TCP 2222 to the relay and TCP 443 to the Infisical API). The platform reaches the Gateway back over its own outbound SSH tunnel via the relay, so no inbound firewall rules are needed.
+  </Accordion>
 
-If an HTTP proxy is mandatory in your environment, you have two options:
+  <Accordion title="Which relay address do I need to allowlist?">
+    With the default **Auto Select Relay**, the Gateway may connect to, and fail over between, any managed relay Infisical operates for your region, so a strict outbound TCP 2222 allowlist must include every managed relay endpoint. You can find these under **Organization Settings → Networking**, or ask Infisical support. To allowlist a single address instead, pin the Gateway to one relay at enrollment with the `--target-relay-name` option; this removes automatic failover to other relays.
+  </Accordion>
 
-- Allow the Gateway's two outbound rules (**TCP 2222** and **TCP 443**) to bypass the proxy for the relay and Infisical endpoints.
-- Deploy a **self-hosted relay** inside your own network so the TCP 2222 tunnel stays internal, and only TCP 443 needs to leave your network. Note that the Infisical platform must still reach that relay on **inbound TCP 8443**, so the relay needs a network path from the platform (a publicly reachable or port-forwarded 8443 endpoint). This only removes *all* external egress when you also self-host the Infisical platform inside the same network.
+  <Accordion title="Can Gateway traffic egress through an HTTP forward proxy?">
+    Not currently. The Gateway's connection to the relay is a raw SSH tunnel over TCP (port 2222), and its connection to the Infisical API is TLS over TCP (port 443). Neither is HTTP, so an HTTP forward proxy cannot transparently carry this traffic.
+
+    If an HTTP proxy is mandatory in your environment, you have two options:
+
+    - Allow the Gateway's outbound rules (TCP 2222 and TCP 443) to bypass the proxy for the relay and Infisical endpoints.
+    - Deploy a self-hosted relay inside your own network so the TCP 2222 tunnel stays internal and only TCP 443 needs to leave. The Infisical platform must still reach that relay on inbound TCP 8443, so the relay needs a network path from the platform (a public or forwarded 8443 endpoint); this only removes all external egress when you also self-host the Infisical platform in the same network.
+  </Accordion>
+</AccordionGroup>
