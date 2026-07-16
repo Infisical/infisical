@@ -239,6 +239,12 @@ const Content = ({
       .filter((group) => group.secrets.length > 0);
   }, [metadataData, environments, debouncedSearch]);
 
+  // count the secrets actually shown (after env + text filtering) so the builder's tally matches the rows
+  const metadataResultCount = useMemo(
+    () => metadataResultsByEnv.reduce((total, group) => total + group.secrets.length, 0),
+    [metadataResultsByEnv]
+  );
+
   const handleToggleTag = (tag: string) => {
     setFilterTags((prev) => {
       const updated = { ...prev };
@@ -292,6 +298,12 @@ const Content = ({
   };
 
   const handleClearMetadata = () => {
+    setMetadataConditions([]);
+  };
+
+  // closing the builder discards the conditions so a metadata filter never stays active while hidden
+  const handleCloseBuilder = () => {
+    setIsBuilderOpen(false);
     setMetadataConditions([]);
   };
 
@@ -491,7 +503,7 @@ const Content = ({
           <SecretMetadataSearchBuilder
             conditions={metadataConditions}
             match={metadataMatch}
-            matchingCount={metadataData?.secrets.length ?? 0}
+            matchingCount={metadataResultCount}
             isPending={isMetadataFetching}
             hasActiveConditions={isMetadataMode}
             onChangeMatch={setMetadataMatch}
@@ -499,7 +511,7 @@ const Content = ({
             onUpdateCondition={handleUpdateCondition}
             onRemoveCondition={handleRemoveCondition}
             onClear={handleClearMetadata}
-            onClose={() => setIsBuilderOpen(false)}
+            onClose={handleCloseBuilder}
           />
         )}
         {resultsContent}

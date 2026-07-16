@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { BracesIcon, ChevronRightIcon, SearchIcon, TagsIcon, XIcon } from "lucide-react";
+import { BracesIcon, SearchIcon, TagsIcon, XIcon } from "lucide-react";
 
 import {
   Badge,
