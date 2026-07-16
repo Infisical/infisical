@@ -36,15 +36,15 @@ description: "Learn how to configure an OVH Cloud Sync for Infisical."
                 ![Configure Destination](/images/secret-syncs/ovh/sync-destination.png)
 
                 - **OVH Cloud Connection**: The OVH Cloud Connection to authenticate with.
-                - **Path**: The path in OVH OKMS where secrets will be stored as key/value pairs (e.g. `app/production`). Allowed characters are alphanumerics, dots, dashes, underscores, and single slashes between segments.
+                - **Path**: The path in OVHcloud KMS where secrets will be stored as key/value pairs (e.g. `app/production`). Allowed characters are alphanumerics, dots, dashes, underscores, and single slashes between segments.
 
                 After configuring these parameters, click the **Next** button to continue to the Sync Options step.
 
                 <Note>
-                    If the **path** you provide does not exist in OVH OKMS, it will be created.
+                    If the **path** you provide does not exist in OVHcloud KMS, it will be created.
                 </Note>
                 <Note>
-                    All Infisical secrets under the selected source path are packed as key/value pairs into a **single** OVH OKMS secret at the destination path. OVH OKMS caps each secret at **64 KB** (total JSON payload), so keep the combined size of all synced secrets within that limit.
+                    All Infisical secrets under the selected source path are packed as key/value pairs into a **single** OVHcloud KMS secret at the destination path. OVHcloud KMS caps each secret at **64 KB** (total JSON payload), so keep the combined size of all synced secrets within that limit.
                 </Note>
             </Step>
             <Step title="Configure Sync Options">

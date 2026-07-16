@@ -5,39 +5,39 @@ description: "Learn how to configure an OVH Cloud Connection for Infisical."
 
 Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.ovhcloud.com/en/identity-security-operations/secret-manager/) using mutual TLS (mTLS) with a PEM-encoded client certificate pair issued by OVH for your OKMS instance.
 
-## Generate an OVH OKMS Access Certificate
+## Generate an OVHcloud KMS Access Certificate
 
 <Steps>
-  <Step title="Open the OKMS dashboard">
+  <Step title="Open the OVHcloud KMS dashboard">
     Log in to the [OVHcloud Control Panel](https://www.ovh.com/manager/) and navigate to **Identity, Security & Operations** > **Key Management Service**.
 
-    ![OKMS Dashboard](/images/app-connections/ovh/okms-dashboard.png)
+    ![OVHcloud KMS Dashboard](/images/app-connections/ovh/okms-dashboard.png)
   </Step>
 
-  <Step title="Create a OKMS Domain">
-    Click on **Order an OKMS Domain** 
+  <Step title="Create a OVHcloud KMS Domain">
+    Click on **Order an OVHcloud KMS Domain**
 
-    ![OKMS Dashboard](/images/app-connections/ovh/okms-order-domain.png)
+    ![OVHcloud KMS Dashboard](/images/app-connections/ovh/okms-order-domain.png)
   </Step>
-  <Step title="Select your OKMS region">
-    Select the OKMS region that you want to use. You will also need to confirm by accepting the terms  
+  <Step title="Select your OVHcloud KMS region">
+    Select the OVHcloud KMS region that you want to use. You will also need to confirm by accepting the terms
 
-    ![OKMS Region](/images/app-connections/ovh/okms-select-region.png)
+    ![OVHcloud KMS Region](/images/app-connections/ovh/okms-select-region.png)
 
-    ![OKMS Activate Region](/images/app-connections/ovh/okms-activate-region.png)
+    ![OVHcloud KMS Activate Region](/images/app-connections/ovh/okms-activate-region.png)
   </Step>
 
   <Step title="Check your summary">
     On your summary, the desired domain by clicking on it. 
 
-    ![OKMS Summary](/images/app-connections/ovh/okms-summary.png)
+    ![OVHcloud KMS Summary](/images/app-connections/ovh/okms-summary.png)
 
     You will need to get the following values to create a connection. 
 
-    - **OKMS ID** — the UUID-style identifier shown on the OKMS summary page.
-    - **REST API endpoint** — the base URL of the OKMS instance (e.g. `https://ca-east-bhs.okms.ovh.net`). This is the **OKMS Domain** value in Infisical.
+    - **OKMS ID** — the UUID-style identifier shown on the OVHcloud KMS summary page.
+    - **REST API endpoint** — the base URL of the OVHcloud KMS instance (e.g. `https://ca-east-bhs.okms.ovh.net`). This is the **OKMS Domain** value in Infisical.
 
-    ![OKMS Details](/images/app-connections/ovh/okms-details.png)
+    ![OVHcloud KMS Details](/images/app-connections/ovh/okms-details.png)
   </Step>
   <Step title="Generate an access certificate">
     Open the **Access certificate** tab 
@@ -83,8 +83,8 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
         - An optional **Description**.
         - **Private Key (PEM)** — paste the full contents of `*_privatekey.pem`, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers.
         - **Certificate (PEM)** — paste the full contents of `*_certificate.pem`, including the `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` markers.
-        - **OKMS Domain** — the OKMS base URL (e.g. `https://ca-east-bhs.okms.ovh.net`). Do not include the `/api` suffix; Infisical appends it automatically.
-        - **OKMS ID** — the OKMS instance identifier from the OVHcloud Control Panel.
+        - **OKMS Domain** — the OVHcloud KMS base URL (e.g. `https://eu-west-rbx.okms.ovh.net`). Do not include the `/api` suffix; Infisical appends it automatically.
+        - **OKMS ID** — the OVHcloud KMS instance identifier from the OVHcloud Control Panel.
 
         ![OVH Cloud Connection Form](/images/app-connections/ovh/app-connection-form.png)
 
