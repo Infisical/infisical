@@ -41,6 +41,7 @@ const BillingV2PlanSchema = z.object({
   selfServe: z.boolean(),
   salesLed: z.boolean(),
   trialable: z.boolean(),
+  displayOrder: z.number().optional(),
   feature: z.string().optional(),
   base: z.object({ monthly: z.number(), annual: z.number() }).optional(),
   dims: BillingV2DimSchema.array()
@@ -53,6 +54,7 @@ const BillingV2CatalogProductSchema = z.object({
   color: z.string(),
   addon: z.boolean().optional(),
   tagline: z.string().optional(),
+  displayOrder: z.number().optional(),
   plans: BillingV2PlanSchema.array(),
   includes: z.string().array().optional(),
   compare: BillingV2CompareRowSchema.array().optional()
@@ -99,6 +101,7 @@ const BillingV2EntitlementSchema = z.object({
   status: z.string().optional(),
   isTrialing: z.boolean().optional(),
   trialEndsAt: z.string().nullable().optional(),
+  renewsOn: z.string().nullable().optional(),
   limit: z.number().nullable().optional(),
   used: z.number().optional(),
   unit: z.string().nullable().optional()
@@ -109,14 +112,19 @@ const BillingV2OverviewSchema = z.object({
   mode: z.enum(["self-serve", "managed"]),
   subState: z.enum(["active", "trialing", "past-due", "suspended", "no-subscription"]),
   planName: z.string(),
-  nextBillingDate: z.string().nullable(),
-  recurringAmount: z.number().nullable(),
-  interval: z.enum(["month", "year"]).nullable(),
-  usage: z.object({
-    members: z.number(),
-    memberLimit: z.number().nullable(),
-    identities: z.number(),
-    identityLimit: z.number().nullable()
+  billing: z.object({
+    monthlyRecurring: z.number(),
+    annualCommitted: z.number(),
+    activeProductCount: z.number(),
+    nextCharge: z
+      .object({
+        amount: z.number(),
+        at: z.string(),
+        productKeys: z.string().array(),
+        cadence: z.enum(["monthly", "annual"]).nullable(),
+        hasUsage: z.boolean()
+      })
+      .nullable()
   }),
   payment: z.object({ brand: z.string(), last4: z.string(), expMonth: z.number(), expYear: z.number() }).nullable(),
   billingDetails: z
@@ -329,12 +337,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
           removeProductId: z.string().trim().optional(),
           commitmentChanges: BillingV2CommitmentChangeSchema.array().optional()
         })
-        .refine(
-          (b) => Boolean(b.addProductId) || Boolean(b.removeProductId) || Boolean(b.commitmentChanges?.length),
-          {
-            message: "provide a product to add or remove, or a commitment change"
-          }
-        ),
+        .refine((b) => Boolean(b.addProductId) || Boolean(b.removeProductId) || Boolean(b.commitmentChanges?.length), {
+          message: "provide a product to add or remove, or a commitment change"
+        }),
       response: {
         200: z.object({ preview: BillingV2PreviewSchema })
       }

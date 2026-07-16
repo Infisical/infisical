@@ -7,11 +7,25 @@ const entitlementFeatureSchema = z.object({
   expires_at: z.string().nullish()
 });
 
-// Only the `features` map is load-bearing for the client; passthrough tolerates the rest of the
-// payload so cloud/self-hosted version skew doesn't break reads.
+// The products a customer is entitled to. This is the authoritative entitlement list: an entitlement
+// can exist (paygo / account-based) without a Stripe subscription mirror, and the feature map may be
+// all defaults, so a product's active/trialing state must be read from here, not just features.
+const entitlementProductSchema = z
+  .object({
+    product_key: z.string(),
+    plan_key: z.string().nullish(),
+    status: z.string().nullish(), // active | trialing | grace | churned
+    trial_ends_at: z.string().nullish(),
+    current_period_end: z.string().nullish()
+  })
+  .passthrough();
+
+// `features` and `products` are load-bearing; passthrough tolerates the rest of the payload so
+// cloud/self-hosted version skew doesn't break reads.
 export const entitlementsResponseSchema = z
   .object({
-    features: z.record(z.string(), entitlementFeatureSchema)
+    features: z.record(z.string(), entitlementFeatureSchema),
+    products: z.array(entitlementProductSchema).default([])
   })
   .passthrough();
 
@@ -43,6 +57,8 @@ const catalogPlanSchema = z
     salesLed: z.boolean(),
     // Offers a self-serve trial; a plan is trialable only when selfServe && trialable.
     trialable: z.boolean().default(false),
+    // Sort key within the product; the server already returns plans sorted by it.
+    displayOrder: z.number().nullish(),
     feature: z.string().optional(),
     basePriceMonthlyCents: z.number().nullish(),
     basePriceAnnualCents: z.number().nullish(),
@@ -72,6 +88,8 @@ const catalogProductSchema = z
     icon: z.string().optional(),
     color: z.string().optional(),
     addon: z.boolean(),
+    // Sort key across products; the server already returns products sorted by it.
+    displayOrder: z.number().nullish(),
     dimensions: z.array(catalogDimensionSchema),
     plans: z.array(catalogPlanSchema),
     comparison: z.array(catalogComparisonSchema),
@@ -120,8 +138,10 @@ const subscriptionItemSchema = z
   .object({
     productId: z.string(),
     plan: z.string(),
-    quantities: z.record(z.string(), z.number()),
-    limits: z.record(z.string(), z.number()),
+    // Legacy per-unit maps, superseded by dimensions[]; the current server omits quantities entirely,
+    // so default them rather than requiring them (a missing field must not fail the whole parse).
+    quantities: z.record(z.string(), z.number()).default({}),
+    limits: z.record(z.string(), z.number()).default({}),
     amount: z.number().optional(),
     // Trial state for the product line (from the self-serve trial work).
     status: z.string().optional(),
@@ -131,13 +151,47 @@ const subscriptionItemSchema = z
   })
   .passthrough();
 
+// A single Stripe line on the subscription. Each line has its OWN billing cycle (a subscription can
+// mix monthly and annual lines), so periods live here, not at the subscription level. usageBased
+// lines carry a variable amountCents (usage-driven); fixed lines are stable. Additive + permissive.
+const subscriptionLineSchema = z
+  .object({
+    productKey: z.string(),
+    dimensionKey: z.string().nullish(),
+    // "commit" | "standard" — a prepaid commitment line vs a plain recurring line.
+    role: z.string().nullish(),
+    cadence: z.string().nullish(),
+    quantity: z.number().nullish(),
+    unitAmountCents: z.number().nullish(),
+    amountCents: z.number().nullish(),
+    usageBased: z.boolean().default(false),
+    currentPeriodStart: z.number().nullish(),
+    currentPeriodEnd: z.number().nullish()
+  })
+  .passthrough();
+
+// Per-line billing summary. monthly/annual recurring are the summed fixed (non-usage) lines for each
+// cadence and must NOT be added together (two independent clocks). nextChargeAt is the soonest line
+// currentPeriodEnd (the next invoice), null when nothing is upcoming.
+const subscriptionBillingSchema = z
+  .object({
+    monthlyRecurringCents: z.number().default(0),
+    annualRecurringCents: z.number().default(0),
+    nextChargeAt: z.number().nullish(),
+    lines: z.array(subscriptionLineSchema).default([])
+  })
+  .passthrough();
+
 export const subscriptionResponseSchema = z
   .object({
     status: z.string(),
-    // Top-level cadence is a summary only; per-product cadence lives on each dimension.
-    cadence: z.string(),
-    currentPeriodEnd: z.number().nullable(),
-    recurringTotal: z.number().nullable(),
+    // Per-line billing: there is no subscription-level cadence/period/total (a subscription can mix
+    // monthly and annual lines). These top-level fields are legacy summaries kept nullish for
+    // back-compat with older servers; read `billing` for the authoritative per-line view.
+    cadence: z.string().nullish(),
+    currentPeriodEnd: z.number().nullish(),
+    recurringTotal: z.number().nullish(),
+    billing: subscriptionBillingSchema.nullish(),
     tier: z.string().optional(),
     items: z.array(subscriptionItemSchema)
   })

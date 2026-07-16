@@ -38,6 +38,7 @@ import {
 } from "@app/hooks/api";
 
 import {
+  byDisplayOrder,
   cadencePeriod,
   cadenceWord,
   cadenceWordShort,
@@ -204,7 +205,7 @@ const PlanCard = ({
         onClick={() => onActivate(plan.tier)}
       >
         <PlusIcon />
-        Activate on {plan.name}
+        Activate
       </Button>
     );
   }
@@ -226,17 +227,14 @@ const PlanCard = ({
       ) : (
         <PlanPricing plan={plan} cadence={cadence} />
       )}
+      {plan.feature && <div className="text-xs text-accent">{plan.feature}</div>}
       {offersTrial && (
         <div className="flex items-center gap-1.5 text-xs text-success">
           <Check className="size-3.5" />
           Free trial · no charge for your first cycle
         </div>
       )}
-      {plan.feature && <div className="text-xs text-accent">{plan.feature}</div>}
       {cta}
-      {offersTrial && (
-        <div className="text-xs text-muted">No charge for your first cycle · cancel anytime</div>
-      )}
     </div>
   );
 };
@@ -367,13 +365,8 @@ export const ProductSheet = ({
   const displayCadence: BillingV2Cadence = entitlement?.cadence === "annual" ? "annual" : "monthly";
   const canChangeCommitment = (entitlement?.dimensions ?? []).some(dimAnnualCommitted);
 
-  // Sales-led plans sort last; alphabetical by name breaks ties within each group.
-  const plans = [...(prod.plans ?? [])].sort((a, b) => {
-    if (a.salesLed !== b.salesLed) {
-      return a.salesLed ? 1 : -1;
-    }
-    return a.name.localeCompare(b.name);
-  });
+  // Render plan cards in the catalog's displayOrder (already sorted server-side).
+  const plans = [...(prod.plans ?? [])].sort(byDisplayOrder);
   const currentTier =
     entitlement?.planTier ?? (entitled ? plans.find((plan) => plan.selfServe)?.tier : undefined);
   const gridCols = GRID_COLS[Math.min(plans.length, 3)] ?? GRID_COLS[3];
@@ -521,7 +514,7 @@ export const ProductSheet = ({
                       {selfServePlan && (
                         <Button variant="org" onClick={() => openActivate(selfServePlan.tier)}>
                           <PlusIcon />
-                          Activate on {selfServePlan.name}
+                          Activate
                         </Button>
                       )}
                     </div>

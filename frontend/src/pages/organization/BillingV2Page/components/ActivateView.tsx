@@ -96,22 +96,52 @@ export const ActivateView = ({
   const commitmentsForCadence = cadence === "annual" ? commitments : undefined;
   const commitmentsKey = JSON.stringify(commitmentsForCadence ?? {});
 
-  // Re-price when the cadence or a committed quantity changes.
-  useEffect(() => {
-    preview.mutate({
-      orgId,
-      addProductId: prod.id,
-      plan: plan.tier,
-      cadence,
-      commitments: commitmentsForCadence
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, prod.id, plan.tier, cadence, commitmentsKey]);
+  // A brand-new customer has no subscription yet, so the preview endpoint (which prorates against a
+  // live subscription) would fail. Compute the figures locally in that case and let Stripe Checkout
+  // confirm the exact amount; an existing subscription re-prices via the debounced preview below.
+  const localRecurring =
+    cadence === "annual"
+      ? (plan.base?.annual ?? 0) +
+        committable.reduce((sum, dim) => sum + (commitments[dim.key] ?? 0) * dim.annual, 0)
+      : monthlyHeadline(plan);
 
-  const dueToday = preview.data ? Math.max(preview.data.prorationAmount, 0) : 0;
-  const recurring = preview.data?.nextRecurringTotal ?? 0;
+  // Re-price when the cadence or a committed quantity changes; debounced so a burst of stepper clicks
+  // makes one request, not one per click. Skipped entirely without a live subscription.
+  useEffect(() => {
+    if (!hasActiveSubscription) {
+      return undefined;
+    }
+    const timeout = setTimeout(() => {
+      preview.mutate({
+        orgId,
+        addProductId: prod.id,
+        plan: plan.tier,
+        cadence,
+        commitments: commitmentsForCadence
+      });
+    }, 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, prod.id, plan.tier, cadence, commitmentsKey, hasActiveSubscription]);
+
+  // With a live subscription the change is prorated onto the shared billing date; a new customer pays
+  // the first period in full at checkout.
+  let dueToday = localRecurring;
+  if (hasActiveSubscription) {
+    dueToday = preview.data ? Math.max(preview.data.prorationAmount, 0) : 0;
+  }
+  const recurring = hasActiveSubscription
+    ? (preview.data?.nextRecurringTotal ?? 0)
+    : localRecurring;
   const period = cadence === "annual" ? "year" : "month";
   const pending = addProduct.isPending || checkout.isPending;
+
+  let chargedNote = "Billed at checkout";
+  if (hasActiveSubscription) {
+    chargedNote = preview.isPending ? "Calculating…" : "Prorated onto your shared billing date";
+  }
+  // Without a live subscription there is no preview to wait on, so the CTA is enabled immediately.
+  const activateDisabled = pending || (hasActiveSubscription && !preview.data);
 
   // Savings badge on the yearly option: how much cheaper the annual rate is vs paying monthly.
   const savingsPct = useMemo(() => {
@@ -250,9 +280,7 @@ export const ActivateView = ({
           <div className="flex items-center justify-between border-b border-border bg-mineshaft-700/40 p-4">
             <div>
               <div className="text-sm text-foreground">Charged today</div>
-              <div className="text-xs text-muted">
-                {preview.isPending ? "Calculating…" : "Prorated onto your shared billing date"}
-              </div>
+              <div className="text-xs text-muted">{chargedNote}</div>
             </div>
             <span className="text-lg font-semibold text-info tabular-nums">
               {fmtMoney(dueToday, dueToday ? 2 : 0)}
@@ -280,7 +308,7 @@ export const ActivateView = ({
         <Button
           variant="org"
           onClick={handleActivate}
-          isDisabled={pending || !preview.data}
+          isDisabled={activateDisabled}
           isPending={pending}
         >
           Activate · pay {fmtMoney(dueToday, dueToday ? 2 : 0)} today

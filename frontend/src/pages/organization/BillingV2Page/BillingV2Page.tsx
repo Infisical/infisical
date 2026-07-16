@@ -179,7 +179,7 @@ export const BillingV2Page = () => {
           hasActiveSubscription={hasActiveSubscription}
           billingEmail={billingEmail}
           returnPath={window.location.pathname}
-          renewsOn={overview?.nextBillingDate ?? null}
+          renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           onClose={close}
           onRemove={setRemoveProdId}
           onContact={() => {

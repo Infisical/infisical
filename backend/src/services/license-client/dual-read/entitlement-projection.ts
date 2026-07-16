@@ -27,5 +27,13 @@ export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlem
     }
   });
 
+  console.log(
+    "base",
+    JSON.stringify(base, null, 4),
+    "entitlements",
+    JSON.stringify(entitlements.features, null, 4),
+    "plan",
+    JSON.stringify(plan, null, 4)
+  );
   return plan as unknown as TFeatureSet;
 };

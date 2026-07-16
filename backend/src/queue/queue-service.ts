@@ -534,7 +534,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
-    payload: { orgId: string; featureKey: string };
+    payload: { orgId: string; dimensionKey: string };
   };
 };
 

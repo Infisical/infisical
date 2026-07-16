@@ -21,6 +21,8 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
@@ -84,6 +86,7 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -108,7 +111,8 @@ export const membershipUserServiceFactory = ({
   approvalPolicyDAL,
   emailDomainDAL,
   oidcConfigDAL,
-  samlConfigDAL
+  samlConfigDAL,
+  usageMeteringService
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -354,6 +358,11 @@ export const membershipUserServiceFactory = ({
     });
 
     const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
+
+    // Adding a user to a project changes the secret-manager identity meter (a direct member).
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+    }
     return { memberships: membershipDoc, signUpTokens };
   };
 
@@ -555,6 +564,14 @@ export const membershipUserServiceFactory = ({
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
+
+    // Removing a user from a project drops a direct member; removing them from the org cascades their
+    // project + group memberships. Either way the secret-manager identity meter changes.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+    } else {
+      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+    }
     return { membership: membershipDoc };
   };
 

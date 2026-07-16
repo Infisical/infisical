@@ -13,6 +13,11 @@ export const catalogById = (
   id: string
 ): BillingV2CatalogProduct | undefined => catalog.find((p) => p.id === id);
 
+// Comparator honoring the catalog's displayOrder for products and plans. The server already returns
+// them sorted; this keeps the order explicit and stable if any intermediate step reshuffles.
+export const byDisplayOrder = <T extends { displayOrder?: number }>(a: T, b: T): number =>
+  (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+
 export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
   `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;
 
@@ -53,13 +58,6 @@ export const intervalToCadence = (interval: "month" | "year" | null): BillingV2C
     return "annual";
   }
   return "monthly";
-};
-
-export const intervalWord = (interval: "month" | "year" | null): string => {
-  if (interval === "year") {
-    return "year";
-  }
-  return "month";
 };
 
 // Per-unit price for the active cadence (returns the per-period charge).

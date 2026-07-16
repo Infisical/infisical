@@ -63,14 +63,18 @@ export const CadenceBadge = ({ cadence }: { cadence: BillingV2Entitlement["caden
   return <Badge variant="neutral">Monthly</Badge>;
 };
 
-// One usage bar for a product dimension. An annual committed dimension shows the committed portion
-// (blue) plus any on-demand overflow (amber) with a rate legend; a monthly/metered dimension shows a
-// single "{used} / {limit} · $rate/unit/mo" fill.
+// One usage line for a product dimension. An annual committed dimension shows the committed portion
+// (blue) plus any on-demand overflow (amber) with a rate legend; a capped monthly/metered dimension
+// shows a single "{used} / {limit} · $rate/unit/mo" fill. A dimension with no ceiling (uncapped
+// monthly/metered) has nothing to track, so we drop the bar and render the cost line on its own.
 export const DimensionMeter = ({ dim }: { dim: BillingV2EntitlementDim }) => {
   const committed = dimAnnualCommitted(dim);
   const { committedPct, onDemandPct } = dimBarSegments(dim);
   const onDemandQty = dimOnDemandQuantity(dim);
   const monthlyRate = dimMonthlyRate(dim);
+  // A bar only earns its place when there's a ceiling to fill against: an annual commitment or a
+  // finite limit. A bar that can never fill is noise, so an uncapped dimension is a cost line only.
+  const hasCeiling = committed || (dim.limit !== null && dim.limit > 0);
 
   let right: ReactNode;
   if (committed) {
@@ -106,18 +110,20 @@ export const DimensionMeter = ({ dim }: { dim: BillingV2EntitlementDim }) => {
         <span className="text-muted">{dim.label}</span>
         <span className="text-muted tabular-nums">{right}</span>
       </div>
-      <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-border">
-        <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${committedPct}%` }}
-        />
-        {onDemandPct > 0 && (
+      {hasCeiling && (
+        <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-border">
           <div
-            className="h-full rounded-full bg-warning transition-all"
-            style={{ width: `${onDemandPct}%` }}
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${committedPct}%` }}
           />
-        )}
-      </div>
+          {onDemandPct > 0 && (
+            <div
+              className="h-full rounded-full bg-warning transition-all"
+              style={{ width: `${onDemandPct}%` }}
+            />
+          )}
+        </div>
+      )}
       {committed && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
           {dim.committedRate !== undefined && (

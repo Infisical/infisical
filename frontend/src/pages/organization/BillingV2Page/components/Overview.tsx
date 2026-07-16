@@ -2,18 +2,14 @@ import { ReactNode } from "react";
 import {
   ArrowBigUpDashIcon,
   Building2,
-  Calendar,
   CircleAlert,
   CreditCard,
   ExternalLink,
-  GaugeIcon,
   Info,
   type LucideIcon,
   Package,
   ReceiptText,
   RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
   TriangleAlert
 } from "lucide-react";
 
@@ -43,13 +39,14 @@ import {
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
+  BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2Entitlement,
   BillingV2Invoice,
   BillingV2Overview
 } from "@app/hooks/api";
 
-import { cadencePeriod, fmtMoney, intervalWord, productBreakdown } from "../billing-v2-data";
+import { byDisplayOrder, cadencePeriod, fmtMoney, productBreakdown } from "../billing-v2-data";
 import { ActiveBadge, CadenceBadge, DimensionMeter, ProductIcon } from "./shared";
 
 export type BillingV2Mode = "self-serve" | "managed";
@@ -221,10 +218,6 @@ const ErrorPanel = ({ onRetry }: ErrorPanelProps) => (
   </Card>
 );
 
-type SummaryCardProps = {
-  overview: BillingV2Overview;
-};
-
 const StatusBadge = ({ subState }: { subState: BillingV2RenderState }) => {
   if (subState === "trialing") {
     return <Badge variant="info">Trial</Badge>;
@@ -238,183 +231,120 @@ const StatusBadge = ({ subState }: { subState: BillingV2RenderState }) => {
   return <ActiveBadge />;
 };
 
-const recurringLabel = (overview: BillingV2Overview): string => {
-  if (!overview.recurringAmount) {
-    return "Free";
-  }
-  return `${fmtMoney(overview.recurringAmount)} / ${intervalWord(overview.interval)}`;
-};
-
-type StatTone = "success" | "info" | "warning" | "danger" | "org";
-
-const STAT_TONE: Record<StatTone, string> = {
-  success: "border-success/15 bg-success/10 text-success",
-  info: "border-info/15 bg-info/10 text-info",
-  org: "border-org/15 bg-org/10 text-org",
-  warning: "border-warning/15 bg-warning/10 text-warning",
-  danger: "border-danger/15 bg-danger/10 text-danger"
-};
-
-const STATUS_VISUAL: Record<BillingV2RenderState, { tone: StatTone; icon: ReactNode }> = {
-  active: { tone: "success", icon: <ShieldCheck /> },
-  trialing: { tone: "info", icon: <ShieldCheck /> },
-  "past-due": { tone: "warning", icon: <ShieldAlert /> },
-  suspended: { tone: "danger", icon: <ShieldAlert /> },
-  "no-subscription": { tone: "info", icon: <ShieldCheck /> },
-  loading: { tone: "info", icon: <ShieldCheck /> },
-  error: { tone: "danger", icon: <ShieldAlert /> }
-};
-
-type StatTileProps = {
-  title: string;
-  tone: StatTone;
-  icon: ReactNode;
-  value: ReactNode;
-  footer: ReactNode;
-};
-
-const StatTile = ({ title, tone, icon, value, footer }: StatTileProps) => (
-  <Card className="flex-1 gap-2 p-4 shadow-none">
-    <CardHeader>
-      <CardTitle className="text-xs font-medium text-muted capitalize">{title}</CardTitle>
-      <CardAction>
-        <div
-          className={cn(
-            "flex size-7 items-center justify-center rounded-md border [&>svg]:size-4",
-            STAT_TONE[tone]
-          )}
-        >
-          {icon}
-        </div>
-      </CardAction>
-    </CardHeader>
-    <CardContent className="flex flex-col gap-1.5">
-      <div className="text-lg font-semibold text-foreground">{value}</div>
-      <div className="flex min-h-5 items-center">{footer}</div>
-    </CardContent>
-  </Card>
+const HeaderColumn = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex flex-1 flex-col gap-3 px-6 py-5 first:pl-0">
+    <div className="text-xs font-medium tracking-wide text-muted uppercase">{label}</div>
+    {children}
+  </div>
 );
 
-const SummaryCard = ({ overview }: SummaryCardProps) => {
-  const status = STATUS_VISUAL[overview.subState];
-  const onDemand = overview.onDemandAmount ?? 0;
-  const hasOnDemand = onDemand > 0;
-  let recurringNote = "No recurring charges";
-  if (overview.recurringAmount) {
-    recurringNote = hasOnDemand
-      ? `+ ${fmtMoney(onDemand)} / mo on-demand`
-      : `Billed ${intervalWord(overview.interval)}ly`;
+// Resolve the product(s) closing on the next-charge date into a display label. A single product reads
+// as its name; several collapse to "{first} + N more" so the line stays short.
+const nextChargeProductLabel = (
+  catalog: BillingV2CatalogProduct[],
+  productKeys: string[]
+): string => {
+  const names = productKeys.map((key) => catalog.find((prod) => prod.id === key)?.name ?? key);
+  if (names.length === 0) {
+    return "";
   }
-
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row">
-      <StatTile
-        title="Status"
-        tone={status.tone}
-        icon={status.icon}
-        value={overview.planName || "—"}
-        footer={<StatusBadge subState={overview.subState} />}
-      />
-      <StatTile
-        title="Next billing date"
-        tone="org"
-        icon={<Calendar />}
-        value={overview.nextBillingDate || "—"}
-        footer={<span className="text-xs text-muted">All products renew together</span>}
-      />
-      <StatTile
-        title="Recurring total"
-        tone="org"
-        icon={<CreditCard />}
-        value={recurringLabel(overview)}
-        footer={
-          <span className={cn("text-xs", hasOnDemand ? "text-warning" : "text-muted")}>
-            {recurringNote}
-          </span>
-        }
-      />
-    </div>
-  );
+  if (names.length === 1) {
+    return names[0];
+  }
+  return `${names[0]} + ${names.length - 1} more`;
 };
 
-type UsageCardProps = {
+const cadenceWordFor = (cadence: BillingV2Cadence | null): string => {
+  if (cadence === "annual") {
+    return "annual";
+  }
+  if (cadence === "monthly") {
+    return "monthly";
+  }
+  return "";
+};
+
+type BillingHeaderCardProps = {
   overview: BillingV2Overview;
+  catalog: BillingV2CatalogProduct[];
 };
 
-const UsageCard = ({ overview }: UsageCardProps) => {
-  const { members, identities, identityLimit } = overview.usage;
-  // Members and machine identities draw from one shared seat pool (identityLimit); there is no
-  // separate member limit, so they're metered together against the single limit.
-  const limit = identityLimit;
-  const used = members + identities;
-  const isUnlimited = limit === null;
-  const available = isUnlimited ? 0 : Math.max(0, limit - used);
-  // Cap the combined fill at 100% and split it between the two segments by their share of `used`, so
-  // the bar never overflows when members + identities exceeds the limit while keeping their ratio.
-  const usedPct = limit ? Math.min(100, (used / limit) * 100) : 0;
-  const membersPct = used ? usedPct * (members / used) : 0;
-  const identitiesPct = used ? usedPct * (identities / used) : 0;
+// The three-column header: ACCOUNT (standing), NEXT CHARGE (when/how much leaves next), and WHAT YOU
+// PAY (the two independent recurring clocks, never summed). An info banner explains the per-product
+// cadence model below the columns.
+const BillingHeaderCard = ({ overview, catalog }: BillingHeaderCardProps) => {
+  const { billing } = overview;
+  const { nextCharge } = billing;
+  const productLabel = nextCharge ? nextChargeProductLabel(catalog, nextCharge.productKeys) : "";
+  const nextChargeCadence = nextCharge ? cadenceWordFor(nextCharge.cadence) : "";
+  const nextChargeSubline = [productLabel, nextChargeCadence].filter(Boolean).join(" · ");
+  const hasRecurring = billing.monthlyRecurring > 0 || billing.annualCommitted > 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <GaugeIcon className="size-4 text-accent" />
-          Usage
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-2.5">
-          <span className="text-sm font-medium text-foreground">
-            Members &amp; machine identities
-          </span>
-          <span className="text-sm text-muted tabular-nums">
-            <span className="text-foreground">{used.toLocaleString()}</span>
-            {isUnlimited ? " used" : ` / ${limit.toLocaleString()} used`}
-          </span>
-        </div>
-
-        {!isUnlimited && limit > 0 && (
-          <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-border">
-            <div
-              className="h-full rounded-full bg-org transition-all"
-              style={{ width: `${membersPct}%` }}
-            />
-            <div
-              className="h-full rounded-full bg-org/50 transition-all"
-              style={{ width: `${identitiesPct}%` }}
-            />
+    <Card className="gap-0 p-0">
+      <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
+        <HeaderColumn label="Account">
+          <div>
+            <StatusBadge subState={overview.subState} />
           </div>
-        )}
-
-        <div className="flex items-center justify-between gap-2.5 text-xs">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-org" />
-              <span className="text-muted">Members</span>
-              <span className="font-medium text-foreground tabular-nums">
-                {members.toLocaleString()}
-              </span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-org/50" />
-              <span className="text-muted">Machine identities</span>
-              <span className="font-medium text-foreground tabular-nums">
-                {identities.toLocaleString()}
-              </span>
-            </span>
+          <div className="text-xs text-muted">
+            {billing.activeProductCount} active{" "}
+            {billing.activeProductCount === 1 ? "product" : "products"}
           </div>
-          <span className="shrink-0 text-muted tabular-nums">
-            {isUnlimited ? "Unlimited" : `${available.toLocaleString()} available`}
-          </span>
-        </div>
+        </HeaderColumn>
 
-        <div className="border-t border-border pt-3 text-xs text-muted">
-          {isUnlimited
-            ? "Members and machine identities share a single, unlimited pool."
-            : `Members and machine identities share a single limit of ${limit.toLocaleString()}.`}
-        </div>
-      </CardContent>
+        <HeaderColumn label="Next charge">
+          {nextCharge ? (
+            <>
+              <div className="text-2xl font-semibold text-foreground">
+                {fmtMoney(nextCharge.amount)}{" "}
+                <span className="text-base text-muted">on {nextCharge.at}</span>
+              </div>
+              <div className="text-xs text-muted">
+                {nextChargeSubline}
+                {nextCharge.hasUsage && " · plus usage"}
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-muted">No upcoming charge</div>
+          )}
+        </HeaderColumn>
+
+        <HeaderColumn label="What you pay">
+          {hasRecurring ? (
+            <div className="flex flex-col gap-1.5">
+              {billing.monthlyRecurring > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-semibold text-foreground">
+                    {fmtMoney(billing.monthlyRecurring)}
+                  </span>
+                  <span className="text-xs text-muted">/ mo recurring</span>
+                  <Badge variant="info">Monthly</Badge>
+                </div>
+              )}
+              {billing.annualCommitted > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-semibold text-foreground">
+                    {fmtMoney(billing.annualCommitted)}
+                  </span>
+                  <span className="text-xs text-muted">/ yr committed</span>
+                  <Badge variant="warning">Annual</Badge>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-xl font-semibold text-foreground">Free</div>
+          )}
+        </HeaderColumn>
+      </div>
+
+      <div className="flex items-start gap-2.5 border-t border-border px-6 py-4 text-xs text-muted">
+        <Info className="mt-0.5 size-4 shrink-0 text-info" />
+        <span>
+          Each product bills on its own cadence. Monthly plans charge on their renewal day; annual
+          plans are committed upfront, with usage above the commitment billed monthly on-demand.
+        </span>
+      </div>
     </Card>
   );
 };
@@ -425,20 +355,12 @@ const tierLabel = (tier: string): string => tier.charAt(0).toUpperCase() + tier.
 type ProductRowProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
-  renewsOn: string | null;
   readOnly?: boolean;
   onManage: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-const ProductRow = ({
-  prod,
-  entitlement,
-  renewsOn,
-  readOnly,
-  onManage,
-  onContact
-}: ProductRowProps) => {
+const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: ProductRowProps) => {
   const entitled = Boolean(entitlement?.entitled);
   const selfServe = prod.plans.some((plan) => plan.selfServe);
   const salesLed = prod.plans.some((plan) => plan.salesLed);
@@ -511,7 +433,7 @@ const ProductRow = ({
             {isTrialing && entitlement?.trialEndsAt ? (
               <span>Trial ends {entitlement.trialEndsAt}</span>
             ) : (
-              renewsOn && <span>Renews {renewsOn}</span>
+              entitlement?.renewsOn && <span>Renews {entitlement.renewsOn}</span>
             )}
           </div>
         </div>
@@ -568,12 +490,11 @@ const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: Prod
           />
         ) : (
           <div className="flex flex-col">
-            {catalog.map((prod) => (
+            {[...catalog].sort(byDisplayOrder).map((prod) => (
               <ProductRow
                 key={prod.id}
                 prod={prod}
                 entitlement={overview.entitlements[prod.id]}
-                renewsOn={overview.nextBillingDate}
                 readOnly={readOnly}
                 onManage={onManage}
                 onContact={onContact}
@@ -886,7 +807,6 @@ export const Overview = ({
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
-        <UsageCard overview={overview} />
         <ProductsCard
           overview={overview}
           catalog={catalog}
@@ -909,8 +829,7 @@ export const Overview = ({
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
-      <SummaryCard overview={overview} />
-      <UsageCard overview={overview} />
+      <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard
         overview={overview}
         catalog={catalog}

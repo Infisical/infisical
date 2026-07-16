@@ -49,11 +49,16 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
   );
   const changesKey = JSON.stringify(changes);
 
-  // Re-price whenever the set of changes changes; with nothing changed, there is no charge to preview.
+  // Re-price whenever the set of changes changes; debounced so a burst of stepper clicks makes one
+  // request, not one per click. With nothing changed there is no charge to preview.
   useEffect(() => {
-    if (changes.length > 0) {
-      preview.mutate({ orgId, commitmentChanges: changes });
+    if (changes.length === 0) {
+      return undefined;
     }
+    const timeout = setTimeout(() => {
+      preview.mutate({ orgId, commitmentChanges: changes });
+    }, 400);
+    return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, changesKey]);
 

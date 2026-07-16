@@ -32,6 +32,8 @@ export type BillingV2Plan = {
   salesLed: boolean;
   // Offers a self-serve trial; the UI shows a trial CTA only when selfServe && trialable.
   trialable: boolean;
+  // Sort key within the product; the UI orders plan cards by it.
+  displayOrder?: number;
   feature?: string;
   base?: { monthly: number; annual: number };
   dims: BillingV2Dim[];
@@ -44,6 +46,8 @@ export type BillingV2CatalogProduct = {
   color: string;
   addon?: boolean;
   tagline?: string;
+  // Sort key across products; the UI orders the product list by it.
+  displayOrder?: number;
   plans: BillingV2Plan[];
   includes?: string[];
   compare?: BillingV2CompareRow[];
@@ -107,6 +111,9 @@ export type BillingV2Entitlement = {
   status?: string;
   isTrialing?: boolean;
   trialEndsAt?: string | null;
+  // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
+  // the product has no dated line (e.g. feature-only entitlements).
+  renewsOn?: string | null;
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"), resolved from the catalog so the
@@ -114,11 +121,23 @@ export type BillingV2Entitlement = {
   unit?: string | null;
 };
 
-export type BillingV2Usage = {
-  members: number;
-  memberLimit: number | null;
-  identities: number;
-  identityLimit: number | null;
+// The next invoice event: the soonest line to close. amount/cadence come from the lines closing on
+// that date; hasUsage flags that a usage-based line shares it, so the amount is an estimate.
+export type BillingV2NextCharge = {
+  amount: number;
+  at: string;
+  productKeys: string[];
+  cadence: "monthly" | "annual" | null;
+  hasUsage: boolean;
+};
+
+// Header billing summary. monthlyRecurring and annualCommitted are two independent clocks (never
+// summed). activeProductCount is how many products the org holds. nextCharge is null when nothing is due.
+export type BillingV2Billing = {
+  monthlyRecurring: number;
+  annualCommitted: number;
+  activeProductCount: number;
+  nextCharge: BillingV2NextCharge | null;
 };
 
 export type BillingV2Overview = {
@@ -126,10 +145,7 @@ export type BillingV2Overview = {
   mode: BillingV2Mode;
   subState: BillingV2SubState;
   planName: string;
-  nextBillingDate: string | null;
-  recurringAmount: number | null;
-  interval: "month" | "year" | null;
-  usage: BillingV2Usage;
+  billing: BillingV2Billing;
   payment: BillingV2PaymentMethod;
   billingDetails: {
     name: string;

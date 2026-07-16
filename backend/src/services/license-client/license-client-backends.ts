@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import {
   billingProfileResponseSchema,
@@ -140,6 +141,9 @@ export const licenseServerBackend = (
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
     if (!parsed.success) {
+      // A schema mismatch must NOT be silently read as "no subscription" — that hides a real (often
+      // paid) subscription behind the free state. Log it so contract drift is visible, then degrade.
+      logger.error({ err: parsed.error }, `license-client: /subscription failed schema validation [orgId=${orgId}]`);
       return null;
     }
     if (!parsed.data.status) {
@@ -377,7 +381,11 @@ export const licenseServerSelfHostedBackend = (
     await throwIfResponseError(res);
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
-    if (!parsed.success || !parsed.data.status) {
+    if (!parsed.success) {
+      logger.error({ err: parsed.error }, "license-client: /subscription failed schema validation (self-hosted)");
+      return null;
+    }
+    if (!parsed.data.status) {
       return null;
     }
     return parsed.data;

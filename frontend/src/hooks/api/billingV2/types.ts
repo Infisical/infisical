@@ -27,6 +27,8 @@ export type BillingV2Plan = {
   salesLed: boolean;
   // Offers a self-serve trial; the trial CTA shows only when selfServe && trialable.
   trialable: boolean;
+  // Sort key within the product; plan cards render in this order.
+  displayOrder?: number;
   feature?: string;
   base?: { monthly: number; annual: number };
   dims: BillingV2Dim[];
@@ -39,6 +41,8 @@ export type BillingV2CatalogProduct = {
   color: string;
   addon?: boolean;
   tagline?: string;
+  // Sort key across products; the product list renders in this order.
+  displayOrder?: number;
   plans: BillingV2Plan[];
   includes?: string[];
   compare?: BillingV2CompareRow[];
@@ -106,6 +110,9 @@ export type BillingV2Entitlement = {
   status?: string;
   isTrialing?: boolean;
   trialEndsAt?: string | null;
+  // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
+  // the product has no dated line.
+  renewsOn?: string | null;
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
@@ -117,14 +124,20 @@ export type BillingV2Overview = {
   mode: "self-serve" | "managed";
   subState: BillingV2SubState;
   planName: string;
-  nextBillingDate: string | null;
-  recurringAmount: number | null;
-  interval: "month" | "year" | null;
-  usage: {
-    members: number;
-    memberLimit: number | null;
-    identities: number;
-    identityLimit: number | null;
+  // Header billing summary. monthlyRecurring and annualCommitted are two independent clocks (never
+  // summed). activeProductCount is how many products the org holds. nextCharge is the soonest line to
+  // close (null when nothing is due); its amount is an estimate when hasUsage is true.
+  billing: {
+    monthlyRecurring: number;
+    annualCommitted: number;
+    activeProductCount: number;
+    nextCharge: {
+      amount: number;
+      at: string;
+      productKeys: string[];
+      cadence: BillingV2Cadence | null;
+      hasUsage: boolean;
+    } | null;
   };
   // Total monthly on-demand overage across all products (dollars).
   onDemandAmount: number;

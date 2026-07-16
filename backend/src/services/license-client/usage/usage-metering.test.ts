@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { QueueJobs, QueueName } from "@app/queue";
 
 import { featureReaderFactory } from "../feature-reader";
-import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources } from "../features";
+import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources, SecretIdentities } from "../features";
 import { buildMeteredFeatures } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
 import { usageMeteringServiceFactory } from "./usage-metering-service";
 import { buildUsageReporter, TUsageSnapshot } from "./usage-reporter";
 
-type TQueueCall = [QueueName, QueueJobs, { orgId: string; featureKey: string }, { jobId: string; delay?: number }];
+type TQueueCall = [QueueName, QueueJobs, { orgId: string; dimensionKey: string }, { jobId: string; delay?: number }];
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -159,25 +159,44 @@ describe("buildUsageReporter", () => {
 });
 
 describe("buildMeteredFeatures", () => {
-  test("wires all four meters to their count fns", async () => {
+  test("wires all meters to their count fns", async () => {
     const licenseDAL = { countOrgUsersAndIdentities: vi.fn(async () => 7) };
     const usageCounterDAL = {
       countInternalCas: vi.fn(async () => 1),
       countActiveCerts: vi.fn(async () => 2),
-      countPamResources: vi.fn(async () => 3)
+      countPamResources: vi.fn(async () => 3),
+      countSecretManagementIdentities: vi.fn(async () => 4)
     };
-    const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL });
+    const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: true });
 
     const byKey = Object.fromEntries(metered.map((m) => [m.feature.key, m.count]));
     expect(Object.keys(byKey).sort()).toEqual(
-      [MaxIdentities.key, MaxInternalCas.key, MaxActiveCerts.key, MaxPamResources.key].sort()
+      [MaxIdentities.key, MaxInternalCas.key, MaxActiveCerts.key, MaxPamResources.key, SecretIdentities.key].sort()
     );
 
     expect(await byKey[MaxIdentities.key](ORG_ID)).toBe(7);
     expect(await byKey[MaxInternalCas.key](ORG_ID)).toBe(1);
     expect(await byKey[MaxActiveCerts.key](ORG_ID)).toBe(2);
     expect(await byKey[MaxPamResources.key](ORG_ID)).toBe(3);
+    expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
     expect(licenseDAL.countOrgUsersAndIdentities).toHaveBeenCalledWith(ORG_ID);
+    // Cloud scopes the secret-identity meter to the org.
+    expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(ORG_ID);
+  });
+
+  test("self-hosted meters secret identities across the whole instance (no org scope)", async () => {
+    const licenseDAL = { countOrgUsersAndIdentities: vi.fn(async () => 0) };
+    const usageCounterDAL = {
+      countInternalCas: vi.fn(async () => 0),
+      countActiveCerts: vi.fn(async () => 0),
+      countPamResources: vi.fn(async () => 0),
+      countSecretManagementIdentities: vi.fn(async () => 9)
+    };
+    const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: false });
+    const secret = metered.find((m) => m.feature.key === SecretIdentities.key);
+
+    expect(await secret?.count(ORG_ID)).toBe(9);
+    expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(undefined);
   });
 });
 
@@ -223,7 +242,7 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const [orgId, snapshots] = reportSnapshots.mock.calls[0] as unknown as [string, TUsageSnapshot[]];
     expect(orgId).toBe(ORG_ID);
     expect(snapshots[0]).toMatchObject({
-      feature_key: MaxIdentities.key,
+      dimension_key: MaxIdentities.key,
       value: 42,
       source: "test-region"
     });
@@ -276,14 +295,15 @@ describe("canUse enforcement (using the framework from a call site)", () => {
     caps: Record<string, { value: number }>,
     counts: { identities?: number; internalCas?: number }
   ) => {
-    const reader = featureReaderFactory({ getEntitlements: async () => ({ features: caps }) });
+    const reader = featureReaderFactory({ getEntitlements: async () => ({ features: caps, products: [] }) });
     const licenseDAL = { countOrgUsersAndIdentities: async () => counts.identities ?? 0 };
     const usageCounterDAL = {
       countInternalCas: async () => counts.internalCas ?? 0,
       countActiveCerts: async () => 0,
-      countPamResources: async () => 0
+      countPamResources: async () => 0,
+      countSecretManagementIdentities: async () => 0
     };
-    buildMeteredFeatures({ licenseDAL, usageCounterDAL }).forEach(({ feature, count }) =>
+    buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: true }).forEach(({ feature, count }) =>
       reader.registerCounter(feature, count)
     );
     return reader;

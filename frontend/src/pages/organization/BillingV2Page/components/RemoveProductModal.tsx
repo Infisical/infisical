@@ -46,7 +46,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
     (entitlement) => entitlement.entitled
   ).length;
   const isOnlyProduct = overviewReady && entitledProductCount === 1;
-  const periodEndDate = overview?.nextBillingDate ?? null;
+  const periodEndDate = overview?.entitlements[product.id]?.renewsOn ?? null;
 
   const preview = usePreviewBillingV2Change();
   const removeProduct = useRemoveBillingV2Product();

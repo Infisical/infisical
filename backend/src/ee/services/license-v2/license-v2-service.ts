@@ -77,10 +77,9 @@ export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory
 const FALLBACK_ICON = "box";
 const FALLBACK_COLOR = "#6b7280";
 
-// Self-hosted has no cloud-plan endpoint, so the org seat caps ride on the license entitlements
-// instead. These keys mirror the v2 keys in dual-read feature-mapping (MaxIdentities.key, member_limit).
+// Feature key for the identity seat dimension (mirrors MaxIdentities.key in dual-read feature-mapping);
+// used to seed that dimension's usage when building entitlements.
 const IDENTITY_LIMIT_FEATURE_KEY = "max_identities";
-const MEMBER_LIMIT_FEATURE_KEY = "member_limit";
 
 // Price kinds we understand; an unknown kind is treated as non-purchasable, never sold as per_unit.
 const PER_UNIT_KIND = "per_unit";
@@ -106,6 +105,26 @@ const formatDate = (unixSeconds: number | null | undefined): string | null => {
   });
 };
 
+// Entitlement product dates (trial_ends_at, current_period_end) are ISO strings, not unix seconds.
+const formatIsoDate = (iso: string | null | undefined): string | null => {
+  if (!iso) {
+    return null;
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+};
+
+// Compact date ("Aug 16") for the header's next-charge line, where the year is noise.
+const formatShortDate = (unixSeconds: number | null | undefined): string | null => {
+  if (!unixSeconds) {
+    return null;
+  }
+  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
 const resolveSubState = (subscription: TSubscriptionResponse | null): BillingV2SubState => {
   if (!subscription || !subscription.status) {
     return "no-subscription";
@@ -126,18 +145,22 @@ const resolveSubState = (subscription: TSubscriptionResponse | null): BillingV2S
   return "active";
 };
 
-const resolveInterval = (cadence: string | null | undefined): "month" | "year" | null => {
-  if (cadence === "month" || cadence === "year") {
-    return cadence;
-  }
-  return null;
-};
-
 const normalizeCadence = (cadence: string | undefined): "monthly" | "annual" => {
   if (cadence === "annual") {
     return "annual";
   }
   return "monthly";
+};
+
+// Per-dimension cadence off the subscription contract; "" or anything unknown resolves to null.
+const toCadence = (cadence: string | null | undefined): "monthly" | "annual" | null => {
+  if (cadence === "annual") {
+    return "annual";
+  }
+  if (cadence === "monthly") {
+    return "monthly";
+  }
+  return null;
 };
 
 // A plan carries pricing as a known-kind price, a flat base fee, or both. An unknown price kind is
@@ -209,6 +232,7 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     selfServe: plan.selfServe,
     salesLed: plan.salesLed,
     trialable: plan.trialable ?? false,
+    displayOrder: plan.displayOrder ?? undefined,
     feature: plan.feature,
     dims
   };
@@ -247,6 +271,7 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     color: product.color || FALLBACK_COLOR,
     addon: product.addon,
     tagline: product.tagline,
+    displayOrder: product.displayOrder ?? undefined,
     plans,
     includes: product.includes,
     compare
@@ -417,11 +442,9 @@ export const licenseV2ServiceFactory = ({
         const dimensions: BillingV2EntitlementDim[] = item.dimensions.map((dimension) => {
           const catalogKey = `${item.productId}:${dimension.key}`;
           const metered = dimension.metered ?? false;
-          // eslint-disable-next-line no-nested-ternary
-          const cadence = dimension.cadence === "annual" ? "annual" : dimension.cadence === "monthly" ? "monthly" : null;
+          const cadence = toCadence(dimension.cadence);
           const committed = dimension.committed ?? null;
-          const hasCommittedRate =
-            dimension.committedRateCents !== null && dimension.committedRateCents !== undefined;
+          const hasCommittedRate = dimension.committedRateCents !== null && dimension.committedRateCents !== undefined;
           const hasOnDemandRate = dimension.onDemandRateCents !== null && dimension.onDemandRateCents !== undefined;
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
@@ -499,13 +522,20 @@ export const licenseV2ServiceFactory = ({
 
         // Product cadence is annual when any dimension is annually committed, else monthly; drives the
         // YEARLY/MONTHLY badge and the headline period.
-        // eslint-disable-next-line no-nested-ternary
-        const cadence = dimensions.some((dimension) => dimension.cadence === "annual")
-          ? "annual"
-          : dimensions.length > 0
-            ? "monthly"
-            : null;
+        let cadence: "monthly" | "annual" | null = null;
+        if (dimensions.some((dimension) => dimension.cadence === "annual")) {
+          cadence = "annual";
+        } else if (dimensions.length > 0) {
+          cadence = "monthly";
+        }
         const onDemandAmount = dimensions.reduce((sum, dimension) => sum + dimension.onDemandAmount, 0);
+
+        // Each product renews on its own line's cycle; a product can have several lines, so show the
+        // one about to close (soonest currentPeriodEnd) as this product's renewal date.
+        const productLineEnds = (subscription.billing?.lines ?? [])
+          .filter((line) => line.productKey === item.productId && typeof line.currentPeriodEnd === "number")
+          .map((line) => line.currentPeriodEnd as number);
+        const renewsOn = productLineEnds.length > 0 ? formatDate(Math.min(...productLineEnds)) : null;
 
         entitlements[item.productId] = {
           entitled: true,
@@ -517,6 +547,7 @@ export const licenseV2ServiceFactory = ({
           status: item.status,
           isTrialing: item.isTrialing ?? false,
           trialEndsAt: item.trialEndsAt ? formatDate(item.trialEndsAt) : null,
+          renewsOn,
           used,
           limit,
           unit
@@ -525,12 +556,35 @@ export const licenseV2ServiceFactory = ({
     }
 
     let features = null;
+    let products: NonNullable<Awaited<ReturnType<typeof licenseClient.getEntitlements>>>["products"] = [];
     try {
       const result = await licenseClient.getEntitlements(org);
       features = result?.features ?? null;
+      products = result?.products ?? [];
     } catch (error) {
       logger.error(error, `billing-v2: failed to read entitlements [orgId=${org.id}]`);
     }
+
+    // The entitlement products[] list is authoritative for what the org holds: an entitlement can
+    // exist without a Stripe subscription (paygo / account-based), so a product here that the
+    // subscription didn't cover must still render as active. A subscription item, when present, wins
+    // (it carries the dimensions/amount); here we only fill the entitled flag, plan, and trial state.
+    products.forEach((product) => {
+      const isTrialing = product.status === "trialing";
+      const existing = entitlements[product.product_key];
+      if (existing) {
+        existing.planTier = existing.planTier ?? product.plan_key ?? undefined;
+        existing.status = existing.status ?? product.status ?? undefined;
+        return;
+      }
+      entitlements[product.product_key] = {
+        entitled: true,
+        planTier: product.plan_key ?? undefined,
+        status: product.status ?? undefined,
+        isTrialing,
+        trialEndsAt: formatIsoDate(product.trial_ends_at)
+      };
+    });
 
     if (features) {
       Object.values(features).forEach((feature) => {
@@ -567,50 +621,10 @@ export const licenseV2ServiceFactory = ({
 
     const subState = resolveSubState(subscription);
 
-    let interval: "month" | "year" | null = null;
-    let nextBillingDate: string | null = null;
-    let recurringAmount: number | null = null;
-    if (subscription) {
-      interval = resolveInterval(subscription.cadence);
-      nextBillingDate = formatDate(subscription.currentPeriodEnd);
-      if (subscription.recurringTotal !== null) {
-        recurringAmount = centsToDollars(subscription.recurringTotal);
-      }
-    }
-
     const members = await orgDAL.countAllOrgMembers(orgId);
     const identities = await identityOrgMembershipDAL.countAllOrgIdentities({
       scopeOrgId: orgId
     });
-
-    // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
-    // are overlaid here; a missing plan leaves limits unknown. Self-hosted has no cloud-plan endpoint,
-    // so the caps are read off the license entitlements instead.
-    let memberLimit: number | null = null;
-    let identityLimit: number | null = null;
-    if (isSelfHostedLicense) {
-      try {
-        const entitlements = await licenseClient.getEntitlements({
-          id: orgId,
-          name: organization.name,
-          slug: organization.slug
-        });
-        const memberCap = entitlements?.features[MEMBER_LIMIT_FEATURE_KEY]?.value;
-        const identityCap = entitlements?.features[IDENTITY_LIMIT_FEATURE_KEY]?.value;
-        memberLimit = typeof memberCap === "number" ? memberCap : null;
-        identityLimit = typeof identityCap === "number" ? identityCap : null;
-      } catch (error) {
-        logger.error(error, `billing-v2: failed to read entitlement caps [orgId=${orgId}]`);
-      }
-    } else {
-      try {
-        const cloudPlan = await licenseClient.getCloudPlan(orgId);
-        memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
-        identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
-      } catch (error) {
-        logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
-      }
-    }
 
     // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
     let planName = "Free";
@@ -652,8 +666,8 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
-    // The identity dimension caps against the same shared member+identity pool the Usage card shows,
-    // so seed its usage from that one figure instead of a separate count that could diverge from it.
+    // Seed the identity dimension's usage from the org's combined member + machine-identity count,
+    // which is what its per-dimension counter in the product card renders.
     const entitlements = await buildEntitlements(
       { id: orgId, name: organization.name, slug: organization.slug },
       subscription,
@@ -665,6 +679,35 @@ export const licenseV2ServiceFactory = ({
       0
     );
 
+    // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
+    // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
+    // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
+    // estimate, so flag hasUsage). activeProductCount is the number of entitled products.
+    const subBilling = subscription?.billing;
+    const closingLines = subBilling?.nextChargeAt
+      ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
+      : [];
+    const closingCadences = new Set(closingLines.map((line) => normalizeCadence(line.cadence ?? undefined)));
+    const nextCharge =
+      subBilling?.nextChargeAt && closingLines.length > 0
+        ? {
+            amount: centsToDollars(closingLines.reduce((sum, line) => sum + (line.amountCents ?? 0), 0)),
+            at: formatShortDate(subBilling.nextChargeAt) ?? "",
+            productKeys: [...new Set(closingLines.map((line) => line.productKey))],
+            cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
+            hasUsage: closingLines.some((line) => line.usageBased)
+          }
+        : null;
+    const activeProductCount = Object.values(entitlements).filter(
+      (entitlement) => entitlement.entitled && entitlement.status !== "churned"
+    ).length;
+    const billing = {
+      monthlyRecurring: centsToDollars(subBilling?.monthlyRecurringCents),
+      annualCommitted: centsToDollars(subBilling?.annualRecurringCents),
+      activeProductCount,
+      nextCharge
+    };
+
     const overview: BillingV2Overview = {
       // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
       // "managed by your account team" banner off these two fields.
@@ -672,15 +715,7 @@ export const licenseV2ServiceFactory = ({
       mode: isSelfHostedLicense ? "managed" : "self-serve",
       subState,
       planName,
-      nextBillingDate,
-      recurringAmount,
-      interval,
-      usage: {
-        members,
-        memberLimit,
-        identities,
-        identityLimit
-      },
+      billing,
       payment,
       billingDetails,
       invoices,

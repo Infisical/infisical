@@ -20,30 +20,39 @@ export const usageMeteringServiceFactory = ({
   projectDAL,
   envConfig
 }: TUsageMeteringServiceFactoryDep) => {
-  const enqueue = async (orgId: string, featureKey: string) => {
+  const enqueue = async (orgId: string, dimensionKey: string) => {
     await queueService.queue(
       QueueName.UsageEvent,
       QueueJobs.UsageEvent,
-      { orgId, featureKey },
-      { jobId: `usage-event:${orgId}:${featureKey}`, delay: DEBOUNCE_MS, removeOnComplete: true, removeOnFail: true }
+      { orgId, dimensionKey },
+      {
+        jobId: `usage-event:${orgId}:${dimensionKey}`,
+        delay: process.env.NODE_ENV === "development" ? 5000 : DEBOUNCE_MS,
+        removeOnComplete: true,
+        removeOnFail: true
+      }
     );
   };
 
   // Fire-and-forget signal from a metered create/delete on an org-scoped meter. Never awaited and
   // never throws into the request path; inert until the v2 license server is enabled.
-  const emit = (orgId: string, featureKey: string) => {
+  const emit = (orgId: string, dimensionKey: string) => {
     if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
       return;
     }
 
-    void enqueue(orgId, featureKey).catch((error) => {
-      logger.error(error, `usage-metering: failed to enqueue usage event [orgId=${orgId}] [featureKey=${featureKey}]`);
+    void enqueue(orgId, dimensionKey).catch((error) => {
+      logger.error(
+        error,
+        `usage-metering: failed to enqueue usage event [orgId=${orgId}] [dimensionKey
+  =${dimensionKey}]`
+      );
     });
   };
 
   // Project-scoped meters sum across an org's projects, so the event is keyed by org. The org is
   // resolved in the background to keep the request path free of an extra read.
-  const emitForProject = (projectId: string, featureKey: string) => {
+  const emitForProject = (projectId: string, dimensionKey: string) => {
     if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
       return;
     }
@@ -53,11 +62,13 @@ export const usageMeteringServiceFactory = ({
       if (!project) {
         return;
       }
-      await enqueue(project.orgId, featureKey);
+
+      await enqueue(project.orgId, dimensionKey);
     })().catch((error) => {
       logger.error(
         error,
-        `usage-metering: failed to enqueue usage event [projectId=${projectId}] [featureKey=${featureKey}]`
+        `usage-metering: failed to enqueue usage event [projectId=${projectId}] [dimensionKey
+  =${dimensionKey}]`
       );
     });
   };
