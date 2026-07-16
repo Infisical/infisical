@@ -3643,7 +3643,9 @@ export const registerRoutes = async (
     identityGroupMembershipDAL,
     userDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    notificationService,
+    smtpService
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({

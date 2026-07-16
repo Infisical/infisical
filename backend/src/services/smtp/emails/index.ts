@@ -24,6 +24,7 @@ export * from "./OrganizationAssignmentTemplate";
 export * from "./OrganizationInvitationTemplate";
 export * from "./PasswordResetTemplate";
 export * from "./PasswordSetupTemplate";
+export * from "./PkiApprovalRequestNeedsReviewTemplate";
 export * from "./PkiExpirationAlertTemplate";
 export * from "./ProjectAccessRequestTemplate";
 export * from "./ProjectInvitationTemplate";

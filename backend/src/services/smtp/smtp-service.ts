@@ -34,6 +34,7 @@ import {
   OrganizationInvitationTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
+  PkiApprovalRequestNeedsReviewTemplate,
   PkiExpirationAlertTemplate,
   ProjectAccessRequestTemplate,
   ProjectInvitationTemplate,
@@ -85,6 +86,7 @@ export enum SmtpTemplates {
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
   AccessPamRequestBypassed = "accessPamRequestBypassed",
   AccessPamRequest = "accessPamRequest",
+  PkiApprovalRequestNeedsReview = "pkiApprovalRequestNeedsReview",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
@@ -150,6 +152,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequest]: AccessPamRequestTemplate,
+  [SmtpTemplates.PkiApprovalRequestNeedsReview]: PkiApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
   [SmtpTemplates.OrgAdminBreakglassAccess]: OrgAdminBreakglassAccessTemplate,
   [SmtpTemplates.SecretLeakIncident]: SecretLeakIncidentTemplate,
