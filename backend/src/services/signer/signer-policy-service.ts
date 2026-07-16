@@ -34,7 +34,6 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
@@ -68,7 +67,6 @@ type TSignerPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TSignerPolicyServiceFactory = ReturnType<typeof signerPolicyServiceFactory>;
@@ -111,8 +109,7 @@ export const signerPolicyServiceFactory = ({
   identityDAL,
   permissionService,
   notificationService,
-  smtpService,
-  projectDAL
+  smtpService
 }: TSignerPolicyServiceFactoryDep) => {
   const $assertResourcePermission = async (
     signerId: string,
@@ -616,8 +613,7 @@ export const signerPolicyServiceFactory = ({
         userGroupMembershipDAL,
         notificationService,
         userDAL,
-        smtpService,
-        projectDAL
+        smtpService
       });
     }
 

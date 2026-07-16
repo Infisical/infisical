@@ -3595,8 +3595,7 @@ export const registerRoutes = async (
     identityDAL,
     permissionService,
     notificationService,
-    smtpService,
-    projectDAL
+    smtpService
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({

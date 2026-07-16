@@ -10,7 +10,6 @@ interface PkiApprovalRequestNeedsReviewTemplateProps
   requesterName: string;
   requesterEmail?: string;
   requestType: string;
-  projectName: string;
   justification?: string;
   approvalUrl: string;
 }
@@ -20,7 +19,6 @@ export const PkiApprovalRequestNeedsReviewTemplate = ({
   requesterName,
   requesterEmail,
   requestType,
-  projectName,
   justification,
   approvalUrl
 }: PkiApprovalRequestNeedsReviewTemplateProps) => {
@@ -38,7 +36,7 @@ export const PkiApprovalRequestNeedsReviewTemplate = ({
               (<BaseLink href={`mailto:${requesterEmail}`}>{requesterEmail}</BaseLink>)
             </>
           )}{" "}
-          has submitted a <strong>{requestType}</strong> in the project <strong>{projectName}</strong>.
+          has submitted a <strong>{requestType}</strong>.
         </Text>
         {justification && (
           <Text className="text-[14px] text-slate-700 leading-[24px]">
@@ -59,7 +57,6 @@ PkiApprovalRequestNeedsReviewTemplate.PreviewProps = {
   requesterName: "Dan Cooper",
   requesterEmail: "dan@infisical.com",
   requestType: "code signing request",
-  projectName: "PKI Project",
   justification: "Need to sign the v2.1.0 release artifacts.",
   approvalUrl: "https://infisical.com",
   siteUrl: "https://infisical.com"

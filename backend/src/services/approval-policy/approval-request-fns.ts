@@ -6,7 +6,6 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -203,7 +202,6 @@ export const sendApprovalEmailsForStep = async (
   emailContext: {
     subjectLine: string;
     requestTypeLabel: string;
-    projectName: string;
     approvalUrl: string;
   },
   dependencies: {
@@ -232,7 +230,6 @@ export const sendApprovalEmailsForStep = async (
       requesterName: request.requesterName,
       requesterEmail: request.requesterEmail || undefined,
       requestType: emailContext.requestTypeLabel,
-      projectName: emailContext.projectName,
       justification: request.justification || undefined,
       approvalUrl: emailContext.approvalUrl
     }
@@ -247,10 +244,9 @@ export const notifyStepApprovers = async (
     notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
     userDAL: Pick<TUserDALFactory, "find">;
     smtpService: Pick<TSmtpService, "sendMail">;
-    projectDAL: Pick<TProjectDALFactory, "findById">;
   }
 ): Promise<void> => {
-  const { userGroupMembershipDAL, notificationService, userDAL, smtpService, projectDAL } = dependencies;
+  const { userGroupMembershipDAL, notificationService, userDAL, smtpService } = dependencies;
 
   const approverUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
 
@@ -267,7 +263,6 @@ export const notifyStepApprovers = async (
   const isCodeSigning = request.type === ApprovalPolicyType.CertCodeSigning;
 
   try {
-    const project = await projectDAL.findById(request.projectId);
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
 
     await sendApprovalEmailsForStep(
@@ -276,7 +271,6 @@ export const notifyStepApprovers = async (
       {
         subjectLine: isCodeSigning ? "Code Signing Approval Request" : "Certificate Approval Request",
         requestTypeLabel: isCodeSigning ? "code signing request" : "certificate request",
-        projectName: project?.name ?? "Unknown project",
         approvalUrl
       },
       { userGroupMembershipDAL, userDAL, smtpService },

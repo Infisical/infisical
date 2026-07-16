@@ -134,8 +134,7 @@ export const approvalPolicyServiceFactory = ({
       userGroupMembershipDAL,
       notificationService,
       userDAL,
-      smtpService,
-      projectDAL
+      smtpService
     });
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
