@@ -3,6 +3,7 @@ import https from "https";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { DiscriminativePick } from "@app/lib/types";
 import { validateSsrfUrl } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -11,19 +12,45 @@ import { TOvhConnection, TOvhConnectionConfig } from "./ovh-connection-types";
 
 export const getOvhConnectionListItem = () => {
   return {
-    name: "OVH" as const,
+    name: "OVHcloud" as const,
     app: AppConnection.OVH as const,
-    methods: Object.values(OVHConnectionMethod) as [OVHConnectionMethod.Certificate]
+    methods: Object.values(OVHConnectionMethod) as [OVHConnectionMethod.Certificate, OVHConnectionMethod.Token]
   };
 };
 
-export const getOvhHttpsAgent = (connection: Pick<TOvhConnection, "credentials"> | TOvhConnectionConfig) => {
-  const { privateKey, certificate } = connection.credentials;
+export type TOvhRequestOptions = {
+  httpsAgent?: https.Agent;
+  headers?: Record<string, string>;
+};
 
-  return new https.Agent({
-    key: privateKey,
-    cert: certificate
-  });
+export const getOvhRequestOptions = (
+  connection: DiscriminativePick<TOvhConnection, "method" | "credentials"> | TOvhConnectionConfig
+): TOvhRequestOptions => {
+  switch (connection.method) {
+    case OVHConnectionMethod.Certificate: {
+      const { privateKey, certificate } = connection.credentials;
+
+      return {
+        httpsAgent: new https.Agent({
+          key: privateKey,
+          cert: certificate
+        })
+      };
+    }
+    case OVHConnectionMethod.Token: {
+      const { token } = connection.credentials;
+
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      };
+    }
+    default:
+      throw new BadRequestError({
+        message: `Unhandled OVHcloud connection method: ${(connection as { method: string }).method}`
+      });
+  }
 };
 
 const normalizeOvhOkmsDomain = (okmsDomain: string) => {
@@ -34,12 +61,12 @@ const normalizeOvhOkmsDomain = (okmsDomain: string) => {
     url = new URL(normalized);
   } catch {
     throw new BadRequestError({
-      message: "OKMS domain must be a valid URL "
+      message: "OVHcloud KMS domain must be a valid URL "
     });
   }
 
   if (url.protocol !== "https:") {
-    throw new BadRequestError({ message: "OKMS domain must use https" });
+    throw new BadRequestError({ message: "OVHcloud KMS domain must be a valid URL (e.g. https://eu-west-rbx.okms.ovh.net)" });
   }
 
   return normalized;
@@ -51,11 +78,12 @@ export const validateOvhConnectionCredentials = async (config: TOvhConnectionCon
 
   await validateSsrfUrl(okmsDomain);
 
-  const httpsAgent = getOvhHttpsAgent(config);
+  const { httpsAgent, headers } = getOvhRequestOptions(config);
 
   try {
     await request.get(`${okmsDomain}/api/${encodeURIComponent(okmsId)}/v1/servicekey`, {
       httpsAgent,
+      headers,
       timeout: 15000,
       validateStatus: (status) => status === 200
     });

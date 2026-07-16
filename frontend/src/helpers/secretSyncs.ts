@@ -260,7 +260,7 @@ export const SECRET_SYNC_MAP: Record<
     description: "Secrets in another Infisical instance."
   },
   [SecretSync.OVH]: {
-    name: "OVH Cloud",
+    name: "OVHcloud",
     image: "OVH.png",
     category: "CLOUD",
     description: "Secret vault on OVHcloud."
