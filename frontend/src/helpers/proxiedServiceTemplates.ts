@@ -482,8 +482,3 @@ export const POPULAR_PROXIED_SERVICE_TEMPLATES: string[] = [
   "slack",
   "stripe"
 ];
-
-export const CUSTOM_TEMPLATE_KEY = "custom";
-
-export const getProxiedServiceTemplate = (key: string) =>
-  PROXIED_SERVICE_TEMPLATES.find((template) => template.key === key);

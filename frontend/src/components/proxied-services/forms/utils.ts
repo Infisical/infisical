@@ -154,7 +154,3 @@ export const buildTemplateFormValues = (
     }))
   };
 };
-
-// Whether a freshly-seeded template leaves the Header Rewrites step empty (so create can skip it).
-export const templateSeedsNoHeaders = (template: ProxiedServiceTemplate) =>
-  !template.seed.basicAuth && !(template.seed.headers && template.seed.headers.length);
