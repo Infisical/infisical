@@ -279,7 +279,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
         keys: parsedKeys.map((k) => ({
           name: k.name,
           keyUsage: k.keyType,
-          encryptionAlgorithm: k.algorithm as never,
+          algorithm: k.algorithm as never,
           keyMaterial:
             k.keyType === KmsKeyUsage.SIGN_VERIFY ? (k.privateKey ?? "") : (k.keyMaterial ?? ""),
           isExportable: k.isExportable

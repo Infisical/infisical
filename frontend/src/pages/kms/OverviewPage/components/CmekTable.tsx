@@ -482,7 +482,7 @@ export const CmekTable = () => {
                       id,
                       version,
                       description,
-                      encryptionAlgorithm,
+                      algorithm,
                       isDisabled,
                       isExportable,
                       keyUsage
@@ -491,7 +491,7 @@ export const CmekTable = () => {
                     const isSelected = selectedKeyIds.includes(id);
 
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
-                      encryptionAlgorithm as AsymmetricKeyAlgorithm
+                      algorithm as AsymmetricKeyAlgorithm
                     );
                     // unexportable asymmetric keys can still surface their public key in the export modal
                     const cannotExportKey = isAsymmetricKey
@@ -592,7 +592,7 @@ export const CmekTable = () => {
                             </Tooltip>
                           </div>
                         </TableCell>
-                        <TableCell className="uppercase">{encryptionAlgorithm}</TableCell>
+                        <TableCell className="uppercase">{algorithm}</TableCell>
                         <TableCell>
                           <Badge variant={variant}>{label}</Badge>
                         </TableCell>

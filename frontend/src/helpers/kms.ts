@@ -40,10 +40,10 @@ export const keyUsageDefaultOption: Record<
 };
 
 export const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
-  if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA")) {
-    return cmek.encryptionAlgorithm as unknown as SigningAlgorithm;
+  if (cmek?.algorithm?.startsWith("ML_DSA")) {
+    return cmek.algorithm as unknown as SigningAlgorithm;
   }
-  if (cmek?.encryptionAlgorithm?.startsWith("RSA")) {
+  if (cmek?.algorithm?.startsWith("RSA")) {
     return SigningAlgorithm.RSASSA_PSS_SHA_512;
   }
   return SigningAlgorithm.ECDSA_SHA_256;

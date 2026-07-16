@@ -26,8 +26,15 @@ const AllowedKmsKeyAlgorithms = [
   ...Object.values(HmacAlgorithm)
 ] as [string, ...string[]];
 
-const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true })).omit({
-  isReserved: true
+const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, encryptionAlgorithm: true }))
+  .omit({
+    isReserved: true
+  })
+  .extend({ algorithm: z.string() });
+
+const withAlgorithmAlias = <T extends { encryptionAlgorithm: string }>(key: T) => ({
+  ...key,
+  algorithm: key.encryptionAlgorithm
 });
 
 const MAX_KMS_PAYLOAD_BYTES = 1024 * 1024;
@@ -84,43 +91,42 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             .optional()
             .default(KmsKeyUsage.ENCRYPT_DECRYPT)
             .describe(KMS.CREATE_KEY.type),
-          encryptionAlgorithm: z
-            .enum(AllowedKmsKeyAlgorithms)
-            .optional()
-            .default(SymmetricKeyAlgorithm.AES_GCM_256)
-            .describe(KMS.CREATE_KEY.encryptionAlgorithm),
+          algorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(KMS.CREATE_KEY.algorithm),
+          // Deprecated alias for `algorithm`, retained for backwards compatibility.
+          encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(KMS.CREATE_KEY.encryptionAlgorithm),
           isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
         })
         .superRefine((data, ctx) => {
+          const algorithm = data.algorithm ?? data.encryptionAlgorithm ?? SymmetricKeyAlgorithm.AES_GCM_256;
           if (
             data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
-            !Object.values(SymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as SymmetricKeyAlgorithm)
+            !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm)
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: `encryptionAlgorithm must be a valid symmetric encryption algorithm. Valid options are: ${Object.values(
+              message: `algorithm must be a valid symmetric encryption algorithm. Valid options are: ${Object.values(
                 SymmetricKeyAlgorithm
               ).join(", ")}`
             });
           }
           if (
             data.keyUsage === KmsKeyUsage.SIGN_VERIFY &&
-            !Object.values(AsymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as AsymmetricKeyAlgorithm)
+            !Object.values(AsymmetricKeyAlgorithm).includes(algorithm as AsymmetricKeyAlgorithm)
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: `encryptionAlgorithm must be a valid asymmetric sign-verify algorithm. Valid options are: ${Object.values(
+              message: `algorithm must be a valid asymmetric sign-verify algorithm. Valid options are: ${Object.values(
                 AsymmetricKeyAlgorithm
               ).join(", ")}`
             });
           }
           if (
             data.keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC &&
-            !Object.values(HmacAlgorithm).includes(data.encryptionAlgorithm as HmacAlgorithm)
+            !Object.values(HmacAlgorithm).includes(algorithm as HmacAlgorithm)
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: `encryptionAlgorithm must be a valid HMAC algorithm. Valid options are: ${Object.values(
+              message: `algorithm must be a valid HMAC algorithm. Valid options are: ${Object.values(
                 HmacAlgorithm
               ).join(", ")}`
             });
@@ -135,9 +141,13 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, encryptionAlgorithm, keyUsage, isExportable },
+        body: { projectId, name, description, keyUsage, isExportable },
         permission
       } = req;
+
+      const algorithm = (req.body.algorithm ??
+        req.body.encryptionAlgorithm ??
+        SymmetricKeyAlgorithm.AES_GCM_256) as TCmekKeyEncryptionAlgorithm;
 
       const cmek = await server.services.cmek.createCmek(
         {
@@ -145,7 +155,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           projectId,
           name,
           description,
-          encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+          encryptionAlgorithm: algorithm,
           keyUsage,
           isExportable
         },
@@ -161,7 +171,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             keyId: cmek.id,
             name,
             description,
-            encryptionAlgorithm: encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+            encryptionAlgorithm: algorithm,
             isExportable
           }
         }
@@ -175,13 +185,13 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           properties: {
             keyId: cmek.id,
             projectId,
-            encryptionAlgorithm,
+            encryptionAlgorithm: algorithm,
             keyUsage
           }
         })
         .catch(() => {});
 
-      return { key: cmek };
+      return { key: withAlgorithmAlias(cmek) };
     }
   });
 
@@ -233,7 +243,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: cmek };
+      return { key: withAlgorithmAlias(cmek) };
     }
   });
 
@@ -279,7 +289,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: cmek };
+      return { key: withAlgorithmAlias(cmek) };
     }
   });
 
@@ -324,7 +334,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: cmek };
+      return { key: withAlgorithmAlias(cmek) };
     }
   });
 
@@ -379,7 +389,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { keys: cmeks, totalCount };
+      return { keys: cmeks.map(withAlgorithmAlias), totalCount };
     }
   });
 
@@ -423,7 +433,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key };
+      return { key: withAlgorithmAlias(key) };
     }
   });
 
@@ -471,7 +481,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key };
+      return { key: withAlgorithmAlias(key) };
     }
   });
 
@@ -643,36 +653,47 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
               .object({
                 name: keyNameSchema,
                 keyUsage: z.nativeEnum(KmsKeyUsage),
-                encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms),
+                algorithm: z.enum(AllowedKmsKeyAlgorithms).optional(),
+                // Deprecated alias for `algorithm`, retained for backwards compatibility.
+                encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional(),
                 keyMaterial: z.string().min(1),
                 isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
               })
               .superRefine((data, ctx) => {
+                const algorithm = data.algorithm ?? data.encryptionAlgorithm;
+                if (!algorithm) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["algorithm"],
+                    message: "algorithm is required"
+                  });
+                  return;
+                }
                 if (
                   data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
-                  !Object.values(SymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as SymmetricKeyAlgorithm)
+                  !Object.values(SymmetricKeyAlgorithm).includes(algorithm as SymmetricKeyAlgorithm)
                 ) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: `encryptionAlgorithm must be a symmetric algorithm for encrypt-decrypt keys`
+                    message: `algorithm must be a symmetric algorithm for encrypt-decrypt keys`
                   });
                 }
                 if (
                   data.keyUsage === KmsKeyUsage.SIGN_VERIFY &&
-                  !Object.values(AsymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as AsymmetricKeyAlgorithm)
+                  !Object.values(AsymmetricKeyAlgorithm).includes(algorithm as AsymmetricKeyAlgorithm)
                 ) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: `encryptionAlgorithm must be an asymmetric algorithm for sign-verify keys`
+                    message: `algorithm must be an asymmetric algorithm for sign-verify keys`
                   });
                 }
                 if (
                   data.keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC &&
-                  !Object.values(HmacAlgorithm).includes(data.encryptionAlgorithm as HmacAlgorithm)
+                  !Object.values(HmacAlgorithm).includes(algorithm as HmacAlgorithm)
                 ) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: `encryptionAlgorithm must be an HMAC algorithm for generate-verify-mac keys`
+                    message: `algorithm must be an HMAC algorithm for generate-verify-mac keys`
                   });
                 }
                 if (!isBase64(data.keyMaterial)) {
@@ -706,7 +727,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           projectId,
           keys: keys.map((k) => ({
             name: k.name,
-            algorithm: k.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+            algorithm: (k.algorithm ?? k.encryptionAlgorithm)! as TCmekKeyEncryptionAlgorithm,
             keyUsage: k.keyUsage,
             keyMaterial: k.keyMaterial,
             isExportable: k.isExportable

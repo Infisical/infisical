@@ -13,7 +13,7 @@ export type TCmek = {
   keyUsage: KmsKeyUsage;
   name: string;
   description?: string;
-  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
+  algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   projectId: string;
   isDisabled: boolean;
   isReserved: boolean;
@@ -27,7 +27,7 @@ export type TCmek = {
 type ProjectRef = { projectId: string };
 type KeyRef = { keyId: string };
 
-export type TCreateCmek = Pick<TCmek, "name" | "description" | "encryptionAlgorithm" | "keyUsage"> &
+export type TCreateCmek = Pick<TCmek, "name" | "description" | "algorithm" | "keyUsage"> &
   Partial<Pick<TCmek, "isExportable">> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
@@ -131,7 +131,7 @@ export type TCmekBulkExportPrivateKeysResponse = {
 export type TCmekBulkImportKeyEntry = {
   name: string;
   keyUsage: KmsKeyUsage;
-  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
+  algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   keyMaterial: string;
   isExportable?: boolean;
 };

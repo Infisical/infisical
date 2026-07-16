@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   FormControl,
@@ -52,7 +51,6 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
   const {
     handleSubmit,
     register,
-    watch,
     control,
     formState: { isSubmitting, errors }
   } = useForm<FormData>({
@@ -79,10 +77,6 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
     }
   };
 
-  const mac = watch("mac");
-  const data = watch("data");
-  const isBase64Encoded = watch("isBase64Encoded");
-
   const macValid = cmekVerifyMac.data?.macValid;
   const macAlgorithm = cmekVerifyMac.data?.macAlgorithm;
 
@@ -108,18 +102,6 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm opacity-60">MAC Algorithm:</span>
             <Badge variant="info">{macAlgorithm}</Badge>
-          </div>
-          <div className="mt-3">
-            <span className="text-sm opacity-60">MAC:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words whitespace-pre-wrap">
-              {mac}
-            </div>
-          </div>
-          <div>
-            <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
-              {isBase64Encoded ? decodeBase64(data).toString() : data}
-            </div>
           </div>
         </div>
       ) : (
