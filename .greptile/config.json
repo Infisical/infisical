@@ -9,6 +9,12 @@
   },
   "rules": [
     {
+      "id": "audit-log-event-body-must-include-human-readable-labels",
+      "rule": "Anywhere we define or emit an audit log event, every identifier field in the event's `metadata` body must be paired with a human-readable label (name, slug, email, etc.) resolved at emission time. A raw UUID alone is unactionable for admins reading the audit log UI. Scope is strictly the event body, not the surrounding audit log envelope. An identifier field is any field whose name is or ends in an id-like token in any casing — `id`, `Id`, `ID`, e.g. `groupId`, `groupID`, `group_id`, or a lone `id`. Optional IDs require an equally-optional label. The fix at emission sites is to load the parent record and include its label, not to add the field to the type and pass `undefined`. Reject 'the name can be looked up later' — deletes/renames make historical logs unreadable.",
+      "severity": "medium",
+      "scope": ["backend/src/**"]
+    },
+    {
       "id": "use-safe-request-for-user-urls",
       "rule": "When making HTTP requests to user-supplied URLs (webhooks, app connections, syncs, rotations, etc.), use safeRequest from backend/src/lib/validator/safe-request.ts instead of blockLocalAndPrivateIpAddresses. blockLocalAndPrivateIpAddresses validates the host but is vulnerable to DNS rebinding: DNS can resolve to an internal IP between the validation check and the actual connect. safeRequest closes that window by validating and pinning the connection to the validated IP. Note: safeRequest disables redirects (maxRedirects=0), so call sites that need to follow redirects require redirect-aware handling that re-validates and pins each hop, not a mechanical swap. Flag new code that calls blockLocalAndPrivateIpAddresses, validateSsrfUrl, ssrfSafeGet, or ssrfSafePost (wrappers with the same validate-then-connect flaw), or passes a user-controlled URL to axios/fetch directly without safeRequest.",
       "severity": "high",
