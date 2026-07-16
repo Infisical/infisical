@@ -40,7 +40,7 @@ Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair
     If the user already exists, the connection's role only needs privileges to **alter** it (e.g. `OWNERSHIP` on the user). If the user does **not** exist, Infisical creates it as a key-pair-only `SERVICE` user, which additionally requires the `CREATE USER` privilege on the account.
 
     <Note>
-        If the user is created by Infisical, in case the credentials are revoked the user continue to exists.
+        Users created by Infisical are not deleted when their credentials are revoked.
     </Note>
 
     <Warning>
