@@ -6966,8 +6966,9 @@ interface CreateProxiedServiceEvent {
     proxiedServiceId: string;
     name: string;
     hostPattern: string;
-    // secret key names only; never placeholder/secret values
+    // secret / dynamic secret names only; never placeholder/secret/lease values
     secretKeys: string[];
+    dynamicSecretNames: string[];
     environment: string;
     secretPath: string;
   };
@@ -6981,6 +6982,7 @@ interface UpdateProxiedServiceEvent {
     hostPattern: string;
     updatedFields: string[];
     secretKeys: string[];
+    dynamicSecretNames: string[];
     environment: string;
     secretPath: string;
   };
