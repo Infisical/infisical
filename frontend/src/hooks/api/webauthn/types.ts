@@ -14,6 +14,11 @@ export type TWebAuthnCredential = {
   lastUsedAt?: Date | null;
 };
 
+export type TGetWebAuthnCredentialsResponse = {
+  fipsEnabled: boolean;
+  credentials: TWebAuthnCredential[];
+};
+
 export type TGenerateRegistrationOptionsResponse = PublicKeyCredentialCreationOptionsJSON;
 
 export type TVerifyRegistrationDTO = {

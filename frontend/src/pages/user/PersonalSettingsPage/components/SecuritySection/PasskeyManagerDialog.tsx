@@ -32,7 +32,8 @@ type Props = {
 };
 
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
-  const { data: credentials = [], isPending } = useGetWebAuthnCredentials();
+  const { data, isPending } = useGetWebAuthnCredentials();
+  const credentials = data?.credentials ?? [];
   const { registerPasskey, isRegistering } = useRegisterPasskey();
   const { removePasskey, isBusy: isRemoving } = useRemovePasskey();
 
@@ -48,15 +49,20 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
   };
 
   // Hardware security keys registered before the server pinned ES256/RS256 may hold an
-  // EdDSA credential that some instances (FIPS mode) cannot verify at sign-in. We can't
-  // inspect the credential's algorithm client-side, so surface a soft notice whenever a
-  // security-key credential is present. Platform and phone passkeys always report
-  // "internal"/"hybrid" transports and are unaffected.
-  const hasSecurityKeyCredential = credentials.some(
-    (credential) =>
-      !credential.transports?.length ||
-      !credential.transports.some((transport) => transport === "internal" || transport === "hybrid")
-  );
+  // EdDSA credential that FIPS instances cannot verify at sign-in. We can't inspect the
+  // credential's algorithm client-side, so on FIPS instances surface a soft notice
+  // whenever a security-key credential is present. Platform and phone passkeys always
+  // report "internal"/"hybrid" transports and are unaffected, and non-FIPS instances
+  // verify EdDSA fine.
+  const hasSecurityKeyCredential =
+    Boolean(data?.fipsEnabled) &&
+    credentials.some(
+      (credential) =>
+        !credential.transports?.length ||
+        !credential.transports.some(
+          (transport) => transport === "internal" || transport === "hybrid"
+        )
+    );
 
   // Removing weakens a login second factor, so it goes through the step-up MFA
   // challenge; the confirm dialog stays open until the challenge completes and the

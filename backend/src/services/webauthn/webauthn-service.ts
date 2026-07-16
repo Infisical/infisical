@@ -10,6 +10,7 @@ import {
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { MfaMethod } from "../auth/auth-type";
@@ -318,15 +319,18 @@ export const webAuthnServiceFactory = ({
   const getUserWebAuthnCredentials = async ({ userId }: TGetUserWebAuthnCredentialsDTO) => {
     const credentials = await webAuthnCredentialDAL.find({ userId });
 
-    // Don't return sensitive data like public keys
-    return credentials.map((cred) => ({
-      id: cred.id,
-      credentialId: cred.credentialId,
-      name: cred.name,
-      transports: cred.transports,
-      createdAt: cred.createdAt,
-      lastUsedAt: cred.lastUsedAt
-    }));
+    return {
+      fipsEnabled: crypto.isFipsModeEnabled(),
+      // Don't return sensitive data like public keys
+      credentials: credentials.map((cred) => ({
+        id: cred.id,
+        credentialId: cred.credentialId,
+        name: cred.name,
+        transports: cred.transports,
+        createdAt: cred.createdAt,
+        lastUsedAt: cred.lastUsedAt
+      }))
+    };
   };
 
   /**
