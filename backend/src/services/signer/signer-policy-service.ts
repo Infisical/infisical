@@ -8,7 +8,7 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import {
@@ -619,12 +619,6 @@ export const signerPolicyServiceFactory = ({
 
     if (!dto.granteeUserId && !dto.granteeIdentityId) {
       throw new BadRequestError({ message: "granteeUserId or granteeIdentityId is required." });
-    }
-    if (
-      (dto.actor === ActorType.USER && dto.granteeUserId === dto.actorId) ||
-      (dto.actor === ActorType.IDENTITY && dto.granteeIdentityId === dto.actorId)
-    ) {
-      throw new ForbiddenRequestError({ message: "You cannot pre-approve signing access for yourself." });
     }
     if (!dto.requestedSignings && !dto.requestedWindowEnd) {
       throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowEnd." });

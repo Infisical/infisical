@@ -23,7 +23,6 @@ import {
   Input,
   TextArea
 } from "@app/components/v3";
-import { useUser } from "@app/context";
 import {
   SignerMemberRole,
   TEffectiveSignerMember,
@@ -88,8 +87,6 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
   const preApprove = usePreApproveSigning();
   const [submitting, setSubmitting] = useState(false);
 
-  const { user } = useUser();
-
   const maxSignings = policy?.constraints?.maxSignings ?? null;
   const maxWindowDuration = policy?.constraints?.maxWindowDuration ?? null;
 
@@ -97,8 +94,6 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
     const opts: MemberOption[] = [];
     (users.data?.members ?? []).forEach((m: TEffectiveSignerMember) => {
       if (!m.actorUserId) return;
-      // you cannot pre-approve signing for yourself, so don't offer yourself as a grantee
-      if (m.actorUserId === user?.id) return;
       if (m.role === SignerMemberRole.Auditor) return;
       opts.push({
         value: `user:${m.actorUserId}`,
@@ -116,7 +111,7 @@ export const PreApproveSigningModal = ({ isOpen, onOpenChange, signerId }: Props
       });
     });
     return opts;
-  }, [users.data, identities.data, user?.id]);
+  }, [users.data, identities.data]);
 
   const buildDefaults = (): FormData => {
     const now = Date.now();
