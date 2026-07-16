@@ -1165,9 +1165,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         name: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
+          .transform((val) => val.normalize("NFC"))
           .optional()
       }),
       response: {
