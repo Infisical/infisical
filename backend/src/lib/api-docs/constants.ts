@@ -2561,7 +2561,8 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    algorithm: "The cryptographic algorithm of the key (e.g. aes-256-gcm, RSA_4096, HMAC_SHA_256).",
+    encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
@@ -2630,6 +2631,15 @@ export const KMS = {
     data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
+  },
+  GENERATE_MAC: {
+    keyId: "The ID of the key to generate the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format to generate the MAC for (base64 encoded)."
+  },
+  VERIFY_MAC: {
+    keyId: "The ID of the key to verify the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format the MAC was generated for (base64 encoded).",
+    mac: "The MAC to be verified (base64 encoded)."
   }
 };
 

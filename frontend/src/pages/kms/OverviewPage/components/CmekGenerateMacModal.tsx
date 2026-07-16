@@ -11,19 +11,15 @@ import {
   Modal,
   ModalClose,
   ModalContent,
-  Select,
-  SelectItem,
   Switch,
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
-import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
+import { TCmek, useCmekGenerateMac } from "@app/hooks/api/cmeks";
 
 const formSchema = z.object({
-  data: z.string(),
-  signingAlgorithm: z.nativeEnum(SigningAlgorithm),
+  data: z.string().min(1, { message: "Data cannot be empty" }),
   isBase64Encoded: z.boolean()
 });
 
@@ -37,8 +33,8 @@ type Props = {
 
 type FormProps = Pick<Props, "cmek">;
 
-const SignForm = ({ cmek }: FormProps) => {
-  const cmekSign = useCmekSign();
+const GenerateMacForm = ({ cmek }: FormProps) => {
+  const cmekGenerateMac = useCmekGenerateMac();
 
   const {
     handleSubmit,
@@ -48,74 +44,47 @@ const SignForm = ({ cmek }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      signingAlgorithm: getDefaultSigningAlgorithm(cmek),
       isBase64Encoded: false
     }
   });
 
-  const [copySignature, isCopyingSignature, setCopySignature] = useTimedReset<string>({
+  const [copyMac, isCopyingMac, setCopyMac] = useTimedReset<string>({
     initialState: "Copy to Clipboard"
   });
 
-  const handleSignData = async (formData: FormData) => {
-    await cmekSign.mutateAsync({ ...formData, keyId: cmek.id });
+  const handleGenerateMac = async (formData: FormData) => {
+    await cmekGenerateMac.mutateAsync({ ...formData, keyId: cmek.id });
     createNotification({
-      text: "Successfully signed data",
+      text: "Successfully generated MAC",
       type: "success"
     });
   };
 
-  const signature = cmekSign.data?.signature;
+  const mac = cmekGenerateMac.data?.mac;
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(signature ?? "");
+    navigator.clipboard.writeText(mac ?? "");
 
-    setCopySignature("Copied to Clipboard");
+    setCopyMac("Copied to Clipboard");
   };
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
-    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
-    return a.toLowerCase().startsWith("ecdsa");
-  });
-
   return (
-    <form onSubmit={handleSubmit(handleSignData)}>
-      {signature ? (
-        <FormControl label="Data Signature">
-          <TextArea
-            className="max-h-80 min-h-40 max-w-full min-w-full"
-            isDisabled
-            value={signature}
-          />
+    <form onSubmit={handleSubmit(handleGenerateMac)}>
+      {mac ? (
+        <FormControl label="Message Authentication Code">
+          <TextArea className="max-h-80 min-h-40 max-w-full min-w-full" isDisabled value={mac} />
         </FormControl>
       ) : (
         <>
           <FormControl
-            label="Data to Sign"
+            label="Data to Authenticate"
             errorText={errors.data?.message}
             isError={Boolean(errors.data)}
           >
             <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
           </FormControl>
 
-          <div className="mb-6 flex w-full items-center justify-between gap-2">
-            <Controller
-              control={control}
-              name="signingAlgorithm"
-              render={({ field: { onChange, value } }) => (
-                <FormControl label="Signing Algorithm">
-                  <Select onValueChange={onChange} value={value} className="w-full">
-                    {allowedSigningAlgorithms.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a.replaceAll("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-
+          <div className="mb-6 flex w-full items-center justify-end gap-2">
             <Controller
               control={control}
               name="isBase64Encoded"
@@ -133,12 +102,12 @@ const SignForm = ({ cmek }: FormProps) => {
       )}
       <div className="flex items-center">
         <Button
-          className={`mr-4 ${signature ? "w-44" : ""}`}
+          className={`mr-4 ${mac ? "w-44" : ""}`}
           size="sm"
           leftIcon={
             // eslint-disable-next-line no-nested-ternary
-            signature ? (
-              isCopyingSignature ? (
+            mac ? (
+              isCopyingMac ? (
                 <FontAwesomeIcon icon={faCheckCircle} />
               ) : (
                 <FontAwesomeIcon icon={faFileSignature} />
@@ -147,16 +116,16 @@ const SignForm = ({ cmek }: FormProps) => {
               <FontAwesomeIcon icon={faFileSignature} />
             )
           }
-          onClick={signature ? handleCopyToClipboard : undefined}
-          type={signature ? "button" : "submit"}
+          onClick={mac ? handleCopyToClipboard : undefined}
+          type={mac ? "button" : "submit"}
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {signature ? copySignature : "Sign"}
+          {mac ? copyMac : "Generate MAC"}
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
-            {signature ? "Close" : "Cancel"}
+            {mac ? "Close" : "Cancel"}
           </Button>
         </ModalClose>
       </div>
@@ -164,19 +133,19 @@ const SignForm = ({ cmek }: FormProps) => {
   );
 };
 
-export const CmekSignModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+export const CmekGenerateMacModal = ({ isOpen, onOpenChange, cmek }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        title="Sign Data"
+        title="Generate MAC"
         subTitle={
           <>
-            Sign data using <span className="font-bold">{cmek?.name}</span>. Returns a Base64
-            encoded signature.
+            Generate a message authentication code using{" "}
+            <span className="font-bold">{cmek?.name}</span>. Returns a Base64 encoded MAC.
           </>
         }
       >
-        <SignForm cmek={cmek} />
+        <GenerateMacForm cmek={cmek} />
       </ModalContent>
     </Modal>
   );

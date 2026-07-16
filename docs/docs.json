@@ -3984,6 +3984,13 @@
                   "api-reference/endpoints/kms/signing/verify",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
+              },
+              {
+                "group": "Message Authentication",
+                "pages": [
+                  "api-reference/endpoints/kms/mac/generate-mac",
+                  "api-reference/endpoints/kms/mac/verify-mac"
+                ]
               }
             ]
           },

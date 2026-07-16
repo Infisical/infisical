@@ -151,6 +151,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CMEK_DECRYPT]: "Decrypt with KMS key",
   [EventType.CMEK_SIGN]: "Sign with KMS key",
   [EventType.CMEK_VERIFY]: "Verify with KMS key",
+  [EventType.CMEK_GENERATE_MAC]: "Generate MAC with KMS key",
+  [EventType.CMEK_VERIFY_MAC]: "Verify MAC with KMS key",
   [EventType.CMEK_LIST_SIGNING_ALGORITHMS]: "List signing algorithms for KMS key",
   [EventType.CMEK_GET_PUBLIC_KEY]: "Get public key for KMS key",
   [EventType.CMEK_GET_PRIVATE_KEY]: "Get private key for KMS key",
