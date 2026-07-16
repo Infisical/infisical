@@ -9,25 +9,19 @@ The Gateway is deployed inside your private network and makes **only outbound co
 ## Connection model
 
 ```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 70, 'rankSpacing': 110, 'curve': 'basis'}}}%%
 flowchart LR
-  subgraph cust["Customer Private Network — outbound only, no inbound ports"]
+  subgraph customer["Customer Private Network"]
     direction TB
     GW["Infisical Gateway"]
-    RES[("Private Resource<br/>database, internal API, ...")]
+    RES[("Private Resource")]
+    GW -->|"resource port<br/>(e.g. 5432)"| RES
   end
-
-  subgraph cloud["Infisical Cloud (or self-hosted instance)"]
-    PLAT["Platform / API"]
-  end
-
-  RELAY(["Relay Server<br/>Infisical-managed or self-hosted<br/>routes encrypted traffic only"])
-
-  GW == "egress · TCP 2222 · SSH reverse tunnel" ==> RELAY
-  GW == "egress · TCP 443 · HTTPS — API + certificates" ==> PLAT
-  PLAT == "TCP 8443 · TLS" ==> RELAY
-
-  RELAY -. "app traffic rides the gateway's existing tunnel<br/>(inner mTLS, TLS-pinned)" .-> GW
-  GW -. "local connection · resource's own port (e.g. 5432)" .-> RES
+  PLAT["Infisical Platform"]
+  RELAY(["Relay Server"])
+  GW -->|"TCP 443 · HTTPS"| PLAT
+  GW -->|"TCP 2222 · SSH"| RELAY
+  PLAT -->|"TCP 8443 · TLS"| RELAY
 ```
 
 ## Ports and connections
