@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlarmChannelType } from "@app/services/alarm/alarm-channel-types";
-import { AlarmPrincipalType, AlarmRunStatus } from "@app/services/alarm/alarm-types";
+import { AlarmPrincipalType } from "@app/services/alarm/alarm-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const RecipientInputSchema = z.object({
@@ -12,6 +12,7 @@ const RecipientInputSchema = z.object({
 });
 
 const ChannelInputSchema = z.object({
+  id: z.string().uuid().optional(),
   channelType: z.nativeEnum(AlarmChannelType),
   config: z.record(z.unknown()).default({}),
   enabled: z.boolean().optional()
@@ -40,9 +41,6 @@ const AlarmResponseSchema = z.object({
       updatedAt: z.date()
     })
   ),
-  lastRun: z
-    .object({ timestamp: z.date(), status: z.nativeEnum(AlarmRunStatus), error: z.string().nullable() })
-    .nullable(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -92,7 +90,10 @@ export const registerAlarmRouter = async (server: FastifyZodProvider) => {
         resourceType: z.string().min(1),
         resourceId: z.string().optional(),
         projectId: z.string().optional(),
-        enabled: z.coerce.boolean().optional()
+        enabled: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
       }),
       response: { 200: z.object({ alarms: AlarmResponseSchema.array() }) }
     },

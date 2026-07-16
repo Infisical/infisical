@@ -5,6 +5,8 @@ import { TableName, TAlarmHistory } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
+import { AlarmRunStatus } from "./alarm-types";
+
 export type TAlarmHistoryDALFactory = ReturnType<typeof alarmHistoryDALFactory>;
 
 export const alarmHistoryDALFactory = (db: TDbClient) => {
@@ -51,6 +53,7 @@ export const alarmHistoryDALFactory = (db: TDbClient) => {
       const rows = (await (tx || db.replicaNode())(`${TableName.AlarmHistory} as hist`)
         .join(`${TableName.AlarmHistoryTarget} as tgt`, "hist.id", "tgt.alarmHistoryId")
         .where("hist.alarmId", alarmId)
+        .where("hist.status", AlarmRunStatus.SUCCESS)
         .where("hist.triggeredAt", ">=", cutoffDate)
         .whereIn("tgt.targetId", targetIds)
         .distinct("tgt.targetId")
@@ -62,22 +65,9 @@ export const alarmHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findLatestByAlarmId = async (alarmId: string, tx?: Knex): Promise<TAlarmHistory | undefined> => {
-    try {
-      const [latest] = await (tx || db.replicaNode())(TableName.AlarmHistory)
-        .where(`${TableName.AlarmHistory}.alarmId`, alarmId)
-        .orderBy(`${TableName.AlarmHistory}.triggeredAt`, "desc")
-        .limit(1);
-      return latest as TAlarmHistory | undefined;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindLatestByAlarmId" });
-    }
-  };
-
   return {
     ...alarmHistoryOrm,
     createWithTargets,
-    findRecentlyAlarmedTargets,
-    findLatestByAlarmId
+    findRecentlyAlarmedTargets
   };
 };

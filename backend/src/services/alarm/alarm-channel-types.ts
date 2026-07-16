@@ -61,6 +61,7 @@ export type TAlarmChannelSendContext = {
 export type TAlarmChannelDefinition = {
   type: AlarmChannelType;
   directed: boolean;
+  secretFields: string[];
   configSchema: z.ZodTypeAny;
   send: (ctx: TAlarmChannelSendContext) => Promise<TChannelResult>;
 };

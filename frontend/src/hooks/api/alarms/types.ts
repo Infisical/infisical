@@ -24,11 +24,6 @@ export enum AlarmPrincipalType {
   Email = "email"
 }
 
-export enum AlarmRunStatus {
-  Success = "success",
-  Failed = "failed"
-}
-
 export enum AlarmTimeUnit {
   Days = "d",
   Weeks = "w",
@@ -79,12 +74,6 @@ export type TAlarmChannel = {
   updatedAt: string;
 };
 
-export type TAlarmLastRun = {
-  timestamp: string;
-  status: AlarmRunStatus;
-  error: string | null;
-};
-
 export type TAlarm = {
   id: string;
   name: string;
@@ -99,7 +88,6 @@ export type TAlarm = {
   projectId: string | null;
   recipients: TAlarmRecipient[];
   channels: TAlarmChannel[];
-  lastRun: TAlarmLastRun | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -112,6 +100,8 @@ export type TListAlarmsDTO = {
 };
 
 export type TAlarmChannelInput = {
+  // Present when editing an existing channel; lets the server preserve secret fields left blank.
+  id?: string;
   channelType: AlarmChannelType;
   config: Record<string, unknown>;
   enabled?: boolean;
@@ -184,15 +174,16 @@ const emailChannelConfigSchema = z.object({
 const slackChannelConfigSchema = z.object({
   webhookUrl: z
     .string()
-    .url("Must be a valid URL")
-    .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
+    .optional()
     .refine((url) => {
+      if (!url) return true;
       try {
-        return new URL(url).hostname === "hooks.slack.com";
+        const parsed = new URL(url);
+        return parsed.protocol === "https:" && parsed.hostname === "hooks.slack.com";
       } catch {
         return false;
       }
-    }, "Slack webhook URL must be from hooks.slack.com")
+    }, "Must be a valid https://hooks.slack.com/... URL")
 });
 
 const webhookChannelConfigSchema = z.object({
@@ -206,54 +197,86 @@ const webhookChannelConfigSchema = z.object({
 const pagerdutyChannelConfigSchema = z.object({
   integrationKey: z
     .string()
+    .optional()
     .refine(
-      (val) => /^[a-f0-9]{32}$/i.test(val),
+      (val) => !val || /^[a-f0-9]{32}$/i.test(val),
       "Integration key must be a 32-character hex string"
     )
 });
 
 export const alarmChannelFormSchema = z.discriminatedUnion("channelType", [
   z.object({
+    id: z.string().optional(),
     channelType: z.literal(AlarmChannelType.Email),
     config: emailChannelConfigSchema,
     enabled: z.boolean().default(true)
   }),
   z.object({
+    id: z.string().optional(),
     channelType: z.literal(AlarmChannelType.Slack),
     config: slackChannelConfigSchema,
     enabled: z.boolean().default(true)
   }),
   z.object({
+    id: z.string().optional(),
     channelType: z.literal(AlarmChannelType.Webhook),
     config: webhookChannelConfigSchema,
     enabled: z.boolean().default(true)
   }),
   z.object({
+    id: z.string().optional(),
     channelType: z.literal(AlarmChannelType.PagerDuty),
     config: pagerdutyChannelConfigSchema,
     enabled: z.boolean().default(true)
   })
 ]);
 
-export const alarmFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255),
-  description: z.string().max(1000).optional(),
-  resourceType: z.nativeEnum(AlarmResourceType),
-  eventType: z.nativeEnum(AlarmEventType),
-  alertBeforeValue: z
-    .number({ invalid_type_error: "Enter a number" })
-    .int("Must be a whole number")
-    .min(1, "Must be at least 1")
-    .max(3650, "Too large"),
-  alertBeforeUnit: z.nativeEnum(AlarmTimeUnit),
-  enabled: z.boolean().default(true),
-  channels: z
-    .array(alarmChannelFormSchema)
-    .min(1, "At least one notification channel is required")
-    .refine(
-      (channels) => channels.some((channel) => channel.enabled),
-      "At least one notification channel must be enabled"
-    )
-});
+export const alarmFormSchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(255),
+    description: z.string().max(1000).optional(),
+    resourceType: z.nativeEnum(AlarmResourceType),
+    eventType: z.nativeEnum(AlarmEventType),
+    alertBeforeValue: z
+      .number({ invalid_type_error: "Enter a number" })
+      .int("Must be a whole number")
+      .min(1, "Must be at least 1")
+      .max(3650, "Too large"),
+    alertBeforeUnit: z.nativeEnum(AlarmTimeUnit),
+    enabled: z.boolean().default(true),
+    channels: z
+      .array(alarmChannelFormSchema)
+      .min(1, "At least one notification channel is required")
+      .refine(
+        (channels) => channels.some((channel) => channel.enabled),
+        "At least one notification channel must be enabled"
+      )
+  })
+  .superRefine((data, ctx) => {
+    data.channels.forEach((channel, index) => {
+      if (
+        channel.channelType === AlarmChannelType.Slack &&
+        !channel.id &&
+        !channel.config.webhookUrl
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["channels", index, "config", "webhookUrl"],
+          message: "Slack webhook URL is required"
+        });
+      }
+      if (
+        channel.channelType === AlarmChannelType.PagerDuty &&
+        !channel.id &&
+        !channel.config.integrationKey
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["channels", index, "config", "integrationKey"],
+          message: "Integration key is required"
+        });
+      }
+    });
+  });
 
 export type TAlarmForm = z.infer<typeof alarmFormSchema>;

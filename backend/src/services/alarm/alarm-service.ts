@@ -8,9 +8,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { decryptChannelConfig, encryptChannelConfig, getAlarmChannelCipher } from "./alarm-channel-crypto-fns";
 import { TAlarmChannelDALFactory } from "./alarm-channel-dal";
-import { AlarmChannelType, TWebhookChannelConfig } from "./alarm-channel-types";
+import { AlarmChannelType } from "./alarm-channel-types";
 import { TAlarmDALFactory } from "./alarm-dal";
-import { TAlarmHistoryDALFactory } from "./alarm-history-dal";
 import { TAlarmProviderRegistry } from "./alarm-provider-registry";
 import { TAlarmRecipientDALFactory } from "./alarm-recipient-dal";
 import {
@@ -23,7 +22,7 @@ import {
   TListAlarmsDTO,
   TUpdateAlarmDTO
 } from "./alarm-service-types";
-import { AlarmPermissionAction, AlarmPrincipalType, AlarmRunStatus, IResourceAlarmProvider } from "./alarm-types";
+import { AlarmPermissionAction, AlarmPrincipalType, IResourceAlarmProvider } from "./alarm-types";
 import { ALARM_CHANNEL_REGISTRY } from "./channels/alarm-channel-registry";
 import { validateSlackWebhookUrl } from "./channels/alarm-channel-slack-fns";
 
@@ -31,7 +30,6 @@ export type TAlarmServiceFactoryDep = {
   alarmDAL: TAlarmDALFactory;
   alarmChannelDAL: Pick<TAlarmChannelDALFactory, "insertMany" | "findByAlarmId" | "deleteByAlarmId">;
   alarmRecipientDAL: Pick<TAlarmRecipientDALFactory, "insertMany" | "findByAlarmId" | "deleteByAlarmId">;
-  alarmHistoryDAL: Pick<TAlarmHistoryDALFactory, "findLatestByAlarmId">;
   alarmProviderRegistry: TAlarmProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
@@ -44,11 +42,44 @@ export type TAlarmServiceFactory = ReturnType<typeof alarmServiceFactory>;
 const isValidPrincipalType = (value: string): value is AlarmPrincipalType =>
   Object.values(AlarmPrincipalType).includes(value as AlarmPrincipalType);
 
+const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
+
+const $redactChannelConfig = (channelType: string, config: Record<string, unknown>): Record<string, unknown> => {
+  const definition = ALARM_CHANNEL_REGISTRY[channelType as AlarmChannelType];
+  if (!definition) return {};
+
+  const redacted: Record<string, unknown> = {};
+  Object.entries(config).forEach(([key, value]) => {
+    if (!definition.secretFields.includes(key)) redacted[key] = value;
+  });
+  definition.secretFields.forEach((field) => {
+    redacted[`has${capitalize(field)}`] = Boolean(config[field]);
+  });
+  return redacted;
+};
+
+const $preserveChannelSecrets = (
+  channelType: string,
+  incomingConfig: Record<string, unknown>,
+  existingConfig: Record<string, unknown>
+): Record<string, unknown> => {
+  const definition = ALARM_CHANNEL_REGISTRY[channelType as AlarmChannelType];
+  if (!definition) return incomingConfig;
+
+  const merged = { ...incomingConfig };
+  definition.secretFields.forEach((field) => {
+    const incoming = merged[field];
+    if ((incoming === undefined || incoming === null || incoming === "") && existingConfig[field] != null) {
+      merged[field] = existingConfig[field];
+    }
+  });
+  return merged;
+};
+
 export const alarmServiceFactory = ({
   alarmDAL,
   alarmChannelDAL,
   alarmRecipientDAL,
-  alarmHistoryDAL,
   alarmProviderRegistry,
   kmsService,
   orgDAL,
@@ -195,10 +226,9 @@ export const alarmServiceFactory = ({
     const alarm = await alarmDAL.findById(alarmId);
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${alarmId}' not found` });
 
-    const [channels, recipients, lastRun] = await Promise.all([
+    const [channels, recipients] = await Promise.all([
       alarmChannelDAL.findByAlarmId(alarmId),
-      alarmRecipientDAL.findByAlarmId(alarmId),
-      alarmHistoryDAL.findLatestByAlarmId(alarmId)
+      alarmRecipientDAL.findByAlarmId(alarmId)
     ]);
 
     const { decryptor } = await getAlarmChannelCipher(kmsService, {
@@ -208,18 +238,11 @@ export const alarmServiceFactory = ({
 
     const channelResponses: TAlarmChannelResponse[] = channels.map((channel) => {
       const config = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
-      const responseConfig =
-        channel.channelType === AlarmChannelType.WEBHOOK
-          ? {
-              url: (config as TWebhookChannelConfig).url,
-              hasSigningSecret: Boolean((config as TWebhookChannelConfig).signingSecret)
-            }
-          : config;
 
       return {
         id: channel.id,
         channelType: channel.channelType,
-        config: responseConfig,
+        config: $redactChannelConfig(channel.channelType, config),
         enabled: channel.enabled,
         createdAt: channel.createdAt,
         updatedAt: channel.updatedAt
@@ -243,13 +266,6 @@ export const alarmServiceFactory = ({
         principalId: recipient.principalId
       })),
       channels: channelResponses,
-      lastRun: lastRun
-        ? {
-            timestamp: lastRun.triggeredAt ?? lastRun.createdAt,
-            status: lastRun.status as AlarmRunStatus,
-            error: lastRun.error ?? null
-          }
-        : null,
       createdAt: alarm.createdAt,
       updatedAt: alarm.updatedAt
     };
@@ -368,7 +384,7 @@ export const alarmServiceFactory = ({
       orgId: dto.actorOrgId,
       resourceType: dto.resourceType,
       ...(dto.resourceId !== undefined ? { resourceId: dto.resourceId } : {}),
-      ...(dto.projectId !== undefined ? { projectId: dto.projectId } : {}),
+      projectId: dto.projectId ?? null,
       ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
     });
 
@@ -380,11 +396,6 @@ export const alarmServiceFactory = ({
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${dto.alarmId}' not found` });
 
     const provider = $getProvider(alarm.resourceType);
-    $validate(provider, {
-      condition: dto.condition,
-      channels: dto.channels,
-      recipients: dto.recipients ?? (dto.channels ? [] : undefined)
-    });
 
     await provider.assertPermission({
       action: AlarmPermissionAction.Edit,
@@ -399,12 +410,38 @@ export const alarmServiceFactory = ({
       }
     });
 
-    if (dto.recipients) await $validateRecipients(alarm.orgId, alarm.projectId, dto.recipients);
-
-    const { encryptor } = await getAlarmChannelCipher(kmsService, {
+    const { encryptor, decryptor } = await getAlarmChannelCipher(kmsService, {
       orgId: alarm.orgId,
       projectId: alarm.projectId
     });
+
+    let resolvedChannels: TAlarmChannelInput[] | undefined;
+    if (dto.channels) {
+      const existingById = new Map(
+        (await alarmChannelDAL.findByAlarmId(alarm.id)).map((channel) => [channel.id, channel])
+      );
+      resolvedChannels = dto.channels.map((channel) => {
+        const existing = channel.id ? existingById.get(channel.id) : undefined;
+        if (!existing || existing.channelType !== channel.channelType) return channel;
+        const existingConfig = decryptChannelConfig<Record<string, unknown>>(existing.encryptedConfig, decryptor);
+        return {
+          ...channel,
+          config: $preserveChannelSecrets(
+            channel.channelType,
+            channel.config as Record<string, unknown>,
+            existingConfig
+          )
+        };
+      });
+    }
+
+    $validate(provider, {
+      condition: dto.condition,
+      channels: resolvedChannels,
+      recipients: dto.recipients ?? (resolvedChannels ? [] : undefined)
+    });
+
+    if (dto.recipients) await $validateRecipients(alarm.orgId, alarm.projectId, dto.recipients);
 
     await alarmDAL.transaction(async (tx) => {
       await alarmDAL.updateById(
@@ -421,10 +458,10 @@ export const alarmServiceFactory = ({
         tx
       );
 
-      if (dto.channels) {
+      if (resolvedChannels) {
         await alarmChannelDAL.deleteByAlarmId(alarm.id, tx);
         await alarmChannelDAL.insertMany(
-          dto.channels.map((channel) => ({
+          resolvedChannels.map((channel) => ({
             alarmId: alarm.id,
             channelType: channel.channelType,
             encryptedConfig: encryptChannelConfig(channel.config, encryptor),

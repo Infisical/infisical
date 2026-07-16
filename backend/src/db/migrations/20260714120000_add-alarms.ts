@@ -69,8 +69,10 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
 
       t.foreign("alarmId").references("id").inTable(TableName.Alarm).onDelete("CASCADE");
-      // Composite covers the FK plus the dedup lookup (by alarm, ordered/filtered by time).
-      t.index(["alarmId", "triggeredAt"]);
+      // Covers the FK plus the dedup lookup: recently *successfully* alarmed targets for an alarm.
+      // Column order is equality (alarmId), equality (status), then range (triggeredAt) so the whole
+      // WHERE clause is served by the index.
+      t.index(["alarmId", "status", "triggeredAt"]);
     });
   }
 

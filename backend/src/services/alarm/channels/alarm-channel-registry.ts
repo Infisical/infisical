@@ -15,24 +15,28 @@ export const ALARM_CHANNEL_REGISTRY: Record<AlarmChannelType, TAlarmChannelDefin
   [AlarmChannelType.EMAIL]: {
     type: AlarmChannelType.EMAIL,
     directed: true,
+    secretFields: [],
     configSchema: EmailChannelConfigSchema,
     send: sendEmailNotification
   },
   [AlarmChannelType.SLACK]: {
     type: AlarmChannelType.SLACK,
     directed: false,
+    secretFields: ["webhookUrl"],
     configSchema: SlackChannelConfigSchema,
     send: sendSlackNotification
   },
   [AlarmChannelType.WEBHOOK]: {
     type: AlarmChannelType.WEBHOOK,
     directed: false,
+    secretFields: ["signingSecret"],
     configSchema: WebhookChannelConfigSchema,
     send: sendWebhookNotification
   },
   [AlarmChannelType.PAGERDUTY]: {
     type: AlarmChannelType.PAGERDUTY,
     directed: false,
+    secretFields: ["integrationKey"],
     configSchema: PagerDutyChannelConfigSchema,
     send: sendPagerDutyNotification
   }

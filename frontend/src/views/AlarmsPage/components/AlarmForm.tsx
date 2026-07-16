@@ -69,27 +69,32 @@ const parseAlertBefore = (alertBefore?: string): { value: number; unit: AlarmTim
 
 const buildChannelsPayload = (channels: TAlarmForm["channels"]): TAlarmChannelInput[] =>
   channels.map((channel) => {
+    const id = channel.id ? { id: channel.id } : {};
     switch (channel.channelType) {
       case AlarmChannelType.Slack:
         return {
+          ...id,
           channelType: AlarmChannelType.Slack,
-          config: { webhookUrl: channel.config.webhookUrl },
+          config: channel.config.webhookUrl ? { webhookUrl: channel.config.webhookUrl } : {},
           enabled: channel.enabled
         };
       case AlarmChannelType.Webhook: {
         const config: Record<string, unknown> = { url: channel.config.url };
         if (channel.config.signingSecret) config.signingSecret = channel.config.signingSecret;
-        return { channelType: AlarmChannelType.Webhook, config, enabled: channel.enabled };
+        return { ...id, channelType: AlarmChannelType.Webhook, config, enabled: channel.enabled };
       }
       case AlarmChannelType.PagerDuty:
         return {
+          ...id,
           channelType: AlarmChannelType.PagerDuty,
-          config: { integrationKey: channel.config.integrationKey },
+          config: channel.config.integrationKey
+            ? { integrationKey: channel.config.integrationKey }
+            : {},
           enabled: channel.enabled
         };
       case AlarmChannelType.Email:
       default:
-        return { channelType: AlarmChannelType.Email, config: {}, enabled: channel.enabled };
+        return { ...id, channelType: AlarmChannelType.Email, config: {}, enabled: channel.enabled };
     }
   });
 
@@ -135,27 +140,30 @@ const buildFormDefaults = (alarm?: TAlarm): TAlarmForm => {
       switch (channel.channelType) {
         case AlarmChannelType.Email:
           return {
+            id: channel.id,
             channelType: AlarmChannelType.Email,
             config: { recipients: emailRecipients },
             enabled: channel.enabled
           };
         case AlarmChannelType.Slack:
           return {
+            id: channel.id,
             channelType: AlarmChannelType.Slack,
-            config: { webhookUrl: (channel.config.webhookUrl as string) ?? "" },
+            config: { webhookUrl: "" },
             enabled: channel.enabled
           };
         case AlarmChannelType.Webhook:
           return {
+            id: channel.id,
             channelType: AlarmChannelType.Webhook,
-            // The signing secret is never returned by the API; leave blank on edit.
             config: { url: (channel.config.url as string) ?? "", signingSecret: "" },
             enabled: channel.enabled
           };
         case AlarmChannelType.PagerDuty:
           return {
+            id: channel.id,
             channelType: AlarmChannelType.PagerDuty,
-            config: { integrationKey: (channel.config.integrationKey as string) ?? "" },
+            config: { integrationKey: "" },
             enabled: channel.enabled
           };
         default:

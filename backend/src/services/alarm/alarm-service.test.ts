@@ -44,6 +44,7 @@ const buildService = (opts?: {
   const alarms = new Map<string, Record<string, unknown>>();
   const channels = new Map<string, Array<Record<string, unknown>>>();
   const recipients = new Map<string, Array<Record<string, unknown>>>();
+  const findFilters: Array<Record<string, unknown>> = [];
 
   const service = alarmServiceFactory({
     alarmDAL: {
@@ -61,7 +62,15 @@ const buildService = (opts?: {
         return row;
       },
       findById: async (id: string) => alarms.get(id),
-      find: async () => [...alarms.values()],
+      find: async (filter: Record<string, unknown>) => {
+        findFilters.push(filter);
+        return [...alarms.values()].filter((row) =>
+          Object.entries(filter).every(([key, value]) => {
+            if (value === undefined) return true;
+            return row[key] === value;
+          })
+        );
+      },
       updateById: async (id: string, data: Record<string, unknown>) => {
         alarms.set(id, { ...alarms.get(id), ...data });
         return alarms.get(id);
@@ -91,7 +100,6 @@ const buildService = (opts?: {
         return 0;
       }
     },
-    alarmHistoryDAL: { findLatestByAlarmId: async () => undefined },
     alarmProviderRegistry: registry,
     kmsService: kmsServiceMock,
     orgDAL: {
@@ -116,7 +124,7 @@ const buildService = (opts?: {
     }
   } as unknown as TAlarmServiceFactoryDep);
 
-  return { service, permissionCalls, alarms, channels };
+  return { service, permissionCalls, alarms, channels, findFilters };
 };
 
 const actor = {
@@ -235,6 +243,160 @@ describe("alarm service", () => {
     const alarm = await service.getAlarmById({ alarmId: "alarm-1", ...actor });
     expect(alarm.channels[0].config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
     expect(alarm.channels[0].config).not.toHaveProperty("signingSecret");
+  });
+
+  test("redacts the Slack webhook URL and PagerDuty integration key on read", async () => {
+    const { service, alarms, channels } = buildService();
+    alarms.set("alarm-1", {
+      id: "alarm-1",
+      name: "creds",
+      resourceType: RESOURCE_TYPE,
+      resourceId: null,
+      eventType: "test.resource.expiration",
+      condition: null,
+      filters: null,
+      enabled: true,
+      orgId: "org-1",
+      projectId: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    channels.set("alarm-1", [
+      {
+        id: "c0",
+        channelType: AlarmChannelType.SLACK,
+        encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/T/B/xxx" }),
+        enabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "c1",
+        channelType: AlarmChannelType.PAGERDUTY,
+        encryptedConfig: encConfig({ integrationKey: "a".repeat(32) }),
+        enabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+
+    const alarm = await service.getAlarmById({ alarmId: "alarm-1", ...actor });
+
+    expect(alarm.channels[0].config).toEqual({ hasWebhookUrl: true });
+    expect(alarm.channels[0].config).not.toHaveProperty("webhookUrl");
+    expect(alarm.channels[1].config).toEqual({ hasIntegrationKey: true });
+    expect(alarm.channels[1].config).not.toHaveProperty("integrationKey");
+  });
+
+  const listBase = {
+    resourceType: RESOURCE_TYPE,
+    resourceId: null,
+    eventType: "test.resource.expiration",
+    condition: null,
+    filters: null,
+    enabled: true,
+    orgId: "org-1",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  test("org-scoped list returns only org-level alarms, never other projects'", async () => {
+    const { service, alarms, findFilters } = buildService();
+    alarms.set("org-alarm", { id: "org-alarm", name: "org", projectId: null, ...listBase });
+    alarms.set("proj-alarm", { id: "proj-alarm", name: "proj", projectId: "proj-x", ...listBase });
+
+    const result = await service.listAlarms({ resourceType: RESOURCE_TYPE, ...actor });
+
+    expect(result.map((a) => a.id)).toEqual(["org-alarm"]);
+    expect(findFilters[0]).toMatchObject({ projectId: null });
+  });
+
+  test("project-scoped list filters to the requested project", async () => {
+    const { service, alarms, findFilters } = buildService();
+    alarms.set("org-alarm", { id: "org-alarm", name: "org", projectId: null, ...listBase });
+    alarms.set("proj-alarm", { id: "proj-alarm", name: "proj", projectId: "proj-x", ...listBase });
+
+    const result = await service.listAlarms({ resourceType: RESOURCE_TYPE, projectId: "proj-x", ...actor });
+
+    expect(result.map((a) => a.id)).toEqual(["proj-alarm"]);
+    expect(findFilters[0]).toMatchObject({ projectId: "proj-x" });
+  });
+
+  const seedAlarmWithChannel = (
+    channelType: AlarmChannelType,
+    config: unknown,
+    channelId = "c0"
+  ): ReturnType<typeof buildService> => {
+    const built = buildService();
+    built.alarms.set("alarm-1", {
+      id: "alarm-1",
+      name: "a",
+      resourceType: RESOURCE_TYPE,
+      resourceId: null,
+      eventType: "test.resource.expiration",
+      condition: null,
+      filters: null,
+      enabled: true,
+      orgId: "org-1",
+      projectId: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    built.channels.set("alarm-1", [
+      {
+        id: channelId,
+        channelType,
+        encryptedConfig: encConfig(config),
+        enabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    return built;
+  };
+
+  test("preserves an unresent webhook signing secret when a channel is edited by id", async () => {
+    const { service } = seedAlarmWithChannel(AlarmChannelType.WEBHOOK, {
+      url: "https://example.com/hook",
+      signingSecret: "s3cr3t"
+    });
+
+    const updated = await service.updateAlarm({
+      alarmId: "alarm-1",
+      channels: [{ id: "c0", channelType: AlarmChannelType.WEBHOOK, config: { url: "https://example.com/hook" } }],
+      ...actor
+    });
+
+    expect(updated.channels[0].config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
+  });
+
+  test("preserves an unresent Slack webhook URL when a channel is edited by id", async () => {
+    const { service } = seedAlarmWithChannel(AlarmChannelType.SLACK, {
+      webhookUrl: "https://hooks.slack.com/services/T/B/xxx"
+    });
+
+    const updated = await service.updateAlarm({
+      alarmId: "alarm-1",
+      channels: [{ id: "c0", channelType: AlarmChannelType.SLACK, config: {} }],
+      ...actor
+    });
+
+    expect(updated.channels[0].config).toEqual({ hasWebhookUrl: true });
+  });
+
+  test("does not fabricate a secret for a newly added channel (no id)", async () => {
+    const { service } = seedAlarmWithChannel(AlarmChannelType.WEBHOOK, {
+      url: "https://old.example.com/hook",
+      signingSecret: "s3cr3t"
+    });
+
+    const updated = await service.updateAlarm({
+      alarmId: "alarm-1",
+      channels: [{ channelType: AlarmChannelType.WEBHOOK, config: { url: "https://new.example.com/hook" } }],
+      ...actor
+    });
+
+    expect(updated.channels[0].config).toEqual({ url: "https://new.example.com/hook", hasSigningSecret: false });
   });
 
   test("deletes an alarm after checking Delete permission", async () => {

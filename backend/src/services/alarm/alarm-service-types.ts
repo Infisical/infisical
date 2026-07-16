@@ -1,7 +1,7 @@
 import { TGenericPermission } from "@app/lib/types";
 
 import { AlarmChannelType } from "./alarm-channel-types";
-import { AlarmPrincipalType, AlarmRunStatus } from "./alarm-types";
+import { AlarmPrincipalType } from "./alarm-types";
 
 export type TAlarmRecipientInput = {
   principalType: AlarmPrincipalType;
@@ -9,6 +9,7 @@ export type TAlarmRecipientInput = {
 };
 
 export type TAlarmChannelInput = {
+  id?: string;
   channelType: AlarmChannelType;
   config: unknown;
   enabled?: boolean;
@@ -50,7 +51,6 @@ export type TListAlarmsDTO = TGenericPermission & {
   enabled?: boolean;
 };
 
-// Channel config in responses has endpoint secrets redacted (webhook signing secret -> a boolean).
 export type TAlarmChannelResponse = {
   id: string;
   channelType: string;
@@ -79,7 +79,6 @@ export type TAlarmResponse = {
   projectId: string | null;
   recipients: TAlarmRecipientResponse[];
   channels: TAlarmChannelResponse[];
-  lastRun: { timestamp: Date; status: AlarmRunStatus; error: string | null } | null;
   createdAt: Date;
   updatedAt: Date;
 };

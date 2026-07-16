@@ -183,7 +183,8 @@ export const AlarmChannelsField = () => {
                             onBlur={urlField.onBlur}
                           />
                           <FieldDescription>
-                            Create an Incoming Webhook in your Slack workspace settings.
+                            Create an Incoming Webhook in your Slack workspace settings. Existing
+                            URLs are hidden; leave blank to keep the current one.
                           </FieldDescription>
                           <FieldError errors={[error]} />
                         </FieldContent>
@@ -259,6 +260,7 @@ export const AlarmChannelsField = () => {
                           />
                           <FieldDescription>
                             Find this in PagerDuty under Services → Integrations → Events API v2.
+                            Existing keys are hidden; leave blank to keep the current one.
                           </FieldDescription>
                           <FieldError errors={[error]} />
                         </FieldContent>
