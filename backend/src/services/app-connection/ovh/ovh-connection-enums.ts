@@ -1,3 +1,4 @@
 export enum OVHConnectionMethod {
-  Certificate = "certificate"
+  Certificate = "certificate",
+  Token = "token"
 }
