@@ -336,6 +336,18 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED]: "Create PAM Web Access Session Ticket",
   [EventType.PAM_SESSION_CHUNK_UPLOAD]: "PAM Session Chunk Upload",
   [EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID]: "PAM Session Upload Token Invalid",
+  [EventType.PAM_ACCESS_REQUEST_CREATE]: "Create PAM Access Request",
+  [EventType.PAM_ACCESS_REQUEST_REVIEW]: "Review PAM Access Request",
+  [EventType.PAM_ACCESS_GRANT_REVOKE]: "Revoke PAM Access Grant",
+  [EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS]: "Rotate PAM Account Credentials",
+  [EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT]: "Set PAM Account Rotation Account",
+  [EventType.PAM_ACCOUNT_SSH_CA_CREATE]: "Create PAM Account SSH CA",
+  [EventType.PAM_APPROVAL_CONFIG_UPDATE]: "Update PAM Approval Configuration",
+  [EventType.PAM_DISCOVERY_SOURCE_CREATE]: "Create PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SOURCE_UPDATE]: "Update PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SOURCE_DELETE]: "Delete PAM Discovery Source",
+  [EventType.PAM_DISCOVERY_SCAN]: "Run PAM Discovery Scan",
+  [EventType.PAM_DISCOVERED_ACCOUNT_IMPORT]: "Import PAM Discovered Account",
   [EventType.CREATE_CERTIFICATE_PROFILE]: "Create Certificate Profile",
   [EventType.UPDATE_CERTIFICATE_PROFILE]: "Update Certificate Profile",
   [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
@@ -466,7 +478,6 @@ const sharedProjectEvents = [
 
 export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
   [ProjectType.PAM]: [
-    ...sharedProjectEvents,
     EventType.PAM_SESSION_START,
     EventType.PAM_SESSION_END,
     EventType.PAM_SESSION_TERMINATE,
@@ -491,7 +502,19 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_ACCOUNT_DELETE,
     EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED,
     EventType.PAM_SESSION_CHUNK_UPLOAD,
-    EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID
+    EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
+    EventType.PAM_ACCESS_REQUEST_CREATE,
+    EventType.PAM_ACCESS_REQUEST_REVIEW,
+    EventType.PAM_ACCESS_GRANT_REVOKE,
+    EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
+    EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
+    EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+    EventType.PAM_APPROVAL_CONFIG_UPDATE,
+    EventType.PAM_DISCOVERY_SOURCE_CREATE,
+    EventType.PAM_DISCOVERY_SOURCE_UPDATE,
+    EventType.PAM_DISCOVERY_SOURCE_DELETE,
+    EventType.PAM_DISCOVERY_SCAN,
+    EventType.PAM_DISCOVERED_ACCOUNT_IMPORT
   ],
   [ProjectType.AI]: [
     ...sharedProjectEvents,

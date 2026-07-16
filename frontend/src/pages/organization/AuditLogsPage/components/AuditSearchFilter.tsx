@@ -71,6 +71,11 @@ const PRODUCT_FILTER_KEYS: Partial<Record<ProjectType, string[]>> = {
   [ProjectType.PAM]: GENERIC_FILTER_KEYS
 };
 
+// Per-product example hints for the free-text event filter (products not listed use the default)
+const PRODUCT_EVENT_HINTS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.PAM]: "pam-account-access, pam-session-start, ..."
+};
+
 const getProductFilterProperties = (projectType?: ProjectType) => {
   const keys = projectType ? PRODUCT_FILTER_KEYS[projectType] : undefined;
   const properties = keys
@@ -78,15 +83,22 @@ const getProductFilterProperties = (projectType?: ProjectType) => {
     : FILTER_PROPERTIES;
 
   // Narrow event suggestions to the current product's events (secrets default shows all)
-  const projectEvents = projectType ? projectToEventsMap[projectType] : undefined;
-  if (!projectEvents) return properties;
+  const productEvents = projectType ? projectToEventsMap[projectType] : undefined;
+  const allowedEvents = productEvents ? new Set<string>(productEvents) : undefined;
+  const eventHint = projectType ? PRODUCT_EVENT_HINTS[projectType] : undefined;
 
-  const allowedEvents = new Set<string>(projectEvents);
-  return properties.map((prop) =>
-    prop.key === "event"
-      ? { ...prop, suggestions: prop.suggestions?.filter((s) => allowedEvents.has(s.value)) }
-      : prop
-  );
+  if (!allowedEvents && !eventHint) return properties;
+
+  return properties.map((prop) => {
+    if (prop.key !== "event") return prop;
+    return {
+      ...prop,
+      hints: eventHint ?? prop.hints,
+      suggestions: allowedEvents
+        ? prop.suggestions?.filter((s) => allowedEvents.has(s.value))
+        : prop.suggestions
+    };
+  });
 };
 
 const getDisplayLabel = (key: string) =>
